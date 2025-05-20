@@ -1,0 +1,8 @@
+.git
+.env
+app/.backups/
+app/.projects/
+app/lib/templates/
+.data/
+.cache/
+node_modules/

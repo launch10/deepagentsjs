@@ -1,0 +1,1 @@
+export { isFirstMessage } from "./isFirstMessage";

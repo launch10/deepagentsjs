@@ -1,0 +1,12 @@
+{
+    "projectName": "first-second-brain-landing",
+    "userRequest": {
+        "content": "Fix the bug"
+    },
+    "currentError": "Uncaught SyntaxError: The requested module '/node_modules/.vite/deps/lucide-react.js?v=81bbce88' does not provide an export named 'MazeIcon' (at Custom.tsx:5:10)",
+    "task": {
+        "type": "FIX_BUG",
+        "filePath": "src/components/Custom.tsx",
+        "instruction": "Fix the bug"
+    }
+}

@@ -1,0 +1,14 @@
+# == Schema Information
+#
+# Table name: inbound_webhooks
+#
+#  id         :integer          not null, primary key
+#  status     :integer          default("0"), not null
+#  body       :text
+#  created_at :datetime         not null
+#  updated_at :datetime         not null
+#
+
+fake_service:
+  status: "pending"
+  body: '{"hello": "world"}'

@@ -1,0 +1,51 @@
+# == Schema Information
+#
+# Table name: account_users
+#
+#  id         :integer          not null, primary key
+#  account_id :integer
+#  user_id    :integer
+#  roles      :jsonb            default("{}"), not null
+#  created_at :datetime         not null
+#  updated_at :datetime         not null
+#
+# Indexes
+#
+#  index_account_users_on_account_id_and_user_id  (account_id,user_id) UNIQUE
+#
+
+one:
+  user: one
+  account: one
+  roles:
+    admin: true
+
+two:
+  user: two
+  account: two
+  roles:
+    admin: true
+
+company_admin:
+  account: company
+  user: one
+  roles:
+    admin: true
+
+company_regular_user:
+  account: company
+  user: two
+
+invited_user:
+  account: invited
+  user: invited
+
+fake_processor:
+  account: fake_processor
+  user: fake_processor
+
+subscribed:
+  user: subscribed
+  account: subscribed
+  roles:
+    admin: true

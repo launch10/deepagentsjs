@@ -1,0 +1,63 @@
+**PRD: LangGraph Integration for Enhanced Chat and Code Generation**
+
+**1. Introduction**
+
+This document outlines the requirements for refactoring the existing chat application to leverage LangGraph for both backend processing and frontend message handling. The primary goal is to replace the current `api.chat.ts` and Vercel/AI-based frontend parsing with a more robust, stream-capable, and stateful LangGraph architecture.
+
+**2. Background**
+
+*   The current backend (`api.chat.ts`) will be deprecated.
+*   The new backend will be a LangGraph server instance (run via `langgraph up`), which supports streaming and complex agentic workflows.
+*   The current frontend (`Chat.client.tsx`) uses Vercel/AI for parsing messages into actions (e.g., file creation). This will be replaced.
+*   The new frontend will use LangGraph client-side libraries (e.g., `useStream` or custom logic inspired by the provided `ThreadsProvider` example) to interact with the LangGraph server.
+
+**3. Goals**
+
+*   **G1: Backend Replacement:** Fully replace `api.chat.ts` with a LangGraph server.
+*   **G2: Frontend LangGraph Integration:** Integrate LangGraph client logic into `Chat.client.tsx` for message handling and state synchronization.
+*   **G3: Real-time Message Streaming:** Display messages streamed from the LangGraph server in the chat interface.
+*   **G4: Dynamic File Creation:** Automatically create/update files in the user's workspace based on `codeTasks` appearing in the LangGraph state (e.g., `state.app.completedTasks`), replacing the existing manual string parsing for file operations.
+*   **G5: Automated App Reload:** Trigger the `reloadApp` event in the `WorkbenchStore` upon completion of a LangGraph workflow.
+*   **G6: Refactor Interaction Logic:** Migrate `WorkbenchStore` interaction logic from `useMessageParser` to the new LangGraph-based frontend abstraction.
+
+**4. High-Level Requirements**
+
+*   **REQ1: LangGraph Server Setup**
+    *   REQ1.1: Define and implement the LangGraph graph(s) necessary to replicate and enhance the existing chat and code generation functionalities.
+    *   REQ1.2: Ensure the LangGraph server can be started using `langgraph up`.
+    *   REQ1.3: Configure the server for streaming responses.
+
+*   **REQ2: LangGraph Client Integration (Frontend)**
+    *   REQ2.1: Research and select the most appropriate LangGraph client-side solution (e.g., `useStream` or a custom hook inspired by `ThreadsProvider`). Implement the chosen solution.
+    *   REQ2.2: Establish a robust connection from `Chat.client.tsx` (or the new abstraction layer) to the LangGraph server.
+    *   REQ2.3: Implement logic to send user messages from the frontend to the LangGraph server.
+
+*   **REQ3: Message Streaming and Display**
+    *   REQ3.1: Implement event handlers to process streamed data (messages, state updates, errors) from the LangGraph server.
+    *   REQ3.2: Update the chat UI in real-time to display incoming messages and reflect the current state of the LangGraph workflow.
+
+*   **REQ4: State-Driven File Operations**
+    *   REQ4.1: Design a mechanism to monitor the LangGraph state stream for specific indicators of file creation/modification tasks (e.g., observing changes to a `completedTasks` array within the `app` state, or specific event types).
+    *   REQ4.2: Develop parsing logic to extract necessary information (file content, path, name, operation type) from these indicators.
+    *   REQ4.3: Integrate with the `WorkbenchStore` (or an equivalent mechanism) to perform file system operations (create, write, delete files) based on the parsed task information. Ensure this process is resilient and handles potential errors.
+
+*   **REQ5: Workflow Completion and App Reload**
+    *   REQ5.1: Reliably detect the end of a LangGraph workflow (e.g., by identifying an `END` state or a specific completion message/event in the stream).
+    *   REQ5.2: On workflow completion, trigger the `reloadApp` event/function in the `WorkbenchStore` to refresh the application preview.
+
+*   **REQ6: Code Refactoring and Cleanup**
+    *   REQ6.1: Thoroughly analyze `useMessageParser.ts` to identify all logic related to `WorkbenchStore` interactions and message processing.
+    *   REQ6.2: Carefully migrate this logic into the new LangGraph client abstraction layer, ensuring functional parity or improvement.
+    *   REQ6.3: After successful migration and testing, deprecate and remove the `useMessageParser.ts` file and its usages.
+
+**5. Non-Goals**
+
+*   Introducing new UI components or major visual redesigns not directly related to displaying streamed messages or LangGraph operational status.
+*   Altering the core file structure of the `bolt_me` project beyond what is essential for the LangGraph integration, `api.chat.ts` replacement, and `useMessageParser.ts` refactoring.
+*   Implementing advanced user authentication or authorization for the LangGraph server in this phase.
+
+**6. Future Considerations (Optional)**
+
+*   Exploration of more advanced LangGraph thread management features (e.g., persisting conversation threads, allowing users to resume previous interactions).
+*   Implementation of more granular error handling and user feedback mechanisms for LangGraph operations within the UI.
+*   User-configurable settings for the LangGraph connection or behavior.

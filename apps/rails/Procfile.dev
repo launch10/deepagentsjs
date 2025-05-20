@@ -1,0 +1,4 @@
+#web: bin/rails server -p $PORT
+stripe: stripe listen --forward-to localhost:3000/webhooks/stripe
+worker: bundle exec sidekiq
+vite: bin/vite dev

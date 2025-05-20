@@ -1,0 +1,1 @@
+export { bytea } from './bytea';

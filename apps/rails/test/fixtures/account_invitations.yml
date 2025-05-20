@@ -1,0 +1,34 @@
+# == Schema Information
+#
+# Table name: account_invitations
+#
+#  id            :integer          not null, primary key
+#  account_id    :integer          not null
+#  invited_by_id :integer
+#  token         :string           not null
+#  name          :string           not null
+#  email         :string           not null
+#  roles         :jsonb            default("{}"), not null
+#  created_at    :datetime         not null
+#  updated_at    :datetime         not null
+#
+# Indexes
+#
+#  index_account_invitations_on_account_id_and_email  (account_id,email) UNIQUE
+#  index_account_invitations_on_invited_by_id         (invited_by_id)
+#  index_account_invitations_on_token                 (token) UNIQUE
+#
+
+one:
+  account: company
+  invited_by: one
+  token: <%= AccountInvitation.generate_unique_secure_token %>
+  name: Invited User
+  email: invited@example.com
+
+two:
+  account: company
+  invited_by: two
+  token: <%= AccountInvitation.generate_unique_secure_token %>
+  name: Second Invited User
+  email: invited2@example.com

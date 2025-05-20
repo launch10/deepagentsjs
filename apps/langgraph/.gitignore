@@ -1,0 +1,44 @@
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+.vscode/*
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+/.cache
+/build
+*.vars
+.wrangler
+_worker.bundle
+app/.projects
+app/.backups
+# LangGraph API
+.langgraph_api
+
+# Added by Claude Task Master
+# Logs
+dev-debug.log
+# Dependency directories
+node_modules/
+# Environment variables
+.env
+.env.docker
+# Editor directories and files
+.vscode

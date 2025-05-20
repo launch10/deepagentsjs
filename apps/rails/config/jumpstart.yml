@@ -1,0 +1,20 @@
+---
+application_name: NicheFinder
+business_name: NicheFinder
+business_address: 
+domain: example.com
+support_email: support@example.com
+default_from_email: My App <no-reply@example.com>
+background_job_processor: sidekiq
+email_provider: 
+account_types: team
+apns: false
+fcm: false
+integrations:
+omniauth_providers:
+payment_processors:
+- stripe
+multitenancy:
+gems:
+- acts_as_tenant
+- whenever

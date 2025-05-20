@@ -1,0 +1,1 @@
+ALTER TABLE "file_specifications" ALTER COLUMN "filetype" SET DATA TYPE text;

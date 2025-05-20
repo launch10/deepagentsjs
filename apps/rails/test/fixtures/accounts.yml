@@ -1,0 +1,53 @@
+# == Schema Information
+#
+# Table name: accounts
+#
+#  id                  :integer          not null, primary key
+#  name                :string           not null
+#  owner_id            :integer
+#  personal            :boolean          default("false")
+#  created_at          :datetime         not null
+#  updated_at          :datetime         not null
+#  extra_billing_info  :text
+#  domain              :string
+#  subdomain           :string
+#  billing_email       :string
+#  account_users_count :integer          default("0")
+#
+# Indexes
+#
+#  index_accounts_on_owner_id  (owner_id)
+#
+
+one:
+  owner: one
+  name: "User One"
+  personal: true
+
+two:
+  owner: two
+  name: "User Two"
+  personal: true
+
+company:
+  owner: one
+  name: "Company"
+  personal: false
+  domain: company.com
+  subdomain: company
+
+invited:
+  owner: invited
+  name: "Invited User"
+  personal: true
+
+fake_processor:
+  owner: fake_processor
+  name: "Per Seat Account"
+  personal: false
+  account_users_count: 1
+
+subscribed:
+  owner: subscribed
+  name: "Subscribed User"
+  personal: true

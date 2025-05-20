@@ -1,0 +1,21 @@
+# == Schema Information
+#
+# Table name: announcements
+#
+#  id           :integer          not null, primary key
+#  kind         :string
+#  title        :string
+#  published_at :datetime
+#  created_at   :datetime         not null
+#  updated_at   :datetime         not null
+#
+
+one:
+  kind: MyString
+  title: MyString
+  published_at: 2019-04-09 17:21:27
+
+two:
+  kind: MyString
+  title: MyString
+  published_at: 2019-04-09 17:21:27

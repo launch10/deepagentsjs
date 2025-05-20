@@ -1,0 +1,1 @@
+export { createStylesPrompt } from "./createStyles";

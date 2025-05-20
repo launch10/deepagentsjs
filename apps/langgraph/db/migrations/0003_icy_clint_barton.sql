@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD CONSTRAINT "project_name_tenant_unique_idx" UNIQUE("project_name","tenant_id");

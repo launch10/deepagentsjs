@@ -1,0 +1,133 @@
+Certainly! I'd be happy to create a simple todo application using shadcn/ui components. I'll create a basic todo list with the ability to add new tasks and mark them as completed. Let's get started!
+
+<gen-code>
+First, let's create the necessary files and install the required dependencies:
+
+<gen-add-dependency>@hookform/resolvers</gen-add-dependency>
+<gen-add-dependency>zod</gen-add-dependency>
+
+<gen-write>
+src/components/TodoList.jsx
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import TodoForm from './TodoForm';
+
+const TodoList = () => {
+  const [todos, setTodos] = useState([]);
+
+  const addTodo = (newTodo) => {
+    setTodos([...todos, { ...newTodo, id: Date.now(), completed: false }]);
+  };
+
+  const toggleTodo = (id) => {
+    setTodos(todos.map(todo =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    ));
+  };
+
+  return (
+    <Card className="w-[350px]">
+      <CardHeader>
+        <CardTitle>Todo List</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <TodoForm onAddTodo={addTodo} />
+        <ScrollArea className="h-[300px] mt-4">
+          {todos.map(todo => (
+            <div key={todo.id} className="flex items-center space-x-2 mb-2">
+              <Checkbox
+                id={`todo-${todo.id}`}
+                checked={todo.completed}
+                onCheckedChange={() => toggleTodo(todo.id)}
+              />
+              <label
+                htmlFor={`todo-${todo.id}`}
+                className={`text-sm ${todo.completed ? 'line-through text-gray-500' : ''}`}
+              >
+                {todo.text}
+              </label>
+            </div>
+          ))}
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default TodoList;
+</gen-write>
+
+<gen-write>
+src/components/TodoForm.jsx
+
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+const formSchema = z.object({
+  text: z.string().min(1, 'Todo text is required').max(100, 'Todo text must be 100 characters or less'),
+});
+
+const TodoForm = ({ onAddTodo }) => {
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      text: '',
+    },
+  });
+
+  const onSubmit = (values) => {
+    onAddTodo(values);
+    form.reset();
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex space-x-2">
+        <FormField
+          control={form.control}
+          name="text"
+          render={({ field }) => (
+            <FormItem className="flex-grow">
+              <FormControl>
+                <Input placeholder="Add a new todo..." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit">Add</Button>
+      </form>
+    </Form>
+  );
+};
+
+export default TodoForm;
+</gen-write>
+
+<gen-write>
+src/App.jsx
+
+import React from 'react';
+import TodoList from './components/TodoList';
+
+function App() {
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <TodoList />
+    </div>
+  );
+}
+
+export default App;
+</gen-write>
+</gen-code>
+
+I've created a simple todo application using shadcn/ui components. The app includes a todo list with the ability to add new tasks and mark them as completed.

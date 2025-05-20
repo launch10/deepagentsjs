@@ -1,0 +1,53 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
+    "types": [
+      "vite/client",
+    ],
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "target": "ESNext",
+    "strict": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["./app/javascript/frontend/*"],
+      "@components/*": ["./app/javascript/frontend/components/*"],
+      "@context/*": ["./app/javascript/frontend/context/*"],
+      "@hooks/*": ["./app/javascript/frontend/hooks/*"],
+      "@stores/*": ["./app/javascript/frontend/stores/*"],
+      "@lib/*": ["./app/javascript/frontend/lib/*"],
+      "@models/*": ["./app/javascript/frontend/shared/models/*"],
+      "@shared/*": ["./app/javascript/frontend/shared/*"],
+      "@utils/*": ["./app/javascript/frontend/lib/utils/*"],
+      "@runtime/*": ["./app/javascript/frontend/runtime/*"],
+      "@types/*": ["./app/javascript/frontend/types/*"],
+      "@styles/*": ["./app/javascript/frontend/styles/*"],
+      "@webcontainer/*": ["./app/javascript/frontend/webcontainer/*"],
+    },
+    "noEmit": true,
+    "incremental": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "vite.config.ts",
+    "postcss.config.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "public",
+    "vendor"
+  ]
+}

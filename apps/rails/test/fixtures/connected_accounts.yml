@@ -1,0 +1,37 @@
+# == Schema Information
+#
+# Table name: connected_accounts
+#
+#  id                  :integer          not null, primary key
+#  owner_id            :integer
+#  provider            :string
+#  uid                 :string
+#  refresh_token       :string
+#  expires_at          :datetime
+#  auth                :jsonb
+#  created_at          :datetime         not null
+#  updated_at          :datetime         not null
+#  access_token        :string
+#  access_token_secret :string
+#  owner_type          :string
+#
+# Indexes
+#
+#  index_connected_accounts_on_owner_id_and_owner_type  (owner_id,owner_type)
+#
+
+one:
+  owner: one (User)
+  provider: developer
+  access_token: abcd1234
+  refresh_token: ABCDEFG
+  expires_at: <%= 1.year.from_now.to_formatted_s(:db) %>
+  uid: one
+
+two:
+  owner: one (User)
+  provider: developer
+  access_token: abcd1234
+  refresh_token: ABCDEFG
+  expires_at: <%= 1.year.from_now.to_formatted_s(:db) %>
+  uid: two
