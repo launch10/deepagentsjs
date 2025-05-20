@@ -38,6 +38,7 @@
     "debug:save": "tsx --inspect-brk scripts/testSaveProject.ts"
   },
   "dependencies": {
+    "@nichefinder/shared": "workspace:*",
     "@ai-sdk/openai": "^1.3.22",
     "@babel/runtime": "^7.27.1",
     "@cloudflare/workers-types": "^4.20250507.0",
@@ -118,7 +119,6 @@
     "remix-island": "^0.2.0",
     "remix-utils": "^8.5.0",
     "shiki": "^3.4.0",
-    "tailwind-compat.css": "link:@unocss/reset/tailwind-compat.css",
     "unist-util-visit": "^5.0.0",
     "unocss": "^66.1.1",
     "uuid": "^11.1.0",

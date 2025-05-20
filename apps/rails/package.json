@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@nichefinder/shared": "workspace:*",
     "@inertiajs/react": "^2.0.11",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
@@ -80,7 +81,6 @@
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "shiki": "^3.4.0",
-    "tailwind-compat.css": "link:@unocss/reset/tailwind-compat.css",
     "unist-util-visit": "^5.0.0",
     "unocss": "^66.1.1",
     "uuid": "^11.1.0",
