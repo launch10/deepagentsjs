@@ -2,7 +2,6 @@
 <html class="<%= class_names(dark: current_user&.dark_theme?, "hotwire-native": hotwire_native_app?) %>" lang="<%= I18n.locale %>">
   <head>
     <%= render "webcontainer_head" %>
-    <%= vite_stylesheet_tag "application" %>
     <%= vite_react_refresh_tag %>
     <%= vite_client_tag %>
     <%= vite_typescript_tag "inertia" %>
