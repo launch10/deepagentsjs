@@ -1,4 +1,4 @@
-class ProjectsController < WebcontainerController
+class ProjectsController < SubscribedController
   def index
     account = current_user.primary_account
 
