@@ -8,6 +8,7 @@ import { useThreadId, redirectToThreadId } from "@hooks/useThreadId";
 import { useStream } from '@langchain/langgraph-sdk/react';
 import { type GraphState, type App as AppState, type CodeTasksState } from "@shared/state/graph";
 import { useQueryParams } from '@hooks/useQueryParams'
+import { jwtStore } from "@stores/jwt";
 
 type Config = Record<string, any>;
 type StreamableGraphState = GraphState & Config; 
@@ -36,6 +37,7 @@ const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
 );
 
 export function LanggraphProvider({ children }: { children: React.ReactNode }): React.ReactElement {
+  const jwt = jwtStore.get() as string;
   const [chatHasStarted, setChatHasStarted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isFetchingThreads, setIsFetchingThreads] = React.useState(false);
@@ -48,7 +50,6 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   const [threads, setThreads] = React.useState<
     ThreadData<ThreadValues>[]
   >([]);
-
   const [messageIdToTags, setMessageIdToTags] = React.useState<
     Record<string, Set<string>>
   >({});
@@ -73,6 +74,9 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   const stream = useStream<StreamableGraphState>({
       apiUrl: import.meta.env.VITE_LANGGRAPH_API_URL!,
       assistantId: import.meta.env.VITE_LANGGRAPH_ASSISTANT_ID!,
+      defaultHeaders: {
+        Authorization: `Bearer ${jwt}`,
+      },
       threadId: currentThreadId,
       onThreadId: (threadId) => {
         setCurrentThreadId(threadId);
@@ -97,20 +101,26 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     if (typeof window === "undefined") {
       return;
     }
+    if (!jwt) {
+      return;
+    }
     try {
       fetchThreads();
     } catch (e) {
       console.error(e);
     }
-  }, [limitParam, offsetParam]);
+  }, [limitParam, offsetParam, jwt]);
 
   // This needs to be upgraded to use browser-based encrypted cookie,
   // and backend needs to fetch tenantId from encrypted cookie
   const fetchThreads = React.useCallback(
     async () => {
+      if (!jwt) {
+        return;
+      }
       setIsFetchingThreads(true);
       try {
-        const client = createClient();
+        const client = createClient(jwt);
         const newThreads = await client.threads.search({
           offset: offsetParam,
           limit: limitParam,
@@ -135,7 +145,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       } finally {
         setIsFetchingThreads(false);
       }
-    }, [offsetParam, limitParam] 
+    }, [offsetParam, limitParam, jwt] 
   )
 
   React.useEffect(() => {

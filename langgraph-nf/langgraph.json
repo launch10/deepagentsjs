@@ -7,5 +7,8 @@
         "create": "./app/lib/.server/langgraph/graphs/create.ts:graph",
         "update": "./app/lib/.server/langgraph/graphs/update.ts:graph"
     },
-    "env": ".env"
+    "env": ".env",
+    "auth": {
+        "path": "./app/lib/.server/langgraph/auth/auth.ts:auth"
+    }
 }

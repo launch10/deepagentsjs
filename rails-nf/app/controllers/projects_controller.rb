@@ -1,6 +1,7 @@
 class ProjectsController < SubscribedController
   def index
     render inertia: 'Home', props: {
+      jwt: cookies[:jwt]
     }, layout: "layouts/webcontainer"
   end
 
@@ -16,4 +17,9 @@ class ProjectsController < SubscribedController
       thread_id: thread_id # if account doesn't own this thread, will simply render the homepage
     }, layout: "layouts/webcontainer"
   end
+
+# private
+#   def jwt
+#     @jwt ||= JWT.decode(cookies[:jwt], Rails.application.credentials.devise_jwt_secret_key!, 'HS256')&.first
+#   end
 end
