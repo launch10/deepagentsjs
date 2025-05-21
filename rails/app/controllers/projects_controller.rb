@@ -1,8 +1,6 @@
 class ProjectsController < SubscribedController
   def index
-    binding.pry
     render inertia: 'Home', props: {
-      jwt: current_user.jwt_payload
     }, layout: "layouts/webcontainer"
   end
 
