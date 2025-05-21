@@ -3,8 +3,20 @@ module User::Authenticatable
 
   included do
     include User::TwoFactorAuthentication
+    include Devise::JWT::RevocationStrategies::JTIMatcher
 
-    devise(*[:database_authenticatable, :registerable, :recoverable, :rememberable, :validatable, :confirmable, (:omniauthable if defined? OmniAuth)].compact)
+    OPTIONS = [
+      :database_authenticatable,
+      :registerable,
+      :recoverable,
+      :rememberable,
+      :validatable,
+      :confirmable,
+      :jwt_authenticatable,
+      (:omniauthable if defined? OmniAuth),
+    ].compact
+
+    devise(*OPTIONS, jwt_revocation_strategy: self)
     has_referrals if defined?(::Refer)
 
     has_many :api_tokens, dependent: :destroy

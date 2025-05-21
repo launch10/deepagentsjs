@@ -36,6 +36,7 @@
 #  otp_backup_codes       :text
 #  preferences            :jsonb
 #  name                   :string
+#  jti                    :string
 #
 # Indexes
 #
@@ -44,6 +45,7 @@
 #  index_users_on_invitations_count                  (invitations_count)
 #  index_users_on_invited_by_id                      (invited_by_id)
 #  index_users_on_invited_by_type_and_invited_by_id  (invited_by_type,invited_by_id)
+#  index_users_on_jti                                (jti) UNIQUE
 #  index_users_on_reset_password_token               (reset_password_token) UNIQUE
 #
 
