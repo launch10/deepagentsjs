@@ -1,10 +1,8 @@
 class ProjectsController < SubscribedController
   def index
-    account = current_user.primary_account
-
+    binding.pry
     render inertia: 'Home', props: {
-      account_id: account.id,
-      user_id: current_user.id
+      jwt: current_user.jwt_payload
     }, layout: "layouts/webcontainer"
   end
 

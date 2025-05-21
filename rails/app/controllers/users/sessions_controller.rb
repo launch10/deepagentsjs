@@ -48,4 +48,29 @@ class Users::SessionsController < Devise::SessionsController
   def clear_otp_user_from_session
     session.delete(:otp_user_id)
   end
+
+private
+  def after_sign_in_path_for(resource)
+    set_jwt_cookie
+    super(resource)
+  end
+
+  def set_jwt_cookie
+    payload = {
+      jti: current_user.jwt_payload["jti"],
+      sub: current_user.id,
+      exp: 24.hours.from_now.to_i,
+      iat: Time.current.to_i
+    }
+  
+    token = JWT.encode(payload, Rails.application.credentials.devise_jwt_secret_key!, 'HS256')
+  
+    cookies[:jwt] = {
+      value: token,
+      httponly: true,
+      secure: Rails.env.production?,
+      same_site: :lax
+    }
+  end
+
 end
