@@ -32,7 +32,7 @@ Rails.application.routes.draw do
   match "/500", via: :all, to: "errors#internal_server_error"
 
   authenticated :user do
-    root to: "dashboard#show", as: :user_root
+    root to: "projects#index", as: :root
   end
   get "up" => "rails/health#show", :as => :rails_health_check
   root to: "static#index"
