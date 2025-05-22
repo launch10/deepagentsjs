@@ -19,5 +19,5 @@
 #
 
 class ProjectFile < ApplicationRecord
-  # Define associations, validations, and methods here
+  belongs_to :project, inverse_of: :files
 end

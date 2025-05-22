@@ -26,4 +26,6 @@
 
 class Project < ApplicationRecord
   acts_as_tenant :account
+
+  has_many :files, dependent: :destroy, class_name: "ProjectFile"
 end
