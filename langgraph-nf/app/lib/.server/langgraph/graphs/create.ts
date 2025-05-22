@@ -82,19 +82,18 @@ const notifyCreateStart = async(state: GraphState, config: LangGraphRunnableConf
 export const createGraph = new StateGraph(GraphAnnotation)
     .addNode("startCreate", loadCreateNode)
     .addNode("notifyCreateStart", notifyCreateStart)
-    // .addNode("projectPlan", projectPlanNode)
-    // .addNode("createPageGraph", createPageGraph)
-    // .addNode("applyUpdates", applyUpdatesNode)
-    // .addNode("saveProject", saveNode)
+    .addNode("projectPlan", projectPlanNode)
+    .addNode("createPageGraph", createPageGraph)
+    .addNode("applyUpdates", applyUpdatesNode)
+    .addNode("saveProject", saveNode)
 
     .addEdge(START, "startCreate")
     .addEdge("startCreate", "notifyCreateStart")
-    .addEdge("notifyCreateStart", END)
-    // .addEdge("notifyCreateStart", "projectPlan")
-    // .addEdge("projectPlan", "createPageGraph")
-    // .addEdge("createPageGraph", "applyUpdates")
-    // .addEdge("applyUpdates", "saveProject")
-    // .addEdge("saveProject", END)
+    .addEdge("notifyCreateStart", "projectPlan")
+    .addEdge("projectPlan", "createPageGraph")
+    .addEdge("createPageGraph", "applyUpdates")
+    .addEdge("applyUpdates", "saveProject")
+    .addEdge("saveProject", END)
 
 // export const checkpointer = PostgresSaver.fromConnString(process.env.POSTGRES_URI!);
 // await checkpointer.setup();

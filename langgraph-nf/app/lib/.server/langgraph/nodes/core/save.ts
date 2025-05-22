@@ -24,6 +24,7 @@ const save = async (state: GraphState): Promise<Partial<GraphState>> => {
         }
     }
 
+    debugger;
     if (state.isFirstMessage) {
         await createProject(state);
     } else {

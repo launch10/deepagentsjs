@@ -7,8 +7,7 @@
 #  text       :text             not null
 #  embedding  :vector(1536)     not null
 #  metadata   :jsonb            default("{}"), not null
-#  created_at :datetime         not null
-#  updated_at :datetime         not null
+#  created_at :datetime
 #
 # Indexes
 #

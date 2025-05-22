@@ -9,7 +9,7 @@ class CreateIconEmbeddings < ActiveRecord::Migration[8.0]
       t.text :text, null: false
       t.vector :embedding, limit: 1536, null: false
       t.jsonb :metadata, null: false, default: {}
-      t.timestamps
+      t.timestamp :created_at
 
       t.index :key, unique: true
     end

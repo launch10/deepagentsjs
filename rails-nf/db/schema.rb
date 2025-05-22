@@ -152,8 +152,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_22_174109) do
     t.text "text", null: false
     t.vector "embedding", limit: 1536, null: false
     t.jsonb "metadata", default: {}, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", precision: nil
     t.index ["embedding"], name: "idx_icon_embeddings_text", opclass: :vector_cosine_ops, using: :ivfflat
     t.index ["key"], name: "index_icon_embeddings_on_key", unique: true
   end
@@ -436,8 +435,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_22_174109) do
 
   create_table "theme_labels", force: :cascade do |t|
     t.string "name", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
     t.index ["name"], name: "index_theme_labels_on_name"
   end
 
@@ -453,8 +450,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_22_174109) do
   create_table "themes_to_theme_labels", force: :cascade do |t|
     t.bigint "theme_id", null: false
     t.bigint "theme_label_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
     t.index ["theme_id", "theme_label_id"], name: "index_themes_to_theme_labels_on_theme_id_and_theme_label_id"
     t.index ["theme_id"], name: "index_themes_to_theme_labels_on_theme_id"
     t.index ["theme_label_id"], name: "index_themes_to_theme_labels_on_theme_label_id"
