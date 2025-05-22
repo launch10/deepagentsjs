@@ -59,7 +59,7 @@ const callbacks = {
       }
       try {
         const fileSystemTree = convertFileMapToFileSystemTree(fileMap);
-        logger.info('TestmountFiles: Converted FileMap to FileSystemTree for messageId:', messageId, fileSystemTree);
+        logger.info('mountFiles: Converted FileMap to FileSystemTree for messageId:', messageId, fileSystemTree);
 
         const mountTask: CodeTask = {
           id: uuidv4(),
@@ -202,7 +202,6 @@ export const ChatImpl = () => {
       getTemplateData()
     }
 
-    console.log('templateData', templateData)
     if (templateData && !templateLoaded) {
         callbacks.mountFiles(templateData, mostRecentHumanMessage.id as string);
         setTemplateLoaded(true);
