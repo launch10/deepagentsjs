@@ -7,12 +7,6 @@ export function useThreadId() {
 }
 
 export function redirectToThreadId(threadId: string) {
-  router.visit(
-    `/projects/${threadId}`,
-    {
-      replace: true,
-      preserveState: true,
-      preserveScroll: true,
-    }
-  );
+  const newUrl = `/projects/${threadId}`;
+  window.history.replaceState(null, '', newUrl);
 }
