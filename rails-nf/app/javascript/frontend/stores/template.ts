@@ -23,7 +23,7 @@ export async function initializeTemplateStore() {
   hasInitialized = true;
   
   try {
-    const response = await fetch(`/api/template`);
+    const response = await fetch(`/templates/default`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch template: ${response.status} ${response.statusText}`);

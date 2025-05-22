@@ -585,6 +585,7 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
+  activerecord-import
   acts_as_tenant (~> 1.0)
   annotate
   bootsnap (>= 1.4.2)
