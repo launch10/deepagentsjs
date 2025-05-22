@@ -15,7 +15,7 @@ pnpm run dev # run dev server
 This is slightly more time-consuming, but it allows you to run the Langgraph server with proper Postgres database.
 
 ```bash
-langgraph up --no-pull -p 2024 --postgres-uri postgres://host.docker.internal:5432/bolt_development -d docker-compose.yml
+langgraph up --no-pull -p 2024 --postgres-uri postgres://host.docker.internal:5432/nichefinder_development -d docker-compose.yml
 pnpm run dev
 ```
 

@@ -60,7 +60,7 @@ private
       jti: current_user.jwt_payload["jti"],
       sub: current_user.id,
       exp: 24.hours.from_now.to_i,
-      iat: Time.current.to_i
+      iat: Time.current.to_i,
     }
   
     token = JWT.encode(payload, Rails.application.credentials.devise_jwt_secret_key!, 'HS256')

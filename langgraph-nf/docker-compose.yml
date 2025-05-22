@@ -22,5 +22,5 @@ services:
       - .env.docker
     environment:
       REDIS_URI: redis://langgraph-redis:6379
-      POSTGRES_URI: postgres://langgraph:development@host.docker.internal:5432/bolt_development?sslmode=disable
-      DATABASE_URI: postgres://langgraph:development@host.docker.internal:5432/bolt_development?sslmode=disable
+      POSTGRES_URI: postgres://langgraph:development@host.docker.internal:5432/nichefinder_development?sslmode=disable
+      DATABASE_URI: postgres://langgraph:development@host.docker.internal:5432/nichefinder_development?sslmode=disable
