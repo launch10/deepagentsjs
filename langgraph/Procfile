@@ -1,1 +1,0 @@
-langgraph: langgraph up --no-pull -p 2024 --postgres-uri postgres://host.docker.internal:5432/bolt_development -d docker-compose.yml
