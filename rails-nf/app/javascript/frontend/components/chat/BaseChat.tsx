@@ -27,11 +27,11 @@ interface BaseChatProps {
 }
 
 const EXAMPLE_PROMPTS = [
-  { text: 'Build a todo app in React using Tailwind' },
-  { text: 'Build a simple blog using Astro' },
-  { text: 'Create a cookie consent form using Material UI' },
-  { text: 'Make a space invaders game' },
-  { text: 'How do I center a div?' },
+  { text: "Let's test an automated cold outreach platform called 'Ice Breaker'." },
+  { text: "How about a content-repurposing engine? It takes blog posts and automatically generates social media." },
+  { text: "Let's test a 'Why Did They Churn' analysis tool." },
+  { text: "Let's test a competitor monitoring tool for SaaS companies." },
+  { text: "Let's try a niche job board aggregator." },
 ];
 
 const TEXTAREA_MIN_HEIGHT = 76;
@@ -73,10 +73,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             {!chatStarted && (
               <div id="intro" className="mt-[26vh] max-w-chat mx-auto">
                 <h1 className="text-5xl text-center font-bold text-bolt-elements-textPrimary mb-2">
-                  Where ideas begin
+                  NicheFinder
                 </h1>
                 <p className="mb-4 text-center text-bolt-elements-textSecondary">
-                  Bring ideas to life in seconds or get help on existing projects.
+                  Figure out if your business idea has legs.
                 </p>
               </div>
             )}
@@ -125,7 +125,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       minHeight: TEXTAREA_MIN_HEIGHT,
                       maxHeight: TEXTAREA_MAX_HEIGHT,
                     }}
-                    placeholder="How can Bolt help you today?"
+                    placeholder="What's your business idea?"
                     translate="no"
                   />
                   <SendButton
