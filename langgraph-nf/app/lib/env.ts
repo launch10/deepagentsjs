@@ -21,13 +21,6 @@ export type Env = z.infer<typeof envSchema>;
 expand(config());
 
 try {
-    console.log(process.env.POSTGRES_URI)
-    console.log(process.env.POSTGRES_URI)
-    console.log(process.env.POSTGRES_URI)
-    console.log(process.env.POSTGRES_URI)
-    console.log(process.env.POSTGRES_URI)
-    console.log(process.env.POSTGRES_URI)
-    console.log(process.env.POSTGRES_URI)
 	envSchema.parse(process.env);
 } catch (e) {
 	if (e instanceof z.ZodError) {

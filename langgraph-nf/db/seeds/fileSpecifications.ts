@@ -1,5 +1,5 @@
-import { type DB } from '@db'; // Assuming DB type is exported from here
-import { fileSpecification as FileSpecTable } from '@db/schema'; // Import all schemas
+import { type DB } from '@db';
+import { fileSpecification as FileSpecTable } from '@db/schema';
 import { sql } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_21_175233) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_22_174109) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -414,6 +414,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_21_175233) do
     t.index ["created_at"], name: "index_sections_on_created_at"
     t.index ["file_id"], name: "index_sections_on_file_id"
     t.index ["page_id"], name: "index_sections_on_page_id"
+  end
+
+  create_table "template_files", force: :cascade do |t|
+    t.bigint "template_id"
+    t.string "path"
+    t.text "content"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["path"], name: "index_template_files_on_path"
+    t.index ["template_id", "path"], name: "index_template_files_on_template_id_and_path", unique: true
+    t.index ["template_id"], name: "index_template_files_on_template_id"
+  end
+
+  create_table "templates", force: :cascade do |t|
+    t.string "name"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_templates_on_name", unique: true
   end
 
   create_table "theme_labels", force: :cascade do |t|

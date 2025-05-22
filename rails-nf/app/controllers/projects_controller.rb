@@ -6,10 +6,10 @@ class ProjectsController < SubscribedController
   end
 
   def show
-    thread_id = Thread.find_by(
+    project = Project.find_by(
       account_id: current_account.id, 
       thread_id: params[:thread_id]
-    )&.thread_id || nil
+    )
 
     render inertia: 'Home', props: {
       account_id: account.id,
@@ -18,8 +18,8 @@ class ProjectsController < SubscribedController
     }, layout: "layouts/webcontainer"
   end
 
-# private
-#   def jwt
-#     @jwt ||= JWT.decode(cookies[:jwt], Rails.application.credentials.devise_jwt_secret_key!, 'HS256')&.first
-#   end
+  def files
+    if params[:thread_id]
+    end
+  end
 end
