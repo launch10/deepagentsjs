@@ -27,11 +27,11 @@ interface BaseChatProps {
 }
 
 const EXAMPLE_PROMPTS = [
-  { text: "Let's test an automated cold outreach platform called 'Ice Breaker'." },
-  { text: "How about a content-repurposing engine? It takes blog posts and automatically generates social media." },
-  { text: "Let's test a 'Why Did They Churn' analysis tool." },
-  { text: "Let's test a competitor monitoring tool for SaaS companies." },
-  { text: "Let's try a niche job board aggregator." },
+  { text: "An automated cold outreach platform called 'Ice Breaker'." },
+  { text: "A content-repurposing engine. Takes blog posts and automatically generates social media." },
+  { text: "A 'Why Did They Churn' analysis tool." },
+  { text: "A competitor monitoring tool for SaaS companies." },
+  { text: "A niche job board aggregator." },
 ];
 
 const TEXTAREA_MIN_HEIGHT = 76;
