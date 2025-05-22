@@ -30,7 +30,10 @@ export async function initializeTemplateStore() {
     }
     
     const templateData = await response.json() as TemplateApiResponse;
-    const template: FileMap = templateData.files;
+    const template: FileMap = templateData.reduce((acc, file) => {
+      acc[file.path] = file;
+      return acc;
+    }, {} as FileMap);
 
     templateStore.set(template);
     logger.info('Template data loaded successfully');

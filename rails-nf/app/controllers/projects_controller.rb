@@ -6,15 +6,14 @@ class ProjectsController < SubscribedController
   end
 
   def show
-    project = Project.find_by(
-      account_id: current_account.id, 
-      thread_id: params[:thread_id]
-    )
+    # project = Project.find_by(
+    #   account_id: current_account.id, 
+    #   thread_id: params[:thread_id]
+    # )
 
     render inertia: 'Home', props: {
-      account_id: account.id,
-      user_id: current_user.id,
-      thread_id: thread_id # if account doesn't own this thread, will simply render the homepage
+      jwt: cookies[:jwt],
+      thread_id: params[:thread_id]
     }, layout: "layouts/webcontainer"
   end
 
