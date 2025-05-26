@@ -1,0 +1,70 @@
+volumes:
+  bundle_cache:
+  langgraph_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
+services:
+  rails_app:
+    build:
+      context: ./rails_app # Use the Dockerfile in the rails_app directory
+    env_file:
+      - rails_app/.env.docker
+    volumes:
+      # Ensure WORKDIR in rails_app/Dockerfile is /rails_app for this to align nicely
+      - ./rails_app:/rails_app
+      - bundle_cache:/usr/local/bundle
+    ports:
+      - "3000:3000"
+    environment:
+      - RAILS_ENV=development
+      - RAILS_LOG_TO_STDOUT=true
+    stdin_open: true # Keep STDIN open even if not attached
+    tty: true # Allocate a pseudo-TTY (this + stdin_open = interactive for binding.pry)
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/up"]
+      interval: 5s
+      timeout: 1s
+      retries: 5
+      start_period: 30s # Give it time to boot up
+  langgraph_redis:
+    image: redis:6.2-alpine
+    volumes:
+      - langgraph_data:/data
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 1s
+      retries: 5
+    networks:
+      - app-network
+  langgraph_app:
+    image: nichefinder
+    ports:
+      - "2024:8000"
+    depends_on:
+      langgraph_redis:
+        condition: service_healthy
+    env_file:
+      - langgraph_app/.env.docker
+    environment:
+      REDIS_URI: redis://langgraph_redis:6379
+      POSTGRES_URI: postgres://postgres:postgres@host.docker.internal:5432/bolt_development?sslmode=disable
+      DATABASE_URI: postgres://postgres:postgres@host.docker.internal:5432/bolt_development?sslmode=disable
+    networks:
+      - app-network
+  nginx:
+    build: ./nginx
+    ports:
+      - "8080:80" # Access Nginx on host port 8080
+    depends_on:
+      rails_app:
+        condition: service_healthy
+      langgraph_app:
+        condition: service_healthy
+    networks:
+      - app-network
