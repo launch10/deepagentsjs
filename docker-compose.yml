@@ -1,0 +1,40 @@
+volumes:
+  langgraph_data:
+    driver: local
+services:
+  rails-nf:
+    build: rails-nf # Use the Dockerfile in the rails-nf directory
+    env_file:
+      - rails-nf/.env.docker
+    volumes:
+      - ./rails-nf:/rails-nf
+    ports:
+      - "3000:3000"
+    environment:
+      - RAILS_ENV=development
+      - RAILS_LOG_TO_STDOUT=true
+      - RAILS_MASTER_KEY=
+    depends_on:
+      - langgraph-nf
+    networks:
+      - app-network
+  langgraph-redis:
+    image: redis:6
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 1s
+      retries: 5
+  langgraph-nf:
+    image: nichefinder
+    ports:
+      - "2024:8000"
+    depends_on:
+      langgraph-redis:
+        condition: service_healthy
+    env_file:
+      - langgraph-nf/.env.docker
+    environment:
+      REDIS_URI: redis://langgraph-redis:6379
+      POSTGRES_URI: postgres://postgres:postgres@host.docker.internal:5432/bolt_development?sslmode=disable
+      DATABASE_URI: postgres://postgres:postgres@host.docker.internal:5432/bolt_development?sslmode=disable
