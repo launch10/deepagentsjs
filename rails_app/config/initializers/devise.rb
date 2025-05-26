@@ -21,7 +21,10 @@ end
 
 Devise.setup do |config|
   config.jwt do |jwt|
-    jwt.secret = Rails.application.credentials.devise_jwt_secret_key!
+    # When building docker, allow this to be blank
+    if Rails.application.credentials.devise_jwt_secret_key.present?
+      jwt.secret = Rails.application.credentials.devise_jwt_secret_key!
+    end
   end
   config.mailer_sender = Jumpstart.config.default_from_email
   config.parent_mailer = "ApplicationMailer"
