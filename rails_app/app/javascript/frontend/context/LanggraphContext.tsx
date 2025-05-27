@@ -53,7 +53,9 @@ export function LanggraphProvider({ children, projects }: { children: React.Reac
     ThreadData<ThreadValues>[]
   >(projects.map((project: { thread_id: string, project_name: string }) => ({
     thread: {
-      id: project.thread_id,
+      thread_id: project.thread_id,
+      created_at: project.created_at,
+      updated_at: project.updated_at,
       values: {
         projectName: project.project_name,
       },

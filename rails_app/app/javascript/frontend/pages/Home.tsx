@@ -10,12 +10,10 @@ interface Project {
 interface HomepageProps {
     jwt: string;
     rootPath: string;
-    projects: Project[];
 }
 
 export default function Home(props: HomepageProps) {
-    const { jwt, root_path: rootPath, projects } = props;
-    console.log(jwt)
+    const { jwt, root_path: rootPath } = props;
 
     useEffect(() => {
         pageStore.set({ jwt, rootPath });
