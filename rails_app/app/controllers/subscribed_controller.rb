@@ -1,6 +1,7 @@
 class SubscribedController < ApplicationController
   include Webcontainer
   before_action :require_subscription!
+  before_action :refresh_jwt, if: proc { !request.format.json? && jwt_expired? }
 
   def root_path
     request.base_url

@@ -3,9 +3,11 @@ import { useEffect, type ReactNode } from 'react';
 import { LanggraphProvider } from '@context/LanggraphContext';
 import { themeStore } from '@stores/theme';
 import { projectStore } from '@stores/project';
+import { useThreadId } from '@hooks/useThreadId';
 
 export const AppLayout = ({ children }: { children: ReactNode }) => {
   const theme = useStore(themeStore);
+  const { threadId } = useThreadId();
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -17,7 +19,7 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
   }, [projects]);
 
   return (
-    <LanggraphProvider>
+    <LanggraphProvider threadId={threadId}>
       {children}
     </LanggraphProvider>
   );
