@@ -73,16 +73,7 @@ const saveInitial = async (state: GraphState, config: LangGraphRunnableConfig): 
         console.warn('RAILS_API_URL is not defined in environment variables. Skipping initial project creation POST request.');
     }
 
-    return {
-        app: {
-            ...state.app,
-            codeTasks: {
-                ...state.app.codeTasks,
-                queue: [],
-                completedTasks: [],
-            }
-        }
-    }
+    return {};
 }
 
 export const saveInitialNode = baseNode({
