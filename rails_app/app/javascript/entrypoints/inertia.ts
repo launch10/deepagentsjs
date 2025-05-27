@@ -35,6 +35,8 @@ createInertiaApp({
   },
   setup({ el, App, props }) {
     if (el) {
+      console.log(`hello`)
+      console.log(props.initialPage.props)
       createRoot(el).render(createElement(App, props))
     } else {
       console.error(

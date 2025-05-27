@@ -18,6 +18,7 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
     projectStore.addProjects(projects);
   }, [projects]);
 
+  debugger;
   return (
     <LanggraphProvider key={threadId}>
       {children}

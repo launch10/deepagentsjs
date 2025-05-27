@@ -3,10 +3,9 @@ import { Header } from '@components/header/Header';
 import React, { useEffect } from 'react';
 import { pageStore } from '@stores/page';
 import { usePage } from '@inertiajs/react';
-interface Project {
-    projectName: string;
-    threadId: string;
-}
+import { urlThreadId as getUrlThreadId } from '@hooks/useThreadId';
+import { v4 as uuidv4 } from 'uuid';
+import { useStore } from '@nanostores/react';
 interface HomepageProps {
     jwt: string;
     rootPath: string;
@@ -15,22 +14,30 @@ interface HomepageProps {
 
 export default function Home(props: HomepageProps) {
     const { jwt, rootPath } = props;
-    const { url } = usePage();
+    const { isNewThread, threadId: storeThreadId } = useStore(pageStore);
+    const urlThreadId = getUrlThreadId() || 'new';
 
     useEffect(() => {
         pageStore.set({ jwt, rootPath });
     }, [jwt, rootPath]);
 
     useEffect(() => {
-        if (!url.match(/projects\/[a-zA-Z0-9]*/)) {
+        console.log("urlThreadId", urlThreadId)
+        console.log("isNewThread", isNewThread)
+        console.log("storeThreadId", storeThreadId)
+        if (isNewThread && storeThreadId) {
+            console.log("exit early")
             return;
+        } else {
+            if (urlThreadId === 'new') {
+                console.log("Creating new thread")
+                pageStore.set({ threadId: uuidv4(), isNewThread: true });
+            } else {
+                console.log("Setting thread id to", urlThreadId)
+                pageStore.set({ threadId: urlThreadId, isNewThread: false });
+            }
         }
-        const threadId = url.split('/').pop();
-        console.log(`uppadataing da thread ${threadId}`)
-        if (threadId) {
-            pageStore.set({ threadId });
-        }
-    }, [url]);
+    }, [urlThreadId]);
 
     return (
         <div className="flex flex-col h-full w-full">

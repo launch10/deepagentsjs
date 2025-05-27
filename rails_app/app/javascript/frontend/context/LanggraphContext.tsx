@@ -49,8 +49,6 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   const offsetParam = Number(searchParams.get(OFFSET_PARAM)) || 0;
   const [projectHasBeenNamed, setProjectHasBeenNamed] = React.useState(false);
 
-  console.log(`thread id is ${threadId}`);
-
   const [messageIdToTags, setMessageIdToTags] = React.useState<
     Record<string, Set<string>>
   >({});
@@ -79,9 +77,6 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
         Authorization: `Bearer ${jwt}`,
       },
       threadId: threadId,
-      onThreadId: (threadId) => {
-        redirectToThreadId(threadId);
-      },
       onLangChainEvent: handleLangChainEvent,
       onFinish: () => {
         setIsLoading(false);
@@ -95,7 +90,12 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     stream.submit({
       userRequest: { type: "human", content: message },
       jwt: jwt!,
-    }, {streamMode: ["events", "values"]}); // Values provides final state
+    }, {
+      configurable: {
+        thread_id: threadId,
+      },
+      streamMode: ["events", "values"]
+    }); // Values provides final state
   };
 
   React.useEffect(() => {

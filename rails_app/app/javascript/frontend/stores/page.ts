@@ -5,6 +5,7 @@ export interface PageState {
   jwt: string | null;
   rootPath: string | null;
   threadId: string | null;
+  isNewThread: boolean;
 }
 
 // Create an atom that holds an object of this interface type
@@ -12,4 +13,5 @@ export const pageStore = map<PageState>({
   jwt: null,
   rootPath: null,
   threadId: null,
+  isNewThread: false,
 });
