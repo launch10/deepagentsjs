@@ -24,3 +24,4 @@ services:
       REDIS_URI: redis://langgraph-redis:6379
       POSTGRES_URI: postgres://postgres:postgres@host.docker.internal:5432/bolt_development?sslmode=disable
       DATABASE_URI: postgres://postgres:postgres@host.docker.internal:5432/bolt_development?sslmode=disable
+      RAILS_API_URL: http://host.docker.internal:3000

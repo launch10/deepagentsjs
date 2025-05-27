@@ -17,7 +17,7 @@ module Authorization
     Current.account_user
   end
 
-  def set_jwt_cookie
+  def refresh_jwt
     payload = {
       jti: current_user.jwt_payload["jti"],
       sub: current_user.id,
@@ -35,11 +35,30 @@ module Authorization
     }
   end
 
-  def jwt_user
-    payload = JWT.decode(cookies[:jwt], Rails.application.credentials.devise_jwt_secret_key!, true, { algorithm: 'HS256' })
-    return nil if payload.blank? || payload[0]["sub"].blank?
+  def jwt_user(allow_headers: false)
+    jwt = cookies[:jwt] || (allow_headers ? request.headers['Authorization'].split(' ').last : nil)
+    
+    if jwt
+      payload = jwt_payload(jwt)
+      return nil if payload.blank? || payload[0]["sub"].blank?
 
-    User.find(payload[0]["sub"])
+      User.find(payload[0]["sub"])
+    end
+  end
+
+  def authenticate_with_jwt!
+    begin
+      user = jwt_user(allow_headers: true)
+    rescue JWT::DecodeError, ActiveRecord::RecordNotFound => e
+      render json: { error: 'Not Authorized or invalid token' }, status: :unauthorized
+    end
+
+    if user
+      Current.user = user
+      sign_in(user, store: false)
+    else
+      render json: { error: 'Missing token' }, status: :unauthorized and return
+    end
   end
 
   private
@@ -50,4 +69,16 @@ module Authorization
     redirect_back_or_to root_path, alert: t("unauthorized")
   end
 
+  def jwt_expired?
+    jwt_payload.nil?
+  end
+
+  def jwt_payload(jwt = cookies[:jwt])
+    begin
+      payload = JWT.decode(jwt, Rails.application.credentials.devise_jwt_secret_key!, true, { algorithm: 'HS256' })
+    rescue JWT::DecodeError
+      return nil
+    end
+    payload
+  end
 end

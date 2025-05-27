@@ -8,6 +8,9 @@ import { binDates } from './date-binning';
 import { useLanggraphContext } from '@context/LanggraphContext';
 import { type MenuItemType } from '@types/menu';
 import { useMemo } from 'react';
+import { useStore } from '@nanostores/react';
+import { projectStore } from '@stores/project';
+import { Link } from '@inertiajs/react';
 
 const menuVariants = {
   closed: {
@@ -35,22 +38,22 @@ export function Menu() {
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
   const [open, setOpen] = useState(false);
   const [dialogContent, setDialogContent] = useState<DialogContent>(null);
-  const { threads } = useLanggraphContext();
+  const projects = useStore(projectStore.projects)
 
   useMemo(() => { 
-    const menuItems: MenuItemType[] = threads.map((thread) => {
-      let threadData = thread.thread;
+    const menuItems: MenuItemType[] = Object.keys(projects).map((threadId: string) => {
+      const project = projects[threadId];
       return {
-        threadId: threadData.thread_id,
-        url: `/projects/${threadData.thread_id}`,
-        projectName: threadData.values.projectName,
-        createdAt: new Date(threadData.created_at),
-        updatedAt: new Date(threadData.updated_at),
-        thread: thread,
+        threadId: threadId,
+        url: `/projects/${threadId}`,
+        projectName: project.projectName,
+        createdAt: new Date(project.createdAt),
+        updatedAt: new Date(project.updatedAt),
+        thread: project,
       };
     });
     setMenuItems(menuItems);
-  }, [threads]);
+  }, [projects]);
 
   // const deleteItem = useCallback((event: React.UIEvent, item: MenuItem) => {
   //   event.preventDefault();
@@ -114,13 +117,13 @@ export function Menu() {
       <div className="flex items-center h-[var(--header-height)]">{/* Placeholder */}</div>
       <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
         <div className="p-4">
-          <a
+          <Link
             href="/"
             className="flex gap-2 items-center bg-bolt-elements-sidebar-buttonBackgroundDefault text-bolt-elements-sidebar-buttonText hover:bg-bolt-elements-sidebar-buttonBackgroundHover rounded-md p-2 transition-theme"
           >
             <span className="inline-block i-icons:chat scale-110" />
             Start new chat
-          </a>
+          </Link>
         </div>
         <div className="text-bolt-elements-textPrimary font-medium pl-6 pr-5 my-2">Your Chats</div>
         <div className="flex-1 overflow-scroll pl-4 pr-5 pb-5">

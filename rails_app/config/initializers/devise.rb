@@ -44,6 +44,7 @@ Devise.setup do |config|
   config.reset_password_within = 6.hours
   config.sign_in_after_reset_password = ->(user) { !user.otp_required_for_login? }
   config.sign_out_via = :delete
+  config.timeout_in = 1.day
 
   Jumpstart::Omniauth.enabled_providers.each do |provider, args|
     name = provider.to_s

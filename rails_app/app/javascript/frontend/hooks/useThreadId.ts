@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react'
 
 export function useThreadId() {
-    const {thread_id} = usePage().props;
+    const {thread_id} = usePage().props || { thread_id: 'new' } as { thread_id: string };
     return { threadId: thread_id };
 }
 

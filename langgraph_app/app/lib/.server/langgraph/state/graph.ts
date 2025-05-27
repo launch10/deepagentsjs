@@ -46,6 +46,9 @@ export const GraphAnnotation = Annotation.Root({
     userRequest: Annotation<BaseMessage>({
         reducer: (current, next) => next
     }),
+    jwt: Annotation<string>({
+        reducer: (current, next) => next
+    }),
     messages: Annotation<BaseMessage[], BaseMessageLike[]>({ 
         default: () => [],
         reducer: messagesStateReducer

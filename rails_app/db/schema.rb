@@ -384,7 +384,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_22_174109) do
   create_table "projects", force: :cascade do |t|
     t.string "name", null: false
     t.bigint "account_id", null: false
-    t.bigint "theme_id", null: false
+    t.bigint "theme_id"
     t.string "thread_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false

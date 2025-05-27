@@ -11,7 +11,7 @@ module User::Authenticatable
       :recoverable,
       :rememberable,
       :validatable,
-      :confirmable,
+      # :confirmable,
       :jwt_authenticatable,
       (:omniauthable if defined? OmniAuth),
     ].compact

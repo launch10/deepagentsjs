@@ -36,7 +36,7 @@
 #  otp_backup_codes       :text
 #  preferences            :jsonb
 #  name                   :string
-#  jti                    :string           not null
+#  jti                    :string
 #
 # Indexes
 #

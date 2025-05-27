@@ -36,7 +36,7 @@
 #  otp_backup_codes       :text
 #  preferences            :jsonb
 #  name                   :string
-#  jti                    :string           not null
+#  jti                    :string
 #
 # Indexes
 #
@@ -63,6 +63,10 @@ class User < ApplicationRecord
   has_one_attached :avatar
   has_person_name
 
+
   validates :avatar, resizable_image: true
   validates :name, presence: true
+
+  has_one :owned_account, class_name: "Account", foreign_key: "owner_id", dependent: :destroy
+  has_many :projects, through: :owned_account
 end

@@ -62,7 +62,7 @@ const callbacks = {
         logger.info('mountFiles: Converted FileMap to FileSystemTree for messageId:', messageId, fileSystemTree);
 
         const mountTask: CodeTask = {
-          id: uuidv4(),
+          id: `${messageId}:mountFiles`,
           title: "Loading template",
           type: CodeTaskType.MOUNT_FILES,
           status: TaskStatus.PENDING, 

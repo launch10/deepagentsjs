@@ -1,4 +1,5 @@
 import React from "react";
+import { useStore } from "@nanostores/react";
 import { type ThreadData, type ThreadValues } from "@types/thread";
 import { type MessageFieldWithRole } from "@langchain/core/messages";
 import { type FileMap } from "@models/file";
@@ -8,7 +9,9 @@ import { useThreadId, redirectToThreadId } from "@hooks/useThreadId";
 import { useStream } from '@langchain/langgraph-sdk/react';
 import { type GraphState, type App as AppState, type CodeTasksState } from "@shared/state/graph";
 import { useQueryParams } from '@hooks/useQueryParams'
-import { jwtStore } from "@stores/jwt";
+import { pageStore } from "@stores/page";
+import axios from 'axios';
+import { projectStore } from "@stores/project";
 
 type Config = Record<string, any>;
 type StreamableGraphState = GraphState & Config; 
@@ -25,7 +28,6 @@ type LanggraphContextType = {
     files: FileMap,
     codeTasks: CodeTasksState,
     currentThreadId: string | undefined,
-    threads: ThreadData<ThreadValues>[],
     fetchThreads: () => Promise<void>, // Decorate with tenantId from encrypted cookies
     clearThreadData: () => void,
     submit: (message: string) => void,
@@ -37,7 +39,7 @@ const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
 );
 
 export function LanggraphProvider({ children }: { children: React.ReactNode }): React.ReactElement {
-  const jwt = jwtStore.get() as string;
+  const { jwt, rootPath } = pageStore.get();
   const [chatHasStarted, setChatHasStarted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isFetchingThreads, setIsFetchingThreads] = React.useState(false);
@@ -47,9 +49,12 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   const offsetParam = Number(searchParams.get(OFFSET_PARAM)) || 0;
   const { threadId: urlThreadId } = useThreadId();
   const [currentThreadId, setCurrentThreadId] = React.useState<string | undefined>(urlThreadId);
-  const [threads, setThreads] = React.useState<
-    ThreadData<ThreadValues>[]
-  >([]);
+  const [projectHasBeenNamed, setProjectHasBeenNamed] = React.useState(false);
+
+  React.useEffect(() => {
+    setCurrentThreadId(urlThreadId);
+  }, [urlThreadId]);
+
   const [messageIdToTags, setMessageIdToTags] = React.useState<
     Record<string, Set<string>>
   >({});
@@ -94,6 +99,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     setChatHasStarted(true);
     stream.submit({
       userRequest: { type: "human", content: message },
+      jwt: jwt!,
     }, {streamMode: ["events", "values"]}); // Values provides final state
   };
 
@@ -115,37 +121,39 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   // and backend needs to fetch tenantId from encrypted cookie
   const fetchThreads = React.useCallback(
     async () => {
-      if (!jwt) {
+      if (!rootPath) {
         return;
       }
       setIsFetchingThreads(true);
       try {
-        const client = createClient(jwt);
-        const newThreads = await client.threads.search({
-          offset: offsetParam,
-          limit: limitParam,
+        const response = await axios.get(`${rootPath}/projects`, {
+          params: {
+            offset: offsetParam,
+            limit: limitParam,
+          },
         });
-        setThreads((prevThreads) => {
-          const allThreads = [...(prevThreads.map((thread) => thread.thread) || []), ...newThreads].filter((thread) => thread.values?.projectName);
-          const uniqueThreads = [...new Map(allThreads.map(thread => [thread.values.projectName, thread])).values()];
-          const sortedThreads = uniqueThreads.sort((a, b) => {
-            return (
-              new Date(b.created_at).getTime() -
-              new Date(a.created_at).getTime()
-            );
-          });
-          return sortedThreads.map(thread => ({
-            thread: thread,
-            status: "idle" as const,
-          }));
-        });
-        setHasMoreThreads(newThreads.length === limitParam);
+        const data = response.data;
+        // setProjects((prevThreads) => {
+        //   const allThreads = [...(prevThreads.map((thread) => thread.thread) || []), ...data].filter((thread) => thread.values?.projectName);
+        //   const uniqueThreads = [...new Map(allThreads.map(thread => [thread.values.projectName, thread])).values()];
+        //   const sortedThreads = uniqueThreads.sort((a, b) => {
+        //     return (
+        //       new Date(b.created_at).getTime() -
+        //       new Date(a.created_at).getTime()
+        //     );
+        //   });
+        //   return sortedThreads.map(thread => ({
+        //     thread: thread,
+        //     status: "idle" as const,
+        //   }));
+        // });
+        // setHasMoreThreads(data.length === limitParam);
       } catch (e) {
         console.error(e);
       } finally {
         setIsFetchingThreads(false);
       }
-    }, [offsetParam, limitParam, jwt] 
+    }, [offsetParam, limitParam, rootPath] 
   )
 
   React.useEffect(() => {
@@ -185,6 +193,22 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   const codeTasks = (chatHasStarted ? (appState?.codeTasks || {queue: [], completedTasks: []}) : {queue: [], completedTasks: []}) as CodeTasksState;
   const projectName = stream.values?.projectName;
 
+  React.useEffect(() => {
+    if (!projectName) {
+      return;
+    }
+    if (projectHasBeenNamed) {
+      return;
+    }
+    setProjectHasBeenNamed(true);
+    projectStore.addProject({
+      thread_id: currentThreadId!,
+      project_name: projectName,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }, [projectName, projectHasBeenNamed])
+
   const contextValue: LanggraphContextType = {    
     isLoading,
     isFetchingThreads,
@@ -192,7 +216,6 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     messages,
     files: {},
     codeTasks,
-    threads,
     currentThreadId,
     hasMoreThreads,
     fetchThreads,

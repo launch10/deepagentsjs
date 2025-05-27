@@ -214,7 +214,7 @@ export class ActionRunner {
           // Convert Uint8Array to string if necessary
           const text = typeof value === 'string' ? value : new TextDecoder().decode(value);
           outputBuffer += text;
-          logger.debug(`[Shell output]: ${text}`);
+          // logger.debug(`[Shell output]: ${text}`);
         }
       } catch (error) {
         logger.error('Error reading process output:', error);
@@ -417,7 +417,7 @@ export class ActionRunner {
   #buildAction(type: ActionType, data: any, title: string) {
     const abortController = new AbortController();
     const action = {
-      id: uuidv4(),
+      id: `${title}${type}`,
       title,
       type,
       action: CodeTaskAction.UPDATE,
