@@ -1,12 +1,12 @@
 import { router } from '@inertiajs/react'; 
-import { usePage } from '@inertiajs/react'
-
-export function useThreadId() {
-    const {thread_id} = usePage().props || { thread_id: 'new' } as { thread_id: string };
-    return { threadId: thread_id };
-}
+import { pageStore } from '@stores/page';
 
 export function redirectToThreadId(threadId: string) {
   const newUrl = `/projects/${threadId}`;
+  pageStore.set((prev) => ({
+    ...prev,
+    threadId,
+  }));
+  console.log(`setting thread id to ${threadId}`)
   window.history.replaceState(null, '', newUrl);
 }
