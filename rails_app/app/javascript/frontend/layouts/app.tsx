@@ -19,7 +19,7 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
   }, [projects]);
 
   return (
-    <LanggraphProvider threadId={threadId}>
+    <LanggraphProvider key={threadId}>
       {children}
     </LanggraphProvider>
   );
