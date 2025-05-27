@@ -83,6 +83,9 @@ importers:
       '@langchain/langgraph':
         specifier: ^0.2.68
         version: 0.2.68(@langchain/core@0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react@18.3.1)(zod-to-json-schema@3.24.5(zod@3.24.4))
+      '@langchain/langgraph-api':
+        specifier: ^0.0.37
+        version: 0.0.37(@langchain/core@0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(@langchain/langgraph-checkpoint@0.0.17(@langchain/core@0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4))))(@langchain/langgraph-sdk@0.0.74(@langchain/core@0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react@18.3.1))(@langchain/langgraph@0.2.68(@langchain/core@0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react@18.3.1)(zod-to-json-schema@3.24.5(zod@3.24.4)))(openai@4.97.0(ws@8.18.2)(zod@3.24.4))(typescript@5.8.3)
       '@langchain/langgraph-checkpoint-postgres':
         specifier: ^0.0.5
         version: 0.0.5(@langchain/core@0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(@langchain/langgraph-checkpoint@0.0.17(@langchain/core@0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4))))
@@ -164,6 +167,9 @@ importers:
       framer-motion:
         specifier: ^12.10.1
         version: 12.10.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      hono:
+        specifier: ^4.7.10
+        version: 4.7.10
       ioredis:
         specifier: ^5.6.1
         version: 5.6.1
@@ -2444,9 +2450,6 @@ packages:
   camelcase@6.3.0:
     resolution: {integrity: sha512-Gmy6FhYlCY7uOElZUSbxo2UCDH8owEk996gkbrpsgGtrJLM3J7jGxl9Ic7Qwwj4ivOE5AWZWRMecDdF7hqGjFA==}
     engines: {node: '>=10'}
-
-  caniuse-lite@1.0.30001717:
-    resolution: {integrity: sha512-auPpttCq6BDEG8ZAuHJIplGw6GODhjw+/11e7IjpnYCxZcW/ONgPs0KVBJ0d1bY3e2+7PRe5RCLyP+PfwVgkYw==}
 
   caniuse-lite@1.0.30001718:
     resolution: {integrity: sha512-AflseV1ahcSunK53NfEs9gFWgOEmzr0f+kaMFA4xiLZlr9Hzt7HxcSpIFcnNCUkz6R6dWKa54rUz3HUmI3nVcw==}
@@ -5645,10 +5648,10 @@ snapshots:
     dependencies:
       hono: 4.7.10
 
-  '@hono/zod-validator@0.2.2(hono@4.7.10)(zod@3.24.4)':
+  '@hono/zod-validator@0.2.2(hono@4.7.10)(zod@3.25.17)':
     dependencies:
       hono: 4.7.10
-      zod: 3.24.4
+      zod: 3.25.17
 
   '@humanwhocodes/module-importer@1.0.1': {}
 
@@ -5805,7 +5808,7 @@ snapshots:
     dependencies:
       '@babel/code-frame': 7.27.1
       '@hono/node-server': 1.14.2(hono@4.7.10)
-      '@hono/zod-validator': 0.2.2(hono@4.7.10)(zod@3.24.4)
+      '@hono/zod-validator': 0.2.2(hono@4.7.10)(zod@3.25.17)
       '@langchain/core': 0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4))
       '@langchain/langgraph': 0.2.68(@langchain/core@0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react@18.3.1)(zod-to-json-schema@3.24.5(zod@3.24.4))
       '@langchain/langgraph-checkpoint': 0.0.17(@langchain/core@0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))
@@ -5826,7 +5829,7 @@ snapshots:
       uuid: 10.0.0
       winston: 3.17.0
       winston-console-format: 1.0.8
-      zod: 3.24.4
+      zod: 3.25.17
     optionalDependencies:
       '@langchain/langgraph-sdk': 0.0.74(@langchain/core@0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react@18.3.1)
     transitivePeerDependencies:
@@ -5893,7 +5896,7 @@ snapshots:
       commander: 13.1.0
       esbuild: 0.25.4
       esbuild-plugin-tailwindcss: 2.0.1
-      zod: 3.24.4
+      zod: 3.25.17
 
   '@langchain/langgraph@0.2.68(@langchain/core@0.3.54(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react@18.3.1)(zod-to-json-schema@3.24.5(zod@3.24.4))':
     dependencies:
@@ -7064,7 +7067,7 @@ snapshots:
 
   browserslist@4.24.5:
     dependencies:
-      caniuse-lite: 1.0.30001717
+      caniuse-lite: 1.0.30001718
       electron-to-chromium: 1.5.150
       node-releases: 2.0.19
       update-browserslist-db: 1.1.3(browserslist@4.24.5)
@@ -7115,8 +7118,6 @@ snapshots:
   callsites@3.1.0: {}
 
   camelcase@6.3.0: {}
-
-  caniuse-lite@1.0.30001717: {}
 
   caniuse-lite@1.0.30001718: {}
 
@@ -10151,7 +10152,6 @@ snapshots:
 
   zod@3.24.4: {}
 
-  zod@3.25.17:
-    optional: true
+  zod@3.25.17: {}
 
   zwitch@2.0.4: {}

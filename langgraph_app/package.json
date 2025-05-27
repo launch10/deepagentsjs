@@ -7,6 +7,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
+    "dev": "tsx ./server.mts",
     "dev:debug": "NODE_OPTIONS=--inspect-brk langgraph dev -n 1",
     "test": "vitest --run",
     "test:watch": "vitest",
@@ -57,6 +58,7 @@
     "@langchain/core": "^0.3.54",
     "@langchain/groq": "^0.2.2",
     "@langchain/langgraph": "^0.2.68",
+    "@langchain/langgraph-api": "^0.0.37",
     "@langchain/langgraph-checkpoint-postgres": "^0.0.5",
     "@langchain/langgraph-cli": "^0.0.37",
     "@langchain/langgraph-sdk": "^0.0.74",
@@ -84,6 +86,7 @@
     "execa": "^9.5.2",
     "fast-json-stable-stringify": "^2.1.0",
     "framer-motion": "^12.10.1",
+    "hono": "^4.7.10",
     "ioredis": "^5.6.1",
     "isbot": "^5.1.27",
     "istextorbinary": "^9.5.0",

@@ -146,6 +146,9 @@ importers:
       add:
         specifier: ^2.0.6
         version: 2.0.6
+      axios:
+        specifier: ^1.9.0
+        version: 1.9.0(debug@4.4.1)
       babel:
         specifier: ^6.23.0
         version: 6.23.0
@@ -7981,7 +7984,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.9.0(debug@4.4.1))
+      retry-axios: 2.6.0(axios@1.9.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -9343,7 +9346,7 @@ snapshots:
       path-parse: 1.0.7
       supports-preserve-symlinks-flag: 1.0.0
 
-  retry-axios@2.6.0(axios@1.9.0(debug@4.4.1)):
+  retry-axios@2.6.0(axios@1.9.0):
     dependencies:
       axios: 1.9.0(debug@4.4.1)
 

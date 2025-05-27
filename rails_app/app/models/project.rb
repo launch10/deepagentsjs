@@ -28,4 +28,7 @@ class Project < ApplicationRecord
   acts_as_tenant :account
 
   has_many :files, dependent: :destroy, class_name: "ProjectFile"
+  belongs_to :account
+
+  include ProjectSerialization
 end

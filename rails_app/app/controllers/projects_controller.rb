@@ -1,8 +1,23 @@
 class ProjectsController < SubscribedController
   def index
-    render inertia: 'Home', props: {
-      jwt: cookies[:jwt]
-    }, layout: "layouts/webcontainer"
+    pagy_obj, projects_records = pagy(current_user.projects.order(id: :desc))
+    projects = projects_records.map(&:to_mini_json)
+
+    respond_to do |format|
+      format.html do
+        render inertia: 'Home', props: {
+          jwt: cookies[:jwt],
+          projects: projects,
+          pagy: pagy_metadata(pagy_obj)
+        }, layout: "layouts/webcontainer"
+      end
+      format.json do
+        render json: {
+          projects: projects,
+          pagy: pagy_metadata(pagy_obj)
+        }
+      end
+    end
   end
 
   def show
@@ -20,6 +35,5 @@ class ProjectsController < SubscribedController
 
   def create
     user = jwt_user # This request comes from Langgraph, so we need to get the user from the JWT
-
   end
 end

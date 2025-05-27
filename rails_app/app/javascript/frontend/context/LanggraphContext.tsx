@@ -8,7 +8,8 @@ import { useThreadId, redirectToThreadId } from "@hooks/useThreadId";
 import { useStream } from '@langchain/langgraph-sdk/react';
 import { type GraphState, type App as AppState, type CodeTasksState } from "@shared/state/graph";
 import { useQueryParams } from '@hooks/useQueryParams'
-import { jwtStore } from "@stores/jwt";
+import { pageStore } from "@stores/page";
+import axios from 'axios';
 
 type Config = Record<string, any>;
 type StreamableGraphState = GraphState & Config; 
@@ -37,7 +38,7 @@ const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
 );
 
 export function LanggraphProvider({ children }: { children: React.ReactNode }): React.ReactElement {
-  const jwt = jwtStore.get() as string;
+  const { jwt, rootPath } = pageStore.get();
   const [chatHasStarted, setChatHasStarted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isFetchingThreads, setIsFetchingThreads] = React.useState(false);
@@ -120,13 +121,23 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       }
       setIsFetchingThreads(true);
       try {
-        const client = createClient(jwt);
-        const newThreads = await client.threads.search({
-          offset: offsetParam,
-          limit: limitParam,
+        // const client = createClient(jwt);
+        // const newThreads = await client.threads.search({
+        //   offset: offsetParam,
+        //   limit: limitParam,
+        // });
+        const response = await axios.get(`${rootPath}/projects`, {
+          params: {
+            offset: offsetParam,
+            limit: limitParam,
+          },
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+          }
         });
+        const data = response.data;
         setThreads((prevThreads) => {
-          const allThreads = [...(prevThreads.map((thread) => thread.thread) || []), ...newThreads].filter((thread) => thread.values?.projectName);
+          const allThreads = [...(prevThreads.map((thread) => thread.thread) || []), ...data].filter((thread) => thread.values?.projectName);
           const uniqueThreads = [...new Map(allThreads.map(thread => [thread.values.projectName, thread])).values()];
           const sortedThreads = uniqueThreads.sort((a, b) => {
             return (
@@ -139,7 +150,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
             status: "idle" as const,
           }));
         });
-        setHasMoreThreads(newThreads.length === limitParam);
+        setHasMoreThreads(data.length === limitParam);
       } catch (e) {
         console.error(e);
       } finally {
