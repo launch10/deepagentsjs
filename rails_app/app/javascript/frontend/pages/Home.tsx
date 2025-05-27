@@ -2,7 +2,6 @@ import { Chat } from '@components/chat/Chat.client';
 import { Header } from '@components/header/Header';
 import React, { useEffect } from 'react';
 import { pageStore } from '@stores/page';
-
 interface Project {
     projectName: string;
     threadId: string;

@@ -223,6 +223,7 @@ export class WorkbenchStore {
 
   addArtifact({ messageId, name }: { messageId: string; name: string }) {
     const artifact = this.#getArtifact(messageId);
+    this.currentArtifactId.set(messageId);
 
     if (artifact) {
       return;
@@ -232,7 +233,6 @@ export class WorkbenchStore {
       this.artifactIdList.push(messageId);
     }
 
-    this.currentArtifactId.set(messageId);
     this.artifacts.setKey(messageId, {
       id: messageId,
       title: name,
@@ -268,9 +268,8 @@ export class WorkbenchStore {
       unreachable('Artifact not found');
     }
 
-    const actionId = uuidv4();
     const task: CodeTask = {
-      id: actionId,
+      id: `${messageId}:installDependencies`,
       type: CodeTaskType.INSTALL,
       status: TaskStatus.PENDING,
     };

@@ -417,7 +417,7 @@ export class ActionRunner {
   #buildAction(type: ActionType, data: any, title: string) {
     const abortController = new AbortController();
     const action = {
-      id: uuidv4(),
+      id: `${title}${type}`,
       title,
       type,
       action: CodeTaskAction.UPDATE,

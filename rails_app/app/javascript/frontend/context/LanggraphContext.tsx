@@ -94,8 +94,6 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       },
     });
 
-  console.log(`i am loadin da stream boyyyy`)
-
   const onSubmit = (message: string) => {
     setIsLoading(true);
     setChatHasStarted(true);
