@@ -8,6 +8,8 @@ import { binDates } from './date-binning';
 import { useLanggraphContext } from '@context/LanggraphContext';
 import { type MenuItemType } from '@types/menu';
 import { useMemo } from 'react';
+import { useStore } from '@nanostores/react';
+import { projectStore } from '@stores/project';
 
 const menuVariants = {
   closed: {
@@ -35,22 +37,22 @@ export function Menu() {
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
   const [open, setOpen] = useState(false);
   const [dialogContent, setDialogContent] = useState<DialogContent>(null);
-  const { threads } = useLanggraphContext();
+  const projects = useStore(projectStore.projects)
 
   useMemo(() => { 
-    const menuItems: MenuItemType[] = threads.map((thread) => {
-      let threadData = thread.thread;
+    const menuItems: MenuItemType[] = Object.keys(projects).map((threadId: string) => {
+      const project = projects[threadId];
       return {
-        threadId: threadData.thread_id,
-        url: `/projects/${threadData.thread_id}`,
-        projectName: threadData.values.projectName,
-        createdAt: new Date(threadData.created_at),
-        updatedAt: new Date(threadData.updated_at),
-        thread: thread,
+        threadId: threadId,
+        url: `/projects/${threadId}`,
+        projectName: project.projectName,
+        createdAt: new Date(project.createdAt),
+        updatedAt: new Date(project.updatedAt),
+        thread: project,
       };
     });
     setMenuItems(menuItems);
-  }, [threads]);
+  }, [projects]);
 
   // const deleteItem = useCallback((event: React.UIEvent, item: MenuItem) => {
   //   event.preventDefault();

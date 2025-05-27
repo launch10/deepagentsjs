@@ -2,6 +2,7 @@ import { useStore } from '@nanostores/react';
 import { useEffect, type ReactNode } from 'react';
 import { LanggraphProvider } from '@context/LanggraphContext';
 import { themeStore } from '@stores/theme';
+import { projectStore } from '@stores/project';
 
 export const AppLayout = ({ children }: { children: ReactNode }) => {
   const theme = useStore(themeStore);
@@ -10,10 +11,13 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
-  const { projects } = children?.props || { projects: [] };
+  const projects = children?.props?.projects || [];
+  useEffect(() => {
+    projectStore.addProjects(projects);
+  }, [projects]);
 
   return (
-    <LanggraphProvider projects={projects}>
+    <LanggraphProvider>
       {children}
     </LanggraphProvider>
   );

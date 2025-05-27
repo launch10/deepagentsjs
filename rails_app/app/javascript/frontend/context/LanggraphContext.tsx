@@ -1,4 +1,5 @@
 import React from "react";
+import { useStore } from "@nanostores/react";
 import { type ThreadData, type ThreadValues } from "@types/thread";
 import { type MessageFieldWithRole } from "@langchain/core/messages";
 import { type FileMap } from "@models/file";
@@ -10,6 +11,7 @@ import { type GraphState, type App as AppState, type CodeTasksState } from "@sha
 import { useQueryParams } from '@hooks/useQueryParams'
 import { pageStore } from "@stores/page";
 import axios from 'axios';
+import { projectStore } from "@stores/project";
 
 type Config = Record<string, any>;
 type StreamableGraphState = GraphState & Config; 
@@ -26,7 +28,6 @@ type LanggraphContextType = {
     files: FileMap,
     codeTasks: CodeTasksState,
     currentThreadId: string | undefined,
-    threads: ThreadData<ThreadValues>[],
     fetchThreads: () => Promise<void>, // Decorate with tenantId from encrypted cookies
     clearThreadData: () => void,
     submit: (message: string) => void,
@@ -37,8 +38,9 @@ const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
   undefined
 );
 
-export function LanggraphProvider({ children, projects }: { children: React.ReactNode, projects: any }): React.ReactElement {
+export function LanggraphProvider({ children }: { children: React.ReactNode }): React.ReactElement {
   const { jwt, rootPath } = pageStore.get();
+  const projects = useStore(projectStore.projects);
   const [chatHasStarted, setChatHasStarted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isFetchingThreads, setIsFetchingThreads] = React.useState(false);
@@ -49,19 +51,7 @@ export function LanggraphProvider({ children, projects }: { children: React.Reac
   const { threadId: urlThreadId } = useThreadId();
   const [currentThreadId, setCurrentThreadId] = React.useState<string | undefined>(urlThreadId);
   const [projectHasBeenNamed, setProjectHasBeenNamed] = React.useState(false);
-  const [threads, setThreads] = React.useState<
-    ThreadData<ThreadValues>[]
-  >(projects.map((project: { thread_id: string, project_name: string }) => ({
-    thread: {
-      thread_id: project.thread_id,
-      created_at: project.created_at,
-      updated_at: project.updated_at,
-      values: {
-        projectName: project.project_name,
-      },
-    },
-    status: "idle" as const,
-  })));
+
   const [messageIdToTags, setMessageIdToTags] = React.useState<
     Record<string, Set<string>>
   >({});
@@ -140,21 +130,21 @@ export function LanggraphProvider({ children, projects }: { children: React.Reac
           },
         });
         const data = response.data;
-        setThreads((prevThreads) => {
-          const allThreads = [...(prevThreads.map((thread) => thread.thread) || []), ...data].filter((thread) => thread.values?.projectName);
-          const uniqueThreads = [...new Map(allThreads.map(thread => [thread.values.projectName, thread])).values()];
-          const sortedThreads = uniqueThreads.sort((a, b) => {
-            return (
-              new Date(b.created_at).getTime() -
-              new Date(a.created_at).getTime()
-            );
-          });
-          return sortedThreads.map(thread => ({
-            thread: thread,
-            status: "idle" as const,
-          }));
-        });
-        setHasMoreThreads(data.length === limitParam);
+        // setProjects((prevThreads) => {
+        //   const allThreads = [...(prevThreads.map((thread) => thread.thread) || []), ...data].filter((thread) => thread.values?.projectName);
+        //   const uniqueThreads = [...new Map(allThreads.map(thread => [thread.values.projectName, thread])).values()];
+        //   const sortedThreads = uniqueThreads.sort((a, b) => {
+        //     return (
+        //       new Date(b.created_at).getTime() -
+        //       new Date(a.created_at).getTime()
+        //     );
+        //   });
+        //   return sortedThreads.map(thread => ({
+        //     thread: thread,
+        //     status: "idle" as const,
+        //   }));
+        // });
+        // setHasMoreThreads(data.length === limitParam);
       } catch (e) {
         console.error(e);
       } finally {
@@ -200,6 +190,22 @@ export function LanggraphProvider({ children, projects }: { children: React.Reac
   const codeTasks = (chatHasStarted ? (appState?.codeTasks || {queue: [], completedTasks: []}) : {queue: [], completedTasks: []}) as CodeTasksState;
   const projectName = stream.values?.projectName;
 
+  React.useEffect(() => {
+    if (!projectName) {
+      return;
+    }
+    if (projectHasBeenNamed) {
+      return;
+    }
+    setProjectHasBeenNamed(true);
+    projectStore.addProject({
+      thread_id: currentThreadId!,
+      project_name: projectName,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }, [projectName, projectHasBeenNamed])
+
   const contextValue: LanggraphContextType = {    
     isLoading,
     isFetchingThreads,
@@ -207,7 +213,6 @@ export function LanggraphProvider({ children, projects }: { children: React.Reac
     messages,
     files: {},
     codeTasks,
-    threads,
     currentThreadId,
     hasMoreThreads,
     fetchThreads,

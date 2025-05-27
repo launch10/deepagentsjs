@@ -19,10 +19,8 @@ class ProjectsController < SubscribedController
   end
 
   def show
-    # @project = Project.find_by(
-    #   account_id: current_account.id, 
-    #   thread_id: params[:thread_id]
-    # )
+    @project = current_account.projects.find_by(thread_id: params[:thread_id])
+    redirect_to root_path and return unless @project
 
     render inertia: 'Home', props: {
       jwt: cookies[:jwt],
