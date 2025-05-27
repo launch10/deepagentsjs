@@ -37,7 +37,7 @@ const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
   undefined
 );
 
-export function LanggraphProvider({ children }: { children: React.ReactNode }): React.ReactElement {
+export function LanggraphProvider({ children, projects }: { children: React.ReactNode, projects: any }): React.ReactElement {
   const { jwt, rootPath } = pageStore.get();
   const [chatHasStarted, setChatHasStarted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -48,9 +48,18 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   const offsetParam = Number(searchParams.get(OFFSET_PARAM)) || 0;
   const { threadId: urlThreadId } = useThreadId();
   const [currentThreadId, setCurrentThreadId] = React.useState<string | undefined>(urlThreadId);
+  const [projectHasBeenNamed, setProjectHasBeenNamed] = React.useState(false);
   const [threads, setThreads] = React.useState<
     ThreadData<ThreadValues>[]
-  >([]);
+  >(projects.map((project: { thread_id: string, project_name: string }) => ({
+    thread: {
+      id: project.thread_id,
+      values: {
+        projectName: project.project_name,
+      },
+    },
+    status: "idle" as const,
+  })));
   const [messageIdToTags, setMessageIdToTags] = React.useState<
     Record<string, Set<string>>
   >({});
@@ -95,6 +104,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     setChatHasStarted(true);
     stream.submit({
       userRequest: { type: "human", content: message },
+      jwt: jwt!,
     }, {streamMode: ["events", "values"]}); // Values provides final state
   };
 
@@ -116,24 +126,16 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   // and backend needs to fetch tenantId from encrypted cookie
   const fetchThreads = React.useCallback(
     async () => {
-      if (!jwt) {
+      if (!rootPath) {
         return;
       }
       setIsFetchingThreads(true);
       try {
-        // const client = createClient(jwt);
-        // const newThreads = await client.threads.search({
-        //   offset: offsetParam,
-        //   limit: limitParam,
-        // });
         const response = await axios.get(`${rootPath}/projects`, {
           params: {
             offset: offsetParam,
             limit: limitParam,
           },
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-          }
         });
         const data = response.data;
         setThreads((prevThreads) => {
@@ -156,7 +158,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       } finally {
         setIsFetchingThreads(false);
       }
-    }, [offsetParam, limitParam, jwt] 
+    }, [offsetParam, limitParam, rootPath] 
   )
 
   React.useEffect(() => {

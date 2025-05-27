@@ -5,7 +5,9 @@ class AddPayStiColumns < ActiveRecord::Migration[6.0]
     add_column :pay_charges, :type, :string
     add_column :pay_subscriptions, :type, :string
 
-    rename_column :pay_payment_methods, :type, :payment_method_type
+    safety_assured do
+      rename_column :pay_payment_methods, :type, :payment_method_type
+    end
     add_column :pay_payment_methods, :type, :string
 
     add_column :pay_merchants, :type, :string

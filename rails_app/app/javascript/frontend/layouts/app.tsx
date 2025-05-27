@@ -10,8 +10,10 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
+  const { projects } = children?.props || { projects: [] };
+
   return (
-    <LanggraphProvider>
+    <LanggraphProvider projects={projects}>
       {children}
     </LanggraphProvider>
   );

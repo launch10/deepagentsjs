@@ -3,7 +3,7 @@ class CreateProjects < ActiveRecord::Migration[8.0]
     create_table :projects do |t|
       t.string :name, null: false
       t.bigint :account_id, null: false
-      t.bigint :theme_id, null: false
+      t.bigint :theme_id
       t.string :thread_id, null: false
       t.timestamps
 
@@ -17,7 +17,6 @@ class CreateProjects < ActiveRecord::Migration[8.0]
       t.index [:account_id, :created_at]
       t.index [:account_id, :updated_at]
       t.index [:account_id, :thread_id], unique: true
-      t.index [:user_id, :name], unique: true
     end
   end
 end

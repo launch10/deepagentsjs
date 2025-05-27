@@ -5,6 +5,7 @@ import { z } from "zod";
 export const envSchema = z.object({
     POSTGRES_URI: z.string().min(1).url(),
     REDIS_URI: z.string().min(1).url(),
+    RAILS_API_URL: z.string().min(1).url(),
     ANTHROPIC_API_KEY: z.string().min(1),
     GROQ_API_KEY: z.string().min(1),
     OPENAI_API_KEY: z.string().min(1),
@@ -22,6 +23,13 @@ expand(config());
 
 try {
 	envSchema.parse(process.env);
+    console.log(process.env.RAILS_API_URL);
+    console.log(process.env.RAILS_API_URL);
+    console.log(process.env.RAILS_API_URL);
+    console.log(process.env.RAILS_API_URL);
+    console.log(process.env.RAILS_API_URL);
+    console.log(process.env.RAILS_API_URL);
+    console.log(process.env.RAILS_API_URL);
 } catch (e) {
 	if (e instanceof z.ZodError) {
 		console.error("Environment validation error:", e.errors);

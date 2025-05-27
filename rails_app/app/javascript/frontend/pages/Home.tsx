@@ -15,6 +15,7 @@ interface HomepageProps {
 
 export default function Home(props: HomepageProps) {
     const { jwt, root_path: rootPath, projects } = props;
+    console.log(jwt)
 
     useEffect(() => {
         pageStore.set({ jwt, rootPath });

@@ -19,9 +19,8 @@ export interface App {
     error?: string;
     success?: boolean;
 }
-
 export interface GraphState {
-    tenantId: number;
+    jwt: string;
     projectName: string;
     isFirstMessage: boolean;
     userRequest: HumanMessage; 

@@ -5,7 +5,7 @@
 #  id         :integer          not null, primary key
 #  name       :string           not null
 #  account_id :integer          not null
-#  theme_id   :integer          not null
+#  theme_id   :integer
 #  thread_id  :string           not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
@@ -29,6 +29,9 @@ class Project < ApplicationRecord
 
   has_many :files, dependent: :destroy, class_name: "ProjectFile"
   belongs_to :account
+  validates :name, presence: true
+  validates :thread_id, presence: true
+  validates :account_id, presence: true
 
   include ProjectSerialization
 end

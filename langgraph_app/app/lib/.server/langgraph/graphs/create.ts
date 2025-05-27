@@ -1,7 +1,7 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { GraphAnnotation } from "@state/graph";
 import { loadCreateNode, projectPlanNode } from "@nodes/create";
-import { applyUpdatesNode, saveNode } from "@nodes/core";
+import { applyUpdatesNode, saveNode, saveInitialNode } from "@nodes/core";
 import { createPageGraph } from "@graphs/createPage";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { type GraphState } from "@shared/state/graph";
@@ -82,6 +82,7 @@ const notifyCreateStart = async(state: GraphState, config: LangGraphRunnableConf
 export const createGraph = new StateGraph(GraphAnnotation)
     .addNode("startCreate", loadCreateNode)
     .addNode("notifyCreateStart", notifyCreateStart)
+    .addNode("saveInitialProject", saveInitialNode)
     .addNode("projectPlan", projectPlanNode)
     .addNode("createPageGraph", createPageGraph)
     .addNode("applyUpdates", applyUpdatesNode)
@@ -89,7 +90,8 @@ export const createGraph = new StateGraph(GraphAnnotation)
 
     .addEdge(START, "startCreate")
     .addEdge("startCreate", "notifyCreateStart")
-    .addEdge("notifyCreateStart", "projectPlan")
+    .addEdge("notifyCreateStart", "saveInitialProject")
+    .addEdge("saveInitialProject", "projectPlan")
     .addEdge("projectPlan", "createPageGraph")
     .addEdge("createPageGraph", "applyUpdates")
     .addEdge("applyUpdates", "saveProject")
