@@ -8,7 +8,6 @@ import { pageStore } from '@stores/page';
 export const AppLayout = ({ children }: { children: ReactNode }) => {
   const theme = useStore(themeStore);
   const { threadId } = useStore(pageStore);
-  console.log(threadId);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
