@@ -11,39 +11,43 @@ import { LanggraphProvider } from '@context/LanggraphContext';
 
 interface HomepageProps {
     jwt: string;
-    rootPath: string;
-    // threadId from props is not directly used for initialization logic here
+    root_path: string;
 }
 
 export default function Home(props: HomepageProps) {
-    const { jwt, rootPath } = props;
+    const { jwt, root_path: rootPath } = props;
     const { pageId, isNewThread, threadId } = useStore(pageStore);
     const urlThreadId = getUrlThreadId() || 'new';
 
     useEffect(() => {
         pageStore.set({
+            ...pageStore.get(),
             jwt,
             rootPath,
         });
     }, [jwt, rootPath]);
 
-    // When threadId changes, because user is clicking on a project, then update pageId (causing a re-render of Chat)
-    // When threadId changes, BUT it's because the user just created a NEW chat, keep pageId the same, in order to preserve the chat state
+    // When threadId changes because user navigates to a project, it should become the pageId (causing a re-render of the Chat)
+    // When threadId changes because the user started a NEW chat, pageId should remain stable, in order to preserve the ongoing Chat state
     useEffect(() => {
-        if (urlThreadId === 'new' && pageId) {
+        if (urlThreadId === 'new' && pageId) { // If we've already set a stable pageId for new chat, exit to avoid infinite loop
             return;
         }
-        if (isNewThread && urlThreadId !== 'new') {
+        if (urlThreadId !== 'new' && isNewThread) { // After useStream gives us a new threadId, grab it from the url, and mark isNewThread as false. Now pageStore.threadId reflects reality
             pageStore.set({
+                ...pageStore.get(),
                 threadId: urlThreadId,
                 isNewThread: false,
             });
             return;
         }
-        if (urlThreadId === threadId) {
+        if (urlThreadId === threadId) { // If the urlThreadId matches the threadId, exit to avoid infinite loop
             return;
         }
+        // On initial page load, if urlThreadId is 'new', set a stable pageId for new chat OR
+        // On initial page load, if urlThreadId is not 'new', set pageId=threadId
         pageStore.set({
+            ...pageStore.get(),
             pageId: urlThreadId === 'new' ? uuidv4() : urlThreadId,
             threadId: urlThreadId === 'new' ? null : urlThreadId,
             isNewThread: urlThreadId === 'new',

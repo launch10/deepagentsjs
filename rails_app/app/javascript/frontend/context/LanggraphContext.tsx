@@ -11,7 +11,7 @@ import { type GraphState, type App as AppState, type CodeTasksState } from "@sha
 import { useQueryParams } from '@hooks/useQueryParams'
 import { pageStore } from "@stores/page";
 import axios from 'axios';
-import { projectStore } from "@stores/project";
+import { projectStore, type ApiProject } from "@stores/project";
 
 type Config = Record<string, any>;
 type StreamableGraphState = GraphState & Config; 
@@ -116,39 +116,27 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   // and backend needs to fetch tenantId from encrypted cookie
   const fetchThreads = React.useCallback(
     async () => {
-      if (!rootPath) {
-        return;
-      }
       setIsFetchingThreads(true);
       try {
         const response = await axios.get(`${rootPath}/projects`, {
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
           params: {
             offset: offsetParam,
             limit: limitParam,
           },
         });
-        const data = response.data;
-        // setProjects((prevThreads) => {
-        //   const allThreads = [...(prevThreads.map((thread) => thread.thread) || []), ...data].filter((thread) => thread.values?.projectName);
-        //   const uniqueThreads = [...new Map(allThreads.map(thread => [thread.values.projectName, thread])).values()];
-        //   const sortedThreads = uniqueThreads.sort((a, b) => {
-        //     return (
-        //       new Date(b.created_at).getTime() -
-        //       new Date(a.created_at).getTime()
-        //     );
-        //   });
-        //   return sortedThreads.map(thread => ({
-        //     thread: thread,
-        //     status: "idle" as const,
-        //   }));
-        // });
-        // setHasMoreThreads(data.length === limitParam);
+        const data = (response.data?.projects || []) as ApiProject[];
+        projectStore.add(data);
+        setHasMoreThreads(data.length === limitParam);
       } catch (e) {
         console.error(e);
       } finally {
         setIsFetchingThreads(false);
       }
-    }, [offsetParam, limitParam, rootPath] 
+    }, [offsetParam, limitParam] 
   )
 
   React.useEffect(() => {
@@ -199,11 +187,11 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       return;
     }
     setProjectHasBeenNamed(true);
-    projectStore.addProject({
-      thread_id: threadId,
-      project_name: projectName,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    projectStore.add({
+      threadId,
+      projectName,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
   }, [projectName, projectHasBeenNamed])
 

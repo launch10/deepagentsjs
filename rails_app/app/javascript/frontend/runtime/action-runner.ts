@@ -128,11 +128,11 @@ export class ActionRunner {
     // Double check abort status, as it might have been aborted while in queue
     if (action.abortSignal.aborted) {
         this.#updateAction(id, { status: 'aborted' });
-        logger.info(`Action ${id} (type: ${action.type}) was aborted before execution started.`);
+        // logger.info(`Action ${id} (type: ${action.type}) was aborted before execution started.`);
         return; // Don't proceed with execution
     }
     this.#updateAction(id, { ...action, status: 'running' });
-    logger.info('Executing action', action);
+    // logger.info('Executing action', action);
 
     try {
       switch (action.type as ActionType) {
@@ -190,7 +190,7 @@ export class ActionRunner {
 
     const webcontainer = await this.#webcontainer;
 
-    logger.debug(`Running shell command:`, action.task.payload?.command);
+    // logger.debug(`Running shell command:`, action.task.payload?.command);
     const process = await webcontainer.spawn('bash', ['-c', action.task.payload?.command], {
       env: { npm_config_yes: true },
     });
@@ -217,7 +217,7 @@ export class ActionRunner {
           // logger.debug(`[Shell output]: ${text}`);
         }
       } catch (error) {
-        logger.error('Error reading process output:', error);
+        // logger.error('Error reading process output:', error);
       } finally {
         reader.releaseLock();
       }
@@ -232,10 +232,8 @@ export class ActionRunner {
       // Create a promise that resolves when the success pattern is found
       const successPromise = new Promise(resolve => {
         const checkInterval = setInterval(() => {
-          console.log('checking for success pattern')
           if (successPattern && outputBuffer.includes(successPattern)) {
             clearInterval(checkInterval);
-            console.log('success pattern found')
             if (!resolved) {
               resolved = true;
               resolve('success');
@@ -261,7 +259,7 @@ export class ActionRunner {
       
       // Wait for either the success pattern or the timeout
       const result = await Promise.race([successPromise, timeoutPromise]);
-      logger.debug(`Long-running process ${result === 'success' ? 'succeeded' : 'timed out'}`);
+      // logger.debug(`Long-running process ${result === 'success' ? 'succeeded' : 'timed out'}`);
       
       if (result === 'timeout') {
         process.kill();
@@ -269,7 +267,7 @@ export class ActionRunner {
       }
     } else {
       const exitCode = await process.exit;
-      logger.debug(`Process terminated with code ${exitCode}`);
+      // logger.debug(`Process terminated with code ${exitCode}`);
     }
   }
 
@@ -280,7 +278,7 @@ export class ActionRunner {
 
     const webcontainer = await this.#webcontainer;
 
-    logger.debug(`Running mount files action`);
+    // logger.debug(`Running mount files action`);
     webcontainer.mount(action.task.payload?.files);
   }
 
@@ -364,7 +362,7 @@ export class ActionRunner {
 
     const exitCode = await process.exit;
 
-    logger.debug(`Process terminated with code ${exitCode}`);
+    // logger.debug(`Process terminated with code ${exitCode}`);
   }
 
   getDirname(filePath: string): string {
@@ -400,17 +398,17 @@ export class ActionRunner {
     if (dirname !== '.') {
       try {
         await webcontainer.fs.mkdir(dirname, { recursive: true });
-        logger.debug(`Folder created ${dirname}`);
+        // logger.debug(`Folder created ${dirname}`);
       } catch (error) {
-        logger.error('Failed to create folder\n\n', error);
+        // logger.error('Failed to create folder\n\n', error);
       }
     }
 
     try {
       await webcontainer.fs.writeFile(filePath as string, code as string);
-      logger.debug(`File written ${filePath}`);
+      // logger.debug(`File written ${filePath}`);
     } catch (error) {
-      logger.error('Failed to write file\n\n', error);
+      // logger.error('Failed to write file\n\n', error);
     }
   }
 

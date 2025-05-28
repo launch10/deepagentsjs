@@ -41,11 +41,10 @@ export function Menu() {
   const projects = useStore(projectStore.projects)
 
   useMemo(() => { 
-    const menuItems: MenuItemType[] = Object.keys(projects).map((threadId: string) => {
-      const project = projects[threadId];
+    const menuItems: MenuItemType[] = projects.map((project: Project) => {
       return {
-        threadId: threadId,
-        url: `/projects/${threadId}`,
+        threadId: project.threadId,
+        url: `/projects/${project.threadId}`,
         projectName: project.projectName,
         createdAt: new Date(project.createdAt),
         updatedAt: new Date(project.updatedAt),
