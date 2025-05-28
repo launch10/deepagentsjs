@@ -30,22 +30,35 @@ export default function Home(props: HomepageProps) {
     // When threadId changes because user navigates to a project, it should become the pageId (causing a re-render of the Chat)
     // When threadId changes because the user started a NEW chat, pageId should remain stable, in order to preserve the ongoing Chat state
     useEffect(() => {
-        if (urlThreadId === 'new' && pageId) { // If we've already set a stable pageId for new chat, exit to avoid infinite loop
+        // If the urlThreadId matches the threadId, exit to avoid infinite loop
+        if (urlThreadId === threadId) {
+            console.log(`threads match, exiting early`)
             return;
         }
-        if (urlThreadId !== 'new' && isNewThread) { // After useStream gives us a new threadId, grab it from the url, and mark isNewThread as false. Now pageStore.threadId reflects reality
-            pageStore.set({
-                ...pageStore.get(),
-                threadId: urlThreadId,
-                isNewThread: false,
-            });
-            return;
+
+        // When switching to a new thread...
+        if (isNewThread) {
+            // If we've already set a stable pageId for new chat, exit to avoid infinite loop
+            if (urlThreadId === 'new' && pageId) {
+                console.log(`threadId=new, exiting early`)
+                return;
+            }
+
+            // After useStream gives us a new threadId, grab it from the url, and mark isNewThread as false. Now pageStore.threadId reflects reality
+            if (urlThreadId !== 'new') {
+                console.log(`useStream started, exiting early`)
+                pageStore.set({
+                    ...pageStore.get(),
+                    threadId: urlThreadId,
+                    isNewThread: false,
+                });
+                return;
+            }
         }
-        if (urlThreadId === threadId) { // If the urlThreadId matches the threadId, exit to avoid infinite loop
-            return;
-        }
+
         // On initial page load, if urlThreadId is 'new', set a stable pageId for new chat OR
         // On initial page load, if urlThreadId is not 'new', set pageId=threadId
+        console.log(`setting pageId`);
         pageStore.set({
             ...pageStore.get(),
             pageId: urlThreadId === 'new' ? uuidv4() : urlThreadId,

@@ -24,6 +24,8 @@ const toastAnimation = cssTransition({
   exit: 'animated fadeOutRight',
 });
 
+const logger = createScopedLogger('Chat');
+
 const buildAction = (task: CodeTask, messageId: string): ActionCore => {
     return {
         task,
@@ -113,8 +115,6 @@ const callbacks = {
       workbenchStore.addAction(buildAction(task, messageId));
     }
 };
-
-const logger = createScopedLogger('Chat');
 
 export function Chat() {
   renderLogger.trace('Chat');

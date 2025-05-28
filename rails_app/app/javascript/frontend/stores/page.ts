@@ -16,4 +16,5 @@ export const pageStore = map<PageState>({
   threadId: null,
   pageId: null,
   isNewThread: false,
+  prevThreadLoaded: false,
 });
