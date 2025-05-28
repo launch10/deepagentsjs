@@ -39,7 +39,7 @@ const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
 );
 
 export function LanggraphProvider({ children }: { children: React.ReactNode }): React.ReactElement {
-  const { jwt, rootPath, threadId } = useStore(pageStore);
+  const { jwt, rootPath, threadId, pageId } = useStore(pageStore);
   const [chatHasStarted, setChatHasStarted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isFetchingThreads, setIsFetchingThreads] = React.useState(false);
@@ -86,6 +86,15 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
         fetchThreads();
       },
     });
+
+  // Cleanup stream on unmount
+  React.useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.stop();
+      }
+    };
+  }, [pageId]);
 
   const onSubmit = (message: string) => {
     setIsLoading(true);

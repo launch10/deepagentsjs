@@ -12,6 +12,8 @@ interface Logger {
 }
 
 let currentLevel: DebugLevel = import.meta.env.VITE_LOG_LEVEL ?? import.meta.env.DEV ? 'debug' : 'info';
+let ignoredScopes: string[] = import.meta.env.VITE_LOG_IGNORE_SCOPES?.split(',') ?? [];
+let focusedScopes: string[] = import.meta.env.VITE_LOG_FOCUS_SCOPES?.split(',') ?? [];
 
 const isWorker = 'HTMLRewriter' in globalThis;
 const supportsColor = !isWorker;
@@ -48,6 +50,16 @@ function log(level: DebugLevel, scope: string | undefined, messages: any[]) {
   const levelOrder: DebugLevel[] = ['trace', 'debug', 'info', 'warn', 'error'];
 
   if (levelOrder.indexOf(level) < levelOrder.indexOf(currentLevel)) {
+    return;
+  }
+
+  // Set in VITE_LOG_IGNORE_SCOPES to ignore particular parts of the codebase
+  if (scope && ignoredScopes.includes(scope)) {
+    return;
+  }
+
+  // Set in VITE_LOG_FOCUS_SCOPES to focus on particular parts of the codebase (ignore all other scopes)
+  if (scope && focusedScopes.length > 0 && !focusedScopes.includes(scope)) {
     return;
   }
 

@@ -7,6 +7,7 @@ export interface PageState {
   threadId: string | null;
   pageId: string | null;
   isNewThread: boolean;
+  prevThreadLoaded: boolean;
 }
 
 // Create an atom that holds an object of this interface type
