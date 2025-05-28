@@ -119,7 +119,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     } catch (e) {
       console.error(e);
     }
-  }, [limitParam, offsetParam, jwt]);
+  }, [limitParam, offsetParam, jwt, pageId]);
 
   // This needs to be upgraded to use browser-based encrypted cookie,
   // and backend needs to fetch tenantId from encrypted cookie

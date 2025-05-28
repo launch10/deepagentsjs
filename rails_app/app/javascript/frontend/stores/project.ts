@@ -18,7 +18,11 @@ export class ProjectStore {
 
   add(projects: MaybeProjectArray): void {
     const normalized: Project[] = normalizeProjects(projects);
-    const deduped = [...new Map(normalized.map((project) => [project.threadId, project])).values()];
+    const existingProjects = this.projectsById.get();
+    const deduped: Project[] = [...new Map([
+      ...normalized.map((project) => [project.threadId, project]), 
+      ...Object.entries(existingProjects)
+    ]).values()];
     deduped.forEach((project) => this.projectsById.setKey(project.threadId, project));
 
     const sortedProjects = deduped.sort((a, b) => {
