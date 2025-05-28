@@ -5,7 +5,7 @@ import type { PageData } from "@models/page";
 import { createProject, updateProject } from "@services/saveProject"; 
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
-const save = async (state: GraphState): Promise<Partial<GraphState>> => {
+const save = async (state: GraphState, config: LangGraphRunnableConfig): Promise<Partial<GraphState>> => {
     const { project, page } = state.app;
 
     if (!project) {
@@ -26,9 +26,9 @@ const save = async (state: GraphState): Promise<Partial<GraphState>> => {
     }
 
     if (state.isFirstMessage) {
-        await createProject(state);
+        await createProject(state, config);
     } else {
-        await updateProject(state);
+        await updateProject(state, config);
     }
     
     return {

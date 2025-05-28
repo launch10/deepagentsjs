@@ -1,26 +1,22 @@
 import { useStore } from '@nanostores/react';
 import { useEffect, type ReactNode } from 'react';
-import { LanggraphProvider } from '@context/LanggraphContext';
 import { themeStore } from '@stores/theme';
 import { projectStore } from '@stores/project';
-import { useThreadId } from '@hooks/useThreadId';
+import { pageStore } from '@stores/page';
+import { type ApiProject } from '@types/project';
 
 export const AppLayout = ({ children }: { children: ReactNode }) => {
   const theme = useStore(themeStore);
-  const { threadId } = useThreadId();
+  const { pageId } = useStore(pageStore);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
-  const projects = children?.props?.projects || [];
+  const projects = (children?.props?.projects || []) as ApiProject[];
   useEffect(() => {
-    projectStore.addProjects(projects);
+    projectStore.add(projects);
   }, [projects]);
 
-  return (
-    <LanggraphProvider key={threadId}>
-      {children}
-    </LanggraphProvider>
-  );
+  return children;
 };

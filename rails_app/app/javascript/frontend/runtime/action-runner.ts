@@ -214,7 +214,7 @@ export class ActionRunner {
           // Convert Uint8Array to string if necessary
           const text = typeof value === 'string' ? value : new TextDecoder().decode(value);
           outputBuffer += text;
-          // logger.debug(`[Shell output]: ${text}`);
+          logger.debug(`[Shell output]: ${text}`);
         }
       } catch (error) {
         logger.error('Error reading process output:', error);
@@ -232,10 +232,8 @@ export class ActionRunner {
       // Create a promise that resolves when the success pattern is found
       const successPromise = new Promise(resolve => {
         const checkInterval = setInterval(() => {
-          console.log('checking for success pattern')
           if (successPattern && outputBuffer.includes(successPattern)) {
             clearInterval(checkInterval);
-            console.log('success pattern found')
             if (!resolved) {
               resolved = true;
               resolve('success');
@@ -357,7 +355,7 @@ export class ActionRunner {
     process.output.pipeTo(
       new WritableStream({
         write(data) {
-          console.log(data);
+          logger.debug(data);
         },
       }),
     );

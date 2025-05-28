@@ -28,10 +28,14 @@ class Project < ApplicationRecord
   acts_as_tenant :account
 
   has_many :files, dependent: :destroy, class_name: "ProjectFile"
+  accepts_nested_attributes_for :files
+
   belongs_to :account
   validates :name, presence: true
   validates :thread_id, presence: true
   validates :account_id, presence: true
+
+  has_one :plan, class_name: "ProjectPlan"
 
   include ProjectSerialization
 end

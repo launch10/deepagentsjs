@@ -37,10 +37,10 @@ const applyUpdates = async(state: GraphState): Promise<Partial<GraphState>> => {
     // Which may have been overridden by the CodeTasks
     //
     // Or possible we could just update the state.files the whole time?
-    if (isFirstMessage(state)) {
-        const template = await Template.getTemplate("default");
-        filesToWrite = template.files;
-    }
+    // if (isFirstMessage(state)) {
+    //     const template = await Template.getTemplate("default");
+    //     filesToWrite = template.files;
+    // }
 
     let error = undefined;
     const allFileSpecs = await db.select({
@@ -84,10 +84,10 @@ const applyUpdates = async(state: GraphState): Promise<Partial<GraphState>> => {
         return { app: { ...state.app, error: "No successful updates to write." } };
     }
 
-    await codeManager.writeFiles(filesToWrite);
-    if (dependenciesToInstall.length > 0) {
-        await codeManager.installDependencies(dependenciesToInstall);
-    }
+    // await codeManager.writeFiles(filesToWrite);
+    // if (dependenciesToInstall.length > 0) {
+    //     await codeManager.installDependencies(dependenciesToInstall);
+    // }
     console.log("File updates applied successfully.");
 
     return { app: { 

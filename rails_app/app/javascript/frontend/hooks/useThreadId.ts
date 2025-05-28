@@ -1,12 +1,25 @@
 import { router } from '@inertiajs/react'; 
-import { usePage } from '@inertiajs/react'
+import { pageStore } from '@stores/page';
 
-export function useThreadId() {
-    const {thread_id} = usePage().props || { thread_id: 'new' } as { thread_id: string };
-    return { threadId: thread_id };
-}
+export function urlThreadId() {
+    const path = window.location.href;
+    const match = path.match(/\/projects\/([^/]+)/);
+    if (match && match[1]) {
+        return match[1];
+    }
+    return undefined;
+};
 
 export function redirectToThreadId(threadId: string) {
   const newUrl = `/projects/${threadId}`;
+  pageStore.set({
+    ...pageStore.get(),
+    threadId,
+    isNewThread: false,
+  });
   window.history.replaceState(null, '', newUrl);
+  // router.visit(newUrl, {
+  //   preserveState: true,
+  //   preserveScroll: true,
+  // });
 }

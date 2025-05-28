@@ -5,13 +5,13 @@ import { type MessageFieldWithRole } from "@langchain/core/messages";
 import { type FileMap } from "@models/file";
 import { createClient } from "@lib/utils/client";
 import { LIMIT_PARAM, OFFSET_PARAM } from "@lib/constants";
-import { useThreadId, redirectToThreadId } from "@hooks/useThreadId";
+import { redirectToThreadId } from "@hooks/useThreadId";
 import { useStream } from '@langchain/langgraph-sdk/react';
 import { type GraphState, type App as AppState, type CodeTasksState } from "@shared/state/graph";
 import { useQueryParams } from '@hooks/useQueryParams'
 import { pageStore } from "@stores/page";
 import axios from 'axios';
-import { projectStore } from "@stores/project";
+import { projectStore, type ApiProject } from "@stores/project";
 
 type Config = Record<string, any>;
 type StreamableGraphState = GraphState & Config; 
@@ -39,7 +39,7 @@ const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
 );
 
 export function LanggraphProvider({ children }: { children: React.ReactNode }): React.ReactElement {
-  const { jwt, rootPath } = pageStore.get();
+  const { jwt, rootPath, threadId, pageId } = useStore(pageStore);
   const [chatHasStarted, setChatHasStarted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isFetchingThreads, setIsFetchingThreads] = React.useState(false);
@@ -47,13 +47,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   const [searchParams, setSearchParams] = useQueryParams();
   const limitParam = Number(searchParams.get(LIMIT_PARAM)) || 10;
   const offsetParam = Number(searchParams.get(OFFSET_PARAM)) || 0;
-  const { threadId: urlThreadId } = useThreadId();
-  const [currentThreadId, setCurrentThreadId] = React.useState<string | undefined>(urlThreadId);
   const [projectHasBeenNamed, setProjectHasBeenNamed] = React.useState(false);
-
-  React.useEffect(() => {
-    setCurrentThreadId(urlThreadId);
-  }, [urlThreadId]);
 
   const [messageIdToTags, setMessageIdToTags] = React.useState<
     Record<string, Set<string>>
@@ -82,11 +76,10 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       defaultHeaders: {
         Authorization: `Bearer ${jwt}`,
       },
-      threadId: currentThreadId,
-      onThreadId: (threadId) => {
-        setCurrentThreadId(threadId);
+      onThreadId: (threadId: string) => {
         redirectToThreadId(threadId);
       },
+      threadId: threadId,
       onLangChainEvent: handleLangChainEvent,
       onFinish: () => {
         setIsLoading(false);
@@ -94,13 +87,24 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       },
     });
 
+  // Cleanup stream on unmount
+  React.useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.stop();
+      }
+    };
+  }, [pageId]);
+
   const onSubmit = (message: string) => {
     setIsLoading(true);
     setChatHasStarted(true);
     stream.submit({
       userRequest: { type: "human", content: message },
       jwt: jwt!,
-    }, {streamMode: ["events", "values"]}); // Values provides final state
+    }, {
+      streamMode: ["events", "values"]
+    }); // Values provides final state
   };
 
   React.useEffect(() => {
@@ -115,45 +119,33 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     } catch (e) {
       console.error(e);
     }
-  }, [limitParam, offsetParam, jwt]);
+  }, [limitParam, offsetParam, jwt, pageId]);
 
   // This needs to be upgraded to use browser-based encrypted cookie,
   // and backend needs to fetch tenantId from encrypted cookie
   const fetchThreads = React.useCallback(
     async () => {
-      if (!rootPath) {
-        return;
-      }
       setIsFetchingThreads(true);
       try {
         const response = await axios.get(`${rootPath}/projects`, {
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
           params: {
             offset: offsetParam,
             limit: limitParam,
           },
         });
-        const data = response.data;
-        // setProjects((prevThreads) => {
-        //   const allThreads = [...(prevThreads.map((thread) => thread.thread) || []), ...data].filter((thread) => thread.values?.projectName);
-        //   const uniqueThreads = [...new Map(allThreads.map(thread => [thread.values.projectName, thread])).values()];
-        //   const sortedThreads = uniqueThreads.sort((a, b) => {
-        //     return (
-        //       new Date(b.created_at).getTime() -
-        //       new Date(a.created_at).getTime()
-        //     );
-        //   });
-        //   return sortedThreads.map(thread => ({
-        //     thread: thread,
-        //     status: "idle" as const,
-        //   }));
-        // });
-        // setHasMoreThreads(data.length === limitParam);
+        const data = (response.data?.projects || []) as ApiProject[];
+        projectStore.add(data);
+        setHasMoreThreads(data.length === limitParam);
       } catch (e) {
         console.error(e);
       } finally {
         setIsFetchingThreads(false);
       }
-    }, [offsetParam, limitParam, rootPath] 
+    }, [offsetParam, limitParam] 
   )
 
   React.useEffect(() => {
@@ -190,7 +182,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
 
   const appState: AppState | undefined = stream.values?.app as AppState | undefined;
   // If chat hasn't started, rely on files from app state. We only need to process tasks if chat has started (aka changes in real-time)
-  const codeTasks = (chatHasStarted ? (appState?.codeTasks || {queue: [], completedTasks: []}) : {queue: [], completedTasks: []}) as CodeTasksState;
+  const codeTasks = (chatHasStarted ? (appState?.codeTasks || {notify: [], queue: [], completedTasks: []}) : {notify: [], queue: [], completedTasks: []}) as CodeTasksState;
   const projectName = stream.values?.projectName;
 
   React.useEffect(() => {
@@ -200,12 +192,15 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     if (projectHasBeenNamed) {
       return;
     }
+    if (!threadId) {
+      return;
+    }
     setProjectHasBeenNamed(true);
-    projectStore.addProject({
-      thread_id: currentThreadId!,
-      project_name: projectName,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    projectStore.add({
+      threadId,
+      projectName,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
   }, [projectName, projectHasBeenNamed])
 
@@ -216,7 +211,6 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     messages,
     files: {},
     codeTasks,
-    currentThreadId,
     hasMoreThreads,
     fetchThreads,
     clearThreadData: () => setThreads([]),

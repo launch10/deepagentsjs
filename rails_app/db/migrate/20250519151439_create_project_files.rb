@@ -2,7 +2,7 @@ class CreateProjectFiles < ActiveRecord::Migration[8.0]
   def change
     create_table :project_files do |t|
       t.bigint :project_id, null: false
-      t.bigint :file_specification_id, null: false
+      t.bigint :file_specification_id
       t.string :path, null: false
       t.string :content, null: false
 

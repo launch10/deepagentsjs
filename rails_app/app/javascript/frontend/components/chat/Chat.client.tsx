@@ -15,14 +15,16 @@ import { BaseMessage } from '@langchain/core/messages';
 import { CodeTaskAction, CodeTaskType, TaskStatus } from '@shared/models/codeTask';
 import type { CodeTask } from '@shared/models/codeTask';
 import type { FileMap } from '@shared/models/file';
-import { v4 as uuidv4 } from 'uuid';
 import type { ActionCore } from '@runtime/action-runner';
 import { convertFileMapToFileSystemTree } from '@webcontainer/file-system-utils';
+import { pageStore } from '@stores/page';
 
 const toastAnimation = cssTransition({
   enter: 'animated fadeInRight',
   exit: 'animated fadeOutRight',
 });
+
+const logger = createScopedLogger('Chat');
 
 const buildAction = (task: CodeTask, messageId: string): ActionCore => {
     return {
@@ -114,8 +116,6 @@ const callbacks = {
     }
 };
 
-const logger = createScopedLogger('Chat');
-
 export function Chat() {
   renderLogger.trace('Chat');
 
@@ -163,7 +163,8 @@ interface ChatProps {
 export const ChatImpl = () => {
   useShortcuts();
 
-  const { isLoading, messages, codeTasks, submit, stop, currentThreadId } = useLanggraphContext();
+  const { isLoading, messages, codeTasks, submit, stop } = useLanggraphContext();
+  const { threadId: currentThreadId } = useStore(pageStore);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [inputValue, setInputValue] = useState('');
   const workbenchClosed = workbenchStore.showWorkbench.get() === false;

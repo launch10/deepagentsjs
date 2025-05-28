@@ -25,7 +25,6 @@ export class FileSpecificationRegistry {
      */
     constructor(registryData: Record<string, FileSpecification>) {
         this.registry = registryData;
-        console.log(`FileSpecificationRegistry initialized with ${Object.keys(this.registry).length} entries.`);
     }
 
     public getAll(): FileSpecification[] {

@@ -4,10 +4,18 @@ import { map } from 'nanostores';
 export interface PageState {
   jwt: string | null;
   rootPath: string | null;
+  threadId: string | null;
+  pageId: string | null;
+  isNewThread: boolean;
+  prevThreadLoaded: boolean;
 }
 
 // Create an atom that holds an object of this interface type
 export const pageStore = map<PageState>({
   jwt: null,
   rootPath: null,
+  threadId: null,
+  pageId: null,
+  isNewThread: false,
+  prevThreadLoaded: false,
 });

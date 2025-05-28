@@ -57,15 +57,12 @@ export function useMessageParser() {
   const parseMessages = useCallback((messages: Message[], isLoading: boolean, data: any) => {
     let reset = false;
 
-    console.log(`data`, data)
-
     if (import.meta.env.DEV && !isLoading) {
       reset = true;
       messageParser.reset();
     }
 
     for (const [index, message] of messages.entries()) {
-      console.log(`Parsing message ${index}`, message.content)
       if (message.role === 'assistant') {
         const newParsedContent = messageParser.parse(message.id, message.content);
 

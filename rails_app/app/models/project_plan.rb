@@ -27,5 +27,5 @@
 #
 
 class ProjectPlan < ApplicationRecord
-  belongs_to :project
+  belongs_to :project, as: :plan
 end
