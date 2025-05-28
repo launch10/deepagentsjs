@@ -8,7 +8,6 @@ import { urlThreadId as getUrlThreadId } from '@hooks/useThreadId';
 import { v4 as uuidv4 } from 'uuid';
 import { useStore } from '@nanostores/react';
 import { LanggraphProvider } from '@context/LanggraphContext';
-
 interface HomepageProps {
     jwt: string;
     root_path: string;
@@ -32,7 +31,6 @@ export default function Home(props: HomepageProps) {
     useEffect(() => {
         // If the urlThreadId matches the threadId, exit to avoid infinite loop
         if (urlThreadId === threadId) {
-            console.log(`threads match, exiting early`)
             return;
         }
 
@@ -40,13 +38,11 @@ export default function Home(props: HomepageProps) {
         if (isNewThread) {
             // If we've already set a stable pageId for new chat, exit to avoid infinite loop
             if (urlThreadId === 'new' && pageId) {
-                console.log(`threadId=new, exiting early`)
                 return;
             }
 
             // After useStream gives us a new threadId, grab it from the url, and mark isNewThread as false. Now pageStore.threadId reflects reality
             if (urlThreadId !== 'new') {
-                console.log(`useStream started, exiting early`)
                 pageStore.set({
                     ...pageStore.get(),
                     threadId: urlThreadId,

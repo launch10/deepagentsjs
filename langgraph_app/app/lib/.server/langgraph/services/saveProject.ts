@@ -61,8 +61,7 @@ export const createProject = async (state: GraphState, config: LangGraphRunnable
     const template = await Template.getTemplate("default");
     const changedFiles = Object.keys(state.app.files).filter(filePath => {
         const file = state.app.files[filePath];
-        const templateFile = template.files[filePath];
-        return file.content !== templateFile.content;
+        return !(filePath in template.files) || file.content !== template.files[filePath].content;
     }).map(filePath => ({
         path: filePath,
         content: state.app.files[filePath].content,

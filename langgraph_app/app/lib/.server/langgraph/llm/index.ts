@@ -8,8 +8,12 @@ import { Redis } from "ioredis";
 import { RedisCache } from "@langchain/community/caches/ioredis";
 import "dotenv/config"; 
 
-const client = new Redis(process.env.REDIS_URI!);
-const cache = new RedisCache(client);
+const useCache = process.env.USE_CACHE === 'true';
+let cache: RedisCache | undefined;
+if (useCache) {
+  const client = new Redis(process.env.REDIS_URI!);
+  cache = new RedisCache(client);
+}
 
 const enum LLMProvider {
   Ollama = 'ollama',
@@ -256,7 +260,7 @@ export function getLlm(
         throw new Error("Anthropic API key (ANTHROPIC_API_KEY) is missing!");
       }
       modelInstance = new ChatAnthropic({
-        cache, // Pass cache if defined and used
+        ...(useCache ? { cache } : {}),
         apiKey: anthropicApiKey,
         model: config.model,
         temperature: config.temperature,
@@ -268,7 +272,7 @@ export function getLlm(
         throw new Error("Groq API key (GROQ_API_KEY) is missing!");
       }
       modelInstance = new ChatGroq({
-        cache, // Pass cache if defined and used
+        ...(useCache ? { cache } : {}),
         apiKey: groqApiKey,
         model: config.model,
         temperature: config.temperature,
@@ -292,7 +296,7 @@ export function getLlm(
         throw new Error("OpenAI API key (OPENAI_API_KEY) is missing!");
       }
       modelInstance = new ChatOpenAI({
-        cache, // Pass cache if defined and used
+        ...(useCache ? { cache } : {}),
         apiKey: openaiApiKey,
         model: config.model,
         temperature: 1,
