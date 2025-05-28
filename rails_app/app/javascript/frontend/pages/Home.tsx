@@ -27,9 +27,10 @@ export default function Home(props: HomepageProps) {
         });
     }, [jwt, rootPath]);
 
+    // When threadId changes, because user is clicking on a project, then update pageId (causing a re-render of Chat)
+    // When threadId changes, BUT it's because the user just created a NEW chat, keep pageId the same, in order to preserve the chat state
     useEffect(() => {
         if (urlThreadId === 'new' && pageId) {
-            console.log('defaulting pageId', pageId);
             return;
         }
         if (isNewThread && urlThreadId !== 'new') {

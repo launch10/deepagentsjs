@@ -47,7 +47,6 @@ class ProjectsController < SubscribedController
     redirect_to root_path and return unless @project
 
     begin
-      binding.pry
       @project.update!(project_params)
     rescue => e
       render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity and return
