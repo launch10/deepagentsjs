@@ -43,16 +43,33 @@ class ProjectsController < SubscribedController
   end
 
   def update
-    @project = current_account.projects.find_by(thread_id: params[:thread_id])
-    redirect_to root_path and return unless @project
+    redirect_to root_path and return unless current_project
 
     begin
-      @project.update!(project_params)
+      current_project.update!(project_params)
     rescue => e
       render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity and return
     end
 
-    render json: @project.to_mini_json
+    render json: current_project.to_mini_json
+  end
+
+  def files
+    template_files = Template.find_by(name: "default").files
+    template_files_by_key = template_files.index_by(&:path)
+    project_files = current_project&.files || []
+    project_files_by_key = project_files.index_by(&:path)
+
+    files = (project_files_by_key.keys + template_files_by_key.keys).uniq.map do |path|
+      project_files_by_key[path] || template_files_by_key[path]
+    end
+
+    render json: files.map(&:to_mini_json)
+  end
+
+private
+  def current_project
+    @project ||= current_account.projects.find_by(thread_id: params[:thread_id])
   end
 
   def project_params

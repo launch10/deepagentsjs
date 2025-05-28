@@ -9,14 +9,13 @@ import { fileModificationsToHTML } from '@utils/diff';
 import { cubicEasingFn } from '@utils/easings';
 import { createScopedLogger, renderLogger } from '@utils/logger';
 import { BaseChat } from './BaseChat';
-import { getTemplateData, templateStore } from '@stores/template';
 import { useLanggraphContext } from '@context/LanggraphContext';
 import { BaseMessage } from '@langchain/core/messages';
 import { CodeTaskAction, CodeTaskType, TaskStatus } from '@shared/models/codeTask';
 import type { CodeTask } from '@shared/models/codeTask';
-import type { FileMap } from '@shared/models/file';
+import type { FileData, FileMap } from '@shared/models/file';
 import type { ActionCore } from '@runtime/action-runner';
-import { convertFileMapToFileSystemTree } from '@webcontainer/file-system-utils';
+import { convertFileMapToFileSystemTree, toFileMap } from '@webcontainer/file-system-utils';
 import { pageStore } from '@stores/page';
 
 const toastAnimation = cssTransition({
@@ -164,14 +163,14 @@ export const ChatImpl = () => {
   useShortcuts();
 
   const { isLoading, messages, codeTasks, submit, stop } = useLanggraphContext();
-  const { threadId: currentThreadId } = useStore(pageStore);
+  const { threadId: currentThreadId, pageId } = useStore(pageStore);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [inputValue, setInputValue] = useState('');
   const workbenchClosed = workbenchStore.showWorkbench.get() === false;
-  const [templateLoaded, setTemplateLoaded] = useState(false);
   const enhancingPrompt = false;
   const promptEnhanced = false;
-  const templateData = useStore(templateStore);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [filesLoaded, setFilesLoaded] = useState(false);
 
   const { showChat, started: chatStarted } = useStore(chatStore);
 
@@ -182,16 +181,54 @@ export const ChatImpl = () => {
 
   const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
 
-  const humanMessages = messages.filter((m) => m.type == 'human');
-  const mostRecentHumanMessage = humanMessages[humanMessages.length - 1];
-  const isFirstMessage = humanMessages.length == 1;
-
-  // When thread changes, ensure workbench is showing
   useEffect(() => {
     if (!currentThreadId) return;
 
+    // When thread changes, ensure workbench is showing
     callbacks.onThreadChanged(currentThreadId);
   }, [currentThreadId]);
+
+  const humanMessages = messages.filter((m) => m.type == 'human');
+  const mostRecentHumanMessage = humanMessages[humanMessages.length - 1];
+  const isFirstMessage = humanMessages.length == 1;
+  const isReloadedThread = (pageId === currentThreadId);
+
+  useEffect(() => {
+    if (!currentThreadId) return;
+    if (!mostRecentHumanMessage) return;
+    if (filesLoaded) return;
+    if (filesLoading) return;
+
+    async function getProjectFiles() {
+      setFilesLoading(true);
+      try {
+        const response = await fetch(`/projects/${currentThreadId}/files`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch project files: ${response.status} ${response.statusText}`);
+        }
+        
+        const files = await response.json() as FileData[];
+        const fileMap: FileMap = toFileMap(files); 
+        callbacks.mountFiles(fileMap, mostRecentHumanMessage.id as string)
+        setFilesLoaded(true);
+        setFilesLoading(false);
+
+        logger.info('Project files loaded successfully');
+        return files;
+      } catch (error) {
+        logger.error('Failed to fetch project files:', error);
+        return null;
+      }
+    }
+    getProjectFiles();
+
+  }, [currentThreadId, isReloadedThread, mostRecentHumanMessage, filesLoaded, filesLoading]);
+
+  // useEffect(() => {
+  //   if (!currentThreadId) return;
+
+  // }, [currentThreadId]);
 
   // When human message is added, add artifact for actions to run against
   useEffect(() => {
@@ -199,19 +236,14 @@ export const ChatImpl = () => {
 
     callbacks.onMessageStart(mostRecentHumanMessage.id as string);
 
-    if (!templateData) {
-      getTemplateData()
-    }
+    // if (!templateData) {
+      // getTemplateData()
+    // }
 
-    if (templateData && !templateLoaded) {
-        callbacks.mountFiles(templateData, mostRecentHumanMessage.id as string);
-        setTemplateLoaded(true);
-    }
-
-    if (!isLoading && mostRecentHumanMessage && templateLoaded) {
+    if (!isLoading && mostRecentHumanMessage && filesLoaded) {
       callbacks.onMessageEnd(mostRecentHumanMessage.id as string);
     }
-  }, [mostRecentHumanMessage, templateLoaded, templateData]);
+  }, [mostRecentHumanMessage, isReloadedThread, isLoading, filesLoaded]);
 
   useEffect(() => {
     chatStore.setKey('started', messages.length > 0);

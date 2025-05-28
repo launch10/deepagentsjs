@@ -38,5 +38,7 @@ Rails.application.routes.draw do
   root to: "static#index"
 
   resources :templates
-  resources :projects, controller: :projects, param: :thread_id
+  resources :projects, controller: :projects, param: :thread_id do 
+    get :files, on: :member
+  end
 end

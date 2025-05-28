@@ -20,4 +20,7 @@
 
 class ProjectFile < ApplicationRecord
   belongs_to :project, inverse_of: :files
+
+  include FileSerialization
+  include FileSetters
 end
