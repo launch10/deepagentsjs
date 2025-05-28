@@ -5,6 +5,7 @@ export interface PageState {
   jwt: string | null;
   rootPath: string | null;
   threadId: string | null;
+  pageId: string | null;
   isNewThread: boolean;
 }
 
@@ -13,5 +14,6 @@ export const pageStore = map<PageState>({
   jwt: null,
   rootPath: null,
   threadId: null,
+  pageId: null,
   isNewThread: false,
 });

@@ -39,7 +39,7 @@ const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
 );
 
 export function LanggraphProvider({ children }: { children: React.ReactNode }): React.ReactElement {
-  const { jwt, rootPath, threadId, isNewThread } = useStore(pageStore);
+  const { jwt, rootPath, threadId } = useStore(pageStore);
   const [chatHasStarted, setChatHasStarted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isFetchingThreads, setIsFetchingThreads] = React.useState(false);
@@ -76,7 +76,10 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       defaultHeaders: {
         Authorization: `Bearer ${jwt}`,
       },
-      threadId: isNewThread ? undefined : threadId,
+      onThreadId: (threadId: string) => {
+        redirectToThreadId(threadId);
+      },
+      threadId: threadId,
       onLangChainEvent: handleLangChainEvent,
       onFinish: () => {
         setIsLoading(false);
@@ -87,17 +90,10 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   const onSubmit = (message: string) => {
     setIsLoading(true);
     setChatHasStarted(true);
-    if (!threadId) {
-      return;
-    }
-    redirectToThreadId(threadId);
     stream.submit({
       userRequest: { type: "human", content: message },
       jwt: jwt!,
     }, {
-      configurable: {
-        thread_id: threadId,
-      },
       streamMode: ["events", "values"]
     }); // Values provides final state
   };
@@ -218,7 +214,6 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     messages,
     files: {},
     codeTasks,
-    currentThreadId: threadId,
     hasMoreThreads,
     fetchThreads,
     clearThreadData: () => setThreads([]),

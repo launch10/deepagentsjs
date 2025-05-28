@@ -12,6 +12,11 @@ export function urlThreadId() {
 
 export function redirectToThreadId(threadId: string) {
   const newUrl = `/projects/${threadId}`;
+  pageStore.set({
+    ...pageStore.get(),
+    threadId,
+    isNewThread: false,
+  });
   window.history.replaceState(null, '', newUrl);
   // router.visit(newUrl, {
   //   preserveState: true,
