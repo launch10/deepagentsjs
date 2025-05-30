@@ -225,25 +225,16 @@ export const ChatImpl = () => {
 
   }, [currentThreadId, isReloadedThread, mostRecentHumanMessage, filesLoaded, filesLoading]);
 
-  // useEffect(() => {
-  //   if (!currentThreadId) return;
-
-  // }, [currentThreadId]);
-
   // When human message is added, add artifact for actions to run against
   useEffect(() => {
     if (!mostRecentHumanMessage) return;
 
     callbacks.onMessageStart(mostRecentHumanMessage.id as string);
 
-    // if (!templateData) {
-      // getTemplateData()
-    // }
-
     if (!isLoading && mostRecentHumanMessage && filesLoaded) {
       callbacks.onMessageEnd(mostRecentHumanMessage.id as string);
     }
-  }, [mostRecentHumanMessage, isReloadedThread, isLoading, filesLoaded]);
+  }, [mostRecentHumanMessage, isLoading, filesLoaded]);
 
   useEffect(() => {
     chatStore.setKey('started', messages.length > 0);
