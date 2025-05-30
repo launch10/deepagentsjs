@@ -1,9 +1,10 @@
-import { map, atom, type WritableAtom, type MapStore } from 'nanostores';
+import { map, atom, type WritableAtom, type MapStore, computed, type ReadableAtom } from 'nanostores';
 import { 
   type Project, 
   type MaybeProjectArray, 
   normalize as normalizeProjects,
 } from '@types/project';
+import type { FileMap } from '@shared/models/file';
 
 export enum InitializationStatus {
     CREATED = "Created",
@@ -15,6 +16,7 @@ export enum InitializationStatus {
 export class ProjectStore {
   projects: WritableAtom<Project[]> = atom([]);
   projectsById: MapStore<Record<string, Project>> = map({});
+  projectFiles: MapStore<Record<string, FileMap>> = map({});
 
   add(projects: MaybeProjectArray): void {
     const normalized: Project[] = normalizeProjects(projects);
@@ -33,6 +35,19 @@ export class ProjectStore {
     });
     this.projects.set(sortedProjects);
   }
+
+  addFiles(projectId: string, files: FileMap) {
+    this.projectFiles.setKey(projectId, files);
+  }
+
+  // getProjectFiles(projectId: string): ReadableAtom<FileMap | undefined> {
+  //   // This computed store will hold the FileMap for the specific projectId.
+  //   // It will only update listeners if the FileMap for this specific projectId changes,
+  //   // or if the key for this projectId is added or removed.
+  //   return computed(this.projectFiles, allProjectFilesMap => {
+  //     return allProjectFilesMap[projectId];
+  //   });
+  // }
 }
 
 export const projectStore = new ProjectStore();

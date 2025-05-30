@@ -18,4 +18,7 @@
 
 class TemplateFile < ApplicationRecord
   belongs_to :template
+
+  include FileSerialization
+  include FileSetters
 end

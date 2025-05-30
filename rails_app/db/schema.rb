@@ -349,7 +349,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_22_174109) do
 
   create_table "project_files", force: :cascade do |t|
     t.bigint "project_id", null: false
-    t.bigint "file_specification_id", null: false
+    t.bigint "file_specification_id"
     t.string "path", null: false
     t.string "content", null: false
     t.datetime "created_at", null: false

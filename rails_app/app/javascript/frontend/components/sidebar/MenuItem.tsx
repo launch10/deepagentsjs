@@ -1,7 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useEffect, useRef, useState } from 'react';
 import { type MenuItem as MenuItemType } from '../../types/menu';
-import { Link } from '@inertiajs/react';
 
 interface MenuItemProps {
   item: MenuItemType;
@@ -41,7 +40,8 @@ export function MenuItem({ item, onDelete }: MenuItemProps) {
       ref={hoverRef}
       className="group rounded-md text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-3 overflow-hidden flex justify-between items-center px-2 py-1"
     >
-      <Link href={item.url} className="flex w-full relative truncate block">
+      {/* Very important to add data-turbo="false" to allow anchor to work. We avoid using Inertia Link so we can properly reset all the stores */}
+      <a href={item.url} data-turbo="false" className="flex w-full relative truncate block">
         {item.projectName}
         <div className="absolute right-0 z-1 top-0 bottom-0 bg-gradient-to-l from-bolt-elements-background-depth-2 group-hover:from-bolt-elements-background-depth-3 to-transparent w-10 flex justify-end group-hover:w-15 group-hover:from-45%">
           {hovering && (
@@ -60,7 +60,7 @@ export function MenuItem({ item, onDelete }: MenuItemProps) {
             </div>
           )}
         </div>
-      </Link>
+      </a>
     </div>
   );
 }

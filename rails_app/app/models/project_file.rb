@@ -4,7 +4,7 @@
 #
 #  id                    :integer          not null, primary key
 #  project_id            :integer          not null
-#  file_specification_id :integer          not null
+#  file_specification_id :integer
 #  path                  :string           not null
 #  content               :string           not null
 #  created_at            :datetime         not null
@@ -20,4 +20,7 @@
 
 class ProjectFile < ApplicationRecord
   belongs_to :project, inverse_of: :files
+
+  include FileSerialization
+  include FileSetters
 end

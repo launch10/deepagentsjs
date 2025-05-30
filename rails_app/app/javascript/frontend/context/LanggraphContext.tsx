@@ -29,7 +29,6 @@ type LanggraphContextType = {
     codeTasks: CodeTasksState,
     currentThreadId: string | undefined,
     fetchThreads: () => Promise<void>, // Decorate with tenantId from encrypted cookies
-    clearThreadData: () => void,
     submit: (message: string) => void,
     stop: () => void,
 };
@@ -213,7 +212,6 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     codeTasks,
     hasMoreThreads,
     fetchThreads,
-    clearThreadData: () => setThreads([]),
     submit: onSubmit,
     stop: stream.stop,
   }
