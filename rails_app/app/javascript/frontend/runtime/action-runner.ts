@@ -118,6 +118,16 @@ export class ActionRunner {
     this.actions.setKey(id, { ...actions[id], ...newState });
   }
 
+  setActionStatus(id: string, status: ActionStatus) {
+    const action = this.actions.get()[id];
+
+    if (!action) {
+      unreachable(`Action ${id} not found even after attempting to add.`);
+    }
+
+    this.#updateAction(id, { ...action, status });
+  }
+
   async #executeAction(id: string) {
     const action = this.actions.get()[id];
 

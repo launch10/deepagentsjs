@@ -11,6 +11,7 @@ import { PromptTemplate } from "@langchain/core/prompts";
 import { CodeTaskType, CodeTaskAction, TaskStatus, type CodeTask} from "@shared/models/codeTask";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { v4 as uuidv4 } from "uuid";
+import { baseNode } from "../nodes/core/templates/base";
 
 const notifyCreateStart = async(state: GraphState, config: LangGraphRunnableConfig): Promise<Partial<GraphState>> => {
     // In the future: Pass this to future nodes once we can select theme by color
@@ -79,23 +80,34 @@ const notifyCreateStart = async(state: GraphState, config: LangGraphRunnableConf
     };
 }
 
+export const notifyCreateStartNode = baseNode({
+    nodeName: "notifyCreateStartNode",
+    nodeFn: notifyCreateStart,
+    buildTask: (state: GraphState, config: LangGraphRunnableConfig) => {
+        return {
+            title: "Brainstorming...",
+        };
+    }
+});
+
 export const createGraph = new StateGraph(GraphAnnotation)
     .addNode("startCreate", loadCreateNode)
-    .addNode("notifyCreateStart", notifyCreateStart)
-    .addNode("saveInitialProject", saveInitialNode)
-    .addNode("projectPlan", projectPlanNode)
-    .addNode("createPageGraph", createPageGraph)
-    .addNode("applyUpdates", applyUpdatesNode)
-    .addNode("saveProject", saveNode)
+    .addNode("notifyCreateStart", notifyCreateStartNode)
+    // .addNode("saveInitialProject", saveInitialNode)
+    // .addNode("projectPlan", projectPlanNode)
+    // .addNode("createPageGraph", createPageGraph)
+    // .addNode("applyUpdates", applyUpdatesNode)
+    // .addNode("saveProject", saveNode)
 
     .addEdge(START, "startCreate")
     .addEdge("startCreate", "notifyCreateStart")
-    .addEdge("notifyCreateStart", "saveInitialProject")
-    .addEdge("saveInitialProject", "projectPlan")
-    .addEdge("projectPlan", "createPageGraph")
-    .addEdge("createPageGraph", "applyUpdates")
-    .addEdge("applyUpdates", "saveProject")
-    .addEdge("saveProject", END)
+    .addEdge("notifyCreateStart", END)
+    // .addEdge("notifyCreateStart", "saveInitialProject")
+    // .addEdge("saveInitialProject", "projectPlan")
+    // .addEdge("projectPlan", "createPageGraph")
+    // .addEdge("createPageGraph", "applyUpdates")
+    // .addEdge("applyUpdates", "saveProject")
+    // .addEdge("saveProject", END)
 
 // export const checkpointer = PostgresSaver.fromConnString(process.env.POSTGRES_URI!);
 // await checkpointer.setup();

@@ -8,6 +8,7 @@ import type { BaseMessageLike } from "@langchain/core/messages";
 import type { BaseMessage, HumanMessage } from "@langchain/core/messages";
 export interface CodeTasksState {
     queue: CodeTask[];
+    runningTasks: CodeTask[];
     completedTasks: CompletedCodeTask[];
     taskHistory?: TaskHistoryType;
 }

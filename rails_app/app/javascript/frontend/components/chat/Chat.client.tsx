@@ -9,7 +9,7 @@ import { fileModificationsToHTML } from '@utils/diff';
 import { cubicEasingFn } from '@utils/easings';
 import { createScopedLogger, renderLogger } from '@utils/logger';
 import { BaseChat } from './BaseChat';
-import { useLanggraphContext } from '@context/LanggraphContext';
+import { useLanggraphContext, type BackendEvent } from '@context/LanggraphContext';
 import { BaseMessage } from '@langchain/core/messages';
 import { CodeTaskAction, CodeTaskType, TaskStatus } from '@shared/models/codeTask';
 import type { CodeTask } from '@shared/models/codeTask';
@@ -112,7 +112,20 @@ const callbacks = {
       logger.info('onRemoveDependency', JSON.stringify(task));
 
       workbenchStore.addAction(buildAction(task, messageId));
-    }
+    },
+    onBackendTaskStart: (task: CodeTask, messageId: string) => {
+      logger.info('onBackendTaskStart', JSON.stringify(task));
+
+      console.log('onBackendTaskStart', task.id, task.title);
+      workbenchStore.addAction(buildAction(task, messageId));
+      workbenchStore.setActionStatus(messageId, task.id, 'running');
+    },
+    onBackendTaskComplete: (task: CodeTask, messageId: string) => {
+      logger.info('onBackendTaskComplete', JSON.stringify(task));
+
+      console.log('onBackendTaskComplete', task.id, task.title);
+      workbenchStore.setActionStatus(messageId, task.id, 'complete');
+    },
 };
 
 export function Chat() {
@@ -162,7 +175,7 @@ interface ChatProps {
 export const ChatImpl = () => {
   useShortcuts();
 
-  const { isLoading, messages, codeTasks, submit, stop } = useLanggraphContext();
+  const { isLoading, messages, codeTasks, submit, stop, events } = useLanggraphContext();
   const { threadId: currentThreadId, pageId } = useStore(pageStore);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [inputValue, setInputValue] = useState('');
@@ -171,6 +184,7 @@ export const ChatImpl = () => {
   const promptEnhanced = false;
   const [filesLoading, setFilesLoading] = useState(false);
   const [filesLoaded, setFilesLoaded] = useState(false);
+  const [processedEvents, setProcessedEvents] = useState<Record<string, boolean>>({});
 
   const { showChat, started: chatStarted } = useStore(chatStore);
 
@@ -192,6 +206,34 @@ export const ChatImpl = () => {
   const mostRecentHumanMessage = humanMessages[humanMessages.length - 1];
   const isFirstMessage = humanMessages.length == 1;
   const isReloadedThread = (pageId === currentThreadId);
+
+  useEffect(() => {
+    events.forEach((event: BackendEvent) => {
+      const eventId = `${event.id}-${event.event}`;
+
+      if (processedEvents[eventId]) {
+        return;
+      }
+      if (!mostRecentHumanMessage) {
+        return;
+      }
+
+      const messageId = mostRecentHumanMessage.id as string;
+
+      if (event.event === 'NOTIFY_TASK_START') {
+        const task = event.task;
+        callbacks.onBackendTaskStart(task, messageId);
+      }
+
+      if (event.event === 'NOTIFY_TASK_COMPLETE') {
+        const task = event.task;
+        callbacks.onBackendTaskComplete(task, messageId);
+      }
+
+      setProcessedEvents(prev => ({ ...prev, [eventId]: true }));
+    });
+  }, [events]);
+
 
   useEffect(() => {
     if (!currentThreadId) return;

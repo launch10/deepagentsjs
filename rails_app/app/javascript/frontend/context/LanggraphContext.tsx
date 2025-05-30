@@ -2,7 +2,7 @@ import React from "react";
 import { useStore } from "@nanostores/react";
 import { type ThreadData, type ThreadValues } from "@types/thread";
 import { type MessageFieldWithRole } from "@langchain/core/messages";
-import { type FileMap } from "@models/file";
+import { type FileMap } from "@shared/models/file";
 import { createClient } from "@lib/utils/client";
 import { LIMIT_PARAM, OFFSET_PARAM } from "@lib/constants";
 import { redirectToThreadId } from "@hooks/useThreadId";
@@ -11,10 +11,18 @@ import { type GraphState, type App as AppState, type CodeTasksState } from "@sha
 import { useQueryParams } from '@hooks/useQueryParams'
 import { pageStore } from "@stores/page";
 import axios from 'axios';
-import { projectStore, type ApiProject } from "@stores/project";
+import { projectStore } from "@stores/project";
+import { type ApiProject } from "@types/project";
+import { type CodeTask } from "@shared/models/codeTask";
 
 type Config = Record<string, any>;
 type StreamableGraphState = GraphState & Config; 
+
+export type BackendEvent = {
+  event: string;
+  task: CodeTask;
+  id: string;
+}
 export interface TaggedMessage extends MessageFieldWithRole {
   tags?: string[];
 }
@@ -31,6 +39,7 @@ type LanggraphContextType = {
     fetchThreads: () => Promise<void>, // Decorate with tenantId from encrypted cookies
     submit: (message: string) => void,
     stop: () => void,
+    events: BackendEvent[]
 };
 
 const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
@@ -47,6 +56,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   const limitParam = Number(searchParams.get(LIMIT_PARAM)) || 10;
   const offsetParam = Number(searchParams.get(OFFSET_PARAM)) || 0;
   const [projectHasBeenNamed, setProjectHasBeenNamed] = React.useState(false);
+  const [events, setEvents] = React.useState<BackendEvent[]>([]);
 
   const [messageIdToTags, setMessageIdToTags] = React.useState<
     Record<string, Set<string>>
@@ -84,6 +94,10 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
         setIsLoading(false);
         fetchThreads();
       },
+      onCustomEvent: (event: any) => {
+        let backendEvent: BackendEvent = event as BackendEvent;
+        setEvents(prev => [...prev, backendEvent]);
+      },
     });
 
   // Cleanup stream on unmount
@@ -102,7 +116,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       userRequest: { type: "human", content: message },
       jwt: jwt!,
     }, {
-      streamMode: ["events", "values"]
+      streamMode: ["events", "values", "custom"]
     }); // Values provides final state
   };
 
@@ -214,6 +228,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     fetchThreads,
     submit: onSubmit,
     stop: stream.stop,
+    events
   }
 
   return (
