@@ -22,7 +22,7 @@ const assemblePage = async(state: GraphState, config: LangGraphRunnableConfig): 
 export const assemblePageNode = baseNode({
   nodeName: "assemblePageNode",
   nodeFn: assemblePage,
-  buildTask: (state: GraphState, config: LangGraphRunnableConfig) => {
+  buildTaskTitle: (state: GraphState, config: LangGraphRunnableConfig) => {
       return {
           title: "Putting it all together",
       };

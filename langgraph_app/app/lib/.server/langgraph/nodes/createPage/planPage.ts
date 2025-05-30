@@ -68,7 +68,7 @@ export async function planPage(state: GraphState): Promise<Partial<GraphState>> 
 export const planPageNode = baseNode({
     nodeName: "planPageNode",
     nodeFn: planPage,
-    buildTask: (state: GraphState, config: LangGraphRunnableConfig) => {
+    buildTaskTitle: (state: GraphState, config: LangGraphRunnableConfig) => {
         return {
             title: "Drafting landing page content",
         };

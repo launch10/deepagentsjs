@@ -19,21 +19,18 @@ const buildFullTask = (state: GraphState, config: LangGraphRunnableConfig, build
 export interface BaseNodeParams {
     nodeName: string;
     nodeFn: (state: GraphState, config: LangGraphRunnableConfig) => Promise<Partial<GraphState>>;
-    buildTask?: BuildTaskTitleFn;
+    buildTaskTitle?: BuildTaskTitleFn;
 }
 
 function notifyStart(state: GraphState, config?: LangGraphRunnableConfig, task?: CodeTask) {
-    console.log("NOTIFY_TASK_START", task)
     notifyFn("NOTIFY_TASK_START", state, config, task);
 }
 
 function notifyComplete(state: GraphState, config?: LangGraphRunnableConfig, task?: CodeTask) {
-    console.log("NOTIFY_TASK_COMPLETE", task)
     notifyFn("NOTIFY_TASK_COMPLETE", state, config, task);
 }
 
 function notifyError(state: GraphState, config?: LangGraphRunnableConfig, task?: CodeTask) {
-    console.log("NOTIFY_TASK_ERROR", task)
     notifyFn("NOTIFY_TASK_ERROR", state, config, task);
 }
 

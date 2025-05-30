@@ -21,7 +21,7 @@ const createLayout = async(state: GraphState, config: LangGraphRunnableConfig): 
 export const createLayoutNode = baseNode({
   nodeName: "createLayoutNode",
   nodeFn: createLayout,
-  buildTask: (state: GraphState, config: LangGraphRunnableConfig) => {
+  buildTaskTitle: (state: GraphState, config: LangGraphRunnableConfig) => {
     const { task } = state;
     if (!task.fileSpec) {
       return {

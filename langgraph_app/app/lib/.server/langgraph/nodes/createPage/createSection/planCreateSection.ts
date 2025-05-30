@@ -63,7 +63,7 @@ export async function planCreateSection(state: GraphState): Promise<Partial<Grap
 export const planCreateSectionNode = baseNode({
   nodeName: "planCreateSection",
   nodeFn: planCreateSection,
-  buildTask: (state: GraphState, config: LangGraphRunnableConfig) => {
+  buildTaskTitle: (state: GraphState, config: LangGraphRunnableConfig) => {
     const { task } = state;
     if (!task.section) {
       return {
