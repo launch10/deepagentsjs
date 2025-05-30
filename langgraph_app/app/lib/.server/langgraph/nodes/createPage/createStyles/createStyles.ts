@@ -110,5 +110,10 @@ export async function createStyles(
 
 export const createStylesNode = baseNode({
     nodeName: "createStyles",
-    nodeFn: createStyles
+    nodeFn: createStyles,
+    buildTask: (state: GraphState, config: LangGraphRunnableConfig) => {
+        return {
+            title: "Planning brand colors",
+        };
+    }
 });

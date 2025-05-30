@@ -15,10 +15,5 @@ export async function loadCreate(state: GraphState): Promise<Partial<GraphState>
 export const loadCreateNode = baseNode({
     nodeName: "loadCreateNode",
     nodeFn: loadCreate,
-    buildTask: (state: GraphState, config: LangGraphRunnableConfig) => {
-        return {
-            title: "Loading files...",
-        };
-    }
 });
     

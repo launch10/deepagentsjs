@@ -2,7 +2,7 @@ import { baseNode } from "@nodes/core/templates/base";
 import { planCreateSectionPrompt } from "~/lib/.server/langgraph/prompts/createPage/createSection";
 import type { GraphState } from "@shared/state/graph";
 import { LLMSkill, getLlm } from "@langgraph/llm";
-import type { Section, ContentPlan } from "@models/section";
+import type { Section, ContentPlan, SectionOverview } from "@models/section";
 import type { SectionType } from "@models/registry/sectionRegistry";
 import { sectionLayoutSchema } from "@models/section";
 import type { FileSpecification } from "@models/fileSpecification";
@@ -10,6 +10,7 @@ import { HumanMessage } from "@langchain/core/messages";
 import { initializeTools as initializeSearchIcons } from "@langgraph/tools/searchIcons";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { getRandomSectionTheme } from "@models/section";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
 // Plan the content that goes in a particular page section
 export async function planCreateSection(state: GraphState): Promise<Partial<GraphState>> {
@@ -61,5 +62,20 @@ export async function planCreateSection(state: GraphState): Promise<Partial<Grap
 
 export const planCreateSectionNode = baseNode({
   nodeName: "planCreateSection",
-  nodeFn: planCreateSection
+  nodeFn: planCreateSection,
+  buildTask: (state: GraphState, config: LangGraphRunnableConfig) => {
+    const { task } = state;
+    if (!task.section) {
+      return {
+        title: "Outlining next section"
+      }
+    }
+
+    const section = task.section as Section;
+    const sectionOverview = section.contentPlan?.overview as SectionOverview;
+
+    return {
+        title: `Drafting outline for ${sectionOverview.name}`,
+    };
+  }
 });
