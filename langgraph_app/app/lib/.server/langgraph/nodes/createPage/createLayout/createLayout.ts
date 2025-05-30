@@ -20,5 +20,20 @@ const createLayout = async(state: GraphState, config: LangGraphRunnableConfig): 
 
 export const createLayoutNode = baseNode({
   nodeName: "createLayoutNode",
-  nodeFn: createLayout
+  nodeFn: createLayout,
+  buildTaskTitle: (state: GraphState, config: LangGraphRunnableConfig) => {
+    const { task } = state;
+    if (!task.fileSpec) {
+      return {
+        title: "Coding next section"
+      }
+    }
+
+    const spec = task.fileSpec as FileSpecification;
+    const subtype = spec.subtype;
+
+    return {
+        title: `Creating ${subtype.toLowerCase()}`,
+    };
+  }
 })

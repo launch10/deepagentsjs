@@ -3,14 +3,12 @@ import { GraphAnnotation } from "@state/graph";
 import { loadCreateNode, projectPlanNode } from "@nodes/create";
 import { applyUpdatesNode, saveNode, saveInitialNode } from "@nodes/core";
 import { createPageGraph } from "@graphs/createPage";
-import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { type GraphState } from "@shared/state/graph";
 import { getLlm } from "@langgraph/llm";
 import { LLMSkill } from "@langgraph/llm";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { CodeTaskType, CodeTaskAction, TaskStatus, type CodeTask} from "@shared/models/codeTask";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { v4 as uuidv4 } from "uuid";
+import { baseNode } from "../nodes/core/templates/base";
 
 const notifyCreateStart = async(state: GraphState, config: LangGraphRunnableConfig): Promise<Partial<GraphState>> => {
     // In the future: Pass this to future nodes once we can select theme by color
@@ -50,38 +48,17 @@ const notifyCreateStart = async(state: GraphState, config: LangGraphRunnableConf
 
     return {
         messages: [...state.messages, response],
-        app: {
-            ...state.app,
-            codeTasks: {
-                completedTasks: [{
-                    id: uuidv4(),
-                    title: "Saying Goodnight Moon",
-                    type: CodeTaskType.UPDATE,
-                    action: CodeTaskAction.UPDATE,
-                    status: TaskStatus.COMPLETED,
-                    success: true,
-                    filePath: "src/pages/IndexPage.tsx",
-                    results: {
-                        filePath: "src/pages/IndexPage.tsx",
-                        code: `
-                        import React from 'react';
-
-                        export const IndexPage = () => {
-                            return (
-                                <div><h1>Goodnight moon</h1></div>
-                            )
-                        };
-                        `
-                    }
-                } as CodeTask]
-            }
-        }
     };
 }
 
+export const notifyCreateStartNode = baseNode({
+    nodeName: "notifyCreateStartNode",
+    nodeFn: notifyCreateStart,
+});
+
 export const createGraph = new StateGraph(GraphAnnotation)
     .addNode("startCreate", loadCreateNode)
-    .addNode("notifyCreateStart", notifyCreateStart)
+    .addNode("notifyCreateStart", notifyCreateStartNode)
     .addNode("saveInitialProject", saveInitialNode)
     .addNode("projectPlan", projectPlanNode)
     .addNode("createPageGraph", createPageGraph)

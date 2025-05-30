@@ -46,5 +46,10 @@ async function projectPlan(state: GraphState): Promise<Partial<GraphState>> {
 
 export const projectPlanNode = baseNode({
     nodeName: "projectPlanNode",
-    nodeFn: projectPlan
+    nodeFn: projectPlan,
+    buildTaskTitle: (state: GraphState, config: LangGraphRunnableConfig) => {
+        return {
+            title: "Brainstorming overall project",
+        };
+    }
 });

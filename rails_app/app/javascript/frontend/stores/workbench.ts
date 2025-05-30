@@ -1,6 +1,6 @@
 import { atom, map, type MapStore, type ReadableAtom, type WritableAtom, onMount } from 'nanostores';
 import type { EditorDocument, ScrollPosition } from '@components/editor/codemirror/CodeMirrorEditor';
-import { ActionRunner } from '@runtime/action-runner';
+import { ActionRunner, type ActionStatus } from '@runtime/action-runner';
 import { webcontainer } from '@webcontainer/index';
 import type { ITerminal } from '@types/terminal';
 import { unreachable } from '@lib/utils/unreachable';
@@ -37,7 +37,6 @@ export class WorkbenchStore {
   showWorkbench: WritableAtom<boolean> = import.meta.hot?.data.showWorkbench ?? atom(false);
   currentView: WritableAtom<WorkbenchViewType> = import.meta.hot?.data.currentView ?? atom('code');
   unsavedFiles: WritableAtom<Set<string>> = import.meta.hot?.data.unsavedFiles ?? atom(new Set<string>());
-  isRunning: WritableAtom<boolean> = import.meta.hot?.data.workbenchIsRunning ?? atom(false);
   modifiedFiles = new Set<string>();
   artifactIdList: string[] = [];
 
@@ -300,6 +299,16 @@ export class WorkbenchStore {
     artifact.runner.runAction(task);
 
     this.devServerRunning.set(true);
+  }
+
+  async setActionStatus(messageId: string, actionId: string, status: ActionStatus) {
+    const artifact = this.#getArtifact(messageId);
+
+    if (!artifact) {
+      unreachable('Artifact not found');
+    }
+
+    artifact.runner.setActionStatus(actionId, status);
   }
 
   async addAction(data: ActionCore) {
