@@ -19,19 +19,24 @@ class ProjectsController < SubscribedController
   end
 
   def show
-    project = Project.find_by(thread_id: params[:thread_id])
-    if project && project.account_id != current_account.id
+    project = current_project
+    if project.nil? || project.account_id != current_account.id
       flash[:error] = "You do not have access to this project"
       redirect_to root_path and return
     end
 
-    render inertia: 'Home', props: {
-      jwt: cookies[:jwt],
-      thread_id: params[:thread_id],
-      # files: project.files
-    }, layout: "layouts/webcontainer"
+    respond_to do |format|
+      format.html do
+        render inertia: 'Home', props: {
+          jwt: cookies[:jwt],
+          thread_id: project.thread_id,
+        }, layout: "layouts/webcontainer"
+      end
+      format.json do
+        render json: project.to_mini_json
+      end
+    end
   end
-
   def create
     begin
       project = current_account.projects.create!(project_params)
