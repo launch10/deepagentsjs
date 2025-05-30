@@ -70,7 +70,7 @@ export const planPageNode = baseNode({
     nodeFn: planPage,
     buildTask: (state: GraphState, config: LangGraphRunnableConfig) => {
         return {
-            title: "Drafting outline",
+            title: "Drafting landing page content",
         };
     }
 });

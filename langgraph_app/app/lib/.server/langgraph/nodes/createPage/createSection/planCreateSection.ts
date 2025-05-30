@@ -75,7 +75,7 @@ export const planCreateSectionNode = baseNode({
     const sectionOverview = section.contentPlan?.overview as SectionOverview;
 
     return {
-        title: `Drafting outline for ${sectionOverview.name}`,
+        title: `Writing content for ${sectionOverview.name}`,
     };
   }
 });

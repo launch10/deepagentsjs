@@ -20,5 +20,20 @@ const createSection = async(state: GraphState, config: LangGraphRunnableConfig):
 
 export const createSectionNode = baseNode({
     nodeName: "createSectionNode",
-    nodeFn: createSection
+    nodeFn: createSection,
+    buildTask: (state: GraphState, config: LangGraphRunnableConfig) => {
+      const { task } = state;
+      if (!task.section) {
+        return {
+          title: "Coding next section"
+        }
+      }
+
+      const section = task.section as Section;
+      const sectionOverview = section.contentPlan?.overview as SectionOverview;
+
+      return {
+          title: `Writing code for ${sectionOverview.name}`,
+      };
+    }
 });

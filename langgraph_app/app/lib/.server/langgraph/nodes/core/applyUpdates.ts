@@ -10,6 +10,7 @@ import { fileSpecification as FileSpecTable } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { db } from "@db";
 import { createProject, updateProject } from "@services/saveProject";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
 // Node to apply the accumulated code updates back to the project files
 const applyUpdates = async(state: GraphState): Promise<Partial<GraphState>> => {
@@ -102,5 +103,5 @@ const applyUpdates = async(state: GraphState): Promise<Partial<GraphState>> => {
 
 export const applyUpdatesNode = baseNode({
     nodeName: "applyUpdatesNode",
-    nodeFn: applyUpdates
+    nodeFn: applyUpdates,
 });

@@ -46,7 +46,12 @@ const save = async (state: GraphState, config: LangGraphRunnableConfig): Promise
 
 export const saveNode = baseNode({
     nodeName: "save",
-    nodeFn: save
+    nodeFn: save,
+    buildTask: (state: GraphState, config: LangGraphRunnableConfig) => {
+        return {
+            title: "Saving changes",
+        };
+    }
 });
 
 const saveInitial = async (state: GraphState, config: LangGraphRunnableConfig): Promise<Partial<GraphState>> => {
@@ -78,5 +83,5 @@ const saveInitial = async (state: GraphState, config: LangGraphRunnableConfig): 
 
 export const saveInitialNode = baseNode({
     nodeName: "saveInitial",
-    nodeFn: saveInitial
+    nodeFn: saveInitial,
 });

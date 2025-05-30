@@ -297,7 +297,7 @@ export class ActionRunner {
       unreachable('Expected reload action');
     }
 
-    await this.#createAction(CodeTaskType.SHELL, { command: `npm install` }, "Installing");
+    await this.#createAction(CodeTaskType.SHELL, { command: `npm install` }, "Preparing coding environment");
   }
 
   async #runDevServerAction(action: ActionState) {
