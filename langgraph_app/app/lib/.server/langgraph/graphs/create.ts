@@ -74,7 +74,4 @@ export const createGraph = new StateGraph(GraphAnnotation)
     .addEdge("applyUpdates", "saveProject")
     .addEdge("saveProject", END)
 
-// export const checkpointer = PostgresSaver.fromConnString(process.env.POSTGRES_URI!);
-// await checkpointer.setup();
-// export const graph = createGraph.compile({ checkpointer });
 export const graph = createGraph.compile();

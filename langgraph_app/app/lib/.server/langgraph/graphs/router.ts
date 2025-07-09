@@ -36,6 +36,4 @@ export const routerGraph = new StateGraph(GraphAnnotation)
     .addEdge("create", END)
     .addEdge("update", END)
 
-// export const checkpointer = PostgresSaver.fromConnString(process.env.POSTGRES_URI!);
-// await checkpointer.setup();
 export const graph = routerGraph.compile();

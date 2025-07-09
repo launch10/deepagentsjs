@@ -5,8 +5,8 @@ import { type CodeTask, CodeTaskType, CodeTaskAction, TaskStatus } from "@shared
 
 type BuildTaskTitleFn = (state: GraphState, config: LangGraphRunnableConfig) => Record<string, any>;
 
-const buildFullTask = (state: GraphState, config: LangGraphRunnableConfig, buildTaskFn: BuildTaskTitleFn): CodeTask => {
-    const task = buildTaskFn(state, config);
+const buildFullTask = (state: GraphState, config: LangGraphRunnableConfig, buildTaskTitleFn: BuildTaskTitleFn): CodeTask => {
+    const task = buildTaskTitleFn(state, config);
     return {
         ...task,
         id: uuidv4(),
@@ -55,7 +55,6 @@ function notifyFn(eventName: string, state: GraphState, config?: LangGraphRunnab
 export function baseNode(params: BaseNodeParams): (state: GraphState, config: LangGraphRunnableConfig) => Promise<Partial<GraphState>> {
     return async (state: GraphState, config: LangGraphRunnableConfig): Promise<Partial<GraphState>> => {
         console.log(`--- Running ${params.nodeName} ---`)
-        // console.log(`Incoming state to ${params.nodeName}:`, JSON.stringify(state, null, 2));
 
         if (state.app.error) {
             console.log(`${params.nodeName} skipped due to existing error:`, state.app.error);
@@ -63,8 +62,8 @@ export function baseNode(params: BaseNodeParams): (state: GraphState, config: La
         }
 
         let task: CodeTask | undefined;
-        if (params.buildTask) {
-            task = buildFullTask(state, config, params.buildTask);
+        if (params.buildTaskTitle) {
+            task = buildFullTask(state, config, params.buildTaskTitle);
         }
 
         try {

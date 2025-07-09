@@ -6,6 +6,7 @@ import { baseNode } from "@nodes/core/templates/base";
 import { PageTypeEnum } from "@models/enums";
 import { fileSpecRegistry } from "@models/registry/fileSpecificationRegistry";
 import { FileTypeEnum } from "@models/enums";
+import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 
 /**
  * Node to brainstorm overall landing page copy using an LLM.
