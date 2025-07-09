@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Use tsx to run this: npm run debug:graph -- --prompt "Your prompt here"
 
-import { createProject } from "../app/lib/.server/langgraph/services/saveProject";
+import { createProject } from "../app/lib/server/langgraph/services/saveProject";
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';

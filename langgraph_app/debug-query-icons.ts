@@ -4,8 +4,8 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import dotenv from 'dotenv';
-import { SearchIconsService } from '~/lib/.server/langgraph/services/searchIconsService';
-import type { IconResult } from '~/lib/.server/langgraph/services/searchIconsService';
+import { SearchIconsService } from '~/lib/server/langgraph/services/searchIconsService';
+import type { IconResult } from '~/lib/server/langgraph/services/searchIconsService';
 
 // Load environment variables
 dotenv.config();

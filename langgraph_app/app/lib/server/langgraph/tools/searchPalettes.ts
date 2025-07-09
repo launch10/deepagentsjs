@@ -1,4 +1,4 @@
-// app/lib/.server/langgraph/tools/searchThemes.ts
+// app/lib/server/langgraph/tools/searchThemes.ts
 import { z } from "zod";
 import { StructuredTool } from "@langchain/core/tools";
 import type { GraphState } from "../@shared/state/graph"; // Assuming this state exists

@@ -12,7 +12,7 @@ import { SectionTypeEnum } from "@models/enums";
 // Adjust the number of '../' based on the actual file location relative to the project root
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Assuming the service file is at app/lib/.server/services/mockDataService.ts
+// Assuming the service file is at app/lib/server/services/mockDataService.ts
 // And mocks are at /mocks/
 const projectRoot = path.resolve(__dirname, "../../../../../"); 
 const mocksDir = path.join(projectRoot, "mocks");

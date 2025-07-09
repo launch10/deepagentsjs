@@ -27,31 +27,31 @@
         "./db/*"
       ],
       "@schemas/*": [
-        "./app/lib/.server/langgraph/schemas/*"
+        "./app/lib/server/langgraph/schemas/*"
       ],
       "@prompts/*": [
-        "./app/lib/.server/langgraph/prompts/*"
+        "./app/lib/server/langgraph/prompts/*"
       ],
       "@nodes/*": [
-        "./app/lib/.server/langgraph/nodes/*"
+        "./app/lib/server/langgraph/nodes/*"
       ],
       "@graphs/*": [
-        "./app/lib/.server/langgraph/graphs/*"
+        "./app/lib/server/langgraph/graphs/*"
       ],
       "@state/*": [
-        "./app/lib/.server/langgraph/state/*"
+        "./app/lib/server/langgraph/state/*"
       ],
       "@services/*": [
-        "./app/lib/.server/langgraph/services/*"
+        "./app/lib/server/langgraph/services/*"
       ],
       "@utils/*": [
-        "./app/lib/.server/langgraph/utils/*"
+        "./app/lib/server/langgraph/utils/*"
       ],
       "@tools/*": [
-        "./app/lib/.server/langgraph/tools/*"
+        "./app/lib/server/langgraph/tools/*"
       ],
       "@langgraph/*": [
-        "./app/lib/.server/langgraph/*"
+        "./app/lib/server/langgraph/*"
       ],
       "@shared/*": [
         "./app/lib/shared/*"
@@ -83,8 +83,8 @@
     "**/*.tsx",
     "**/.client/**/*.ts",
     "**/.client/**/*.tsx",
-    "**/.server/**/*.ts",
-    "**/.server/**/*.tsx",
+    "**/server/**/*.ts",
+    "**/server/**/*.tsx",
     ".next/types/**/*.ts"
   ],
   "exclude": [

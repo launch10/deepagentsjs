@@ -1,5 +1,5 @@
 import { type DB } from "@db";
-import { SearchIconsService } from '~/lib/.server/langgraph/services/searchIconsService';
+import { SearchIconsService } from '~/lib/server/langgraph/services/searchIconsService';
 
 export async function seed(db: DB) {
   try {

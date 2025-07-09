@@ -1,7 +1,7 @@
 import { GraphAnnotation } from "@state/graph";
 import { type GraphState } from "@shared/state/graph";
 import { type StateGraph, type CompiledStateGraph } from "@langchain/langgraph";
-import { graph as nameProjectGraph } from "~/lib/.server/langgraph/graphs/core/nameProject";
+import { graph as nameProjectGraph } from "~/lib/server/langgraph/graphs/core/nameProject";
 import { nameProject } from "@services/nameProject";
 import { graph as createGraph } from "@graphs/create";
 import { graph as updateGraph } from "@graphs/update";

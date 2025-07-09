@@ -1,4 +1,4 @@
-import { createSectionPrompt } from "~/lib/.server/langgraph/prompts/createPage/createSection";
+import { createSectionPrompt } from "~/lib/server/langgraph/prompts/createPage/createSection";
 import { type GraphState } from "@shared/state/graph";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { completeCodeTask } from "../../actions/codeTasks";

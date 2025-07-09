@@ -1,7 +1,7 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
-import { setupNode } from "~/lib/.server/langgraph/nodes/createPage/createSection/setup";
+import { setupNode } from "~/lib/server/langgraph/nodes/createPage/createSection/setup";
 import { GraphAnnotation } from "@state/graph";
-import { planCreateSectionNode, createSectionNode } from "~/lib/.server/langgraph/nodes/createPage/createSection";
+import { planCreateSectionNode, createSectionNode } from "~/lib/server/langgraph/nodes/createPage/createSection";
 
 export const createSectionGraph = new StateGraph(GraphAnnotation)
     .addNode("startCreateSection", setupNode)

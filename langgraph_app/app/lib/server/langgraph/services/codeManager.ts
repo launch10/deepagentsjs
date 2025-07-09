@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import micromatch from 'micromatch';
 import { fileURLToPath } from 'url';
 import { generate as generateRandomWords } from 'random-words';
 import { minimatch } from 'minimatch';
@@ -65,6 +66,46 @@ export class CodeManager {
         } catch (error) {
             return false;
         }
+    }
+
+    async getFiles(
+        root: string,
+        filePaths: string[] = [], 
+        excludes: string[] = [],
+        source: 'main' | 'backup' = 'main'
+    ): Promise<FileMap> {
+        const results: FileMap = {};
+        
+        for (const relativePath of filePaths) {
+            const absolutePath = path.join(root, relativePath);
+            try {
+                 // Check if it's a directory path provided (like 'src/components')
+                 const stats = await fs.stat(absolutePath);
+                 if (stats.isDirectory()) {
+                     // Pass excludes down to readDirectory
+                     const dirFiles: FileMap = await this.readDirectory(relativePath, excludes); 
+                     for (const [filePath, file] of Object.entries(dirFiles)) {
+                         results[filePath] = file;
+                     }
+                 } else {
+                     // Check individual file against excludes before reading
+                     if (micromatch.isMatch(relativePath, excludes)) {
+                         console.log(`Project.getFiles: Excluding single file ${relativePath} due to pattern match.`);
+                         continue;
+                     }
+                     const file: FileData = await this.readFile(relativePath); // Use main codeManager
+                     results[relativePath] = file;
+                 }
+            } catch (error: any) {
+                 console.error(`Project class: Failed to read '${relativePath}' from ${source}:`, error);
+                 // Decide how to handle partial failure: skip or throw?
+                 // Let's throw for now.
+                 throw new Error(`Failed to read file/directory ${relativePath} from ${source}: ${error.message}`);
+            }
+        }
+
+        console.log(`Project class: Successfully read ${Object.keys(results).length} file entries.`);
+        return results;
     }
 
     /**

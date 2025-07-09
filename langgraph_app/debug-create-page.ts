@@ -4,7 +4,7 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import dotenv from 'dotenv';
-import { graph } from './app/lib/.server/langgraph/graphs/createPage/createPage';
+import { graph } from './app/lib/server/langgraph/graphs/createPage/createPage';
 import { HumanMessage } from '@langchain/core/messages';
 
 dotenv.config();

@@ -1,5 +1,5 @@
 import { type GraphState } from "@shared/state/graph";
-import { graph as nameProjectGraph } from "~/lib/.server/langgraph/graphs/core/nameProject";
+import { graph as nameProjectGraph } from "~/lib/server/langgraph/graphs/core/nameProject";
 
 type NameProjectInput = Pick<GraphState, 'userRequest' | 'messages' | 'projectName'>;
 type NameProjectOutput = Pick<GraphState, 'projectName'>;

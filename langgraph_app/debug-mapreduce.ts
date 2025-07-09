@@ -2,8 +2,8 @@
 // Use tsx to run this: npm run debug:update-graph -- -n <projectName> -prompt "<userRequest>"
 
 import dotenv from 'dotenv';
-import { graph as runnableGraph } from "./app/lib/.server/langgraph/graphs/mapReduce";
-import { Store } from "./app/lib/.server/langgraph/store/store";
+import { graph as runnableGraph } from "./app/lib/server/langgraph/graphs/mapReduce";
+import { Store } from "./app/lib/server/langgraph/store/store";
 
 // Load environment variables
 dotenv.config();

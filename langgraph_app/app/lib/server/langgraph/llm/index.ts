@@ -131,28 +131,6 @@ const freeFastConfig: LLMsConfig = {
   },
 };
 
-// const paidSlowConfig: LLMsConfig = {
-//   planning: {
-//     provider: LLMProvider.Anthropic,
-//     model: LLM.Haiku,
-//     temperature: 0,
-//   },
-//   writing: {
-//     provider: LLMProvider.Anthropic,
-//     model: LLM.Haiku,
-//     temperature: 0.2,
-//   },
-//   coding: {
-//     provider: LLMProvider.Anthropic,
-//     model: LLM.Sonnet,
-//     temperature: 0,
-//   },
-//   reasoning: {
-//     provider: LLMProvider.Anthropic,
-//     model: LLM.Haiku,
-//     temperature: 0,
-//   },
-// };
 const paidSlowConfig: LLMsConfig = {
   planning: {
     provider: LLMProvider.Anthropic,
@@ -175,6 +153,29 @@ const paidSlowConfig: LLMsConfig = {
     temperature: 0,
   },
 };
+
+// const paidSlowConfig: LLMsConfig = {
+//   planning: {
+//     provider: LLMProvider.OpenAI,
+//     model: LLM.O4Mini,
+//     temperature: 0,
+//   },
+//   writing: {
+//     provider: LLMProvider.OpenAI,
+//     model: LLM.O4Mini,
+//     temperature: 0.2,
+//   },
+//   coding: {
+//     provider: LLMProvider.OpenAI,
+//     model: LLM.O4Mini,
+//     temperature: 0,
+//   },
+//   reasoning: {
+//     provider: LLMProvider.OpenAI,
+//     model: LLM.O4Mini,
+//     temperature: 0,
+//   },
+// };
 
 const paidFastConfig: LLMsConfig = {
   planning: {

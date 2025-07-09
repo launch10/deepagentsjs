@@ -3,7 +3,7 @@ import { z } from 'zod';
 import * as fs from 'fs';
 import * as path from 'path';
 import { openai } from '@ai-sdk/openai';
-import { PostgresEmbeddingsService, type Embedding } from '~/lib/.server/langgraph/services/postgresEmbeddingsService';
+import { PostgresEmbeddingsService, type Embedding } from '~/lib/server/langgraph/services/postgresEmbeddingsService';
 import { db } from '@db';
 import { getLlm, LLMSkill } from '../llm';
 import { PromptTemplate } from '@langchain/core/prompts';

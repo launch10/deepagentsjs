@@ -4,7 +4,7 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import dotenv from 'dotenv';
-import { graph as runnableGraph } from "./app/lib/.server/langgraph/graphs/update";
+import { graph as runnableGraph } from "./app/lib/server/langgraph/graphs/update";
 import { HumanMessage } from "@langchain/core/messages";
 
 // Load environment variables

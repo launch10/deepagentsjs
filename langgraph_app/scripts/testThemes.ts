@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { generateTheme } from '../app/lib/.server/langgraph/services/theme/service';
-import type { InputPalette, ThemeOutput, ThemeWarning, ServiceResponse } from '../app/lib/.server/langgraph/services/theme/types';
+import { generateTheme } from '../app/lib/server/langgraph/services/theme/service';
+import type { InputPalette, ThemeOutput, ThemeWarning, ServiceResponse } from '../app/lib/server/langgraph/services/theme/types';
 
 // Define a structure to hold the results for each palette
 interface PaletteResult {

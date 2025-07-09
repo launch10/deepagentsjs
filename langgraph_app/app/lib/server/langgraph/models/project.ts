@@ -1,6 +1,3 @@
-import { promises as fs } from "fs";
-import path from 'path';
-import micromatch from 'micromatch';
 import { CodeManager } from "@services/codeManager";
 import { ProjectMode, type ProjectData } from "@shared/models/project";
 import { type ProjectPlan } from "@shared/models/project/projectPlan";
@@ -121,40 +118,13 @@ export class Project {
              throw new Error("Project root path is not available."); // Should not happen if constructor ran
         }
 
-        console.log(`Project class: Reading files from ${source} source (${targetRoot})...`);
-        
         const results: FileMap = {};
         
-        for (const relativePath of filePaths) {
-            const absolutePath = path.join(targetRoot, relativePath);
-            try {
-                 // Check if it's a directory path provided (like 'src/components')
-                 const stats = await fs.stat(absolutePath);
-                 if (stats.isDirectory()) {
-                     // Pass excludes down to readDirectory
-                     const dirFiles: FileMap = await this.codeManager.readDirectory(relativePath, excludes); 
-                     for (const [filePath, file] of Object.entries(dirFiles)) {
-                         results[filePath] = file;
-                     }
-                 } else {
-                     // Check individual file against excludes before reading
-                     if (micromatch.isMatch(relativePath, excludes)) {
-                         console.log(`Project.getFiles: Excluding single file ${relativePath} due to pattern match.`);
-                         continue;
-                     }
-                     const file: FileData = await this.codeManager.readFile(relativePath); // Use main codeManager
-                     results[relativePath] = file;
-                 }
-            } catch (error: any) {
-                 console.error(`Project class: Failed to read '${relativePath}' from ${source}:`, error);
-                 // Decide how to handle partial failure: skip or throw?
-                 // Let's throw for now.
-                 throw new Error(`Failed to read file/directory ${relativePath} from ${source}: ${error.message}`);
-            }
+        const projectExists = await this.codeManager.checkProjectExists();
+        if (!projectExists) {
+        } else {
+            return this.codeManager.getFiles(targetRoot, filePaths, excludes, source);
         }
-
-        console.log(`Project class: Successfully read ${Object.keys(results).length} file entries.`);
-        return results;
     }
 
     /**

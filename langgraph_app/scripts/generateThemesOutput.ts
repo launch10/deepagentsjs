@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { generateTheme } from '../app/lib/.server/langgraph/services/theme/service'; // Adjust path as needed
-import type { ThemeOutput, ThemeWarning, ServiceResponse } from '../app/lib/.server/langgraph/services/theme/types'; // Adjust path as needed
+import { generateTheme } from '../app/lib/server/langgraph/services/theme/service'; // Adjust path as needed
+import type { ThemeOutput, ThemeWarning, ServiceResponse } from '../app/lib/server/langgraph/services/theme/types'; // Adjust path as needed
 
 // --- Define __dirname for ES Module scope ---
 const __filename = fileURLToPath(import.meta.url);

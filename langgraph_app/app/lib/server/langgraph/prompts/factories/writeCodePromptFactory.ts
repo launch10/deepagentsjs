@@ -6,9 +6,9 @@ import { formatBrandInfo } from "@langgraph/prompts/helpers";
 import { formatFiles } from "@prompts/helpers";
 import { formatObject } from "@prompts/helpers";
 import { FileSpecification } from "@models/fileSpecification";
-import { designGuidelines } from "~/lib/.server/langgraph/prompts/helpers/context/designGuidelines";
+import { designGuidelines } from "~/lib/server/langgraph/prompts/helpers/context/designGuidelines";
 import { type FileMap } from "@models/file";
-import { highLevelPrinciples, lowLevelPrinciples } from "~/lib/.server/langgraph/prompts/helpers/context/principles";
+import { highLevelPrinciples, lowLevelPrinciples } from "~/lib/server/langgraph/prompts/helpers/context/principles";
 
 export const baseCreatePrompt = PromptTemplate.fromTemplate(`
         <role>

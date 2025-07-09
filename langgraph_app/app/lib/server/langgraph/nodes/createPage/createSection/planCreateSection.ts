@@ -1,5 +1,5 @@
 import { baseNode } from "@nodes/core/templates/base";
-import { planCreateSectionPrompt } from "~/lib/.server/langgraph/prompts/createPage/createSection";
+import { planCreateSectionPrompt } from "~/lib/server/langgraph/prompts/createPage/createSection";
 import type { GraphState } from "@shared/state/graph";
 import { LLMSkill, getLlm } from "@langgraph/llm";
 import type { Section, ContentPlan, SectionOverview } from "@models/section";
