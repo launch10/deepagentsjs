@@ -18,3 +18,13 @@ bin/dev
 cd langgraph
 bin/dev
 ```
+
+## Installation
+
+```bash
+cd langgraph_app
+pnpm install
+cd ../rails_app
+bundle install
+bundle exec rake db:create db:migrate db:seed
+```

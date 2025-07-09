@@ -1,7 +1,6 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { GraphAnnotation } from "@state/graph";
 import { type GraphState } from "@shared/state/graph";
-import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { graph as createGraph } from "@graphs/create";
 import { graph as updateGraph } from "@graphs/update";
 import { graph as nameProjectGraph } from "@graphs/core/nameProject";

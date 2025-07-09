@@ -83,7 +83,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       apiUrl: import.meta.env.VITE_LANGGRAPH_API_URL!,
       assistantId: import.meta.env.VITE_LANGGRAPH_ASSISTANT_ID!,
       defaultHeaders: {
-        Authorization: `Bearer ${jwt}`,
+        Authorization: `Bearer ${jwt}`, // remove, use http-only encrypted cookie
       },
       onThreadId: (threadId: string) => {
         redirectToThreadId(threadId);
@@ -134,8 +134,8 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     }
   }, [limitParam, offsetParam, jwt, pageId]);
 
-  // This needs to be upgraded to use browser-based encrypted cookie,
-  // and backend needs to fetch tenantId from encrypted cookie
+  // Not shown, but the core of the security mechanism here is browser-based encrypted cookie,
+  // the langgraph server confirms the JWT with the rails server
   const fetchThreads = React.useCallback(
     async () => {
       setIsFetchingThreads(true);

@@ -1,5 +1,4 @@
 import { START, END, Send, StateGraph } from "@langchain/langgraph";
-import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { GraphAnnotation } from "@state/graph";
 import { type GraphState } from "@shared/state/graph";
 import { createPageGraph, createSectionGraph } from "@graphs/createPage";
@@ -36,7 +35,6 @@ const queueTasks = async(state: GraphState) => {
 }
 
 const waitForUpdates = async(state: GraphState) => {
-    // await all nodes
     return state;
 }
 
@@ -62,10 +60,4 @@ export const updateGraph = new StateGraph(GraphAnnotation, ConfigurationAnnotati
     .addEdge("applyUpdates", "saveNode")
     .addEdge("saveNode", END);
 
-// export const checkpointer = PostgresSaver.fromConnString(process.env.POSTGRES_URI!);
-// await checkpointer.setup();
-
-//   interruptBefore: [], // Options!
-//   interruptAfter: [],
-// export const graph = updateGraph.compile({ checkpointer });
 export const graph = updateGraph.compile();
