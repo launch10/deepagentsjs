@@ -56,6 +56,9 @@
       "@rails_api/*": [
         "./app/lib/server/langgraph/rails_api/*"
       ],
+      "@ext/*": [
+        "./app/lib/server/langgraph/ext/*"
+      ],
       "@shared/*": [
         "./app/lib/shared/*"
       ],

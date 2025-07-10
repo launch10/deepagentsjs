@@ -1,11 +1,10 @@
-import { Redis } from "ioredis";
-import { RedisCache } from "@langchain/community/caches/ioredis";
+import { RedisCache } from "@ext/redisCache";
 
-const useCache = process.env.USE_CACHE === 'true';
+const useCache = (process.env.USE_CACHE === 'true');
+const redisUrl = process.env.REDIS_URI_CUSTOM;
 let cache: RedisCache | undefined;
-if (useCache) {
-    const client = new Redis(process.env.REDIS_URI!);
-    cache = new RedisCache(client);
+if (useCache && redisUrl) {
+    cache = new RedisCache(redisUrl);
 }
 
 export const graphParams = useCache ? { cache } : {};

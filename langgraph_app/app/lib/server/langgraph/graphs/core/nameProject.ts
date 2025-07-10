@@ -1,6 +1,7 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { nameProjectNode } from "@nodes/core/nameProject";
 import { GraphAnnotation } from "@state/graph";
+import { graphParams } from "@graphs/params";
 
 export const nameProjectGraph = new StateGraph(GraphAnnotation)
     .addNode("nameProject", nameProjectNode, {
