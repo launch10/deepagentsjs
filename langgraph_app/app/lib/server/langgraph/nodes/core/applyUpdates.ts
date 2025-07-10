@@ -2,15 +2,9 @@ import { CodeManager } from "@services/codeManager";
 import type { GraphState } from "@shared/state/graph";
 import { type FileData, type FileMap } from "@models/file";
 import { updateTaskHistory } from "@tools/taskHistory";
-import { isFirstMessage } from "@state/helpers";
-import { Template } from "@langgraph/models/template";
 import { baseNode } from "@nodes/core/templates/base";
-import { fileSpecRegistry } from "@shared/models/registry/fileSpecificationRegistry";
 import { fileSpecification as FileSpecTable } from "@db/schema";
-import { eq } from "drizzle-orm";
 import { db } from "@db";
-import { createProject, updateProject } from "@services/saveProject";
-import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
 // Node to apply the accumulated code updates back to the project files
 const applyUpdates = async(state: GraphState): Promise<Partial<GraphState>> => {

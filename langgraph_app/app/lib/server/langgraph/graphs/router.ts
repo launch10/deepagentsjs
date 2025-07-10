@@ -4,6 +4,7 @@ import { type GraphState } from "@shared/state/graph";
 import { graph as createGraph } from "@graphs/create";
 import { graph as updateGraph } from "@graphs/update";
 import { graph as nameProjectGraph } from "@graphs/core/nameProject";
+import { graphParams } from "./params";
 
 const addMessage = async(state: GraphState): Promise<Partial<GraphState>> => {
     return {
@@ -36,4 +37,4 @@ export const routerGraph = new StateGraph(GraphAnnotation)
     .addEdge("create", END)
     .addEdge("update", END)
 
-export const graph = routerGraph.compile();
+export const graph = routerGraph.compile(graphParams)

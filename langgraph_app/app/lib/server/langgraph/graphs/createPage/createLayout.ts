@@ -7,6 +7,7 @@ import { type CodeTask, CodeTaskType, TaskStatus } from "@models/codeTask";
 import { v4 as uuidv4 } from "uuid"
 import { FileSpecification } from "@models/fileSpecification";
 import { createLayoutNode } from "@nodes/createPage/createLayout";
+import { graphParams } from "@graphs/params";
 
 const queueEachSection = (state: GraphState): Send[] => {
     const layoutSpecs = fileSpecRegistry.getLayout();
@@ -30,8 +31,12 @@ const queueEachSection = (state: GraphState): Send[] => {
 }
 
 export const createLayoutGraph = new StateGraph(GraphAnnotation)
-    .addNode("createLayout", createLayoutNode)
+    .addNode("createLayout", createLayoutNode, {
+        cachePolicy: {
+            ttl: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 60 * 60 * 24 // 24 hours
+        }
+    })
     .addConditionalEdges(START, queueEachSection)
     .addEdge("createLayout", END);
 
-export const graph = createLayoutGraph.compile(); 
+export const graph = createLayoutGraph.compile(graphParams); 

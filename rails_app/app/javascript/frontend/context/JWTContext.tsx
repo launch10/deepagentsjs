@@ -1,5 +1,4 @@
 import React from 'react';
-
 export interface JWT {
     exp: number;
     iat: number;

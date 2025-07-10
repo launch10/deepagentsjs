@@ -37,6 +37,7 @@ class ProjectsController < SubscribedController
       end
     end
   end
+
   def create
     begin
       project = current_account.projects.create!(project_params)

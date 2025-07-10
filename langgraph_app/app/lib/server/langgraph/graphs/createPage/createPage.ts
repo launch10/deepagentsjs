@@ -7,6 +7,7 @@ import { graph as createSectionGraph } from "@graphs/createPage/createSection";
 import { graph as createLayoutGraph } from "@graphs/createPage/createLayout";
 import { graph as createStylesGraph } from "@graphs/createPage/createStyles";
 import { setupNode } from "@nodes/createPage/setup";
+import { graphParams } from "@graphs/params";
 
 const queueEachSection = (state: GraphState): Send[] => {
     const queue = state.app.codeTasks?.queue ?? [];
@@ -50,12 +51,16 @@ const waitForAllSections = (state: GraphState): GraphState => {
 export const createGraph = new StateGraph(GraphAnnotation)
     .addNode("startCreatePage", setupNode)
     .addNode("createStyles", createStylesGraph)
-    .addNode("planPage", planPageNode)
+    .addNode("planPage", planPageNode, {
+        cachePolicy: { ttl: 60 * 60 * 24 } // 24 hours
+    })
     .addNode("createSectionGraph", createSectionGraph)
     .addNode("waitForAllSections", waitForAllSections)
     .addNode("createLayoutGraph", createLayoutGraph)
     .addNode("queuePage", queuePageNode)
-    .addNode("assemblePage", assemblePageNode)
+    .addNode("assemblePage", assemblePageNode, { 
+        cachePolicy: { ttl: 60 * 60 * 24 } // 24 hours
+    })
 
     .addEdge(START, "startCreatePage")
     .addEdge("startCreatePage", "createStyles")
@@ -67,4 +72,4 @@ export const createGraph = new StateGraph(GraphAnnotation)
     .addEdge("queuePage", "assemblePage")
     .addEdge("assemblePage", END);
 
-export const graph = createGraph.compile();
+export const graph = createGraph.compile(graphParams);

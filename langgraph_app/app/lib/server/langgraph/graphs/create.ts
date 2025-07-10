@@ -1,3 +1,5 @@
+import { baseNode } from "../nodes/core/templates/base";
+import { graphParams } from "./params";
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { GraphAnnotation } from "@state/graph";
 import { loadCreateNode, projectPlanNode } from "@nodes/create";
@@ -8,7 +10,6 @@ import { getLlm } from "@langgraph/llm";
 import { LLMSkill } from "@langgraph/llm";
 import { PromptTemplate } from "@langchain/core/prompts";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { baseNode } from "../nodes/core/templates/base";
 
 const notifyCreateStart = async(state: GraphState, config: LangGraphRunnableConfig): Promise<Partial<GraphState>> => {
     // In the future: Pass this to future nodes once we can select theme by color
@@ -74,4 +75,4 @@ export const createGraph = new StateGraph(GraphAnnotation)
     .addEdge("applyUpdates", "saveProject")
     .addEdge("saveProject", END)
 
-export const graph = createGraph.compile();
+export const graph = createGraph.compile(graphParams);
