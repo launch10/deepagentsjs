@@ -83,7 +83,7 @@ export const assemblePagePrompt = async(state: GraphState): Promise<string> => {
         instructions = updatePageInstructions;
         sectionPlan = state.task.plan?.instruction;
         const project = Project.create(state.app?.project ?? {} as ProjectData);
-        files = await project.getEditableFiles();
+        files = await project.getEditableFiles(state.jwt);
     } else {
         const template = await Template.getTemplate('default');
         instructions = createPageInstructions;

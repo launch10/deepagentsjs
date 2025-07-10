@@ -25,7 +25,7 @@ type FileSearchOutput = z.infer<typeof FileSearchOutputSchema>;
 
 export async function initializeTools(state: GraphState): Promise<{ searchFiles: Tool }> {
     const project = Project.create(state.app?.project ?? {} as ProjectData)
-    const files = await project.getEditableFiles();
+    const files = await project.getEditableFiles(state.jwt);
 
     async function searchFiles(args: FileSearchInput): Promise<FileSearchOutput> {
         const {

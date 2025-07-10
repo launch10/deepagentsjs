@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path'; // Optional: if you want to resolve path
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { Template } from "../models/template";
+import { projectsApi } from "@rails_api/index";
 
 const saveToDisk = async (state: GraphState) => {
     const cacheDir = path.resolve(process.cwd(), '.cache');
@@ -67,32 +68,27 @@ export const createProject = async (state: GraphState, config: LangGraphRunnable
         content: state.app.files[filePath].content,
         file_specification_id: state.app.files[filePath].fileSpecificationId,
     }));
-    const requestJson = {
+    
+    const requestData = {
         project: {
             name: state.projectName,
             thread_id: threadId,
             theme_id: project?.themeId,
             files_attributes: changedFiles,
         }
-    }
+    };
 
-    const apiUrl = process.env.RAILS_API_URL;
-
-    console.log(`Creating project ${threadId}`)
-    if (apiUrl && threadId) {
-        fetch(`${apiUrl}/projects/${threadId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Authorization': `Bearer ${state.jwt}`,
-            },
-            body: JSON.stringify(requestJson)
-        }).catch(error => {
+    if (threadId && state.jwt) {
+        try {
+            const response = await projectsApi.updateProject(threadId, requestData, state.jwt);
+            if (!response.success) {
+                console.error('Failed to send initial project data to Rails API:', response.error);
+            }
+        } catch (error) {
             console.error('Failed to send initial project data to Rails API:', error);
-        });
+        }
     } else {
-        console.warn('RAILS_API_URL is not defined in environment variables. Skipping initial project creation POST request.');
+        console.warn('Thread ID or JWT not available. Skipping initial project creation request.');
     }
 
     return {};

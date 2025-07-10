@@ -4,6 +4,7 @@ import { type ProjectPlan } from "@shared/models/project/projectPlan";
 import { type PageData } from "@shared/models/page";
 import { projectSchema } from "@shared/models/project";
 import { type FileData, type FileMap } from "@shared/models/file";
+import { projectsApi } from "@rails_api/index";
 
 interface EditablePaths {
     includes: string[];
@@ -22,6 +23,8 @@ export class Project {
     public backupPath?: string;
     public readonly projectPlan: ProjectPlan;
     public readonly pages: PageData[];
+    public readonly themeId?: number;
+    private projectId?: string;
 
     private constructor(data: ProjectData) {
         const validation = projectSchema.safeParse(data);
@@ -39,6 +42,7 @@ export class Project {
         this.pages = data.pages;
         this.tenantId = data.tenantId;
         this.projectMode = data.projectMode;
+        this.themeId = data.themeId;
     }
 
     /**
@@ -68,9 +72,13 @@ export class Project {
         }
     }
 
-    getEditableFiles(): Promise<FileMap> {
+    setProjectId(projectId: string) {
+        this.projectId = projectId;
+    }
+
+    getEditableFiles(jwt: string): Promise<FileMap> {
         const { includes, excludes } = this.getEditableFilePaths();
-        return this.getFiles(includes, excludes);
+        return this.getFiles(includes, excludes, 'main', jwt);
     }
    
     /**
@@ -103,7 +111,8 @@ export class Project {
     async getFiles(
         filePaths: string[] = [], 
         excludes: string[] = [], // Added excludes parameter
-        source: 'main' | 'backup' = 'main'
+        source: 'main' | 'backup' = 'main',
+        jwt?: string
     ): Promise<FileMap> {
         const targetRoot = source === 'backup' ? this.backupPath : this.rootPath;
 
@@ -122,6 +131,37 @@ export class Project {
         
         const projectExists = await this.codeManager.checkProjectExists();
         if (!projectExists) {
+            // Fetch files from Rails API if project doesn't exist locally
+            if (this.projectId && jwt) {
+                console.log(`Project not found locally. Fetching files from Rails API for project ${this.projectId}`);
+                const response = await projectsApi.getProjectFiles(this.projectId, jwt);
+                
+                if (response.success && response.data) {
+                    // Convert array of files to FileMap format
+                    const filesToWrite: FileMap = {};
+                    for (const file of response.data) {
+                        if (file.path && file.content) {
+                            filesToWrite[file.path] = {
+                                content: file.content,
+                                fileSpecificationId: file.fileSpecificationId
+                            };
+                        }
+                    }
+                    // Write all files to local filesystem
+                    await this.codeManager.writeFiles(filesToWrite);
+                    console.log(`Successfully downloaded ${Object.keys(filesToWrite).length} files from Rails API`);
+                    
+                    // Now read the files from disk using the standard method
+                    // This ensures we apply the filePaths and excludes filters properly
+                    return this.codeManager.getFiles(targetRoot, filePaths, excludes, source);
+                } else {
+                    console.error('Failed to fetch files from Rails API:', response.error);
+                    throw new Error(`Failed to fetch project files: ${response.error?.message || 'Unknown error'}`);
+                }
+            } else {
+                console.warn('Cannot fetch files from Rails API: Missing projectId or JWT');
+                return results;
+            }
         } else {
             return this.codeManager.getFiles(targetRoot, filePaths, excludes, source);
         }
@@ -140,7 +180,8 @@ export class Project {
             rootPath: this.rootPath,
             backupPath: this.backupPath,
             projectPlan: this.projectPlan,
-            pages: this.pages
+            pages: this.pages,
+            themeId: this.themeId
         };
         return data;
     }

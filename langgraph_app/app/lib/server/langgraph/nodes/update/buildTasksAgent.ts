@@ -32,7 +32,7 @@ const identifyFilesNamedInError = (error: string, fileMap: FileMap): string[] =>
 
 const buildPrompt = async(state: GraphState): Promise<string> => {
   const project = Project.create(state.app?.project ?? {} as ProjectData);
-  const editableFiles = await project.getEditableFiles();
+  const editableFiles = await project.getEditableFiles(state.jwt);
   let files;
 
   const parser = StructuredOutputParser.fromZodSchema(codeTaskPlansSchema);
