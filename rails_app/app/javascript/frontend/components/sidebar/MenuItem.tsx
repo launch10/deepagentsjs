@@ -1,9 +1,9 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useEffect, useRef, useState } from 'react';
-import { type MenuItem as MenuItemType } from '../../types/menu';
+import { type MenuItem as MenuItem } from '../../types/menu';
 
 interface MenuItemProps {
-  item: MenuItemType;
+  item: MenuItem;
   onDelete?: (event: React.UIEvent) => void;
 }
 

@@ -8,6 +8,7 @@ import { graph as createLayoutGraph } from "@graphs/createPage/createLayout";
 import { graph as createStylesGraph } from "@graphs/createPage/createStyles";
 import { setupNode } from "@nodes/createPage/setup";
 import { graphParams } from "@graphs/params";
+import { keyFunc } from "@nodes/core/templates/base";
 
 const queueEachSection = (state: GraphState): Send[] => {
     const queue = state.app.codeTasks?.queue ?? [];
@@ -52,14 +53,20 @@ export const createGraph = new StateGraph(GraphAnnotation)
     .addNode("startCreatePage", setupNode)
     .addNode("createStyles", createStylesGraph)
     .addNode("planPage", planPageNode, {
-        cachePolicy: { ttl: 60 * 60 * 24 } // 24 hours
+        cachePolicy: { 
+            ttl: 60 * 60 * 24,
+            keyFunc: keyFunc,
+        }
     })
     .addNode("createSectionGraph", createSectionGraph)
     .addNode("waitForAllSections", waitForAllSections)
     .addNode("createLayoutGraph", createLayoutGraph)
     .addNode("queuePage", queuePageNode)
     .addNode("assemblePage", assemblePageNode, { 
-        cachePolicy: { ttl: 60 * 60 * 24 } // 24 hours
+        cachePolicy: { 
+            ttl: 60 * 60 * 24,
+            keyFunc: keyFunc
+        },
     })
 
     .addEdge(START, "startCreatePage")

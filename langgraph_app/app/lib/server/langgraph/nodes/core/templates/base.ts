@@ -2,6 +2,12 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { type GraphState } from "@shared/state/graph";
 import { v4 as uuidv4 } from "uuid";
 import { type CodeTask, CodeTaskType, CodeTaskAction, TaskStatus } from "@shared/models/codeTask";
+import { BaseMessage } from "@langchain/core/messages";
+
+export const keyFunc = (args: unknown): string => {
+    const { messages } = args[0] as { messages: BaseMessage[] };
+    return JSON.stringify(messages.map((m, idx) => [idx, m.content]));
+}
 
 type BuildTaskTitleFn = (state: GraphState, config: LangGraphRunnableConfig) => Record<string, any>;
 

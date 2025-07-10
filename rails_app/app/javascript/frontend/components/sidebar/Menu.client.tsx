@@ -1,3 +1,5 @@
+import axios from 'axios';
+import { router } from '@inertiajs/react'; 
 import { motion, type Variants } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dialog, DialogButton, DialogDescription, DialogRoot, DialogTitle } from '@components/ui/Dialog';
@@ -10,6 +12,12 @@ import { type MenuItemType } from '@types/menu';
 import { useMemo } from 'react';
 import { useStore } from '@nanostores/react';
 import { projectStore } from '@stores/project';
+import { pageStore } from '@stores/page';
+import { type Project } from '@types/project';
+import { toast } from 'react-toastify';
+import { createScopedLogger } from '@utils/logger';
+
+const logger = createScopedLogger('Menu');
 
 const menuVariants = {
   closed: {
@@ -38,40 +46,47 @@ export function Menu() {
   const [open, setOpen] = useState(false);
   const [dialogContent, setDialogContent] = useState<DialogContent>(null);
   const projects = useStore(projectStore.projects)
+  const { rootPath, threadId } = useStore(pageStore);
 
   useMemo(() => { 
     const menuItems: MenuItemType[] = projects.map((project: Project) => {
       return {
+        id: project.id,
         threadId: project.threadId,
         url: `/projects/${project.threadId}`,
         projectName: project.projectName,
         createdAt: new Date(project.createdAt),
         updatedAt: new Date(project.updatedAt),
-        thread: project,
       };
     });
+    if (menuItems.length === 0) return;
     setMenuItems(menuItems);
   }, [projects]);
 
-  // const deleteItem = useCallback((event: React.UIEvent, item: MenuItem) => {
-  //   event.preventDefault();
+  const deleteItem = useCallback(async (event: React.UIEvent, item: MenuItemType) => {
+    event.preventDefault();
 
-  //   if (db) {
-  //     deleteById(db, item.threadId)
-  //       .then(() => {
-  //         loadEntries();
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-  //         if (threadId.get() === item.threadId) {
-  //           // hard page navigation to clear the stores
-  //           window.location.pathname = '/';
-  //         }
-  //       })
-  //       .catch((error) => {
-  //         toast.error('Failed to delete conversation');
-  //         logger.error(error);
-  //       });
-  //   }
-  // }, []);
+    const response = await axios.delete(`${rootPath}/projects/${item.threadId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        'X-CSRF-Token': token,
+      },
+    }).then(() => {
+      if (threadId === item.threadId) {
+        // hard page navigation to clear the stores
+        // window.location.pathname = '/';
+        router.visit('/');
+      }
+    }).catch((error) => {
+      toast.error('Failed to delete conversation');
+      logger.error(error);
+    })
+
+    projectStore.remove(item.threadId);
+  }, []);
 
   const closeDialog = () => {
     setDialogContent(null);

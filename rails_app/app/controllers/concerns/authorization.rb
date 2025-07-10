@@ -36,13 +36,13 @@ module Authorization
   end
 
   def jwt_user(allow_headers: false)
-    jwt = cookies[:jwt] || (allow_headers ? request.headers['Authorization'].split(' ').last : nil)
+    jwt = cookies[:jwt] || (allow_headers ? request.headers['Authorization']&.split(' ')&.last : nil)
     
     if jwt
       payload = jwt_payload(jwt)
-      return nil if payload.blank? || payload[0]["sub"].blank?
+      return nil if payload.blank? || payload.dig(0, "sub").blank?
 
-      User.find(payload[0]["sub"])
+      User.find(payload.dig(0, "sub"))
     end
   end
 

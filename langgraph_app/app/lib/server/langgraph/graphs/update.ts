@@ -7,6 +7,7 @@ import { loadUpdateNode, backupProjectNode, buildTasksAgent, updateCodeAgent } f
 import { applyUpdatesNode, saveNode } from "@nodes/core"
 import { ConfigurationAnnotation } from "@state/configuration";
 import { graphParams } from "@graphs/params";
+import { keyFunc } from "@nodes/core/templates/base";
 
 const queueTasks = async(state: GraphState) => {
     if (!state.app?.codeTasks || !state.app.codeTasks.queue) {
@@ -44,12 +45,14 @@ export const updateGraph = new StateGraph(GraphAnnotation, ConfigurationAnnotati
     .addNode("backupProject", backupProjectNode)
     .addNode("buildTasks", buildTasksAgent, {
         cachePolicy: {
-            ttl: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 60 * 60 * 24 // 24 hours
+            ttl: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 60 * 60 * 24, // 24 hours
+            keyFunc: keyFunc
         }
     })
     .addNode("updateCodeAgent", updateCodeAgent, {
         cachePolicy: {
-            ttl: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 60 * 60 * 24 // 24 hours
+            ttl: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 60 * 60 * 24, // 24 hours
+            keyFunc: keyFunc
         }
     })
     .addNode("createPageGraph", createPageGraph)

@@ -1,6 +1,6 @@
 import { type ThreadData } from "./thread";
-
 export interface MenuItemType {
+  id: string;
   threadId: string;
   url: string;
   projectName: string;

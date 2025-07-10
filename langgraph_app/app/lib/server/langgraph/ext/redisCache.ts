@@ -49,6 +49,8 @@ export class RedisCache<V = unknown> extends BaseCache<V> {
       pipeline.hgetall(this.getRedisKey(fullKey));
     }
     const results = await pipeline.exec();
+    console.log(`Found ${results.length} values in Redis`)
+    console.log(`Here are the values: ${results}`)
 
     if (!results) {
       return [];
@@ -70,6 +72,7 @@ export class RedisCache<V = unknown> extends BaseCache<V> {
       // We must check for the presence of our expected fields.
       if (cached && cached.enc && cached.val) {
         try {
+          debugger;
           const value = await this.serde.loadsTyped(
             cached.enc,
             // ioredis returns strings by default; convert to Buffer if val is a string
@@ -83,6 +86,8 @@ export class RedisCache<V = unknown> extends BaseCache<V> {
       }
     }
 
+    console.log(`Found ${foundValues.length} values in Redis`)
+    console.log(`Here are the values: ${foundValues}`)
     return foundValues;
   }
 

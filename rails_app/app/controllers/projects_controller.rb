@@ -60,6 +60,15 @@ class ProjectsController < SubscribedController
     render json: current_project.to_mini_json
   end
 
+  def destroy
+    project = current_account.projects.find_by(thread_id: params[:thread_id])
+    if project.destroy
+      head :no_content
+    else
+      render json: { errors: project.errors.full_messages }, status: :unprocessable_entity
+    end
+  end
+
   def files
     template_files = Template.find_by(name: "default").files
     template_files_by_key = template_files.index_by(&:path)

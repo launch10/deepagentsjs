@@ -1,10 +1,12 @@
 export interface ApiProject {
+  id: number;
   thread_id: string;
   project_name: string;
   created_at: string;
   updated_at: string;
 }
 export interface Project {
+  id: number;
   threadId: string;
   projectName: string;
   createdAt: Date;
@@ -32,6 +34,7 @@ export function normalize(project: MaybeProjectArray): Project[] {
 function normalizeOneProject(project: UnknownProjectType): Project {
   if (isApiProject(project)) {
     return {
+        id: project.id,
         threadId: project.thread_id,
         projectName: project.project_name,
         createdAt: new Date(project.created_at),
@@ -39,6 +42,7 @@ function normalizeOneProject(project: UnknownProjectType): Project {
       };
   }
   return {
+    id: project.id,
     threadId: project.threadId,
     projectName: project.projectName,
     createdAt: project.createdAt,
