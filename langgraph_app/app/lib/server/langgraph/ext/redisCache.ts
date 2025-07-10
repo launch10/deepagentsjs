@@ -35,7 +35,7 @@ export class RedisCache<V = unknown> extends BaseCache<V> {
   }
 
   /**
-   * Retrieves multiple cache entries from Redis in a single batch operation.
+   * Retrieves multiple cache entries from Redis.
    * @param keys An array of `CacheFullKey`s to retrieve.
    * @returns A promise that resolves to an array of found key-value pairs.
    *   Items not found in the cache are omitted from the result.
@@ -43,56 +43,33 @@ export class RedisCache<V = unknown> extends BaseCache<V> {
   async get(keys: CacheFullKey[]): Promise<{ key: CacheFullKey; value: V }[]> {
     if (!keys.length) return [];
 
-    // Use a pipeline to batch all HGETALL commands into a single round-trip.
-    const pipeline = this.client.pipeline();
-    for (const fullKey of keys) {
-      pipeline.hgetall(this.getRedisKey(fullKey));
-    }
-    const results = await pipeline.exec();
-    console.log(`Found ${results.length} values in Redis`)
-    console.log(`Here are the values: ${results}`)
-
-    if (!results) {
-      return [];
-    }
-
     const foundValues: { key: CacheFullKey; value: V }[] = [];
-    for (let i = 0; i < results.length; i++) {
-      const [error, result] = results[i];
-      const fullKey = keys[i];
 
-      if (error) {
-        console.error(`Error fetching key ${this.getRedisKey(fullKey)} from Redis:`, error);
-        continue;
-      }
-      
-      const cached = result as { enc?: string; val?: string | Buffer };
+    for (const fullKey of keys) {
+      try {
+        const redisKey = this.getRedisKey(fullKey);
+        const cached = await this.client.hgetall(redisKey);
 
-      // HGETALL on a non-existent or expired key returns an empty object.
-      // We must check for the presence of our expected fields.
-      if (cached && cached.enc && cached.val) {
-        try {
-          debugger;
-          const value = await this.serde.loadsTyped(
-            cached.enc,
-            // ioredis returns strings by default; convert to Buffer if val is a string
-            // representation of binary data (depends on serde layer). Assuming serde handles it.
-            cached.val
-          );
-          foundValues.push({ key: fullKey, value });
-        } catch (e) {
-          console.error(`Failed to deserialize value for key ${this.getRedisKey(fullKey)}`, e);
+        // HGETALL on a non-existent key returns an empty object
+        if (cached && cached.enc && cached.val) {
+          try {
+            const value = await this.serde.loadsTyped(cached.enc, cached.val);
+            foundValues.push({ key: fullKey, value });
+          } catch (e) {
+            console.error(`Failed to deserialize value for key ${redisKey}:`, e);
+            console.error(`Cached data - enc: ${cached.enc}, val: ${typeof cached.val === 'string' ? cached.val.substring(0, 100) + '...' : cached.val}`);
+          }
         }
+      } catch (error) {
+        console.error(`Error fetching key ${this.getRedisKey(fullKey)} from Redis:`, error);
       }
     }
 
-    console.log(`Found ${foundValues.length} values in Redis`)
-    console.log(`Here are the values: ${foundValues}`)
     return foundValues;
   }
 
   /**
-   * Stores multiple key-value pairs in Redis in a single batch operation.
+   * Stores multiple key-value pairs in Redis.
    * @param pairs An array of objects containing the key, value, and optional TTL to set.
    */
   async set(
@@ -100,24 +77,22 @@ export class RedisCache<V = unknown> extends BaseCache<V> {
   ): Promise<void> {
     if (!pairs.length) return;
 
-    // Use a pipeline to batch all HSET and EXPIRE commands.
-    const pipeline = this.client.pipeline();
-
     for (const { key: fullKey, value, ttl } of pairs) {
-      const redisKey = this.getRedisKey(fullKey);
-      const [enc, val] = await this.serde.dumpsTyped(value);
+      try {
+        const redisKey = this.getRedisKey(fullKey);
+        const [enc, val] = await this.serde.dumpsTyped(value);
 
-      // Store the encoding type and the value in a Redis Hash.
-      // ioredis handles Uint8Array/Buffer correctly by default.
-      pipeline.hset(redisKey, { enc, val });
+        // Store the encoding type and the value in a Redis Hash
+        await this.client.hset(redisKey, { enc, val });
 
-      // Use Redis's built-in expiration for efficiency.
-      if (ttl != null && ttl > 0) {
-        pipeline.expire(redisKey, ttl);
+        // Set expiration if provided
+        if (ttl != null && ttl > 0) {
+          await this.client.expire(redisKey, ttl);
+        }
+      } catch (error) {
+        console.error(`Error setting key ${this.getRedisKey(fullKey)} in Redis:`, error);
       }
     }
-
-    await pipeline.exec();
   }
 
   /**
