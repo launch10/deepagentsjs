@@ -83,6 +83,12 @@ importers:
       '@langchain/langgraph':
         specifier: ^0.3.6
         version: 0.3.7(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zod-to-json-schema@3.24.5(zod@3.24.4))
+      '@langchain/langgraph-api':
+        specifier: ^0.0.45
+        version: 0.0.45(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(@langchain/langgraph-checkpoint@0.0.18(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4))))(@langchain/langgraph-sdk@0.0.90(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@langchain/langgraph@0.3.7(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zod-to-json-schema@3.24.5(zod@3.24.4)))(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4))(typescript@5.8.3)
+      '@langchain/langgraph-checkpoint':
+        specifier: ^0.0.18
+        version: 0.0.18(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))
       '@langchain/langgraph-checkpoint-postgres':
         specifier: ^0.0.5
         version: 0.0.5(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(@langchain/langgraph-checkpoint@0.0.18(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4))))
@@ -1262,6 +1268,19 @@ packages:
       '@langchain/langgraph-sdk':
         optional: true
 
+  '@langchain/langgraph-api@0.0.45':
+    resolution: {integrity: sha512-6PFb8Cmtdu49+mo0g/TRuvQQJ61E2rypWa6a6Exm8oq3XfSHyI1SALn+R0j+Qd2rsV3lpjozf5RIY88D71yQCQ==}
+    engines: {node: ^18.19.0 || >=20.16.0}
+    peerDependencies:
+      '@langchain/core': ^0.3.59
+      '@langchain/langgraph': ^0.2.57 || ^0.3.0
+      '@langchain/langgraph-checkpoint': ~0.0.16
+      '@langchain/langgraph-sdk': ~0.0.70
+      typescript: ^5.5.4
+    peerDependenciesMeta:
+      '@langchain/langgraph-sdk':
+        optional: true
+
   '@langchain/langgraph-checkpoint-postgres@0.0.5':
     resolution: {integrity: sha512-e98JdEybEVl9ZiL4BckMz6TlStRnXtmFjoDZWVs+EKuQjqk+6r/Kn1S08D1+NLslXbLPPKX/mk+rRS/eHE3Bdw==}
     engines: {node: '>=18'}
@@ -1296,6 +1315,11 @@ packages:
 
   '@langchain/langgraph-ui@0.0.43':
     resolution: {integrity: sha512-UqmtkAzriQRlmm6SY9ycEBGSiU/8jrWlLDcGEqIdh+3aCVDXrDmocv9stW5WSPs9mj/wBQIwWNSqAywB2f0EWA==}
+    engines: {node: ^18.19.0 || >=20.16.0}
+    hasBin: true
+
+  '@langchain/langgraph-ui@0.0.45':
+    resolution: {integrity: sha512-e21YO85y/lJFMBMqZYc93HJP3R+G3wFeoAi7bgr2FTfngwIJkA2ZtFZLdesRlQUpPkDQq6EVPF6gWM6zh5ZoHw==}
     engines: {node: ^18.19.0 || >=20.16.0}
     hasBin: true
 
@@ -5894,6 +5918,42 @@ snapshots:
       - openai
       - supports-color
 
+  '@langchain/langgraph-api@0.0.45(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(@langchain/langgraph-checkpoint@0.0.18(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4))))(@langchain/langgraph-sdk@0.0.90(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@langchain/langgraph@0.3.7(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zod-to-json-schema@3.24.5(zod@3.24.4)))(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4))(typescript@5.8.3)':
+    dependencies:
+      '@babel/code-frame': 7.27.1
+      '@hono/node-server': 1.15.0(hono@4.7.10)
+      '@hono/zod-validator': 0.2.2(hono@4.7.10)(zod@3.25.76)
+      '@langchain/core': 0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4))
+      '@langchain/langgraph': 0.3.7(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zod-to-json-schema@3.24.5(zod@3.24.4))
+      '@langchain/langgraph-checkpoint': 0.0.18(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))
+      '@langchain/langgraph-ui': 0.0.45
+      '@types/json-schema': 7.0.15
+      '@typescript/vfs': 1.6.1(typescript@5.8.3)
+      dedent: 1.6.0
+      dotenv: 16.5.0
+      exit-hook: 4.0.0
+      hono: 4.7.10
+      langsmith: 0.3.40(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4))
+      open: 10.1.2
+      semver: 7.7.2
+      stacktrace-parser: 0.1.11
+      superjson: 2.2.2
+      tsx: 4.19.4
+      typescript: 5.8.3
+      uuid: 10.0.0
+      winston: 3.17.0
+      winston-console-format: 1.0.8
+      zod: 3.25.76
+    optionalDependencies:
+      '@langchain/langgraph-sdk': 0.0.90(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+    transitivePeerDependencies:
+      - '@opentelemetry/api'
+      - '@opentelemetry/exporter-trace-otlp-proto'
+      - '@opentelemetry/sdk-trace-base'
+      - babel-plugin-macros
+      - openai
+      - supports-color
+
   '@langchain/langgraph-checkpoint-postgres@0.0.5(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4)))(@langchain/langgraph-checkpoint@0.0.18(@langchain/core@0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4))))':
     dependencies:
       '@langchain/core': 0.3.62(@opentelemetry/api@1.9.0)(openai@4.97.0(ws@8.18.2)(zod@3.24.4))
@@ -5952,6 +6012,14 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
 
   '@langchain/langgraph-ui@0.0.43':
+    dependencies:
+      '@commander-js/extra-typings': 13.1.0(commander@13.1.0)
+      commander: 13.1.0
+      esbuild: 0.25.4
+      esbuild-plugin-tailwindcss: 2.0.1
+      zod: 3.25.76
+
+  '@langchain/langgraph-ui@0.0.45':
     dependencies:
       '@commander-js/extra-typings': 13.1.0(commander@13.1.0)
       commander: 13.1.0
@@ -8119,7 +8187,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.9.0(debug@4.4.1))
+      retry-axios: 2.6.0(axios@1.9.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -9530,7 +9598,7 @@ snapshots:
       path-parse: 1.0.7
       supports-preserve-symlinks-flag: 1.0.0
 
-  retry-axios@2.6.0(axios@1.9.0(debug@4.4.1)):
+  retry-axios@2.6.0(axios@1.9.0):
     dependencies:
       axios: 1.9.0(debug@4.4.1)
 

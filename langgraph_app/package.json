@@ -61,6 +61,8 @@
     "@langchain/core": "^0.3.58",
     "@langchain/groq": "^0.2.2",
     "@langchain/langgraph": "^0.3.6",
+    "@langchain/langgraph-api": "^0.0.45",
+    "@langchain/langgraph-checkpoint": "^0.0.18",
     "@langchain/langgraph-checkpoint-postgres": "^0.0.5",
     "@langchain/langgraph-cli": "^0.0.43",
     "@langchain/langgraph-sdk": "^0.0.90",
