@@ -53,17 +53,28 @@ export class RedisCache<V = unknown> extends BaseCache<V> {
         // HGETALL on a non-existent key returns an empty object
         if (cached && cached.enc && cached.val) {
           try {
-            const value = await this.serde.loadsTyped(cached.enc, cached.val);
+            // Handle base64 encoded data from Redis
+            let valData: Uint8Array | string;
+            if (cached.enc === 'json' && typeof cached.val === 'string') {
+              // For JSON data, decode from base64 back to Uint8Array
+              valData = new Uint8Array(Buffer.from(cached.val, 'base64'));
+            } else {
+              valData = cached.val;
+            }
+            
+            const value = await this.serde.loadsTyped(cached.enc, valData);
             foundValues.push({ key: fullKey, value });
           } catch (e) {
             console.error(`Failed to deserialize value for key ${redisKey}:`, e);
             console.error(`Cached data - enc: ${cached.enc}, val: ${typeof cached.val === 'string' ? cached.val.substring(0, 100) + '...' : cached.val}`);
           }
+        } else {
         }
       } catch (error) {
         console.error(`Error fetching key ${this.getRedisKey(fullKey)} from Redis:`, error);
       }
     }
+
 
     return foundValues;
   }
@@ -83,7 +94,9 @@ export class RedisCache<V = unknown> extends BaseCache<V> {
         const [enc, val] = await this.serde.dumpsTyped(value);
 
         // Store the encoding type and the value in a Redis Hash
-        await this.client.hset(redisKey, { enc, val });
+        // Convert Uint8Array to base64 string for proper Redis storage
+        const valStr = val instanceof Uint8Array ? Buffer.from(val).toString('base64') : val;
+        await this.client.hset(redisKey, { enc, val: valStr });
 
         // Set expiration if provided
         if (ttl != null && ttl > 0) {
