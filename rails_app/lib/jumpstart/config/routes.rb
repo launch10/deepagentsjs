@@ -67,6 +67,8 @@ Jumpstart::Engine.routes.draw do
     get :business
     get :existing_apps
     get :integrations
+
+    get :langgraph_overview
   end
 
   root to: "admin#show"
