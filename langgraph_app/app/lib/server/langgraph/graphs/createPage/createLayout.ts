@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from "uuid"
 import { FileSpecification } from "@models/fileSpecification";
 import { createLayoutNode } from "@nodes/createPage/createLayout";
 import { graphParams } from "@graphs/params";
-import { keyFunc } from "@nodes/core/templates/base";
+import { cachePolicy } from "@nodes/core/templates/base";
 
 const queueEachSection = (state: GraphState): Send[] => {
     const layoutSpecs = fileSpecRegistry.getLayout();
@@ -32,12 +32,7 @@ const queueEachSection = (state: GraphState): Send[] => {
 }
 
 export const createLayoutGraph = new StateGraph(GraphAnnotation)
-    .addNode("createLayout", createLayoutNode, {
-        cachePolicy: {
-            ttl: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 60 * 60 * 24, // 24 hours
-            keyFunc: keyFunc
-        }
-    })
+    .addNode("createLayout", createLayoutNode, { cachePolicy })
     .addConditionalEdges(START, queueEachSection)
     .addEdge("createLayout", END);
 
