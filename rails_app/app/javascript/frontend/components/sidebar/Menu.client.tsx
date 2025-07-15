@@ -59,7 +59,6 @@ export function Menu() {
         updatedAt: new Date(project.updatedAt),
       };
     });
-    if (menuItems.length === 0) return;
     setMenuItems(menuItems);
   }, [projects]);
 
@@ -139,9 +138,9 @@ export function Menu() {
             Start new chat
           </a>
         </div>
-        <div className="text-bolt-elements-textPrimary font-medium pl-6 pr-5 my-2">Your Chats</div>
+        <div className="text-bolt-elements-textPrimary font-medium pl-6 pr-5 my-2">Your Projects</div>
         <div className="flex-1 overflow-scroll pl-4 pr-5 pb-5">
-          {menuItems.length === 0 && <div className="pl-2 text-bolt-elements-textTertiary">No previous conversations</div>}
+          {menuItems.length === 0 && <div className="pl-2 text-bolt-elements-textTertiary">No previous projects</div>}
           <DialogRoot open={dialogContent !== null}>
             {binDates(menuItems).map(({ category, items }) => (
               <div key={category} className="mt-4 first:mt-0 space-y-1">

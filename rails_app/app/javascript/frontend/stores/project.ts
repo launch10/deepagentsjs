@@ -43,6 +43,11 @@ export class ProjectStore {
   remove(projectId: string): void {
     this.projectsById.setKey(projectId, undefined);
     this.projectFiles.setKey(projectId, undefined);
+    
+    // Update the projects array by filtering out the removed project
+    const currentProjects = this.projects.get();
+    const filteredProjects = currentProjects.filter(p => p.threadId !== projectId);
+    this.projects.set(filteredProjects);
   }
 
   // getProjectFiles(projectId: string): ReadableAtom<FileMap | undefined> {
