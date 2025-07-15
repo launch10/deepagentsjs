@@ -5,6 +5,7 @@ Jumpstart::Engine.routes.draw do
 
   resource :docs do
     # Get Started
+    get :installation_jumpstart
     get :installation
     get :configuration
     get :upgrading
