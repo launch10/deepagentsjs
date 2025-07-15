@@ -11,6 +11,7 @@ Jumpstart::Engine.routes.draw do
     get :upgrading
     get :deploying
     get :screencasts
+    get :adding_docs
 
     # Users
     get :authentication
