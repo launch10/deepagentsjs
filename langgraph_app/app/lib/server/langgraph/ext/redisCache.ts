@@ -15,9 +15,10 @@ export type CacheFullKey = [namespace: CacheNamespace, key: string];
  */
 export class RedisCache<V = unknown> extends BaseCache<V> {
   private readonly client: Redis;
+  private readonly namespace: CacheNamespace;
   serde: SerializerProtocol = new JsonPlusSerializer();
 
-  constructor(redisUrl: string) {
+  constructor(redisUrl: string, namespace?: CacheNamespace) {
     super();
     if (!redisUrl) {
       throw new Error(
@@ -25,10 +26,15 @@ export class RedisCache<V = unknown> extends BaseCache<V> {
       );
     }
     this.client = new Redis(redisUrl);
+    this.namespace = namespace || ["node_cache"];
   }
 
   private getRedisKey(fullKey: CacheFullKey): string {
-    const [namespace, key] = fullKey;
+    let namespace = this.namespace;
+    const [originalNamespace, key] = fullKey;
+    if (originalNamespace.length > 0) {
+        namespace = [...namespace, ...originalNamespace];
+    }
     const strNamespace = namespace.join(",");
     // Use a colon as a separator for better readability and namespacing in Redis.
     return `${strNamespace}:${key}`;

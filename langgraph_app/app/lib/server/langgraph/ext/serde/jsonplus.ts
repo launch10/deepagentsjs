@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-instanceof/no-instanceof */
 import { load } from "@langchain/core/load";
 import { type SerializerProtocol } from "@langchain/langgraph-checkpoint";
 import { stringify } from "./fast-safe-stringify";
@@ -82,8 +80,7 @@ async function _reviver(value: any): Promise<any> {
 }
 
 function _encodeConstructorArgs(
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  constructor: Function,
+  constructor: new (...args: any[]) => any,
   method?: string,
   args?: any[],
   kwargs?: Record<string, any>
@@ -105,13 +102,13 @@ function _default(obj: any): any {
       type: "undefined",
     };
   } else if (obj instanceof Set || obj instanceof Map) {
-    return _encodeConstructorArgs(obj.constructor, undefined, [
+    return _encodeConstructorArgs(obj.constructor as new (...args: any[]) => any, undefined, [
       Array.from(obj),
     ]);
   } else if (obj instanceof RegExp) {
     return _encodeConstructorArgs(RegExp, undefined, [obj.source, obj.flags]);
   } else if (obj instanceof Error) {
-    return _encodeConstructorArgs(obj.constructor, undefined, [obj.message]);
+    return _encodeConstructorArgs(obj.constructor as new (...args: any[]) => any, undefined, [obj.message]);
     // TODO: Remove special case
   } else if (obj?.lg_name === "Send") {
     return {

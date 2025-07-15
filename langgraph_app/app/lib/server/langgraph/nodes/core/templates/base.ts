@@ -7,7 +7,14 @@ import { BaseMessage } from "@langchain/core/messages";
 export const keyFunc = (args: unknown[]): string => {
     const params = args[0] as Record<string, unknown> || {} as { messages: BaseMessage[] };
     const messages = params.messages as BaseMessage[] || [];
-    return JSON.stringify(messages.map((m: BaseMessage, idx: number) => [idx, m.content]));
+    const humanMessages = messages.filter((m: BaseMessage) => m.getType() === "human");
+    const cachekey = JSON.stringify(humanMessages.map((m: BaseMessage, idx: number) => [idx, m.content]));
+    
+    console.log(`[CacheKeyFunc] Generating cache key from ${humanMessages.length} human messages`);
+    console.log(`[CacheKeyFunc] Human messages:`, humanMessages.map(m => ({ type: m.getType(), content: m.content?.toString().substring(0, 100) })));
+    console.log(`[CacheKeyFunc] Generated cache key: ${cachekey.substring(0, 200)}${cachekey.length > 200 ? '...' : ''}`);
+    
+    return cachekey;
 }
 
 export const cachePolicy = { 
