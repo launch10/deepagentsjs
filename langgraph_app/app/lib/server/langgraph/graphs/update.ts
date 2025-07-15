@@ -7,7 +7,7 @@ import { loadUpdateNode, backupProjectNode, buildTasksAgent, updateCodeAgent } f
 import { applyUpdatesNode, saveNode } from "@nodes/core"
 import { ConfigurationAnnotation } from "@state/configuration";
 import { graphParams } from "@graphs/params";
-import { keyFunc } from "@nodes/core/templates/base";
+import { cachePolicy } from "@nodes/core/templates/base";
 
 const queueTasks = async(state: GraphState) => {
     if (!state.app?.codeTasks || !state.app.codeTasks.queue) {
@@ -43,18 +43,8 @@ const waitForUpdates = async(state: GraphState) => {
 export const updateGraph = new StateGraph(GraphAnnotation, ConfigurationAnnotation)
     .addNode("startUpdate", loadUpdateNode)
     .addNode("backupProject", backupProjectNode)
-    .addNode("buildTasks", buildTasksAgent, {
-        cachePolicy: {
-            ttl: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 60 * 60 * 24, // 24 hours
-            keyFunc: keyFunc
-        }
-    })
-    .addNode("updateCodeAgent", updateCodeAgent, {
-        cachePolicy: {
-            ttl: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 60 * 60 * 24, // 24 hours
-            keyFunc: keyFunc
-        }
-    })
+    .addNode("buildTasks", buildTasksAgent, { cachePolicy })
+    .addNode("updateCodeAgent", updateCodeAgent, { cachePolicy })
     .addNode("createPageGraph", createPageGraph)
     .addNode("createSectionGraph", createSectionGraph)
     .addNode("waitForUpdates", waitForUpdates)

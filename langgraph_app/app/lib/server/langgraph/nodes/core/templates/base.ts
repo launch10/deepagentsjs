@@ -4,9 +4,15 @@ import { v4 as uuidv4 } from "uuid";
 import { type CodeTask, CodeTaskType, CodeTaskAction, TaskStatus } from "@shared/models/codeTask";
 import { BaseMessage } from "@langchain/core/messages";
 
-export const keyFunc = (args: unknown): string => {
-    const { messages } = args[0] as { messages: BaseMessage[] };
-    return JSON.stringify(messages.map((m, idx) => [idx, m.content]));
+export const keyFunc = (args: unknown[]): string => {
+    const params = args[0] as Record<string, unknown> || {} as { messages: BaseMessage[] };
+    const messages = params.messages as BaseMessage[] || [];
+    return JSON.stringify(messages.map((m: BaseMessage, idx: number) => [idx, m.content]));
+}
+
+export const cachePolicy = { 
+    ttl: 60 * 60 * 24, // 1 day
+    keyFunc
 }
 
 type BuildTaskTitleFn = (state: GraphState, config: LangGraphRunnableConfig) => Record<string, any>;
