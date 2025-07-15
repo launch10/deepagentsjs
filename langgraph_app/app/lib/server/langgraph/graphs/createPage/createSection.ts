@@ -3,22 +3,12 @@ import { setupNode } from "~/lib/server/langgraph/nodes/createPage/createSection
 import { GraphAnnotation } from "@state/graph";
 import { planCreateSectionNode, createSectionNode } from "~/lib/server/langgraph/nodes/createPage/createSection";
 import { graphParams } from "@graphs/params";
-import { keyFunc } from "@nodes/core/templates/base";
+import { cachePolicy } from "@nodes/core/templates/base";
 
 export const createSectionGraph = new StateGraph(GraphAnnotation)
     .addNode("startCreateSection", setupNode)
-    .addNode("planCreateSection", planCreateSectionNode, {
-        cachePolicy: {
-            ttl: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 60 * 60 * 24, // 24 hours
-            keyFunc: keyFunc
-        }
-    })
-    .addNode("createSection", createSectionNode, {
-        cachePolicy: {
-            ttl: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 60 * 60 * 24, // 24 hours
-            keyFunc: keyFunc
-        }
-    })
+    .addNode("planCreateSection", planCreateSectionNode, { cachePolicy })
+    .addNode("createSection", createSectionNode, { cachePolicy })
 
     .addEdge(START, "startCreateSection")
     .addEdge("startCreateSection", "planCreateSection")
