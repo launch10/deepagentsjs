@@ -39,7 +39,9 @@ type LanggraphContextType = {
     fetchThreads: () => Promise<void>, // Decorate with tenantId from encrypted cookies
     submit: (message: string) => void,
     stop: () => void,
-    events: BackendEvent[]
+    events: BackendEvent[],
+    getMessagesMetadata: (message: any) => any,
+    submitWithCheckpoint: (input: any, config: { checkpoint: any }) => void,
 };
 
 const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
@@ -109,15 +111,19 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     };
   }, [pageId]);
 
-  const onSubmit = (message: string) => {
+  const onSubmit = (message: string, checkpoint?: string) => {
     setIsLoading(true);
     setChatHasStarted(true);
-    stream.submit({
+    const input = {
       userRequest: { type: "human", content: message },
       jwt: jwt!,
-    }, {
-      streamMode: ["events", "values", "custom"]
-    }); // Values provides final state
+    };
+    const checkpointConfig = checkpoint ? { checkpoint } : undefined;
+    const config = {
+      streamMode: ["events", "values", "custom"],
+      ...checkpointConfig,
+    }
+    stream.submit(input, config); // Values provides final state
   };
 
   React.useEffect(() => {
@@ -228,7 +234,8 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     fetchThreads,
     submit: onSubmit,
     stop: stream.stop,
-    events
+    events,
+    getMessagesMetadata: stream.getMessagesMetadata,
   }
 
   return (

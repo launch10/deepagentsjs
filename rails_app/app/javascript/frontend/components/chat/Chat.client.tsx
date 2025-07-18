@@ -27,6 +27,7 @@ const logger = createScopedLogger('Chat');
 
 const buildAction = (task: CodeTask, messageId: string): ActionCore => {
     return {
+        title: task.title,
         task,
         messageId,
     };

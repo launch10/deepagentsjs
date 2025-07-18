@@ -3,6 +3,7 @@ import { classNames } from '@lib/utils/classNames';
 import { AssistantMessage } from './AssistantMessage';
 import { UserMessage } from './UserMessage';
 import type { BaseMessageLike } from '@langchain/core/messages';
+import { useLanggraphContext } from '@context/LanggraphContext';
 
 interface MessagesProps {
   id?: string;
@@ -13,6 +14,7 @@ interface MessagesProps {
 
 export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: MessagesProps, ref) => {
   const { id, isStreaming = false, messages = [] } = props;
+  const { getMessagesMetadata, submit: regenerate } = useLanggraphContext();
 
   return (
     <div id={id} ref={ref} className={props.className}>
@@ -23,6 +25,11 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
             const isUserMessage = role === 'human';
             const isFirst = index === 0;
             const isLast = index === messages.length - 1;
+            const isAIMessage = role === 'ai';
+
+            // Get metadata for regenerate functionality
+            const meta = getMessagesMetadata ? getMessagesMetadata(message) : null;
+            const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
 
             return (
               <div
@@ -41,10 +48,26 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
                 )}
                 <div className="grid grid-col-1 w-full">
                   {isUserMessage ? <UserMessage content={messageContentString} /> : 
-                                  <AssistantMessage 
-                                    content={messageContentString} 
-                                    showChanges={isLast}
-                                  />}
+                                  <>
+                                    <AssistantMessage 
+                                      content={messageContentString} 
+                                      showChanges={isLast}
+                                    />
+                                    {isAIMessage && parentCheckpoint && !isStreaming && (
+                                      <div className="mt-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            regenerate(undefined, parentCheckpoint);
+                                          }}
+                                          className="text-sm text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors duration-200 flex items-center gap-1"
+                                        >
+                                          <div className="i-ph:arrow-clockwise text-base"></div>
+                                          <span>Regenerate</span>
+                                        </button>
+                                      </div>
+                                    )}
+                                  </>}
                 </div>
               </div>
             );
