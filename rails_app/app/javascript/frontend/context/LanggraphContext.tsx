@@ -37,11 +37,10 @@ type LanggraphContextType = {
     codeTasks: CodeTasksState,
     currentThreadId: string | undefined,
     fetchThreads: () => Promise<void>, // Decorate with tenantId from encrypted cookies
-    submit: (message: string) => void,
+    submit: (message: string, checkpoint?: string) => void,
     stop: () => void,
     events: BackendEvent[],
     getMessagesMetadata: (message: any) => any,
-    submitWithCheckpoint: (input: any, config: { checkpoint: any }) => void,
 };
 
 const LanggraphContext = React.createContext<LanggraphContextType | undefined>(

@@ -15,6 +15,7 @@ interface MessagesProps {
 export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: MessagesProps, ref) => {
   const { id, isStreaming = false, messages = [] } = props;
   const { getMessagesMetadata, submit: regenerate } = useLanggraphContext();
+  const isDevEnv = (import.meta.env.VITE_ENV === 'development');
 
   return (
     <div id={id} ref={ref} className={props.className}>
@@ -25,9 +26,8 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
             const isUserMessage = role === 'human';
             const isFirst = index === 0;
             const isLast = index === messages.length - 1;
-            const isAIMessage = role === 'ai';
 
-            // Get metadata for regenerate functionality
+            // Get metadata for the current message
             const meta = getMessagesMetadata ? getMessagesMetadata(message) : null;
             const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
 
@@ -47,27 +47,31 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
                   </div>
                 )}
                 <div className="grid grid-col-1 w-full">
-                  {isUserMessage ? <UserMessage content={messageContentString} /> : 
-                                  <>
-                                    <AssistantMessage 
-                                      content={messageContentString} 
-                                      showChanges={isLast}
-                                    />
-                                    {isAIMessage && parentCheckpoint && !isStreaming && (
-                                      <div className="mt-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            regenerate(undefined, parentCheckpoint);
-                                          }}
-                                          className="text-sm text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors duration-200 flex items-center gap-1"
-                                        >
-                                          <div className="i-ph:arrow-clockwise text-base"></div>
-                                          <span>Regenerate</span>
-                                        </button>
-                                      </div>
-                                    )}
-                                  </>}
+                  {isUserMessage ? (
+                    <>
+                      <UserMessage content={messageContentString} />
+                      {isDevEnv && !isStreaming && parentCheckpoint && (
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Re-submit the same user message from its parent checkpoint
+                              regenerate(messageContentString, parentCheckpoint);
+                            }}
+                            className="text-sm text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors duration-200 flex items-center gap-1"
+                          >
+                            <div className="i-ph:arrow-clockwise text-base"></div>
+                            <span>Regenerate response</span>
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <AssistantMessage 
+                      content={messageContentString} 
+                      showChanges={isLast}
+                    />
+                  )}
                 </div>
               </div>
             );
