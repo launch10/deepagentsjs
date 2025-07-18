@@ -16,9 +16,10 @@ Optionally, the [Stripe CLI](https://docs.stripe.com/stripe-cli) to sync webhook
 
 Subscribed endpoints require a user to be subscribed to a plan.
 
-1. On Stripe, create a sandbox environment, and ensure you enter details like privacy policy (https://example.com/privacy-policy) and terms of service (https://example.com/terms-of-service).
+1. On Stripe, create a sandbox environment (https://dashboard.stripe.com/test/products), and ensure you enter details like privacy policy (https://example.com/privacy-policy) and terms of service (https://example.com/terms-of-service).
 
-2. Create a sample Price, and copy the `Price ID` from the Stripe dashboard.
+2. Create a sample Price (e.g. $49/month for Starter Plan), and copy the `Price ID` from the Stripe dashboard (e.g.
+   price_1RQXb4RprCIA8pPkGvSp8eoz NOT prod_SLE3hs6ILQzxrS)
 
 3. Copy the API key from the Stripe dashboard, and run `rails credentials:edit --environment=development` to add it to your credentials under Stripe (Publishable Key = "Public Key", Secret Key = "Secret Key")
 
@@ -26,9 +27,15 @@ Subscribed endpoints require a user to be subscribed to a plan.
 
 5. Run `bin/dev`, and copy the `Webhook Signing Secret` that's output. Copy this to your Rails credentials under Stripe (Signing Secret).
 
-6. On JumpStart Pro, create a user (localhost:3000/users/new)
+6. On JumpStart Pro, create a user (localhost:3000/users/sign_up)
 
-7. In Rails console, assign them admin permissions (if you want an admin), and create an account for them
+7. In Rails console, assign them admin permissions (if you want an admin), and create an account for them (http://localhost:3000/jumpstart/docs/roles)
+
+```ruby
+user = User.find_by_email("YOUR_EMAIL")
+Jumpstart.grant_system_admin! user
+user.accounts.create(name: "YOUR_ACCOUNT_NAME")
+```
 
 8. In Jumpstart Pro, navigate to http://localhost:3000/admin/plans, and create a plan with the Price ID you copied from Stripe.
 

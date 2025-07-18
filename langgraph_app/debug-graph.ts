@@ -4,7 +4,7 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import dotenv from 'dotenv';
-import { graph as router } from './app/lib/.server/langgraph/graphs/router';
+import { graph as router } from './app/lib/server/langgraph/graphs/router';
 import { HumanMessage } from '@langchain/core/messages';
 
 dotenv.config();

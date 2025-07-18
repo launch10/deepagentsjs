@@ -4,8 +4,8 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import dotenv from 'dotenv';
-import { graph } from './app/lib/.server/langgraph/graphs/createPage/createSection'; // Corrected path
-import type { GraphState } from './app/lib/.server/langgraph/state/create/annotatedAgent'; // Adjust path if needed
+import { graph } from './app/lib/server/langgraph/graphs/createPage/createSection'; // Corrected path
+import type { GraphState } from './app/lib/server/langgraph/state/create/annotatedAgent'; // Adjust path if needed
 import { HumanMessage } from '@langchain/core/messages';
 
 // Load environment variables (if your LLM needs API keys)

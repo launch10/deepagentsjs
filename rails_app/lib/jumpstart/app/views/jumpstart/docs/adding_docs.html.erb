@@ -1,0 +1,162 @@
+<% content_for :title, "Adding Documentation to JumpStart Pro" %>
+<% content_for :subtitle do %>
+  Learn how to extend JumpStart Pro's built-in documentation system with your own content.
+<% end %>
+
+<%= h2_with_anchor "Overview" %>
+
+<p>JumpStart Pro includes a built-in documentation system that makes it easy to document your application. This guide shows you how to add new documentation pages.</p>
+
+<%= h2_with_anchor "Steps to Add Documentation" %>
+
+<%= h3_with_anchor "1. Add a Route" %>
+
+<p>First, add a route for your new documentation page in <code>lib/jumpstart/config/routes.rb</code>:</p>
+
+<div class="not-prose">
+  <pre><code>resource :docs do
+  # Existing routes...
+  
+  # Add your new route in the appropriate section
+  get :my_new_feature
+end</code></pre>
+</div>
+
+<%= h3_with_anchor "2. Update Navigation" %>
+
+<p>Add your page to the navigation in <code>lib/jumpstart/app/views/jumpstart/docs/_side_nav.html.erb</code>:</p>
+
+<div class="not-prose">
+  <pre><code>&lt;% nav = {
+  "Section Name" => [
+    # Existing links...
+    ["My New Feature", my_new_feature_docs_path],
+  ],
+  # Other sections...
+} %&gt;</code></pre>
+</div>
+
+<p>You can add your page to an existing section or create a new section entirely.</p>
+
+<%= h3_with_anchor "3. Create the View File" %>
+
+<p>Create your documentation page in <code>lib/jumpstart/app/views/jumpstart/docs/</code>:</p>
+
+<div class="not-prose">
+  <pre><code># Create: lib/jumpstart/app/views/jumpstart/docs/my_new_feature.html.erb
+
+&lt;% content_for :title, "My New Feature" %&gt;
+&lt;% content_for :subtitle do %&gt;
+  A brief description of what this documentation covers.
+&lt;% end %&gt;
+
+&lt;%= h2_with_anchor "Introduction" %&gt;
+&lt;p&gt;Your documentation content goes here...&lt;/p&gt;</code></pre>
+</div>
+
+<%= h2_with_anchor "Documentation Helpers" %>
+
+<p>JumpStart provides several helpers to make your documentation consistent:</p>
+
+<%= h3_with_anchor "Heading Helpers" %>
+
+<ul>
+  <li><code>h1_with_anchor</code> through <code>h6_with_anchor</code> - Creates headings with anchor links</li>
+  <li>Example: <code>&lt;%= h2_with_anchor "Section Title" %&gt;</code></li>
+</ul>
+
+<%= h3_with_anchor "Code Examples" %>
+
+<p>For inline code, use the <code>&lt;code&gt;</code> tag. For code blocks, wrap in <code>&lt;div class="not-prose"&gt;</code>:</p>
+
+<div class="not-prose">
+  <pre><code>&lt;div class="not-prose"&gt;
+  &lt;pre&gt;&lt;code&gt;def hello_world
+  puts "Hello, World!"
+end&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;</code></pre>
+</div>
+
+<%= h3_with_anchor "Links" %>
+
+<p>Use Rails link helpers for internal documentation links:</p>
+
+<div class="not-prose">
+  <pre><code>&lt;%= link_to "API Documentation", api_docs_path %&gt;</code></pre>
+</div>
+
+<%= h2_with_anchor "File Structure" %>
+
+<p>All documentation files are located in:</p>
+
+<div class="not-prose">
+  <pre><code>lib/jumpstart/
+├── app/
+│   ├── controllers/jumpstart/docs_controller.rb
+│   └── views/
+│       ├── jumpstart/docs/
+│       │   ├── _side_nav.html.erb    # Navigation menu
+│       │   ├── installation.html.erb  # Example doc page
+│       │   └── your_new_doc.html.erb  # Your new doc
+│       └── layouts/jumpstart/docs.html.erb
+└── config/
+    └── routes.rb                      # Documentation routes</code></pre>
+</div>
+
+<%= h2_with_anchor "Best Practices" %>
+
+<ul>
+  <li><strong>Consistent Naming</strong> - Use snake_case for routes and file names</li>
+  <li><strong>Clear Titles</strong> - Use descriptive titles for pages and sections</li>
+  <li><strong>Anchor Links</strong> - Always use heading helpers for navigable sections</li>
+  <li><strong>Code Formatting</strong> - Wrap code blocks in <code>not-prose</code> class</li>
+  <li><strong>Organization</strong> - Group related documentation in the same navigation section</li>
+</ul>
+
+<%= h2_with_anchor "Example: Adding Backend Documentation" %>
+
+<p>Here's a real example of adding documentation for a backend service:</p>
+
+<%= h3_with_anchor "1. Routes (routes.rb)" %>
+
+<div class="not-prose">
+  <pre><code># Langgraph Backend
+get :langgraph_overview
+get :langgraph_architecture
+get :langgraph_api</code></pre>
+</div>
+
+<%= h3_with_anchor "2. Navigation (_side_nav.html.erb)" %>
+
+<div class="not-prose">
+  <pre><code>"Langgraph Backend" => [
+  ["Overview", langgraph_overview_docs_path],
+  ["Architecture", langgraph_architecture_docs_path],
+  ["API Reference", langgraph_api_docs_path],
+],</code></pre>
+</div>
+
+<%= h3_with_anchor "3. View File (langgraph_overview.html.erb)" %>
+
+<div class="not-prose">
+  <pre><code>&lt;% content_for :title, "Langgraph Backend Overview" %&gt;
+&lt;% content_for :subtitle do %&gt;
+  The AI-powered backend service for NicheFinder.
+&lt;% end %&gt;
+
+&lt;%= h2_with_anchor "What is Langgraph?" %&gt;
+&lt;p&gt;Langgraph is our Node.js backend service...&lt;/p&gt;</code></pre>
+</div>
+
+<%= h2_with_anchor "Accessing Documentation" %>
+
+<p>Documentation is available at <code>/jumpstart/docs</code> in development mode. The documentation system is automatically mounted when running in development.</p>
+
+<%= h2_with_anchor "Tips" %>
+
+<ul>
+  <li>Documentation changes are reflected immediately - no server restart needed</li>
+  <li>The docs use Tailwind CSS classes from your application</li>
+  <li>You can embed images, videos, and other media using standard HTML</li>
+  <li>The <code>_snippet.html.erb</code> partial can be used for toggleable code examples</li>
+</ul>

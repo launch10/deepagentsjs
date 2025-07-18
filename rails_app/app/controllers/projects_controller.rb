@@ -37,6 +37,7 @@ class ProjectsController < SubscribedController
       end
     end
   end
+
   def create
     begin
       project = current_account.projects.create!(project_params)
@@ -57,6 +58,15 @@ class ProjectsController < SubscribedController
     end
 
     render json: current_project.to_mini_json
+  end
+
+  def destroy
+    project = current_account.projects.find_by(thread_id: params[:thread_id])
+    if project.destroy
+      head :no_content
+    else
+      render json: { errors: project.errors.full_messages }, status: :unprocessable_entity
+    end
   end
 
   def files

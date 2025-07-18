@@ -20,11 +20,11 @@ export class ProjectStore {
 
   add(projects: MaybeProjectArray): void {
     const normalized: Project[] = normalizeProjects(projects);
-    const existingProjects = this.projectsById.get();
+    const existingProjects: Record<string, Project> = this.projectsById.get();
     const deduped: Project[] = [...new Map([
-      ...normalized.map((project) => [project.threadId, project]), 
-      ...Object.entries(existingProjects)
-    ]).values()];
+      ...normalized.map((project) => [project.threadId, project]),
+      ...Object.entries(existingProjects),
+    ]).values()] as Project[];
     deduped.forEach((project) => this.projectsById.setKey(project.threadId, project));
 
     const sortedProjects = deduped.sort((a, b) => {
@@ -38,6 +38,16 @@ export class ProjectStore {
 
   addFiles(projectId: string, files: FileMap) {
     this.projectFiles.setKey(projectId, files);
+  }
+
+  remove(projectId: string): void {
+    this.projectsById.setKey(projectId, undefined);
+    this.projectFiles.setKey(projectId, undefined);
+    
+    // Update the projects array by filtering out the removed project
+    const currentProjects = this.projects.get();
+    const filteredProjects = currentProjects.filter(p => p.threadId !== projectId);
+    this.projects.set(filteredProjects);
   }
 
   // getProjectFiles(projectId: string): ReadableAtom<FileMap | undefined> {

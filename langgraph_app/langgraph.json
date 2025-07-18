@@ -3,7 +3,7 @@
     "dockerfile_lines": [],
     "dependencies": ".",
     "graphs": {
-        "router": "./app/lib/.server/langgraph/graphs/router.ts:graph"
+        "router": "./app/lib/server/langgraph/graphs/router.ts:graph"
     },
     "env": ".env"
 }

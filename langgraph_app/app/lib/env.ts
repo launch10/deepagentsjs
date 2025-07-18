@@ -23,13 +23,6 @@ expand(config());
 
 try {
 	envSchema.parse(process.env);
-    console.log(process.env.RAILS_API_URL);
-    console.log(process.env.RAILS_API_URL);
-    console.log(process.env.RAILS_API_URL);
-    console.log(process.env.RAILS_API_URL);
-    console.log(process.env.RAILS_API_URL);
-    console.log(process.env.RAILS_API_URL);
-    console.log(process.env.RAILS_API_URL);
 } catch (e) {
 	if (e instanceof z.ZodError) {
 		console.error("Environment validation error:", e.errors);

@@ -1,0 +1,122 @@
+<% content_for :title, "Langgraph Backend Overview" %>
+<% content_for :subtitle do %>
+  The AI-powered backend service that generates and manages landing pages for NicheFinder.
+<% end %>
+
+<%= h2_with_anchor "What is Langgraph?" %>
+
+<p>Langgraph is our Node.js/TypeScript backend service that handles all AI-driven operations for NicheFinder. It's built on LangChain's graph-based orchestration framework and provides:</p>
+
+<ul>
+  <li><strong>AI-Powered Page Generation</strong> - Creates complete landing pages from user descriptions</li>
+  <li><strong>Intelligent Updates</strong> - Modifies existing pages based on natural language instructions</li>
+  <li><strong>WebContainer Integration</strong> - Runs generated code in-browser for instant preview</li>
+</ul>
+
+<%= h2_with_anchor "Architecture Overview" %>
+
+<p>The Langgraph service is designed as a stateful conversation engine:</p>
+
+<div class="not-prose">
+  <pre><code>Rails Frontend (JWT Auth) → Langgraph API → Database
+                                    ↓
+                              WebContainers
+                                    ↓
+                              Live Preview</code></pre>
+</div>
+
+<%= h2_with_anchor "Key Components" %>
+
+<%= h3_with_anchor "Graphs" %>
+<p>Langgraph uses three main graphs to handle different operations:</p>
+
+<ul>
+  <li><code>router</code> - Determines which graph to run based on user input</li>
+  <li><code>create</code> - Generates new landing pages from scratch</li>
+  <li><code>update</code> - Modifies existing pages based on instructions</li>
+</ul>
+
+<%= h3_with_anchor "Authentication" %>
+<p>The service uses JWT tokens issued by Rails for authentication:</p>
+
+<ul>
+  <li>Tokens are validated on every request</li>
+  <li>User context is extracted from the JWT</li>
+  <li>All resources are scoped to the authenticated user</li>
+</ul>
+
+<%= h3_with_anchor "State Management" %>
+<p>Langgraph maintains conversation state through:</p>
+
+<ul>
+  <li><strong>Threads</strong> - Conversation contexts linked to Rails projects</li>
+  <li><strong>Checkpoints</strong> - Snapshots of conversation state</li>
+</ul>
+
+<%= h2_with_anchor "Development Setup" %>
+
+<p>To run the Langgraph service in development:</p>
+
+<div class="not-prose">
+  <pre><code># From langgraph_app directory
+pnpm install
+langdev dev  # Custom binary for Postgres support</code></pre>
+</div>
+
+<p>The service will be available at <code>http://localhost:2024</code> by default.</p>
+
+<%= h2_with_anchor "Environment Configuration" %>
+
+<p>Copy .env.example to .env and fill in the values:</p>
+
+<div class="not-prose">
+  <pre><code>JWT_SECRET=same-as-rails-secret # rails credentials:edit --environment=development
+ALLOWED_HOSTS=localhost:3000,127.0.0.1:3000 # Which hosts are allowed to talk to the Langgraph API?
+POSTGRES_URI=postgres://localhost/nichefinder_development 
+REDIS_URI=redis://localhost:6379
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...</code></pre>
+</div>
+
+<%= h2_with_anchor "Debugging" %>
+
+<p>Open <code>langgraph_app/.env</code> and set <code>NODE_OPTIONS</code> to <code>--inspect-brk</code>, re-run <code>langdev dev</code> and open the debugger in your browser or editor.</p>
+<p>Common `launch.json` configurations:</p>
+
+<pre><code>
+  {
+    "version": "0.2.0",
+    "configurations": [
+    
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Debug Current Test File",
+        "autoAttachChildProcesses": true,
+        "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+        "program": "${workspaceRoot}/node_modules/vitest/vitest.mjs",
+        "args": ["run", "${relativeFile}"],
+        "smartStep": true,
+        "console": "integratedTerminal"
+      },
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Debug All Tests",
+        "autoAttachChildProcesses": true,
+        "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+        "program": "${workspaceRoot}/node_modules/vitest/vitest.mjs",
+        "args": ["run"],
+        "smartStep": true,
+        "console": "integratedTerminal"
+      },
+      {
+        "type": "node",
+        "request": "attach",
+        "name": "Attach to Script",
+        "port": 9229,
+        "skipFiles": ["<node_internals>/**"]
+      },
+    ]
+  }
+</code></pre>

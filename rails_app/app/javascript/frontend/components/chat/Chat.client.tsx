@@ -27,6 +27,7 @@ const logger = createScopedLogger('Chat');
 
 const buildAction = (task: CodeTask, messageId: string): ActionCore => {
     return {
+        title: task.title,
         task,
         messageId,
     };
@@ -116,14 +117,12 @@ const callbacks = {
     onBackendTaskStart: (task: CodeTask, messageId: string) => {
       logger.info('onBackendTaskStart', JSON.stringify(task));
 
-      console.log('onBackendTaskStart', task.id, task.title);
       workbenchStore.addAction(buildAction(task, messageId));
       workbenchStore.setActionStatus(messageId, task.id, 'running');
     },
     onBackendTaskComplete: (task: CodeTask, messageId: string) => {
       logger.info('onBackendTaskComplete', JSON.stringify(task));
 
-      console.log('onBackendTaskComplete', task.id, task.title);
       workbenchStore.setActionStatus(messageId, task.id, 'complete');
     },
 };

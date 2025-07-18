@@ -2,7 +2,7 @@
 // Use tsx to run this: npm run debug:update-graph -- -n <projectName> -prompt "<userRequest>"
 
 import dotenv from 'dotenv';
-import { graph as runnableGraph } from "./app/lib/.server/langgraph/graphs/fixBug";
+import { graph as runnableGraph } from "./app/lib/server/langgraph/graphs/fixBug";
 import { CodeTaskType } from "@models/codeTask";
 import { BaseMessage } from "@langchain/core/messages";
 import { Project } from "@langgraph/models/project";

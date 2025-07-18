@@ -5,11 +5,13 @@ Jumpstart::Engine.routes.draw do
 
   resource :docs do
     # Get Started
+    get :installation_jumpstart
     get :installation
     get :configuration
     get :upgrading
     get :deploying
     get :screencasts
+    get :adding_docs
 
     # Users
     get :authentication
@@ -67,6 +69,8 @@ Jumpstart::Engine.routes.draw do
     get :business
     get :existing_apps
     get :integrations
+
+    get :langgraph_overview
   end
 
   root to: "admin#show"
