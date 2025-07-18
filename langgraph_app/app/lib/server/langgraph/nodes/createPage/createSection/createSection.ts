@@ -4,6 +4,7 @@ import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { completeCodeTask } from "../../actions/codeTasks";
 import { executeCodePrompt } from "../../actions/codeTasks";
 import { baseNode } from "@nodes/core/templates/base";
+import { type CompletedCodeTask } from "@shared/models/codeTask";
 
 const createSection = async(state: GraphState, config: LangGraphRunnableConfig): Promise<Partial<GraphState>> => {
   const results = await executeCodePrompt(createSectionPrompt, state);
@@ -11,7 +12,9 @@ const createSection = async(state: GraphState, config: LangGraphRunnableConfig):
 
   return {
     app: {
+        ...state.app,
         codeTasks: {
+            ...state.app.codeTasks,
             completedTasks: [task as CompletedCodeTask],
         }
     }

@@ -22,8 +22,8 @@ export const projectSchema = z.object({
     projectMode: z.nativeEnum(ProjectMode).default(ProjectMode.Magic).describe("Mode of the project (Magic or Guided)"),
     rootPath: z.string().optional(),
     backupPath: z.string().optional(),
-    projectPlan: projectPlanSchema.describe("Project plan"),
-    pages: z.array(pageSchema).describe("Pages in the project"),
+    projectPlan: projectPlanSchema.optional().describe("Project plan"),
+    pages: z.array(pageSchema).default([]).describe("Pages in the project"),
 });
 
 export type ProjectData = z.infer<typeof projectSchema>;

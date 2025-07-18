@@ -199,7 +199,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   }, [stream.messages, messageIdToTags]);
 
   const appState: AppState | undefined = stream.values?.app as AppState | undefined;
-  // If chat hasn't started, rely on files from app state. We only need to process tasks if chat has started (aka changes in real-time)
+  // const codeTasks = (appState?.codeTasks || {notify: [], queue: [], completedTasks: []}) as CodeTasksState;
   const codeTasks = (chatHasStarted ? (appState?.codeTasks || {notify: [], queue: [], completedTasks: []}) : {notify: [], queue: [], completedTasks: []}) as CodeTasksState;
   const projectName = stream.values?.projectName;
 

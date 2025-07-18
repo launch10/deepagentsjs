@@ -7,19 +7,15 @@ import { dedupeReducer } from "@state/reducers/dedupe";
 import { v4 as uuidv4 } from "uuid";
 
 const reduceApp = (current: App | undefined, next: App): App => {
-    let completedTasks: CodeTask[];
-    if (next?.codeTasks && next.codeTasks.completedTasks && next.codeTasks.completedTasks.length === 0) {
-        completedTasks = []
-    } else {
-        completedTasks = dedupeReducer((current?.codeTasks?.completedTasks || []).concat(next?.codeTasks?.completedTasks || []))
-    }
+    // Always concatenate completed tasks, never clear them
+    let completedTasks = dedupeReducer((current?.codeTasks?.completedTasks || []).concat(next?.codeTasks?.completedTasks || []))
     completedTasks = completedTasks.map((task) => {
         if (!task.id) {
             task.id = uuidv4();
         }
         return task;
     })
-    return {
+    const output = {
         ...current,
         ...next,
         codeTasks: {
@@ -28,6 +24,8 @@ const reduceApp = (current: App | undefined, next: App): App => {
             completedTasks
         }
     };
+
+    return output;
 };
 
 export const GraphAnnotation = Annotation.Root({

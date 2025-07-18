@@ -117,14 +117,12 @@ const callbacks = {
     onBackendTaskStart: (task: CodeTask, messageId: string) => {
       logger.info('onBackendTaskStart', JSON.stringify(task));
 
-      console.log('onBackendTaskStart', task.id, task.title);
       workbenchStore.addAction(buildAction(task, messageId));
       workbenchStore.setActionStatus(messageId, task.id, 'running');
     },
     onBackendTaskComplete: (task: CodeTask, messageId: string) => {
       logger.info('onBackendTaskComplete', JSON.stringify(task));
 
-      console.log('onBackendTaskComplete', task.id, task.title);
       workbenchStore.setActionStatus(messageId, task.id, 'complete');
     },
 };
@@ -284,12 +282,15 @@ export const ChatImpl = () => {
   }, [messages]);
 
   useEffect(() => {
+    console.log(`codeTasks.completedTasks changed: ${JSON.stringify(codeTasks)}`);
     if (codeTasks?.completedTasks && codeTasks.completedTasks.length > 0) {
+      console.log(`Processing ${codeTasks.completedTasks.length} completed tasks`)
       codeTasks.completedTasks.forEach((task: CodeTask) => {
         if (!task.id || processedTaskIds.current.has(task.id)) {
           return;
         }
 
+        console.log(`Processing completed task: ${JSON.stringify(task)}`);
         switch (task.action) {
             case CodeTaskAction.UPDATE:
                 callbacks.onUpdateFile(task, mostRecentHumanMessage.id as string);
