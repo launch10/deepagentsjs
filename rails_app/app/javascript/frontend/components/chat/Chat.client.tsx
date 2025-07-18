@@ -192,6 +192,15 @@ export const ChatImpl = () => {
   const [animationScope, animate] = useAnimate();
   const processedTaskIds = useRef<Set<string>>(new Set());
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (stop) {
+        stop();
+      }
+    };
+  }, [stop]);
+
   // const { enhancingPrompt, promptEnhanced, enhancePrompt, resetEnhancer } = usePromptEnhancer();
 
   const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
