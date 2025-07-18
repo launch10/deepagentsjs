@@ -282,15 +282,12 @@ export const ChatImpl = () => {
   }, [messages]);
 
   useEffect(() => {
-    console.log(`codeTasks.completedTasks changed: ${JSON.stringify(codeTasks)}`);
     if (codeTasks?.completedTasks && codeTasks.completedTasks.length > 0) {
-      console.log(`Processing ${codeTasks.completedTasks.length} completed tasks`)
       codeTasks.completedTasks.forEach((task: CodeTask) => {
         if (!task.id || processedTaskIds.current.has(task.id)) {
           return;
         }
 
-        console.log(`Processing completed task: ${JSON.stringify(task)}`);
         switch (task.action) {
             case CodeTaskAction.UPDATE:
                 callbacks.onUpdateFile(task, mostRecentHumanMessage.id as string);
