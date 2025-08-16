@@ -1,0 +1,34 @@
+# wrangler.toml
+name = "landing-page-server"
+main = "src/index.ts"
+compatibility_date = "2024-03-20"
+compatibility_flags = ["durable_object_fetch_requires_full_url"]
+
+[vars]
+USAGE_MONITORING_THRESHOLD_PERCENT = 0.90 # Activate DO at 90% usage
+
+# Secret values for the Cloudflare API.
+# In production, set these using `npx wrangler secret put <NAME>`
+# CLOUDFLARE_API_TOKEN = "your_api_token_with_firewall_and_lists_permissions"
+# CLOUDFLARE_ZONE_ID = "your_zone_id"
+# CLOUDFLARE_ACCOUNT_ID = "your_account_id"
+# CLOUDFLARE_LIST_ID = "the_id_of_your_Suspended_Hostnames_list"
+
+[[r2_buckets]]
+binding = "USER_PAGES"
+bucket_name = "user-pages"
+
+[[kv_namespaces]]
+binding = "USAGE_LIMIT"
+id = "user-usage-limit"
+
+[durable_objects]
+bindings = [{ name = "RATE_LIMITER", class_name = "RateLimiter" }]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RateLimiter"]
+
+# Cron trigger to run the reset job every day at midnight UTC.
+[triggers]
+crons = ["0 0 * * *"]
