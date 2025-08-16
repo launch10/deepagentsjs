@@ -1,8 +1,8 @@
-import { Env, TenantInfo } from '../types';
-import { updateFirewallList } from '../cloudflare-api';
+import { Env } from '../types';
+import { updateFirewallList } from '../utils/cloudflareApi';
 import { serveAssetFromR2 } from '../r2Assets';
-import { getTenantInfo } from '../utils';
-import { DurableObject, DurableObjectState, Request, Response } from '@cloudflare/workers-types';
+import { getTenantInfo } from '../utils/getTenantInfo';
+import { DurableObject, DurableObjectState } from '@cloudflare/workers-types';
 
 export class RateLimiter implements DurableObject {
   state: DurableObjectState;
@@ -30,7 +30,7 @@ export class RateLimiter implements DurableObject {
       if (this.tenantId !== currentTenantId) {
         this.tenantId = currentTenantId;
         // Load count from KV for this specific tenant
-        this.count = await this.env.USAGE_KV.get<number>(`count:${currentTenantId}`, { type: 'json' }) || 0;
+        this.count = await this.env.USAGE_LIMIT.get<number>(`count:${currentTenantId}`, { type: 'json' }) || 0;
         
         // Store the new tenant ID
         await this.state.storage.put('tenantId', this.tenantId);
@@ -41,7 +41,7 @@ export class RateLimiter implements DurableObject {
       // Persist the count to both DO storage and KV
       await Promise.all([
         this.state.storage.put('count', this.count),
-        this.env.USAGE_KV.put(`count:${currentTenantId}`, JSON.stringify(this.count))
+        this.env.USAGE_LIMIT.put(`count:${currentTenantId}`, JSON.stringify(this.count))
       ]);
 
       if (this.count > this.env.USAGE_LIMIT) {

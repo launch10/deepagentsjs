@@ -1,6 +1,6 @@
 import { Context } from 'hono';
-import { Env, TenantInfo } from './types';
-import { getTenantInfo } from './utils';
+import { Env } from './types';
+import { getTenantInfo } from './utils/getTenantInfo';
 
 export async function serveAssetFromR2(c: Context<{ Bindings: Env }>) {
   const url = new URL(c.req.url);
@@ -12,7 +12,7 @@ export async function serveAssetFromR2(c: Context<{ Bindings: Env }>) {
   const environment = isPreview ? 'preview' : 'production';
 
   // 2. Get the currently deployed version from KV
-  const liveVersion = await c.env.USAGE_KV.get(`live_version:${environment}:${tenantInfo.siteName}`);
+  const liveVersion = await c.env.USAGE_LIMIT.get(`live_version:${environment}:${tenantInfo.siteName}`);
   if (!liveVersion) {
     return new Response(`Site not configured: ${tenantInfo.siteName}`, { status: 404 });
   }
@@ -30,7 +30,7 @@ export async function serveAssetFromR2(c: Context<{ Bindings: Env }>) {
   const objectKey = `${tenantInfo.userId}/${tenantInfo.orgId}/${environment}/${tenantInfo.siteName}/${liveVersion}/${pathname}`;
 
   // 5. Fetch from R2
-  const object = await c.env.USER_SITES_R2.get(objectKey);
+  const object = await c.env.USER_PAGES.get(objectKey);
 
   if (object === null) {
     return new Response(`Object Not Found: ${objectKey}`, { status: 404 });

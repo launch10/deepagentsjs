@@ -11,7 +11,7 @@ export const rateLimiterMiddleware: MiddlewareHandler<{ Bindings: Env }> = async
   const tenantId = tenantInfo.siteName; // Use a unique ID for the tenant site
 
   // 1. Check if this tenant is already being monitored by the DO
-  const status = await c.env.USAGE_KV.get(`status:${tenantId}`);
+  const status = await c.env.USAGE_LIMIT.get(`status:${tenantId}`);
   if (status === 'monitoring') {
     const doId = c.env.RATE_LIMITER_DO.idFromName(tenantId);
     const stub = c.env.RATE_LIMITER_DO.get(doId);
@@ -26,18 +26,18 @@ export const rateLimiterMiddleware: MiddlewareHandler<{ Bindings: Env }> = async
 
   // 2. Batch write to KV to save on costs and improve performance
   if (currentInMemoryCount % BATCH_SIZE === 0) {
-    const totalCount = await c.env.USAGE_KV.get<number>(`count:${tenantId}`, { type: 'json' }) || 0;
+    const totalCount = await c.env.USAGE_LIMIT.get<number>(`count:${tenantId}`, { type: 'json' }) || 0;
     const newTotal = totalCount + BATCH_SIZE;
 
     // Use c.executionCtx to run these non-blocking operations after the response is sent
-    c.executionCtx.waitUntil(c.env.USAGE_KV.put(`count:${tenantId}`, JSON.stringify(newTotal)));
+    c.executionCtx.waitUntil(c.env.USAGE_LIMIT.put(`count:${tenantId}`, JSON.stringify(newTotal)));
 
     const monitoringThreshold = c.env.USAGE_LIMIT * c.env.MONITORING_THRESHOLD_PERCENT;
 
     // 3. Check if we've crossed the monitoring threshold
     if (newTotal > monitoringThreshold) {
       console.log(`Tenant ${tenantId} crossed threshold. Activating DO monitoring.`);
-      c.executionCtx.waitUntil(c.env.USAGE_KV.put(`status:${tenantId}`, 'monitoring'));
+      c.executionCtx.waitUntil(c.env.USAGE_LIMIT.put(`status:${tenantId}`, 'monitoring'));
     }
   }
 

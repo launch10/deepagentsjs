@@ -1,12 +1,9 @@
 import { Hono } from 'hono';
 import { etag } from 'hono/etag';
-import { R2Bucket, URL, Response, Headers } from '@cloudflare/workers-types';
+import { Env } from './types';
+import { RateLimiter } from './durable-objects/rateLimiter';
 
-type Bindings = {
-  USER_PAGES: R2Bucket;
-};
-
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<{ Bindings: Env }>();
 
 // Use Hono's built-in ETag middleware for automatic browser caching.
 // This prevents the browser from re-downloading unchanged files.
@@ -16,7 +13,7 @@ app.use('*', etag());
 app.get('*', async (c) => {
   // 1. Get the URL object to easily access hostname and pathname
   const url = new URL(c.req.url);
-  const hostname = url.hostname;
+  const hostname = 'dist' //url.hostname;
   let pathname = url.pathname;
 
   // 2. Normalize the path to construct the R2 object key.
@@ -28,10 +25,21 @@ app.get('*', async (c) => {
     pathname = pathname.concat('/index.html');
   }
 
-  // Remove the leading slash for the R2 key
-  const objectKey = `${hostname}${pathname}`.substring(1);
+  const objectKey = `${hostname}${pathname}`;
 
   // 3. Fetch the object from your R2 bucket.
+  console.log(`objectKey: ${objectKey}`);
+  console.log('env:', c.env);
+  console.log('USER_PAGES binding:', c.env.USER_PAGES);
+  
+  // Check if R2 binding exists
+  if (!c.env.USER_PAGES) {
+    return new Response('R2 bucket binding not available. Run with: npx wrangler dev --remote', { 
+      status: 503,
+      headers: { 'Content-Type': 'text/plain' }
+    });
+  }
+  
   const object = await c.env.USER_PAGES.get(objectKey);
 
   // 4. Handle the "Not Found" case.
@@ -59,3 +67,4 @@ app.get('*', async (c) => {
 });
 
 export default app;
+export { RateLimiter };
