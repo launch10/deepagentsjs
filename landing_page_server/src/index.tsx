@@ -7,6 +7,7 @@ const app = new Hono<{ Bindings: Env }>();
 
 // Use Hono's built-in ETag middleware for automatic browser caching.
 // This prevents the browser from re-downloading unchanged files.
+// Note: We need to ensure content-type is preserved on 304 responses
 app.use('*', etag());
 
 // This is the main route that will catch all incoming requests.
@@ -59,6 +60,38 @@ app.get('*', async (c) => {
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set('etag', object.httpEtag);
+
+  // Get content-type from R2 metadata or determine from file extension
+  let contentType = headers.get('content-type') || object.httpMetadata?.contentType || '';
+  
+  // If no content-type, determine from file extension
+  if (!contentType) {
+    const ext = pathname.split('.').pop()?.toLowerCase();
+    const contentTypes: Record<string, string> = {
+      'js': 'application/javascript',
+      'mjs': 'application/javascript',
+      'css': 'text/css',
+      'html': 'text/html',
+      'json': 'application/json',
+      'svg': 'image/svg+xml',
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'gif': 'image/gif',
+      'ico': 'image/x-icon',
+      'woff': 'font/woff',
+      'woff2': 'font/woff2',
+      'ttf': 'font/ttf',
+      'otf': 'font/otf',
+    };
+    
+    contentType = (ext && contentTypes[ext]) || 'application/octet-stream';
+  }
+  
+  // Always set the content-type header
+  headers.set('content-type', contentType);
+  
+  console.log(`Serving ${objectKey} with content-type: ${contentType}`);
 
   // Return the response with the file's body and the correct headers.
   return new Response(object.body, {
