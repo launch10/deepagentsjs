@@ -20,23 +20,24 @@ class RateLimiter {
     }
 
     async fetch(c: Context<{ Bindings: Env }>, next: Next) {
-        const shouldRateLimit = await this.shouldRateLimit(c);
+        const tenantId = await this.kvCache.getTenantId(c);
+        const shouldRateLimit = await this.shouldRateLimit(c, tenantId);
 
         if (shouldRateLimit) {
           scopedLogger.debug(`rateLimiting!`);
           return c.json({ error: 'Rate limit exceeded' }, 429);
         }
 
-        await this.updateRequestCount(c, next);
+        await this.updateRequestCount(c, tenantId);
         return next();
     }
 
-    private async shouldRateLimit(c: Context<{ Bindings: Env }>): Promise<boolean> {
-      const status = await this.kvCache.getTenantStatus(c); // global estimate (not just local cache), kv reads are fast and cheap
+    private async shouldRateLimit(c: Context<{ Bindings: Env }>, tenantId: string): Promise<boolean> {
+      const status = await this.kvCache.getTenantStatus(c, tenantId); // global estimate (not just local cache), kv reads are fast and cheap
       scopedLogger.debug(`status: ${status}`);
 
       if (status === 'monitoring') {
-        const durableObject = await this.getDurableObject(c);
+        const durableObject = await this.getDurableObject(c, tenantId);
         // Create a proper Request object for the Durable Object
         const request = new Request(c.req.url, {
           method: c.req.method,
@@ -51,40 +52,38 @@ class RateLimiter {
     }
 
     // See RateLimiterDO to see the actual implementation
-    private async getDurableObject(c: Context<{ Bindings: Env }>): Promise<DurableObject> {
-      const tenantId = await this.kvCache.getTenantId(c);
+    private async getDurableObject(c: Context<{ Bindings: Env }>, tenantId: string): Promise<DurableObject> {
       const doId = c.env.RATE_LIMITER.idFromName(tenantId);
       const durableObject = c.env.RATE_LIMITER.get(doId);
       return durableObject;
     }
 
-    private async updateRequestCount(c: Context<{ Bindings: Env }>, next: Next) {
-      let currentCount = this.memoryCache.incrementRequestCount(c);
+    private async updateRequestCount(c: Context<{ Bindings: Env }>, tenantId: string) {
+      let currentCount = this.memoryCache.incrementRequestCount(c, tenantId);
 
       scopedLogger.debug(`currentCount: ${currentCount}`);
 
       if (currentCount % this.batchSize === 0) {
         scopedLogger.debug(`writing to KV for ${c.req.url}`);
-        const newTotal = await this.kvCache.incrementBy(c, currentCount);
-        this.memoryCache.resetRequestCount(c);
+        const newTotal = await this.kvCache.incrementBy(c, tenantId, currentCount);
+        this.memoryCache.resetRequestCount(c, tenantId);
 
-        if (await this.didCrossThreshold(c, newTotal)) {
-          await this.afterThresholdCrossed(c, next);
+        if (await this.didCrossThreshold(c, tenantId, newTotal)) {
+          await this.afterThresholdCrossed(c, tenantId);
         }
       }
     }
 
-    private async didCrossThreshold(c: Context<{ Bindings: Env }>, newTotal: number): Promise<boolean> {
-      const tenantsLimit = await this.kvCache.getTenantsLimit(c);
+    private async didCrossThreshold(c: Context<{ Bindings: Env }>, tenantId: string, newTotal: number): Promise<boolean> {
+      const tenantsLimit = await this.kvCache.getTenantsLimit(c, tenantId);
       const monitoringThreshold = tenantsLimit * usageThresholdPercent;
 
       return newTotal > monitoringThreshold;
     }
 
-    private async afterThresholdCrossed(c: Context<{ Bindings: Env }>, next: Next) {
-      const tenantId = await this.kvCache.getTenantId(c);
+    private async afterThresholdCrossed(c: Context<{ Bindings: Env }>, tenantId: string) {
       scopedLogger.debug(`Tenant ${tenantId} crossed threshold. Activating monitoring.`);
-      this.kvCache.setTenantStatus(c, 'monitoring');
+      this.kvCache.setTenantStatus(c, tenantId, 'monitoring');
     }
 }
 
