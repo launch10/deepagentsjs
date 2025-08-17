@@ -11,19 +11,27 @@ interface LogEntry {
   path?: string;
   [key: string]: any;
 }
-
-class Logger {
+export class ScopedLogger {
   private isDevelopment = false;
   private logLevel: LogLevel = 'info';
+  private ignoredScopes: string[] = [];
+  private focusedScopes: string[] = [];
+  private scope: string;
 
-  constructor() {
-    // Default log level - will be configured via setConfig
+  constructor(scope: string) {
+    this.scope = scope;
   }
 
   // Call this from your app initialization with env variables
-  setConfig(env: { LOG_LEVEL?: string; NODE_ENV?: string }) {
+  setConfig(env: { LOG_LEVEL?: string; NODE_ENV?: string; LOG_IGNORE_SCOPES?: string; LOG_FOCUS_SCOPES?: string }) {
     if (env.LOG_LEVEL) {
       this.logLevel = env.LOG_LEVEL.toLowerCase() as LogLevel;
+    }
+    if (env.LOG_IGNORE_SCOPES) {
+      this.ignoredScopes = env.LOG_IGNORE_SCOPES.split(',') || [];
+    }
+    if (env.LOG_FOCUS_SCOPES) {
+      this.focusedScopes = env.LOG_FOCUS_SCOPES.split(',') || [];
     }
     if (env.NODE_ENV) {
       this.isDevelopment = env.NODE_ENV !== 'production';
@@ -67,6 +75,8 @@ class Logger {
 
   private log(level: LogLevel, message: string, meta?: any) {
     if (!this.shouldLog(level)) return;
+    if (this.ignoredScopes.length > 0 && this.ignoredScopes.includes(this.scope)) return;
+    if (this.focusedScopes.length > 0 && !this.focusedScopes.includes(this.scope)) return;
 
     const context = getRequestContext();
     const entry: LogEntry = {
@@ -120,12 +130,30 @@ class Logger {
   }
 }
 
+export class Logger {
+  private scopes: Record<string, ScopedLogger> = {};
+
+  addScope(scope: string) {
+    this.scopes[scope] = new ScopedLogger(scope);
+    return this.scopes[scope]
+  }
+
+  setConfig(env: { LOG_LEVEL?: string; NODE_ENV?: string; LOG_IGNORE_SCOPES?: string; LOG_FOCUS_SCOPES?: string }) {
+    this.eachLogger(logger => logger.setConfig(env));
+  }
+
+  private eachLogger(callback: (logger: ScopedLogger) => void) {
+    Object.values(this.scopes).forEach(callback);
+  }
+}
+
 export const logger = new Logger();
+export const mainLogger = logger.addScope('main');
 
 export function logError(error: Error | unknown, context?: Record<string, unknown>): void {
   const errorObj = error instanceof Error ? error : new Error(String(error));
   
-  logger.error(context ? `${Object.entries(context).map(([k, v]) => `${k}=${v}`).join(' ')}` : 'An error occurred', {
+  mainLogger.error(context ? `${Object.entries(context).map(([k, v]) => `${k}=${v}`).join(' ')}` : 'An error occurred', {
     error: {
       message: errorObj.message,
       stack: errorObj.stack,

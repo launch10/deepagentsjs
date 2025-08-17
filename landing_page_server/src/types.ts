@@ -29,6 +29,8 @@ export interface Env {
   LOG_LEVEL?: string;
   NODE_ENV?: string;
   USAGE_MONITORING_THRESHOLD_PERCENT?: string;
+  LOG_IGNORE_SCOPES?: string;
+  LOG_FOCUS_SCOPES?: string;
   
   // Secrets
   CLOUDFLARE_API_TOKEN?: string;

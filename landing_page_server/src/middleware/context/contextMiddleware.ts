@@ -13,6 +13,8 @@ export const contextMiddleware = (): MiddlewareHandler<{ Bindings: Env }> => asy
   logger.setConfig({
     LOG_LEVEL: c.env.LOG_LEVEL as string | undefined,
     NODE_ENV: c.env.NODE_ENV as string | undefined,
+    LOG_IGNORE_SCOPES: c.env.LOG_IGNORE_SCOPES as string | undefined,
+    LOG_FOCUS_SCOPES: c.env.LOG_FOCUS_SCOPES as string | undefined,
   });
 
   const requestContext = {

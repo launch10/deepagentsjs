@@ -1,6 +1,6 @@
 import { MiddlewareHandler } from 'hono';
 import { logger as honoLogger } from 'hono/logger';
-import { logger } from '@utils/logger';
+import { mainLogger as logger } from '@utils/logger';
 
 /**
  * Hono middleware to bridge its simple logger with our powerful Winston logger.
