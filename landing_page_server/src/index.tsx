@@ -5,7 +5,7 @@ import { loggerMiddleware, contextMiddleware, rateLimiterMiddleware } from './mi
 import { logger } from '@utils/logger';
 
 const app = new Hono<{ Bindings: Env }>();
-const scopedLogger = logger.addScope('request');
+const requestLogger = logger.addScope('request');
 
 // Use Hono's built-in ETag middleware for automatic browser caching.
 // This prevents the browser from re-downloading unchanged files.
@@ -34,9 +34,7 @@ app.get('*', async (c) => {
   const objectKey = `${hostname}${pathname}`;
 
   // 3. Fetch the object from your R2 bucket.
-  scopedLogger.debug(`objectKey: ${objectKey}`);
-  scopedLogger.debug('env:', c.env);
-  scopedLogger.debug('USER_PAGES binding:', c.env.USER_PAGES);
+  requestLogger.debug(`objectKey: ${objectKey}`);
   
   // Check if R2 binding exists
   if (!c.env.USER_PAGES) {

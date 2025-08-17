@@ -59,7 +59,7 @@ export class ScopedLogger {
       const color = colors[entry.level];
       
       const { level, message, timestamp, requestId, method, path, ...rest } = entry;
-      let output = `${color}[${level.toUpperCase()}]${reset} ${timestamp}`;
+      let output = `${color}[${level.toUpperCase()}] [${this.scope}]${reset} ${timestamp}`;
       if (requestId) output += ` [${requestId}]`;
       if (method && path) output += ` ${method} ${path}`;
       output += ` ${message}`;

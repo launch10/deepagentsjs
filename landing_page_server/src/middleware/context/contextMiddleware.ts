@@ -9,7 +9,6 @@ import { Env } from '../../types';
  * This should be placed BEFORE the requestLogger.
  */
 export const contextMiddleware = (): MiddlewareHandler<{ Bindings: Env }> => async (c, next) => {
-  // Initialize logger with environment variables on first request
   logger.setConfig({
     LOG_LEVEL: c.env.LOG_LEVEL as string | undefined,
     NODE_ENV: c.env.NODE_ENV as string | undefined,
@@ -23,13 +22,11 @@ export const contextMiddleware = (): MiddlewareHandler<{ Bindings: Env }> => asy
     path: c.req.path,
   };
   
-  // Set context for this request
   setRequestContext(requestContext);
   
   try {
     await next();
   } finally {
-    // Clear context after request completes
     clearRequestContext();
   }
 };
