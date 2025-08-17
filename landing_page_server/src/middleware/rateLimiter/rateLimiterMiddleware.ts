@@ -1,6 +1,6 @@
 import { Context, MiddlewareHandler, Next } from 'hono';
-import { Env, TenantInfo } from '../types';
-import { getTenantInfo } from '../utils/getTenantInfo';
+import { Env, TenantInfo } from '../../types';
+import { getTenantInfo } from '../../utils/getTenantInfo';
 import { DurableObject } from '@cloudflare/workers-types';
 
 // Each site might have 10 requests (e.g. images, css, js, etc.)
@@ -42,6 +42,7 @@ class RateLimiter {
       }
     }
 
+    // See RateLimiterDO to see the actual implementation
     private getDurableObject(c: Context<{ Bindings: Env }>, next: Next): DurableObject {
       // We don't want t a DO per tenant, we wnat it per site
       // REFINE THIS BEFORE PROD
@@ -79,7 +80,7 @@ class RateLimiter {
 
     private async didCrossThreshold(c: Context<{ Bindings: Env }>, next: Next) {
       const totalCount = await c.env.USAGE_LIMIT.get<number>(`count:${c.env.RATE_LIMITER.idFromName(c.req.url)}`, { type: 'json' }) || 0;
-      const monitoringThreshold = c.env.USAGE_LIMIT * usageThresholdPercent;
+      const monitoringThreshold = totalCount* usageThresholdPercent;
       return totalCount > monitoringThreshold;
     }
 

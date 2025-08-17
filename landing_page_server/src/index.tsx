@@ -1,14 +1,15 @@
 import { Hono } from 'hono';
 import { etag } from 'hono/etag';
 import { Env } from './types';
-import { RateLimiter } from './durable-objects/rateLimiter';
-import { rateLimiterMiddleware } from './middleware/rateLimiterMiddleware';
+import { loggerMiddleware, contextMiddleware, rateLimiterMiddleware } from './middleware';
 
 const app = new Hono<{ Bindings: Env }>();
 
 // Use Hono's built-in ETag middleware for automatic browser caching.
 // This prevents the browser from re-downloading unchanged files.
 // Note: We need to ensure content-type is preserved on 304 responses
+app.use('*', contextMiddleware());
+app.use('*', loggerMiddleware());
 app.use('*', etag());
 app.use('*', rateLimiterMiddleware);
 
@@ -101,5 +102,7 @@ app.get('*', async (c) => {
   });
 });
 
+import { RateLimiterDO } from './middleware/rateLimiter/rateLimiterDO';
+
 export default app;
-export { RateLimiter };
+export { RateLimiterDO };

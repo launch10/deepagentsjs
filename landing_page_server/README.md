@@ -29,5 +29,5 @@ const app = new Hono<{ Bindings: CloudflareBindings }>();
 ## Testing A Deployed Page (Locally)
 
 ```bash
-pnpm wrangler dev
+pnpm wrangler dev --local --persist-to .wrangler/state
 ```

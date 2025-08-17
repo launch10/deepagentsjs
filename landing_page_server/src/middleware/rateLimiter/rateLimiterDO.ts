@@ -1,10 +1,10 @@
-import { Env } from '../types';
-import { updateFirewallList } from '../utils/cloudflareApi';
-import { serveAssetFromR2 } from '../r2Assets';
-import { getTenantInfo } from '../utils/getTenantInfo';
+import { Env } from '../../types';
+import { updateFirewallList } from '../../utils/cloudflareApi';
+import { serveAssetFromR2 } from '../../r2Assets';
+import { getTenantInfo } from '../../utils/getTenantInfo';
 import { DurableObject, DurableObjectState } from '@cloudflare/workers-types';
 
-export class RateLimiter implements DurableObject {
+export class RateLimiterDO implements DurableObject {
   state: DurableObjectState;
   env: Env;
   count: number = 0;
