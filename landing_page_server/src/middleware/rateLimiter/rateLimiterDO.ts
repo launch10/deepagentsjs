@@ -1,14 +1,13 @@
 import { Env } from '../../types';
 import { updateFirewallList } from '../../utils/cloudflareApi';
 import { serveAssetFromR2 } from '../../r2Assets';
-import { getTenantInfo } from '../../utils/getTenantInfo';
 import { DurableObject, DurableObjectState } from '@cloudflare/workers-types';
-
+import { scopedLogger, getSiteName } from './utils';
 export class RateLimiterDO implements DurableObject {
   state: DurableObjectState;
   env: Env;
   count: number = 0;
-  tenantId: string | null = null;
+  siteName: string | null = null;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -17,23 +16,24 @@ export class RateLimiterDO implements DurableObject {
     // Initialize count from storage
     this.state.blockConcurrencyWhile(async () => {
       this.count = await this.state.storage.get<number>('count') || 0;
-      this.tenantId = await this.state.storage.get<string>('tenantId') || null;
+      this.siteName = await this.state.storage.get<string>('siteName') || null;
     });
   }
 
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, context: ExecutionContext): Promise<Response> {
     try {
-      const tenantInfo = getTenantInfo(request.url);
-      const currentTenantId = tenantInfo.siteName;
+      // const siteName = getSiteName(request);
+      const siteName = getSiteName(request.url); 
+      scopedLogger.debug(`in the DO bb fetching for ${siteName}`);
 
       // If this is a new tenant for this DO instance, reset count
-      if (this.tenantId !== currentTenantId) {
-        this.tenantId = currentTenantId;
+      if (this.siteName !== siteName) {
+        this.siteName = siteName;
         // Load count from KV for this specific tenant
-        this.count = await this.env.USAGE_LIMIT.get<number>(`count:${currentTenantId}`, { type: 'json' }) || 0;
+        this.count = await this.env.USAGE_LIMIT.get<number>(`count:${siteName}`, { type: 'json' }) || 0;
         
         // Store the new tenant ID
-        await this.state.storage.put('tenantId', this.tenantId);
+        await this.state.storage.put('siteName', this.siteName);
       }
 
       this.count++;
@@ -41,11 +41,11 @@ export class RateLimiterDO implements DurableObject {
       // Persist the count to both DO storage and KV
       await Promise.all([
         this.state.storage.put('count', this.count),
-        this.env.USAGE_LIMIT.put(`count:${currentTenantId}`, JSON.stringify(this.count))
+        this.env.USAGE_LIMIT.put(`count:${siteName}`, JSON.stringify(this.count))
       ]);
 
       if (this.count > this.env.USAGE_LIMIT) {
-        console.log(`LIMIT BREACHED for ${currentTenantId}. Adding to Firewall list.`);
+        console.log(`LIMIT BREACHED for ${siteName}. Adding to Firewall list.`);
         
         // Fire-and-forget the API call to block the hostname
         this.state.waitUntil(

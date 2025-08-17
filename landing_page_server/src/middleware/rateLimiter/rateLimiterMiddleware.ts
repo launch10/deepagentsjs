@@ -1,92 +1,13 @@
 import { Context, MiddlewareHandler, Next } from 'hono';
-import { getTenantInfo } from '@utils/getTenantInfo';
 import { DurableObject } from '@cloudflare/workers-types';
 import { usageThresholdPercent, Env } from '~/types';
-import { logger } from '@utils/logger';
-
-const scopedLogger = logger.addScope('rateLimiter');
+import { scopedLogger, getSiteName } from './utils';
+import { KVCache } from './kvCache';
+import { MemoryCache } from './memoryCache';
 
 // Each site might have 10 requests (e.g. images, css, js, etc.)
 // So this is closer to "10 page views" than "100 page views"
-const BATCH_SIZE = 3;
-
-const getSiteName = (c: Context<{ Bindings: Env }>): string => {
-  const tenantInfo = getTenantInfo(c.req.url);
-  return tenantInfo.siteName;
-}
-class MemoryCache {
-    private cache: Map<string, number>;
-    constructor() {
-        this.cache = new Map();
-    }
-    
-    getRequestCount(c: Context<{ Bindings: Env }>): number {
-      const siteName = getSiteName(c);
-      const count = this.cache.get(siteName) || 0;
-      scopedLogger.debug(`count: ${count}`);
-
-      return count;
-    }
-    
-    incrementRequestCount(c: Context<{ Bindings: Env }>): number {
-      const siteName = getSiteName(c);
-      const count = this.getRequestCount(c);
-      this.cache.set(siteName, count + 1);
-
-      return count + 1;
-    }
-
-    resetRequestCount(c: Context<{ Bindings: Env }>): void {
-      const siteName = getSiteName(c);
-      this.cache.set(siteName, 0);
-    }
-}
-
-class KVCache {
-    private cache: Map<string, number>;
-    constructor() {
-        this.cache = new Map();
-    }
-    
-    async getSiteStatus(c: Context<{ Bindings: Env }>): Promise<string> {
-      const siteName = getSiteName(c);
-      const status = await c.env.USAGE_LIMIT.get(`status:${siteName}`) || 'normal';
-      scopedLogger.debug(`status: ${status}`);
-
-      return status;
-    }
-    
-    async setSiteStatus(c: Context<{ Bindings: Env }>, status: string): Promise<void> {
-      const siteName = getSiteName(c);
-      scopedLogger.debug(`setting status: ${status}`);
-
-      await c.executionCtx.waitUntil(
-        c.env.USAGE_LIMIT.put(`status:${siteName}`, status)
-      );
-    }
-
-    async getRequestCount(c: Context<{ Bindings: Env }>): Promise<number> {
-      const siteName = getSiteName(c);
-      const count = parseInt(await c.env.USAGE_LIMIT.get(`count:${siteName}`) || '0') as number;
-      scopedLogger.debug(`count: ${count}`);
-
-      return count;
-    }
-
-    async incrementBy(c: Context<{ Bindings: Env }>, amount: number): Promise<number> {
-      const siteName = getSiteName(c);
-      scopedLogger.debug(`incrementing by ${amount}`);
-
-      const prevCount = await this.getRequestCount(c);
-      const newCount = prevCount + amount;
-
-      await c.executionCtx.waitUntil(  
-        c.env.USAGE_LIMIT.put(`count:${siteName}`, newCount.toString())
-      );
-
-      return newCount;
-    }
-}
+const BATCH_SIZE = 10;
 class RateLimiter {
     private batchSize: number;
     private kvCache: KVCache;
@@ -103,7 +24,7 @@ class RateLimiter {
 
         if (shouldRateLimit) {
           scopedLogger.debug(`rateLimiting!`);
-            return c.json({ error: 'Rate limit exceeded' }, 429);
+          return c.json({ error: 'Rate limit exceeded' }, 429);
         }
 
         await this.updateRequestCount(c, next);
@@ -111,24 +32,28 @@ class RateLimiter {
     }
 
     private async shouldRateLimit(c: Context<{ Bindings: Env }>): Promise<boolean> {
-      const status = await this.kvCache.getSiteStatus(c); // global estimate (not just local cache), kv reads are fast and cheap
+      const status = await this.kvCache.getTenantStatus(c); // global estimate (not just local cache), kv reads are fast and cheap
+      scopedLogger.debug(`status: ${status}`);
 
       if (status === 'monitoring') {
-        const siteName = getSiteName(c);
-        const durableObject = this.getDurableObject(c);
-        const response = await durableObject.fetch(siteName);
-        return response.ok;
+        const durableObject = await this.getDurableObject(c);
+        // Create a proper Request object for the Durable Object
+        const request = new Request(c.req.url, {
+          method: c.req.method,
+          headers: c.req.raw.headers,
+        });
+        const response = await durableObject.fetch(request);
+        // If DO returns 429, we should rate limit
+        return response.status === 429;
       } else {
         return false;
       }
     }
 
     // See RateLimiterDO to see the actual implementation
-    private getDurableObject(c: Context<{ Bindings: Env }>): DurableObject {
-      // We don't want t a DO per tenant, we wnat it per site
-      // REFINE THIS BEFORE PROD
-      const siteName = getSiteName(c);
-      const doId = c.env.RATE_LIMITER.idFromName(siteName);
+    private async getDurableObject(c: Context<{ Bindings: Env }>): Promise<DurableObject> {
+      const tenantId = await this.kvCache.getTenantId(c);
+      const doId = c.env.RATE_LIMITER.idFromName(tenantId);
       const durableObject = c.env.RATE_LIMITER.get(doId);
       return durableObject;
     }
@@ -155,8 +80,9 @@ class RateLimiter {
     }
 
     private async afterThresholdCrossed(c: Context<{ Bindings: Env }>, next: Next) {
-      scopedLogger.debug(`Tenant ${c.env.RATE_LIMITER.idFromName(c.req.url)} crossed threshold. Activating monitoring.`);
-      this.kvCache.setSiteStatus(c, 'monitoring');
+      const tenantId = await this.kvCache.getTenantId(c);
+      scopedLogger.debug(`Tenant ${tenantId} crossed threshold. Activating monitoring.`);
+      this.kvCache.setTenantStatus(c, 'monitoring');
     }
 }
 
