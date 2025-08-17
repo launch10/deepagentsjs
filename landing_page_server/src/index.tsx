@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { etag } from 'hono/etag';
 import { Env } from './types';
 import { RateLimiter } from './durable-objects/rateLimiter';
+import { rateLimiterMiddleware } from './middleware/rateLimiterMiddleware';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -9,6 +10,7 @@ const app = new Hono<{ Bindings: Env }>();
 // This prevents the browser from re-downloading unchanged files.
 // Note: We need to ensure content-type is preserved on 304 responses
 app.use('*', etag());
+app.use('*', rateLimiterMiddleware);
 
 // This is the main route that will catch all incoming requests.
 app.get('*', async (c) => {
