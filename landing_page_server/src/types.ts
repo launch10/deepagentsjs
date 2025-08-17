@@ -25,7 +25,13 @@ export interface Env {
   USER_PAGES: R2Bucket;
   RATE_LIMITER: DurableObjectNamespace;
 
-  CLOUDFLARE_API_TOKEN: string;
-  CLOUDFLARE_ACCOUNT_ID: string;
-  CLOUDFLARE_LIST_ID: string;
+  // Environment variables
+  LOG_LEVEL?: string;
+  NODE_ENV?: string;
+  USAGE_MONITORING_THRESHOLD_PERCENT?: string;
+  
+  // Secrets
+  CLOUDFLARE_API_TOKEN?: string;
+  CLOUDFLARE_ACCOUNT_ID?: string;
+  CLOUDFLARE_LIST_ID?: string;
 }

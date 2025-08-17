@@ -1,7 +1,7 @@
 import { Context, MiddlewareHandler, Next } from 'hono';
-import { Env, TenantInfo } from '../../types';
-import { getTenantInfo } from '../../utils/getTenantInfo';
+import { getTenantInfo } from '@utils/getTenantInfo';
 import { DurableObject } from '@cloudflare/workers-types';
+import { usageThresholdPercent, Env } from '~/types';
 
 // Each site might have 10 requests (e.g. images, css, js, etc.)
 // So this is closer to "10 page views" than "100 page views"

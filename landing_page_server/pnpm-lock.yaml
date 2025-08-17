@@ -24,6 +24,9 @@ importers:
       '@types/node':
         specifier: ^24.3.0
         version: 24.3.0
+      dotenv:
+        specifier: ^17.2.1
+        version: 17.2.1
       vite:
         specifier: ^6.3.5
         version: 6.3.5(@types/node@24.3.0)
@@ -750,6 +753,10 @@ packages:
   detect-libc@2.0.4:
     resolution: {integrity: sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA==}
     engines: {node: '>=8'}
+
+  dotenv@17.2.1:
+    resolution: {integrity: sha512-kQhDYKZecqnM0fCnzI5eIv5L4cAe/iRI+HqMbO/hbRdTAeXDG+M9FjipUxNfbARuEg4iHIbhnhs78BCHNbSxEQ==}
+    engines: {node: '>=12'}
 
   error-stack-parser-es@1.0.5:
     resolution: {integrity: sha512-5qucVt2XcuGMcEGgWI7i+yZpmpByQ8J1lHhcL7PwqCwu9FPP3VUXzT4ltHe5i2z9dePwEHcDVOAfSnHsOlCXRA==}
@@ -1490,6 +1497,8 @@ snapshots:
   defu@6.1.4: {}
 
   detect-libc@2.0.4: {}
+
+  dotenv@17.2.1: {}
 
   error-stack-parser-es@1.0.5: {}
 

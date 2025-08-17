@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { etag } from 'hono/etag';
 import { Env } from './types';
 import { loggerMiddleware, contextMiddleware, rateLimiterMiddleware } from './middleware';
+import { logger } from '@utils/logger';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -32,9 +33,9 @@ app.get('*', async (c) => {
   const objectKey = `${hostname}${pathname}`;
 
   // 3. Fetch the object from your R2 bucket.
-  console.log(`objectKey: ${objectKey}`);
-  console.log('env:', c.env);
-  console.log('USER_PAGES binding:', c.env.USER_PAGES);
+  logger.debug(`objectKey: ${objectKey}`);
+  logger.debug('env:', c.env);
+  logger.debug('USER_PAGES binding:', c.env.USER_PAGES);
   
   // Check if R2 binding exists
   if (!c.env.USER_PAGES) {

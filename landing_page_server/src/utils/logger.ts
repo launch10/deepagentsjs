@@ -13,13 +13,20 @@ interface LogEntry {
 }
 
 class Logger {
-  private isDevelopment = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
+  private isDevelopment = false;
   private logLevel: LogLevel = 'info';
 
   constructor() {
-    // Set log level from environment if available
-    if (typeof process !== 'undefined' && process.env?.LOG_LEVEL) {
-      this.logLevel = process.env.LOG_LEVEL as LogLevel;
+    // Default log level - will be configured via setConfig
+  }
+
+  // Call this from your app initialization with env variables
+  setConfig(env: { LOG_LEVEL?: string; NODE_ENV?: string }) {
+    if (env.LOG_LEVEL) {
+      this.logLevel = env.LOG_LEVEL.toLowerCase() as LogLevel;
+    }
+    if (env.NODE_ENV) {
+      this.isDevelopment = env.NODE_ENV !== 'production';
     }
   }
 
@@ -76,10 +83,9 @@ class Logger {
 
     const formatted = this.formatMessage(entry);
     
+    // Wrangler/Miniflare doesn't always show console.debug, so use console.log for all non-error levels
     switch (level) {
       case 'debug':
-        console.debug(formatted);
-        break;
       case 'http':
       case 'info':
         console.log(formatted);

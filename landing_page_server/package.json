@@ -3,6 +3,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:wrangler": "wrangler dev",
     "build": "vite build",
     "preview": "$npm_execpath run build && vite preview",
     "deploy": "$npm_execpath run build && wrangler deploy",
@@ -16,6 +17,7 @@
     "@cloudflare/vite-plugin": "^1.2.3",
     "@cloudflare/workers-types": "^4.20250813.0",
     "@types/node": "^24.3.0",
+    "dotenv": "^17.2.1",
     "vite": "^6.3.5",
     "vite-ssr-components": "^0.3.0",
     "vite-tsconfig-paths": "^5.1.4",

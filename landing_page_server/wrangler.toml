@@ -4,16 +4,6 @@ main = "src/index.tsx"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-[vars]
-USAGE_MONITORING_THRESHOLD_PERCENT = 0.90 # Activate DO at 90% usage
-
-# Secret values for the Cloudflare API.
-# In production, set these using `npx wrangler secret put <NAME>`
-CLOUDFLARE_API_TOKEN = "2xN4rKvqoIl57SsqOEfcqJYyrhIRL1nGoTlWTbi2"
-# CLOUDFLARE_ZONE_ID = "your_zone_id"
-# CLOUDFLARE_ACCOUNT_ID = "your_account_id"
-# CLOUDFLARE_LIST_ID = "the_id_of_your_Suspended_Hostnames_list"
-
 [[r2_buckets]]
 binding = "USER_PAGES"
 bucket_name = "user-pages"
