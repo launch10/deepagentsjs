@@ -68,14 +68,16 @@ class RateLimiter {
         const newTotal = await this.kvCache.incrementBy(c, currentCount);
         this.memoryCache.resetRequestCount(c);
 
-        if (this.didCrossThreshold(newTotal)) {
+        if (await this.didCrossThreshold(c, newTotal)) {
           await this.afterThresholdCrossed(c, next);
         }
       }
     }
 
-    private didCrossThreshold(newTotal: number) {
-      const monitoringThreshold = newTotal * usageThresholdPercent;
+    private async didCrossThreshold(c: Context<{ Bindings: Env }>, newTotal: number): Promise<boolean> {
+      const tenantsLimit = await this.kvCache.getTenantsLimit(c);
+      const monitoringThreshold = tenantsLimit * usageThresholdPercent;
+
       return newTotal > monitoringThreshold;
     }
 
