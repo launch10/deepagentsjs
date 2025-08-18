@@ -3,7 +3,7 @@
 # Check if arguments are provided
 if [ $# -ne 2 ]; then
     echo "Usage: $0 <source-directory> <r2-bucket-path>"
-    echo "Example: $0 ./langgraph_app/app/.projects/paging-doctor-bingos/dist user-pages/dist"
+    echo "Example: $0 ./langgraph_app/app/.projects/paging-doctor-bingos/dist deploys/dist"
     exit 1
 fi
 
