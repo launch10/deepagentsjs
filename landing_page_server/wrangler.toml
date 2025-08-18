@@ -5,21 +5,20 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 [[r2_buckets]]
-binding = "USER_PAGES"
-bucket_name = "user-pages"
-preview_bucket_name = "user-pages"
+binding = "DEPLOYS_R2"
+bucket_name = "deploys"
+preview_bucket_name = "deploys"
 
 [[kv_namespaces]]
-binding = "USAGE_LIMIT"
-id = "user-usage-limit"
-preview_id = "user-usage-limit"
+binding = "DEPLOYS_KV"
+id = "deploys"
 
 [durable_objects]
-bindings = [{ name = "RATE_LIMITER", class_name = "RateLimiterDO" }]
+bindings = [{ name = "FIREWALL", class_name = "FirewallDO" }]
 
 [[migrations]]
 tag = "v1"
-new_classes = ["RateLimiterDO"]
+new_classes = ["FirewallDO"]
 
 # Cron trigger to run the reset job every day at midnight UTC.
 [triggers]

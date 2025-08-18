@@ -1,6 +1,8 @@
 import { Context } from 'hono';
 import { Env } from '~/types';
 import { scopedLogger } from './utils';
+import { Tenant } from '~/models/tenant';
+import { Site } from '~/models/site';
 
 type Plan = "starter" | "pro" | "enterprise";
 const MonthlyPlanLimit = {
@@ -8,22 +10,18 @@ const MonthlyPlanLimit = {
     pro: 5_000_000,
     enterprise: 20_000_000
 }
-export class KVCache {
-    private cache: Map<string, number>;
-    constructor() {
-        this.cache = new Map();
-    }
-
+export class RequestContext {
     async setTenantsPlan(c: Context<{ Bindings: Env }>, tenantId: string, plan: Plan): Promise<void> {
       scopedLogger.debug(`setting plan: ${plan}`);
 
       await c.executionCtx.waitUntil(
-        c.env.USAGE_LIMIT.put(`plan:${tenantId}`, plan)
+        c.env.DEPLOYS_KV.put(`plan:${tenantId}`, plan)
       );
     }
 
     async getTenantsPlan(c: Context<{ Bindings: Env }>, tenantId: string): Promise<Plan> {
-      const plan = await c.env.USAGE_LIMIT.get(`plan:${tenantId}`) || 'starter';
+      const tenant = await (new Tenant(c)).get(tenantId);
+      const plan = await c.env.DEPLOYS_KV.get(`plan:${tenantId}`) || 'starter';
       scopedLogger.debug(`plan: ${plan}`);
 
       return plan as Plan;
@@ -39,13 +37,25 @@ export class KVCache {
 
     async setTenantId(c: Context<{ Bindings: Env }>, tenantId: string, url: string): Promise<void> {
       await c.executionCtx.waitUntil(
-        c.env.USAGE_LIMIT.put(`tenantId:${url}`, tenantId)
+        c.env.DEPLOYS_KV.put(`tenantId:${url}`, tenantId)
       );
+      await c.executionCtx.waitUntil(
+        c.env.DEPLOYS_KV.put(`tenant:${tenantId}:url:`, url)
+      );
+    }
+
+    async listTenantsProperties(c: Context<{ Bindings: Env }>, tenantId: string): Promise<string[]> {
+      const properties = await c.env.DEPLOYS_KV.list({ prefix: `tenant:${tenantId}:url:` });
+      const urls = await Promise.all(
+        properties.keys.map(key => c.env.DEPLOYS_KV.get(key.name))
+      );
+      return urls.filter(url => url !== null) as string[];
     }
     
     async getTenantId(c: Context<{ Bindings: Env }>): Promise<string> {
       const url = new URL(c.req.url).hostname;
-      const tenantId = await c.env.USAGE_LIMIT.get(`tenantId:${url}`);
+      const site = await (new Site(c)).get(url);
+      const tenantId = await c.env.DEPLOYS_KV.get(`tenantId:${url}`);
 
       if (!tenantId) {
         throw new Error(`Tenant ID not found for URL: ${url}`);
@@ -57,7 +67,7 @@ export class KVCache {
     }
     
     async getTenantStatus(c: Context<{ Bindings: Env }>, tenantId: string): Promise<string> {
-      const status = await c.env.USAGE_LIMIT.get(`status:${tenantId}`) || 'normal';
+      const status = await c.env.DEPLOYS_KV.get(`status:${tenantId}`) || 'normal';
       scopedLogger.debug(`status: ${status}`);
 
       return status;
@@ -67,12 +77,12 @@ export class KVCache {
       scopedLogger.debug(`setting status: ${status}`);
 
       await c.executionCtx.waitUntil(
-        c.env.USAGE_LIMIT.put(`status:${tenantId}`, status)
+        c.env.DEPLOYS_KV.put(`status:${tenantId}`, status)
       );
     }
 
     async getRequestCount(c: Context<{ Bindings: Env }>, tenantId: string): Promise<number> {
-      const count = parseInt(await c.env.USAGE_LIMIT.get(`count:${tenantId}`) || '0') as number;
+      const count = parseInt(await c.env.DEPLOYS_KV.get(`count:${tenantId}`) || '0') as number;
       scopedLogger.debug(`count: ${count}`);
 
       return count;
@@ -85,13 +95,13 @@ export class KVCache {
       const newCount = prevCount + amount;
 
       await c.executionCtx.waitUntil(  
-        c.env.USAGE_LIMIT.put(`count:${tenantId}`, newCount.toString())
+        c.env.DEPLOYS_KV.put(`count:${tenantId}`, newCount.toString())
       );
 
       return newCount;
     }
 
     async resetRequestCount(c: Context<{ Bindings: Env }>, tenantId: string): Promise<void> {
-      await c.env.USAGE_LIMIT.put(`count:${tenantId}`, '0');
+      await c.env.DEPLOYS_KV.put(`count:${tenantId}`, '0');
     }
 }

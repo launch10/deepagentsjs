@@ -1,9 +1,10 @@
 import { Context, MiddlewareHandler, Next } from 'hono';
-import { DurableObject } from '@cloudflare/workers-types';
-import { usageThresholdPercent, Env } from '~/types';
-import { scopedLogger, getSiteName } from './utils';
-import { KVCache } from './kvCache';
+import { usageThresholdPercent, Env, SiteType, TenantType } from '~/types';
+import { scopedLogger } from './utils';
+import { RequestContext } from './kvCache';
 import { MemoryCache } from './memoryCache';
+import { Tenant } from '~/models/tenant';
+import { Site } from '~/models/site';
 
 // Each site might have 10 requests (e.g. images, css, js, etc.)
 // So this is closer to "10 page views" than "100 page views"
@@ -20,41 +21,49 @@ class RateLimiter {
     }
 
     async fetch(c: Context<{ Bindings: Env }>, next: Next) {
-        const tenantId = await this.kvCache.getTenantId(c);
-        const shouldRateLimit = await this.shouldRateLimit(c, tenantId);
+      const shouldRateLimit = await this.shouldRateLimit(c);
 
-        if (shouldRateLimit) {
-          scopedLogger.debug(`rateLimiting!`);
-          return c.json({ error: 'Rate limit exceeded' }, 429);
-        }
+      if (shouldRateLimit) {
+        scopedLogger.debug(`rateLimiting!`);
+        return c.json({ error: 'Rate limit exceeded' }, 429);
+      }
 
-        await this.updateRequestCount(c, tenantId);
-        return next();
+      await this.updateRequestCount(c, tenantId);
+      return next();
     }
 
-    private async shouldRateLimit(c: Context<{ Bindings: Env }>, tenantId: string): Promise<boolean> {
+    private async shouldRateLimit(c: Context<{ Bindings: Env }>): Promise<boolean> {
+      const siteModel = new Site(c);
+      const site = await siteModel.findByUrl(c.req.url);
+
+      if (!site) {
+        throw new Error(`Site not found for URL: ${c.req.url}`);
+      }
+
+      const tenantId = site.tenantId;
+      const tenantModel = new Tenant(c);
+      const tenant = await tenantModel.get(tenantId);
+
+      if (!tenant) {
+        throw new Error(`Tenant not found for ID: ${tenantId}`);
+      }
+
       const status = await this.kvCache.getTenantStatus(c, tenantId); // global estimate (not just local cache), kv reads are fast and cheap
       scopedLogger.debug(`status: ${status}`);
 
-      if (status === 'monitoring') {
+      if (status === 'monitoring' || status === 'blocked') {
         const durableObject = await this.getDurableObject(c, tenantId);
-        // Create a proper Request object for the Durable Object
-        const request = new Request(c.req.url, {
-          method: c.req.method,
-          headers: c.req.raw.headers,
-        });
-        const response = await durableObject.fetch(request);
-        // If DO returns 429, we should rate limit
-        return response.status === 429;
+        const shouldBlock = await durableObject.maybeActivateFirewall(c, tenantId);
+        return shouldBlock;
       } else {
         return false;
       }
     }
 
     // See RateLimiterDO to see the actual implementation
-    private async getDurableObject(c: Context<{ Bindings: Env }>, tenantId: string): Promise<DurableObject> {
-      const doId = c.env.RATE_LIMITER.idFromName(tenantId);
-      const durableObject = c.env.RATE_LIMITER.get(doId);
+    private async getDurableObject(c: Context<{ Bindings: Env }>, tenantId: string): Promise<RateLimiterDO> {
+      const doId = c.env.FIREWALL.idFromName(tenantId);
+      const durableObject = c.env.FIREWALL.get(doId) as FirewallDO;
       return durableObject;
     }
 

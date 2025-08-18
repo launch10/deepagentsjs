@@ -6,7 +6,7 @@ export async function handleScheduled(controller: ScheduledController, env: Env)
   
   // This is a simplified version. In production, you would get the list of active
   // tenants from your main database rather than trying to list all KV keys.
-  const list = await env.USAGE_LIMIT.list({ prefix: 'status:' });
+  const list = await env.DEPLOYS_KV.list({ prefix: 'status:' });
 
   for (const key of list.keys) {
     const tenantId = key.name.split(':')[1];
@@ -18,8 +18,8 @@ export async function handleScheduled(controller: ScheduledController, env: Env)
     await updateFirewallList(env, hostname, 'remove');
     
     // Delete the usage tracking keys from KV
-    await env.USAGE_LIMIT.delete(`count:${tenantId}`);
-    await env.USAGE_LIMIT.delete(`status:${tenantId}`);
+    await env.DEPLOYS_KV.delete(`count:${tenantId}`);
+    await env.DEPLOYS_KV.delete(`status:${tenantId}`);
   }
   
   console.log('Daily usage reset complete.');

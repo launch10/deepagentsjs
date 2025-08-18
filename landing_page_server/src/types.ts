@@ -1,29 +1,10 @@
 import { DurableObjectNamespace, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
 
-export type Plan = {
-    name: string;
-    usageLimit: number;
-}
-
-// Used to resolve R2 paths
-export interface TenantInfo {
-  userId: string;
-  orgId: string;
-  siteName: string;
-}
-
 export const usageThresholdPercent = 0.90;
-
-export const plans: Map<string, Plan> = new Map([
-    ['starter', { name: 'Starter', usageLimit: 1_000_000 }],
-    ['pro', { name: 'Pro', usageLimit: 5_000_000 }],
-    ['enterprise', { name: 'Enterprise', usageLimit: 20_000_000 }],
-]);
-
 export interface Env {
-  USAGE_LIMIT: KVNamespace;
-  USER_PAGES: R2Bucket;
-  RATE_LIMITER: DurableObjectNamespace;
+  DEPLOYS_KV: KVNamespace;
+  DEPLOYS_R2: R2Bucket;
+  FIREWALL: DurableObjectNamespace;
 
   // Environment variables
   LOG_LEVEL?: string;
@@ -37,3 +18,37 @@ export interface Env {
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_LIST_ID?: string;
 }
+
+export type Model = {
+  id: string;
+}
+export interface PlanType extends Model {
+  name: string;
+  usageLimit: number;
+}
+export interface TenantType extends Model {
+  orgId: string;
+}
+export interface SiteType extends Model {
+  url: string;
+  tenantId: string;
+  live: string;
+  preview: string;
+}
+export interface DeployType extends Model {
+  version: string;
+  siteId: string;
+}
+
+export type FirewallStatus = 'normal' | 'monitoring' | 'blocked';
+export interface Firewall extends Model {
+  siteId: string;
+  tenantId: string;
+  status: FirewallStatus;
+}
+
+export const plans: Map<string, PlanType> = new Map([
+    ['starter', { id: '1', name: 'Starter', usageLimit: 1_000_000 }],
+    ['pro', { id: '2', name: 'Pro', usageLimit: 5_000_000 }],
+    ['enterprise', { id: '3', name: 'Enterprise', usageLimit: 20_000_000 }],
+]);
