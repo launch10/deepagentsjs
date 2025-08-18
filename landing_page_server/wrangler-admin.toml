@@ -1,0 +1,26 @@
+# Admin/Internal API worker configuration
+name = "landing-page-server-admin"
+main = "src/index-admin.tsx"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[kv_namespaces]]
+binding = "DEPLOYS_KV"
+id = "deploys"
+
+[[r2_buckets]]
+binding = "DEPLOYS_R2"
+bucket_name = "deploys"
+
+[vars]
+# Add your Rails server IPs here (comma-separated)
+# In production, get these from your infrastructure team
+ALLOWED_IPS = ""
+
+# Deploy to internal subdomain only accessible within your network
+[env.production]
+route = "admin-api.internal.nichefinder.com/*"
+vars = { ALLOWED_IPS = "YOUR_RAILS_SERVER_IP" }
+
+[env.staging]
+route = "admin-api.staging.internal.nichefinder.com/*"

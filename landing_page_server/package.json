@@ -3,10 +3,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:wrangler": "wrangler dev",
+    "dev:public": "wrangler dev -c wrangler-public.toml",
+    "dev:admin": "wrangler dev -c wrangler-admin.toml --port 8788",
+    "dev:all": "concurrently \"npm:dev:public\" \"npm:dev:admin\"",
     "build": "vite build",
     "preview": "$npm_execpath run build && vite preview",
-    "deploy": "$npm_execpath run build && wrangler deploy",
+    "deploy:public": "$npm_execpath run build && wrangler deploy -c wrangler-public.toml",
+    "deploy:admin": "$npm_execpath run build && wrangler deploy -c wrangler-admin.toml",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "cli": "tsx src/cli/index.ts",
     "cli:build": "esbuild src/cli/index.ts --bundle --platform=node --target=node18 --outfile=dist/cli.js --external:miniflare"
@@ -20,6 +23,7 @@
     "@cloudflare/vite-plugin": "^1.2.3",
     "@cloudflare/workers-types": "^4.20250813.0",
     "@types/node": "^24.3.0",
+    "concurrently": "^8.2.2",
     "dotenv": "^17.2.1",
     "esbuild": "^0.24.2",
     "miniflare": "^3.20241205.0",
