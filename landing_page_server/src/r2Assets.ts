@@ -1,10 +1,9 @@
 import { Context } from 'hono';
 import { Env } from './types';
-import { getTenantInfo } from './utils/getTenantInfo';
 
 export async function serveAssetFromR2(c: Context<{ Bindings: Env }>) {
   const url = new URL(c.req.url);
-  const tenantInfo = getTenantInfo(url.href);
+  // const tenantInfo = getTenantInfo(url.href);
   let pathname = url.pathname;
   
   // 1. Determine environment (production or preview)

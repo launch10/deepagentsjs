@@ -102,7 +102,7 @@ app.get('*', async (c) => {
   });
 });
 
-import { RateLimiterDO } from './middleware/rateLimiter/firewallDO';
+import { FirewallDO } from './models/firewall';
 
 export default app;
-export { RateLimiterDO };
+export { FirewallDO };
