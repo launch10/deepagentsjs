@@ -164,7 +164,7 @@ HTTParty.post("https://admin-api.internal.nichefinder.com/api/internal/deploy",
 )
 ```
 
-## CLI Tool
+## CLI
 
 The CLI is for local development and debugging only:
 

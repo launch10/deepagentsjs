@@ -31,7 +31,11 @@ export class Site extends BaseModel<SiteType> {
 
     async findByUrl(url: string): Promise<SiteType | null> {
         const hostname = new URL(url).hostname;
-        return this.findByIndex('url', hostname);
+        const port = new URL(url).port;
+        const finalUrl = [hostname, port].join(':');
+
+        const result = await this.findByIndex('url', finalUrl);
+        return result;
     }
 
     async findByTenant(tenantId: string): Promise<SiteType[]> {

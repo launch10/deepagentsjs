@@ -11,7 +11,15 @@ const program = new Command();
 program
   .name('lps-cli')
   .description('Landing Page Server CLI - Internal tool for managing KV data')
-  .version('1.0.0');
+  .version('1.0.0')
+  .option('-c, --config <path>', 'Path to wrangler config file (default: wrangler.toml)')
+  .hook('preAction', (thisCommand) => {
+    // Store config path for commands to use
+    const configPath = thisCommand.opts().config;
+    if (configPath) {
+      process.env.WRANGLER_CONFIG_PATH = configPath;
+    }
+  });
 
 program.addCommand(setCommand);
 program.addCommand(getCommand);
