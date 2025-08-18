@@ -5,7 +5,7 @@ export async function updateFirewallList(env: Env, hostname: string, action: 'ad
 
   const body = [{
     "comment": `Auto-suspended by worker on ${new Date().toISOString()}`,
-    "hostname": { "url": `http://${hostname}` } // API expects a full URL
+    "hostname": { "url": hostname }
   }];
 
   const options: RequestInit = {

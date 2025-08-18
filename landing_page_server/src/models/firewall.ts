@@ -153,7 +153,14 @@ export class Firewall extends BaseModel<FirewallType> {
             const result = await response.json() as { shouldBlock: boolean };
             
             if (result.shouldBlock) {
-                await this.set(tenant.id, { status: 'blocked' });
+                // Find existing firewall or create new one with proper structure
+                const existingFirewall = await this.findByTenant(tenant.id);
+                const firewall = existingFirewall || {
+                    id: tenant.id,
+                    tenantId: tenant.id,
+                    status: 'blocked'
+                };
+                await this.set(firewall.id, { ...firewall, status: 'blocked' });
             }
             
             return result.shouldBlock;
