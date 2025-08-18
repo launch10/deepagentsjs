@@ -11,7 +11,7 @@ const isPlanType = createTypeGuard<PlanType>(
 );
 
 const MonthlyPlanLimit: Record<PlanName, number> = {
-    starter: 1_000_000,
+    starter: 25, // 1_000_000,
     pro: 5_000_000,
     enterprise: 20_000_000
 }
@@ -29,6 +29,6 @@ export class Plan extends BaseModel<PlanType> {
     }
 
     getMonthlyLimit(plan: PlanType): number {
-        return MonthlyPlanLimit[plan.name as PlanName];
+        return MonthlyPlanLimit[plan.name.toLowerCase() as PlanName] || MonthlyPlanLimit['starter'];
     }
 }
