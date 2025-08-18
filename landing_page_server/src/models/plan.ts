@@ -1,5 +1,5 @@
 import { Context } from "hono";
-import { Env, PlanType } from "~/types";
+import { Env, PlanType, PlanName, usageThresholdPercent } from "~/types";
 import { BaseModel, createTypeGuard } from "./base";
 
 const isPlanType = createTypeGuard<PlanType>(
@@ -10,8 +10,25 @@ const isPlanType = createTypeGuard<PlanType>(
     }
 );
 
+const MonthlyPlanLimit: Record<PlanName, number> = {
+    starter: 1_000_000,
+    pro: 5_000_000,
+    enterprise: 20_000_000
+}
 export class Plan extends BaseModel<PlanType> {
     constructor(c: Context<{ Bindings: Env }>) {
         super(c, 'plan', isPlanType);
+    }
+
+    protected defineIndexes(): void {
+        this.addIndex({
+            name: 'id',
+            keyExtractor: (plan) => plan.id || null,
+            type: 'unique'
+        });
+    }
+
+    getMonthlyLimit(plan: PlanType): number {
+        return MonthlyPlanLimit[plan.name as PlanName];
     }
 }

@@ -1,0 +1,34 @@
+import { Context } from "hono";
+import { Env, RequestType } from "~/types";
+import { BaseModel, createTypeGuard } from "./base";
+
+const isRequestType = createTypeGuard<RequestType>(
+    (data: any): data is RequestType => {
+        return data.id !== undefined &&
+            data.tenantId !== undefined;
+    }
+);
+
+export class Request extends BaseModel<RequestType> {
+    constructor(c: Context<{ Bindings: Env }>) {
+        super(c, 'request', isRequestType);
+    }
+
+    protected defineIndexes(): void {
+        this.addIndex({
+            name: 'id',
+            keyExtractor: (request) => request.id || null,
+            type: 'unique'
+        });
+
+        this.addIndex({
+            name: 'tenantId',
+            keyExtractor: (request) => request.tenantId || null,
+            type: 'unique'
+        });
+    }
+
+    async findByTenantId(tenantId: string): Promise<RequestType | null> {
+        return this.findByIndex('tenantId', tenantId);
+    }
+}

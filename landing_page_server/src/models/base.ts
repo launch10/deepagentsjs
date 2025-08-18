@@ -51,7 +51,7 @@ export class BaseModel<T> extends CloudflareContext {
 
     async get(id: string): Promise<T | null> {
         try {
-            const data = await this.env.DEPLOYS_KV.get(this.getKey(id));
+            const data = await this.c.env.DEPLOYS_KV.get(this.getKey(id));
             if (!data) return null;
             
             const parsed = JSON.parse(data) as T;
@@ -67,7 +67,7 @@ export class BaseModel<T> extends CloudflareContext {
         }
     }
 
-    async set(id: string, data: T): Promise<void> {
+    async set(id: string, data: Partial<T>): Promise<void> {
         if (!data) {
             throw new Error(`${this.prefix} data is required`);
         }
@@ -79,12 +79,13 @@ export class BaseModel<T> extends CloudflareContext {
         try {
             // Get existing data to clean up old indexes
             const existingData = await this.get(id);
+            const newData = { ...existingData, ...data } as T;
             
             // Store the main record
-            await this.env.DEPLOYS_KV.put(this.getKey(id), JSON.stringify(data));
+            await this.c.env.DEPLOYS_KV.put(this.getKey(id), JSON.stringify(newData));
 
             // Update indexes
-            await this.updateIndexes(id, data, existingData);
+            await this.updateIndexes(id, newData, existingData);
             
         } catch (error) {
             console.error(`Error setting ${this.prefix}:${id}`, error);

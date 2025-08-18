@@ -28,6 +28,12 @@ export interface PlanType extends Model {
 }
 export interface TenantType extends Model {
   orgId: string;
+  planId: string;
+}
+
+export interface RequestType extends Model {
+  tenantId: string;
+  count: number;
 }
 export interface SiteType extends Model {
   url: string;
@@ -40,15 +46,15 @@ export interface DeployType extends Model {
   siteId: string;
 }
 
-export type FirewallStatus = 'normal' | 'monitoring' | 'blocked';
-export interface Firewall extends Model {
-  siteId: string;
+export type FirewallStatus = 'inactive' | 'monitoring' | 'blocked';
+export interface FirewallType extends Model {
   tenantId: string;
   status: FirewallStatus;
 }
 
+export type PlanName = 'starter' | 'pro' | 'enterprise';
 export const plans: Map<string, PlanType> = new Map([
-    ['starter', { id: '1', name: 'Starter', usageLimit: 1_000_000 }],
-    ['pro', { id: '2', name: 'Pro', usageLimit: 5_000_000 }],
-    ['enterprise', { id: '3', name: 'Enterprise', usageLimit: 20_000_000 }],
+    ['starter' as PlanName, { id: '1', name: 'Starter', usageLimit: 1_000_000 }],
+    ['pro' as PlanName, { id: '2', name: 'Pro', usageLimit: 5_000_000 }],
+    ['enterprise' as PlanName, { id: '3', name: 'Enterprise', usageLimit: 20_000_000 }],
 ]);
