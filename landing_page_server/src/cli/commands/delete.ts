@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { Tenant, Site, Plan } from '../../models/index.js';
-import { getMockContext, cleanup } from '../utils/kv.js';
+import { SDKClient } from '../../sdk/index.js';
+import { createMockContext, cleanupMockContext } from '../utils/context.js';
 
 export const deleteCommand = new Command('delete')
   .description('Delete data from KV store')
@@ -13,20 +13,24 @@ export const deleteCommand = new Command('delete')
         try {
           if (!options.force) {
             console.log(`⚠️  This will delete tenant ${id}. Use --force to confirm.`);
-            await cleanup();
+            await cleanupMockContext();
             process.exit(0);
           }
           
-          const context = await getMockContext();
-          const model = new Tenant(context);
+          const context = await createMockContext();
+          const client = new SDKClient(context);
           
-          await model.delete(id);
+          const result = await client.tenant.delete(id);
+          
+          if (!result.success) {
+            throw new Error(result.error || 'Delete failed');
+          }
           console.log(`✅ Tenant ${id} deleted successfully`);
-          await cleanup();
+          await cleanupMockContext();
           process.exit(0);
         } catch (error) {
           console.error('❌ Error deleting tenant:', error);
-          await cleanup();
+          await cleanupMockContext();
           process.exit(1);
         }
       })
@@ -40,20 +44,24 @@ export const deleteCommand = new Command('delete')
         try {
           if (!options.force) {
             console.log(`⚠️  This will delete site ${id}. Use --force to confirm.`);
-            await cleanup();
+            await cleanupMockContext();
             process.exit(0);
           }
           
-          const context = await getMockContext();
-          const model = new Site(context);
+          const context = await createMockContext();
+          const client = new SDKClient(context);
           
-          await model.delete(id);
+          const result = await client.site.delete(id);
+          
+          if (!result.success) {
+            throw new Error(result.error || 'Delete failed');
+          }
           console.log(`✅ Site ${id} deleted successfully`);
-          await cleanup();
+          await cleanupMockContext();
           process.exit(0);
         } catch (error) {
           console.error('❌ Error deleting site:', error);
-          await cleanup();
+          await cleanupMockContext();
           process.exit(1);
         }
       })
@@ -67,20 +75,24 @@ export const deleteCommand = new Command('delete')
         try {
           if (!options.force) {
             console.log(`⚠️  This will delete plan ${id}. Use --force to confirm.`);
-            await cleanup();
+            await cleanupMockContext();
             process.exit(0);
           }
           
-          const context = await getMockContext();
-          const model = new Plan(context);
+          const context = await createMockContext();
+          const client = new SDKClient(context);
           
-          await model.delete(id);
+          const result = await client.plan.delete(id);
+          
+          if (!result.success) {
+            throw new Error(result.error || 'Delete failed');
+          }
           console.log(`✅ Plan ${id} deleted successfully`);
-          await cleanup();
+          await cleanupMockContext();
           process.exit(0);
         } catch (error) {
           console.error('❌ Error deleting plan:', error);
-          await cleanup();
+          await cleanupMockContext();
           process.exit(1);
         }
       })

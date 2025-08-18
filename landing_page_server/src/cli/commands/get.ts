@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { Tenant, Site, Plan } from '../../models/index.js';
-import { getMockContext, cleanup } from '../utils/kv.js';
+import { SDKClient } from '../../sdk/index.js';
+import { createMockContext, cleanupMockContext } from '../utils/context.js';
 
 export const getCommand = new Command('get')
   .description('Get data from KV store')
@@ -10,20 +10,22 @@ export const getCommand = new Command('get')
       .argument('<id>', 'Tenant ID')
       .action(async (id) => {
         try {
-          const context = await getMockContext();
-          const model = new Tenant(context);
+          const context = await createMockContext();
+          const client = new SDKClient(context);
           
-          const tenant = await model.get(id);
-          if (tenant) {
-            console.log(JSON.stringify(tenant, null, 2));
+          const result = await client.tenant.get(id);
+          
+          if (result.success && result.data) {
+            console.log(JSON.stringify(result.data, null, 2));
           } else {
-            console.log(`Tenant ${id} not found`);
+            console.log(result.error || `Tenant ${id} not found`);
           }
-          await cleanup();
+          
+          await cleanupMockContext();
           process.exit(0);
         } catch (error) {
-          console.error('❌ Error getting tenant:', error);
-          await cleanup();
+          console.error('❌ Error:', error);
+          await cleanupMockContext();
           process.exit(1);
         }
       })
@@ -36,28 +38,37 @@ export const getCommand = new Command('get')
       .option('--by-tenant <tenantId>', 'Find all sites by tenant ID')
       .action(async (id, options) => {
         try {
-          const context = await getMockContext();
-          const model = new Site(context);
+          const context = await createMockContext();
+          const client = new SDKClient(context);
           
           if (options.byUrl) {
-            const site = await model.findByUrl(options.byUrl);
-            console.log(JSON.stringify(site, null, 2));
-          } else if (options.byTenant) {
-            const sites = await model.findByTenant(options.byTenant);
-            console.log(JSON.stringify(sites, null, 2));
-          } else {
-            const site = await model.get(id);
-            if (site) {
-              console.log(JSON.stringify(site, null, 2));
+            const result = await client.site.findByUrl(options.byUrl);
+            if (result.success && result.data) {
+              console.log(JSON.stringify(result.data, null, 2));
             } else {
-              console.log(`Site ${id} not found`);
+              console.log(result.error || 'Site not found');
+            }
+          } else if (options.byTenant) {
+            const result = await client.site.findByTenant(options.byTenant);
+            if (result.success && result.data) {
+              console.log(JSON.stringify(result.data, null, 2));
+            } else {
+              console.log(result.error || 'No sites found');
+            }
+          } else {
+            const result = await client.site.get(id);
+            if (result.success && result.data) {
+              console.log(JSON.stringify(result.data, null, 2));
+            } else {
+              console.log(result.error || `Site ${id} not found`);
             }
           }
-          await cleanup();
+          
+          await cleanupMockContext();
           process.exit(0);
         } catch (error) {
-          console.error('❌ Error getting site:', error);
-          await cleanup();
+          console.error('❌ Error:', error);
+          await cleanupMockContext();
           process.exit(1);
         }
       })
@@ -68,20 +79,22 @@ export const getCommand = new Command('get')
       .argument('<id>', 'Plan ID')
       .action(async (id) => {
         try {
-          const context = await getMockContext();
-          const model = new Plan(context);
+          const context = await createMockContext();
+          const client = new SDKClient(context);
           
-          const plan = await model.get(id);
-          if (plan) {
-            console.log(JSON.stringify(plan, null, 2));
+          const result = await client.plan.get(id);
+          
+          if (result.success && result.data) {
+            console.log(JSON.stringify(result.data, null, 2));
           } else {
-            console.log(`Plan ${id} not found`);
+            console.log(result.error || `Plan ${id} not found`);
           }
-          await cleanup();
+          
+          await cleanupMockContext();
           process.exit(0);
         } catch (error) {
-          console.error('❌ Error getting plan:', error);
-          await cleanup();
+          console.error('❌ Error:', error);
+          await cleanupMockContext();
           process.exit(1);
         }
       })

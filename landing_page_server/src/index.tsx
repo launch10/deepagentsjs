@@ -3,9 +3,14 @@ import { etag } from 'hono/etag';
 import { Env } from './types';
 import { loggerMiddleware, contextMiddleware, rateLimiterMiddleware } from './middleware';
 import { logger } from '@utils/logger';
+import { createInternalAPI } from './api/index';
 
 const app = new Hono<{ Bindings: Env }>();
 const requestLogger = logger.addScope('request');
+
+// Mount internal API routes
+const internalAPI = createInternalAPI();
+app.route('/api/internal', internalAPI);
 
 // Use Hono's built-in ETag middleware for automatic browser caching.
 // This prevents the browser from re-downloading unchanged files.
