@@ -1,4 +1,5 @@
 import { getRequestContext } from './als';
+import { Env } from '../types';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'http';
 
@@ -138,7 +139,7 @@ export class Logger {
     return this.scopes[scope]
   }
 
-  setConfig(env: { LOG_LEVEL?: string; NODE_ENV?: string; LOG_IGNORE_SCOPES?: string; LOG_FOCUS_SCOPES?: string }) {
+  setConfig(env: Partial<Env>) {
     this.eachLogger(logger => logger.setConfig(env));
   }
 

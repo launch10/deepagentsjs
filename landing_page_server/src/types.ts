@@ -17,7 +17,7 @@ export interface Env {
   // Secrets
   CLOUDFLARE_API_TOKEN?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
-  CLOUDFLARE_LIST_ID?: string;
+  CLOUDFLARE_BLOCKED_DOMAINS_LIST_ID?: string;
   JWT_SECRET?: string;
 }
 

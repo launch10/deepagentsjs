@@ -1,7 +1,7 @@
 import { Env } from '../types';
 
 export async function updateFirewallList(env: Env, hostname: string, action: 'add' | 'remove') {
-  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/rules/lists/${env.CLOUDFLARE_LIST_ID}/items`;
+  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/rules/lists/${env.CLOUDFLARE_BLOCKED_DOMAINS_LIST_ID}/items`;
 
   const body = [{
     "comment": `Auto-suspended by worker on ${new Date().toISOString()}`,

@@ -2,7 +2,7 @@ import { Context } from "hono";
 import { Env, FirewallType, TenantType } from "~/types";
 import { BaseModel, createTypeGuard } from "./base";
 import { updateFirewallList } from '~/utils/cloudflareApi';
-import { Request } from "./request";
+import { Request as RequestModel } from "./request";
 import { Site } from "./site";
 import { Plan } from "./plan";
 
@@ -31,53 +31,61 @@ export class FirewallDO implements DurableObject {
     });
   }
 
-  // just to make the type checker happy
   async fetch(request: Request): Promise<Response> {
-    return new Response('ok');
-  }
-
-  async maybeActivateFirewall(c: Context<{ Bindings: Env }>, tenant: TenantType): Promise<boolean> {
-    try {
-      // If this is the first request for this site, initialize approximate count from KV
-      if (this.count === 0) {
-        const requestModel = new Request(c);
-        const requests = await requestModel.findByTenantId(tenant.id);
-        const count = requests ? requests.count : 0;
-        await this.state.storage.put('count', count + 1);
-      } else {
-        this.count++;
-        await this.state.storage.put('count', this.count);
-      }
-      
-
-      const planModel = new Plan(c);
-      const plan = await planModel.get(tenant.planId);
-
-      if (!plan) {
-        throw new Error(`Plan not found for ID: ${tenant.planId}`);
-      }
-
-      const tenantsLimit = planModel.getMonthlyLimit(plan);
-
-      if (this.count > tenantsLimit) {
-        // Fire-and-forget the API call to block the hostname
-        const siteModel = new Site(c);
-        const sites = await siteModel.findByTenant(tenant.id);
-
-        sites.forEach(site => {
-          this.state.waitUntil(
-            updateFirewallList(c.env, site.url, 'add')
-          );
-        });
+    const url = new URL(request.url);
+    
+    // Handle firewall check requests
+    if (url.pathname === '/check-firewall' && request.method === 'POST') {
+      try {
+        const data = await request.json() as {
+          tenantId: string;
+          requestCount: number;
+          planLimit: number;
+          siteUrl: string;
+          timestamp: number;
+        };
         
-        return true;
+        // If this is the first request for this tenant, initialize count
+        if (this.count === 0) {
+          this.count = data.requestCount;
+          await this.state.storage.put('count', this.count);
+          await this.state.storage.put('tenantId', data.tenantId);
+        } else {
+          // Increment the count
+          this.count++;
+          await this.state.storage.put('count', this.count);
+        }
+        
+        // Check if we should block
+        const shouldBlock = this.count > data.planLimit;
+        
+        if (shouldBlock) {
+          // Fire-and-forget the API call to block the hostname if configured
+          // Note: We need to pass the site URL to the Cloudflare API
+          if (this.env.CLOUDFLARE_ACCOUNT_ID && this.env.CLOUDFLARE_BLOCKED_DOMAINS_LIST_ID) {
+            this.state.waitUntil(
+              updateFirewallList(this.env, data.siteUrl, 'add')
+            );
+          } else {
+            console.warn('Cloudflare firewall list not configured - skipping block action');
+          }
+        }
+        
+        return new Response(JSON.stringify({ shouldBlock }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error: any) {
+        // If we break this code, it could have catastrophic consequences,
+        // so we should err on the side of caution and block the site
+        return new Response(JSON.stringify({ shouldBlock: true }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 500
+        });
       }
-      return false;
-    } catch (error: any) {
-      // if we break this code, it could have catastrophic consequences,
-      // so we should err on the side of caution and block the site
-      return true;
     }
+    
+    // Default response for other requests
+    return new Response('Not Found', { status: 404 });
   }
 }
 export class Firewall extends BaseModel<FirewallType> {
@@ -100,15 +108,60 @@ export class Firewall extends BaseModel<FirewallType> {
     }
 
     async maybeActivate(tenant: TenantType): Promise<boolean> {
-        const doId = this.c.env.FIREWALL.idFromName(tenant.id);
-        const durableObject = this.c.env.FIREWALL.get(doId) as FirewallDO;
-        const shouldBlock = await durableObject.maybeActivateFirewall(this.c, tenant);
-
-        if (shouldBlock) {
-            await this.set(tenant.id, { status: 'blocked' });
+        try {
+            // Gather all necessary data before calling DurableObject
+            const requestModel = new RequestModel(this.c);
+            const planModel = new Plan(this.c);
+            const siteModel = new Site(this.c);
+            
+            const requests = await requestModel.findByTenantId(tenant.id);
+            const plan = await planModel.get(tenant.planId);
+            const site = await siteModel.findByUrl(this.c.req.url);
+            
+            if (!plan) {
+                throw new Error(`Plan not found for ID: ${tenant.planId}`);
+            }
+            
+            // Prepare data to send to DurableObject
+            const requestData = {
+                tenantId: tenant.id,
+                requestCount: requests?.count || 0,
+                planLimit: planModel.getMonthlyLimit(plan),
+                siteUrl: site?.url || this.c.req.url,
+                timestamp: Date.now()
+            };
+            
+            console.log('[Firewall.maybeActivate] Sending data to DurableObject:', requestData);
+            
+            // Communicate with DurableObject via fetch
+            const doId = this.c.env.FIREWALL.idFromName(tenant.id);
+            const durableObject = this.c.env.FIREWALL.get(doId);
+            
+            const response = await durableObject.fetch(
+                new Request('http://internal/check-firewall', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                })
+            );
+            
+            if (!response.ok) {
+                console.error('[Firewall.maybeActivate] DurableObject response not ok:', response.status, await response.text());
+                throw new Error(`DurableObject returned ${response.status}`);
+            }
+            
+            const result = await response.json() as { shouldBlock: boolean };
+            
+            if (result.shouldBlock) {
+                await this.set(tenant.id, { status: 'blocked' });
+            }
+            
+            return result.shouldBlock;
+        } catch (error) {
+            console.error('[Firewall.maybeActivate] Error:', error);
+            // On error, default to not blocking to avoid breaking the site
+            return false;
         }
-
-        return shouldBlock;
     }
 
     async findByTenant(tenantId: string): Promise<FirewallType | null> {

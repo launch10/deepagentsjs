@@ -82,9 +82,9 @@ pnpm cli set site --id 1 --url localhost:8787 -t 1
 pnpm cli set site --id 2 --url localhost:9898 -t 2
 pnpm cli set tenant --id 1 --org-id 1 --plan-id 1
 pnpm cli set tenant --id 2 --org-id 2 --plan-id 2
-pnpm cli set plan --id 1 --name "Starter Plan" --limit 1000000
-pnpm cli set plan --id 2 --name "Pro Plan" --limit 5000000
-pnpm cli set plan --id 3 --name "Enterprise Plan" --limit 20000000
+pnpm cli set plan --id 1 --name "starter" --limit 1000000
+pnpm cli set plan --id 2 --name "pro" --limit 5000000
+pnpm cli set plan --id 3 --name "enterprise" --limit 20000000
 ```
 
 ### Uploading Landing Pages (Local Testing)
