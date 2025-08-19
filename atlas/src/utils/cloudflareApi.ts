@@ -23,10 +23,10 @@ export async function updateFirewallList(env: Env, hostname: string, action: 'ad
     const data = await response.json();
     if (!data?.success) {
       console.error(`Failed to update Firewall List for ${hostname}`, JSON.stringify(data.errors));
-      return true;
+      return false;
     } else {
       console.log(`Successfully updated Firewall List for ${hostname}. Action: ${action}`);
-      return false;
+      return true;
     }
   } catch (error) {
     console.error(`Exception while updating Firewall List for ${hostname}`, error);
