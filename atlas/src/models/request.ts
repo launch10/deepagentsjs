@@ -16,12 +16,6 @@ export class Request extends BaseModel<RequestType> {
 
     protected defineIndexes(): void {
         this.addIndex({
-            name: 'id',
-            keyExtractor: (request) => request.id || null,
-            type: 'unique'
-        });
-
-        this.addIndex({
             name: 'tenantId',
             keyExtractor: (request) => request.tenantId || null,
             type: 'unique'

@@ -48,8 +48,8 @@ export class FirewallRule extends BaseModel<FirewallRuleType> {
             if (!rule.id) {
                 rule.id = uuidv4();
             }
-            await this.set(rule.id, {...rule, status: 'blocked', blockedAt: (new Date()).toISOString()});
-            console.log(`created firewall rule!`)
+            rule = {...rule, status: 'blocked', blockedAt: new Date().toISOString()}
+            await this.set(rule.id, rule);
             return true;
         }
 

@@ -21,11 +21,6 @@ export class Plan extends BaseModel<PlanType> {
     }
 
     protected defineIndexes(): void {
-        this.addIndex({
-            name: 'id',
-            keyExtractor: (plan) => plan.id || null,
-            type: 'unique'
-        });
     }
 
     getMonthlyLimit(plan: PlanType): number {

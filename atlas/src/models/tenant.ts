@@ -14,10 +14,5 @@ export class Tenant extends BaseModel<TenantType> {
     }
 
     protected defineIndexes(): void {
-        this.addIndex({
-            name: 'id',
-            keyExtractor: (tenant) => tenant.id || null,
-            type: 'unique'
-        });
     }
 }
