@@ -8,8 +8,8 @@ import { ipAllowlistMiddleware, hmacMiddleware, corsMiddleware } from '~/middlew
 export function createInternalAPI() {
   const api = new Hono<{ Bindings: Env }>();
   
-  api.use('/*', corsMiddleware);  
-  api.use('/*', ipAllowlistMiddleware);
+  // api.use('/*', corsMiddleware);  
+  // api.use('/*', ipAllowlistMiddleware);
   api.use('/*', hmacMiddleware);
 
   // Health check endpoint

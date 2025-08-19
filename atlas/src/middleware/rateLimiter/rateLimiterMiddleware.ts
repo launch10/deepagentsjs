@@ -1,7 +1,6 @@
 import { Context, MiddlewareHandler, Next } from 'hono';
 import { usageThresholdPercent, Env, TenantType, SiteType, FirewallType } from '~/types';
 import { scopedLogger } from './utils';
-import { RequestContext } from './kvCache';
 import { MemoryCache } from './memoryCache';
 import { Tenant, Site, Firewall, Request, Plan } from '~/models';
 import { v4 as uuidv4 } from 'uuid';
@@ -18,7 +17,14 @@ class RateLimiter {
         this.batchSize = BATCH_SIZE;
     }
 
+    isDocumentRequest = (url: string): boolean => {
+        const path = new URL(url).pathname;
+        return path.endsWith('/') || path.endsWith('.html') || path.endsWith('.htm');
+    };
+    
     async fetch(c: Context<{ Bindings: Env }>, next: Next) {
+      if (!this.isDocumentRequest(c.req.url)) return next();
+
       const siteModel = new Site(c);
       const site = await siteModel.findByUrl(c.req.url);
 

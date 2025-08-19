@@ -2,6 +2,7 @@ import type { Env } from '~/types';
 import type { Context, Next } from 'hono';
 
 export const hmacMiddleware = async (c: Context<{ Bindings: Env }>, next: Next) => {
+    console.log('hmacMiddleware');
     // Skip auth for health check
     if (c.req.path === '/health' || c.req.path === '/api/internal/health') {
       return next();
