@@ -84,4 +84,31 @@ export const firewallCommand = new Command('firewall')
           process.exit(1);
         }
       })
+  )
+  .addCommand(
+    new Command('status')
+      .description('Get firewall status for a tenant')
+      .requiredOption('-t, --tenant-id <id>', 'Tenant ID')
+      .action(async (options) => {
+        try {
+          const context = await createMockContext();
+          const client = new SDKClient(context);
+          
+          const result = await client.tenant.status(options.tenantId);
+          
+          if (result.success) {
+            console.log(`Firewall status for tenant ${options.tenantId}: ${result.data}`);
+          } else {
+            console.error(`❌ Error getting status: ${result.error}`);
+            process.exit(1);
+          }
+          
+          await cleanupMockContext();
+          process.exit(0);
+        } catch (error) {
+          console.error('❌ Error:', error);
+          await cleanupMockContext();
+          process.exit(1);
+        }
+      })
   );

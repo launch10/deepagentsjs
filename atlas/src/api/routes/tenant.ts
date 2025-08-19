@@ -139,5 +139,22 @@ export function tenantRoutes() {
     return c.json({ success: true, message: `Tenant ${id} reset successfully` });
   });
   
+  // GET /api/internal/tenants/:id/status
+  router.get('/:id/status', async (c) => {
+    const id = c.req.param('id');
+    const client = new SDKClient(c);
+    const result = await client.tenant.status(id);
+    
+    if (!result.success) {
+      return c.json({ error: result.error }, 500);
+    }
+    
+    return c.json({ 
+      success: true, 
+      status: result.data,
+      tenantId: id 
+    });
+  });
+  
   return router;
 }

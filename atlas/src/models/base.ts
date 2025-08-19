@@ -72,15 +72,15 @@ export class BaseModel<T> extends CloudflareContext {
             throw new Error(`${this.prefix} data is required`);
         }
 
-        if (this.validator && !this.validator(data)) {
-            throw new Error(`Invalid ${this.prefix} data for id: ${id}`);
-        }
-
         try {
             // Get existing data to clean up old indexes
             const existingData = await this.get(id);
             const newData = { ...existingData, ...data } as T;
             
+            if (this.validator && !this.validator(newData)) {
+                throw new Error(`Invalid ${this.prefix} data for id: ${id}`);
+            }
+
             // Store the main record
             await this.c.env.DEPLOYS_KV.put(this.getKey(id), JSON.stringify(newData));
 

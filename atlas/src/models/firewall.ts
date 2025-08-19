@@ -163,12 +163,15 @@ export class Firewall extends BaseModel<FirewallType> {
     }
 
     async reset(tenant: TenantType): Promise<void> {
+      console.log(`about to reset ${tenant.id}`)
       await this.unblock(tenant);
+      console.log(`did unblock... i think`)
 
       const requestModel = new RequestModel(this.c);
       const requests = await requestModel.findByTenantId(tenant.id);
       if (requests) {
           await requestModel.set(requests.id, { count: 0 });
+          console.log(`reset requests: ${JSON.stringify(requests)}`)
       }
     }
 

@@ -22,6 +22,10 @@ module Atlas
       @health ||= HealthService.new
     end
 
+    def firewall
+      @firewall ||= FirewallService.new
+    end
+
     # Convenience method for deployment
     def deploy(site_id:, files: nil, config: nil)
       deployments.deploy(site_id: site_id, files: files, config: config)
@@ -34,6 +38,7 @@ module Atlas
       @plans = nil
       @deployments = nil
       @health = nil
+      @firewall = nil
     end
 
     # Configure all services at once

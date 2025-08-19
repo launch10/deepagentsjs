@@ -48,5 +48,38 @@ module Atlas
         make_request(:delete, path)
       end
     end
+
+    # Firewall management methods
+    def block(id)
+      path = "#{BASE_PATH}/#{id}/block"
+      
+      with_logging(:post, path) do
+        make_request(:post, path)
+      end
+    end
+
+    def unblock(id)
+      path = "#{BASE_PATH}/#{id}/unblock"
+      
+      with_logging(:post, path) do
+        make_request(:post, path)
+      end
+    end
+
+    def reset(id)
+      path = "#{BASE_PATH}/#{id}/reset"
+      
+      with_logging(:post, path) do
+        make_request(:post, path)
+      end
+    end
+
+    def status(id)
+      path = "#{BASE_PATH}/#{id}/status"
+      
+      with_logging(:get, path) do
+        make_request(:get, path)
+      end
+    end
   end
 end

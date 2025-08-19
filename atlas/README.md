@@ -88,6 +88,12 @@ pnpm cli set tenant --id 2 --org-id 2 --plan-id 2
 pnpm cli set plan --id 1 --name "starter" --limit 1000000
 pnpm cli set plan --id 2 --name "pro" --limit 5000000
 pnpm cli set plan --id 3 --name "enterprise" --limit 20000000
+
+# Firewall helpers
+pnpm cli firewall block --tenant-id 1
+pnpm cli firewall unblock --tenant-id 1
+pnpm cli firewall reset --tenant-id 1
+pnpm cli firewall status --tenant-id 1
 ```
 
 ### Uploading Landing Pages (Local Testing)

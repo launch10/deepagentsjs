@@ -105,6 +105,26 @@ export class SDKClient {
       } catch (error) {
         return { success: false, error: String(error) };
       }
+    },
+    
+    status: async (id: string): Promise<OperationResult<string>> => {
+      try {
+        const model = new Tenant(this.context as any);
+        const tenant = await model.get(id);
+        
+        if (!tenant) {
+          return { success: false, error: `Tenant ${id} not found` };
+        }
+        
+        const firewall = new Firewall(this.context as any);
+        const firewallRecord = await firewall.findByTenant(id);
+        
+        // Default to 'inactive' if no firewall record exists
+        const status = firewallRecord?.status || 'inactive';
+        return { success: true, data: status };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
     }
   };
   
