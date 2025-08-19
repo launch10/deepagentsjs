@@ -27,6 +27,7 @@ gem "flipper"
 gem "dotenv"
 gem "devise-jwt"
 gem "activerecord-import"
+gem "faraday", "~> 2.0"
 
 group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"

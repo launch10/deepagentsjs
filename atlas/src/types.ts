@@ -20,6 +20,7 @@ export interface Env {
   CLOUDFLARE_BLOCKED_DOMAINS_LIST_ID?: string;
   JWT_SECRET?: string;
   ALLOWED_IPS?: string;
+  ATLAS_API_SECRET?: string;
 }
 
 export type Model = {

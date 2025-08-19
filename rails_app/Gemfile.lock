@@ -182,6 +182,12 @@ GEM
     erubi (1.13.1)
     et-orbi (1.2.11)
       tzinfo
+    faraday (2.13.4)
+      faraday-net_http (>= 2.0, < 3.5)
+      json
+      logger
+    faraday-net_http (3.4.1)
+      net-http (>= 0.5.0)
     ffi (1.17.2-aarch64-linux-gnu)
     ffi (1.17.2-aarch64-linux-musl)
     ffi (1.17.2-arm-linux-gnu)
@@ -280,6 +286,8 @@ GEM
       activesupport (>= 5.2.0)
     neighbor (0.5.2)
       activerecord (>= 7)
+    net-http (0.6.0)
+      uri
     net-imap (0.5.8)
       date
       net-protocol
@@ -597,6 +605,7 @@ DEPENDENCIES
   devise-jwt
   dotenv
   erb_lint
+  faraday (~> 2.0)
   flipper
   historiographer
   hotwire_combobox (~> 0.3)

@@ -35,9 +35,9 @@ export const hmacMiddleware = async (c: Context<{ Bindings: Env }>, next: Next) 
     c.req = newRequest;
 
     // Generate expected signature
-    const secret = c.env.INTERNAL_API_SECRET;
+    const secret = c.env.ATLAS_API_SECRET;
     if (!secret) {
-      console.error('INTERNAL_API_SECRET not configured');
+      console.error('ATLAS_API_SECRET not configured');
       return c.json({ error: 'Server configuration error' }, 500);
     }
 

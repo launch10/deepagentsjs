@@ -1,5 +1,5 @@
 {
-  "name": "landing-page-server",
+  "name": "atlas",
   "type": "module",
   "scripts": {
     "dev": "vite",

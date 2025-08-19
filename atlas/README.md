@@ -1,6 +1,6 @@
 # Atlas
 
-In mythology, Atlas was the titan who held up the sky. In our world, Atlas is the system that holds all of our user sites, preventing any one site from taking down the entire system.
+In mythology, Atlas carrried the world on his shoulders. In our world, Atlas is the system that holds all of our user sites, preventing any one site from taking down the entire system.
 
 It's a Cloudflare edge gateway that serves user-generated static sites with internal API management.
 
