@@ -3,24 +3,12 @@ name = "landing-page-server-admin"
 main = "src/index-admin.tsx"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
+observability = { enabled = true }
 
 [[kv_namespaces]]
 binding = "DEPLOYS_KV"
-id = "deploys"
+id = "4ad010a8f77d43478998f7e0117e3588"
 
 [[r2_buckets]]
 binding = "DEPLOYS_R2"
 bucket_name = "deploys"
-
-[vars]
-# Add your Rails server IPs here (comma-separated)
-# In production, get these from your infrastructure team
-ALLOWED_IPS = ""
-
-# Deploy to internal subdomain only accessible within your network
-[env.production]
-route = "admin-api.internal.nichefinder.com/*"
-vars = { ALLOWED_IPS = "YOUR_RAILS_SERVER_IP" }
-
-[env.staging]
-route = "admin-api.staging.internal.nichefinder.com/*"

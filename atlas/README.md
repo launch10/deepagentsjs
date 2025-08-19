@@ -23,7 +23,7 @@ It's a Cloudflare edge gateway that serves user-generated static sites with inte
 ## Project Structure
 
 ```
-deploy/
+atlas/
 ├── src/
 │   ├── index-public.tsx      # Public worker entry point
 │   ├── index-admin.tsx       # Admin worker entry point

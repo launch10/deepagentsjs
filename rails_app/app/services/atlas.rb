@@ -40,5 +40,9 @@ module Atlas
     def configure
       yield BaseService.config
     end
+
+    def config
+      BaseService.config
+    end
   end
 end

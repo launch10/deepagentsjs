@@ -3,6 +3,7 @@ name = "landing-page-server"
 main = "src/index-public.tsx"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
+observability = { enabled = true }
 
 [[r2_buckets]]
 binding = "DEPLOYS_R2"
@@ -10,7 +11,11 @@ bucket_name = "deploys"
 
 [[kv_namespaces]]
 binding = "DEPLOYS_KV"
-id = "deploys"
+id = "4ad010a8f77d43478998f7e0117e3588"
 
 [durable_objects]
 bindings = [{ name = "FIREWALL", class_name = "FirewallDO" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FirewallDO"]
