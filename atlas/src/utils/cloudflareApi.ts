@@ -18,6 +18,7 @@ export async function updateFirewallList(env: Env, hostname: string, action: 'ad
   };
   
   try {
+    console.log(`Updating Firewall List for ${hostname}. Action: ${action}`);
     const response = await fetch(endpoint, options);
     const data = await response.json();
     if (!data?.success) {

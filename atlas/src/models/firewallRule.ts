@@ -43,11 +43,13 @@ export class FirewallRule extends BaseModel<FirewallRuleType> {
 
         const didBlock = await updateFirewallList(this.c.env, rule.url, 'add');
 
+        console.log(`did block... creating firewall rule`)
         if (didBlock) {
             if (!rule.id) {
                 rule.id = uuidv4();
             }
-            await this.set(rule.id, {...rule, status: 'blocked', blockedAt: new Date()});
+            await this.set(rule.id, {...rule, status: 'blocked', blockedAt: (new Date()).toISOString()});
+            console.log(`created firewall rule!`)
             return true;
         }
 

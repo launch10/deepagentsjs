@@ -5,6 +5,7 @@ import { FirewallRule } from "./firewallRule";
 import { Request as RequestModel } from "./request";
 import { Site } from "./site";
 import { Plan } from "./plan";
+import { v4 as uuidv4 } from 'uuid';
 
 const isFirewallType = createTypeGuard<FirewallType>(
     (data: any): data is FirewallType => {
@@ -125,7 +126,7 @@ export class Firewall extends BaseModel<FirewallType> {
 
       const existingFirewall = await this.findByTenant(tenant.id);
       const firewall = existingFirewall || {
-          id: tenant.id,
+          id: uuidv4(),
           tenantId: tenant.id,
           status: 'blocked'
       };
@@ -155,7 +156,7 @@ export class Firewall extends BaseModel<FirewallType> {
 
       const existingFirewall = await this.findByTenant(tenant.id);
       const firewall = existingFirewall || {
-          id: tenant.id,
+          id: uuidv4(),
           tenantId: tenant.id,
           status: 'inactive'
       };

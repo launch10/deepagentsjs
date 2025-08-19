@@ -60,7 +60,7 @@ export interface FirewallRuleType extends Model {
   url: string;
   tenantId: string;
   status: FirewallStatus;
-  blockedAt: Date;
+  blockedAt: string;
 }
 
 export type PlanName = 'starter' | 'pro' | 'enterprise';
