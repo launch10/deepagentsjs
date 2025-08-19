@@ -178,19 +178,6 @@ export class Firewall extends BaseModel<FirewallType> {
                     status: 'blocked'
                 };
                 await this.set(firewall.id, { ...firewall, status: 'blocked' });
-
-                if (shouldBlock) {
-                  // Fire-and-forget the API call to block the hostname if configured
-                  // Note: We need to pass the site URL to the Cloudflare API
-                  if (this.env.CLOUDFLARE_ACCOUNT_ID && this.env.CLOUDFLARE_BLOCKED_DOMAINS_LIST_ID) {
-                    this.state.waitUntil(
-                      updateFirewallList(this.env, data.siteUrl, 'add')
-                    );
-                  } else {
-                    console.warn('Cloudflare firewall list not configured - skipping block action');
-                  }
-                }
-        
             }
             
             return result.shouldBlock;

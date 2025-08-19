@@ -47,6 +47,7 @@ class RateLimiter {
 
       if (shouldRateLimit) {
         scopedLogger.debug(`rateLimiting!`);
+        await firewallModel.activateFirewallRules(tenant);
         return c.json({ error: 'Rate limit exceeded' }, 429);
       }
 
