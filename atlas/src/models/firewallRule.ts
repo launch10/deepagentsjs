@@ -48,8 +48,10 @@ export class FirewallRule extends BaseModel<FirewallRuleType> {
             if (!rule.id) {
                 rule.id = uuidv4();
             }
-            rule = {...rule, status: 'blocked', blockedAt: new Date().toISOString()}
+            rule = {...rule, status: 'blocked'};
+            console.log(rule)
             await this.set(rule.id, rule);
+            console.log(`created firewall rule!`)
             return true;
         }
 
@@ -60,7 +62,7 @@ export class FirewallRule extends BaseModel<FirewallRuleType> {
         const didUnblock = await updateFirewallList(this.c.env, rule.url, 'remove');
 
         if (didUnblock) {
-            await this.set(rule.id, {...rule, status: 'inactive', blockedAt: undefined });
+            await this.set(rule.id, {...rule, status: 'inactive'});
             return true;
         }
 
