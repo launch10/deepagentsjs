@@ -100,5 +100,44 @@ export function tenantRoutes() {
     return c.json({ success: true, id });
   });
   
+  // POST /api/internal/tenants/:id/block
+  router.post('/:id/block', async (c) => {
+    const id = c.req.param('id');
+    const client = new SDKClient(c);
+    const result = await client.tenant.block(id);
+    
+    if (!result.success) {
+      return c.json({ error: result.error }, 500);
+    }
+    
+    return c.json({ success: true, message: `Tenant ${id} blocked successfully` });
+  });
+  
+  // POST /api/internal/tenants/:id/unblock
+  router.post('/:id/unblock', async (c) => {
+    const id = c.req.param('id');
+    const client = new SDKClient(c);
+    const result = await client.tenant.unblock(id);
+    
+    if (!result.success) {
+      return c.json({ error: result.error }, 500);
+    }
+    
+    return c.json({ success: true, message: `Tenant ${id} unblocked successfully` });
+  });
+  
+  // POST /api/internal/tenants/:id/reset
+  router.post('/:id/reset', async (c) => {
+    const id = c.req.param('id');
+    const client = new SDKClient(c);
+    const result = await client.tenant.reset(id);
+    
+    if (!result.success) {
+      return c.json({ error: result.error }, 500);
+    }
+    
+    return c.json({ success: true, message: `Tenant ${id} reset successfully` });
+  });
+  
   return router;
 }

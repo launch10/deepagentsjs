@@ -5,6 +5,7 @@ import { setCommand } from './commands/set.js';
 import { getCommand } from './commands/get.js';
 import { deleteCommand } from './commands/delete.js';
 import { listCommand } from './commands/list.js';
+import { firewallCommand } from './commands/firewall.js';
 
 const program = new Command();
 
@@ -23,5 +24,6 @@ program.addCommand(setCommand);
 program.addCommand(getCommand);
 program.addCommand(deleteCommand);
 program.addCommand(listCommand);
+program.addCommand(firewallCommand);
 
 program.parse(process.argv);

@@ -1,4 +1,4 @@
-import { Tenant, Site, Plan } from '../models/index.js';
+import { Tenant, Site, Plan, Firewall } from '../models/index.js';
 import type { TenantType, SiteType, PlanType } from '../types.js';
 import type { SDKContext, OperationResult } from './types.js';
 
@@ -51,6 +51,57 @@ export class SDKClient {
         const model = new Tenant(this.context as any);
         const data = await model.listAll(limit);
         return { success: true, data };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    },
+    
+    block: async (id: string): Promise<OperationResult<void>> => {
+      try {
+        const model = new Tenant(this.context as any);
+        const tenant = await model.get(id);
+        
+        if (!tenant) {
+          return { success: false, error: `Tenant ${id} not found` };
+        }
+        
+        const firewall = new Firewall(this.context as any);
+        await firewall.block(tenant);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    },
+    
+    unblock: async (id: string): Promise<OperationResult<void>> => {
+      try {
+        const model = new Tenant(this.context as any);
+        const tenant = await model.get(id);
+        
+        if (!tenant) {
+          return { success: false, error: `Tenant ${id} not found` };
+        }
+        
+        const firewall = new Firewall(this.context as any);
+        await firewall.unblock(tenant);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    },
+    
+    reset: async (id: string): Promise<OperationResult<void>> => {
+      try {
+        const model = new Tenant(this.context as any);
+        const tenant = await model.get(id);
+        
+        if (!tenant) {
+          return { success: false, error: `Tenant ${id} not found` };
+        }
+        
+        const firewall = new Firewall(this.context as any);
+        await firewall.reset(tenant);
+        return { success: true };
       } catch (error) {
         return { success: false, error: String(error) };
       }
