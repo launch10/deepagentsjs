@@ -78,6 +78,8 @@ export class BaseModel<T> extends CloudflareContext {
             const newData = { ...existingData, ...data } as T;
             
             if (this.validator && !this.validator(newData)) {
+                console.log(`oh noes, failed validation for ${this.prefix}:${id}`)
+                console.log(newData)
                 throw new Error(`Invalid ${this.prefix} data for id: ${id}`);
             }
 
