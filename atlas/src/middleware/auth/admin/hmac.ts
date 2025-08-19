@@ -26,15 +26,6 @@ export const hmacMiddleware = async (c: Context<{ Bindings: Env }>, next: Next) 
     // Get request body for signature verification
     const body = await c.req.text();
     
-    // Recreate the request with the body for downstream handlers
-    const newRequest = new Request(c.req.url, {
-      method: c.req.method,
-      headers: c.req.headers,
-      body: body || undefined
-    });
-    c.req = newRequest;
-
-    // Generate expected signature
     const secret = c.env.ATLAS_API_SECRET;
     if (!secret) {
       console.error('ATLAS_API_SECRET not configured');
