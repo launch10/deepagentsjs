@@ -1,7 +1,7 @@
 import { Context } from "hono";
-import { Env, FirewallType, TenantType } from "~/types";
+import { Env, FirewallType, TenantType, SiteType, FirewallRuleType } from "~/types";
 import { BaseModel, createTypeGuard } from "./base";
-import { updateFirewallList } from '~/utils/cloudflareApi';
+import { FirewallRule } from "./firewallRule";
 import { Request as RequestModel } from "./request";
 import { Site } from "./site";
 import { Plan } from "./plan";
@@ -59,18 +59,6 @@ export class FirewallDO implements DurableObject {
         // Check if we should block
         const shouldBlock = this.count > data.planLimit;
         
-        if (shouldBlock) {
-          // Fire-and-forget the API call to block the hostname if configured
-          // Note: We need to pass the site URL to the Cloudflare API
-          if (this.env.CLOUDFLARE_ACCOUNT_ID && this.env.CLOUDFLARE_BLOCKED_DOMAINS_LIST_ID) {
-            this.state.waitUntil(
-              updateFirewallList(this.env, data.siteUrl, 'add')
-            );
-          } else {
-            console.warn('Cloudflare firewall list not configured - skipping block action');
-          }
-        }
-        
         return new Response(JSON.stringify({ shouldBlock }), {
           headers: { 'Content-Type': 'application/json' }
         });
@@ -105,6 +93,35 @@ export class Firewall extends BaseModel<FirewallType> {
             keyExtractor: (firewall) => firewall.status || null,
             type: 'list'
         });
+    }
+
+    async activateFirewallRules(tenant: TenantType): Promise<void> {
+      const siteModel = new Site(this.c);
+      const tenantsSites: SiteType[] = await siteModel.findByTenant(tenant.id);
+      const firewallRuleModel = new FirewallRule(this.c);
+      const existingRules = await firewallRuleModel.findByTenant(tenant.id);
+      const existingRulesByUrl = existingRules.reduce((acc, rule) => {
+        acc[rule.url] = rule;
+        return acc;
+      }, {} as Record<string, FirewallRuleType>);
+      const unblockedUrls = existingRules.filter(rule => rule.status !== 'blocked').map(rule => rule.url)
+      const urlsToBlock = tenantsSites.map(site => site.url).filter(url => !unblockedUrls.includes(url));
+
+      const promises = urlsToBlock.map(url => {
+        const existingRule = existingRulesByUrl[url];
+        if (existingRule) {
+          return firewallRuleModel.block({
+            id: existingRule.id,
+            url: url,
+            tenantId: tenant.id,
+          })
+        }
+        return firewallRuleModel.block({
+          url: url,
+          tenantId: tenant.id,
+        })
+      })
+      await Promise.all(promises);
     }
 
     async maybeActivate(tenant: TenantType): Promise<boolean> {
@@ -161,6 +178,19 @@ export class Firewall extends BaseModel<FirewallType> {
                     status: 'blocked'
                 };
                 await this.set(firewall.id, { ...firewall, status: 'blocked' });
+
+                if (shouldBlock) {
+                  // Fire-and-forget the API call to block the hostname if configured
+                  // Note: We need to pass the site URL to the Cloudflare API
+                  if (this.env.CLOUDFLARE_ACCOUNT_ID && this.env.CLOUDFLARE_BLOCKED_DOMAINS_LIST_ID) {
+                    this.state.waitUntil(
+                      updateFirewallList(this.env, data.siteUrl, 'add')
+                    );
+                  } else {
+                    console.warn('Cloudflare firewall list not configured - skipping block action');
+                  }
+                }
+        
             }
             
             return result.shouldBlock;

@@ -8,7 +8,6 @@ const isTenantType = createTypeGuard<TenantType>(
             data.orgId !== undefined;
     }
 );
-
 export class Tenant extends BaseModel<TenantType> {
     constructor(c: Context<{ Bindings: Env }>) {
         super(c, 'tenant', isTenantType);

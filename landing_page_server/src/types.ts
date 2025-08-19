@@ -54,6 +54,13 @@ export interface FirewallType extends Model {
   status: FirewallStatus;
 }
 
+export interface FirewallRuleType extends Model {
+  url: string;
+  tenantId: string;
+  status: FirewallStatus;
+  blockedAt: Date;
+}
+
 export type PlanName = 'starter' | 'pro' | 'enterprise';
 export const plans: Map<string, PlanType> = new Map([
     ['starter' as PlanName, { id: '1', name: 'Starter', usageLimit: 1_000_000 }],
