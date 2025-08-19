@@ -43,17 +43,17 @@ class RateLimiter {
       const firewallModel = new Firewall(c);
       const firewall = await firewallModel.findByTenant(tenantId);
       const status = firewall ? firewall.status : 'inactive';
-      let shouldRateLimit;
+      let shouldBlock;
 
       if (status === 'monitoring') {
-        shouldRateLimit = await firewallModel.maybeActivate(tenant);
+        shouldBlock = await firewallModel.shouldBlock(tenant);
       } else { 
-        shouldRateLimit = status === 'blocked';
+        shouldBlock = status === 'blocked';
       }
 
-      if (shouldRateLimit) {
+      if (shouldBlock) {
         scopedLogger.debug(`rateLimiting!`);
-        await firewallModel.activateFirewallRules(tenant);
+        await firewallModel.block(tenant);
         return c.json({ error: 'Rate limit exceeded' }, 429);
       }
 

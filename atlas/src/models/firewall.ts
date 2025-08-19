@@ -95,7 +95,7 @@ export class Firewall extends BaseModel<FirewallType> {
         });
     }
 
-    async activateFirewallRules(tenant: TenantType): Promise<void> {
+    async block(tenant: TenantType): Promise<void> {
       const siteModel = new Site(this.c);
       const tenantsSites: SiteType[] = await siteModel.findByTenant(tenant.id);
       const firewallRuleModel = new FirewallRule(this.c);
@@ -122,9 +122,57 @@ export class Firewall extends BaseModel<FirewallType> {
         })
       })
       await Promise.all(promises);
+
+      const existingFirewall = await this.findByTenant(tenant.id);
+      const firewall = existingFirewall || {
+          id: tenant.id,
+          tenantId: tenant.id,
+          status: 'blocked'
+      };
+      await this.set(firewall.id, { ...firewall, status: 'blocked' });
     }
 
-    async maybeActivate(tenant: TenantType): Promise<boolean> {
+    async unblock(tenant: TenantType): Promise<void> {
+      const firewallRuleModel = new FirewallRule(this.c);
+      const existingRules = await firewallRuleModel.findByTenant(tenant.id);
+      const existingRulesByUrl = existingRules.reduce((acc, rule) => {
+        acc[rule.url] = rule;
+        return acc;
+      }, {} as Record<string, FirewallRuleType>);
+      const blockedUrls = existingRules.filter(rule => rule.status === 'blocked').map(rule => rule.url)
+
+      const promises = blockedUrls.map(url => {
+        const existingRule = existingRulesByUrl[url];
+        if (existingRule) {
+          return firewallRuleModel.unblock({
+            id: existingRule.id,
+            url: url,
+            tenantId: tenant.id,
+          })
+        }
+      })
+      await Promise.all(promises);
+
+      const existingFirewall = await this.findByTenant(tenant.id);
+      const firewall = existingFirewall || {
+          id: tenant.id,
+          tenantId: tenant.id,
+          status: 'inactive'
+      };
+      await this.set(firewall.id, { ...firewall, status: 'inactive' });
+    }
+
+    async reset(tenant: TenantType): Promise<void> {
+      await this.unblock(tenant);
+
+      const requestModel = new RequestModel(this.c);
+      const requests = await requestModel.findByTenantId(tenant.id);
+      if (requests) {
+          await requestModel.set(requests.id, { count: 0 });
+      }
+    }
+
+    async shouldBlock(tenant: TenantType): Promise<boolean> {
         try {
             // Gather all necessary data before calling DurableObject
             const requestModel = new RequestModel(this.c);
@@ -141,11 +189,11 @@ export class Firewall extends BaseModel<FirewallType> {
             
             // Prepare data to send to DurableObject
             const requestData = {
-                tenantId: tenant.id,
-                requestCount: requests?.count || 0,
-                planLimit: planModel.getMonthlyLimit(plan),
-                siteUrl: site?.url || this.c.req.url,
-                timestamp: Date.now()
+              tenantId: tenant.id,
+              requestCount: requests?.count || 0,
+              planLimit: planModel.getMonthlyLimit(plan),
+              siteUrl: site?.url || this.c.req.url,
+              timestamp: Date.now()
             };
             
             console.log('[Firewall.maybeActivate] Sending data to DurableObject:', requestData);
@@ -168,17 +216,6 @@ export class Firewall extends BaseModel<FirewallType> {
             }
             
             const result = await response.json() as { shouldBlock: boolean };
-            
-            if (result.shouldBlock) {
-                // Find existing firewall or create new one with proper structure
-                const existingFirewall = await this.findByTenant(tenant.id);
-                const firewall = existingFirewall || {
-                    id: tenant.id,
-                    tenantId: tenant.id,
-                    status: 'blocked'
-                };
-                await this.set(firewall.id, { ...firewall, status: 'blocked' });
-            }
             
             return result.shouldBlock;
         } catch (error) {

@@ -11,7 +11,7 @@ const isPlanType = createTypeGuard<PlanType>(
 );
 
 const MonthlyPlanLimit: Record<PlanName, number> = {
-    starter: 25, // 1_000_000,
+    starter: 3, // 1_000_000,
     pro: 5_000_000,
     enterprise: 20_000_000
 }
