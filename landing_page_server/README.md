@@ -80,6 +80,7 @@ pnpm cli get tenant 1
 # Create test data
 pnpm cli set site --id 1 --url localhost:8787 -t 1
 pnpm cli set site --id 2 --url localhost:9898 -t 2
+pnpm cli set site --id 3 --url c0e82a814b8a.ngrok-free.app -t 1
 pnpm cli set tenant --id 1 --org-id 1 --plan-id 1
 pnpm cli set tenant --id 2 --org-id 2 --plan-id 2
 pnpm cli set plan --id 1 --name "starter" --limit 1000000
@@ -173,6 +174,7 @@ The CLI is for local development and debugging only:
 pnpm cli set tenant --id 1 --org-id org1 --plan-id starter
 pnpm cli set site --id 1 --url example.com --tenant-id 1
 pnpm cli set plan --id starter --name "Starter" --limit 1000000
+pnpm cli set site --id 1 --url c0e82a814b8a.ngrok-free.app --tenant-id 1
 
 # Get operations
 pnpm cli get tenant 1
