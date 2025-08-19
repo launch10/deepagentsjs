@@ -19,6 +19,7 @@ export interface Env {
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_BLOCKED_DOMAINS_LIST_ID?: string;
   JWT_SECRET?: string;
+  ALLOWED_IPS?: string;
 }
 
 export type Model = {

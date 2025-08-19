@@ -1,6 +1,8 @@
-# Landing Page Server
+# Atlas
 
-A secure, scalable Cloudflare Workers-based system for serving user-generated static sites with internal API management.
+In mythology, Atlas was the titan who held up the sky. In our world, Atlas is the system that holds all of our user sites, preventing any one site from taking down the entire system.
+
+It's a Cloudflare edge gateway that serves user-generated static sites with internal API management.
 
 ## Admin Server + User Server
 
@@ -21,7 +23,7 @@ A secure, scalable Cloudflare Workers-based system for serving user-generated st
 ## Project Structure
 
 ```
-landing_page_server/
+deploy/
 ├── src/
 │   ├── index-public.tsx      # Public worker entry point
 │   ├── index-admin.tsx       # Admin worker entry point
