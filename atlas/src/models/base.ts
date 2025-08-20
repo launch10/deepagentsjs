@@ -83,6 +83,21 @@ export class BaseModel<T> extends CloudflareContext {
                 throw new Error(`Invalid ${this.prefix} data for id: ${id}`);
             }
 
+            // Check for unique index violations BEFORE saving
+            for (const index of this.indexes) {
+                if (index.type === 'unique') {
+                    const newKey = index.keyExtractor(newData);
+                    if (newKey && (!existingData || index.keyExtractor(existingData) !== newKey)) {
+                        const indexKey = this.getIndexKey(index.name, Array.isArray(newKey) ? newKey[0] : newKey);
+                        const existingId = await this.c.env.DEPLOYS_KV.get(indexKey);
+                        if (existingId && existingId !== id) {
+                            console.error(`Unique index violation: ${indexKey} already points to ${existingId}, cannot set to ${id}`);
+                            throw new Error(`Unique constraint violation: ${this.prefix} with ${index.name}=${newKey} already exists`);
+                        }
+                    }
+                }
+            }
+
             // Store the main record
             await this.c.env.DEPLOYS_KV.put(this.getKey(id), JSON.stringify(newData));
 
@@ -91,7 +106,7 @@ export class BaseModel<T> extends CloudflareContext {
             
         } catch (error) {
             console.error(`Error setting ${this.prefix}:${id}`, error);
-            throw new Error(`Failed to save ${this.prefix}: ${id}`);
+            throw error;
         }
     }
 
@@ -128,8 +143,11 @@ export class BaseModel<T> extends CloudflareContext {
                 const newKeyArray = Array.isArray(newKeys) ? newKeys : [newKeys];
                 for (const newKey of newKeyArray) {
                     if (index.type === 'unique') {
+                        const indexKey = this.getIndexKey(index.name, newKey);
+                        console.log(`[updateIndexes] Creating index: ${indexKey} -> ${id}`);
+                        console.log(`[updateIndexes] Key type: ${typeof newKey}, Key value: ${newKey}`);
                         operations.push(
-                            this.c.env.DEPLOYS_KV.put(this.getIndexKey(index.name, newKey), id)
+                            this.c.env.DEPLOYS_KV.put(indexKey, id)
                         );
                     } else {
                         operations.push(
@@ -195,6 +213,34 @@ export class BaseModel<T> extends CloudflareContext {
         }
     }
 
+    // Find or create by unique index
+    async findOrCreateByIndex(indexName: string, value: string, createData: () => T | Promise<T>): Promise<T> {
+        const index = this.indexes.find(idx => idx.name === indexName);
+        if (!index) {
+            throw new Error(`Index '${indexName}' not found on ${this.prefix}`);
+        }
+
+        if (index.type !== 'unique') {
+            throw new Error(`Index '${indexName}' is not unique, findOrCreate only works with unique indexes`);
+        }
+
+        // Try to find existing record
+        const existing = await this.findByIndex(indexName, value);
+        if (existing) {
+            return existing;
+        }
+
+        // Create new record
+        const newRecord = await createData();
+        const id = (newRecord as any).id;
+        if (!id) {
+            throw new Error(`Created record must have an id field`);
+        }
+
+        await this.set(id, newRecord);
+        return newRecord;
+    }
+
     // Query by index
     async findByIndex(indexName: string, value: string): Promise<T | null> {
         const index = this.indexes.find(idx => idx.name === indexName);
@@ -206,7 +252,13 @@ export class BaseModel<T> extends CloudflareContext {
             throw new Error(`Index '${indexName}' is not unique, use findManyByIndex instead`);
         }
 
-        const id = await this.c.env.DEPLOYS_KV.get(this.getIndexKey(indexName, value));
+        const indexKey = this.getIndexKey(indexName, value);
+        console.log(`[findByIndex] Looking up index key: ${indexKey}`);
+        console.log(`[findByIndex] Value type: ${typeof value}, Value: ${value}`);
+        
+        const id = await this.c.env.DEPLOYS_KV.get(indexKey);
+        console.log(`[findByIndex] Found ID: ${id}`);
+        
         return id ? await this.get(id) : null;
     }
 

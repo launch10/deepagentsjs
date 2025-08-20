@@ -14,7 +14,14 @@
     "deploy:admin": "$npm_execpath run build:admin && wrangler deploy -c wrangler-admin.toml",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "cli": "tsx src/cli/index.ts",
-    "cli:build": "esbuild src/cli/index.ts --bundle --platform=node --target=node18 --outfile=dist/cli.js --external:miniflare"
+    "cli:build": "esbuild src/cli/index.ts --bundle --platform=node --target=node18 --outfile=dist/cli.js --external:miniflare",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest watch",
+    "test:ui": "vitest --ui",
+    "test:integration": "vitest run test/integration",
+    "test:models": "vitest run test/models",
+    "test:middleware": "vitest run test/middleware"
   },
   "dependencies": {
     "commander": "^12.1.0",
@@ -25,6 +32,7 @@
     "@cloudflare/vite-plugin": "^1.2.3",
     "@cloudflare/workers-types": "^4.20250813.0",
     "@types/node": "^24.3.0",
+    "@vitest/ui": "^3.2.4",
     "concurrently": "^8.2.2",
     "dotenv": "^17.2.1",
     "esbuild": "^0.24.2",
@@ -34,6 +42,8 @@
     "vite": "^6.3.5",
     "vite-ssr-components": "^0.3.0",
     "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4",
+    "vitest-environment-miniflare": "^2.14.4",
     "wrangler": "^4.31.0"
   }
 }

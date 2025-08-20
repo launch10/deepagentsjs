@@ -85,7 +85,7 @@ export class Firewall extends BaseModel<FirewallType> {
     protected defineIndexes(): void {
         this.addIndex({
             name: 'tenantId',
-            keyExtractor: (firewall) => firewall.tenantId || null,
+            keyExtractor: (firewall) => firewall.tenantId ? String(firewall.tenantId) : null,
             type: 'unique'
         });
 
@@ -127,7 +127,7 @@ export class Firewall extends BaseModel<FirewallType> {
       const existingFirewall = await this.findByTenant(tenant.id);
       const firewall = existingFirewall || {
           id: uuidv4(),
-          tenantId: tenant.id,
+          tenantId: String(tenant.id),
           status: 'blocked'
       };
       await this.set(firewall.id, { ...firewall, status: 'blocked' });
@@ -145,6 +145,7 @@ export class Firewall extends BaseModel<FirewallType> {
       const promises = blockedUrls.map(url => {
         const existingRule = existingRulesByUrl[url];
         if (existingRule) {
+          console.log(`unblocking ${url}`)
           return firewallRuleModel.unblock({
             id: existingRule.id,
             url: url,
@@ -157,7 +158,7 @@ export class Firewall extends BaseModel<FirewallType> {
       const existingFirewall = await this.findByTenant(tenant.id);
       const firewall = existingFirewall || {
           id: uuidv4(),
-          tenantId: tenant.id,
+          tenantId: String(tenant.id),
           status: 'inactive'
       };
       await this.set(firewall.id, { ...firewall, status: 'inactive' });
@@ -177,63 +178,63 @@ export class Firewall extends BaseModel<FirewallType> {
     }
 
     async shouldBlock(tenant: TenantType): Promise<boolean> {
-        try {
-            // Gather all necessary data before calling DurableObject
-            const requestModel = new RequestModel(this.c);
-            const planModel = new Plan(this.c);
-            const siteModel = new Site(this.c);
-            
-            const requests = await requestModel.findByTenantId(tenant.id);
-            const plan = await planModel.get(tenant.planId);
-            const site = await siteModel.findByUrl(this.c.req.url);
-            
-            if (!plan) {
-                throw new Error(`Plan not found for ID: ${tenant.planId}`);
-            }
-            
-            // Prepare data to send to DurableObject
-            const requestData = {
-              tenantId: tenant.id,
-              requestCount: requests?.count || 0,
-              planLimit: planModel.getMonthlyLimit(plan),
-              siteUrl: site?.url || this.c.req.url,
-              timestamp: Date.now()
-            };
-            
-            console.log('[Firewall.maybeActivate] Sending data to DurableObject:', requestData);
-            
-            // Communicate with DurableObject via fetch
-            const doId = this.c.env.FIREWALL.idFromName(tenant.id);
-            const durableObject = this.c.env.FIREWALL.get(doId);
-            
-            const response = await durableObject.fetch(
-                new Request('http://internal/check-firewall', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestData)
-                })
-            );
-            
-            if (!response.ok) {
-                console.error('[Firewall.maybeActivate] DurableObject response not ok:', response.status, await response.text());
-                throw new Error(`DurableObject returned ${response.status}`);
-            }
-            
-            const result = await response.json() as { shouldBlock: boolean };
-            
-            return result.shouldBlock;
-        } catch (error) {
-            console.error('[Firewall.maybeActivate] Error:', error);
-            // On error, default to not blocking to avoid breaking the site
-            return false;
-        }
+      try {
+          // Gather all necessary data before calling DurableObject
+          const requestModel = new RequestModel(this.c);
+          const planModel = new Plan(this.c);
+          const siteModel = new Site(this.c);
+          
+          const requests = await requestModel.findByTenantId(tenant.id);
+          const plan = await planModel.get(tenant.planId);
+          const site = await siteModel.findByUrl(this.c.req.url);
+          
+          if (!plan) {
+              throw new Error(`Plan not found for ID: ${tenant.planId}`);
+          }
+          
+          // Prepare data to send to DurableObject
+          const requestData = {
+            tenantId: tenant.id,
+            requestCount: requests?.count || 0,
+            planLimit: planModel.getMonthlyLimit(plan),
+            siteUrl: site?.url || this.c.req.url,
+            timestamp: Date.now()
+          };
+          
+          console.log('[Firewall.maybeActivate] Sending data to DurableObject:', requestData);
+          
+          // Communicate with DurableObject via fetch
+          const doId = this.c.env.FIREWALL.idFromName(tenant.id);
+          const durableObject = this.c.env.FIREWALL.get(doId);
+          
+          const response = await durableObject.fetch(
+              new Request('http://internal/check-firewall', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(requestData)
+              })
+          );
+          
+          if (!response.ok) {
+              console.error('[Firewall.maybeActivate] DurableObject response not ok:', response.status, await response.text());
+              throw new Error(`DurableObject returned ${response.status}`);
+          }
+          
+          const result = await response.json() as { shouldBlock: boolean };
+          
+          return result.shouldBlock;
+      } catch (error) {
+          console.error('[Firewall.maybeActivate] Error:', error);
+          // On error, default to not blocking to avoid breaking the site
+          return false;
+      }
     }
 
-    async findByTenant(tenantId: string): Promise<FirewallType | null> {
-        return this.findByIndex('tenantId', tenantId);
+    async findByTenant(tenantId: string | number): Promise<FirewallType | null> {
+      return this.findByIndex('tenantId', String(tenantId));
     }
 
     async findByStatus(status: string): Promise<FirewallType[]> {
-        return this.findManyByIndex('status', status);
+      return this.findManyByIndex('status', status);
     }
 }

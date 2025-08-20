@@ -17,12 +17,12 @@ export class Request extends BaseModel<RequestType> {
     protected defineIndexes(): void {
         this.addIndex({
             name: 'tenantId',
-            keyExtractor: (request) => request.tenantId || null,
+            keyExtractor: (request) => request.tenantId ? String(request.tenantId) : null,
             type: 'unique'
         });
     }
 
-    async findByTenantId(tenantId: string): Promise<RequestType | null> {
-        return this.findByIndex('tenantId', tenantId);
+    async findByTenantId(tenantId: string | number): Promise<RequestType | null> {
+        return this.findByIndex('tenantId', String(tenantId));
     }
 }

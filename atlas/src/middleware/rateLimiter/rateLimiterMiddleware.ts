@@ -71,9 +71,13 @@ class RateLimiter {
         const requestModel = new Request(c);
         const requests = await requestModel.findByTenantId(tenant.id);
         const newTotal = (requests?.count || 0) + currentCount;
-        const requestData = requests || { count: newTotal, tenantId: tenant.id, id: uuidv4() };
-
-        await requestModel.set(requestData.id, {...requestData, count: newTotal});
+        
+        if (requests) {
+            await requestModel.set(requests.id, {...requests, count: newTotal});
+        } else {
+            const newRequest = { count: newTotal, tenantId: String(tenant.id), id: uuidv4() };
+            await requestModel.set(newRequest.id, newRequest);
+        }
         this.memoryCache.resetRequestCount(c, tenant.id);
 
         if (await this.didCrossThreshold(c, tenant, newTotal)) {
@@ -99,9 +103,16 @@ class RateLimiter {
     private async afterThresholdCrossed(c: Context<{ Bindings: Env }>, tenant: TenantType) {
       scopedLogger.debug(`Tenant ${tenant.id} crossed threshold. Activating monitoring.`);
       const firewallModel = new Firewall(c);
-      const firewall = await firewallModel.findByTenant(tenant.id) || { id: uuidv4(), tenantId: tenant.id, status: 'monitoring' };
-
-      await firewallModel.set(firewall.id, { ...firewall, status: 'monitoring' });
+      const existingFirewall = await firewallModel.findByTenant(tenant.id);
+      
+      if (existingFirewall) {
+        // Update existing firewall
+        await firewallModel.set(existingFirewall.id, { ...existingFirewall, status: 'monitoring' });
+      } else {
+        // Create new firewall
+        const newFirewall = { id: uuidv4(), tenantId: String(tenant.id), status: 'monitoring' };
+        await firewallModel.set(newFirewall.id, newFirewall);
+      }
     }
 }
 
