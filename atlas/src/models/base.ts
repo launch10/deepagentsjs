@@ -99,9 +99,11 @@ export class BaseModel<T> extends CloudflareContext {
             }
 
             // Store the main record
+            console.log(`Storing main record for ${this.prefix}:${id}`);
             await this.c.env.DEPLOYS_KV.put(this.getKey(id), JSON.stringify(newData));
 
             // Update indexes
+            console.log(`Updating indexes for ${this.prefix}:${id}`);
             await this.updateIndexes(id, newData, existingData);
             
         } catch (error) {
@@ -118,30 +120,31 @@ export class BaseModel<T> extends CloudflareContext {
         const operations: Promise<void>[] = [];
 
         for (const index of this.indexes) {
-            // Clean up old index entries
-            if (oldData) {
-                const oldKeys = index.keyExtractor(oldData);
-                if (oldKeys) {
-                    const oldKeyArray = Array.isArray(oldKeys) ? oldKeys : [oldKeys];
-                    for (const oldKey of oldKeyArray) {
-                        if (index.type === 'unique') {
-                            operations.push(
-                                this.c.env.DEPLOYS_KV.delete(this.getIndexKey(index.name, oldKey))
-                            );
-                        } else {
-                            operations.push(
-                                this.removeFromListIndex(index.name, oldKey, id)
-                            );
-                        }
+            const oldKeys = oldData ? index.keyExtractor(oldData) : null;
+            const newKeys = index.keyExtractor(newData);
+            
+            // Convert to arrays for comparison
+            const oldKeyArray = oldKeys ? (Array.isArray(oldKeys) ? oldKeys : [oldKeys]) : [];
+            const newKeyArray = newKeys ? (Array.isArray(newKeys) ? newKeys : [newKeys]) : [];
+            
+            // Only clean up old entries that are different from new ones
+            for (const oldKey of oldKeyArray) {
+                if (!newKeyArray.includes(oldKey)) {
+                    if (index.type === 'unique') {
+                        operations.push(
+                            this.c.env.DEPLOYS_KV.delete(this.getIndexKey(index.name, oldKey))
+                        );
+                    } else {
+                        operations.push(
+                            this.removeFromListIndex(index.name, oldKey, id)
+                        );
                     }
                 }
             }
 
-            // Add new index entries
-            const newKeys = index.keyExtractor(newData);
-            if (newKeys) {
-                const newKeyArray = Array.isArray(newKeys) ? newKeys : [newKeys];
-                for (const newKey of newKeyArray) {
+            // Only add new entries that are different from old ones
+            for (const newKey of newKeyArray) {
+                if (!oldKeyArray.includes(newKey)) {
                     if (index.type === 'unique') {
                         const indexKey = this.getIndexKey(index.name, newKey);
                         console.log(`[updateIndexes] Creating index: ${indexKey} -> ${id}`);
@@ -150,11 +153,18 @@ export class BaseModel<T> extends CloudflareContext {
                             this.c.env.DEPLOYS_KV.put(indexKey, id)
                         );
                     } else {
+                        console.log(`[updateIndexes] Creating list index: ${index.name} with value ${newKey} for id ${id}`);
                         operations.push(
                             this.addToListIndex(index.name, newKey, id)
                         );
                     }
+                } else {
+                    console.log(`[updateIndexes] Skipping unchanged index ${index.name} with value ${newKey}`);
                 }
+            }
+            
+            if (!newKeys) {
+                console.log(`[updateIndexes] No keys extracted for index ${index.name} from data:`, newData);
             }
         }
 
@@ -167,12 +177,16 @@ export class BaseModel<T> extends CloudflareContext {
         id: string
     ): Promise<void> {
         const listKey = this.getListIndexKey(indexName, parentValue);
+        console.log(`[addToListIndex] Adding to list: ${listKey}, id: ${id}`);
         const existing = await this.c.env.DEPLOYS_KV.get(listKey);
         const list = existing ? JSON.parse(existing) as string[] : [];
         
         if (!list.includes(id)) {
             list.push(id);
+            console.log(`[addToListIndex] Updated list for ${listKey}:`, list);
             await this.c.env.DEPLOYS_KV.put(listKey, JSON.stringify(list));
+        } else {
+            console.log(`[addToListIndex] ID ${id} already in list ${listKey}`);
         }
     }
 
@@ -274,13 +288,18 @@ export class BaseModel<T> extends CloudflareContext {
             const id = await this.c.env.DEPLOYS_KV.get(this.getIndexKey(indexName, value));
             if (id) ids = [id];
         } else {
-            const listData = await this.c.env.DEPLOYS_KV.get(this.getListIndexKey(indexName, value));
+            const listKey = this.getListIndexKey(indexName, value);
+            console.log(`[findManyByIndex] Looking up list key: ${listKey}`);
+            const listData = await this.c.env.DEPLOYS_KV.get(listKey);
+            console.log(`[findManyByIndex] Found list data:`, listData);
             if (listData) {
                 ids = JSON.parse(listData) as string[];
             }
         }
 
+        console.log(`[findManyByIndex] Found IDs:`, ids);
         const results = await Promise.all(ids.map(id => this.get(id)));
+        console.log(`[findManyByIndex] Retrieved ${results.filter(item => item !== null).length} items`);
         return results.filter(item => item !== null) as T[];
     }
 

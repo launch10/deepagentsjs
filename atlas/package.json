@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "vite",
     "dev:public": "wrangler dev -c wrangler-public.toml --local --persist-to .wrangler/state",
-    "dev:admin": "wrangler dev -c wrangler-admin.toml --port 8788 --local --persist-to .wrangler/state",
+    "dev:admin": "wrangler dev -c wrangler-admin.toml --port 8788 --local --persist-to .wrangler/state --inspector-port=9229",
     "dev:all": "concurrently \"npm:dev:public\" \"npm:dev:admin\"",
     "build": "vite build",
     "build:public": "WRANGLER_CONFIG=wrangler-public.toml vite build",

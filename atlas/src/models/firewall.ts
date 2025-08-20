@@ -6,6 +6,7 @@ import { Request as RequestModel } from "./request";
 import { Site } from "./site";
 import { Plan } from "./plan";
 import { v4 as uuidv4 } from 'uuid';
+import { updateFirewallList, removeFromFirewallList } from '~/utils/cloudflareApi';
 
 const isFirewallType = createTypeGuard<FirewallType>(
     (data: any): data is FirewallType => {
@@ -96,7 +97,7 @@ export class Firewall extends BaseModel<FirewallType> {
         });
     }
 
-    async block(tenant: TenantType): Promise<void> {
+    async block(tenant: TenantType): Promise<FirewallRuleType[]> {
       const siteModel = new Site(this.c);
       const tenantsSites: SiteType[] = await siteModel.findByTenant(tenant.id);
       const firewallRuleModel = new FirewallRule(this.c);
@@ -105,24 +106,28 @@ export class Firewall extends BaseModel<FirewallType> {
         acc[rule.url] = rule;
         return acc;
       }, {} as Record<string, FirewallRuleType>);
-      const unblockedUrls = existingRules.filter(rule => rule.status !== 'blocked').map(rule => rule.url)
-      const urlsToBlock = tenantsSites.map(site => site.url).filter(url => !unblockedUrls.includes(url));
+      const blockedUrls = existingRules.filter(rule => rule.status === 'blocked').map(rule => rule.url)
+      const urlsToBlock = tenantsSites.map(site => site.url).filter(url => !blockedUrls.includes(url));
 
-      const promises = urlsToBlock.map(url => {
-        const existingRule = existingRulesByUrl[url];
-        if (existingRule) {
-          return firewallRuleModel.block({
-            id: existingRule.id,
+      if (urlsToBlock.length > 0) {
+        const [didBlock, cloudflareIds] = await updateFirewallList(this.c.env, urlsToBlock);
+
+        if (!didBlock) {
+          throw new Error('Failed to update Firewall List');
+        }
+        
+        const promises = urlsToBlock.filter((url) => cloudflareIds[url]).map((url) => {
+          let rule = existingRulesByUrl[url] || {
+            id: uuidv4(),
             url: url,
             tenantId: tenant.id,
-          })
-        }
-        return firewallRuleModel.block({
-          url: url,
-          tenantId: tenant.id,
+            status: 'blocked'
+          };
+          rule = { ...rule, cloudflareId: cloudflareIds[url], status: 'blocked' };
+          return firewallRuleModel.set(rule.id, rule);
         })
-      })
-      await Promise.all(promises);
+        await Promise.all(promises);
+      }
 
       const existingFirewall = await this.findByTenant(tenant.id);
       const firewall = existingFirewall || {
@@ -131,27 +136,31 @@ export class Firewall extends BaseModel<FirewallType> {
           status: 'blocked'
       };
       await this.set(firewall.id, { ...firewall, status: 'blocked' });
+
+      const rules = await firewallRuleModel.findByTenant(tenant.id);
+      return rules.filter(rule => rule.status === 'blocked')
     }
 
-    async unblock(tenant: TenantType): Promise<void> {
+    async unblock(tenant: TenantType): Promise<FirewallRuleType[]> {
       const firewallRuleModel = new FirewallRule(this.c);
       const existingRules = await firewallRuleModel.findByTenant(tenant.id);
       const existingRulesByUrl = existingRules.reduce((acc, rule) => {
         acc[rule.url] = rule;
         return acc;
       }, {} as Record<string, FirewallRuleType>);
-      const blockedUrls = existingRules.filter(rule => rule.status === 'blocked').map(rule => rule.url)
+      const rulesToUnblock = existingRules.filter(rule => rule.status === 'blocked')
+      const blockCloudflareRuleIds = rulesToUnblock.map(rule => rule.cloudflareId).filter(id => id !== undefined) as string[];
 
-      const promises = blockedUrls.map(url => {
-        const existingRule = existingRulesByUrl[url];
-        if (existingRule) {
-          console.log(`unblocking ${url}`)
-          return firewallRuleModel.unblock({
-            id: existingRule.id,
-            url: url,
-            tenantId: tenant.id,
-          })
+      if (blockCloudflareRuleIds.length > 0) {
+        const didRemove = await removeFromFirewallList(this.c.env, blockCloudflareRuleIds);
+
+        if (!didRemove) {
+          throw new Error('Failed to remove from Firewall List');
         }
+      }
+
+      const promises = rulesToUnblock.map(rule => {
+        return firewallRuleModel.set(rule.id, { ...rule, status: 'inactive', cloudflareId: undefined });
       })
       await Promise.all(promises);
 
@@ -162,6 +171,8 @@ export class Firewall extends BaseModel<FirewallType> {
           status: 'inactive'
       };
       await this.set(firewall.id, { ...firewall, status: 'inactive' });
+
+      return rulesToUnblock;
     }
 
     async reset(tenant: TenantType): Promise<void> {

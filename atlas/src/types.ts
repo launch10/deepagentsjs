@@ -26,6 +26,7 @@ export interface Env {
 export type Model = {
   id: string;
 }
+
 export interface PlanType extends Model {
   name: string;
   usageLimit: number;
@@ -34,7 +35,6 @@ export interface TenantType extends Model {
   orgId: string;
   planId: string;
 }
-
 export interface RequestType extends Model {
   tenantId: string;
   count: number;
@@ -60,6 +60,7 @@ export interface FirewallRuleType extends Model {
   url: string;
   tenantId: string;
   status: FirewallStatus;
+  cloudflareId?: string;
   // blockedAt: string;
 }
 
