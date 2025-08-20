@@ -1,6 +1,9 @@
 import { Context } from "hono";
 import { Env } from "~/types";
 import { CloudflareContext } from "~/utils/cloudflareContext";
+import { logger } from "~/utils/logger";
+
+export const scopedLogger = logger.addScope('KVCache');
 
 // Index definition interface
 export interface IndexDefinition<T> {
@@ -78,8 +81,6 @@ export class BaseModel<T> extends CloudflareContext {
             const newData = { ...existingData, ...data } as T;
             
             if (this.validator && !this.validator(newData)) {
-                console.log(`oh noes, failed validation for ${this.prefix}:${id}`)
-                console.log(newData)
                 throw new Error(`Invalid ${this.prefix} data for id: ${id}`);
             }
 
@@ -99,11 +100,11 @@ export class BaseModel<T> extends CloudflareContext {
             }
 
             // Store the main record
-            console.log(`Storing main record for ${this.prefix}:${id}`);
+            scopedLogger.debug(`Storing main record for ${this.prefix}:${id}`);
             await this.c.env.DEPLOYS_KV.put(this.getKey(id), JSON.stringify(newData));
 
             // Update indexes
-            console.log(`Updating indexes for ${this.prefix}:${id}`);
+            scopedLogger.debug(`Updating indexes for ${this.prefix}:${id}`);
             await this.updateIndexes(id, newData, existingData);
             
         } catch (error) {
@@ -147,24 +148,24 @@ export class BaseModel<T> extends CloudflareContext {
                 if (!oldKeyArray.includes(newKey)) {
                     if (index.type === 'unique') {
                         const indexKey = this.getIndexKey(index.name, newKey);
-                        console.log(`[updateIndexes] Creating index: ${indexKey} -> ${id}`);
-                        console.log(`[updateIndexes] Key type: ${typeof newKey}, Key value: ${newKey}`);
+                        scopedLogger.debug(`[updateIndexes] Creating index: ${indexKey} -> ${id}`);
+                        scopedLogger.debug(`[updateIndexes] Key type: ${typeof newKey}, Key value: ${newKey}`);
                         operations.push(
                             this.c.env.DEPLOYS_KV.put(indexKey, id)
                         );
                     } else {
-                        console.log(`[updateIndexes] Creating list index: ${index.name} with value ${newKey} for id ${id}`);
+                        scopedLogger.debug(`[updateIndexes] Creating list index: ${index.name} with value ${newKey} for id ${id}`);
                         operations.push(
                             this.addToListIndex(index.name, newKey, id)
                         );
                     }
                 } else {
-                    console.log(`[updateIndexes] Skipping unchanged index ${index.name} with value ${newKey}`);
+                    scopedLogger.debug(`[updateIndexes] Skipping unchanged index ${index.name} with value ${newKey}`);
                 }
             }
             
             if (!newKeys) {
-                console.log(`[updateIndexes] No keys extracted for index ${index.name} from data:`, newData);
+                scopedLogger.debug(`[updateIndexes] No keys extracted for index ${index.name} from data:`, newData);
             }
         }
 
@@ -177,16 +178,16 @@ export class BaseModel<T> extends CloudflareContext {
         id: string
     ): Promise<void> {
         const listKey = this.getListIndexKey(indexName, parentValue);
-        console.log(`[addToListIndex] Adding to list: ${listKey}, id: ${id}`);
+        scopedLogger.debug(`[addToListIndex] Adding to list: ${listKey}, id: ${id}`);
         const existing = await this.c.env.DEPLOYS_KV.get(listKey);
         const list = existing ? JSON.parse(existing) as string[] : [];
         
         if (!list.includes(id)) {
             list.push(id);
-            console.log(`[addToListIndex] Updated list for ${listKey}:`, list);
+            scopedLogger.debug(`[addToListIndex] Updated list for ${listKey}:`, list);
             await this.c.env.DEPLOYS_KV.put(listKey, JSON.stringify(list));
         } else {
-            console.log(`[addToListIndex] ID ${id} already in list ${listKey}`);
+            scopedLogger.debug(`[addToListIndex] ID ${id} already in list ${listKey}`);
         }
     }
 
@@ -267,11 +268,11 @@ export class BaseModel<T> extends CloudflareContext {
         }
 
         const indexKey = this.getIndexKey(indexName, value);
-        console.log(`[findByIndex] Looking up index key: ${indexKey}`);
-        console.log(`[findByIndex] Value type: ${typeof value}, Value: ${value}`);
+        scopedLogger.debug(`[findByIndex] Looking up index key: ${indexKey}`);
+        scopedLogger.debug(`[findByIndex] Value type: ${typeof value}, Value: ${value}`);
         
         const id = await this.c.env.DEPLOYS_KV.get(indexKey);
-        console.log(`[findByIndex] Found ID: ${id}`);
+        scopedLogger.debug(`[findByIndex] Found ID: ${id}`);
         
         return id ? await this.get(id) : null;
     }
@@ -289,17 +290,17 @@ export class BaseModel<T> extends CloudflareContext {
             if (id) ids = [id];
         } else {
             const listKey = this.getListIndexKey(indexName, value);
-            console.log(`[findManyByIndex] Looking up list key: ${listKey}`);
+            scopedLogger.debug(`[findManyByIndex] Looking up list key: ${listKey}`);
             const listData = await this.c.env.DEPLOYS_KV.get(listKey);
-            console.log(`[findManyByIndex] Found list data:`, listData);
+            scopedLogger.debug(`[findManyByIndex] Found list data:`, listData);
             if (listData) {
                 ids = JSON.parse(listData) as string[];
             }
         }
 
-        console.log(`[findManyByIndex] Found IDs:`, ids);
+        scopedLogger.debug(`[findManyByIndex] Found IDs:`, ids);
         const results = await Promise.all(ids.map(id => this.get(id)));
-        console.log(`[findManyByIndex] Retrieved ${results.filter(item => item !== null).length} items`);
+        scopedLogger.debug(`[findManyByIndex] Retrieved ${results.filter(item => item !== null).length} items`);
         return results.filter(item => item !== null) as T[];
     }
 

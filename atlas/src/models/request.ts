@@ -22,7 +22,7 @@ export class Request extends BaseModel<RequestType> {
         });
     }
 
-    async findByTenantId(tenantId: string | number): Promise<RequestType | null> {
+    async findByTenantId(tenantId: string): Promise<RequestType | null> {
         return this.findByIndex('tenantId', String(tenantId));
     }
 }
