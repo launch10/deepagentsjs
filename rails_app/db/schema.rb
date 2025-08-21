@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_21_130228) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_21_133027) do
   create_schema "drizzle"
 
   # These are extensions that must be enabled in order to support this database
@@ -789,9 +789,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_130228) do
     t.bigint "user_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "thread_id"
     t.index ["created_at"], name: "index_websites_on_created_at"
     t.index ["name"], name: "index_websites_on_name"
     t.index ["project_id"], name: "index_websites_on_project_id"
+    t.index ["thread_id"], name: "index_websites_on_thread_id", unique: true
     t.index ["user_id"], name: "index_websites_on_user_id"
   end
 

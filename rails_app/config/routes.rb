@@ -41,4 +41,5 @@ Rails.application.routes.draw do
   resources :projects, controller: :projects, param: :thread_id do 
     get :files, on: :member
   end
+  resources :websites, only: [:create]
 end

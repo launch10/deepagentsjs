@@ -2,6 +2,7 @@ require 'faker'
 
 FactoryBot.define do
   factory :plan do
+    name { 'default' }
     interval { 'month' }
     amount { 1900 }
     stripe_id { 'personal' }
@@ -9,17 +10,17 @@ FactoryBot.define do
 
     trait :starter do
       name { 'starter' }
-      plan_limits { [build(:plan_limit, :starter_limit)] }
+      amount { 900 }
     end
 
     trait :pro do
       name { 'pro' }
-      plan_limits { [build(:plan_limit, :pro_limit)] }
+      amount { 1900 }
     end
 
     trait :enterprise do
       name { 'enterprise' }
-      plan_limits { [build(:plan_limit, :enterprise_limit)] }
+      amount { 9900 }
     end
   end
 end

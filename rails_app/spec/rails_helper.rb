@@ -21,6 +21,7 @@ RSpec.configure do |config|
     Rails.root.join('spec/fixtures')
   ]
   config.use_transactional_fixtures = true
+  config.include FactoryBot::Syntax::Methods
 
   config.before(:each, :logsql) do
     ActiveRecord::Base.logger = Logger.new(STDOUT)
