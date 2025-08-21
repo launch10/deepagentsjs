@@ -22,6 +22,11 @@ RSpec.configure do |config|
   ]
   config.use_transactional_fixtures = true
   config.include FactoryBot::Syntax::Methods
+  
+  # Include helper modules for request specs
+  config.include JwtHelpers, type: :request
+  config.include SubscriptionHelpers, type: :request
+  config.include PlanHelpers, type: :request
 
   config.before(:each, :logsql) do
     ActiveRecord::Base.logger = Logger.new(STDOUT)

@@ -5,24 +5,8 @@ RSpec.describe "Websites", type: :request do
   let(:user) { create(:user) }
   let(:account) { user.owned_account || create(:account, owner: user) }
   let(:project) { create(:project, account: account) }
-  let(:jwt_secret) { Rails.application.credentials.devise_jwt_secret_key }
+  let(:headers) { auth_headers_for(user) }
   
-  let(:valid_jwt_payload) do
-    {
-      jti: SecureRandom.uuid,
-      sub: user.id,
-      exp: 24.hours.from_now.to_i,
-      iat: Time.current.to_i,
-    }
-  end
-  
-  let(:valid_jwt) { JWT.encode(valid_jwt_payload, jwt_secret, 'HS256') }
-  let(:headers) { { 'Authorization' => "Bearer #{valid_jwt}" } }
-  
-  before do
-    ActsAsTenant.current_tenant = account
-  end
-
   describe "POST /websites" do
     let(:valid_params) do
       {
@@ -45,8 +29,7 @@ RSpec.describe "Websites", type: :request do
 
     context "with invalid JWT" do
       it "returns unauthorized" do
-        headers = { 'Authorization' => "Bearer invalid_token" }
-        post "/websites", params: valid_params, headers: headers, as: :json
+        post "/websites", params: valid_params, headers: invalid_auth_headers, as: :json
         expect(response).to have_http_status(:unauthorized)
       end
     end
@@ -54,7 +37,7 @@ RSpec.describe "Websites", type: :request do
     context "with valid JWT" do
       context "when user is not subscribed" do
         before do
-          create(:plan, :pro)
+          ensure_plans_exist
         end
 
         it "requires subscription" do
@@ -65,12 +48,9 @@ RSpec.describe "Websites", type: :request do
       end
 
       context "when user is subscribed" do
-        let!(:plan) { create(:plan, :pro) }
-        
         before do
-          # Create a real subscription using Pay gem (following Jumpstart pattern)
-          account.set_payment_processor :fake_processor, allow_fake: true
-          account.payment_processor.subscribe
+          ensure_plans_exist
+          subscribe_account(account, plan_name: 'pro')
         end
 
         it "creates a website with thread_id" do
