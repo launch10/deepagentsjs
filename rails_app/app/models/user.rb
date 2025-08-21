@@ -69,24 +69,21 @@ class User < ApplicationRecord
 
   has_one :owned_account, class_name: "Account", foreign_key: "owner_id", dependent: :destroy
   has_one :payment_processor, through: :owned_account
-  has_one :subscription, through: :payment_processor
-  has_one :plan, through: :subscription
-  has_many :plan_limits, through: :plan
+  has_many :subscriptions, through: :owned_account
+  
+  def plan
+    subscriptions.active.first&.plan
+  end
+  
+  def plan_limits
+    plan&.plan_limits || []
+  end
 
   has_many :projects, through: :owned_account
   has_many :websites, through: :projects
-
-  # Atlas sync methods
-  def sync_to_atlas
-    return unless atlas_sync_enabled?
-    
-    if persisted?
-      Atlas::UserService.new.update(atlas_identifier, atlas_data_for_update)
-    else
-      Atlas::UserService.new.create(atlas_data_for_create)
-    end
-  rescue Atlas::BaseService::Error => e
-    Rails.logger.error "[Atlas] Failed to manually sync user ##{id}: #{e.message}"
+  
+  def current_plan_id
+    plan&.id
   end
 
   private
@@ -112,9 +109,5 @@ class User < ApplicationRecord
     # Atlas doesn't track user changes, only plan changes
     # This will be triggered by subscription callbacks
     false
-  end
-
-  def current_plan_id
-    plan&.id
   end
 end

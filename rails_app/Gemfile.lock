@@ -726,6 +726,7 @@ DEPENDENCIES
   rails (~> 8.0.0)
   receipts (~> 2.1)
   redis
+  rollbar
   rotp (~> 6.2)
   rqrcode (~> 2.1)
   rspec (~> 3.13)

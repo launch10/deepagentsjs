@@ -21,11 +21,11 @@ module Atlas
       end
     end
 
-    def create(id:, plan_id:, **attributes)
+    def create(id:, plan_id: nil, **attributes)
       params = {
         id: id,
         planId: plan_id
-      }.merge(attributes)
+      }.compact.merge(attributes)
 
       with_logging(:post, BASE_PATH, params) do
         make_request(:post, BASE_PATH, params)
