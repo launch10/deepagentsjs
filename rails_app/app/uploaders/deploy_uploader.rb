@@ -46,6 +46,22 @@ class DeployUploader
     
     Rails.logger.info "Successfully hotswapped live deploy for project #{project_id}"
   end
+  
+  def preserve_current_live(project_id, timestamp)
+    live_path = "#{project_id}/live"
+    versioned_path = "#{project_id}/#{timestamp}"
+    
+    # Check if live exists
+    objects = client.list_objects_v2(bucket: bucket_name, prefix: live_path, max_keys: 1)
+    return if objects.contents.empty?
+    
+    # Copy live to timestamped version if it doesn't already exist
+    versioned_objects = client.list_objects_v2(bucket: bucket_name, prefix: versioned_path, max_keys: 1)
+    if versioned_objects.contents.empty?
+      copy_prefix(live_path, versioned_path)
+      Rails.logger.info "Preserved current live version to #{versioned_path}"
+    end
+  end
 
   def delete_prefix(prefix)
     objects = client.list_objects_v2(bucket: bucket_name, prefix: prefix)

@@ -1,3 +1,33 @@
+# == Schema Information
+#
+# Table name: deploys
+#
+#  id                 :integer          not null, primary key
+#  website_id         :integer
+#  website_history_id :integer
+#  status             :string           not null
+#  trigger            :string           default("manual")
+#  stacktrace         :text
+#  snapshot_id        :string
+#  created_at         :datetime         not null
+#  updated_at         :datetime         not null
+#  is_live            :boolean          default("false")
+#  revertible         :boolean          default("false")
+#  version_path       :string
+#
+# Indexes
+#
+#  index_deploys_on_created_at              (created_at)
+#  index_deploys_on_is_live                 (is_live)
+#  index_deploys_on_revertible              (revertible)
+#  index_deploys_on_snapshot_id             (snapshot_id)
+#  index_deploys_on_status                  (status)
+#  index_deploys_on_trigger                 (trigger)
+#  index_deploys_on_website_history_id      (website_history_id)
+#  index_deploys_on_website_id              (website_id)
+#  index_deploys_on_website_id_and_is_live  (website_id,is_live)
+#
+
 require 'rails_helper'
 
 RSpec.describe Deploy, type: :model do
@@ -156,7 +186,7 @@ RSpec.describe Deploy, type: :model do
     it 'uploads files to timestamped directory in R2' do
       uploader = double('uploader')
       allow(DeployUploader).to receive(:new).and_return(uploader)
-      expect(uploader).to receive(:store!).with(dist_path, "#{website.project_id}/20240101120000")
+      expect(uploader).to receive(:store!).with(dist_path, match(/#{website.project_id}\/\d{14}/))
       allow(uploader).to receive(:hotswap_live)
       deploy.upload!(dist_path)
     end
@@ -165,7 +195,7 @@ RSpec.describe Deploy, type: :model do
       uploader = double('uploader')
       allow(DeployUploader).to receive(:new).and_return(uploader)
       allow(uploader).to receive(:store!)
-      expect(uploader).to receive(:hotswap_live).with("#{website.project_id}/20240101120000")
+      expect(uploader).to receive(:hotswap_live).with(match(/#{website.project_id}\/\d{14}/))
       deploy.upload!(dist_path)
     end
 
@@ -177,7 +207,7 @@ RSpec.describe Deploy, type: :model do
 
     it 'updates deploy status to completed' do
       expect(deploy).to receive(:update!).with(status: 'uploading').ordered
-      expect(deploy).to receive(:update!).with(status: 'completed').ordered
+      expect(deploy).to receive(:update!).with(hash_including(status: 'completed', is_live: true, revertible: true)).ordered
       deploy.upload!(dist_path)
     end
 
@@ -299,6 +329,174 @@ RSpec.describe Deploy, type: :model do
     it 'returns false on failure' do
       allow(deploy).to receive(:build!).and_raise(StandardError)
       expect(deploy.deploy!).to eq(false)
+    end
+  end
+
+  describe 'versioning and rollback' do
+    let(:website_file) { double(filename: 'index.html', content: '<html>v1</html>') }
+    let(:deploy1) do
+      allow(website).to receive(:files).and_return([website_file])
+      allow(website).to receive(:latest_snapshot).and_return(nil)
+      allow(website).to receive(:snapshot).and_return(double(id: 'snapshot_1'))
+      create(:deploy, website: website, created_at: 1.hour.ago)
+    end
+    let(:deploy2) do
+      allow(website).to receive(:files).and_return([website_file])
+      allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_2'))
+      create(:deploy, website: website, created_at: 30.minutes.ago)
+    end
+    let(:deploy3) do
+      allow(website).to receive(:files).and_return([website_file])
+      allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_3'))
+      create(:deploy, website: website)
+    end
+
+    before do
+      # Mock uploader
+      uploader_double = double('uploader')
+      allow(DeployUploader).to receive(:new).and_return(uploader_double)
+      allow(uploader_double).to receive(:store!)
+      allow(uploader_double).to receive(:hotswap_live)
+      allow(uploader_double).to receive(:preserve_current_live)
+    end
+
+    describe '#upload!' do
+      it 'marks deploy as live when completed' do
+        allow(deploy1).to receive(:build!).and_return('/tmp/deploy_1/dist')
+        deploy1.upload!('/tmp/deploy_1/dist')
+        expect(deploy1.reload.is_live).to be true
+      end
+
+      it 'stores version_path with timestamp' do
+        allow(deploy1).to receive(:build!).and_return('/tmp/deploy_1/dist')
+        deploy1.upload!('/tmp/deploy_1/dist')
+        expect(deploy1.reload.version_path).to match(/#{website.project_id}\/\d{14}/)
+      end
+
+      it 'preserves current live version before deploying new one' do
+        deploy1.update!(status: 'completed', is_live: true, version_path: "#{website.project_id}/20240101120000")
+        
+        uploader = double('uploader')
+        allow(DeployUploader).to receive(:new).and_return(uploader)
+        expect(uploader).to receive(:preserve_current_live).with(website.project_id, deploy1.created_at.strftime('%Y%m%d%H%M%S'))
+        allow(uploader).to receive(:store!)
+        allow(uploader).to receive(:hotswap_live)
+        
+        deploy2.upload!('/tmp/deploy_2/dist')
+      end
+
+      it 'marks previous live deploy as not live' do
+        deploy1.update!(status: 'completed', is_live: true)
+        deploy2.upload!('/tmp/deploy_2/dist')
+        
+        expect(deploy1.reload.is_live).to be false
+        expect(deploy2.reload.is_live).to be true
+      end
+    end
+
+    describe '#rollback!' do
+      before do
+        deploy1.update!(status: 'completed', is_live: false, revertible: true, version_path: "#{website.project_id}/20240101110000")
+        deploy2.update!(status: 'completed', is_live: false, revertible: true, version_path: "#{website.project_id}/20240101113000")
+        deploy3.update!(status: 'completed', is_live: true, revertible: true, version_path: "#{website.project_id}/20240101120000")
+      end
+
+      it 'rolls back to a previous version' do
+        expect(deploy2.rollback!).to be true
+        expect(deploy2.reload.is_live).to be true
+        expect(deploy3.reload.is_live).to be false
+      end
+
+      it 'calls hotswap_live with the correct version path' do
+        uploader = double('uploader')
+        allow(DeployUploader).to receive(:new).and_return(uploader)
+        expect(uploader).to receive(:hotswap_live).with(deploy2.version_path)
+        
+        deploy2.rollback!
+      end
+
+      it 'fails if deploy is not completed' do
+        deploy2.update!(status: 'failed', is_live: false, revertible: true, version_path: "#{website.project_id}/20240101113000")
+        expect { deploy2.rollback! }.to raise_error(/Cannot rollback non-completed deploy/)
+      end
+
+      it 'fails if deploy is not revertible' do
+        deploy2.update!(status: 'completed', is_live: false, revertible: false, version_path: "#{website.project_id}/20240101113000")
+        expect { deploy2.rollback! }.to raise_error(/Cannot rollback non-revertible deploy/)
+      end
+
+      it 'fails if deploy is already live' do
+        deploy3.update!(status: 'completed', is_live: true, revertible: true, version_path: "#{website.project_id}/20240101120000")
+        expect { deploy3.rollback! }.to raise_error(/Deploy is already live/)
+      end
+
+      it 'returns false on error' do
+        uploader = double('uploader')
+        allow(DeployUploader).to receive(:new).and_return(uploader)
+        allow(uploader).to receive(:hotswap_live).and_raise(StandardError.new('Test error'))
+        expect(deploy2.reload.rollback!).to be false
+      end
+    end
+
+    describe '.revertible scope' do
+      before do
+        deploy1.update!(revertible: false)
+        deploy2.update!(revertible: true)
+        deploy3.update!(revertible: true)
+      end
+
+      it 'returns only revertible deploys' do
+        expect(Deploy.revertible).to include(deploy2, deploy3)
+        expect(Deploy.revertible).not_to include(deploy1)
+      end
+    end
+
+    describe '.live scope' do
+      before do
+        deploy1.update!(is_live: false)
+        deploy2.update!(is_live: false)
+        deploy3.update!(is_live: true)
+      end
+
+      it 'returns only live deploys' do
+        expect(Deploy.live).to include(deploy3)
+        expect(Deploy.live).not_to include(deploy1, deploy2)
+      end
+    end
+
+    describe '#update_revertible_deploys' do
+      let!(:deploy4) do
+        allow(website).to receive(:files).and_return([website_file])
+        allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_4'))
+        create(:deploy, website: website, status: 'completed')
+      end
+      let!(:deploy5) do
+        allow(website).to receive(:files).and_return([website_file])
+        allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_5'))
+        create(:deploy, website: website, status: 'completed')
+      end
+
+      before do
+        deploy1.update!(status: 'completed')
+        deploy2.update!(status: 'completed')
+        deploy3.update!(status: 'completed')
+      end
+
+      it 'marks only the last 3 completed deploys as revertible' do
+        deploy5.send(:update_revertible_deploys)
+        
+        deploys = website.deploys.completed.order(created_at: :desc)
+        expect(deploys[0..2].all?(&:revertible?)).to be true
+        expect(deploys[3..4].any?(&:revertible?)).to be false
+      end
+
+      it 'is called after creating a new deploy' do
+        expect_any_instance_of(Deploy).to receive(:update_revertible_deploys)
+        
+        allow(website).to receive(:files).and_return([website_file])
+        allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_6'))
+        create(:deploy, website: website)
+      end
     end
   end
 end

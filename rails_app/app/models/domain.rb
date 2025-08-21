@@ -13,7 +13,8 @@
 # Indexes
 #
 #  index_domains_on_cloudflare_zone_id  (cloudflare_zone_id)
-#  index_domains_on_domain              (domain) UNIQUE
+#  index_domains_on_created_at          (created_at)
+#  index_domains_on_domain              (domain)
 #  index_domains_on_user_id             (user_id)
 #  index_domains_on_website_id          (website_id)
 #

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_21_143055) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_21_165504) do
   create_schema "drizzle"
 
   # These are extensions that must be enabled in order to support this database
@@ -255,11 +255,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_143055) do
     t.string "snapshot_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "is_live", default: false
+    t.boolean "revertible", default: false
+    t.string "version_path"
     t.index ["created_at"], name: "index_deploys_on_created_at"
+    t.index ["is_live"], name: "index_deploys_on_is_live"
+    t.index ["revertible"], name: "index_deploys_on_revertible"
     t.index ["snapshot_id"], name: "index_deploys_on_snapshot_id"
     t.index ["status"], name: "index_deploys_on_status"
     t.index ["trigger"], name: "index_deploys_on_trigger"
     t.index ["website_history_id"], name: "index_deploys_on_website_history_id"
+    t.index ["website_id", "is_live"], name: "index_deploys_on_website_id_and_is_live"
     t.index ["website_id"], name: "index_deploys_on_website_id"
   end
 
@@ -780,7 +786,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_143055) do
     t.index ["name"], name: "index_website_histories_on_name"
     t.index ["project_id"], name: "index_website_histories_on_project_id"
     t.index ["snapshot_id"], name: "index_website_histories_on_snapshot_id"
-    t.index ["thread_id"], name: "index_website_histories_on_thread_id"
+    t.index ["thread_id"], name: "index_website_histories_on_thread_id", unique: true
     t.index ["user_id"], name: "index_website_histories_on_user_id"
     t.index ["website_id"], name: "index_website_histories_on_website_id"
   end
