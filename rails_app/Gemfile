@@ -24,13 +24,13 @@ gem "kamal", ">= 2.0.0.rc2", require: false
 gem "thruster", require: false
 gem "image_processing", "~> 1.12"
 gem "sidekiq-unique-jobs", "~> 8.0"
-gem "historiographer", "~> 4.4.0"
+gem "historiographer", "~> 4.4.1"
 gem "neighbor"
 gem "flipper"
 gem "dotenv"
 gem "devise-jwt"
 gem "activerecord-import"
-gem "faraday", "~> 2.0"
+gem "typhoeus"
 
 group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"

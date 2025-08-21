@@ -50,62 +50,86 @@ RSpec.describe Atlas::BaseService do
     end
   end
 
-  describe '#handle_response' do
+  describe '#handle_typhoeus_response' do
     let(:response) { double('response') }
 
     context 'with successful response' do
       it 'returns body for 200 status' do
-        allow(response).to receive(:status).and_return(200)
-        allow(response).to receive(:body).and_return({ 'data' => 'test' })
+        allow(response).to receive(:timed_out?).and_return(false)
+        allow(response).to receive(:code).and_return(200)
+        allow(response).to receive(:body).and_return({ 'data' => 'test' }.to_json)
         
-        result = service.send(:handle_response, response)
+        result = service.send(:handle_typhoeus_response, response)
         expect(result).to eq({ 'data' => 'test' })
       end
 
       it 'returns body for 201 status' do
-        allow(response).to receive(:status).and_return(201)
-        allow(response).to receive(:body).and_return({ 'created' => true })
+        allow(response).to receive(:timed_out?).and_return(false)
+        allow(response).to receive(:code).and_return(201)
+        allow(response).to receive(:body).and_return({ 'created' => true }.to_json)
         
-        result = service.send(:handle_response, response)
+        result = service.send(:handle_typhoeus_response, response)
         expect(result).to eq({ 'created' => true })
       end
     end
 
     context 'with error responses' do
       it 'raises ValidationError for 400' do
-        allow(response).to receive(:status).and_return(400)
-        allow(response).to receive(:body).and_return({ 'error' => 'Invalid data' })
+        allow(response).to receive(:timed_out?).and_return(false)
+        allow(response).to receive(:code).and_return(400)
+        allow(response).to receive(:body).and_return({ 'error' => 'Invalid data' }.to_json)
         
         expect {
-          service.send(:handle_response, response)
+          service.send(:handle_typhoeus_response, response)
         }.to raise_error(Atlas::BaseService::ValidationError, 'Invalid data')
       end
 
       it 'raises AuthenticationError for 401' do
-        allow(response).to receive(:status).and_return(401)
-        allow(response).to receive(:body).and_return({ 'error' => 'Unauthorized' })
+        allow(response).to receive(:timed_out?).and_return(false)
+        allow(response).to receive(:code).and_return(401)
+        allow(response).to receive(:body).and_return({ 'error' => 'Unauthorized' }.to_json)
         
         expect {
-          service.send(:handle_response, response)
+          service.send(:handle_typhoeus_response, response)
         }.to raise_error(Atlas::BaseService::AuthenticationError, 'Unauthorized')
       end
 
       it 'raises NotFoundError for 404' do
-        allow(response).to receive(:status).and_return(404)
-        allow(response).to receive(:body).and_return({ 'error' => 'Not found' })
+        allow(response).to receive(:timed_out?).and_return(false)
+        allow(response).to receive(:code).and_return(404)
+        allow(response).to receive(:body).and_return({ 'error' => 'Not found' }.to_json)
         
         expect {
-          service.send(:handle_response, response)
+          service.send(:handle_typhoeus_response, response)
         }.to raise_error(Atlas::BaseService::NotFoundError, 'Not found')
       end
 
       it 'raises ServerError for 500' do
-        allow(response).to receive(:status).and_return(500)
-        allow(response).to receive(:body).and_return({ 'error' => 'Server error' })
+        allow(response).to receive(:timed_out?).and_return(false)
+        allow(response).to receive(:code).and_return(500)
+        allow(response).to receive(:body).and_return({ 'error' => 'Server error' }.to_json)
         
         expect {
-          service.send(:handle_response, response)
+          service.send(:handle_typhoeus_response, response)
         }.to raise_error(Atlas::BaseService::ServerError, 'Server error')
+      end
+
+      it 'raises Error for timeout' do
+        allow(response).to receive(:timed_out?).and_return(true)
+        
+        expect {
+          service.send(:handle_typhoeus_response, response)
+        }.to raise_error(Atlas::BaseService::Error, 'Request timed out')
+      end
+
+      it 'raises Error for connection failure' do
+        allow(response).to receive(:timed_out?).and_return(false)
+        allow(response).to receive(:code).and_return(0)
+        allow(response).to receive(:return_message).and_return('Connection refused')
+        
+        expect {
+          service.send(:handle_typhoeus_response, response)
+        }.to raise_error(Atlas::BaseService::Error, 'Connection failed: Connection refused')
       end
     end
   end

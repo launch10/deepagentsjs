@@ -16,30 +16,30 @@ module Atlas
 
     private
 
-    def client
-      @client ||= Faraday.new(url: config.base_url) do |faraday|
-        faraday.request :json
-        faraday.response :json
-        faraday.options.timeout = config.timeout
-        faraday.adapter Faraday.default_adapter
-      end
-    end
-
     def make_request(method, path, params = {})
+      url = "#{config.base_url}#{path}"
       body = method == :get ? nil : params.to_json
       headers = build_headers(body)
       
-      response = client.send(method, path) do |req|
-        req.headers = headers
-        req.params = params if method == :get
-        req.body = body if body
+      options = {
+        method: method,
+        headers: headers,
+        timeout: config.timeout,
+        connecttimeout: config.timeout / 2
+      }
+      
+      if method == :get && params.any?
+        url += "?#{URI.encode_www_form(params)}"
+      elsif body
+        options[:body] = body
       end
-
-      handle_response(response)
-    rescue Faraday::TimeoutError => e
-      raise Error, "Request timed out: #{e.message}"
-    rescue Faraday::ConnectionFailed => e
-      raise Error, "Connection failed: #{e.message}"
+      
+      request = Typhoeus::Request.new(url, options)
+      response = request.run
+      
+      handle_typhoeus_response(response)
+    rescue => e
+      raise Error, "Request failed: #{e.message}"
     end
 
     def build_headers(body)
@@ -59,28 +59,43 @@ module Atlas
       OpenSSL::HMAC.hexdigest('SHA256', config.api_secret, payload)
     end
 
-    def handle_response(response)
-      case response.status
+    def handle_typhoeus_response(response)
+      if response.timed_out?
+        raise Error, "Request timed out"
+      elsif response.code == 0
+        raise Error, "Connection failed: #{response.return_message}"
+      end
+      
+      parsed_body = parse_response_body(response.body)
+      
+      case response.code
       when 200, 201
-        response.body
+        parsed_body
       when 400
-        raise ValidationError, error_message(response)
+        raise ValidationError, error_message_from_body(parsed_body)
       when 401, 403
-        raise AuthenticationError, error_message(response)
+        raise AuthenticationError, error_message_from_body(parsed_body)
       when 404
-        raise NotFoundError, error_message(response)
+        raise NotFoundError, error_message_from_body(parsed_body)
       when 500..599
-        raise ServerError, error_message(response)
+        raise ServerError, error_message_from_body(parsed_body)
       else
-        raise Error, "Unexpected response: #{response.status} - #{response.body}"
+        raise Error, "Unexpected response: #{response.code} - #{response.body}"
       end
     end
+    
+    def parse_response_body(body)
+      return {} if body.nil? || body.empty?
+      JSON.parse(body)
+    rescue JSON::ParserError
+      body
+    end
 
-    def error_message(response)
-      if response.body.is_a?(Hash)
-        response.body['error'] || response.body['message'] || response.body.to_s
+    def error_message_from_body(body)
+      if body.is_a?(Hash)
+        body['error'] || body['message'] || body.to_s
       else
-        response.body.to_s
+        body.to_s
       end
     end
 

@@ -786,7 +786,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_165504) do
     t.index ["name"], name: "index_website_histories_on_name"
     t.index ["project_id"], name: "index_website_histories_on_project_id"
     t.index ["snapshot_id"], name: "index_website_histories_on_snapshot_id"
-    t.index ["thread_id"], name: "index_website_histories_on_thread_id", unique: true
+    t.index ["thread_id"], name: "index_website_histories_on_thread_id"
     t.index ["user_id"], name: "index_website_histories_on_user_id"
     t.index ["website_id"], name: "index_website_histories_on_website_id"
   end

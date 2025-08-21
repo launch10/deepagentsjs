@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
 module Atlas
-  class SiteService < BaseService
-    BASE_PATH = '/api/internal/sites'
+  class UserService < BaseService
+    BASE_PATH = '/api/internal/users'
 
-    def list(limit: nil, tenant_id: nil)
+    def list(limit: nil)
       params = {}
       params[:limit] = limit if limit
-      params[:tenantId] = tenant_id if tenant_id
 
       with_logging(:get, BASE_PATH, params) do
         make_request(:get, BASE_PATH, params)
@@ -22,20 +21,11 @@ module Atlas
       end
     end
 
-    def find_by_url(url)
-      path = "#{BASE_PATH}/by-url"
-      params = { url: url }
-
-      with_logging(:get, path, params) do
-        make_request(:get, path, params)
-      end
-    end
-
-    def create(id:, url:, tenant_id:, **attributes)
+    def create(id:, org_id:, plan_id:, **attributes)
       params = {
         id: id,
-        url: url,
-        tenantId: tenant_id
+        orgId: org_id,
+        planId: plan_id
       }.merge(attributes)
 
       with_logging(:post, BASE_PATH, params) do
@@ -56,6 +46,39 @@ module Atlas
       
       with_logging(:delete, path) do
         make_request(:delete, path)
+      end
+    end
+
+    # Firewall management methods
+    def block(id)
+      path = "#{BASE_PATH}/#{id}/block"
+      
+      with_logging(:post, path) do
+        make_request(:post, path)
+      end
+    end
+
+    def unblock(id)
+      path = "#{BASE_PATH}/#{id}/unblock"
+      
+      with_logging(:post, path) do
+        make_request(:post, path)
+      end
+    end
+
+    def reset(id)
+      path = "#{BASE_PATH}/#{id}/reset"
+      
+      with_logging(:post, path) do
+        make_request(:post, path)
+      end
+    end
+
+    def status(id)
+      path = "#{BASE_PATH}/#{id}/status"
+      
+      with_logging(:get, path) do
+        make_request(:get, path)
       end
     end
   end
