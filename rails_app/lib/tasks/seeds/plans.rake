@@ -1,0 +1,47 @@
+namespace :seeds do
+  desc "Load plan seeds"
+  task plans: :environment do
+    plan_limits = {
+      requests_per_month: {
+        starter: 1_000_000,
+        pro: 5_000_000,
+        enterprise: 20_000_000
+      }
+    }
+
+    plans = [
+      {
+        name: "starter",
+        amount: 4900,
+        interval: "month",
+        stripe_id: "starter"
+      },
+      {
+        name: "pro",
+        amount: 9900,
+        interval: "month",
+        stripe_id: "business"
+      },
+      {
+        name: "enterprise",
+        amount: 24900,
+        interval: "month",
+        stripe_id: "enterprise"
+      }
+    ]
+
+    Plan.import(plans, on_duplicate_key_update: { conflict_target: :name, columns: :all })
+    PlanLimit.import(
+      plan_limits.map do |limit_type, limits|
+        limits.map do |plan_name, limit|
+          { 
+            plan_id: Plan.find_by_name(plan_name).id, 
+            limit_type: limit_type, 
+            limit: limit 
+          }
+        end
+      end,
+      on_duplicate_key_update: { conflict_target: [:plan_id, :limit_type], columns: :all }
+    )
+  end
+end

@@ -35,6 +35,8 @@ group :development, :test do
   gem "rubocop-rails-omakase", require: false
   gem "annotate"
   gem "pry"
+  gem "rspec", "~> 3.13"
+  gem "rspec-rails", "~> 8.0"
 end
 
 group :development do

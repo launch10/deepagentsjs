@@ -27,9 +27,6 @@
 class Project < ApplicationRecord
   acts_as_tenant :account
 
-  has_many :files, dependent: :destroy, class_name: "ProjectFile"
-  accepts_nested_attributes_for :files
-
   belongs_to :account
   validates :name, presence: true
   validates :thread_id, presence: true

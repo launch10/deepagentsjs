@@ -63,10 +63,15 @@ class User < ApplicationRecord
   has_one_attached :avatar
   has_person_name
 
-
   validates :avatar, resizable_image: true
   validates :name, presence: true
 
   has_one :owned_account, class_name: "Account", foreign_key: "owner_id", dependent: :destroy
+  has_one :payment_processor, through: :owned_account
+  has_one :subscription, through: :payment_processor
+  has_one :plan, through: :subscription
+  has_many :plan_limits, through: :plan
+
   has_many :projects, through: :owned_account
+
 end
