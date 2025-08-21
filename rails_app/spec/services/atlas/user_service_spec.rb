@@ -41,10 +41,9 @@ RSpec.describe Atlas::UserService do
   describe '#create' do
     it 'creates new user' do
       stub_request(:post, "#{base_url}/api/internal/users")
-        .with(body: { id: 'user-new', orgId: 'org-1', planId: 'plan-1' }.to_json)
+        .with(body: { id: 'user-new', planId: 'plan-1' }.to_json)
         .to_return(status: 201, body: { id: 'user-new' }.to_json)
-
-      result = service.create(id: 'user-new', org_id: 'org-1', plan_id: 'plan-1')
+      result = service.create(id: 'user-new', plan_id: 'plan-1')
       expect(result).to eq({ 'id' => 'user-new' })
     end
   end

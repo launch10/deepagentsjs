@@ -55,6 +55,7 @@ group :test do
   gem "selenium-webdriver", ">= 4.20.1"
   gem "faker"
   gem "timecop"
+  gem "shoulda-matchers", "~> 6.0"
 end
 
 # Jumpstart Pro dependencies

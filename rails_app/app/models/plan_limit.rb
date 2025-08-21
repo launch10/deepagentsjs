@@ -19,5 +19,16 @@
 #
 
 class PlanLimit < ApplicationRecord
-  belongs_to :plan
+  belongs_to :plan, touch: true
+
+  after_create_commit :sync_plan_to_atlas
+  after_update_commit :sync_plan_to_atlas
+  after_destroy_commit :sync_plan_to_atlas
+
+  private
+
+  def sync_plan_to_atlas
+    # Touch the plan to trigger its Atlas sync
+    plan.sync_to_atlas if plan&.respond_to?(:sync_to_atlas)
+  end
 end

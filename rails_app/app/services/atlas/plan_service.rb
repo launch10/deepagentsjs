@@ -21,28 +21,20 @@ module Atlas
       end
     end
 
-    def create(id:, name:, usage_limit:, **attributes)
-      params = {
-        id: id,
-        name: name,
-        usageLimit: usage_limit
-      }.merge(attributes)
+    def create(plan_data)
+      params = format_plan_params(plan_data)
 
       with_logging(:post, BASE_PATH, params) do
         make_request(:post, BASE_PATH, params)
       end
     end
 
-    def update(id, **attributes)
+    def update(id, plan_data)
       path = "#{BASE_PATH}/#{id}"
+      params = format_plan_params(plan_data)
       
-      # Convert snake_case to camelCase for the API
-      if attributes[:usage_limit]
-        attributes[:usageLimit] = attributes.delete(:usage_limit)
-      end
-      
-      with_logging(:put, path, attributes) do
-        make_request(:put, path, attributes)
+      with_logging(:put, path, params) do
+        make_request(:put, path, params)
       end
     end
 
@@ -51,6 +43,16 @@ module Atlas
       
       with_logging(:delete, path) do
         make_request(:delete, path)
+      end
+    end
+
+    private
+
+    def format_plan_params(data)
+      {}.tap do |params|
+        params[:id] = data[:id] if data[:id]
+        params[:name] = data[:name] if data[:name]
+        params[:usageLimit] = data[:usage_limit] if data[:usage_limit]
       end
     end
   end

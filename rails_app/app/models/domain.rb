@@ -20,6 +20,8 @@
 #
 
 class Domain < ApplicationRecord
+  include AtlasSyncable
+  
   belongs_to :website
   belongs_to :user
 
@@ -55,5 +57,33 @@ class Domain < ApplicationRecord
     else
       self.domain = base_domain
     end
+  end
+
+  # Atlas sync methods
+  def atlas_service
+    Atlas.domains
+  end
+
+  def atlas_data_for_create
+    {
+      domain: domain,
+      website_id: website_id
+    }
+  end
+
+  def atlas_data_for_update
+    {
+      domain: domain,
+      website_id: website_id
+    }
+  end
+
+  def sync_to_atlas_required?
+    # Sync if domain or website_id changes
+    saved_change_to_domain? || saved_change_to_website_id?
+  end
+
+  def atlas_identifier
+    id
   end
 end

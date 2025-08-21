@@ -1,38 +1,23 @@
 # frozen_string_literal: true
 
 module Atlas
-  class << self
-    def users
-      @users ||= UserService.new
-    end
+  def self.configure(&block)
+    BaseService.configure(&block)
+  end
 
-    def websites
-      @websites ||= WebsiteService.new
-    end
+  def self.users
+    @users ||= UserService.new
+  end
 
-    def plans
-      @plans ||= PlanService.new
-    end
+  def self.websites
+    @websites ||= WebsiteService.new
+  end
 
-    def health
-      @health ||= HealthService.new
-    end
+  def self.domains
+    @domains ||= DomainService.new
+  end
 
-    # Reset all service instances (useful for testing)
-    def reset!
-      @users = nil
-      @websites = nil
-      @plans = nil
-      @health = nil
-    end
-
-    # Configure all services at once
-    def configure
-      yield BaseService.config
-    end
-
-    def config
-      BaseService.config
-    end
+  def self.plans
+    @plans ||= PlanService.new
   end
 end

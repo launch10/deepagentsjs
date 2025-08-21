@@ -59,6 +59,7 @@ class User < ApplicationRecord
   include Notifiable
   include Searchable
   include Theme
+  include AtlasSyncable
 
   has_one_attached :avatar
   has_person_name
@@ -74,4 +75,46 @@ class User < ApplicationRecord
 
   has_many :projects, through: :owned_account
   has_many :websites, through: :projects
+
+  # Atlas sync methods
+  def sync_to_atlas
+    return unless atlas_sync_enabled?
+    
+    if persisted?
+      Atlas::UserService.new.update(atlas_identifier, atlas_data_for_update)
+    else
+      Atlas::UserService.new.create(atlas_data_for_create)
+    end
+  rescue Atlas::BaseService::Error => e
+    Rails.logger.error "[Atlas] Failed to manually sync user ##{id}: #{e.message}"
+  end
+
+  private
+
+  def atlas_service
+    Atlas.users
+  end
+
+  def atlas_data_for_create
+    {
+      id: id,
+      plan_id: current_plan_id
+    }.compact
+  end
+
+  def atlas_data_for_update
+    {
+      plan_id: current_plan_id
+    }.compact
+  end
+
+  def sync_to_atlas_required?
+    # Atlas doesn't track user changes, only plan changes
+    # This will be triggered by subscription callbacks
+    false
+  end
+
+  def current_plan_id
+    plan&.id
+  end
 end

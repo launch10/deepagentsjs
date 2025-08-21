@@ -21,10 +21,9 @@ module Atlas
       end
     end
 
-    def create(id:, org_id:, plan_id:, **attributes)
+    def create(id:, plan_id:, **attributes)
       params = {
         id: id,
-        orgId: org_id,
         planId: plan_id
       }.merge(attributes)
 

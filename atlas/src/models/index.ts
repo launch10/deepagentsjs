@@ -1,8 +1,8 @@
-import { Site } from "./site";
-import { Tenant } from "./tenant";
-// import { Deploy } from "./deploy";
+import { Website } from "./website";
+import { User } from "./user";
+import { Domain } from "./domain";
 import { Firewall } from "./firewall";
 import { Request } from "./request";
 import { Plan } from "./plan";
 
-export { Site, Tenant, Firewall, Request, Plan };
+export { Website, User, Domain, Firewall, Request, Plan };

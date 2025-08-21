@@ -26,42 +26,26 @@ export interface Env {
 export type Model = {
   id: string;
 }
-
 export interface PlanType extends Model {
   name: string;
   usageLimit: number;
 }
-export interface TenantType extends Model {
-  orgId: string;
+export interface UserType extends Model {
   planId: string;
 }
+
 export interface RequestType extends Model {
-  tenantId: string;
+  userId: string;
   count: number;
 }
-export interface SiteType extends Model {
-  url: string;
-  tenantId: string;
-  live: string;
-  preview: string;
-}
-export interface DeployType extends Model {
-  version: string;
-  siteId: string;
+
+export interface WebsiteType extends Model {
+  userId: string;
 }
 
-export type FirewallStatus = 'inactive' | 'monitoring' | 'blocked';
-export interface FirewallType extends Model {
-  tenantId: string;
-  status: FirewallStatus;
-}
-
-export interface FirewallRuleType extends Model {
-  url: string;
-  tenantId: string;
-  status: FirewallStatus;
-  cloudflareId?: string;
-  // blockedAt: string;
+export interface DomainType extends Model {
+  websiteId: string;
+  domain: string;
 }
 
 export type PlanName = 'starter' | 'pro' | 'enterprise';
@@ -70,3 +54,12 @@ export const plans: Map<string, PlanType> = new Map([
     ['pro' as PlanName, { id: '2', name: 'Pro', usageLimit: 5_000_000 }],
     ['enterprise' as PlanName, { id: '3', name: 'Enterprise', usageLimit: 20_000_000 }],
 ]);
+
+// We will flow like this:
+// User visits www.example.com
+// We find domain www.example.com
+// Domain points to website: 1
+// We load r2/website/1/live/index.html
+// We look for website.user
+// We increment request count for website.user on request model.
+// If request count exceeds plan limit, we block the request.

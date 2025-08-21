@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 module Atlas
-  class WebsiteService < BaseService
-    BASE_PATH = '/api/internal/websites'
+  class DomainService < BaseService
+    BASE_PATH = '/api/internal/domains'
 
-    def list(limit: nil, tenant_id: nil)
+    def list(limit: nil, website_id: nil)
       params = {}
       params[:limit] = limit if limit
-      params[:tenantId] = tenant_id if tenant_id
+      params[:websiteId] = website_id if website_id
 
       with_logging(:get, BASE_PATH, params) do
         make_request(:get, BASE_PATH, params)
@@ -22,19 +22,10 @@ module Atlas
       end
     end
 
-    def find_by_url(url)
-      path = "#{BASE_PATH}/by-url"
-      params = { url: url }
-
-      with_logging(:get, path, params) do
-        make_request(:get, path, params)
-      end
-    end
-
-    def create(id:, user_id:, **attributes)
+    def create(domain:, website_id:, **attributes)
       params = {
-        id: id,
-        userId: user_id
+        domain: domain,
+        websiteId: website_id
       }.merge(format_params(attributes))
 
       with_logging(:post, BASE_PATH, params) do
@@ -44,9 +35,10 @@ module Atlas
 
     def update(id, **attributes)
       path = "#{BASE_PATH}/#{id}"
+      formatted_params = format_params(attributes)
       
-      with_logging(:put, path, attributes) do
-        make_request(:put, path, attributes)
+      with_logging(:put, path, formatted_params) do
+        make_request(:put, path, formatted_params)
       end
     end
 
@@ -62,7 +54,8 @@ module Atlas
 
     def format_params(attributes)
       {}.tap do |params|
-        params[:userId] = attributes[:user_id] if attributes[:user_id]
+        params[:domain] = attributes[:domain] if attributes[:domain]
+        params[:websiteId] = attributes[:website_id] if attributes[:website_id]
       end
     end
   end

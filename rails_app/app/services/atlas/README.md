@@ -15,6 +15,7 @@ end
 ```
 
 Environment variables:
+
 - `ATLAS_BASE_URL` - Base URL of the Atlas service
 - `ATLAS_API_SECRET` - Shared secret for HMAC authentication
 - `ATLAS_TIMEOUT` - Request timeout in seconds
@@ -24,50 +25,49 @@ Environment variables:
 ### Tenant Management
 
 ```ruby
-# List all tenants
-tenants = Atlas.tenants.list(limit: 10)
+# List all users
+users = Atlas.users.list(limit: 10)
 
 # Get a specific tenant
-tenant = Atlas.tenants.find('tenant-123')
+tenant = Atlas.users.find('tenant-123')
 
 # Create a new tenant
-tenant = Atlas.tenants.create(
+tenant = Atlas.users.create(
   id: 'tenant-456',
-  org_id: 'org-789',
   plan_id: 'plan-pro'
 )
 
 # Update a tenant
-Atlas.tenants.update('tenant-456', planId: 'plan-enterprise')
+Atlas.users.update('tenant-456', planId: 'plan-enterprise')
 
 # Delete a tenant
-Atlas.tenants.destroy('tenant-456')
+Atlas.users.destroy('tenant-456')
 ```
 
 ### Site Management
 
 ```ruby
-# List sites
-sites = Atlas.sites.list(tenant_id: 'tenant-123')
+# List websites
+websites = Atlas.websites.list(tenant_id: 'tenant-123')
 
 # Find site by URL
-site = Atlas.sites.find_by_url('https://example.com')
+site = Atlas.websites.find_by_url('https://example.com')
 
 # Get a specific site
-site = Atlas.sites.find('site-123')
+site = Atlas.websites.find('site-123')
 
 # Create a new site
-site = Atlas.sites.create(
+site = Atlas.websites.create(
   id: 'site-456',
   url: 'https://mysite.com',
   tenant_id: 'tenant-123'
 )
 
 # Update a site
-Atlas.sites.update('site-456', url: 'https://newdomain.com')
+Atlas.websites.update('site-456', url: 'https://newdomain.com')
 
 # Delete a site
-Atlas.sites.destroy('site-456')
+Atlas.websites.destroy('site-456')
 ```
 
 ### Plan Management
@@ -136,7 +136,7 @@ status = Atlas.health.root_check
 
 ```ruby
 begin
-  site = Atlas.sites.find('site-123')
+  site = Atlas.websites.find('site-123')
 rescue Atlas::BaseService::NotFoundError => e
   # Handle 404 errors
   Rails.logger.error "Site not found: #{e.message}"
@@ -170,7 +170,7 @@ end
 # In your specs
 RSpec.describe MyController do
   before do
-    allow(Atlas.sites).to receive(:create).and_return({ id: 'site-123' })
+    allow(Atlas.websites).to receive(:create).and_return({ id: 'site-123' })
   end
 
   it 'creates a site' do
@@ -184,7 +184,7 @@ end
 All requests are automatically logged with timing information:
 
 ```
-[Atlas] GET /api/internal/sites - 125.5ms
+[Atlas] GET /api/internal/websites - 125.5ms
 [Atlas] POST /api/internal/deploy - 2500.0ms
 ```
 
@@ -198,9 +198,9 @@ For long-running deployments, consider using background jobs:
 class DeployProjectJob < ApplicationJob
   def perform(project_id)
     project = Project.find(project_id)
-    
+
     result = Atlas.deployments.deploy_project(project)
-    
+
     project.update!(
       deployment_status: 'deployed',
       deployed_at: Time.current,

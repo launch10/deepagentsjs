@@ -21,6 +21,7 @@
 
 class Website < ApplicationRecord
   include Historiographer::Safe
+  include AtlasSyncable
   historiographer_mode :snapshot_only
 
   belongs_to :project
@@ -46,5 +47,34 @@ class Website < ApplicationRecord
   def deploy!
     deploy = deploys.create!
     deploy.deploy!
+  end
+
+  private
+
+  # Atlas sync methods
+  def atlas_service
+    Atlas.websites
+  end
+
+  def atlas_data_for_create
+    {
+      id: id,
+      user_id: user.id
+    }
+  end
+
+  def atlas_data_for_update
+    {
+      user_id: user.id
+    }
+  end
+
+  def sync_to_atlas_required?
+    # Only sync if user_id changes (unlikely but possible)
+    saved_change_to_user_id?
+  end
+
+  def atlas_identifier
+    id
   end
 end
