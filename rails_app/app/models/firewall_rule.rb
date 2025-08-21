@@ -1,2 +1,0 @@
-class FirewallRule < ApplicationRecord
-end
