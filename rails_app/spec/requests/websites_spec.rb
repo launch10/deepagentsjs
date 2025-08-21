@@ -21,7 +21,9 @@ RSpec.describe "Websites", type: :request do
 
     context "without authentication" do
       it "returns unauthorized" do
-        post "/websites", params: valid_params, as: :json
+        expect { 
+          post "/websites", params: valid_params, as: :json
+      }.to_not change(Website, :count)
         expect(response).to have_http_status(:unauthorized)
         expect(JSON.parse(response.body)["error"]).to eq("Missing token")
       end
@@ -29,7 +31,9 @@ RSpec.describe "Websites", type: :request do
 
     context "with invalid JWT" do
       it "returns unauthorized" do
-        post "/websites", params: valid_params, headers: invalid_auth_headers, as: :json
+        expect { 
+          post "/websites", params: valid_params, headers: invalid_auth_headers, as: :json
+        }.to_not change(Website, :count)
         expect(response).to have_http_status(:unauthorized)
       end
     end
@@ -41,7 +45,9 @@ RSpec.describe "Websites", type: :request do
         end
 
         it "requires subscription" do
-          post "/websites", params: valid_params, headers: headers, as: :json
+          expect {
+            post "/websites", params: valid_params, headers: headers, as: :json
+          }.to_not change(Website, :count)
           expect(response).to have_http_status(:unauthorized)
           expect(JSON.parse(response.body)["error"]).to eq("Subscription required")
         end
