@@ -163,7 +163,7 @@ RSpec.describe Deploy, type: :model do
     end
     let(:dist_path) { "/tmp/deploy_#{deploy.id}/dist" }
     let(:timestamp) { Time.current.strftime('%Y%m%d%H%M%S') }
-    let(:r2_path) { "#{website.project_id}/#{timestamp}" }
+    let(:r2_path) { "#{website.id}/#{timestamp}" }
 
     before do
       allow(Time).to receive(:current).and_return(Time.parse('2024-01-01 12:00:00'))
@@ -186,7 +186,7 @@ RSpec.describe Deploy, type: :model do
     it 'uploads files to timestamped directory in R2' do
       uploader = double('uploader')
       allow(DeployUploader).to receive(:new).and_return(uploader)
-      expect(uploader).to receive(:store!).with(dist_path, match(/#{website.project_id}\/\d{14}/))
+      expect(uploader).to receive(:store!).with(dist_path, match(/#{website.id}\/\d{14}/))
       allow(uploader).to receive(:hotswap_live)
       deploy.upload!(dist_path)
     end
@@ -195,7 +195,7 @@ RSpec.describe Deploy, type: :model do
       uploader = double('uploader')
       allow(DeployUploader).to receive(:new).and_return(uploader)
       allow(uploader).to receive(:store!)
-      expect(uploader).to receive(:hotswap_live).with(match(/#{website.project_id}\/\d{14}/))
+      expect(uploader).to receive(:hotswap_live).with(match(/#{website.id}\/\d{14}/))
       deploy.upload!(dist_path)
     end
 
@@ -370,15 +370,15 @@ RSpec.describe Deploy, type: :model do
       it 'stores version_path with timestamp' do
         allow(deploy1).to receive(:build!).and_return('/tmp/deploy_1/dist')
         deploy1.upload!('/tmp/deploy_1/dist')
-        expect(deploy1.reload.version_path).to match(/#{website.project_id}\/\d{14}/)
+        expect(deploy1.reload.version_path).to match(/#{website.id}\/\d{14}/)
       end
 
       it 'preserves current live version before deploying new one' do
-        deploy1.update!(status: 'completed', is_live: true, version_path: "#{website.project_id}/20240101120000")
+        deploy1.update!(status: 'completed', is_live: true, version_path: "#{website.id}/20240101120000")
         
         uploader = double('uploader')
         allow(DeployUploader).to receive(:new).and_return(uploader)
-        expect(uploader).to receive(:preserve_current_live).with(website.project_id, deploy1.created_at.strftime('%Y%m%d%H%M%S'))
+        expect(uploader).to receive(:preserve_current_live).with(website.id, deploy1.created_at.strftime('%Y%m%d%H%M%S'))
         allow(uploader).to receive(:store!)
         allow(uploader).to receive(:hotswap_live)
         
@@ -396,9 +396,9 @@ RSpec.describe Deploy, type: :model do
 
     describe '#rollback!' do
       before do
-        deploy1.update!(status: 'completed', is_live: false, revertible: true, version_path: "#{website.project_id}/20240101110000")
-        deploy2.update!(status: 'completed', is_live: false, revertible: true, version_path: "#{website.project_id}/20240101113000")
-        deploy3.update!(status: 'completed', is_live: true, revertible: true, version_path: "#{website.project_id}/20240101120000")
+        deploy1.update!(status: 'completed', is_live: false, revertible: true, version_path: "#{website.id}/20240101110000")
+        deploy2.update!(status: 'completed', is_live: false, revertible: true, version_path: "#{website.id}/20240101113000")
+        deploy3.update!(status: 'completed', is_live: true, revertible: true, version_path: "#{website.id}/20240101120000")
       end
 
       it 'rolls back to a previous version' do
@@ -416,17 +416,17 @@ RSpec.describe Deploy, type: :model do
       end
 
       it 'fails if deploy is not completed' do
-        deploy2.update!(status: 'failed', is_live: false, revertible: true, version_path: "#{website.project_id}/20240101113000")
+        deploy2.update!(status: 'failed', is_live: false, revertible: true, version_path: "#{website.id}/20240101113000")
         expect { deploy2.rollback! }.to raise_error(/Cannot rollback non-completed deploy/)
       end
 
       it 'fails if deploy is not revertible' do
-        deploy2.update!(status: 'completed', is_live: false, revertible: false, version_path: "#{website.project_id}/20240101113000")
+        deploy2.update!(status: 'completed', is_live: false, revertible: false, version_path: "#{website.id}/20240101113000")
         expect { deploy2.rollback! }.to raise_error(/Cannot rollback non-revertible deploy/)
       end
 
       it 'fails if deploy is already live' do
-        deploy3.update!(status: 'completed', is_live: true, revertible: true, version_path: "#{website.project_id}/20240101120000")
+        deploy3.update!(status: 'completed', is_live: true, revertible: true, version_path: "#{website.id}/20240101120000")
         expect { deploy3.rollback! }.to raise_error(/Deploy is already live/)
       end
 

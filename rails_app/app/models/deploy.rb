@@ -93,14 +93,14 @@ class Deploy < ApplicationRecord
       
       # Upload to R2 with timestamp
       timestamp = created_at.strftime('%Y%m%d%H%M%S')
-      r2_path = "#{website.project_id}/#{timestamp}"
+      r2_path = "#{website.id}/#{timestamp}"
       
       uploader = DeployUploader.new
       
       # Preserve existing live version if it exists
       current_live = website.deploys.live.first
       if current_live && current_live != self
-        uploader.preserve_current_live(website.project_id, current_live.created_at.strftime('%Y%m%d%H%M%S'))
+        uploader.preserve_current_live(website.id, current_live.created_at.strftime('%Y%m%d%H%M%S'))
         current_live.update!(is_live: false)
       end
       
