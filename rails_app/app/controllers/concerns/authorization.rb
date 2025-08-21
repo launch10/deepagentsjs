@@ -75,7 +75,8 @@ module Authorization
 
   def jwt_payload(jwt = cookies[:jwt])
     begin
-      payload = JWT.decode(jwt, Rails.application.credentials.devise_jwt_secret_key!, true, { algorithm: 'HS256' })
+      secret = Rails.application.credentials.devise_jwt_secret_key
+      payload = JWT.decode(jwt, secret, true, { algorithm: 'HS256' })
     rescue JWT::DecodeError
       return nil
     end

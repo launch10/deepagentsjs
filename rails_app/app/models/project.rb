@@ -33,6 +33,7 @@ class Project < ApplicationRecord
   validates :account_id, presence: true
 
   has_one :plan, class_name: "ProjectPlan"
+  has_many :websites, dependent: :destroy
 
   include ProjectSerialization
 end

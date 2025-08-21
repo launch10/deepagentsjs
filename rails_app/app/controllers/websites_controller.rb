@@ -1,12 +1,6 @@
 class WebsitesController < SubscribedController
   def create
-    # For API requests, handle JWT authentication
-    if request.format.json?
-      authenticate_with_jwt!
-      return if performed?
-    end
-    
-    website = current_user.websites.build(website_params)
+    website = Website.new(website_params)
     website.user_id = current_user.id
     
     if website.save
