@@ -27,6 +27,7 @@ class Website < ApplicationRecord
   belongs_to :user
 
   has_many :files, dependent: :destroy, class_name: "WebsiteFile"
+  has_many :domains, dependent: :destroy
   accepts_nested_attributes_for :files
 
   validates_presence_of :name, :project_id, :user_id, :thread_id
