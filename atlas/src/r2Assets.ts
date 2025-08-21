@@ -3,7 +3,7 @@ import { Env } from './types';
 
 export async function serveAssetFromR2(c: Context<{ Bindings: Env }>) {
   const url = new URL(c.req.url);
-  // const tenantInfo = getTenantInfo(url.href);
+  // const userInfo = getUserInfo(url.href);
   let pathname = url.pathname;
   
   // 1. Determine environment (production or preview)
@@ -11,9 +11,9 @@ export async function serveAssetFromR2(c: Context<{ Bindings: Env }>) {
   const environment = isPreview ? 'preview' : 'production';
 
   // 2. Get the currently deployed version from KV
-  const liveVersion = await c.env.DEPLOYS_KV.get(`live_version:${environment}:${tenantInfo.siteName}`);
+  const liveVersion = await c.env.DEPLOYS_KV.get(`live_version:${environment}:${userInfo.websiteName}`);
   if (!liveVersion) {
-    return new Response(`Site not configured: ${tenantInfo.siteName}`, { status: 404 });
+    return new Response(`Website not configured: ${userInfo.websiteName}`, { status: 404 });
   }
 
   // 3. Normalize path for index.html
@@ -26,7 +26,7 @@ export async function serveAssetFromR2(c: Context<{ Bindings: Env }>) {
   pathname = pathname.substring(1);
 
   // 4. Construct the final R2 object key
-  const objectKey = `${tenantInfo.userId}/${tenantInfo.orgId}/${environment}/${tenantInfo.siteName}/${liveVersion}/${pathname}`;
+  const objectKey = `${userInfo.userId}/${userInfo.orgId}/${environment}/${userInfo.websiteName}/${liveVersion}/${pathname}`;
 
   // 5. Fetch from R2
   const object = await c.env.DEPLOYS_R2.get(objectKey);

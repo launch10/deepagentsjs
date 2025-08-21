@@ -15,10 +15,10 @@ export class Website extends BaseModel<WebsiteType> {
     }
 
     protected defineIndexes(): void {
-        this.addIndex('userId', 'userId');
-    }
-
-    async findByUserId(userId: string): Promise<WebsiteType[]> {
-        return this.findManyByIndex('userId', userId);
+        this.addIndex({
+            name: 'userId',
+            keyExtractor: (website) => website.userId ? String(website.userId) : null,
+            type: 'unique'
+        });
     }
 }

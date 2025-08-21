@@ -5,7 +5,7 @@ import { BaseModel, createTypeGuard } from "./base";
 const isRequestType = createTypeGuard<RequestType>(
     (data: any): data is RequestType => {
         return data.id !== undefined &&
-            data.tenantId !== undefined;
+            data.userId !== undefined;
     }
 );
 
@@ -16,13 +16,13 @@ export class Request extends BaseModel<RequestType> {
 
     protected defineIndexes(): void {
         this.addIndex({
-            name: 'tenantId',
-            keyExtractor: (request) => request.tenantId ? String(request.tenantId) : null,
+            name: 'userId',
+            keyExtractor: (request) => request.userId ? String(request.userId) : null,
             type: 'unique'
         });
     }
 
-    async findByTenantId(tenantId: string): Promise<RequestType | null> {
-        return this.findByIndex('tenantId', String(tenantId));
+    async findByUserId(userId: string): Promise<RequestType | null> {
+        return this.findByIndex('userId', String(userId));
     }
 }

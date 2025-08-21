@@ -1,11 +1,11 @@
 import { Context, MiddlewareHandler, Next } from 'hono';
-import { usageThresholdPercent, Env, TenantType, SiteType, FirewallType } from '~/types';
+import { usageThresholdPercent, Env, UserType, WebsiteType, FirewallType } from '~/types';
 import { scopedLogger } from './utils';
 import { MemoryCache } from './memoryCache';
-import { Tenant, Site, Firewall, Request, Plan } from '~/models';
+import { User, Website, Firewall, Request, Plan } from '~/models';
 import { v4 as uuidv4 } from 'uuid';
 
-// Each site might have 10 requests (e.g. images, css, js, etc.)
+// Each website might have 10 requests (e.g. images, css, js, etc.)
 // So this is closer to "10 page views" than "100 page views"
 const BATCH_SIZE = 10;
 class RateLimiter {
@@ -25,92 +25,92 @@ class RateLimiter {
     async fetch(c: Context<{ Bindings: Env }>, next: Next) {
       if (!this.isDocumentRequest(c.req.url)) return next();
 
-      const siteModel = new Site(c);
-      const site = await siteModel.findByUrl(c.req.url);
+      const websiteModel = new Website(c);
+      const website = await websiteModel.findByUrl(c.req.url);
 
-      if (!site) {
-        throw new Error(`Site not found for URL: ${c.req.url}`);
+      if (!website) {
+        throw new Error(`Website not found for URL: ${c.req.url}`);
       }
 
-      const tenantId = site.tenantId;
-      const tenantModel = new Tenant(c);
-      const tenant = await tenantModel.get(tenantId);
+      const userId = website.userId;
+      const userModel = new User(c);
+      const user = await userModel.get(userId);
 
-      if (!tenant) {
-        throw new Error(`Tenant not found for ID: ${tenantId}`);
+      if (!user) {
+        throw new Error(`User not found for ID: ${userId}`);
       }
 
       const firewallModel = new Firewall(c);
-      const firewall = await firewallModel.findByTenant(tenantId);
+      const firewall = await firewallModel.findByUser(userId);
       const status = firewall ? firewall.status : 'inactive';
       let shouldBlock;
 
       if (status === 'monitoring') {
-        shouldBlock = await firewallModel.shouldBlock(tenant);
+        shouldBlock = await firewallModel.shouldBlock(user);
       } else { 
         shouldBlock = status === 'blocked';
       }
 
       if (shouldBlock) {
         scopedLogger.debug(`rateLimiting!`);
-        await firewallModel.block(tenant);
+        await firewallModel.block(user);
         return c.json({ error: 'Rate limit exceeded' }, 429);
       }
 
-      await this.updateRequestCount(c, tenant);
+      await this.updateRequestCount(c, user);
       return next();
     }
 
-    private async updateRequestCount(c: Context<{ Bindings: Env }>, tenant: TenantType): Promise<void> {
-      let currentCount = this.memoryCache.incrementRequestCount(c, tenant.id);
+    private async updateRequestCount(c: Context<{ Bindings: Env }>, user: UserType): Promise<void> {
+      let currentCount = this.memoryCache.incrementRequestCount(c, user.id);
 
       scopedLogger.debug(`currentCount: ${currentCount}`);
 
       if (currentCount % this.batchSize === 0) {
         scopedLogger.debug(`writing to KV for ${c.req.url}`);
         const requestModel = new Request(c);
-        const requests = await requestModel.findByTenantId(tenant.id);
+        const requests = await requestModel.findByUserId(user.id);
         const newTotal = (requests?.count || 0) + currentCount;
         
         if (requests) {
             await requestModel.set(requests.id, {...requests, count: newTotal});
         } else {
-            const newRequest = { count: newTotal, tenantId: String(tenant.id), id: uuidv4() };
+            const newRequest = { count: newTotal, userId: String(user.id), id: uuidv4() };
             await requestModel.set(newRequest.id, newRequest);
         }
-        this.memoryCache.resetRequestCount(c, tenant.id);
+        this.memoryCache.resetRequestCount(c, user.id);
 
-        if (await this.didCrossThreshold(c, tenant, newTotal)) {
-          await this.afterThresholdCrossed(c, tenant);
+        if (await this.didCrossThreshold(c, user, newTotal)) {
+          await this.afterThresholdCrossed(c, user);
         }
       }
     }
 
-    private async didCrossThreshold(c: Context<{ Bindings: Env }>, tenant: TenantType, newTotal: number): Promise<boolean> {
+    private async didCrossThreshold(c: Context<{ Bindings: Env }>, user: UserType, newTotal: number): Promise<boolean> {
       const planModel = new Plan(c);
-      const plan = await planModel.get(tenant.planId);
+      const plan = await planModel.get(user.planId);
 
       if (!plan) {
-        throw new Error(`Plan not found for ID: ${tenant.planId}`);
+        throw new Error(`Plan not found for ID: ${user.planId}`);
       }
 
-      const tenantsLimit = planModel.getMonthlyLimit(plan);
-      const monitoringThreshold = tenantsLimit * usageThresholdPercent;
+      const usersLimit = planModel.getMonthlyLimit(plan);
+      const monitoringThreshold = usersLimit * usageThresholdPercent;
 
       return newTotal > monitoringThreshold;
     }
 
-    private async afterThresholdCrossed(c: Context<{ Bindings: Env }>, tenant: TenantType) {
-      scopedLogger.debug(`Tenant ${tenant.id} crossed threshold. Activating monitoring.`);
+    private async afterThresholdCrossed(c: Context<{ Bindings: Env }>, user: UserType) {
+      scopedLogger.debug(`User ${user.id} crossed threshold. Activating monitoring.`);
       const firewallModel = new Firewall(c);
-      const existingFirewall = await firewallModel.findByTenant(tenant.id);
+      const existingFirewall = await firewallModel.findByUser(user.id);
       
       if (existingFirewall) {
         // Update existing firewall
         await firewallModel.set(existingFirewall.id, { ...existingFirewall, status: 'monitoring' });
       } else {
         // Create new firewall
-        const newFirewall = { id: uuidv4(), tenantId: String(tenant.id), status: 'monitoring' };
+        const newFirewall = { id: uuidv4(), userId: String(user.id), status: 'monitoring' };
         await firewallModel.set(newFirewall.id, newFirewall);
       }
     }

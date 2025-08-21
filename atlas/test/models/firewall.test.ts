@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Context } from 'hono';
 import { Firewall } from '~/models/firewall';
-import { Env, FirewallType, TenantType } from '~/types';
+import { Env, FirewallType, UserType } from '~/types';
 import { Miniflare } from 'miniflare';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -40,48 +40,48 @@ describe('Firewall Model', () => {
     }
   });
 
-  describe('findByTenant', () => {
-    it('should find firewall by tenant ID', async () => {
+  describe('findByUser', () => {
+    it('should find firewall by user ID', async () => {
       const firewallData: FirewallType = {
         id: uuidv4(),
-        tenantId: '1',
+        userId: '1',
         status: 'blocked',
       };
 
       await firewallModel.set(firewallData.id, firewallData);
-      const found = await firewallModel.findByTenant('1');
+      const found = await firewallModel.findByUser('1');
 
       expect(found).toEqual(firewallData);
     });
 
-    it('should handle numeric tenant IDs', async () => {
+    it('should handle numeric user IDs', async () => {
       const firewallData: FirewallType = {
         id: uuidv4(),
-        tenantId: '1',
+        userId: '1',
         status: 'inactive',
       };
 
       await firewallModel.set(firewallData.id, firewallData);
 
       // Should find with numeric ID
-      const foundByNumber = await firewallModel.findByTenant(1 as any);
+      const foundByNumber = await firewallModel.findByUser(1 as any);
       expect(foundByNumber).toEqual(firewallData);
 
       // Should find with string ID
-      const foundByString = await firewallModel.findByTenant('1');
+      const foundByString = await firewallModel.findByUser('1');
       expect(foundByString).toEqual(firewallData);
     });
 
-    it('should prevent duplicate tenant IDs', async () => {
+    it('should prevent duplicate user IDs', async () => {
       const firewall1: FirewallType = {
         id: uuidv4(),
-        tenantId: '1',
+        userId: '1',
         status: 'blocked',
       };
 
       const firewall2: FirewallType = {
         id: uuidv4(),
-        tenantId: '1', // Same tenant ID
+        userId: '1', // Same user ID
         status: 'inactive',
       };
 
@@ -97,10 +97,10 @@ describe('Firewall Model', () => {
   describe('findByStatus', () => {
     it('should find multiple firewalls by status', async () => {
       const firewalls: FirewallType[] = [
-        { id: uuidv4(), tenantId: '1', status: 'blocked' },
-        { id: uuidv4(), tenantId: '2', status: 'blocked' },
-        { id: uuidv4(), tenantId: '3', status: 'inactive' },
-        { id: uuidv4(), tenantId: '4', status: 'monitoring' },
+        { id: uuidv4(), userId: '1', status: 'blocked' },
+        { id: uuidv4(), userId: '2', status: 'blocked' },
+        { id: uuidv4(), userId: '3', status: 'inactive' },
+        { id: uuidv4(), userId: '4', status: 'monitoring' },
       ];
 
       for (const fw of firewalls) {
@@ -109,32 +109,32 @@ describe('Firewall Model', () => {
 
       const blocked = await firewallModel.findByStatus('blocked');
       expect(blocked).toHaveLength(2);
-      expect(blocked.map(f => f.tenantId).sort()).toEqual(['1', '2']);
+      expect(blocked.map(f => f.userId).sort()).toEqual(['1', '2']);
 
       const inactive = await firewallModel.findByStatus('inactive');
       expect(inactive).toHaveLength(1);
-      expect(inactive[0].tenantId).toBe('3');
+      expect(inactive[0].userId).toBe('3');
 
       const monitoring = await firewallModel.findByStatus('monitoring');
       expect(monitoring).toHaveLength(1);
-      expect(monitoring[0].tenantId).toBe('4');
+      expect(monitoring[0].userId).toBe('4');
     });
   });
 
   describe('Real-world scenario: block/unblock operations', () => {
     it('should not create duplicate firewalls during block operation', async () => {
-      const tenant: TenantType = {
+      const user: UserType = {
         id: '1',
         orgId: '1',
         planId: '1',
       };
 
       // Mock dependencies needed for block operation
-      const mockSiteModel = {
-        findByTenant: vi.fn().mockResolvedValue([]),
+      const mockWebsiteModel = {
+        findByUser: vi.fn().mockResolvedValue([]),
       };
       const mockFirewallRuleModel = {
-        findByTenant: vi.fn().mockResolvedValue([]),
+        findByUser: vi.fn().mockResolvedValue([]),
         block: vi.fn().mockResolvedValue(undefined),
       };
 
@@ -142,10 +142,10 @@ describe('Firewall Model', () => {
       // For now, we'll test the core functionality
 
       // First block operation
-      const existingFirewall = await firewallModel.findByTenant(tenant.id);
+      const existingFirewall = await firewallModel.findByUser(user.id);
       const firewall1 = existingFirewall || {
         id: uuidv4(),
-        tenantId: String(tenant.id),
+        userId: String(user.id),
         status: 'blocked' as const,
       };
       await firewallModel.set(firewall1.id, firewall1);
@@ -153,7 +153,7 @@ describe('Firewall Model', () => {
       // Simulate another block operation (potential race condition)
       const firewall2 = {
         id: uuidv4(),
-        tenantId: String(tenant.id),
+        userId: String(user.id),
         status: 'blocked' as const,
       };
 
@@ -163,12 +163,12 @@ describe('Firewall Model', () => {
       ).rejects.toThrow('Unique constraint violation');
 
       // Verify only one firewall exists
-      const finalFirewall = await firewallModel.findByTenant(tenant.id);
+      const finalFirewall = await firewallModel.findByUser(user.id);
       expect(finalFirewall?.id).toBe(firewall1.id);
     });
 
     it('should update existing firewall status without creating duplicates', async () => {
-      const tenant: TenantType = {
+      const user: UserType = {
         id: '1',
         orgId: '1',
         planId: '1',
@@ -177,24 +177,24 @@ describe('Firewall Model', () => {
       // Create initial firewall
       const initialFirewall: FirewallType = {
         id: uuidv4(),
-        tenantId: String(tenant.id),
+        userId: String(user.id),
         status: 'inactive',
       };
       await firewallModel.set(initialFirewall.id, initialFirewall);
 
       // Update to blocked
-      const existing = await firewallModel.findByTenant(tenant.id);
+      const existing = await firewallModel.findByUser(user.id);
       expect(existing).not.toBeNull();
       await firewallModel.set(existing!.id, { status: 'blocked' });
 
       // Verify status updated
-      const updated = await firewallModel.findByTenant(tenant.id);
+      const updated = await firewallModel.findByUser(user.id);
       expect(updated?.status).toBe('blocked');
       expect(updated?.id).toBe(initialFirewall.id);
 
       // Update to monitoring
       await firewallModel.set(existing!.id, { status: 'monitoring' });
-      const monitoring = await firewallModel.findByTenant(tenant.id);
+      const monitoring = await firewallModel.findByUser(user.id);
       expect(monitoring?.status).toBe('monitoring');
       expect(monitoring?.id).toBe(initialFirewall.id);
     });
@@ -204,7 +204,7 @@ describe('Firewall Model', () => {
     it('should store correct keys in KV', async () => {
       const firewallData: FirewallType = {
         id: 'firewall-123',
-        tenantId: '1',
+        userId: '1',
         status: 'blocked',
       };
 
@@ -215,10 +215,10 @@ describe('Firewall Model', () => {
       const mainValue = await env.DEPLOYS_KV.get(mainKey);
       expect(JSON.parse(mainValue!)).toEqual(firewallData);
 
-      // Check unique index for tenantId
-      const tenantIndexKey = 'index:firewall:tenantId:1';
-      const tenantIndexValue = await env.DEPLOYS_KV.get(tenantIndexKey);
-      expect(tenantIndexValue).toBe('firewall-123');
+      // Check unique index for userId
+      const userIndexKey = 'index:firewall:userId:1';
+      const userIndexValue = await env.DEPLOYS_KV.get(userIndexKey);
+      expect(userIndexValue).toBe('firewall-123');
 
       // Check list index for status
       const statusIndexKey = 'list:firewall:status:blocked';
@@ -229,7 +229,7 @@ describe('Firewall Model', () => {
     it('should update indexes when status changes', async () => {
       const firewallData: FirewallType = {
         id: 'firewall-123',
-        tenantId: '1',
+        userId: '1',
         status: 'inactive',
       };
 

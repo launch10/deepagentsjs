@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types.js';
-import { tenantRoutes } from './routes/tenant.js';
-import { siteRoutes } from './routes/site.js';
+import { userRoutes } from './routes/user.js';
+import { websiteRoutes } from './routes/website.js';
 import { planRoutes } from './routes/plan.js';
 import { ipAllowlistMiddleware, hmacMiddleware, corsMiddleware } from '~/middleware/auth/admin';
 
@@ -22,36 +22,36 @@ export function createInternalAPI() {
   });
   
   // Mount route groups
-  api.route('/tenants', tenantRoutes());
-  api.route('/sites', siteRoutes());
+  api.route('/users', userRoutes());
+  api.route('/websites', websiteRoutes());
   api.route('/plans', planRoutes());
   
   // Deploy endpoint for complex operations
   api.post('/deploy', async (c) => {
     try {
       const body = await c.req.json();
-      const { siteId, files, config } = body;
+      const { websiteId, files, config } = body;
       
-      if (!siteId) {
-        return c.json({ error: 'siteId is required' }, 400);
+      if (!websiteId) {
+        return c.json({ error: 'websiteId is required' }, 400);
       }
       
       // TODO: Implement actual deploy logic here
-      // For now, just update the site config
+      // For now, just update the website config
       const { SDKClient } = await import('../sdk/index.js');
       const client = new SDKClient(c);
       
-      const siteResult = await client.site.get(siteId);
-      if (!siteResult.success) {
-        return c.json({ error: siteResult.error }, 404);
+      const websiteResult = await client.website.get(websiteId);
+      if (!websiteResult.success) {
+        return c.json({ error: websiteResult.error }, 404);
       }
       
-      // Update site with new deploy SHA
+      // Update website with new deploy SHA
       const deployId = crypto.randomUUID();
-      const updateResult = await client.site.set(siteId, {
-        ...siteResult.data!,
+      const updateResult = await client.website.set(websiteId, {
+        ...websiteResult.data!,
         live: deployId,
-        preview: config?.preview ? deployId : siteResult.data!.preview
+        preview: config?.preview ? deployId : websiteResult.data!.preview
       });
       
       if (!updateResult.success) {
@@ -62,7 +62,7 @@ export function createInternalAPI() {
         success: true,
         deployId,
         message: 'Deploy initiated',
-        siteId
+        websiteId
       });
     } catch (error) {
       return c.json({ error: String(error) }, 500);

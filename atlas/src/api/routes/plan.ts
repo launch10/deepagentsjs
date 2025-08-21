@@ -1,13 +1,13 @@
-import { Hono } from 'hono';
-import { SDKClient } from '../../sdk/index.js';
-import type { Env } from '../../types.js';
-import type { PlanType } from '../../types.js';
+import { Hono, type Context } from 'hono';
+import { SDKClient } from '~/sdk/index.js';
+import type { Env } from '~/types.js';
+import type { PlanType } from '~/types.js';
 
 export function planRoutes() {
   const router = new Hono<{ Bindings: Env }>();
   
   // GET /api/internal/plans
-  router.get('/', async (c) => {
+  router.get('/', async (c: Context<{ Bindings: Env }>) => {
     const limit = parseInt(c.req.query('limit') || '100');
     const client = new SDKClient(c);
     const result = await client.plan.list(limit);

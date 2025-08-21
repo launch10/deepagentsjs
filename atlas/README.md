@@ -1,8 +1,8 @@
 # Atlas
 
-In mythology, Atlas carrried the world on his shoulders. In our world, Atlas is the system that holds all of our user sites, preventing any one site from taking down the entire system.
+In mythology, Atlas carrried the world on his shoulders. In our world, Atlas is the system that holds all of our user websites, preventing any one website from taking down the entire system.
 
-It's a Cloudflare edge gateway that serves user-generated static sites with internal API management.
+It's a Cloudflare edge gateway that serves user-generated static websites with internal API management.
 
 ## Admin Server + User Server
 
@@ -10,12 +10,12 @@ It's a Cloudflare edge gateway that serves user-generated static sites with inte
 
 1. **Public Worker** (`src/index-public.tsx`)
 
-   - **Purpose**: Serve user-generated static sites
+   - **Purpose**: Serve user-generated static websites
    - **Access**: Publicly accessible via user-configured domains
    - **Features**: Rate limiting, caching, static file serving
 
 2. **Admin Worker** (`src/index-admin.tsx`)
-   - **Purpose**: Internal API for Rails to manage sites/configuration
+   - **Purpose**: Internal API for Rails to manage websites/configuration
    - **Access**: Private network only (`admin.nichefinder.com`)
    - **Features**: Full CRUD operations on KV store
    - **Security**: JWT auth, IP allowlisting, network isolation
@@ -30,8 +30,8 @@ atlas/
 │   ├── api/                  # Internal API (admin worker only)
 │   │   ├── index.ts          # API setup with JWT auth
 │   │   └── routes/           # CRUD endpoints
-│   │       ├── tenant.ts
-│   │       ├── site.ts
+│   │       ├── user.ts
+│   │       ├── website.ts
 │   │       └── plan.ts
 │   ├── sdk/                  # Shared SDK for KV operations
 │   │   ├── client.ts         # Main SDK client
@@ -41,8 +41,8 @@ atlas/
 │   │   └── commands/         # CLI commands
 │   └── models/               # Data models
 │       ├── base.ts           # Base model with indexing
-│       ├── tenant.ts
-│       ├── site.ts
+│       ├── user.ts
+│       ├── website.ts
 │       └── plan.ts
 ├── wrangler-public.toml      # Public worker config
 ├── wrangler-admin.toml       # Admin worker config
@@ -51,11 +51,11 @@ atlas/
 
 ## Interaction With Rails Server
 
-Rails hits the internal admin API to create/update tenants, sites, plans, and deploy landing pages. The admin API is protected by IP allowlisting and JWT authentication.
+Rails hits the internal admin API to create/update users, websites, plans, and deploy landing pages. The admin API is protected by IP allowlisting and JWT authentication.
 
 ## Development
 
-### Prerequisites
+### Prerequiwebsites
 
 ```bash
 pnpm install
@@ -72,28 +72,28 @@ pnpm run dev:public  # Public worker on http://localhost:8787
 pnpm run dev:admin   # Admin worker on http://localhost:8788
 
 # Use the CLI for local management
-pnpm cli set tenant --id 1 --org-id org1 --plan-id starter
-pnpm cli get tenant 1
+pnpm cli set user --id 1 --org-id org1 --plan-id starter
+pnpm cli get user 1
 ```
 
 ### Basic Local Setup
 
 ```bash
 # Create test data
-pnpm cli set site --id 1 --url localhost:8787 -t 1
-pnpm cli set site --id 2 --url localhost:9898 -t 2
-pnpm cli set site --id 3 --url c0e82a814b8a.ngrok-free.app -t 1
-pnpm cli set tenant --id 1 --org-id 1 --plan-id 1
-pnpm cli set tenant --id 2 --org-id 2 --plan-id 2
+pnpm cli set website --id 1 --url localhost:8787 -t 1
+pnpm cli set website --id 2 --url localhost:9898 -t 2
+pnpm cli set website --id 3 --url c0e82a814b8a.ngrok-free.app -t 1
+pnpm cli set user --id 1 --org-id 1 --plan-id 1
+pnpm cli set user --id 2 --org-id 2 --plan-id 2
 pnpm cli set plan --id 1 --name "starter" --limit 1000000
 pnpm cli set plan --id 2 --name "pro" --limit 5000000
 pnpm cli set plan --id 3 --name "enterprise" --limit 20000000
 
 # Firewall helpers
-pnpm cli firewall block --tenant-id 1
-pnpm cli firewall unblock --tenant-id 1
-pnpm cli firewall reset --tenant-id 1
-pnpm cli firewall status --tenant-id 1
+pnpm cli firewall block --user-id 1
+pnpm cli firewall unblock --user-id 1
+pnpm cli firewall reset --user-id 1
+pnpm cli firewall status --user-id 1
 ```
 
 ### Uploading Landing Pages (Local Testing)
@@ -108,7 +108,7 @@ pnpm cli firewall status --tenant-id 1
 ### Deploy Both Workers
 
 ```bash
-# Deploy public-facing worker (serves user sites)
+# Deploy public-facing worker (serves user websites)
 pnpm run deploy:public
 
 # Deploy admin API worker (internal only)
@@ -120,7 +120,7 @@ pnpm run deploy:admin
 #### Public Worker (`wrangler-public.toml`)
 
 - **URL**: User-configured domains
-- **Purpose**: Serve all user-generated sites
+- **Purpose**: Serve all user-generated websites
 - **Bindings**: DEPLOYS_R2, DEPLOYS_KV, FIREWALL (DO)
 
 #### Admin Worker (`wrangler-admin.toml`)
@@ -154,22 +154,22 @@ jwt_token = JWT.encode(
 ### Example API Calls
 
 ```ruby
-# Create/Update Tenant
-HTTParty.post("https://admin-api.internal.nichefinder.com/api/internal/tenants",
+# Create/Update User
+HTTParty.post("https://admin-api.internal.nichefinder.com/api/internal/users",
   headers: { 'Authorization' => "Bearer #{jwt_token}" },
-  body: { id: "tenant-1", orgId: "org-1", planId: "starter" }
+  body: { id: "user-1", orgId: "org-1", planId: "starter" }
 )
 
-# Create/Update Site
-HTTParty.post("https://admin-api.internal.nichefinder.com/api/internal/sites",
+# Create/Update Website
+HTTParty.post("https://admin-api.internal.nichefinder.com/api/internal/websites",
   headers: { 'Authorization' => "Bearer #{jwt_token}" },
-  body: { id: "site-1", url: "example.com", tenantId: "tenant-1" }
+  body: { id: "website-1", url: "example.com", userId: "user-1" }
 )
 
 # Trigger Deploy
 HTTParty.post("https://admin-api.internal.nichefinder.com/api/internal/deploy",
   headers: { 'Authorization' => "Bearer #{jwt_token}" },
-  body: { siteId: "site-1", files: [...], config: {...} }
+  body: { websiteId: "website-1", files: [...], config: {...} }
 )
 ```
 
@@ -179,24 +179,24 @@ The CLI is for local development and debugging only:
 
 ```bash
 # Set operations
-pnpm cli set tenant --id 1 --org-id org1 --plan-id starter
-pnpm cli set site --id 1 --url example.com --tenant-id 1
+pnpm cli set user --id 1 --org-id org1 --plan-id starter
+pnpm cli set website --id 1 --url example.com --user-id 1
 pnpm cli set plan --id starter --name "Starter" --limit 1000000
-pnpm cli set site --id 1 --url c0e82a814b8a.ngrok-free.app --tenant-id 1
+pnpm cli set website --id 1 --url c0e82a814b8a.ngrok-free.app --user-id 1
 
 # Get operations
-pnpm cli get tenant 1
-pnpm cli get site 1
-pnpm cli get site --by-url example.com
+pnpm cli get user 1
+pnpm cli get website 1
+pnpm cli get website --by-url example.com
 
 # List operations
-pnpm cli list tenants
-pnpm cli list sites --tenant 1
+pnpm cli list users
+pnpm cli list websites --user 1
 pnpm cli list plans
 
 # Delete operations
-pnpm cli delete tenant 1 --force
-pnpm cli delete site 1 --force
+pnpm cli delete user 1 --force
+pnpm cli delete website 1 --force
 ```
 
 ## Environment Variables

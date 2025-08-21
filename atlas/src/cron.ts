@@ -5,21 +5,21 @@ export async function handleScheduled(controller: ScheduledController, env: Env)
   console.log('Running daily usage reset cron job...');
   
   // This is a simplified version. In production, you would get the list of active
-  // tenants from your main database rather than trying to list all KV keys.
+  // users from your main database rather than trying to list all KV keys.
   const list = await env.DEPLOYS_KV.list({ prefix: 'status:' });
 
   for (const key of list.keys) {
-    const tenantId = key.name.split(':')[1];
-    const hostname = `${tenantId}`; // This assumes tenantId is the full hostname. Adjust as needed.
+    const userId = key.name.split(':')[1];
+    const hostname = `${userId}`; // This assumes userId is the full hostname. Adjust as needed.
 
-    console.log(`Resetting usage for tenant: ${tenantId}`);
+    console.log(`Resetting usage for user: ${userId}`);
 
     // Remove from the firewall suspension list
     await updateFirewallList(env, hostname, 'remove');
     
     // Delete the usage tracking keys from KV
-    await env.DEPLOYS_KV.delete(`count:${tenantId}`);
-    await env.DEPLOYS_KV.delete(`status:${tenantId}`);
+    await env.DEPLOYS_KV.delete(`count:${userId}`);
+    await env.DEPLOYS_KV.delete(`status:${userId}`);
   }
   
   console.log('Daily usage reset complete.');

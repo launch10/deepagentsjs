@@ -16,11 +16,20 @@ export class Domain extends BaseModel<DomainType> {
     }
 
     protected defineIndexes(): void {
-        this.addIndex('websiteId', 'websiteId');
-        this.addIndex('domain', 'domain');
+        this.addIndex({
+            name: 'websiteId',
+            keyExtractor: (domain) => domain.websiteId ? String(domain.websiteId) : null,
+            type: 'unique'
+        });
+
+        this.addIndex({
+            name: 'domain',
+            keyExtractor: (domain) => domain.domain ? String(domain.domain) : null,
+            type: 'unique'
+        });
     }
 
-    async findByDomain(domain: string): Promise<DomainType | null> {
+    async findByUrl(domain: string): Promise<DomainType | null> {
         return this.findByIndex('domain', domain);
     }
 

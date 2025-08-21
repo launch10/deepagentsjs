@@ -40,26 +40,26 @@ describe('KV Unique Constraint Integration Tests', () => {
   });
 
   describe('Duplicate Prevention', () => {
-    it('should prevent creating duplicate Request records for same tenant', async () => {
+    it('should prevent creating duplicate Request records for same user', async () => {
       const requestModel = new RequestModel(ctx);
       
       // Create first request
       const request1: RequestType = {
         id: uuidv4(),
-        tenantId: '1',
+        userId: '1',
         count: 100,
       };
       
       await requestModel.set(request1.id, request1);
       
       // Verify it was created
-      const found1 = await requestModel.findByTenantId('1');
+      const found1 = await requestModel.findByUserId('1');
       expect(found1).toEqual(request1);
       
-      // Try to create second request with same tenantId
+      // Try to create second request with same userId
       const request2: RequestType = {
         id: uuidv4(),
-        tenantId: '1', // Same tenant ID
+        userId: '1', // Same user ID
         count: 200,
       };
       
@@ -69,7 +69,7 @@ describe('KV Unique Constraint Integration Tests', () => {
       ).rejects.toThrow('Unique constraint violation');
       
       // Verify only first request exists
-      const foundAfter = await requestModel.findByTenantId('1');
+      const foundAfter = await requestModel.findByUserId('1');
       expect(foundAfter?.id).toBe(request1.id);
       expect(foundAfter?.count).toBe(100);
       
@@ -82,26 +82,26 @@ describe('KV Unique Constraint Integration Tests', () => {
       expect(indexKeys).toHaveLength(1); // Only one index
     });
 
-    it('should prevent creating duplicate Firewall records for same tenant', async () => {
+    it('should prevent creating duplicate Firewall records for same user', async () => {
       const firewallModel = new Firewall(ctx);
       
       // Create first firewall
       const firewall1: FirewallType = {
         id: uuidv4(),
-        tenantId: '1',
+        userId: '1',
         status: 'blocked',
       };
       
       await firewallModel.set(firewall1.id, firewall1);
       
       // Verify it was created
-      const found1 = await firewallModel.findByTenant('1');
+      const found1 = await firewallModel.findByUser('1');
       expect(found1).toEqual(firewall1);
       
-      // Try to create second firewall with same tenantId
+      // Try to create second firewall with same userId
       const firewall2: FirewallType = {
         id: uuidv4(),
-        tenantId: '1', // Same tenant ID
+        userId: '1', // Same user ID
         status: 'inactive',
       };
       
@@ -111,7 +111,7 @@ describe('KV Unique Constraint Integration Tests', () => {
       ).rejects.toThrow('Unique constraint violation');
       
       // Verify only first firewall exists
-      const foundAfter = await firewallModel.findByTenant('1');
+      const foundAfter = await firewallModel.findByUser('1');
       expect(foundAfter?.id).toBe(firewall1.id);
       expect(foundAfter?.status).toBe('blocked');
       
@@ -129,7 +129,7 @@ describe('KV Unique Constraint Integration Tests', () => {
       // Create first request
       const request1: RequestType = {
         id: 'request-1',
-        tenantId: '1',
+        userId: '1',
         count: 100,
       };
       
@@ -142,7 +142,7 @@ describe('KV Unique Constraint Integration Tests', () => {
       // Try to create duplicate (should fail)
       const request2: RequestType = {
         id: 'request-2',
-        tenantId: '1',
+        userId: '1',
         count: 200,
       };
       
@@ -161,7 +161,7 @@ describe('KV Unique Constraint Integration Tests', () => {
       expect(request2Data).toBeNull();
       
       // Verify index still points to original
-      const indexValue = await env.DEPLOYS_KV.get('index:request:tenantId:1');
+      const indexValue = await env.DEPLOYS_KV.get('index:request:userId:1');
       expect(indexValue).toBe('request-1');
     });
   });
@@ -171,22 +171,22 @@ describe('KV Unique Constraint Integration Tests', () => {
       const requestModel = new RequestModel(ctx);
       const firewallModel = new Firewall(ctx);
       
-      const tenantId = '1';
+      const userId = '1';
       
       // Simulate first batch of requests
-      let request = await requestModel.findByTenantId(tenantId);
+      let request = await requestModel.findByUserId(userId);
       expect(request).toBeNull();
       
       // Create initial request
       const newRequestId = uuidv4();
       await requestModel.set(newRequestId, {
         id: newRequestId,
-        tenantId: String(tenantId),
+        userId: String(userId),
         count: 10,
       });
       
       // Simulate second batch
-      request = await requestModel.findByTenantId(tenantId);
+      request = await requestModel.findByUserId(userId);
       expect(request).not.toBeNull();
       expect(request?.count).toBe(10);
       
@@ -194,18 +194,18 @@ describe('KV Unique Constraint Integration Tests', () => {
       await requestModel.set(request!.id, { ...request!, count: 20 });
       
       // Simulate threshold crossing - create firewall
-      let firewall = await firewallModel.findByTenant(tenantId);
+      let firewall = await firewallModel.findByUser(userId);
       expect(firewall).toBeNull();
       
       const newFirewallId = uuidv4();
       await firewallModel.set(newFirewallId, {
         id: newFirewallId,
-        tenantId: String(tenantId),
+        userId: String(userId),
         status: 'monitoring',
       });
       
       // Simulate concurrent request trying to create duplicate firewall
-      firewall = await firewallModel.findByTenant(tenantId);
+      firewall = await firewallModel.findByUser(userId);
       expect(firewall).not.toBeNull();
       expect(firewall?.status).toBe('monitoring');
       
@@ -214,14 +214,14 @@ describe('KV Unique Constraint Integration Tests', () => {
       await expect(
         firewallModel.set(duplicateFirewallId, {
           id: duplicateFirewallId,
-          tenantId: String(tenantId),
+          userId: String(userId),
           status: 'monitoring',
         })
       ).rejects.toThrow('Unique constraint violation');
       
       // Verify final state
-      const finalRequest = await requestModel.findByTenantId(tenantId);
-      const finalFirewall = await firewallModel.findByTenant(tenantId);
+      const finalRequest = await requestModel.findByUserId(userId);
+      const finalFirewall = await firewallModel.findByUser(userId);
       
       expect(finalRequest?.id).toBe(newRequestId);
       expect(finalRequest?.count).toBe(20);
@@ -236,30 +236,30 @@ describe('KV Unique Constraint Integration Tests', () => {
       expect(firewallRecords).toHaveLength(1);
     });
 
-    it('should handle numeric vs string tenant IDs consistently', async () => {
+    it('should handle numeric vs string user IDs consistently', async () => {
       const requestModel = new RequestModel(ctx);
       
-      // Create with string tenant ID
+      // Create with string user ID
       const request1: RequestType = {
         id: 'request-1',
-        tenantId: '123',
+        userId: '123',
         count: 100,
       };
       
       await requestModel.set(request1.id, request1);
       
       // Find with numeric ID (coerced to string)
-      const foundByNumber = await requestModel.findByTenantId(123 as any);
+      const foundByNumber = await requestModel.findByUserId(123 as any);
       expect(foundByNumber).toEqual(request1);
       
       // Find with string ID
-      const foundByString = await requestModel.findByTenantId('123');
+      const foundByString = await requestModel.findByUserId('123');
       expect(foundByString).toEqual(request1);
       
       // Try to create with numeric ID (should fail due to unique constraint)
       const request2: RequestType = {
         id: 'request-2',
-        tenantId: 123 as any, // Will be coerced to '123'
+        userId: 123 as any, // Will be coerced to '123'
         count: 200,
       };
       
@@ -268,7 +268,7 @@ describe('KV Unique Constraint Integration Tests', () => {
       ).rejects.toThrow('Unique constraint violation');
       
       // Verify the index key format
-      const indexValue = await env.DEPLOYS_KV.get('index:request:tenantId:123');
+      const indexValue = await env.DEPLOYS_KV.get('index:request:userId:123');
       expect(indexValue).toBe('request-1');
     });
   });
@@ -279,40 +279,40 @@ describe('KV Unique Constraint Integration Tests', () => {
       
       const request: RequestType = {
         id: 'request-1',
-        tenantId: '1',
+        userId: '1',
         count: 100,
       };
       
       await requestModel.set(request.id, request);
       
       // Verify it exists
-      const found = await requestModel.findByTenantId('1');
+      const found = await requestModel.findByUserId('1');
       expect(found).toEqual(request);
       
       // Delete the record
       await requestModel.delete(request.id);
       
       // Verify it's gone
-      const foundAfter = await requestModel.findByTenantId('1');
+      const foundAfter = await requestModel.findByUserId('1');
       expect(foundAfter).toBeNull();
       
       // Verify KV is clean
       const mainRecord = await env.DEPLOYS_KV.get('request:request-1');
       expect(mainRecord).toBeNull();
       
-      const indexRecord = await env.DEPLOYS_KV.get('index:request:tenantId:1');
+      const indexRecord = await env.DEPLOYS_KV.get('index:request:userId:1');
       expect(indexRecord).toBeNull();
       
-      // Now we can create a new record with same tenant ID
+      // Now we can create a new record with same user ID
       const newRequest: RequestType = {
         id: 'request-2',
-        tenantId: '1',
+        userId: '1',
         count: 200,
       };
       
       await requestModel.set(newRequest.id, newRequest);
       
-      const foundNew = await requestModel.findByTenantId('1');
+      const foundNew = await requestModel.findByUserId('1');
       expect(foundNew).toEqual(newRequest);
     });
   });

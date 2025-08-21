@@ -5,14 +5,14 @@ import { createMockContext, cleanupMockContext } from '../utils/context.js';
 export const deleteCommand = new Command('delete')
   .description('Delete data from KV store')
   .addCommand(
-    new Command('tenant')
-      .description('Delete tenant data')
-      .argument('<id>', 'Tenant ID')
+    new Command('user')
+      .description('Delete user data')
+      .argument('<id>', 'User ID')
       .option('--force', 'Skip confirmation')
       .action(async (id, options) => {
         try {
           if (!options.force) {
-            console.log(`⚠️  This will delete tenant ${id}. Use --force to confirm.`);
+            console.log(`⚠️  This will delete user ${id}. Use --force to confirm.`);
             await cleanupMockContext();
             process.exit(0);
           }
@@ -20,30 +20,30 @@ export const deleteCommand = new Command('delete')
           const context = await createMockContext();
           const client = new SDKClient(context);
           
-          const result = await client.tenant.delete(id);
+          const result = await client.user.delete(id);
           
           if (!result.success) {
             throw new Error(result.error || 'Delete failed');
           }
-          console.log(`✅ Tenant ${id} deleted successfully`);
+          console.log(`✅ User ${id} deleted successfully`);
           await cleanupMockContext();
           process.exit(0);
         } catch (error) {
-          console.error('❌ Error deleting tenant:', error);
+          console.error('❌ Error deleting user:', error);
           await cleanupMockContext();
           process.exit(1);
         }
       })
   )
   .addCommand(
-    new Command('site')
-      .description('Delete site data')
-      .argument('<id>', 'Site ID')
+    new Command('website')
+      .description('Delete website data')
+      .argument('<id>', 'Website ID')
       .option('--force', 'Skip confirmation')
       .action(async (id, options) => {
         try {
           if (!options.force) {
-            console.log(`⚠️  This will delete site ${id}. Use --force to confirm.`);
+            console.log(`⚠️  This will delete website ${id}. Use --force to confirm.`);
             await cleanupMockContext();
             process.exit(0);
           }
@@ -51,16 +51,16 @@ export const deleteCommand = new Command('delete')
           const context = await createMockContext();
           const client = new SDKClient(context);
           
-          const result = await client.site.delete(id);
+          const result = await client.website.delete(id);
           
           if (!result.success) {
             throw new Error(result.error || 'Delete failed');
           }
-          console.log(`✅ Site ${id} deleted successfully`);
+          console.log(`✅ Website ${id} deleted successfully`);
           await cleanupMockContext();
           process.exit(0);
         } catch (error) {
-          console.error('❌ Error deleting site:', error);
+          console.error('❌ Error deleting website:', error);
           await cleanupMockContext();
           process.exit(1);
         }

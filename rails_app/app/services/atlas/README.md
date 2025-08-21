@@ -22,52 +22,52 @@ Environment variables:
 
 ## Usage Examples
 
-### Tenant Management
+### User Management
 
 ```ruby
 # List all users
 users = Atlas.users.list(limit: 10)
 
-# Get a specific tenant
-tenant = Atlas.users.find('tenant-123')
+# Get a specific user
+user = Atlas.users.find('user-123')
 
-# Create a new tenant
-tenant = Atlas.users.create(
-  id: 'tenant-456',
+# Create a new user
+user = Atlas.users.create(
+  id: 'user-456',
   plan_id: 'plan-pro'
 )
 
-# Update a tenant
-Atlas.users.update('tenant-456', planId: 'plan-enterprise')
+# Update a user
+Atlas.users.update('user-456', planId: 'plan-enterprise')
 
-# Delete a tenant
-Atlas.users.destroy('tenant-456')
+# Delete a user
+Atlas.users.destroy('user-456')
 ```
 
-### Site Management
+### Website Management
 
 ```ruby
 # List websites
-websites = Atlas.websites.list(tenant_id: 'tenant-123')
+websites = Atlas.websites.list(user_id: 'user-123')
 
-# Find site by URL
-site = Atlas.websites.find_by_url('https://example.com')
+# Find website by URL
+website = Atlas.websites.find_by_url('https://example.com')
 
-# Get a specific site
-site = Atlas.websites.find('site-123')
+# Get a specific website
+website = Atlas.websites.find('website-123')
 
-# Create a new site
-site = Atlas.websites.create(
-  id: 'site-456',
-  url: 'https://mysite.com',
-  tenant_id: 'tenant-123'
+# Create a new website
+website = Atlas.websites.create(
+  id: 'website-456',
+  url: 'https://mywebsite.com',
+  user_id: 'user-123'
 )
 
-# Update a site
-Atlas.websites.update('site-456', url: 'https://newdomain.com')
+# Update a website
+Atlas.websites.update('website-456', url: 'https://newdomain.com')
 
-# Delete a site
-Atlas.websites.destroy('site-456')
+# Delete a website
+Atlas.websites.destroy('website-456')
 ```
 
 ### Plan Management
@@ -98,7 +98,7 @@ Atlas.plans.destroy('plan-enterprise')
 ```ruby
 # Simple deployment
 Atlas.deploy(
-  site_id: 'site-123',
+  website_id: 'website-123',
   files: {
     'index.html' => { content: '<h1>Hello World</h1>', type: 'text/html' },
     'style.css' => { content: 'body { color: red; }', type: 'text/css' }
@@ -111,7 +111,7 @@ Atlas.deployments.deploy_project(project)
 
 # Deploy with custom config
 Atlas.deployments.deploy(
-  site_id: 'site-123',
+  website_id: 'website-123',
   files: files_hash,
   config: {
     projectId: project.id,
@@ -136,10 +136,10 @@ status = Atlas.health.root_check
 
 ```ruby
 begin
-  site = Atlas.websites.find('site-123')
+  website = Atlas.websites.find('website-123')
 rescue Atlas::BaseService::NotFoundError => e
   # Handle 404 errors
-  Rails.logger.error "Site not found: #{e.message}"
+  Rails.logger.error "Website not found: #{e.message}"
 rescue Atlas::BaseService::ValidationError => e
   # Handle validation errors (400)
   Rails.logger.error "Invalid request: #{e.message}"
@@ -170,10 +170,10 @@ end
 # In your specs
 RSpec.describe MyController do
   before do
-    allow(Atlas.websites).to receive(:create).and_return({ id: 'site-123' })
+    allow(Atlas.websites).to receive(:create).and_return({ id: 'website-123' })
   end
 
-  it 'creates a site' do
+  it 'creates a website' do
     # Your test
   end
 end

@@ -5,20 +5,20 @@ import { createMockContext, cleanupMockContext } from '../utils/context.js';
 export const getCommand = new Command('get')
   .description('Get data from KV store')
   .addCommand(
-    new Command('tenant')
-      .description('Get tenant data')
-      .argument('<id>', 'Tenant ID')
+    new Command('user')
+      .description('Get user data')
+      .argument('<id>', 'User ID')
       .action(async (id) => {
         try {
           const context = await createMockContext();
           const client = new SDKClient(context);
           
-          const result = await client.tenant.get(id);
+          const result = await client.user.get(id);
           
           if (result.success && result.data) {
             console.log(JSON.stringify(result.data, null, 2));
           } else {
-            console.log(result.error || `Tenant ${id} not found`);
+            console.log(result.error || `User ${id} not found`);
           }
           
           await cleanupMockContext();
@@ -31,36 +31,28 @@ export const getCommand = new Command('get')
       })
   )
   .addCommand(
-    new Command('site')
-      .description('Get site data')
-      .argument('<id>', 'Site ID')
+    new Command('website')
+      .description('Get website data')
+      .argument('<id>', 'Website ID')
       .option('--by-url <url>', 'Find by URL instead of ID')
-      .option('--by-tenant <tenantId>', 'Find all sites by tenant ID')
       .action(async (id, options) => {
         try {
           const context = await createMockContext();
           const client = new SDKClient(context);
           
           if (options.byUrl) {
-            const result = await client.site.findByUrl(options.byUrl);
+            const result = await client.website.findByUrl(options.byUrl);
             if (result.success && result.data) {
               console.log(JSON.stringify(result.data, null, 2));
             } else {
-              console.log(result.error || 'Site not found');
-            }
-          } else if (options.byTenant) {
-            const result = await client.site.findByTenant(options.byTenant);
-            if (result.success && result.data) {
-              console.log(JSON.stringify(result.data, null, 2));
-            } else {
-              console.log(result.error || 'No sites found');
+              console.log(result.error || 'Website not found');
             }
           } else {
-            const result = await client.site.get(id);
+            const result = await client.website.get(id);
             if (result.success && result.data) {
               console.log(JSON.stringify(result.data, null, 2));
             } else {
-              console.log(result.error || `Site ${id} not found`);
+              console.log(result.error || `Website ${id} not found`);
             }
           }
           

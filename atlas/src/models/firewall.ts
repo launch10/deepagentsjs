@@ -1,9 +1,9 @@
 import { Context } from "hono";
-import { Env, FirewallType, TenantType, SiteType, FirewallRuleType } from "~/types";
+import { Env, FirewallType, UserType, WebsiteType, FirewallRuleType } from "~/types";
 import { BaseModel, createTypeGuard } from "./base";
 import { FirewallRule } from "./firewallRule";
 import { Request as RequestModel } from "./request";
-import { Site } from "./site";
+import { Website } from "./website";
 import { Plan } from "./plan";
 import { v4 as uuidv4 } from 'uuid';
 import { updateFirewallList, removeFromFirewallList } from '~/utils/cloudflareApi';
@@ -11,7 +11,7 @@ import { updateFirewallList, removeFromFirewallList } from '~/utils/cloudflareAp
 const isFirewallType = createTypeGuard<FirewallType>(
     (data: any): data is FirewallType => {
         return data.id !== undefined &&
-            data.tenantId !== undefined &&
+            data.userId !== undefined &&
             data.status !== undefined;
     }
 );
@@ -20,7 +20,7 @@ export class FirewallDO implements DurableObject {
   state: DurableObjectState;
   env: Env;
   count: number = 0;
-  tenantId: string | null = null;
+  userId: string | null = null;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -29,7 +29,7 @@ export class FirewallDO implements DurableObject {
     // Initialize count from storage
     this.state.blockConcurrencyWhile(async () => {
       this.count = await this.state.storage.get<number>('count') || 0;
-      this.tenantId = await this.state.storage.get<string>('tenantId') || null;
+      this.userId = await this.state.storage.get<string>('userId') || null;
     });
   }
 
@@ -40,18 +40,18 @@ export class FirewallDO implements DurableObject {
     if (url.pathname === '/check-firewall' && request.method === 'POST') {
       try {
         const data = await request.json() as {
-          tenantId: string;
+          userId: string;
           requestCount: number;
           planLimit: number;
-          siteUrl: string;
+          websiteUrl: string;
           timestamp: number;
         };
         
-        // If this is the first request for this tenant, initialize count
+        // If this is the first request for this user, initialize count
         if (this.count === 0) {
           this.count = data.requestCount;
           await this.state.storage.put('count', this.count);
-          await this.state.storage.put('tenantId', data.tenantId);
+          await this.state.storage.put('userId', data.userId);
         } else {
           // Increment the count
           this.count++;
@@ -66,7 +66,7 @@ export class FirewallDO implements DurableObject {
         });
       } catch (error: any) {
         // If we break this code, it could have catastrophic consequences,
-        // so we should err on the side of caution and block the site
+        // so we should err on the side of caution and block the website
         return new Response(JSON.stringify({ shouldBlock: true }), {
           headers: { 'Content-Type': 'application/json' },
           status: 500
@@ -85,8 +85,8 @@ export class Firewall extends BaseModel<FirewallType> {
 
     protected defineIndexes(): void {
         this.addIndex({
-            name: 'tenantId',
-            keyExtractor: (firewall) => firewall.tenantId ? String(firewall.tenantId) : null,
+            name: 'userId',
+            keyExtractor: (firewall) => firewall.userId ? String(firewall.userId) : null,
             type: 'unique'
         });
 
@@ -97,17 +97,17 @@ export class Firewall extends BaseModel<FirewallType> {
         });
     }
 
-    async block(tenant: TenantType): Promise<FirewallRuleType[]> {
-      const siteModel = new Site(this.c);
-      const tenantsSites: SiteType[] = await siteModel.findByTenant(tenant.id);
+    async block(user: UserType): Promise<FirewallRuleType[]> {
+      const websiteModel = new Website(this.c);
+      const usersWebsites: WebsiteType[] = await websiteModel.findByUser(user.id);
       const firewallRuleModel = new FirewallRule(this.c);
-      const existingRules = await firewallRuleModel.findByTenant(tenant.id);
+      const existingRules = await firewallRuleModel.findByUser(user.id);
       const existingRulesByUrl = existingRules.reduce((acc, rule) => {
         acc[rule.url] = rule;
         return acc;
       }, {} as Record<string, FirewallRuleType>);
       const blockedUrls = existingRules.filter(rule => rule.status === 'blocked').map(rule => rule.url)
-      const urlsToBlock = tenantsSites.map(site => site.url).filter(url => !blockedUrls.includes(url));
+      const urlsToBlock = usersWebsites.map(website => website.url).filter(url => !blockedUrls.includes(url));
 
       if (urlsToBlock.length > 0) {
         const [didBlock, cloudflareIds] = await updateFirewallList(this.c.env, urlsToBlock);
@@ -120,7 +120,7 @@ export class Firewall extends BaseModel<FirewallType> {
           let rule = existingRulesByUrl[url] || {
             id: uuidv4(),
             url: url,
-            tenantId: tenant.id,
+            userId: user.id,
             status: 'blocked'
           };
           rule = { ...rule, cloudflareId: cloudflareIds[url], status: 'blocked' };
@@ -129,21 +129,21 @@ export class Firewall extends BaseModel<FirewallType> {
         await Promise.all(promises);
       }
 
-      const existingFirewall = await this.findByTenant(tenant.id);
+      const existingFirewall = await this.findByUser(user.id);
       const firewall = existingFirewall || {
           id: uuidv4(),
-          tenantId: String(tenant.id),
+          userId: String(user.id),
           status: 'blocked'
       };
       await this.set(firewall.id, { ...firewall, status: 'blocked' });
 
-      const rules = await firewallRuleModel.findByTenant(tenant.id);
+      const rules = await firewallRuleModel.findByUser(user.id);
       return rules.filter(rule => rule.status === 'blocked')
     }
 
-    async unblock(tenant: TenantType): Promise<FirewallRuleType[]> {
+    async unblock(user: UserType): Promise<FirewallRuleType[]> {
       const firewallRuleModel = new FirewallRule(this.c);
-      const existingRules = await firewallRuleModel.findByTenant(tenant.id);
+      const existingRules = await firewallRuleModel.findByUser(user.id);
       const existingRulesByUrl = existingRules.reduce((acc, rule) => {
         acc[rule.url] = rule;
         return acc;
@@ -164,10 +164,10 @@ export class Firewall extends BaseModel<FirewallType> {
       })
       await Promise.all(promises);
 
-      const existingFirewall = await this.findByTenant(tenant.id);
+      const existingFirewall = await this.findByUser(user.id);
       const firewall = existingFirewall || {
           id: uuidv4(),
-          tenantId: String(tenant.id),
+          userId: String(user.id),
           status: 'inactive'
       };
       await this.set(firewall.id, { ...firewall, status: 'inactive' });
@@ -175,47 +175,47 @@ export class Firewall extends BaseModel<FirewallType> {
       return rulesToUnblock;
     }
 
-    async reset(tenant: TenantType): Promise<void> {
-      console.log(`about to reset ${tenant.id}`)
-      await this.unblock(tenant);
+    async reset(user: UserType): Promise<void> {
+      console.log(`about to reset ${user.id}`)
+      await this.unblock(user);
       console.log(`did unblock... i think`)
 
       const requestModel = new RequestModel(this.c);
-      const requests = await requestModel.findByTenantId(tenant.id);
+      const requests = await requestModel.findByUserId(user.id);
       if (requests) {
           await requestModel.set(requests.id, { count: 0 });
           console.log(`reset requests: ${JSON.stringify(requests)}`)
       }
     }
 
-    async shouldBlock(tenant: TenantType): Promise<boolean> {
+    async shouldBlock(user: UserType): Promise<boolean> {
       try {
           // Gather all necessary data before calling DurableObject
           const requestModel = new RequestModel(this.c);
           const planModel = new Plan(this.c);
-          const siteModel = new Site(this.c);
+          const websiteModel = new Website(this.c);
           
-          const requests = await requestModel.findByTenantId(tenant.id);
-          const plan = await planModel.get(tenant.planId);
-          const site = await siteModel.findByUrl(this.c.req.url);
+          const requests = await requestModel.findByUserId(user.id);
+          const plan = await planModel.get(user.planId);
+          const website = await websiteModel.findByUrl(this.c.req.url);
           
           if (!plan) {
-              throw new Error(`Plan not found for ID: ${tenant.planId}`);
+              throw new Error(`Plan not found for ID: ${user.planId}`);
           }
           
           // Prepare data to send to DurableObject
           const requestData = {
-            tenantId: tenant.id,
+            userId: user.id,
             requestCount: requests?.count || 0,
             planLimit: planModel.getMonthlyLimit(plan),
-            siteUrl: site?.url || this.c.req.url,
+            websiteUrl: website?.url || this.c.req.url,
             timestamp: Date.now()
           };
           
           console.log('[Firewall.maybeActivate] Sending data to DurableObject:', requestData);
           
           // Communicate with DurableObject via fetch
-          const doId = this.c.env.FIREWALL.idFromName(tenant.id);
+          const doId = this.c.env.FIREWALL.idFromName(user.id);
           const durableObject = this.c.env.FIREWALL.get(doId);
           
           const response = await durableObject.fetch(
@@ -236,13 +236,13 @@ export class Firewall extends BaseModel<FirewallType> {
           return result.shouldBlock;
       } catch (error) {
           console.error('[Firewall.maybeActivate] Error:', error);
-          // On error, default to not blocking to avoid breaking the site
+          // On error, default to not blocking to avoid breaking the website
           return false;
       }
     }
 
-    async findByTenant(tenantId: string | number): Promise<FirewallType | null> {
-      return this.findByIndex('tenantId', String(tenantId));
+    async findByUser(userId: string | number): Promise<FirewallType | null> {
+      return this.findByIndex('userId', String(userId));
     }
 
     async findByStatus(status: string): Promise<FirewallType[]> {

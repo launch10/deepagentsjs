@@ -1,35 +1,35 @@
 import { Hono } from 'hono';
 import { SDKClient } from '../../sdk/index.js';
 import type { Env } from '../../types.js';
-import type { SiteType } from '../../types.js';
+import type { WebsiteType } from '../../types.js';
 
-export function siteRoutes() {
+export function websiteRoutes() {
   const router = new Hono<{ Bindings: Env }>();
   
-  // GET /api/internal/sites
+  // GET /api/internal/websites
   router.get('/', async (c) => {
     const limit = parseInt(c.req.query('limit') || '100');
-    const tenantId = c.req.query('tenantId');
+    const id = c.req.query('id');
     
     const client = new SDKClient(c);
     
-    if (tenantId) {
-      const result = await client.site.findByTenant(tenantId);
+    if (id) {
+      const result = await client.website.get(id);
       if (!result.success) {
         return c.json({ error: result.error }, 500);
       }
-      return c.json({ sites: result.data });
+      return c.json({ websites: result.data });
     }
     
-    const result = await client.site.list(limit);
+    const result = await client.website.list(limit);
     if (!result.success) {
       return c.json({ error: result.error }, 500);
     }
     
-    return c.json({ sites: result.data });
+    return c.json({ websites: result.data });
   });
   
-  // GET /api/internal/sites/by-url
+  // GET /api/internal/websites/by-url
   router.get('/by-url', async (c) => {
     const url = c.req.query('url');
     
@@ -38,7 +38,7 @@ export function siteRoutes() {
     }
     
     const client = new SDKClient(c);
-    const result = await client.site.findByUrl(url);
+    const result = await client.website.findByUrl(url);
     
     if (!result.success) {
       return c.json({ error: result.error }, result.error?.includes('not found') ? 404 : 500);
@@ -47,11 +47,11 @@ export function siteRoutes() {
     return c.json(result.data);
   });
   
-  // GET /api/internal/sites/:id
+  // GET /api/internal/websites/:id
   router.get('/:id', async (c) => {
     const id = c.req.param('id');
     const client = new SDKClient(c);
-    const result = await client.site.get(id);
+    const result = await client.website.get(id);
     
     if (!result.success) {
       return c.json({ error: result.error }, result.error?.includes('not found') ? 404 : 500);
@@ -60,13 +60,13 @@ export function siteRoutes() {
     return c.json(result.data);
   });
   
-  // POST /api/internal/sites
+  // POST /api/internal/websites
   router.post('/', async (c) => {
     try {
-      const body = await c.req.json<SiteType>();
+      const body = await c.req.json<WebsiteType>();
       
-      if (!body.id || !body.url || !body.tenantId) {
-        return c.json({ error: 'Missing required fields: id, url, tenantId' }, 400);
+      if (!body.id || !body.url || !body.userId) {
+        return c.json({ error: 'Missing required fields: id, url, userId' }, 400);
       }
       
       // Set defaults
@@ -74,7 +74,7 @@ export function siteRoutes() {
       body.preview = body.preview || 'INITIAL';
       
       const client = new SDKClient(c);
-      const result = await client.site.set(body.id, body);
+      const result = await client.website.set(body.id, body);
       
       if (!result.success) {
         return c.json({ error: result.error }, 500);
@@ -86,28 +86,28 @@ export function siteRoutes() {
     }
   });
   
-  // PUT /api/internal/sites/:id
+  // PUT /api/internal/websites/:id
   router.put('/:id', async (c) => {
     try {
       const id = c.req.param('id');
-      const body = await c.req.json<Partial<SiteType>>();
+      const body = await c.req.json<Partial<WebsiteType>>();
       
       const client = new SDKClient(c);
       
-      // Get existing site
-      const existingResult = await client.site.get(id);
+      // Get existing website
+      const existingResult = await client.website.get(id);
       if (!existingResult.success) {
-        return c.json({ error: 'Site not found' }, 404);
+        return c.json({ error: 'Website not found' }, 404);
       }
       
       // Merge with existing data
-      const updatedData: SiteType = {
+      const updatedData: WebsiteType = {
         ...existingResult.data!,
         ...body,
         id // Ensure ID doesn't change
       };
       
-      const result = await client.site.set(id, updatedData);
+      const result = await client.website.set(id, updatedData);
       
       if (!result.success) {
         return c.json({ error: result.error }, 500);
@@ -119,11 +119,11 @@ export function siteRoutes() {
     }
   });
   
-  // DELETE /api/internal/sites/:id
+  // DELETE /api/internal/websites/:id
   router.delete('/:id', async (c) => {
     const id = c.req.param('id');
     const client = new SDKClient(c);
-    const result = await client.site.delete(id);
+    const result = await client.website.delete(id);
     
     if (!result.success) {
       return c.json({ error: result.error }, 500);

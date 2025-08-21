@@ -6727,12 +6727,12 @@ declare namespace Rpc {
     export type Stubable = RpcTargetBranded | ((...args: any[]) => any);
     // Types that can be passed over RPC
     // The reason for using a generic type here is to build a serializable subset of structured
-    //   cloneable composite types. This allows types defined with the "interface" keyword to pass the
+    //   cloneable compowebsite types. This allows types defined with the "interface" keyword to pass the
     //   serializable check as well. Otherwise, only types defined with the "type" keyword would pass.
     type Serializable<T> = 
     // Structured cloneables
     BaseType
-    // Structured cloneable composites
+    // Structured cloneable compowebsites
      | Map<T extends Map<infer U, unknown> ? Serializable<U> : never, T extends Map<unknown, infer U> ? Serializable<U> : never> | Set<T extends Set<infer U> ? Serializable<U> : never> | ReadonlyArray<T extends ReadonlyArray<infer U> ? Serializable<U> : never> | {
         [K in keyof T]: K extends number | string ? Serializable<T[K]> : never;
     }

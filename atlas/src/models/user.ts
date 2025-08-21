@@ -15,6 +15,10 @@ export class User extends BaseModel<UserType> {
     }
 
     protected defineIndexes(): void {
-        this.addIndex('planId', 'planId');
+        this.addIndex({
+            name: 'planId',
+            keyExtractor: (user) => user.planId ? String(user.planId) : null,
+            type: 'unique'
+        });
     }
 }

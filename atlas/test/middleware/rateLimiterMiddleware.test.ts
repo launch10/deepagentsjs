@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Context, Next } from 'hono';
-import { Env, TenantType, SiteType, FirewallType, RequestType, PlanType } from '~/types';
+import { Env, UserType, WebsiteType, FirewallType, RequestType, PlanType } from '~/types';
 import { Miniflare } from 'miniflare';
 import { rateLimiterMiddleware } from '~/middleware/rateLimiter/rateLimiterMiddleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,8 +8,8 @@ import { v4 as uuidv4 } from 'uuid';
 // Mock the models
 vi.mock('~/models', () => {
   return {
-    Tenant: vi.fn(),
-    Site: vi.fn(),
+    User: vi.fn(),
+    Website: vi.fn(),
     Firewall: vi.fn(),
     Request: vi.fn(),
     Plan: vi.fn(),
@@ -24,8 +24,8 @@ describe('RateLimiterMiddleware', () => {
   let kvStore: Map<string, string>;
 
   // Mock model instances
-  let mockSiteModel: any;
-  let mockTenantModel: any;
+  let mockWebsiteModel: any;
+  let mockUserModel: any;
   let mockFirewallModel: any;
   let mockRequestModel: any;
   let mockPlanModel: any;
@@ -78,20 +78,20 @@ describe('RateLimiterMiddleware', () => {
     }
 
     // Set up mock models
-    const { Site, Tenant, Firewall, Request, Plan } = await import('~/models');
+    const { Website, User, Firewall, Request, Plan } = await import('~/models');
 
-    mockSiteModel = {
+    mockWebsiteModel = {
       findByUrl: vi.fn(),
     };
-    (Site as any).mockImplementation(() => mockSiteModel);
+    (Website as any).mockImplementation(() => mockWebsiteModel);
 
-    mockTenantModel = {
+    mockUserModel = {
       get: vi.fn(),
     };
-    (Tenant as any).mockImplementation(() => mockTenantModel);
+    (User as any).mockImplementation(() => mockUserModel);
 
     mockFirewallModel = {
-      findByTenant: vi.fn(),
+      findByUser: vi.fn(),
       shouldBlock: vi.fn(),
       block: vi.fn(),
       set: vi.fn(),
@@ -99,7 +99,7 @@ describe('RateLimiterMiddleware', () => {
     (Firewall as any).mockImplementation(() => mockFirewallModel);
 
     mockRequestModel = {
-      findByTenantId: vi.fn(),
+      findByUserId: vi.fn(),
       set: vi.fn(),
     };
     (Request as any).mockImplementation(() => mockRequestModel);
@@ -128,28 +128,28 @@ describe('RateLimiterMiddleware', () => {
       await rateLimiterMiddleware(ctx, next);
 
       expect(next).toHaveBeenCalled();
-      expect(mockSiteModel.findByUrl).not.toHaveBeenCalled();
+      expect(mockWebsiteModel.findByUrl).not.toHaveBeenCalled();
     });
 
     it('should process document requests', async () => {
-      const site: SiteType = {
+      const website: WebsiteType = {
         id: '1',
         url: 'test.example.com',
-        tenantId: '1',
+        userId: '1',
         live: 'INITIAL',
         preview: 'INITIAL',
       };
 
-      const tenant: TenantType = {
+      const user: UserType = {
         id: '1',
         orgId: '1',
         planId: '1',
       };
 
-      mockSiteModel.findByUrl.mockResolvedValue(site);
-      mockTenantModel.get.mockResolvedValue(tenant);
-      mockFirewallModel.findByTenant.mockResolvedValue(null);
-      mockRequestModel.findByTenantId.mockResolvedValue(null);
+      mockWebsiteModel.findByUrl.mockResolvedValue(website);
+      mockUserModel.get.mockResolvedValue(user);
+      mockFirewallModel.findByUser.mockResolvedValue(null);
+      mockRequestModel.findByUserId.mockResolvedValue(null);
 
       ctx = {
         env,
@@ -161,23 +161,23 @@ describe('RateLimiterMiddleware', () => {
 
       await rateLimiterMiddleware(ctx, next);
 
-      expect(mockSiteModel.findByUrl).toHaveBeenCalledWith('http://test.example.com/');
-      expect(mockTenantModel.get).toHaveBeenCalledWith('1');
+      expect(mockWebsiteModel.findByUrl).toHaveBeenCalledWith('http://test.example.com/');
+      expect(mockUserModel.get).toHaveBeenCalledWith('1');
       expect(next).toHaveBeenCalled();
     });
   });
 
   describe('Request counting and unique constraints', () => {
     it('should create request record on first visit', async () => {
-      const site: SiteType = {
+      const website: WebsiteType = {
         id: '1',
         url: 'test.example.com',
-        tenantId: '1',
+        userId: '1',
         live: 'INITIAL',
         preview: 'INITIAL',
       };
 
-      const tenant: TenantType = {
+      const user: UserType = {
         id: '1',
         orgId: '1',
         planId: '1',
@@ -189,10 +189,10 @@ describe('RateLimiterMiddleware', () => {
         usageLimit: 1000,
       };
 
-      mockSiteModel.findByUrl.mockResolvedValue(site);
-      mockTenantModel.get.mockResolvedValue(tenant);
-      mockFirewallModel.findByTenant.mockResolvedValue(null);
-      mockRequestModel.findByTenantId.mockResolvedValue(null);
+      mockWebsiteModel.findByUrl.mockResolvedValue(website);
+      mockUserModel.get.mockResolvedValue(user);
+      mockFirewallModel.findByUser.mockResolvedValue(null);
+      mockRequestModel.findByUserId.mockResolvedValue(null);
       mockPlanModel.get.mockResolvedValue(plan);
       mockPlanModel.getMonthlyLimit.mockReturnValue(1000);
 
@@ -213,22 +213,22 @@ describe('RateLimiterMiddleware', () => {
       expect(mockRequestModel.set).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          tenantId: '1',
+          userId: '1',
           count: 10,
         })
       );
     });
 
     it('should update existing request record', async () => {
-      const site: SiteType = {
+      const website: WebsiteType = {
         id: '1',
         url: 'test.example.com',
-        tenantId: '1',
+        userId: '1',
         live: 'INITIAL',
         preview: 'INITIAL',
       };
 
-      const tenant: TenantType = {
+      const user: UserType = {
         id: '1',
         orgId: '1',
         planId: '1',
@@ -236,7 +236,7 @@ describe('RateLimiterMiddleware', () => {
 
       const existingRequest: RequestType = {
         id: 'request-123',
-        tenantId: '1',
+        userId: '1',
         count: 100,
       };
 
@@ -246,10 +246,10 @@ describe('RateLimiterMiddleware', () => {
         usageLimit: 1000,
       };
 
-      mockSiteModel.findByUrl.mockResolvedValue(site);
-      mockTenantModel.get.mockResolvedValue(tenant);
-      mockFirewallModel.findByTenant.mockResolvedValue(null);
-      mockRequestModel.findByTenantId.mockResolvedValue(existingRequest);
+      mockWebsiteModel.findByUrl.mockResolvedValue(website);
+      mockUserModel.get.mockResolvedValue(user);
+      mockFirewallModel.findByUser.mockResolvedValue(null);
+      mockRequestModel.findByUserId.mockResolvedValue(existingRequest);
       mockPlanModel.get.mockResolvedValue(plan);
       mockPlanModel.getMonthlyLimit.mockReturnValue(1000);
 
@@ -275,16 +275,16 @@ describe('RateLimiterMiddleware', () => {
       );
     });
 
-    it('should handle numeric tenant IDs correctly', async () => {
-      const site: SiteType = {
+    it('should handle numeric user IDs correctly', async () => {
+      const website: WebsiteType = {
         id: '1',
         url: 'test.example.com',
-        tenantId: 1 as any, // Numeric tenant ID
+        userId: 1 as any, // Numeric user ID
         live: 'INITIAL',
         preview: 'INITIAL',
       };
 
-      const tenant: TenantType = {
+      const user: UserType = {
         id: 1 as any, // Numeric ID
         orgId: '1',
         planId: '1',
@@ -296,10 +296,10 @@ describe('RateLimiterMiddleware', () => {
         usageLimit: 1000,
       };
 
-      mockSiteModel.findByUrl.mockResolvedValue(site);
-      mockTenantModel.get.mockResolvedValue(tenant);
-      mockFirewallModel.findByTenant.mockResolvedValue(null);
-      mockRequestModel.findByTenantId.mockResolvedValue(null);
+      mockWebsiteModel.findByUrl.mockResolvedValue(website);
+      mockUserModel.get.mockResolvedValue(user);
+      mockFirewallModel.findByUser.mockResolvedValue(null);
+      mockRequestModel.findByUserId.mockResolvedValue(null);
       mockPlanModel.get.mockResolvedValue(plan);
       mockPlanModel.getMonthlyLimit.mockReturnValue(1000);
 
@@ -317,11 +317,11 @@ describe('RateLimiterMiddleware', () => {
       }
 
       // Should handle numeric IDs properly
-      expect(mockRequestModel.findByTenantId).toHaveBeenCalledWith(1);
+      expect(mockRequestModel.findByUserId).toHaveBeenCalledWith(1);
       expect(mockRequestModel.set).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          tenantId: '1', // Should convert to string
+          userId: '1', // Should convert to string
         })
       );
     });
@@ -329,15 +329,15 @@ describe('RateLimiterMiddleware', () => {
 
   describe('Firewall blocking', () => {
     it('should block when firewall status is blocked', async () => {
-      const site: SiteType = {
+      const website: WebsiteType = {
         id: '1',
         url: 'test.example.com',
-        tenantId: '1',
+        userId: '1',
         live: 'INITIAL',
         preview: 'INITIAL',
       };
 
-      const tenant: TenantType = {
+      const user: UserType = {
         id: '1',
         orgId: '1',
         planId: '1',
@@ -345,13 +345,13 @@ describe('RateLimiterMiddleware', () => {
 
       const firewall: FirewallType = {
         id: 'fw-1',
-        tenantId: '1',
+        userId: '1',
         status: 'blocked',
       };
 
-      mockSiteModel.findByUrl.mockResolvedValue(site);
-      mockTenantModel.get.mockResolvedValue(tenant);
-      mockFirewallModel.findByTenant.mockResolvedValue(firewall);
+      mockWebsiteModel.findByUrl.mockResolvedValue(website);
+      mockUserModel.get.mockResolvedValue(user);
+      mockFirewallModel.findByUser.mockResolvedValue(firewall);
 
       ctx = {
         env,
@@ -363,21 +363,21 @@ describe('RateLimiterMiddleware', () => {
 
       await rateLimiterMiddleware(ctx, next);
 
-      expect(mockFirewallModel.block).toHaveBeenCalledWith(tenant);
+      expect(mockFirewallModel.block).toHaveBeenCalledWith(user);
       expect(ctx.json).toHaveBeenCalledWith({ error: 'Rate limit exceeded' }, 429);
       expect(next).not.toHaveBeenCalled();
     });
 
     it('should check shouldBlock when status is monitoring', async () => {
-      const site: SiteType = {
+      const website: WebsiteType = {
         id: '1',
         url: 'test.example.com',
-        tenantId: '1',
+        userId: '1',
         live: 'INITIAL',
         preview: 'INITIAL',
       };
 
-      const tenant: TenantType = {
+      const user: UserType = {
         id: '1',
         orgId: '1',
         planId: '1',
@@ -385,15 +385,15 @@ describe('RateLimiterMiddleware', () => {
 
       const firewall: FirewallType = {
         id: 'fw-1',
-        tenantId: '1',
+        userId: '1',
         status: 'monitoring',
       };
 
-      mockSiteModel.findByUrl.mockResolvedValue(site);
-      mockTenantModel.get.mockResolvedValue(tenant);
-      mockFirewallModel.findByTenant.mockResolvedValue(firewall);
+      mockWebsiteModel.findByUrl.mockResolvedValue(website);
+      mockUserModel.get.mockResolvedValue(user);
+      mockFirewallModel.findByUser.mockResolvedValue(firewall);
       mockFirewallModel.shouldBlock.mockResolvedValue(false);
-      mockRequestModel.findByTenantId.mockResolvedValue(null);
+      mockRequestModel.findByUserId.mockResolvedValue(null);
 
       ctx = {
         env,
@@ -405,22 +405,22 @@ describe('RateLimiterMiddleware', () => {
 
       await rateLimiterMiddleware(ctx, next);
 
-      expect(mockFirewallModel.shouldBlock).toHaveBeenCalledWith(tenant);
+      expect(mockFirewallModel.shouldBlock).toHaveBeenCalledWith(user);
       expect(next).toHaveBeenCalled();
     });
   });
 
   describe('Threshold crossing', () => {
     it('should activate monitoring when threshold is crossed', async () => {
-      const site: SiteType = {
+      const website: WebsiteType = {
         id: '1',
         url: 'test.example.com',
-        tenantId: '1',
+        userId: '1',
         live: 'INITIAL',
         preview: 'INITIAL',
       };
 
-      const tenant: TenantType = {
+      const user: UserType = {
         id: '1',
         orgId: '1',
         planId: '1',
@@ -434,14 +434,14 @@ describe('RateLimiterMiddleware', () => {
 
       const existingRequest: RequestType = {
         id: 'request-123',
-        tenantId: '1',
+        userId: '1',
         count: 85, // Close to threshold (90% of 100)
       };
 
-      mockSiteModel.findByUrl.mockResolvedValue(site);
-      mockTenantModel.get.mockResolvedValue(tenant);
-      mockFirewallModel.findByTenant.mockResolvedValue(null);
-      mockRequestModel.findByTenantId.mockResolvedValue(existingRequest);
+      mockWebsiteModel.findByUrl.mockResolvedValue(website);
+      mockUserModel.get.mockResolvedValue(user);
+      mockFirewallModel.findByUser.mockResolvedValue(null);
+      mockRequestModel.findByUserId.mockResolvedValue(existingRequest);
       mockPlanModel.get.mockResolvedValue(plan);
       mockPlanModel.getMonthlyLimit.mockReturnValue(100);
 
@@ -462,22 +462,22 @@ describe('RateLimiterMiddleware', () => {
       expect(mockFirewallModel.set).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          tenantId: '1',
+          userId: '1',
           status: 'monitoring',
         })
       );
     });
 
     it('should not create duplicate firewall when crossing threshold', async () => {
-      const site: SiteType = {
+      const website: WebsiteType = {
         id: '1',
         url: 'test.example.com',
-        tenantId: '1',
+        userId: '1',
         live: 'INITIAL',
         preview: 'INITIAL',
       };
 
-      const tenant: TenantType = {
+      const user: UserType = {
         id: '1',
         orgId: '1',
         planId: '1',
@@ -491,36 +491,36 @@ describe('RateLimiterMiddleware', () => {
 
       const existingRequest: RequestType = {
         id: 'request-123',
-        tenantId: '1',
+        userId: '1',
         count: 85,
       };
 
       const existingFirewall: FirewallType = {
         id: 'fw-existing',
-        tenantId: '1',
+        userId: '1',
         status: 'inactive',
       };
 
-      mockSiteModel.findByUrl.mockResolvedValue(site);
-      mockTenantModel.get.mockResolvedValue(tenant);
+      mockWebsiteModel.findByUrl.mockResolvedValue(website);
+      mockUserModel.get.mockResolvedValue(user);
       
-      // The middleware calls findByTenant:
+      // The middleware calls findByUser:
       // - Once per request in the main flow (calls 1-8 for first 8 requests)
       // - On the 10th request, batch processing happens which calls afterThresholdCrossed
-      // - afterThresholdCrossed calls findByTenant (call #9)
+      // - afterThresholdCrossed calls findByUser (call #9)
       // - Then the main flow continues for the last 2 requests (calls 10-11)
-      let findByTenantCallCount = 0;
-      mockFirewallModel.findByTenant.mockImplementation(async () => {
-        findByTenantCallCount++;
+      let findByUserCallCount = 0;
+      mockFirewallModel.findByUser.mockImplementation(async () => {
+        findByUserCallCount++;
         // The 9th call is from afterThresholdCrossed - return existing firewall
-        if (findByTenantCallCount === 9) {
+        if (findByUserCallCount === 9) {
           return existingFirewall;
         }
         // All other calls return null
         return null;
       });
       
-      mockRequestModel.findByTenantId.mockResolvedValue(existingRequest);
+      mockRequestModel.findByUserId.mockResolvedValue(existingRequest);
       mockPlanModel.get.mockResolvedValue(plan);
       mockPlanModel.getMonthlyLimit.mockReturnValue(100);
 
@@ -542,7 +542,7 @@ describe('RateLimiterMiddleware', () => {
         'fw-existing', // Should use existing firewall ID
         expect.objectContaining({
           status: 'monitoring',
-          tenantId: '1',
+          userId: '1',
           id: 'fw-existing',
         })
       );
@@ -551,15 +551,15 @@ describe('RateLimiterMiddleware', () => {
 
   describe('Race condition prevention', () => {
     it('should handle concurrent requests without creating duplicates', async () => {
-      const site: SiteType = {
+      const website: WebsiteType = {
         id: '1',
         url: 'test.example.com',
-        tenantId: '1',
+        userId: '1',
         live: 'INITIAL',
         preview: 'INITIAL',
       };
 
-      const tenant: TenantType = {
+      const user: UserType = {
         id: '1',
         orgId: '1',
         planId: '1',
@@ -571,20 +571,20 @@ describe('RateLimiterMiddleware', () => {
         usageLimit: 1000,
       };
 
-      mockSiteModel.findByUrl.mockResolvedValue(site);
-      mockTenantModel.get.mockResolvedValue(tenant);
-      mockFirewallModel.findByTenant.mockResolvedValue(null);
+      mockWebsiteModel.findByUrl.mockResolvedValue(website);
+      mockUserModel.get.mockResolvedValue(user);
+      mockFirewallModel.findByUser.mockResolvedValue(null);
       mockPlanModel.get.mockResolvedValue(plan);
       mockPlanModel.getMonthlyLimit.mockReturnValue(1000);
       
       // Simulate race condition: first call returns null, subsequent calls return existing
       const existingRequest: RequestType = {
         id: 'request-123',
-        tenantId: '1',
+        userId: '1',
         count: 10,
       };
       
-      mockRequestModel.findByTenantId
+      mockRequestModel.findByUserId
         .mockResolvedValueOnce(null) // First batch finds nothing
         .mockResolvedValue(existingRequest); // Subsequent batches find existing
 
@@ -610,7 +610,7 @@ describe('RateLimiterMiddleware', () => {
       expect(mockRequestModel.set).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          tenantId: '1',
+          userId: '1',
           count: 10,
         })
       );

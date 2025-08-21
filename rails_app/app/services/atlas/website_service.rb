@@ -4,10 +4,10 @@ module Atlas
   class WebsiteService < BaseService
     BASE_PATH = '/api/internal/websites'
 
-    def list(limit: nil, tenant_id: nil)
+    def list(limit: nil, user_id: nil)
       params = {}
       params[:limit] = limit if limit
-      params[:tenantId] = tenant_id if tenant_id
+      params[:userId] = user_id if user_id
 
       with_logging(:get, BASE_PATH, params) do
         make_request(:get, BASE_PATH, params)

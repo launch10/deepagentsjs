@@ -5,63 +5,63 @@ import { createMockContext, cleanupMockContext } from '../utils/context.js';
 export const listCommand = new Command('list')
   .description('List data from KV store')
   .addCommand(
-    new Command('tenants')
-      .description('List all tenants')
+    new Command('users')
+      .description('List all users')
       .option('-l, --limit <limit>', 'Limit number of results', '100')
       .action(async (options) => {
         try {
           const context = await createMockContext();
           const client = new SDKClient(context);
           
-          const result = await client.tenant.list(parseInt(options.limit));
+          const result = await client.user.list(parseInt(options.limit));
           
           if (!result.success) {
             throw new Error(result.error || 'List failed');
           }
           
-          const tenants = result.data || [];
-          console.log(`Found ${tenants.length} tenants:`);
-          console.log(JSON.stringify(tenants, null, 2));
+          const users = result.data || [];
+          console.log(`Found ${users.length} users:`);
+          console.log(JSON.stringify(users, null, 2));
           await cleanupMockContext();
           process.exit(0);
         } catch (error) {
-          console.error('❌ Error listing tenants:', error);
+          console.error('❌ Error listing users:', error);
           await cleanupMockContext();
           process.exit(1);
         }
       })
   )
   .addCommand(
-    new Command('sites')
-      .description('List all sites')
+    new Command('websites')
+      .description('List all websites')
       .option('-l, --limit <limit>', 'Limit number of results', '100')
-      .option('--tenant <tenantId>', 'Filter by tenant ID')
+      .option('--user <userId>', 'Filter by user ID')
       .action(async (options) => {
         try {
           const context = await createMockContext();
           const client = new SDKClient(context);
           
-          if (options.tenant) {
-            const result = await client.site.findByTenant(options.tenant);
+          if (options.user) {
+            const result = await client.website.findByUser(options.user);
             if (!result.success) {
               throw new Error(result.error || 'List failed');
             }
-            const sites = result.data || [];
-            console.log(`Found ${sites.length} sites for tenant ${options.tenant}:`);
-            console.log(JSON.stringify(sites, null, 2));
+            const websites = result.data || [];
+            console.log(`Found ${websites.length} websites for user ${options.user}:`);
+            console.log(JSON.stringify(websites, null, 2));
           } else {
-            const result = await client.site.list(parseInt(options.limit));
+            const result = await client.website.list(parseInt(options.limit));
             if (!result.success) {
               throw new Error(result.error || 'List failed');
             }
-            const sites = result.data || [];
-            console.log(`Found ${sites.length} sites:`);
-            console.log(JSON.stringify(sites, null, 2));
+            const websites = result.data || [];
+            console.log(`Found ${websites.length} websites:`);
+            console.log(JSON.stringify(websites, null, 2));
           }
           await cleanupMockContext();
           process.exit(0);
         } catch (error) {
-          console.error('❌ Error listing sites:', error);
+          console.error('❌ Error listing websites:', error);
           await cleanupMockContext();
           process.exit(1);
         }

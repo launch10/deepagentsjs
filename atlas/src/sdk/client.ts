@@ -1,7 +1,6 @@
-import { Tenant, Site, Plan, Firewall } from '../models/index.js';
-import type { TenantType, SiteType, PlanType } from '../types.js';
+import { User, Website, Plan, Firewall, Domain } from '../models/index.js';
+import type { UserType, WebsiteType, PlanType } from '../types.js';
 import type { SDKContext, OperationResult } from './types.js';
-
 export class SDKClient {
   private context: SDKContext;
   
@@ -9,15 +8,15 @@ export class SDKClient {
     this.context = context;
   }
   
-  // Tenant operations
-  tenant = {
-    get: async (id: string): Promise<OperationResult<TenantType>> => {
+  // User operations
+  user = {
+    get: async (id: string): Promise<OperationResult<UserType>> => {
       try {
-        const model = new Tenant(this.context as any);
+        const model = new User(this.context as any);
         const data = await model.get(id);
         
         if (!data) {
-          return { success: false, error: `Tenant ${id} not found` };
+          return { success: false, error: `User ${id} not found` };
         }
         
         return { success: true, data };
@@ -26,9 +25,9 @@ export class SDKClient {
       }
     },
     
-    set: async (id: string, data: TenantType): Promise<OperationResult<void>> => {
+    set: async (id: string, data: UserType): Promise<OperationResult<void>> => {
       try {
-        const model = new Tenant(this.context as any);
+        const model = new User(this.context as any);
         await model.set(id, data);
         return { success: true };
       } catch (error) {
@@ -38,7 +37,7 @@ export class SDKClient {
     
     delete: async (id: string): Promise<OperationResult<void>> => {
       try {
-        const model = new Tenant(this.context as any);
+        const model = new User(this.context as any);
         await model.delete(id);
         return { success: true };
       } catch (error) {
@@ -46,9 +45,9 @@ export class SDKClient {
       }
     },
     
-    list: async (limit?: number): Promise<OperationResult<TenantType[]>> => {
+    list: async (limit?: number): Promise<OperationResult<UserType[]>> => {
       try {
-        const model = new Tenant(this.context as any);
+        const model = new User(this.context as any);
         const data = await model.listAll(limit);
         return { success: true, data };
       } catch (error) {
@@ -58,15 +57,15 @@ export class SDKClient {
     
     block: async (id: string): Promise<OperationResult<void>> => {
       try {
-        const model = new Tenant(this.context as any);
-        const tenant = await model.get(id);
+        const model = new User(this.context as any);
+        const user = await model.get(id);
         
-        if (!tenant) {
-          return { success: false, error: `Tenant ${id} not found` };
+        if (!user) {
+          return { success: false, error: `User ${id} not found` };
         }
         
         const firewall = new Firewall(this.context as any);
-        await firewall.block(tenant);
+        await firewall.block(user);
         return { success: true };
       } catch (error) {
         return { success: false, error: String(error) };
@@ -75,15 +74,15 @@ export class SDKClient {
     
     unblock: async (id: string): Promise<OperationResult<void>> => {
       try {
-        const model = new Tenant(this.context as any);
-        const tenant = await model.get(id);
+        const model = new User(this.context as any);
+        const user = await model.get(id);
         
-        if (!tenant) {
-          return { success: false, error: `Tenant ${id} not found` };
+        if (!user) {
+          return { success: false, error: `User ${id} not found` };
         }
         
         const firewall = new Firewall(this.context as any);
-        await firewall.unblock(tenant);
+        await firewall.unblock(user);
         return { success: true };
       } catch (error) {
         return { success: false, error: String(error) };
@@ -92,15 +91,15 @@ export class SDKClient {
     
     reset: async (id: string): Promise<OperationResult<void>> => {
       try {
-        const model = new Tenant(this.context as any);
-        const tenant = await model.get(id);
+        const model = new User(this.context as any);
+        const user = await model.get(id);
         
-        if (!tenant) {
-          return { success: false, error: `Tenant ${id} not found` };
+        if (!user) {
+          return { success: false, error: `User ${id} not found` };
         }
         
         const firewall = new Firewall(this.context as any);
-        await firewall.reset(tenant);
+        await firewall.reset(user);
         return { success: true };
       } catch (error) {
         return { success: false, error: String(error) };
@@ -109,15 +108,15 @@ export class SDKClient {
     
     status: async (id: string): Promise<OperationResult<string>> => {
       try {
-        const model = new Tenant(this.context as any);
-        const tenant = await model.get(id);
+        const model = new User(this.context as any);
+        const user = await model.get(id);
         
-        if (!tenant) {
-          return { success: false, error: `Tenant ${id} not found` };
+        if (!user) {
+          return { success: false, error: `User ${id} not found` };
         }
         
         const firewall = new Firewall(this.context as any);
-        const firewallRecord = await firewall.findByTenant(id);
+        const firewallRecord = await firewall.findByUser(id);
         
         // Default to 'inactive' if no firewall record exists
         const status = firewallRecord?.status || 'inactive';
@@ -128,15 +127,15 @@ export class SDKClient {
     }
   };
   
-  // Site operations
-  site = {
-    get: async (id: string): Promise<OperationResult<SiteType>> => {
+  // Website operations
+  website = {
+    get: async (id: string): Promise<OperationResult<WebsiteType>> => {
       try {
-        const model = new Site(this.context as any);
+        const model = new Website(this.context as any);
         const data = await model.get(id);
         
         if (!data) {
-          return { success: false, error: `Site ${id} not found` };
+          return { success: false, error: `Website ${id} not found` };
         }
         
         return { success: true, data };
@@ -145,9 +144,9 @@ export class SDKClient {
       }
     },
     
-    set: async (id: string, data: SiteType): Promise<OperationResult<void>> => {
+    set: async (id: string, data: WebsiteType): Promise<OperationResult<void>> => {
       try {
-        const model = new Site(this.context as any);
+        const model = new Website(this.context as any);
         await model.set(id, data);
         return { success: true };
       } catch (error) {
@@ -157,7 +156,7 @@ export class SDKClient {
     
     delete: async (id: string): Promise<OperationResult<void>> => {
       try {
-        const model = new Site(this.context as any);
+        const model = new Website(this.context as any);
         await model.delete(id);
         return { success: true };
       } catch (error) {
@@ -165,9 +164,9 @@ export class SDKClient {
       }
     },
     
-    list: async (limit?: number): Promise<OperationResult<SiteType[]>> => {
+    list: async (limit?: number): Promise<OperationResult<WebsiteType[]>> => {
       try {
-        const model = new Site(this.context as any);
+        const model = new Website(this.context as any);
         const data = await model.listAll(limit);
         return { success: true, data };
       } catch (error) {
@@ -175,13 +174,19 @@ export class SDKClient {
       }
     },
     
-    findByUrl: async (url: string): Promise<OperationResult<SiteType>> => {
+    findByUrl: async (url: string): Promise<OperationResult<WebsiteType>> => {
       try {
-        const model = new Site(this.context as any);
-        const data = await model.findByUrl(url);
+        const domainModel = new Domain(this.context as any);
+        const domain = await domainModel.findByUrl(url);
+        if (!domain) {
+          return { success: false, error: `Domain ${url} not found` };
+        }
+
+        const model = new Website(this.context as any);
+        const data = await model.get(domain.websiteId);
         
         if (!data) {
-          return { success: false, error: `Site with URL ${url} not found` };
+          return { success: false, error: `Website with URL ${url} not found` };
         }
         
         return { success: true, data };
@@ -189,16 +194,6 @@ export class SDKClient {
         return { success: false, error: String(error) };
       }
     },
-    
-    findByTenant: async (tenantId: string): Promise<OperationResult<SiteType[]>> => {
-      try {
-        const model = new Site(this.context as any);
-        const data = await model.findByTenant(tenantId);
-        return { success: true, data };
-      } catch (error) {
-        return { success: false, error: String(error) };
-      }
-    }
   };
   
   // Plan operations
