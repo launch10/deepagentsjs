@@ -30,9 +30,8 @@ namespace :seeds do
       }
     ]
 
-    Plan.import(plans, on_duplicate_key_update: { conflict_target: :name, columns: :all })
-    PlanLimit.import(
-      plan_limits.map do |limit_type, limits|
+    Plan.import(plans, on_duplicate_key_update: { conflict_target: :name })
+    limits_to_import = plan_limits.map do |limit_type, limits|
         limits.map do |plan_name, limit|
           { 
             plan_id: Plan.find_by_name(plan_name).id, 
@@ -40,8 +39,7 @@ namespace :seeds do
             limit: limit 
           }
         end
-      end,
-      on_duplicate_key_update: { conflict_target: [:plan_id, :limit_type], columns: :all }
-    )
+      end
+    PlanLimit.import(limits_to_import.flatten, on_duplicate_key_update: { conflict_target: [:plan_id, :limit_type] })
   end
 end

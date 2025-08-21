@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_21_123635) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_21_130228) do
   create_schema "drizzle"
 
   # These are extensions that must be enabled in order to support this database
@@ -491,6 +491,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_123635) do
     t.index ["created_at"], name: "index_plan_limits_on_created_at"
     t.index ["limit"], name: "index_plan_limits_on_limit"
     t.index ["limit_type"], name: "index_plan_limits_on_limit_type"
+    t.index ["plan_id", "limit_type"], name: "index_plan_limits_on_plan_id_and_limit_type", unique: true
     t.index ["plan_id"], name: "index_plan_limits_on_plan_id"
   end
 
@@ -515,6 +516,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_123635) do
     t.string "lemon_squeezy_id"
     t.string "fake_processor_id"
     t.string "contact_url"
+    t.index ["name"], name: "index_plans_on_name", unique: true
   end
 
   create_table "project_plans", force: :cascade do |t|

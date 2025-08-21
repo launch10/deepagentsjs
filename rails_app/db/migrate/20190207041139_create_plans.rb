@@ -1,7 +1,7 @@
 class CreatePlans < ActiveRecord::Migration[5.2]
   def change
     create_table :plans do |t|
-      t.string :name, null: false, unique: true
+      t.string :name, null: false
       t.integer :amount, null: false, default: 0
       t.string :interval, null: false
       if t.respond_to? :jsonb
@@ -11,8 +11,8 @@ class CreatePlans < ActiveRecord::Migration[5.2]
       end
 
       t.timestamps
-      t.index :created_at
-      t.index :name, unique: true
     end
+    
+    add_index :plans, :created_at
   end
 end

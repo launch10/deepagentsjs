@@ -11,10 +11,11 @@
 #
 # Indexes
 #
-#  index_plan_limits_on_created_at  (created_at)
-#  index_plan_limits_on_limit       (limit)
-#  index_plan_limits_on_limit_type  (limit_type)
-#  index_plan_limits_on_plan_id     (plan_id)
+#  index_plan_limits_on_created_at              (created_at)
+#  index_plan_limits_on_limit                   (limit)
+#  index_plan_limits_on_limit_type              (limit_type)
+#  index_plan_limits_on_plan_id                 (plan_id)
+#  index_plan_limits_on_plan_id_and_limit_type  (plan_id,limit_type) UNIQUE
 #
 
 class PlanLimit < ApplicationRecord

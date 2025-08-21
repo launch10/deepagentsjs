@@ -24,6 +24,10 @@
 #  fake_processor_id :string
 #  contact_url       :string
 #
+# Indexes
+#
+#  index_plans_on_name  (name) UNIQUE
+#
 
 class Plan < ApplicationRecord
   has_prefix_id :plan

@@ -7,63 +7,21 @@ default: &default
   password: postgres
 
 development:
-  primary:
-    <<: *default
-    database: nichefinder_development
-
-  cache:
-    <<: *default
-    database: nichefinder_development
-    migrations_paths: db/cache_migrate
-  queue:
-    <<: *default
-    database: nichefinder_development
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *default
-    database: nichefinder_development
-    migrations_paths: db/cable_migrate
+  <<: *default
+  database: nichefinder_development
 
 test:
   <<: *default
   database: nichefinder_test
 
 staging:
-  primary: &primary_staging
-    <<: *default
-    database: nichefinder_staging
-    username: jumpstart
-    password: <%= ENV["POSTGRES_PASSWORD"] %>
-
-  cache:
-    <<: *primary_staging
-    database: nichefinder_staging
-    migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_staging
-    database: nichefinder_staging
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *primary_staging
-    database: nichefinder_staging
-    migrations_paths: db/cable_migrate
+  <<: *default
+  database: nichefinder_staging
+  username: jumpstart
+  password: <%= ENV["POSTGRES_PASSWORD"] %>
 
 production:
-  primary: &primary_production
-    <<: *default
-    database: nichefinder_production
-    username: nichefinder
-    password: <%= ENV["POSTGRES_PASSWORD"] %>
-
-  cache:
-    <<: *primary_production
-    database: nichefinder_production
-    migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_production
-    database: nichefinder_production
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *primary_production
-    database: nichefinder_production_cable
-    migrations_paths: db/cable_migrate
+  <<: *default
+  database: nichefinder_production
+  username: nichefinder
+  password: <%= ENV["POSTGRES_PASSWORD"] %>
