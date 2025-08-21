@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_21_133027) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_21_143055) do
   create_schema "drizzle"
 
   # These are extensions that must be enabled in order to support this database
@@ -727,7 +727,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_133027) do
 
   create_table "website_file_histories", force: :cascade do |t|
     t.integer "website_file_id", null: false
-    t.integer "project_id", null: false
+    t.integer "website_id", null: false
     t.integer "file_specification_id"
     t.string "path", null: false
     t.string "content", null: false
@@ -742,10 +742,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_133027) do
     t.index ["history_ended_at"], name: "index_website_file_histories_on_history_ended_at"
     t.index ["history_started_at"], name: "index_website_file_histories_on_history_started_at"
     t.index ["history_user_id"], name: "index_website_file_histories_on_history_user_id"
-    t.index ["project_id"], name: "index_website_file_histories_on_project_id"
     t.index ["snapshot_id"], name: "index_website_file_histories_on_snapshot_id"
     t.index ["updated_at"], name: "index_website_file_histories_on_updated_at"
     t.index ["website_file_id"], name: "index_website_file_histories_on_website_file_id"
+    t.index ["website_id"], name: "index_website_file_histories_on_website_id"
   end
 
   create_table "website_files", force: :cascade do |t|
@@ -772,6 +772,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_133027) do
     t.datetime "history_ended_at"
     t.integer "history_user_id"
     t.string "snapshot_id"
+    t.string "thread_id"
     t.index ["created_at"], name: "index_website_histories_on_created_at"
     t.index ["history_ended_at"], name: "index_website_histories_on_history_ended_at"
     t.index ["history_started_at"], name: "index_website_histories_on_history_started_at"
@@ -779,6 +780,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_133027) do
     t.index ["name"], name: "index_website_histories_on_name"
     t.index ["project_id"], name: "index_website_histories_on_project_id"
     t.index ["snapshot_id"], name: "index_website_histories_on_snapshot_id"
+    t.index ["thread_id"], name: "index_website_histories_on_thread_id"
     t.index ["user_id"], name: "index_website_histories_on_user_id"
     t.index ["website_id"], name: "index_website_histories_on_website_id"
   end

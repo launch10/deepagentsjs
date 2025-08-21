@@ -13,6 +13,7 @@
 #  history_ended_at   :datetime
 #  history_user_id    :integer
 #  snapshot_id        :string
+#  thread_id          :string
 #
 # Indexes
 #
@@ -23,6 +24,7 @@
 #  index_website_histories_on_name                (name)
 #  index_website_histories_on_project_id          (project_id)
 #  index_website_histories_on_snapshot_id         (snapshot_id)
+#  index_website_histories_on_thread_id           (thread_id) UNIQUE
 #  index_website_histories_on_user_id             (user_id)
 #  index_website_histories_on_website_id          (website_id)
 #

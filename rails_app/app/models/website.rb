@@ -20,6 +20,9 @@
 #
 
 class Website < ApplicationRecord
+  include Historiographer::Safe
+  historiographer_mode :snapshot_only
+
   belongs_to :project
   belongs_to :user
 

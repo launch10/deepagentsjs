@@ -20,10 +20,32 @@
 #
 
 require "rails_helper"
+require 'support/website_file_helpers'
 describe Website do
   let(:website) { FactoryBot.create(:website) }
 
   it "is valid" do
     expect(website).to be_valid
+  end
+
+  it "snapshots website files" do
+    file = website.files.create!(path: "index.html", content: "Hello World")
+    expect(website.files.count).to eq(1)
+    expect(website.files.first.content).to eq("Hello World")
+
+    website.snapshot
+    expect(website.files.count).to eq(1)
+    expect(website.files.first.content).to eq("Hello World")
+
+    original_snapshot = website.files.first
+    file.update!(content: "Goodnight Moon")
+
+    website.snapshot
+    expect(website.files.first.content).to eq("Goodnight Moon")
+    expect(original_snapshot.content).to eq("Hello World")
+
+    current_snapshot = website.files.last
+    expect(current_snapshot.content).to eq("Goodnight Moon")
+    expect(original_snapshot.content).to eq("Hello World")
   end
 end

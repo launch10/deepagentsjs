@@ -19,6 +19,9 @@
 #
 
 class WebsiteFile < ApplicationRecord
+  include Historiographer::Safe
+  historiographer_mode :snapshot_only
+
   belongs_to :website, inverse_of: :files
 
   include FileSerialization
