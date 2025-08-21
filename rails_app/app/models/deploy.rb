@@ -24,4 +24,5 @@
 
 class Deploy < ApplicationRecord
   belongs_to :website
+  belongs_to :website_history
 end
