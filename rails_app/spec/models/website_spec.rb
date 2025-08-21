@@ -18,6 +18,10 @@
 #
 
 require "rails_helper"
-
 describe Website do
+  let(:website) { FactoryBot.create(:website) }
+
+  it "is valid" do
+    expect(website).to be_valid
+  end
 end

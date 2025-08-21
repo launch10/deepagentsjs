@@ -73,5 +73,4 @@ class User < ApplicationRecord
   has_many :plan_limits, through: :plan
 
   has_many :projects, through: :owned_account
-
 end

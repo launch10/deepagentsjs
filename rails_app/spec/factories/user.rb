@@ -9,6 +9,7 @@ FactoryBot.define do
     password_confirmation { 'A1a$aXee' }
     accepted_terms_at { Time.current }
     accepted_privacy_at { Time.current }
+    terms_of_service { true }
     time_zone { 'Central Time (US & Canada)' }
     confirmed_at { Time.current }
 
