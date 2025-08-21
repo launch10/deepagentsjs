@@ -28,7 +28,23 @@ class Website < ApplicationRecord
 
   has_many :files, dependent: :destroy, class_name: "WebsiteFile"
   has_many :domains, dependent: :destroy
+  has_many :deploys, dependent: :destroy
   accepts_nested_attributes_for :files
 
   validates_presence_of :name, :project_id, :user_id, :thread_id
+
+  def files_from_snapshot(snapshot_id = nil)
+    snapshot = snapshot_id ? snapshots.find(snapshot_id) : latest_snapshot
+    snapshot.files
+  end
+
+  def build
+    deploy = deploys.create!
+    deploy.build!
+  end
+
+  def deploy!
+    deploy = deploys.create!
+    deploy.deploy!
+  end
 end

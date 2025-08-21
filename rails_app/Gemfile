@@ -15,6 +15,9 @@ gem "redis"
 gem "tzinfo-data", platforms: %i[windows jruby]
 gem "solid_cache"
 gem "solid_queue"
+
+# AWS SDK for R2/S3 uploads
+gem "aws-sdk-s3", "~> 1.0"
 gem "solid_cable"
 gem "bootsnap", ">= 1.4.2", require: false
 gem "kamal", ">= 2.0.0.rc2", require: false
