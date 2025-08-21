@@ -3,7 +3,7 @@ require 'support/website_file_helpers'
 
 RSpec.describe "Websites", type: :request do
   let(:user) { create(:user) }
-  let(:account) { create(:account, owner: user) }
+  let(:account) { user.owned_account || create(:account, owner: user) }
   let(:project) { create(:project, account: account) }
   let(:jwt_secret) { Rails.application.credentials.devise_jwt_secret_key }
   
@@ -20,7 +20,6 @@ RSpec.describe "Websites", type: :request do
   let(:headers) { { 'Authorization' => "Bearer #{valid_jwt}" } }
   
   before do
-    user.accounts << account
     ActsAsTenant.current_tenant = account
   end
 
@@ -69,11 +68,16 @@ RSpec.describe "Websites", type: :request do
         let!(:plan) { create(:plan, :pro) }
         
         before do
-          # Skip subscription check entirely for subscribed users
-          allow_any_instance_of(WebsitesController).to receive(:require_subscription!).and_return(true)
+          # Create a real subscription using Pay gem (following Jumpstart pattern)
+          account.set_payment_processor :fake_processor, allow_fake: true
+          account.payment_processor.subscribe
         end
 
         it "creates a website with thread_id" do
+          # Verify subscription is set up
+          expect(account.payment_processor).to be_present
+          expect(account.payment_processor.subscribed?).to be true
+          
           expect {
             post "/websites", params: valid_params, headers: headers, as: :json
           }.to change(Website, :count).by(1)
