@@ -94,7 +94,4 @@ app.get('*', async (c) => {
   });
 });
 
-import { FirewallDO } from './models/firewall';
-
 export default app;
-export { FirewallDO };
