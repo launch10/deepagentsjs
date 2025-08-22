@@ -56,7 +56,7 @@ module Atlas
       # Add signature to headers
       headers_with_signature = headers.merge('X-Signature' => signature)
       
-      super(klass: klass, path: path, headers: headers_with_signature, body: body, query: query, form_data: form_data, http_options: http_options)
+      super(klass: klass, path: path, headers: headers_with_signature, body: body, query: query, form_data: form_data, http_options: http_options).to_h
     end
 
     def generate_signature(body, timestamp)

@@ -319,5 +319,9 @@ class ApplicationClient
     def parsed_body
       @parsed_body ||= self.class::PARSER.fetch(content_type, FALLBACK_PARSER).call(self)
     end
+
+    def success?
+      code.to_s.start_with?('2')
+    end
   end
 end
