@@ -94,53 +94,62 @@ RSpec.describe Deploy, type: :model do
   end
 
   describe '#build!' do
-    let(:website_file1) { double(filename: 'index.html', content: '<html>Test</html>') }
-    let(:website_file2) { double(filename: 'package.json', content: '{"name":"test"}') }
+    let(:website_file1) { double(path: 'index.html', content: '<html>Test</html>') }
+    let(:website_file2) { double(path: 'package.json', content: '{"name":"test"}') }
     let(:deploy) do
       allow(website).to receive(:files).and_return([website_file1, website_file2])
       allow(website).to receive(:latest_snapshot).and_return(nil)
       allow(website).to receive(:snapshot).and_return(double(id: 'snapshot_123'))
       create(:deploy, website: website)
     end
-    let(:temp_dir) { "/tmp/deploy_#{deploy.id}" }
+    let(:temp_dir) { Rails.root.join("tmp/deploy_#{deploy.id}").to_s }
 
     before do
       allow(website).to receive(:files_from_snapshot).and_return([website_file1, website_file2])
       allow(FileUtils).to receive(:mkdir_p)
       allow(File).to receive(:write)
-      allow(deploy).to receive(:system).and_return(true)
-      allow(Dir).to receive(:exist?).and_return(true)
       allow(Dir).to receive(:glob).and_return(['dist/index.html', 'dist/main.js'])
       allow(Dir).to receive(:chdir).and_yield
     end
 
     it 'creates a temporary directory' do
+      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
+      allow(deploy).to receive(:system).and_return(true)
       expect(FileUtils).to receive(:mkdir_p).with(temp_dir)
       deploy.build!
     end
 
     it 'writes all website files to disk' do
+      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
+      allow(deploy).to receive(:system).and_return(true)
       expect(File).to receive(:write).with("#{temp_dir}/index.html", '<html>Test</html>')
       expect(File).to receive(:write).with("#{temp_dir}/package.json", '{"name":"test"}')
       deploy.build!
     end
 
     it 'runs pnpm install' do
-      expect(deploy).to receive(:system).with("pnpm install")
+      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
+      expect(deploy).to receive(:system).with("pnpm install").and_return(true)
+      expect(deploy).to receive(:system).with("pnpm build").and_return(true)
       deploy.build!
     end
 
     it 'runs pnpm build' do
-      expect(deploy).to receive(:system).with("pnpm build")
+      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
+      expect(deploy).to receive(:system).with("pnpm install").and_return(true)
+      expect(deploy).to receive(:system).with("pnpm build").and_return(true)
       deploy.build!
     end
 
     it 'returns the dist directory path' do
+      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
+      allow(deploy).to receive(:system).and_return(true)
       result = deploy.build!
       expect(result).to eq("#{temp_dir}/dist")
     end
 
     it 'raises error if dist directory does not exist' do
+      allow(deploy).to receive(:system).and_return(true)
       allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false)
       expect {
         deploy.build!
@@ -148,6 +157,8 @@ RSpec.describe Deploy, type: :model do
     end
 
     it 'updates deploy status to building' do
+      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
+      allow(deploy).to receive(:system).and_return(true)
       expect(deploy).to receive(:update!).with(status: 'building')
       deploy.build!
     end
@@ -174,6 +185,7 @@ RSpec.describe Deploy, type: :model do
       allow(DeployUploader).to receive(:new).and_return(uploader_double)
       allow(uploader_double).to receive(:store!)
       allow(uploader_double).to receive(:hotswap_live)
+      allow(uploader_double).to receive(:cleanup_old_deploys)
       
       allow(FileUtils).to receive(:rm_rf)
     end
@@ -188,6 +200,7 @@ RSpec.describe Deploy, type: :model do
       allow(DeployUploader).to receive(:new).and_return(uploader)
       expect(uploader).to receive(:store!).with(dist_path, match(/#{website.id}\/\d{14}/))
       allow(uploader).to receive(:hotswap_live)
+      allow(uploader).to receive(:cleanup_old_deploys)
       deploy.upload!(dist_path)
     end
 
@@ -195,6 +208,7 @@ RSpec.describe Deploy, type: :model do
       uploader = double('uploader')
       allow(DeployUploader).to receive(:new).and_return(uploader)
       allow(uploader).to receive(:store!)
+      allow(uploader).to receive(:cleanup_old_deploys)
       expect(uploader).to receive(:hotswap_live).with(match(/#{website.id}\/\d{14}/))
       deploy.upload!(dist_path)
     end
@@ -215,6 +229,7 @@ RSpec.describe Deploy, type: :model do
       uploader = double('uploader')
       allow(DeployUploader).to receive(:new).and_return(uploader)
       allow(uploader).to receive(:store!).and_raise(StandardError.new('Upload error'))
+      allow(uploader).to receive(:cleanup_old_deploys)
       
       expect(deploy).to receive(:update!).with(status: 'uploading').ordered
       expect(deploy).to receive(:update!).with(status: 'failed', stacktrace: anything).ordered
@@ -295,9 +310,9 @@ RSpec.describe Deploy, type: :model do
 
   describe '#deploy!' do
     let(:deploy) do
-      allow(website).to receive(:files).and_return([double(filename: 'test.html', content: '<html>')])
+      allow(website).to receive(:files).and_return([double(path: 'test.html', content: '<html>')])
       allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_123'))
-      allow(website).to receive(:files_from_snapshot).and_return([double(filename: 'test.html', content: '<html>')])
+      allow(website).to receive(:files_from_snapshot).and_return([double(path: 'test.html', content: '<html>')])
       create(:deploy, website: website)
     end
     
@@ -315,6 +330,7 @@ RSpec.describe Deploy, type: :model do
       allow(DeployUploader).to receive(:new).and_return(uploader)
       allow(uploader).to receive(:store!)
       allow(uploader).to receive(:hotswap_live)
+      allow(uploader).to receive(:cleanup_old_deploys)
       expect(deploy.deploy!).to eq(true)
     end
 
@@ -323,6 +339,7 @@ RSpec.describe Deploy, type: :model do
       allow(DeployUploader).to receive(:new).and_return(uploader)
       allow(uploader).to receive(:store!)
       allow(uploader).to receive(:hotswap_live)
+      allow(uploader).to receive(:cleanup_old_deploys)
       expect(deploy.deploy!).to eq(true)
     end
 
@@ -333,7 +350,7 @@ RSpec.describe Deploy, type: :model do
   end
 
   describe 'versioning and rollback' do
-    let(:website_file) { double(filename: 'index.html', content: '<html>v1</html>') }
+    let(:website_file) { double(path: 'index.html', content: '<html>v1</html>') }
     let(:deploy1) do
       allow(website).to receive(:files).and_return([website_file])
       allow(website).to receive(:latest_snapshot).and_return(nil)
@@ -358,6 +375,7 @@ RSpec.describe Deploy, type: :model do
       allow(uploader_double).to receive(:store!)
       allow(uploader_double).to receive(:hotswap_live)
       allow(uploader_double).to receive(:preserve_current_live)
+      allow(uploader_double).to receive(:cleanup_old_deploys)
     end
 
     describe '#upload!' do
@@ -381,6 +399,7 @@ RSpec.describe Deploy, type: :model do
         expect(uploader).to receive(:preserve_current_live).with(website.id, deploy1.created_at.strftime('%Y%m%d%H%M%S'))
         allow(uploader).to receive(:store!)
         allow(uploader).to receive(:hotswap_live)
+        allow(uploader).to receive(:cleanup_old_deploys)
         
         deploy2.upload!('/tmp/deploy_2/dist')
       end
@@ -410,6 +429,7 @@ RSpec.describe Deploy, type: :model do
       it 'calls hotswap_live with the correct version path' do
         uploader = double('uploader')
         allow(DeployUploader).to receive(:new).and_return(uploader)
+        allow(uploader).to receive(:preserve_current_live)
         expect(uploader).to receive(:hotswap_live).with(deploy2.version_path)
         
         deploy2.rollback!
@@ -427,12 +447,13 @@ RSpec.describe Deploy, type: :model do
 
       it 'fails if deploy is already live' do
         deploy3.update!(status: 'completed', is_live: true, revertible: true, version_path: "#{website.id}/20240101120000")
-        expect { deploy3.rollback! }.to raise_error(/Deploy is already live/)
+        expect { deploy3.rollback! }.to raise_error(/Cannot roll back any further!/)
       end
 
       it 'returns false on error' do
         uploader = double('uploader')
         allow(DeployUploader).to receive(:new).and_return(uploader)
+        allow(uploader).to receive(:preserve_current_live)
         allow(uploader).to receive(:hotswap_live).and_raise(StandardError.new('Test error'))
         expect(deploy2.reload.rollback!).to be false
       end
@@ -482,12 +503,12 @@ RSpec.describe Deploy, type: :model do
         deploy3.update!(status: 'completed')
       end
 
-      it 'marks only the last 3 completed deploys as revertible' do
+      it 'marks only the last 5 completed deploys as revertible' do
         deploy5.send(:update_revertible_deploys)
         
         deploys = website.deploys.completed.order(created_at: :desc)
-        expect(deploys[0..2].all?(&:revertible?)).to be true
-        expect(deploys[3..4].any?(&:revertible?)).to be false
+        # With KEEP_DEPLOY_LIMIT = 5, all 5 deploys should be revertible
+        expect(deploys.all?(&:revertible?)).to be true
       end
 
       it 'is called after creating a new deploy' do

@@ -14,7 +14,7 @@ RSpec.describe "Websites", type: :request do
           name: "My Landing Page",
           thread_id: SecureRandom.uuid,
           project_id: project.id,
-          files_attributes: minimal_website_files
+          website_files_attributes: minimal_website_files
         }
       }
     end
@@ -104,15 +104,15 @@ RSpec.describe "Websites", type: :request do
         end
 
         context "with invalid params" do
-          it "returns errors when thread_id is missing" do
+          it "creates website even when thread_id is missing" do
             invalid_params = valid_params.deep_dup
             invalid_params[:website].delete(:thread_id)
             
             post "/websites", params: invalid_params, headers: headers, as: :json
             
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:created)
             json = JSON.parse(response.body)
-            expect(json["errors"]).to include("Thread can't be blank")
+            expect(json["id"]).to be_present
           end
 
           it "returns errors when name is missing" do
@@ -134,7 +134,7 @@ RSpec.describe "Websites", type: :request do
                 name: "Complete Landing Page",
                 thread_id: "thread_#{SecureRandom.hex(8)}",
                 project_id: project.id,
-                files_attributes: website_files_attributes
+                website_files_attributes: website_files_attributes
               }
             }
           end
