@@ -3,12 +3,12 @@ class Cloudflare
     attr_reader :client, :bucket_name
 
     def initialize
-      @bucket_name = Cloudflare.r2_bucket_name
+      @bucket_name = Cloudflare.config.r2_bucket_name
       @client = Aws::S3::Client.new(
-        endpoint: Cloudflare.r2_endpoint,
-        access_key_id: Cloudflare.r2_access_key_id,
-        secret_access_key: Cloudflare.r2_secret_access_key,
-        region: Cloudflare.r2_region,
+        endpoint: Cloudflare.config.r2_endpoint,
+        access_key_id: Cloudflare.config.r2_access_key_id,
+        secret_access_key: Cloudflare.config.r2_secret_access_key,
+        region: Cloudflare.config.r2_region,
         force_path_style: false
       )
     end

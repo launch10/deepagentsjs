@@ -1,107 +1,93 @@
 # frozen_string_literal: true
-
 module Atlas
-  class BaseService
+  class BaseService < ApplicationClient
     include ActiveSupport::Configurable
-
-    config_accessor :base_url, default: ENV.fetch('ATLAS_BASE_URL', 'http://localhost:8787')
-    config_accessor :api_secret, default: ENV.fetch('ATLAS_API_SECRET', Rails.application.credentials.dig(:atlas, :api_secret))
+    
+    config_accessor :base_url, default: 'http://localhost:8787'
+    config_accessor :api_secret
     config_accessor :timeout, default: 30
-
-    class Error < StandardError; end
+    
+    # Custom error classes for Atlas
+    class ValidationError < Error; end
     class AuthenticationError < Error; end
     class NotFoundError < Error; end
-    class ValidationError < Error; end
     class ServerError < Error; end
 
-    private
-
-    def make_request(method, path, params = {})
-      url = "#{config.base_url}#{path}"
-      body = method == :get ? nil : params.to_json
-      headers = build_headers(body)
-      
-      options = {
-        method: method,
-        headers: headers,
-        timeout: config.timeout,
-        connecttimeout: config.timeout / 2
-      }
-      
-      if method == :get && params.any?
-        url += "?#{URI.encode_www_form(params)}"
-      elsif body
-        options[:body] = body
-      end
-      
-      request = Typhoeus::Request.new(url, options)
-      response = request.run
-      
-      handle_typhoeus_response(response)
+    def initialize(auth: nil, basic_auth: nil, token: nil)
+      super
+    end
+    
+    # Override base_uri to use configured value
+    def base_uri
+      self.class.config.base_url
     end
 
-    def build_headers(body)
+    def default_headers
       timestamp = Time.now.to_i.to_s
-      signature = generate_signature(body || '', timestamp)
-
+      
       {
         'X-Timestamp' => timestamp,
-        'X-Signature' => signature,
         'Content-Type' => 'application/json',
         'Accept' => 'application/json'
       }
     end
 
+    def open_timeout
+      self.class.config.timeout
+    end
+
+    def read_timeout
+      self.class.config.timeout
+    end
+
+    private
+
+    def make_request(klass:, path:, headers: {}, body: nil, query: nil, form_data: nil, http_options: {})
+      # Calculate signature based on the request body
+      body_for_signature = if body.present? && klass != Net::HTTP::Get
+        build_body(body)
+      else
+        ''
+      end
+      
+      timestamp = headers['X-Timestamp'] || default_headers['X-Timestamp']
+      signature = generate_signature(body_for_signature, timestamp)
+      
+      # Add signature to headers
+      headers_with_signature = headers.merge('X-Signature' => signature)
+      
+      super(klass: klass, path: path, headers: headers_with_signature, body: body, query: query, form_data: form_data, http_options: http_options)
+    end
+
     def generate_signature(body, timestamp)
       payload = "#{timestamp}.#{body}"
-      OpenSSL::HMAC.hexdigest('SHA256', config.api_secret, payload)
-    end
-
-    def handle_typhoeus_response(response)
-      if response.timed_out?
-        raise Error, "Request timed out"
-      elsif response.code == 0
-        raise Error, "Connection failed: #{response.return_message}"
-      end
-      
-      parsed_body = parse_response_body(response.body)
-      
-      timeout = response.timed_out?
-      success = response.code.to_s.start_with?('2')
-      error = success ? nil : timeout ? "Request timed out" : error_message_from_body(parsed_body) 
-
-      { success: success, error: error, body: parsed_body }
+      OpenSSL::HMAC.hexdigest('SHA256', self.class.config.api_secret || '', payload)
     end
     
-    def parse_response_body(body)
-      return {} if body.nil? || body.empty?
-      JSON.parse(body)
-    rescue JSON::ParserError
-      body
-    end
-
-    def error_message_from_body(body)
-      if body.is_a?(Hash)
-        body['error'] || body['message'] || body.to_s
+    def handle_response(response)
+      case response.code
+      when "200", "201", "202", "203", "204"
+        response
+      when "400"
+        error_message = extract_error_message(response)
+        raise ValidationError, error_message
+      when "401"
+        error_message = extract_error_message(response)
+        raise AuthenticationError, error_message
+      when "404"
+        error_message = extract_error_message(response)
+        raise NotFoundError, error_message
+      when "500", "502", "503", "504"
+        error_message = extract_error_message(response)
+        raise ServerError, error_message
       else
-        body.to_s
+        super # Fall back to parent's handling
       end
     end
-
-    def log_request(method, path, params, response_time)
-      Rails.logger.info "[Atlas] #{method.upcase} #{path} - #{response_time}ms"
-      Rails.logger.debug "[Atlas] Params: #{params.inspect}" if params.present?
-    end
-
-    def with_logging(method, path, params = {})
-      start_time = Time.current
-      result = yield
-      response_time = ((Time.current - start_time) * 1000).round(2)
-      log_request(method, path, params, response_time)
-      result
-    rescue => e
-      Rails.logger.error "[Atlas] Error: #{e.class} - #{e.message}"
-      raise
+    
+    def extract_error_message(response)
+      parsed = JSON.parse(response.body) rescue {}
+      parsed['error'] || parsed['message'] || response.body
     end
   end
 end

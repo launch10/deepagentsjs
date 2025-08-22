@@ -9,17 +9,12 @@ module Atlas
       params[:limit] = limit if limit
       params[:websiteId] = website_id if website_id
 
-      with_logging(:get, BASE_PATH, params) do
-        make_request(:get, BASE_PATH, params)
-      end
+      get(BASE_PATH, query: params)
     end
 
     def find(id)
       path = "#{BASE_PATH}/#{id}"
-      
-      with_logging(:get, path) do
-        make_request(:get, path)
-      end
+      get(path)
     end
 
     def create(id:, domain:, website_id:, **attributes)
@@ -29,26 +24,18 @@ module Atlas
         websiteId: website_id
       }.merge(format_params(attributes))
 
-      with_logging(:post, BASE_PATH, params) do
-        make_request(:post, BASE_PATH, params)
-      end
+      post(BASE_PATH, body: params)
     end
 
     def update(id, **attributes)
       path = "#{BASE_PATH}/#{id}"
       formatted_params = format_params(attributes)
-      
-      with_logging(:put, path, formatted_params) do
-        make_request(:put, path, formatted_params)
-      end
+      put(path, body: formatted_params)
     end
 
     def destroy(id)
       path = "#{BASE_PATH}/#{id}"
-      
-      with_logging(:delete, path) do
-        make_request(:delete, path)
-      end
+      delete(path)
     end
 
     private

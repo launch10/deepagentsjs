@@ -8,17 +8,12 @@ module Atlas
       params = {}
       params[:limit] = limit if limit
 
-      with_logging(:get, BASE_PATH, params) do
-        make_request(:get, BASE_PATH, params)
-      end
+      get(BASE_PATH, query: params)
     end
 
     def find(id)
       path = "#{BASE_PATH}/#{id}"
-      
-      with_logging(:get, path) do
-        make_request(:get, path)
-      end
+      get(path)
     end
 
     def create(id:, plan_id: nil, **attributes)
@@ -27,58 +22,38 @@ module Atlas
         planId: plan_id
       }.compact.merge(attributes)
 
-      with_logging(:post, BASE_PATH, params) do
-        make_request(:post, BASE_PATH, params)
-      end
+      post(BASE_PATH, body: params)
     end
 
     def update(id, **attributes)
       path = "#{BASE_PATH}/#{id}"
-      
-      with_logging(:put, path, attributes) do
-        make_request(:put, path, attributes)
-      end
+      put(path, body: attributes)
     end
 
     def destroy(id)
       path = "#{BASE_PATH}/#{id}"
-      
-      with_logging(:delete, path) do
-        make_request(:delete, path)
-      end
+      delete(path)
     end
 
     # Firewall management methods
     def block(id)
       path = "#{BASE_PATH}/#{id}/block"
-      
-      with_logging(:post, path) do
-        make_request(:post, path)
-      end
+      post(path)
     end
 
     def unblock(id)
       path = "#{BASE_PATH}/#{id}/unblock"
-      
-      with_logging(:post, path) do
-        make_request(:post, path)
-      end
+      post(path)
     end
 
     def reset(id)
       path = "#{BASE_PATH}/#{id}/reset"
-      
-      with_logging(:post, path) do
-        make_request(:post, path)
-      end
+      post(path)
     end
 
     def status(id)
       path = "#{BASE_PATH}/#{id}/status"
-      
-      with_logging(:get, path) do
-        make_request(:get, path)
-      end
+      get(path)
     end
   end
 end

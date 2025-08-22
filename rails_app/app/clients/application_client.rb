@@ -1,4 +1,5 @@
 class ApplicationClient
+  include ActiveSupport::Configurable
   # A basic API client with HTTP methods
   #
   # The Authorization Bearer token header for authentication is included by default

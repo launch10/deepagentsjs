@@ -1,6 +1,6 @@
 require 'rails_helper'
 
-RSpec.describe 'Atlas Integration', type: :model do
+RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas_mocks: true do
   include SubscriptionHelpers
   include PlanHelpers
 
