@@ -98,4 +98,12 @@ app.get('*', async (c) => {
   });
 });
 
+// Stub class for migration - will be deleted
+export class FirewallDO {
+  constructor(state: any, env: Env) {}
+  async fetch(request: Request): Promise<Response> {
+    return new Response('Stub DO - to be deleted', { status: 501 });
+  }
+}
+
 export default app;

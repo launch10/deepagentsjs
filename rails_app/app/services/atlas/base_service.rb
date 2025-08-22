@@ -66,20 +66,11 @@ module Atlas
       
       parsed_body = parse_response_body(response.body)
       
-      case response.code
-      when 200, 201
-        parsed_body
-      when 400
-        raise ValidationError, error_message_from_body(parsed_body)
-      when 401, 403
-        raise AuthenticationError, error_message_from_body(parsed_body)
-      when 404
-        raise NotFoundError, error_message_from_body(parsed_body)
-      when 500..599
-        raise ServerError, error_message_from_body(parsed_body)
-      else
-        raise Error, "Unexpected response: #{response.code} - #{response.body}"
-      end
+      timeout = response.timed_out?
+      success = response.code.to_s.start_with?('2')
+      error = success ? nil : timeout ? "Request timed out" : error_message_from_body(parsed_body) 
+
+      { success: success, error: error, body: parsed_body }
     end
     
     def parse_response_body(body)

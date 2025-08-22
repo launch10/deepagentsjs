@@ -12,3 +12,10 @@ bucket_name = "deploys"
 [[kv_namespaces]]
 binding = "DEPLOYS_KV"
 id = "4ad010a8f77d43478998f7e0117e3588"
+
+[durable_objects]
+bindings = []
+
+[[durable_objects.migrations]]
+tag = "v1"
+deleted_classes = ["FirewallDO"]
