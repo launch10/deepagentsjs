@@ -37,7 +37,7 @@ class Deploy < ApplicationRecord
   include Buildable
   include Deployable
 
-  STATUS = %w[pending building uploading completed failed]
+  STATUS = %w[pending building uploading completed failed skipped]
   ENVIRONMENTS = %w[development staging production]
 
   belongs_to :website

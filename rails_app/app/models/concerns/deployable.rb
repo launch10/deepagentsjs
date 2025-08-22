@@ -21,6 +21,12 @@ module Deployable
   end
 
   def actually_deploy
+    later_deploy_exists = Deploy.live.where(website_id: website_id).where("id > ?", id).exists?
+    if later_deploy_exists
+      update!(status: 'skipped')
+      return
+    end
+    
     dist_path = build!
     upload!(dist_path)
     true

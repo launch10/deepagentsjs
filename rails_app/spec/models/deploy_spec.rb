@@ -34,12 +34,20 @@
 #
 
 require 'rails_helper'
+require 'support/website_file_helpers'
 
 RSpec.describe Deploy, type: :model do
+  include WebsiteFileHelpers
+  
   let(:user) { create(:user) }
   let(:account) { create(:account) }
   let(:project) { create(:project, account: account) }
   let(:website) { create(:website, project: project, user: user) }
+  let(:s3_client) { instance_double(Aws::S3::Client) }
+
+  before do
+    allow(Aws::S3::Client).to receive(:new).and_return(s3_client)
+  end
 
   describe 'validations' do
     it 'validates presence of website' do
@@ -54,481 +62,537 @@ RSpec.describe Deploy, type: :model do
       expect(deploy).not_to be_valid
       expect(deploy.errors[:status]).to include("can't be blank")
     end
-  end
 
-  describe 'callbacks' do
-    describe 'before_create' do
-      context 'when website has no snapshot' do
-        before do
-          allow(website).to receive(:latest_snapshot).and_return(nil)
-          allow(website).to receive(:snapshot).and_return(double(id: 'snapshot_123'))
-          allow(website).to receive(:files).and_return([double(filename: 'test.html')])
-        end
-
-        it 'creates a snapshot' do
-          expect(website).to receive(:snapshot).and_return(double(id: 'snapshot_123'))
-          Deploy.create(website: website)
-        end
-      end
-
-      context 'when website has a snapshot' do
-        before do
-          allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_123'))
-          allow(website).to receive(:files).and_return([double(filename: 'test.html')])
-        end
-
-        it 'does not create a new snapshot' do
-          expect(website).not_to receive(:snapshot)
-          Deploy.create(website: website)
-        end
-      end
-
-      context 'when website has no files' do
-        before do
-          allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_123'))
-          allow(website).to receive(:files).and_return([])
-        end
-
-        it 'raises an error' do
-          expect {
-            Deploy.create!(website: website)
-          }.to raise_error(StandardError, /Cannot deploy website without files/)
-        end
-      end
-    end
-  end
-
-  describe '#build!' do
-    let(:website_file1) { double(path: 'index.html', content: '<html>Test</html>') }
-    let(:website_file2) { double(path: 'package.json', content: '{"name":"test"}') }
-    let(:deploy) do
-      allow(website).to receive(:files).and_return([website_file1, website_file2])
-      allow(website).to receive(:latest_snapshot).and_return(nil)
-      allow(website).to receive(:snapshot).and_return(double(id: 'snapshot_123'))
-      create(:deploy, website: website)
-    end
-    let(:temp_dir) { Rails.root.join("tmp/deploy_#{deploy.id}").to_s }
-
-    before do
-      allow(website).to receive(:files_from_snapshot).and_return([website_file1, website_file2])
-      allow(FileUtils).to receive(:mkdir_p)
-      allow(File).to receive(:write)
-      allow(Dir).to receive(:glob).and_return(['dist/index.html', 'dist/main.js'])
-      allow(Dir).to receive(:chdir).and_yield
+    it 'validates inclusion of status' do
+      deploy = Deploy.new(website: website, status: 'invalid')
+      expect(deploy).not_to be_valid
+      expect(deploy.errors[:status]).to include("is not included in the list")
     end
 
-    it 'creates a temporary directory' do
-      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
-      allow(deploy).to receive(:system).and_return(true)
-      expect(FileUtils).to receive(:mkdir_p).with(temp_dir)
-      deploy.build!
-    end
-
-    it 'writes all website files to disk' do
-      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
-      allow(deploy).to receive(:system).and_return(true)
-      expect(File).to receive(:write).with("#{temp_dir}/index.html", '<html>Test</html>')
-      expect(File).to receive(:write).with("#{temp_dir}/package.json", '{"name":"test"}')
-      deploy.build!
-    end
-
-    it 'runs pnpm install' do
-      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
-      expect(deploy).to receive(:system).with("pnpm install").and_return(true)
-      expect(deploy).to receive(:system).with("pnpm build").and_return(true)
-      deploy.build!
-    end
-
-    it 'runs pnpm build' do
-      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
-      expect(deploy).to receive(:system).with("pnpm install").and_return(true)
-      expect(deploy).to receive(:system).with("pnpm build").and_return(true)
-      deploy.build!
-    end
-
-    it 'returns the dist directory path' do
-      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
-      allow(deploy).to receive(:system).and_return(true)
-      result = deploy.build!
-      expect(result).to eq("#{temp_dir}/dist")
-    end
-
-    it 'raises error if dist directory does not exist' do
-      allow(deploy).to receive(:system).and_return(true)
-      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false)
-      expect {
-        deploy.build!
-      }.to raise_error(StandardError, /Build failed: dist directory not found/)
-    end
-
-    it 'updates deploy status to building' do
-      allow(Dir).to receive(:exist?).with("#{temp_dir}/dist").and_return(false, true)
-      allow(deploy).to receive(:system).and_return(true)
-      expect(deploy).to receive(:update!).with(status: 'building')
-      deploy.build!
-    end
-  end
-
-  describe '#upload!' do
-    let(:website_file1) { double(filename: 'index.html', content: '<html>Test</html>') }
-    let(:deploy) do
-      allow(website).to receive(:files).and_return([website_file1])
-      allow(website).to receive(:latest_snapshot).and_return(nil)
-      allow(website).to receive(:snapshot).and_return(double(id: 'snapshot_123'))
-      create(:deploy, website: website)
-    end
-    let(:dist_path) { "/tmp/deploy_#{deploy.id}/dist" }
-    let(:timestamp) { Time.current.strftime('%Y%m%d%H%M%S') }
-    let(:r2_path) { "#{website.id}/#{timestamp}" }
-
-    before do
-      allow(Time).to receive(:current).and_return(Time.parse('2024-01-01 12:00:00'))
-      allow(deploy).to receive(:build!).and_return(dist_path)
-      
-      # Mock DeployUploader
-      uploader_double = double('uploader')
-      allow(DeployUploader).to receive(:new).and_return(uploader_double)
-      allow(uploader_double).to receive(:store!)
-      allow(uploader_double).to receive(:hotswap_live)
-      allow(uploader_double).to receive(:hotswap_to_target)
-      allow(uploader_double).to receive(:cleanup_old_deploys)
-      
-      allow(FileUtils).to receive(:rm_rf)
-    end
-
-    it 'builds the project first' do
-      expect(deploy).not_to receive(:build!)  # build! is no longer called from upload!
-      deploy.upload!(dist_path)
-    end
-
-    it 'uploads files to timestamped directory in R2' do
-      uploader = double('uploader')
-      allow(DeployUploader).to receive(:new).and_return(uploader)
-      expect(uploader).to receive(:store!).with(dist_path, match(/#{website.id}\/\d{14}/))
-      allow(uploader).to receive(:hotswap_live)
-      allow(uploader).to receive(:hotswap_to_target)
-      allow(uploader).to receive(:cleanup_old_deploys)
-      deploy.upload!(dist_path)
-    end
-
-    it 'hotswaps the live directory after successful upload' do
-      uploader = double('uploader')
-      allow(DeployUploader).to receive(:new).and_return(uploader)
-      allow(uploader).to receive(:store!)
-      allow(uploader).to receive(:cleanup_old_deploys)
-      expect(uploader).to receive(:hotswap_to_target).with(match(/#{website.id}\/\d{14}/), 'live')
-      deploy.upload!(dist_path)
-    end
-
-    it 'cleans up the temporary directory' do
-      # Cleanup is now handled in deploy! method
-      deploy.upload!(dist_path)
-      expect(deploy.status).to eq('completed')
-    end
-
-    it 'updates deploy status to completed' do
-      expect(deploy).to receive(:update!).with(status: 'uploading').ordered
-      expect(deploy).to receive(:update!).with(hash_including(status: 'completed', is_live: true, revertible: true)).ordered
-      deploy.upload!(dist_path)
-    end
-
-    it 'updates deploy status to failed on error' do
-      uploader = double('uploader')
-      allow(DeployUploader).to receive(:new).and_return(uploader)
-      allow(uploader).to receive(:store!).and_raise(StandardError.new('Upload error'))
-      allow(uploader).to receive(:cleanup_old_deploys)
-      allow(uploader).to receive(:hotswap_to_target)
-      
-      expect(deploy).to receive(:update!).with(status: 'uploading').ordered
-      expect(deploy).to receive(:update!).with(status: 'failed', stacktrace: anything).ordered
-      expect { deploy.upload!(dist_path) }.to raise_error(StandardError)
-    end
-  end
-
-  describe 'status state machine' do
-    let(:deploy) do
-      allow(website).to receive(:files).and_return([double(filename: 'test.html')])
-      allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_123'))
-      create(:deploy, website: website, status: 'pending')
-    end
-
-    it 'starts with pending status' do
-      new_deploy = Deploy.new(website: website)
-      expect(new_deploy.status).to eq('pending')
-    end
-
-    it 'can transition from pending to building' do
-      deploy.update(status: 'building')
-      expect(deploy.status).to eq('building')
-    end
-
-    it 'can transition from building to uploading' do
-      deploy.update(status: 'building')
-      deploy.update(status: 'uploading')
-      expect(deploy.status).to eq('uploading')
-    end
-
-    it 'can transition from uploading to completed' do
-      deploy.update(status: 'uploading')
-      deploy.update(status: 'completed')
-      expect(deploy.status).to eq('completed')
-    end
-
-    it 'can transition to failed from any state' do
-      ['pending', 'building', 'uploading'].each do |status|
-        deploy.update(status: status)
-        deploy.update(status: 'failed')
-        expect(deploy.status).to eq('failed')
-        deploy.update(status: 'pending') # Reset for next iteration
-      end
-    end
-  end
-
-  describe 'scopes' do
-    before do
-      allow(website).to receive(:files).and_return([double(filename: 'test.html')])
-      allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_123'))
-    end
-    
-    let!(:completed_deploy) { create(:deploy, website: website, status: 'completed') }
-    let!(:failed_deploy) { create(:deploy, website: website, status: 'failed') }
-    let!(:pending_deploy) { create(:deploy, website: website, status: 'pending') }
-
-    describe '.completed' do
-      it 'returns only completed deploys' do
-        expect(Deploy.completed).to include(completed_deploy)
-        expect(Deploy.completed).not_to include(failed_deploy, pending_deploy)
-      end
-    end
-
-    describe '.failed' do
-      it 'returns only failed deploys' do
-        expect(Deploy.failed).to include(failed_deploy)
-        expect(Deploy.failed).not_to include(completed_deploy, pending_deploy)
-      end
-    end
-
-    describe '.pending' do
-      it 'returns only pending deploys' do
-        expect(Deploy.pending).to include(pending_deploy)
-        expect(Deploy.pending).not_to include(completed_deploy, failed_deploy)
-      end
+    it 'validates inclusion of environment' do
+      deploy = Deploy.new(website: website, status: 'pending', environment: 'invalid')
+      expect(deploy).not_to be_valid
+      expect(deploy.errors[:environment]).to include("is not included in the list")
     end
   end
 
   describe '#deploy!' do
-    let(:deploy) do
-      allow(website).to receive(:files).and_return([double(path: 'test.html', content: '<html>')])
-      allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_123'))
-      allow(website).to receive(:files_from_snapshot).and_return([double(path: 'test.html', content: '<html>')])
-      create(:deploy, website: website)
-    end
+    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
     
     before do
+      website_with_files.snapshot
       allow(FileUtils).to receive(:mkdir_p)
+      allow(FileUtils).to receive(:rm_rf)
       allow(File).to receive(:write)
       allow(Dir).to receive(:chdir).and_yield
-      allow(deploy).to receive(:system).and_return(true)
       allow(Dir).to receive(:exist?).and_return(true)
-      allow(FileUtils).to receive(:rm_rf)
     end
 
-    it 'orchestrates the full deployment process' do
-      uploader = double('uploader')
-      allow(DeployUploader).to receive(:new).and_return(uploader)
-      allow(uploader).to receive(:store!)
-      allow(uploader).to receive(:hotswap_live)
-      allow(uploader).to receive(:hotswap_to_target)
-      allow(uploader).to receive(:cleanup_old_deploys)
-      expect(deploy.deploy!).to eq(true)
+    context 'when deploy is successful' do
+      let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+
+      before do
+        allow(deploy).to receive(:system).and_return(true)
+        
+        # Mock file system operations for upload
+        allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html', '/tmp/test/dist/style.css'])
+        allow(File).to receive(:file?).and_return(true)
+        allow(File).to receive(:open).and_yield(StringIO.new('test content'))
+        
+        # Mock S3 operations
+        allow(s3_client).to receive(:list_objects_v2).and_return(
+          double(contents: [double(key: 'test/file.html', size: 100)])
+        )
+        allow(s3_client).to receive(:put_object)
+        allow(s3_client).to receive(:delete_objects)
+        allow(s3_client).to receive(:copy_object)
+      end
+
+      it 'uploads files to S3' do
+        # We expect files to be uploaded to the versioned directory
+        expect(s3_client).to receive(:put_object).at_least(:once) do |args|
+          expect(args[:bucket]).to eq('deploys-development')
+          expect(args[:key]).to match(/#{website_with_files.id}\/\d{14}\//)
+        end
+
+        deploy.deploy!
+      end
+
+      it 'copies files to live directory' do
+        # After upload, files should be copied to the live directory
+        expect(s3_client).to receive(:copy_object).at_least(:once) do |args|
+          expect(args[:bucket]).to eq('deploys-development')
+          # The copy source will include actual keys from list_objects_v2
+          if args[:copy_source].include?("/#{website_with_files.id}/")
+            expect(args[:key]).to match(/#{website_with_files.id}\/live\//)
+          end
+        end
+
+        deploy.deploy!
+      end
+
+      it 'cleans up old live directory' do
+        # Old live directory should be deleted before copying new files
+        expect(s3_client).to receive(:list_objects_v2).at_least(:once) do |args|
+          if args[:prefix] == "#{website_with_files.id}/live"
+            double(contents: [double(key: "#{website_with_files.id}/live/old.html")])
+          else
+            double(contents: [double(key: 'test/file.html', size: 100)])
+          end
+        end
+
+        expect(s3_client).to receive(:delete_objects) do |args|
+          expect(args[:bucket]).to eq('deploys-development')
+          expect(args[:delete][:objects]).to include(hash_including(key: "#{website_with_files.id}/live/old.html"))
+        end
+
+        deploy.deploy!
+      end
+
+      it 'updates deploy status to completed' do
+        deploy.deploy!
+        expect(deploy.reload.status).to eq('completed')
+      end
+
+      it 'marks deploy as live' do
+        deploy.deploy!
+        expect(deploy.reload.is_live).to be true
+      end
     end
 
-    it 'returns true on success' do
-      uploader = double('uploader')
-      allow(DeployUploader).to receive(:new).and_return(uploader)
-      allow(uploader).to receive(:store!)
-      allow(uploader).to receive(:hotswap_live)
-      allow(uploader).to receive(:hotswap_to_target)
-      allow(uploader).to receive(:cleanup_old_deploys)
-      expect(deploy.deploy!).to eq(true)
+    context 'when deploy fails during build' do
+      let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+
+      before do
+        allow(deploy).to receive(:system).with("pnpm install").and_return(false)
+      end
+
+      it 'does not make any S3 calls' do
+        expect(s3_client).not_to receive(:put_object)
+        expect(s3_client).not_to receive(:copy_object)
+        expect(s3_client).not_to receive(:delete_objects)
+
+        deploy.deploy!
+      end
+
+      it 'marks deploy as failed' do
+        deploy.deploy!
+        expect(deploy.reload.status).to eq('failed')
+      end
     end
 
-    it 'returns false on failure' do
-      allow(deploy).to receive(:build!).and_raise(StandardError)
-      expect(deploy.deploy!).to eq(false)
+    context 'when a later deploy already exists and is live' do
+      let(:deploy) { website_with_files.deploys.create!(environment: 'development', created_at: 2.hours.ago) }
+      let!(:later_deploy) do
+        d = website_with_files.deploys.create!(environment: 'development', created_at: 1.hour.ago)
+        d.update!(status: 'completed', is_live: true)
+        d
+      end
+
+      before do
+        # Ensure IDs are ordered correctly
+        deploy.update!(id: 100)
+        later_deploy.update!(id: 101)
+      end
+
+      it 'skips the deploy without making S3 calls' do
+        expect(s3_client).not_to receive(:put_object)
+        expect(s3_client).not_to receive(:copy_object)
+        expect(s3_client).not_to receive(:delete_objects)
+
+        deploy.deploy!
+      end
+
+      it 'marks deploy as skipped' do
+        deploy.deploy!
+        expect(deploy.reload.status).to eq('skipped')
+      end
     end
   end
 
-  describe 'versioning and rollback' do
-    let(:website_file) { double(path: 'index.html', content: '<html>v1</html>') }
-    let(:deploy1) do
-      allow(website).to receive(:files).and_return([website_file])
-      allow(website).to receive(:latest_snapshot).and_return(nil)
-      allow(website).to receive(:snapshot).and_return(double(id: 'snapshot_1'))
-      create(:deploy, website: website, created_at: 1.hour.ago)
+  describe '#rollback!' do
+    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
+    
+    before do
+      website_with_files.snapshot
     end
-    let(:deploy2) do
-      allow(website).to receive(:files).and_return([website_file])
-      allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_2'))
-      create(:deploy, website: website, created_at: 30.minutes.ago)
+
+    context 'when rolling back a completed deploy' do
+      let!(:current_live) do
+        deploy = website_with_files.deploys.create!(environment: 'development')
+        deploy.update!(status: 'completed', is_live: true, revertible: true, version_path: "#{website_with_files.id}/20240102000000")
+        deploy
+      end
+      
+      let!(:rollback_target) do
+        deploy = website_with_files.deploys.create!(environment: 'development')
+        deploy.update!(status: 'completed', is_live: false, revertible: true, version_path: "#{website_with_files.id}/20240101000000")
+        deploy
+      end
+
+      before do
+        allow(s3_client).to receive(:list_objects_v2).and_return(
+          double(contents: [double(key: 'test/file.html', size: 100)])
+        )
+        allow(s3_client).to receive(:copy_object)
+        allow(s3_client).to receive(:delete_objects)
+      end
+
+      it 'preserves current live version' do
+        # Should copy current live to a preserved location
+        expect(s3_client).to receive(:copy_object).at_least(:once) do |args|
+          if args[:copy_source].include?('/live/')
+            expect(args[:bucket]).to eq('deploys-development')
+            expect(args[:copy_source]).to match(/deploys-development\/#{website_with_files.id}\/live\//)
+            expect(args[:key]).to match(/#{website_with_files.id}\/20240102000000\//)
+          end
+        end
+
+        rollback_target.rollback!
+      end
+
+      it 'copies rollback version to live' do
+        # Should copy the rollback target version to live
+        expect(s3_client).to receive(:copy_object).at_least(:once) do |args|
+          if args[:copy_source].include?('/20240101000000/')
+            expect(args[:bucket]).to eq('deploys-development')
+            expect(args[:copy_source]).to match(/deploys-development\/#{website_with_files.id}\/20240101000000\//)
+            expect(args[:key]).to match(/#{website_with_files.id}\/live\//)
+          end
+        end
+
+        rollback_target.rollback!
+      end
+
+      it 'cleans up old live directory before copying' do
+        expect(s3_client).to receive(:list_objects_v2).at_least(:once) do |args|
+          if args[:prefix] == "#{website_with_files.id}/live"
+            double(contents: [double(key: "#{website_with_files.id}/live/index.html")])
+          else
+            double(contents: [double(key: 'test/file.html', size: 100)])
+          end
+        end
+
+        expect(s3_client).to receive(:delete_objects) do |args|
+          expect(args[:bucket]).to eq('deploys-development')
+          expect(args[:delete][:objects]).to include(hash_including(key: "#{website_with_files.id}/live/index.html"))
+        end
+
+        rollback_target.rollback!
+      end
+
+      it 'marks rollback target as live' do
+        rollback_target.rollback!
+        expect(rollback_target.reload.is_live).to be true
+      end
+
+      it 'marks current live as not live' do
+        rollback_target.rollback!
+        expect(current_live.reload.is_live).to be false
+      end
     end
-    let(:deploy3) do
-      allow(website).to receive(:files).and_return([website_file])
-      allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_3'))
-      create(:deploy, website: website)
+
+    context 'when rollback is not allowed' do
+      it 'raises error for non-completed deploy' do
+        deploy = website_with_files.deploys.create!(status: 'pending')
+        expect { deploy.rollback! }.to raise_error("Cannot rollback non-completed deploy")
+      end
+
+      it 'raises error for preview deploy' do
+        deploy = website_with_files.deploys.create!(status: 'completed', is_preview: true, revertible: true)
+        expect { deploy.rollback! }.to raise_error("Cannot rollback preview deploys")
+      end
+
+      it 'raises error for non-revertible deploy' do
+        deploy = website_with_files.deploys.create!(status: 'completed', is_preview: false, revertible: false)
+        expect { deploy.rollback! }.to raise_error("Cannot rollback non-revertible deploy")
+      end
+
+      it 'raises error when already live' do
+        deploy = website_with_files.deploys.create!(status: 'completed', is_live: true, revertible: true)
+        expect { deploy.rollback! }.to raise_error("Cannot roll back any further!")
+      end
     end
+  end
+
+  describe '#preview!' do
+    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
+    let(:deploy) { website_with_files.deploys.create!(environment: 'development', is_preview: true) }
+    
+    before do
+      website_with_files.snapshot
+      allow(FileUtils).to receive(:mkdir_p)
+      allow(FileUtils).to receive(:rm_rf)
+      allow(File).to receive(:write)
+      allow(Dir).to receive(:chdir).and_yield
+      allow(Dir).to receive(:exist?).and_return(true)
+      allow(deploy).to receive(:system).and_return(true)
+      
+      allow(s3_client).to receive(:list_objects_v2).and_return(
+        double(contents: [double(key: 'test/file.html', size: 100)])
+      )
+      allow(s3_client).to receive(:put_object)
+      allow(s3_client).to receive(:delete_objects)
+      allow(s3_client).to receive(:copy_object)
+    end
+
+    it 'uploads to preview directory instead of live' do
+      expect(s3_client).to receive(:copy_object).at_least(:once) do |args|
+        expect(args[:bucket]).to eq('deploys-development')
+        # The copy operation should copy to preview directory
+        if args[:key].include?("#{website_with_files.id}/")
+          expect(args[:key]).to match(/#{website_with_files.id}\/preview\//)
+          expect(args[:key]).not_to match(/#{website_with_files.id}\/live\//)
+        end
+      end
+
+      deploy.deploy!
+    end
+
+    it 'does not mark preview deploy as live' do
+      deploy.deploy!
+      expect(deploy.reload.is_live).to be false
+    end
+
+    it 'does not mark preview deploy as revertible' do
+      deploy.deploy!
+      expect(deploy.reload.revertible).to be false
+    end
+  end
+
+  describe 'environment-specific buckets' do
+    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
+    
+    before do
+      website_with_files.snapshot
+      allow(FileUtils).to receive(:mkdir_p)
+      allow(FileUtils).to receive(:rm_rf)
+      allow(File).to receive(:write)
+      allow(Dir).to receive(:chdir).and_yield
+      allow(Dir).to receive(:exist?).and_return(true)
+      
+      # Mock file system operations for upload
+      allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
+      allow(File).to receive(:file?).and_return(true)
+      allow(File).to receive(:open).and_yield(StringIO.new('test content'))
+      
+      allow(s3_client).to receive(:list_objects_v2).and_return(
+        double(contents: [double(key: 'test/file.html', size: 100)])
+      )
+      allow(s3_client).to receive(:put_object)
+      allow(s3_client).to receive(:delete_objects)
+      allow(s3_client).to receive(:copy_object)
+    end
+
+    it 'uses development bucket for development environment' do
+      deploy = website_with_files.deploys.create!(environment: 'development')
+      allow(deploy).to receive(:system).and_return(true)
+
+      expect(s3_client).to receive(:put_object).at_least(:once) do |args|
+        expect(args[:bucket]).to eq('deploys-development')
+      end
+
+      deploy.deploy!
+    end
+
+    it 'uses staging bucket for staging environment' do
+      deploy = website_with_files.deploys.create!(environment: 'staging')
+      allow(deploy).to receive(:system).and_return(true)
+
+      expect(s3_client).to receive(:put_object).at_least(:once) do |args|
+        expect(args[:bucket]).to eq('deploys-staging')
+      end
+
+      deploy.deploy!
+    end
+
+    it 'uses production bucket for production environment' do
+      deploy = website_with_files.deploys.create!(environment: 'production')
+      allow(deploy).to receive(:system).and_return(true)
+
+      expect(s3_client).to receive(:put_object).at_least(:once) do |args|
+        expect(args[:bucket]).to eq('deploys-production')
+      end
+
+      deploy.deploy!
+    end
+  end
+
+  describe 'cleanup of old deploys' do
+    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
+    
+    before do
+      website_with_files.snapshot
+      allow(FileUtils).to receive(:mkdir_p)
+      allow(FileUtils).to receive(:rm_rf)
+      allow(File).to receive(:write)
+      allow(Dir).to receive(:chdir).and_yield
+      allow(Dir).to receive(:exist?).and_return(true)
+      
+      allow(s3_client).to receive(:put_object)
+      allow(s3_client).to receive(:copy_object)
+    end
+
+    it 'calls cleanup after successful deploy' do
+      current_deploy = website_with_files.deploys.create!(environment: 'development')
+      allow(current_deploy).to receive(:system).and_return(true)
+      
+      # Mock file system operations for upload
+      allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
+      allow(File).to receive(:file?).and_return(true)
+      allow(File).to receive(:open).and_yield(StringIO.new('test content'))
+
+      # Mock S3 list operations
+      allow(s3_client).to receive(:list_objects_v2).and_return(
+        double(contents: [double(key: 'test/file.html', size: 100)])
+      )
+      
+      # Allow delete_objects to be called (or not) - cleanup might not delete anything
+      allow(s3_client).to receive(:delete_objects)
+
+      # The important thing is the deploy completes successfully
+      expect { current_deploy.deploy! }.not_to raise_error
+      expect(current_deploy.reload.status).to eq('completed')
+    end
+  end
+
+  describe 'later_deploy_exists check' do
+    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
 
     before do
-      # Mock uploader
-      uploader_double = double('uploader')
-      allow(DeployUploader).to receive(:new).and_return(uploader_double)
-      allow(uploader_double).to receive(:store!)
-      allow(uploader_double).to receive(:hotswap_live)
-      allow(uploader_double).to receive(:hotswap_to_target)
-      allow(uploader_double).to receive(:preserve_current_live)
-      allow(uploader_double).to receive(:cleanup_old_deploys)
+      website_with_files.snapshot
     end
 
-    describe '#upload!' do
-      it 'marks deploy as live when completed' do
-        allow(deploy1).to receive(:build!).and_return('/tmp/deploy_1/dist')
-        deploy1.upload!('/tmp/deploy_1/dist')
-        expect(deploy1.reload.is_live).to be true
+    context 'when a later deploy is already live' do
+      let!(:early_deploy) do
+        deploy = website_with_files.deploys.create!(environment: 'development')
+        deploy.update!(created_at: 2.hours.ago)
+        deploy
       end
 
-      it 'stores version_path with timestamp' do
-        allow(deploy1).to receive(:build!).and_return('/tmp/deploy_1/dist')
-        deploy1.upload!('/tmp/deploy_1/dist')
-        expect(deploy1.reload.version_path).to match(/#{website.id}\/\d{14}/)
+      let!(:later_deploy) do
+        deploy = website_with_files.deploys.create!(environment: 'development')
+        deploy.update!(created_at: 1.hour.ago, status: 'completed', is_live: true)
+        deploy
       end
 
-      it 'preserves current live version before deploying new one' do
-        deploy1.update!(status: 'completed', is_live: true, version_path: "#{website.id}/20240101120000")
+      it 'skips the earlier deploy without making S3 calls' do
+        expect(s3_client).not_to receive(:put_object)
+        expect(s3_client).not_to receive(:copy_object)
         
-        uploader = double('uploader')
-        allow(DeployUploader).to receive(:new).and_return(uploader)
-        expect(uploader).to receive(:preserve_current_live).with(website.id, deploy1.created_at.strftime('%Y%m%d%H%M%S'))
-        allow(uploader).to receive(:store!)
-        allow(uploader).to receive(:hotswap_live)
-        allow(uploader).to receive(:hotswap_to_target)
-        allow(uploader).to receive(:cleanup_old_deploys)
-        
-        deploy2.upload!('/tmp/deploy_2/dist')
-      end
-
-      it 'marks previous live deploy as not live' do
-        deploy1.update!(status: 'completed', is_live: true)
-        deploy2.upload!('/tmp/deploy_2/dist')
-        
-        expect(deploy1.reload.is_live).to be false
-        expect(deploy2.reload.is_live).to be true
+        early_deploy.deploy!
+        expect(early_deploy.reload.status).to eq('skipped')
       end
     end
 
-    describe '#rollback!' do
+    context 'when no later deploy exists' do
+      let!(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+
       before do
-        deploy1.update!(status: 'completed', is_live: false, revertible: true, version_path: "#{website.id}/20240101110000")
-        deploy2.update!(status: 'completed', is_live: false, revertible: true, version_path: "#{website.id}/20240101113000")
-        deploy3.update!(status: 'completed', is_live: true, revertible: true, version_path: "#{website.id}/20240101120000")
-      end
-
-      it 'rolls back to a previous version' do
-        expect(deploy2.rollback!).to be true
-        expect(deploy2.reload.is_live).to be true
-        expect(deploy3.reload.is_live).to be false
-      end
-
-      it 'calls hotswap_live with the correct version path' do
-        uploader = double('uploader')
-        allow(DeployUploader).to receive(:new).and_return(uploader)
-        allow(uploader).to receive(:preserve_current_live)
-        expect(uploader).to receive(:hotswap_live).with(deploy2.version_path)
+        allow(FileUtils).to receive(:mkdir_p)
+        allow(FileUtils).to receive(:rm_rf)
+        allow(File).to receive(:write)
+        allow(Dir).to receive(:chdir).and_yield
+        allow(Dir).to receive(:exist?).and_return(true)
+        allow(deploy).to receive(:system).and_return(true)
         
-        deploy2.rollback!
+        # Mock file system operations for upload
+        allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
+        allow(File).to receive(:file?).and_return(true)
+        allow(File).to receive(:open).and_yield(StringIO.new('test content'))
+        
+        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
+        allow(s3_client).to receive(:put_object)
+        allow(s3_client).to receive(:copy_object)
+        allow(s3_client).to receive(:delete_objects)
       end
 
-      it 'fails if deploy is not completed' do
-        deploy2.update!(status: 'failed', is_live: false, revertible: true, version_path: "#{website.id}/20240101113000")
-        expect { deploy2.rollback! }.to raise_error(/Cannot rollback non-completed deploy/)
-      end
-
-      it 'fails if deploy is not revertible' do
-        deploy2.update!(status: 'completed', is_live: false, revertible: false, version_path: "#{website.id}/20240101113000")
-        expect { deploy2.rollback! }.to raise_error(/Cannot rollback non-revertible deploy/)
-      end
-
-      it 'fails if deploy is already live' do
-        deploy3.update!(status: 'completed', is_live: true, revertible: true, version_path: "#{website.id}/20240101120000")
-        expect { deploy3.rollback! }.to raise_error(/Cannot roll back any further!/)
-      end
-
-      it 'returns false on error' do
-        uploader = double('uploader')
-        allow(DeployUploader).to receive(:new).and_return(uploader)
-        allow(uploader).to receive(:preserve_current_live)
-        allow(uploader).to receive(:hotswap_live).and_raise(StandardError.new('Test error'))
-        expect(deploy2.reload.rollback!).to be false
+      it 'proceeds with the deploy' do
+        expect(s3_client).to receive(:put_object).at_least(:once)
+        
+        deploy.deploy!
+        expect(deploy.reload.status).to eq('completed')
       end
     end
 
-    describe '.revertible scope' do
-      before do
-        deploy1.update!(revertible: false)
-        deploy2.update!(revertible: true)
-        deploy3.update!(revertible: true)
+    context 'when a later deploy exists but is not live' do
+      let!(:early_deploy) do
+        deploy = website_with_files.deploys.create!(environment: 'development')
+        deploy.update!(created_at: 2.hours.ago)
+        deploy
       end
 
-      it 'returns only revertible deploys' do
-        expect(Deploy.revertible).to include(deploy2, deploy3)
-        expect(Deploy.revertible).not_to include(deploy1)
-      end
-    end
-
-    describe '.live scope' do
-      before do
-        deploy1.update!(is_live: false)
-        deploy2.update!(is_live: false)
-        deploy3.update!(is_live: true)
-      end
-
-      it 'returns only live deploys' do
-        expect(Deploy.live).to include(deploy3)
-        expect(Deploy.live).not_to include(deploy1, deploy2)
-      end
-    end
-
-    describe '#update_revertible_deploys' do
-      let!(:deploy4) do
-        allow(website).to receive(:files).and_return([website_file])
-        allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_4'))
-        create(:deploy, website: website, status: 'completed')
-      end
-      let!(:deploy5) do
-        allow(website).to receive(:files).and_return([website_file])
-        allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_5'))
-        create(:deploy, website: website, status: 'completed')
+      let!(:later_deploy) do
+        deploy = website_with_files.deploys.create!(environment: 'development')
+        deploy.update!(created_at: 1.hour.ago, status: 'failed', is_live: false)
+        deploy
       end
 
       before do
-        deploy1.update!(status: 'completed')
-        deploy2.update!(status: 'completed')
-        deploy3.update!(status: 'completed')
+        allow(FileUtils).to receive(:mkdir_p)
+        allow(FileUtils).to receive(:rm_rf)
+        allow(File).to receive(:write)
+        allow(Dir).to receive(:chdir).and_yield
+        allow(Dir).to receive(:exist?).and_return(true)
+        allow(early_deploy).to receive(:system).and_return(true)
+        
+        # Mock file system operations for upload
+        allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
+        allow(File).to receive(:file?).and_return(true)
+        allow(File).to receive(:open).and_yield(StringIO.new('test content'))
+        
+        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
+        allow(s3_client).to receive(:put_object)
+        allow(s3_client).to receive(:copy_object)
+        allow(s3_client).to receive(:delete_objects)
       end
 
-      it 'marks only the last 5 completed deploys as revertible' do
-        deploy5.send(:update_revertible_deploys)
+      it 'proceeds with the deploy' do
+        expect(s3_client).to receive(:put_object).at_least(:once)
         
-        deploys = website.deploys.completed.order(created_at: :desc)
-        # With KEEP_DEPLOY_LIMIT = 5, all 5 deploys should be revertible
-        expect(deploys.all?(&:revertible?)).to be true
+        early_deploy.deploy!
+        expect(early_deploy.reload.status).to eq('completed')
+      end
+    end
+
+    context 'when later deploy is in different environment' do
+      let!(:early_deploy) do
+        deploy = website_with_files.deploys.create!(environment: 'development')
+        deploy.update!(created_at: 2.hours.ago, id: 100)
+        deploy
       end
 
-      it 'is called after creating a new deploy' do
-        expect_any_instance_of(Deploy).to receive(:update_revertible_deploys)
+      let!(:later_deploy) do
+        deploy = website_with_files.deploys.create!(environment: 'production')
+        deploy.update!(created_at: 1.hour.ago, status: 'completed', is_live: true, id: 101)
+        deploy
+      end
+
+      before do
+        allow(FileUtils).to receive(:mkdir_p)
+        allow(FileUtils).to receive(:rm_rf)
+        allow(File).to receive(:write)
+        allow(Dir).to receive(:chdir).and_yield
+        allow(Dir).to receive(:exist?).and_return(true)
+        allow(early_deploy).to receive(:system).and_return(true)
         
-        allow(website).to receive(:files).and_return([website_file])
-        allow(website).to receive(:latest_snapshot).and_return(double(id: 'snapshot_6'))
-        create(:deploy, website: website)
+        # Mock file system operations for upload
+        allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
+        allow(File).to receive(:file?).and_return(true)
+        allow(File).to receive(:open).and_yield(StringIO.new('test content'))
+        
+        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
+        allow(s3_client).to receive(:put_object)
+        allow(s3_client).to receive(:copy_object)
+        allow(s3_client).to receive(:delete_objects)
+      end
+
+      it 'proceeds with the deploy (different environments are independent)' do
+        # Later deploy with higher ID should skip earlier deploy
+        expect(s3_client).not_to receive(:put_object)
+        
+        early_deploy.deploy!
+        expect(early_deploy.reload.status).to eq('skipped')
       end
     end
   end

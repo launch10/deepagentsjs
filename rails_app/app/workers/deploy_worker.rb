@@ -1,20 +1,7 @@
 class DeployWorker
   include Sidekiq::Worker
 
-  sidekiq_options queue: :critical, retry: 3, backtrace: true
-
-  sidekiq_retry_in do |count, exception|
-    case count
-    when 0
-      60 # 1 minute
-    when 1
-      300 # 5 minutes
-    when 2
-      1800 # 30 minutes
-    else
-      :kill # Don't retry after 3 attempts
-    end
-  end
+  sidekiq_options queue: :critical, retry: 5, backtrace: true
 
   sidekiq_retries_exhausted do |msg, ex|
     deploy_id = msg['args'].first
@@ -32,7 +19,7 @@ class DeployWorker
 
   def perform(deploy_id)
     deploy = Deploy.find(deploy_id)
-    
+
     Rails.logger.info "Starting async deploy #{deploy_id} for website #{deploy.website_id}"
     
     result = deploy.actually_deploy

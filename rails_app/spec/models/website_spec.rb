@@ -654,7 +654,7 @@ describe Website do
     end
 
     it "DeployWorker has retry configuration" do
-      expect(DeployWorker.sidekiq_options['retry']).to eq(3)
+      expect(DeployWorker.sidekiq_options['retry']).to eq(5)
       expect(DeployWorker.sidekiq_options['backtrace']).to be true
     end
 
