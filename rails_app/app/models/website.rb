@@ -81,7 +81,6 @@ class Website < ApplicationRecord
     snapshot.files
   end
 
-
   private
 
   # Atlas sync methods

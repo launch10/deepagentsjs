@@ -54,37 +54,46 @@ class Deploy < ApplicationRecord
     upload!(dist_path)
     true
   rescue => e
-    Rails.logger.error "Deploy failed: #{e.message}"
+    Rails.logger.error "Deploy failed: #{e.message} #{e.backtrace}"
     false
   ensure
-    if dist_path
-      FileUtils.rm_rf(dist_path.gsub('/dist', ''))
-    end
+    # if dist_path
+    #   FileUtils.rm_rf(dist_path.gsub('/dist', ''))
+    # end
   end
 
   def build!
     update!(status: 'building')
     
-    temp_dir = "/tmp/deploy_#{id}"
     FileUtils.mkdir_p(temp_dir)
     
     # Write all website files to disk
     website.files_from_snapshot(snapshot_id).each do |file|
-      file_path = File.join(temp_dir, file.filename)
+      file_path = File.join(temp_dir, file.path)
       FileUtils.mkdir_p(File.dirname(file_path))
       File.write(file_path, file.content)
     end
     
     # Run pnpm install and build
-    Dir.chdir(temp_dir) do
-      system("pnpm install") or raise "pnpm install failed"
-      system("pnpm build") or raise "pnpm build failed"
+    unless build_exists?
+      Dir.chdir(temp_dir) do
+        system("pnpm install") or raise "pnpm install failed"
+        system("pnpm build") or raise "pnpm build failed"
+      end
     end
     
     dist_path = File.join(temp_dir, 'dist')
     raise "Build failed: dist directory not found" unless Dir.exist?(dist_path)
     
     dist_path
+  end
+
+  def temp_dir
+    Rails.root.join("tmp/deploy_#{id}")
+  end
+
+  def build_exists?
+    Dir.exist?(File.join(temp_dir, 'dist'))
   end
 
   def upload!(dist_path)
@@ -123,9 +132,9 @@ class Deploy < ApplicationRecord
       update!(status: 'failed', stacktrace: e.backtrace.join("\n"))
       raise e
     ensure
-      if dist_path
-        FileUtils.rm_rf(dist_path.gsub('/dist', ''))
-      end
+      # if dist_path
+      #   FileUtils.rm_rf(dist_path.gsub('/dist', ''))
+      # end
     end
   end
   
@@ -164,7 +173,7 @@ class Deploy < ApplicationRecord
   end
 
   def ensure_snapshot_exists
-    unless website.latest_snapshot
+    unless website.latest_snapshot.present?
       snapshot = website.snapshot
       self.snapshot_id = snapshot.id
     else

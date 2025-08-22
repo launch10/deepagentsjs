@@ -5,14 +5,8 @@ class DeployUploader
   attr_reader :client, :bucket_name
 
   def initialize
-    @bucket_name = ENV.fetch('R2_BUCKET_NAME', 'nichefinder-deploys')
-    @client = Aws::S3::Client.new(
-      endpoint: ENV.fetch('R2_ENDPOINT', 'https://your-account-id.r2.cloudflarestorage.com'),
-      access_key_id: ENV.fetch('R2_ACCESS_KEY_ID'),
-      secret_access_key: ENV.fetch('R2_SECRET_ACCESS_KEY'),
-      region: ENV.fetch('R2_REGION', 'auto'),
-      force_path_style: true
-    )
+    @bucket_name = Cloudflare.r2_bucket_name
+    @client = Cloudflare::R2.new
   end
 
   def store!(local_path, remote_path)
@@ -20,6 +14,8 @@ class DeployUploader
     Dir.glob("#{local_path}/**/*").select { |f| File.file?(f) }.each do |file|
       relative_path = file.sub("#{local_path}/", '')
       object_key = "#{remote_path}/#{relative_path}"
+      
+      Rails.logger.info "Uploading to R2 - bucket: #{bucket_name}, key: #{object_key}"
       
       File.open(file, 'rb') do |file_content|
         client.put_object(
@@ -46,17 +42,22 @@ class DeployUploader
     
     Rails.logger.info "Successfully hotswapped live deploy for project #{project_id}"
   end
+
+  def list_objects(prefix, **kwargs)
+    prefix = "#{bucket_name}/#{prefix}" # Force path style requires this
+    client.list_objects_v2(bucket: bucket_name, prefix: prefix, **kwargs)
+  end
   
   def preserve_current_live(project_id, timestamp)
     live_path = "#{project_id}/live"
     versioned_path = "#{project_id}/#{timestamp}"
     
     # Check if live exists
-    objects = client.list_objects_v2(bucket: bucket_name, prefix: live_path, max_keys: 1)
+    objects = list_objects(live_path, max_keys: 1)
     return if objects.contents.empty?
     
     # Copy live to timestamped version if it doesn't already exist
-    versioned_objects = client.list_objects_v2(bucket: bucket_name, prefix: versioned_path, max_keys: 1)
+    versioned_objects = list_objects(versioned_path, max_keys: 1)
     if versioned_objects.contents.empty?
       copy_prefix(live_path, versioned_path)
       Rails.logger.info "Preserved current live version to #{versioned_path}"
@@ -64,7 +65,11 @@ class DeployUploader
   end
 
   def delete_prefix(prefix)
-    objects = client.list_objects_v2(bucket: bucket_name, prefix: prefix)
+    begin
+      objects = list_objects(prefix)
+    rescue Aws::S3::Errors::NoSuchKey
+      return # No objects to delete
+    end
     
     return if objects.contents.empty?
     
@@ -77,7 +82,12 @@ class DeployUploader
   end
 
   def copy_prefix(source_prefix, dest_prefix)
-    objects = client.list_objects_v2(bucket: bucket_name, prefix: source_prefix)
+    begin
+      puts "Copying prefix: #{source_prefix} to #{dest_prefix}"
+      objects = list_objects(source_prefix)
+    rescue Aws::S3::Errors::NoSuchKey
+      return # No objects to copy
+    end
     
     objects.contents.each do |object|
       source_key = object.key

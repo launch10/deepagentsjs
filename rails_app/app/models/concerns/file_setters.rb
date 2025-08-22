@@ -6,4 +6,12 @@ module FileSetters
       write_attribute(:path, p)
     end
   end
+
+  def basename
+    path.split("/").last
+  end
+
+  def filename
+    basename
+  end
 end

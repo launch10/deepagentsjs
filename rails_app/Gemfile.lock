@@ -248,7 +248,7 @@ GEM
       rspec (>= 2.99.0, < 4.0)
     hashdiff (1.2.0)
     hashids (1.0.6)
-    historiographer (4.4.1)
+    historiographer (4.4.3)
       activerecord (>= 6)
       activerecord-import
       activesupport
@@ -696,7 +696,7 @@ DEPENDENCIES
   guard
   guard-rails
   guard-rspec
-  historiographer (~> 4.4.1)
+  historiographer (~> 4.4.3)
   hotwire_combobox (~> 0.3)
   image_processing (~> 1.12)
   importmap-rails
