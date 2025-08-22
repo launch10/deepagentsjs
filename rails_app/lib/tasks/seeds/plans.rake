@@ -41,5 +41,6 @@ namespace :seeds do
         end
       end
     PlanLimit.import(limits_to_import.flatten, on_duplicate_key_update: { conflict_target: [:plan_id, :limit_type] })
+    Plan.all.each { |plan| plan.send(:sync_to_atlas_on_create) }
   end
 end

@@ -37,7 +37,7 @@ class Website < ApplicationRecord
   
   accepts_nested_attributes_for :website_files
 
-  validates_presence_of :name, :project_id, :user_id, :thread_id
+  validates_presence_of :name, :project_id, :user_id
 
   # Returns the merged set of template_files + website_files
   # Website files override template files with the same path

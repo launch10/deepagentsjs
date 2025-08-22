@@ -67,6 +67,8 @@ export function domainRoutes() {
       const body = await c.req.json<DomainType>();
       
       // Map Rails camelCase to our format
+      console.log(body);
+      console.log(body.id)
       const domainData: DomainType = {
         id: body.id || String(body.id),
         domain: body.domain,

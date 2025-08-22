@@ -23,12 +23,10 @@ class PlanLimit < ApplicationRecord
 
   after_create_commit :sync_plan_to_atlas
   after_update_commit :sync_plan_to_atlas
-  after_destroy_commit :sync_plan_to_atlas
 
   private
 
   def sync_plan_to_atlas
-    # Touch the plan to trigger its Atlas sync
-    plan.sync_to_atlas if plan&.respond_to?(:sync_to_atlas)
+    plan.send(:sync_to_atlas_on_update)
   end
 end

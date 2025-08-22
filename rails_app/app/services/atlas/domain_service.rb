@@ -22,8 +22,9 @@ module Atlas
       end
     end
 
-    def create(domain:, website_id:, **attributes)
+    def create(id:, domain:, website_id:, **attributes)
       params = {
+        id: id,
         domain: domain,
         websiteId: website_id
       }.merge(format_params(attributes))

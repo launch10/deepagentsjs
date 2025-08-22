@@ -4,8 +4,7 @@ import { BaseModel, createTypeGuard } from "./base";
 
 const isUserType = createTypeGuard<UserType>(
     (data: any): data is UserType => {
-        return data.id !== undefined &&
-            data.planId !== undefined;
+        return data.id !== undefined
     }
 );
 

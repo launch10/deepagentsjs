@@ -37,7 +37,7 @@ export function userRoutes() {
     try {
       const body = await c.req.json<UserType>();
       
-      if (!body.id || !body.planId) {
+      if (!body.id) {
         return c.json({ error: 'Missing required fields: id, planId' }, 400);
       }
       

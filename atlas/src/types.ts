@@ -17,8 +17,6 @@ export interface Env {
   // Secrets
   CLOUDFLARE_API_TOKEN?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
-  CLOUDFLARE_BLOCKED_DOMAINS_LIST_ID?: string;
-  JWT_SECRET?: string;
   ALLOWED_IPS?: string;
   ATLAS_API_SECRET?: string;
 }
@@ -31,7 +29,7 @@ export interface PlanType extends Model {
   usageLimit: number;
 }
 export interface UserType extends Model {
-  planId: string;
+  planId?: string;
 }
 
 export interface RequestType extends Model {

@@ -14,7 +14,7 @@ module AtlasSyncable
   def sync_to_atlas_on_create
     return unless atlas_sync_enabled?
     
-    atlas_service.create(**atlas_data_for_create)
+    atlas_service.create(**atlas_data_for_create.merge!(id: atlas_identifier))
   rescue Atlas::BaseService::Error => e
     Rails.logger.error "[Atlas] Failed to sync #{self.class.name} ##{id} on create: #{e.message}"
   end
@@ -22,7 +22,7 @@ module AtlasSyncable
   def sync_to_atlas_on_update
     return unless atlas_sync_enabled?
     
-    atlas_service.update(atlas_identifier, **atlas_data_for_update)
+    atlas_service.update(atlas_identifier, **atlas_data_for_update.merge!(id: atlas_identifier))
   rescue Atlas::BaseService::Error => e
     Rails.logger.error "[Atlas] Failed to sync #{self.class.name} ##{id} on update: #{e.message}"
   end

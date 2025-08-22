@@ -38,8 +38,6 @@ module Atlas
       response = request.run
       
       handle_typhoeus_response(response)
-    rescue => e
-      raise Error, "Request failed: #{e.message}"
     end
 
     def build_headers(body)

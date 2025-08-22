@@ -66,6 +66,7 @@ class Domain < ApplicationRecord
 
   def atlas_data_for_create
     {
+      id: atlas_identifier,
       domain: domain,
       website_id: website_id
     }
@@ -73,6 +74,7 @@ class Domain < ApplicationRecord
 
   def atlas_data_for_update
     {
+      id: atlas_identifier,
       domain: domain,
       website_id: website_id
     }
