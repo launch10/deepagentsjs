@@ -14,6 +14,7 @@
 #  history_ended_at      :datetime
 #  history_user_id       :integer
 #  snapshot_id           :string
+#  template_id           :integer
 #
 # Indexes
 #
@@ -23,6 +24,7 @@
 #  index_website_file_histories_on_history_started_at     (history_started_at)
 #  index_website_file_histories_on_history_user_id        (history_user_id)
 #  index_website_file_histories_on_snapshot_id            (snapshot_id)
+#  index_website_file_histories_on_template_id            (template_id)
 #  index_website_file_histories_on_updated_at             (updated_at)
 #  index_website_file_histories_on_website_file_id        (website_file_id)
 #  index_website_file_histories_on_website_id             (website_id)

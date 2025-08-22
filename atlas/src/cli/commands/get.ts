@@ -90,4 +90,39 @@ export const getCommand = new Command('get')
           process.exit(1);
         }
       })
+  )
+  .addCommand(
+    new Command('domain')
+      .description('Get domain data')
+      .argument('<id>', 'Domain ID')
+      .option('--by-url <url>', 'Find by domain URL instead of ID')
+      .action(async (id, options) => {
+        try {
+          const context = await createMockContext();
+          const client = new SDKClient(context);
+          
+          if (options.byUrl) {
+            const result = await client.domain.findByUrl(options.byUrl);
+            if (result.success && result.data) {
+              console.log(JSON.stringify(result.data, null, 2));
+            } else {
+              console.log(result.error || 'Domain not found');
+            }
+          } else {
+            const result = await client.domain.get(id);
+            if (result.success && result.data) {
+              console.log(JSON.stringify(result.data, null, 2));
+            } else {
+              console.log(result.error || `Domain ${id} not found`);
+            }
+          }
+          
+          await cleanupMockContext();
+          process.exit(0);
+        } catch (error) {
+          console.error('❌ Error:', error);
+          await cleanupMockContext();
+          process.exit(1);
+        }
+      })
   );

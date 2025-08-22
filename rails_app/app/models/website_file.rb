@@ -1,4 +1,4 @@
-# == Schema Information
+# = Schema Information
 #
 # Table name: website_files
 #
@@ -22,7 +22,7 @@ class WebsiteFile < ApplicationRecord
   include Historiographer::Safe
   historiographer_mode :snapshot_only
 
-  belongs_to :website, inverse_of: :files
+  belongs_to :website, inverse_of: :website_files
 
   include FileSerialization
   include FileSetters

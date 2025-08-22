@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import { etag } from 'hono/etag';
 import { Env } from './types';
-import { loggerMiddleware, contextMiddleware, rateLimiterMiddleware } from './middleware';
+import { loggerMiddleware, contextMiddleware } from './middleware';
+import { Website } from '~/models/website';
+import { WebsiteType } from './types';
 import { logger } from '@utils/logger';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -11,7 +13,6 @@ const requestLogger = logger.addScope('request');
 app.use('*', contextMiddleware());
 app.use('*', loggerMiddleware());
 app.use('*', etag());
-app.use('*', rateLimiterMiddleware);
 
 // This is the main route that will catch all incoming requests.
 app.get('*', async (c) => {
@@ -20,6 +21,13 @@ app.get('*', async (c) => {
   const hostname = 'dist' //url.hostname;
   let pathname = url.pathname;
 
+  const websiteModel = new Website(c); 
+  const website: WebsiteType | null = await websiteModel.findByUrl(hostname);
+
+  if (!website) {
+    return new Response('Website not found', { status: 404 });
+  }
+
   // 2. Normalize the path to construct the R2 object key.
   if (pathname.endsWith('/')) {
     pathname = pathname.concat('index.html');
@@ -27,9 +35,8 @@ app.get('*', async (c) => {
     pathname = pathname.concat('/index.html');
   }
 
-  const objectKey = `${hostname}${pathname}`;
-
-  // 3. Fetch the object from your R2 bucket.
+  // 3. Construct the object key.
+  const objectKey = `${website.id}/live/${pathname}`;
   requestLogger.debug(`objectKey: ${objectKey}`);
   
   // Check if R2 binding exists

@@ -34,20 +34,10 @@ class TestModelClass extends BaseModel<TestModel> {
       keyExtractor: (model) => model.userId || null,
       type: 'unique'
     });
-    
-    this.addIndex({
-      name: 'category',
-      keyExtractor: (model) => model.category || null,
-      type: 'list'
-    });
   }
 
   async findByUserId(userId: string | number): Promise<TestModel | null> {
     return this.findByIndex('userId', String(userId));
-  }
-
-  async findByCategory(category: string): Promise<TestModel[]> {
-    return this.findManyByIndex('category', category);
   }
 }
 
@@ -332,11 +322,6 @@ describe('BaseModel', () => {
       const uniqueIndexKey = 'index:test:userId:1';
       const uniqueIndexValue = await env.DEPLOYS_KV.get(uniqueIndexKey);
       expect(uniqueIndexValue).toBe('test-1');
-
-      // Check list index
-      const listIndexKey = 'list:test:category:electronics';
-      const listIndexValue = await env.DEPLOYS_KV.get(listIndexKey);
-      expect(JSON.parse(listIndexValue!)).toEqual(['test-1']);
     });
 
     it('should clean up indexes on delete', async () => {
@@ -344,7 +329,6 @@ describe('BaseModel', () => {
         id: 'test-1',
         name: 'Test Item',
         userId: '1',
-        category: 'electronics',
       };
 
       await testModel.set(testData.id, testData);
@@ -353,11 +337,9 @@ describe('BaseModel', () => {
       // Check all keys are deleted
       const mainKey = 'test:test-1';
       const uniqueIndexKey = 'index:test:userId:1';
-      const listIndexKey = 'list:test:category:electronics';
 
       expect(await env.DEPLOYS_KV.get(mainKey)).toBeNull();
       expect(await env.DEPLOYS_KV.get(uniqueIndexKey)).toBeNull();
-      expect(await env.DEPLOYS_KV.get(listIndexKey)).toBeNull();
     });
   });
 

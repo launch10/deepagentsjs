@@ -93,4 +93,35 @@ export const listCommand = new Command('list')
           process.exit(1);
         }
       })
+  )
+  .addCommand(
+    new Command('domains')
+      .description('List domains')
+      .option('--limit <number>', 'Limit number of results', '100')
+      .option('--website <id>', 'Filter by website ID')
+      .action(async (options) => {
+        try {
+          const context = await createMockContext();
+          const client = new SDKClient(context);
+          
+          const limit = parseInt(options.limit);
+          const result = await client.domain.list(limit, options.website);
+          
+          if (!result.success) {
+            console.error('❌ Error:', result.error);
+            await cleanupMockContext();
+            process.exit(1);
+          }
+          
+          const domains = result.data || [];
+          console.log(`Found ${domains.length} domains:`);
+          console.log(JSON.stringify(domains, null, 2));
+          await cleanupMockContext();
+          process.exit(0);
+        } catch (error) {
+          console.error('❌ Error listing domains:', error);
+          await cleanupMockContext();
+          process.exit(1);
+        }
+      })
   );

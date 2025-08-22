@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_21_165504) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_21_235609) do
   create_schema "drizzle"
 
   # These are extensions that must be enabled in order to support this database
@@ -743,12 +743,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_165504) do
     t.datetime "history_ended_at"
     t.integer "history_user_id"
     t.string "snapshot_id"
+    t.integer "template_id"
     t.index ["created_at"], name: "index_website_file_histories_on_created_at"
     t.index ["file_specification_id"], name: "index_website_file_histories_on_file_specification_id"
     t.index ["history_ended_at"], name: "index_website_file_histories_on_history_ended_at"
     t.index ["history_started_at"], name: "index_website_file_histories_on_history_started_at"
     t.index ["history_user_id"], name: "index_website_file_histories_on_history_user_id"
     t.index ["snapshot_id"], name: "index_website_file_histories_on_snapshot_id"
+    t.index ["template_id"], name: "index_website_file_histories_on_template_id"
     t.index ["updated_at"], name: "index_website_file_histories_on_updated_at"
     t.index ["website_file_id"], name: "index_website_file_histories_on_website_file_id"
     t.index ["website_id"], name: "index_website_file_histories_on_website_id"
@@ -779,6 +781,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_165504) do
     t.integer "history_user_id"
     t.string "snapshot_id"
     t.string "thread_id"
+    t.integer "template_id"
     t.index ["created_at"], name: "index_website_histories_on_created_at"
     t.index ["history_ended_at"], name: "index_website_histories_on_history_ended_at"
     t.index ["history_started_at"], name: "index_website_histories_on_history_started_at"
@@ -786,7 +789,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_165504) do
     t.index ["name"], name: "index_website_histories_on_name"
     t.index ["project_id"], name: "index_website_histories_on_project_id"
     t.index ["snapshot_id"], name: "index_website_histories_on_snapshot_id"
-    t.index ["thread_id"], name: "index_website_histories_on_thread_id"
+    t.index ["template_id"], name: "index_website_histories_on_template_id"
+    t.index ["thread_id"], name: "index_website_histories_on_thread_id", unique: true
     t.index ["user_id"], name: "index_website_histories_on_user_id"
     t.index ["website_id"], name: "index_website_histories_on_website_id"
   end
@@ -798,9 +802,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_21_165504) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "thread_id"
+    t.bigint "template_id"
     t.index ["created_at"], name: "index_websites_on_created_at"
     t.index ["name"], name: "index_websites_on_name"
     t.index ["project_id"], name: "index_websites_on_project_id"
+    t.index ["template_id"], name: "index_websites_on_template_id"
     t.index ["thread_id"], name: "index_websites_on_thread_id", unique: true
     t.index ["user_id"], name: "index_websites_on_user_id"
   end

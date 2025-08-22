@@ -48,10 +48,6 @@ export class BaseModel<T> extends CloudflareContext {
         return `index:${this.prefix}:${indexName}:${value}`;
     }
 
-    private getListIndexKey(indexName: string, parentValue: string): string {
-        return `list:${this.prefix}:${indexName}:${parentValue}`;
-    }
-
     async get(id: string): Promise<T | null> {
         try {
             const data = await this.c.env.DEPLOYS_KV.get(this.getKey(id));
@@ -136,9 +132,7 @@ export class BaseModel<T> extends CloudflareContext {
                             this.c.env.DEPLOYS_KV.delete(this.getIndexKey(index.name, oldKey))
                         );
                     } else {
-                        operations.push(
-                            this.removeFromListIndex(index.name, oldKey, id)
-                        );
+                        throw new Error(`Unsupported index type: ${index.type}`);
                     }
                 }
             }
@@ -154,13 +148,11 @@ export class BaseModel<T> extends CloudflareContext {
                             this.c.env.DEPLOYS_KV.put(indexKey, id)
                         );
                     } else {
-                        scopedLogger.debug(`[updateIndexes] Creating list index: ${index.name} with value ${newKey} for id ${id}`);
-                        operations.push(
-                            this.addToListIndex(index.name, newKey, id)
-                        );
+                        throw new Error(`Unsupported index type: ${index.type}`);
                     }
                 } else {
                     scopedLogger.debug(`[updateIndexes] Skipping unchanged index ${index.name} with value ${newKey}`);
+                    throw new Error(`Unsupported index type: ${index.type}`);
                 }
             }
             
@@ -170,45 +162,6 @@ export class BaseModel<T> extends CloudflareContext {
         }
 
         await Promise.all(operations);
-    }
-
-    private async addToListIndex(
-        indexName: string, 
-        parentValue: string, 
-        id: string
-    ): Promise<void> {
-        const listKey = this.getListIndexKey(indexName, parentValue);
-        scopedLogger.debug(`[addToListIndex] Adding to list: ${listKey}, id: ${id}`);
-        const existing = await this.c.env.DEPLOYS_KV.get(listKey);
-        const list = existing ? JSON.parse(existing) as string[] : [];
-        
-        if (!list.includes(id)) {
-            list.push(id);
-            scopedLogger.debug(`[addToListIndex] Updated list for ${listKey}:`, list);
-            await this.c.env.DEPLOYS_KV.put(listKey, JSON.stringify(list));
-        } else {
-            scopedLogger.debug(`[addToListIndex] ID ${id} already in list ${listKey}`);
-        }
-    }
-
-    private async removeFromListIndex(
-        
-        indexName: string, 
-        parentValue: string, 
-        id: string
-    ): Promise<void> {
-        const listKey = this.getListIndexKey(indexName, parentValue);
-        const existing = await this.c.env.DEPLOYS_KV.get(listKey);
-        if (existing) {
-            const list = JSON.parse(existing) as string[];
-            const filtered = list.filter(item => item !== id);
-            
-            if (filtered.length === 0) {
-                await this.c.env.DEPLOYS_KV.delete(listKey);
-            } else {
-                await this.c.env.DEPLOYS_KV.put(listKey, JSON.stringify(filtered));
-            }
-        }
     }
 
     async delete(id: string): Promise<void> {
@@ -275,62 +228,6 @@ export class BaseModel<T> extends CloudflareContext {
         scopedLogger.debug(`[findByIndex] Found ID: ${id}`);
         
         return id ? await this.get(id) : null;
-    }
-
-    async findManyByIndex(indexName: string, value: string): Promise<T[]> {
-        const index = this.indexes.find(idx => idx.name === indexName);
-        if (!index) {
-            throw new Error(`Index '${indexName}' not found on ${this.prefix}`);
-        }
-
-        let ids: string[] = [];
-
-        if (index.type === 'unique') {
-            const id = await this.c.env.DEPLOYS_KV.get(this.getIndexKey(indexName, value));
-            if (id) ids = [id];
-        } else {
-            const listKey = this.getListIndexKey(indexName, value);
-            scopedLogger.debug(`[findManyByIndex] Looking up list key: ${listKey}`);
-            const listData = await this.c.env.DEPLOYS_KV.get(listKey);
-            scopedLogger.debug(`[findManyByIndex] Found list data:`, listData);
-            if (listData) {
-                ids = JSON.parse(listData) as string[];
-            }
-        }
-
-        scopedLogger.debug(`[findManyByIndex] Found IDs:`, ids);
-        const results = await Promise.all(ids.map(id => this.get(id)));
-        scopedLogger.debug(`[findManyByIndex] Retrieved ${results.filter(item => item !== null).length} items`);
-        return results.filter(item => item !== null) as T[];
-    }
-
-    // Generic where/filter method
-    async where(filters: QueryFilter[]): Promise<T[]> {
-        if (filters.length === 0) {
-            throw new Error('At least one filter is required');
-        }
-
-        // For now, we'll handle single filter efficiently and multiple filters by intersection
-        if (filters.length === 1) {
-            return await this.findManyByIndex(filters[0].index, filters[0].value);
-        }
-
-        // Multiple filters - find intersection
-        const resultSets = await Promise.all(
-            filters.map(filter => this.findManyByIndex(filter.index, filter.value))
-        );
-
-        // Find intersection of all result sets
-        if (resultSets.length === 0) return [];
-        
-        let intersection = resultSets[0];
-        for (let i = 1; i < resultSets.length; i++) {
-            intersection = intersection.filter(item => 
-                resultSets[i].some(other => JSON.stringify(item) === JSON.stringify(other))
-            );
-        }
-
-        return intersection;
     }
 
     async exists(id: string): Promise<boolean> {

@@ -96,4 +96,35 @@ export const deleteCommand = new Command('delete')
           process.exit(1);
         }
       })
+  )
+  .addCommand(
+    new Command('domain')
+      .description('Delete domain data')
+      .argument('<id>', 'Domain ID')
+      .option('--force', 'Skip confirmation')
+      .action(async (id, options) => {
+        try {
+          if (!options.force) {
+            console.log(`⚠️  Are you sure you want to delete domain ${id}?`);
+            console.log('Use --force to skip confirmation');
+            process.exit(1);
+          }
+          
+          const context = await createMockContext();
+          const client = new SDKClient(context);
+          
+          const result = await client.domain.delete(id);
+          
+          if (!result.success) {
+            throw new Error(result.error || 'Delete failed');
+          }
+          console.log(`✅ Domain ${id} deleted successfully`);
+          await cleanupMockContext();
+          process.exit(0);
+        } catch (error) {
+          console.error('❌ Error deleting domain:', error);
+          await cleanupMockContext();
+          process.exit(1);
+        }
+      })
   );

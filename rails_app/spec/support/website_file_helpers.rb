@@ -20,7 +20,7 @@ module WebsiteFileHelpers
 
   def website_files_for_create
     {
-      files_attributes: website_files_attributes
+      website_files_attributes: website_files_attributes
     }
   end
 
@@ -42,7 +42,7 @@ module WebsiteFileHelpers
       website: {
         name: "Test Landing Page",
         thread_id: "thread_#{SecureRandom.hex(8)}",
-        files_attributes: website_files_attributes
+        website_files_attributes: website_files_attributes
       }.merge(overrides)
     }
   end
@@ -58,7 +58,7 @@ module WebsiteFileHelpers
     )
     
     files.each do |file_attrs|
-      website.files.create!(file_attrs)
+      website.website_files.create!(file_attrs)
     end
     
     website

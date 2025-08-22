@@ -113,4 +113,40 @@ export const setCommand = new Command('set')
           process.exit(1);
         }
       })
+  )
+  .addCommand(
+    new Command('domain')
+      .description('Set domain data')
+      .option('--id <id>', 'Domain ID (auto-generated if not provided)')
+      .requiredOption('--domain <domain>', 'Domain URL')
+      .requiredOption('--website-id <websiteId>', 'Website ID')
+      .action(async (options) => {
+        try {
+          const context = await createMockContext();
+          const client = new SDKClient(context);
+          
+          const domainData = {
+            id: options.id || crypto.randomUUID(),
+            domain: options.domain,
+            websiteId: options.websiteId
+          };
+          
+          const result = await client.domain.set(domainData.id, domainData);
+          
+          if (result.success) {
+            console.log(`✅ Domain ${domainData.id} saved successfully`);
+            console.log(JSON.stringify(domainData, null, 2));
+          } else {
+            console.error(`❌ Error saving domain: ${result.error}`);
+            process.exit(1);
+          }
+          
+          await cleanupMockContext();
+          process.exit(0);
+        } catch (error) {
+          console.error('❌ Error:', error);
+          await cleanupMockContext();
+          process.exit(1);
+        }
+      })
   );

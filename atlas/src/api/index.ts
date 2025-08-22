@@ -3,6 +3,7 @@ import type { Env } from '../types.js';
 import { userRoutes } from './routes/user.js';
 import { websiteRoutes } from './routes/website.js';
 import { planRoutes } from './routes/plan.js';
+import { domainRoutes } from './routes/domain.js';
 import { ipAllowlistMiddleware, hmacMiddleware, corsMiddleware } from '~/middleware/auth/admin';
 
 export function createInternalAPI() {
@@ -25,6 +26,7 @@ export function createInternalAPI() {
   api.route('/users', userRoutes());
   api.route('/websites', websiteRoutes());
   api.route('/plans', planRoutes());
+  api.route('/domains', domainRoutes());
   
   // Deploy endpoint for complex operations
   api.post('/deploy', async (c) => {
