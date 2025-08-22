@@ -80,21 +80,6 @@ export class BaseModel<T> extends CloudflareContext {
                 throw new Error(`Invalid ${this.prefix} data for id: ${id}`);
             }
 
-            // Check for unique index violations BEFORE saving
-            for (const index of this.indexes) {
-                if (index.type === 'unique') {
-                    const newKey = index.keyExtractor(newData);
-                    if (newKey && (!existingData || index.keyExtractor(existingData) !== newKey)) {
-                        const indexKey = this.getIndexKey(index.name, Array.isArray(newKey) ? newKey[0] : newKey);
-                        const existingId = await this.c.env.DEPLOYS_KV.get(indexKey);
-                        if (existingId && existingId !== id) {
-                            console.error(`Unique index violation: ${indexKey} already points to ${existingId}, cannot set to ${id}`);
-                            throw new Error(`Unique constraint violation: ${this.prefix} with ${index.name}=${newKey} already exists`);
-                        }
-                    }
-                }
-            }
-
             // Store the main record
             scopedLogger.debug(`Storing main record for ${this.prefix}:${id}`);
             await this.c.env.DEPLOYS_KV.put(this.getKey(id), JSON.stringify(newData));
@@ -127,7 +112,7 @@ export class BaseModel<T> extends CloudflareContext {
             // Only clean up old entries that are different from new ones
             for (const oldKey of oldKeyArray) {
                 if (!newKeyArray.includes(oldKey)) {
-                    if (index.type === 'unique') {
+                    if (index.type == 'unique') {
                         operations.push(
                             this.c.env.DEPLOYS_KV.delete(this.getIndexKey(index.name, oldKey))
                         );
@@ -140,7 +125,7 @@ export class BaseModel<T> extends CloudflareContext {
             // Only add new entries that are different from old ones
             for (const newKey of newKeyArray) {
                 if (!oldKeyArray.includes(newKey)) {
-                    if (index.type === 'unique') {
+                    if (index.type == 'unique') {
                         const indexKey = this.getIndexKey(index.name, newKey);
                         scopedLogger.debug(`[updateIndexes] Creating index: ${indexKey} -> ${id}`);
                         scopedLogger.debug(`[updateIndexes] Key type: ${typeof newKey}, Key value: ${newKey}`);
@@ -152,7 +137,6 @@ export class BaseModel<T> extends CloudflareContext {
                     }
                 } else {
                     scopedLogger.debug(`[updateIndexes] Skipping unchanged index ${index.name} with value ${newKey}`);
-                    throw new Error(`Unsupported index type: ${index.type}`);
                 }
             }
             

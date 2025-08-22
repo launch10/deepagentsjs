@@ -9,6 +9,10 @@ module AtlasSyncable
     before_destroy :sync_to_atlas_on_destroy
   end
 
+  def sync_to_atlas
+    sync_to_atlas_on_create
+  end
+
   private
 
   def sync_to_atlas_on_create

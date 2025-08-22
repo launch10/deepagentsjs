@@ -213,3 +213,9 @@ wrangler secret put ALLOWED_IPS -c wrangler-admin.toml
 # Set secrets for public worker (if needed)
 wrangler secret put CLOUDFLARE_API_TOKEN -c wrangler-public.toml
 ```
+
+## Debugging
+
+```bash
+wrangler dev -c wrangler-admin.toml --port 8788 --local --persist-to .wrangler/state --inspector-port=9229
+```

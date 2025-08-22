@@ -18,7 +18,7 @@ app.use('*', etag());
 app.get('*', async (c) => {
   // 1. Get the URL object to easily access hostname and pathname
   const url = new URL(c.req.url);
-  const hostname = 'dist' //url.hostname;
+  const hostname = url.hostname;
   let pathname = url.pathname;
 
   const websiteModel = new Website(c); 
@@ -33,6 +33,10 @@ app.get('*', async (c) => {
     pathname = pathname.concat('index.html');
   } else if (!pathname.split('/').pop()?.includes('.')) {
     pathname = pathname.concat('/index.html');
+  }
+
+  if (pathname.startsWith('/')) {
+    pathname = pathname.substring(1);
   }
 
   // 3. Construct the object key.
