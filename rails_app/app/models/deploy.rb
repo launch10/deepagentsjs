@@ -57,9 +57,9 @@ class Deploy < ApplicationRecord
     Rails.logger.error "Deploy failed: #{e.message} #{e.backtrace}"
     false
   ensure
-    # if dist_path
-    #   FileUtils.rm_rf(dist_path.gsub('/dist', ''))
-    # end
+    if dist_path
+      FileUtils.rm_rf(dist_path.gsub('/dist', ''))
+    end
   end
 
   def build!
@@ -132,9 +132,9 @@ class Deploy < ApplicationRecord
       update!(status: 'failed', stacktrace: e.backtrace.join("\n"))
       raise e
     ensure
-      # if dist_path
-      #   FileUtils.rm_rf(dist_path.gsub('/dist', ''))
-      # end
+      if dist_path
+        FileUtils.rm_rf(dist_path.gsub('/dist', ''))
+      end
     end
   end
   

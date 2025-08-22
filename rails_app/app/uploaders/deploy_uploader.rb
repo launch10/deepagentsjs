@@ -44,7 +44,6 @@ class DeployUploader
   end
 
   def list_objects(prefix, **kwargs)
-    prefix = "#{bucket_name}/#{prefix}" # Force path style requires this
     client.list_objects_v2(bucket: bucket_name, prefix: prefix, **kwargs)
   end
   
