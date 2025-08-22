@@ -64,9 +64,16 @@ class Website < ApplicationRecord
     deploy.deploy!
   end
 
-  def rollback!
-    deploy = deploys.revertible.order(id: :desc).last
+  def rollback!(deploy_id = nil)
+    deploy = deploy_id ? deploys.find(deploy_id) : default_deploy_to_rollback
+    raise "No deploy to rollback" unless deploy
     deploy.rollback!
+  end
+
+  def default_deploy_to_rollback
+    current_live = deploys.live.first
+    rollbackable = deploys.revertible.where("id < ?", current_live.id).order(id: :desc).limit(1).first
+    rollbackable
   end
 
   # Creates website_files from the fixture

@@ -91,6 +91,54 @@ class DeployUploader
     client.list_objects_v2(bucket: bucket_name, prefix: prefix, **kwargs)
   end
   
+  def cleanup_old_deploys(project_id, keep_timestamps = [])
+    Rails.logger.info "Starting cleanup for project #{project_id}, keeping: #{keep_timestamps.inspect}"
+    
+    # List all objects under the project
+    all_objects = list_objects(project_id)
+    
+    # Group objects by their timestamp directory
+    timestamp_dirs = {}
+    all_objects.contents.each do |obj|
+      # Extract timestamp from path (e.g., "project_id/20240101120000/file.html")
+      parts = obj.key.split('/')
+      next if parts.length < 2
+      next if parts[1] == 'live' # Skip live directory
+      
+      timestamp = parts[1]
+      next unless timestamp =~ /^\d{14}$/ # Skip non-timestamp directories
+      
+      timestamp_dirs[timestamp] ||= []
+      timestamp_dirs[timestamp] << obj.key
+    end
+    
+    # Delete timestamp directories that should not be kept
+    deleted_count = 0
+    timestamp_dirs.each do |timestamp, keys|
+      if keep_timestamps.include?(timestamp)
+        Rails.logger.info "Keeping timestamp directory: #{project_id}/#{timestamp} (#{keys.length} files)"
+      else
+        Rails.logger.info "Deleting timestamp directory: #{project_id}/#{timestamp} (#{keys.length} files)"
+        
+        # Delete all objects in this timestamp directory
+        delete_objects = keys.map { |key| { key: key } }
+        
+        begin
+          client.delete_objects(
+            bucket: bucket_name,
+            delete: { objects: delete_objects }
+          )
+          deleted_count += keys.length
+        rescue => e
+          Rails.logger.error "Failed to delete timestamp directory #{timestamp}: #{e.message}"
+        end
+      end
+    end
+    
+    Rails.logger.info "Cleanup complete. Deleted #{deleted_count} files from old deploys"
+    deleted_count
+  end
+  
   def preserve_current_live(project_id, timestamp)
     live_path = "#{project_id}/live"
     versioned_path = "#{project_id}/#{timestamp}"

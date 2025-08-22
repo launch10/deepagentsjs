@@ -130,6 +130,9 @@ class Deploy < ApplicationRecord
       
       # Update revertible status for other deploys
       update_revertible_deploys
+      
+      # Cleanup old non-revertible deploys from R2
+      cleanup_old_deploys(uploader)
     rescue => e
       update!(status: 'failed', stacktrace: e.backtrace.join("\n"))
       raise e
@@ -203,5 +206,25 @@ class Deploy < ApplicationRecord
     if completed_deploys.count > KEEP_DEPLOY_LIMIT
       completed_deploys.offset(KEEP_DEPLOY_LIMIT).update_all(revertible: false)
     end
+  end
+  
+  def cleanup_old_deploys(uploader)
+    # Get all deploys that should be kept (revertible + current live)
+    keep_deploys = website.deploys.where('revertible = ? OR is_live = ?', true, true)
+    
+    # Extract timestamps to keep
+    keep_timestamps = keep_deploys.map do |deploy|
+      next unless deploy.version_path.present?
+      # Extract timestamp from version_path (e.g., "project_id/20240101120000")
+      deploy.version_path.split('/').last
+    end.compact
+    
+    # Add current deploy's timestamp
+    keep_timestamps << created_at.strftime('%Y%m%d%H%M%S')
+    
+    Rails.logger.info "Keeping #{keep_timestamps.length} deploy timestamps for cleanup"
+    
+    # Run cleanup
+    uploader.cleanup_old_deploys(website.id.to_s, keep_timestamps)
   end
 end
