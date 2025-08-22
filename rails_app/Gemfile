@@ -57,6 +57,7 @@ group :test do
   gem "faker"
   gem "timecop"
   gem "shoulda-matchers", "~> 6.0"
+  gem "database_cleaner-active_record"
 end
 
 # Jumpstart Pro dependencies

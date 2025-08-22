@@ -4,6 +4,8 @@ export const usageThresholdPercent = 0.90;
 export interface Env {
   DEPLOYS_KV: KVNamespace;
   DEPLOYS_R2: R2Bucket;
+  DEPLOYS_R2_STAGING?: R2Bucket;
+  DEPLOYS_R2_DEVELOPMENT?: R2Bucket;
   FIREWALL: DurableObjectNamespace;
   FIREWALL_DO?: DurableObjectNamespace;
 

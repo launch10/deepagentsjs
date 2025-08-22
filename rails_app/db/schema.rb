@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_22_131159) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_22_161443) do
   create_schema "drizzle"
 
   # These are extensions that must be enabled in order to support this database
@@ -258,13 +258,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_22_131159) do
     t.boolean "is_live", default: false
     t.boolean "revertible", default: false
     t.string "version_path"
+    t.string "environment", default: "production", null: false
+    t.boolean "is_preview", default: false, null: false
     t.index ["created_at"], name: "index_deploys_on_created_at"
+    t.index ["environment"], name: "index_deploys_on_environment"
     t.index ["is_live"], name: "index_deploys_on_is_live"
+    t.index ["is_preview"], name: "index_deploys_on_is_preview"
     t.index ["revertible"], name: "index_deploys_on_revertible"
     t.index ["snapshot_id"], name: "index_deploys_on_snapshot_id"
     t.index ["status"], name: "index_deploys_on_status"
     t.index ["trigger"], name: "index_deploys_on_trigger"
     t.index ["website_history_id"], name: "index_deploys_on_website_history_id"
+    t.index ["website_id", "environment", "is_preview"], name: "index_deploys_on_website_id_and_environment_and_is_preview"
     t.index ["website_id", "is_live"], name: "index_deploys_on_website_id_and_is_live"
     t.index ["website_id"], name: "index_deploys_on_website_id"
   end

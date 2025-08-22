@@ -59,9 +59,30 @@ class Website < ApplicationRecord
     deploy.build!
   end
 
+  def deploy(async: true, environment: nil)
+    env = environment || default_environment
+    deploy_record = deploys.create!(environment: env, is_preview: false)
+    deploy_record.deploy(async: async)
+  end
+
   def deploy!
-    deploy = deploys.create!
-    deploy.deploy!
+    deploy(async: false)
+  end
+
+  def preview(async: true, environment: nil)
+    env = environment || default_environment
+    deploy_record = deploys.create!(environment: env, is_preview: true)
+    deploy_record.deploy(async: async)
+  end
+
+  def preview!
+    preview(async: false)
+  end
+
+  def rollback(deploy_id = nil, async: true)
+    deploy = deploy_id ? deploys.find(deploy_id) : default_deploy_to_rollback
+    raise "No deploy to rollback" unless deploy
+    deploy.rollback(async: async)
   end
 
   def rollback!(deploy_id = nil)
@@ -94,6 +115,16 @@ class Website < ApplicationRecord
   end
 
   private
+
+  def default_environment
+    if Rails.env.production?
+      'production'
+    elsif Rails.env.staging?
+      'staging'
+    else
+      'development'
+    end
+  end
 
   # Atlas sync methods
   def atlas_service

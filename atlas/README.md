@@ -1,6 +1,6 @@
 # Atlas
 
-In mythology, Atlas carrried the world on his shoulders. In our world, Atlas is the system that holds all of our user websites, preventing any one website from taking down the entire system.
+In mythology, Atlas carrried the world on his shoulders. In our world, Atlas is the system that holds all of our user websites.
 
 It's a Cloudflare edge gateway that serves user-generated static websites with internal API management.
 
@@ -92,9 +92,14 @@ pnpm cli set plan --id 3 --name "enterprise" --limit 20000000
 
 ### Uploading Landing Pages (Local Testing)
 
+In Rails app, run:
+
 ```bash
-# Upload a built landing page to R2
-./upload-dist-to-r2.sh path/to/landing/page/dist user-pages/dist
+User.create # User details...
+Plan.create # These should already exist from db seeds
+website = Website.create # Website details...
+website.make_fixture_files # If you want to test
+website.deploy! # Get those files uploaded to R2
 ```
 
 ## Production Deployment

@@ -23,6 +23,7 @@
 
 require "rails_helper"
 require 'support/website_file_helpers'
+require 'sidekiq/testing'
 
 describe Website do
   let(:website) { FactoryBot.create(:website) }
@@ -34,6 +35,11 @@ describe Website do
     allow(DeployUploader).to receive(:new).and_return(deploy_uploader)
     allow(deploy_uploader).to receive(:client).and_return(s3_client)
     allow(deploy_uploader).to receive(:bucket_name).and_return('test-bucket')
+    Sidekiq::Testing.fake!
+  end
+
+  after do
+    Sidekiq::Worker.clear_all
   end
 
   it "is valid" do
@@ -107,7 +113,7 @@ describe Website do
       end
 
       it "preserves the previous live version when deploying" do
-        first_deploy = website_with_files.deploys.create!
+        first_deploy = website_with_files.deploys.create!(environment: 'development')
         allow(first_deploy).to receive(:build!).and_return(dist_path.to_s)
         first_deploy.upload!(dist_path.to_s)
 
@@ -121,7 +127,7 @@ describe Website do
 
       it "performs R2 operations in correct order" do
         expect(deploy_uploader).to receive(:store!).ordered
-        expect(deploy_uploader).to receive(:hotswap_live).ordered
+        expect(deploy_uploader).to receive(:hotswap_to_target).ordered
         expect(deploy_uploader).to receive(:cleanup_old_deploys).ordered
 
         website_with_files.deploy!
@@ -141,8 +147,9 @@ describe Website do
       it "hotswaps the live directory after upload" do
         timestamp_regex = /\d{14}/
 
-        expect(deploy_uploader).to receive(:hotswap_live) do |version_path|
+        expect(deploy_uploader).to receive(:hotswap_to_target) do |version_path, target_dir|
           expect(version_path).to match(/#{website_with_files.id}\/#{timestamp_regex}/)
+          expect(target_dir).to eq('live')
         end
 
         website_with_files.deploy!
@@ -150,18 +157,20 @@ describe Website do
 
       it "cleans up old deploys from R2" do
         6.times do |i|
-          deploy = website_with_files.deploys.create!
+          deploy = website_with_files.deploys.create!(environment: 'development')
           allow(deploy).to receive(:build!).and_return(dist_path.to_s)
           deploy.update!(
             status: 'completed',
             version_path: "#{website_with_files.id}/2024010#{i}120000",
             revertible: i >= 1,
-            is_live: i == 5
+            is_live: i == 5,
+            is_preview: false
           )
         end
 
         expect(deploy_uploader).to receive(:cleanup_old_deploys) do |project_id, keep_timestamps|
           expect(project_id).to eq(website_with_files.id.to_s)
+          # With environment filtering, we should have fewer timestamps to keep
           expect(keep_timestamps.size).to be <= Deploy::KEEP_DEPLOY_LIMIT + 2
         end
 
@@ -434,6 +443,358 @@ describe Website do
     end
   end
 
+  describe "#deploy (async)" do
+    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+
+    before do
+      website_with_files.snapshot
+    end
+
+    context "when async is true (default)" do
+      it "enqueues a DeployWorker job" do
+        expect {
+          website_with_files.deploy
+        }.to change(DeployWorker.jobs, :size).by(1)
+      end
+
+      it "passes the deploy ID to the worker" do
+        website_with_files.deploy
+        
+        job = DeployWorker.jobs.last
+        deploy_id = job['args'].first
+        deploy = Deploy.find(deploy_id)
+        
+        expect(deploy.website_id).to eq(website_with_files.id)
+        expect(deploy.status).to eq('pending')
+      end
+
+      it "returns the worker job ID" do
+        result = website_with_files.deploy
+        expect(result).to be_present
+      end
+
+      it "creates a deploy record immediately" do
+        expect {
+          website_with_files.deploy
+        }.to change { website_with_files.deploys.count }.by(1)
+      end
+
+      context "when worker processes the job" do
+        before do
+          mock_r2_responses_for_successful_deploy
+          allow_any_instance_of(Deploy).to receive(:build!).and_return('/tmp/test/dist')
+        end
+
+        it "executes the deploy successfully" do
+          website_with_files.deploy
+          
+          expect {
+            DeployWorker.drain
+          }.to change { website_with_files.deploys.reload.completed.count }.by(1)
+          
+          deploy = website_with_files.deploys.last.reload
+          expect(deploy.status).to eq('completed')
+          expect(deploy.is_live).to be true
+        end
+
+        it "handles deploy failures gracefully" do
+          allow_any_instance_of(Deploy).to receive(:build!).and_raise(StandardError, "Test error")
+          
+          website_with_files.deploy
+          
+          expect {
+            DeployWorker.drain
+          }.to raise_error(StandardError)
+          
+          deploy = website_with_files.deploys.last
+          deploy.reload
+          expect(deploy.status).to eq('failed')
+        end
+      end
+    end
+
+    context "when async is false" do
+      before do
+        mock_r2_responses_for_successful_deploy
+        allow_any_instance_of(Deploy).to receive(:build!).and_return('/tmp/test/dist')
+      end
+
+      it "does not enqueue a worker job" do
+        expect {
+          website_with_files.deploy(async: false)
+        }.not_to change(DeployWorker.jobs, :size)
+      end
+
+      it "executes deploy synchronously" do
+        result = website_with_files.deploy(async: false)
+        
+        deploy = website_with_files.deploys.last
+        expect(deploy.status).to eq('completed')
+        expect(result).to be true
+      end
+    end
+  end
+
+  describe "#rollback (async)" do
+    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+
+    before do
+      website_with_files.snapshot
+      mock_r2_responses_for_successful_deploy
+    end
+
+    let!(:deploy1) do
+      deploy = website_with_files.deploys.create!
+      deploy.update!(
+        status: 'completed',
+        version_path: "#{website_with_files.id}/20240101120000",
+        revertible: true,
+        is_live: false
+      )
+      deploy
+    end
+
+    let!(:deploy2) do
+      deploy = website_with_files.deploys.create!
+      deploy.update!(
+        status: 'completed',
+        version_path: "#{website_with_files.id}/20240102120000",
+        revertible: true,
+        is_live: true
+      )
+      deploy
+    end
+
+    context "when async is true (default)" do
+      it "enqueues a RollbackWorker job" do
+        expect {
+          website_with_files.rollback
+        }.to change(RollbackWorker.jobs, :size).by(1)
+      end
+
+      it "passes the correct deploy ID to the worker" do
+        website_with_files.rollback
+        
+        job = RollbackWorker.jobs.last
+        deploy_id = job['args'].first
+        
+        expect(deploy_id).to eq(deploy1.id)
+      end
+
+      it "can rollback to a specific deploy asynchronously" do
+        website_with_files.rollback(deploy1.id)
+        
+        job = RollbackWorker.jobs.last
+        deploy_id = job['args'].first
+        
+        expect(deploy_id).to eq(deploy1.id)
+      end
+
+      it "uses the critical queue" do
+        website_with_files.rollback
+        
+        job = RollbackWorker.jobs.last
+        expect(job['queue']).to eq('critical')
+      end
+
+      context "when worker processes the job" do
+        it "executes the rollback successfully" do
+          website_with_files.rollback
+          
+          expect {
+            RollbackWorker.drain
+          }.not_to raise_error
+          
+          deploy1.reload
+          deploy2.reload
+          
+          expect(deploy1.is_live).to be true
+          expect(deploy2.is_live).to be false
+        end
+
+        it "handles rollback failures gracefully" do
+          allow_any_instance_of(Deploy).to receive(:actually_rollback).and_raise(StandardError, "Rollback error")
+          
+          website_with_files.rollback
+          
+          expect {
+            RollbackWorker.drain
+          }.to raise_error(StandardError, /Rollback error/)
+        end
+      end
+    end
+
+    context "when async is false" do
+      it "does not enqueue a worker job" do
+        expect {
+          website_with_files.rollback(nil, async: false)
+        }.not_to change(RollbackWorker.jobs, :size)
+      end
+
+      it "executes rollback synchronously" do
+        result = website_with_files.rollback(nil, async: false)
+        
+        deploy1.reload
+        deploy2.reload
+        
+        expect(deploy1.is_live).to be true
+        expect(deploy2.is_live).to be false
+        expect(result).to be true
+      end
+    end
+  end
+
+  describe "worker queue configuration" do
+    it "DeployWorker uses the critical queue" do
+      expect(DeployWorker.sidekiq_options['queue']).to eq(:critical)
+    end
+
+    it "RollbackWorker uses the critical queue" do
+      expect(RollbackWorker.sidekiq_options['queue']).to eq(:critical)
+    end
+
+    it "DeployWorker has retry configuration" do
+      expect(DeployWorker.sidekiq_options['retry']).to eq(3)
+      expect(DeployWorker.sidekiq_options['backtrace']).to be true
+    end
+
+    it "RollbackWorker has retry configuration" do
+      expect(RollbackWorker.sidekiq_options['retry']).to eq(3)
+      expect(RollbackWorker.sidekiq_options['backtrace']).to be true
+    end
+  end
+
+  describe "#deploy with environments" do
+    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+
+    before do
+      website_with_files.snapshot
+      mock_r2_responses_for_successful_deploy
+      allow_any_instance_of(Deploy).to receive(:build!).and_return('/tmp/test/dist')
+    end
+
+    it "creates a deploy with the specified environment" do
+      website_with_files.deploy(async: false, environment: 'staging')
+      
+      deploy = website_with_files.deploys.last
+      expect(deploy.environment).to eq('staging')
+      expect(deploy.is_preview).to be false
+    end
+
+    it "uses environment-specific bucket" do
+      expect(DeployUploader).to receive(:new).with(environment: 'staging').and_call_original
+      
+      website_with_files.deploy(async: false, environment: 'staging')
+    end
+
+    it "defaults to development for test environment" do
+      website_with_files.deploy(async: false)
+      
+      deploy = website_with_files.deploys.last
+      expect(deploy.environment).to eq('development')
+    end
+  end
+
+  describe "#preview!" do
+    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+
+    before do
+      website_with_files.snapshot
+      mock_r2_responses_for_successful_deploy
+      allow_any_instance_of(Deploy).to receive(:build!).and_return('/tmp/test/dist')
+    end
+
+    it "creates a preview deploy" do
+      website_with_files.preview!
+      
+      deploy = website_with_files.deploys.last
+      expect(deploy.is_preview).to be true
+      expect(deploy.is_live).to be false
+      expect(deploy.revertible).to be false
+    end
+
+    it "uploads to preview directory instead of live" do
+      expect(deploy_uploader).to receive(:hotswap_to_target).with(anything, 'preview').and_return(true)
+      
+      website_with_files.preview!
+    end
+
+    it "does not affect live deploys" do
+      # Create a live deploy first
+      website_with_files.deploy!
+      live_deploy = website_with_files.deploys.last
+      expect(live_deploy.is_live).to be true
+      
+      # Create a preview deploy
+      website_with_files.preview!
+      preview_deploy = website_with_files.deploys.last
+      
+      # Check that live deploy is still live
+      live_deploy.reload
+      expect(live_deploy.is_live).to be true
+      expect(preview_deploy.is_preview).to be true
+      expect(preview_deploy.is_live).to be false
+    end
+
+    it "supports async preview deploys" do
+      expect {
+        website_with_files.preview(async: true)
+      }.to change(DeployWorker.jobs, :size).by(1)
+    end
+
+    it "supports different environments for preview" do
+      website_with_files.preview(async: false, environment: 'staging')
+      
+      deploy = website_with_files.deploys.last
+      expect(deploy.environment).to eq('staging')
+      expect(deploy.is_preview).to be true
+    end
+  end
+
+  describe "environment-aware rollbacks" do
+    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+
+    before do
+      website_with_files.snapshot
+      mock_r2_responses_for_successful_deploy
+      allow_any_instance_of(Deploy).to receive(:build!).and_return('/tmp/test/dist')
+    end
+
+    it "only rolls back within the same environment" do
+      # Create production deploy
+      website_with_files.deploy(async: false, environment: 'production')
+      prod_deploy1 = website_with_files.deploys.last
+      
+      website_with_files.deploy(async: false, environment: 'production')
+      prod_deploy2 = website_with_files.deploys.last
+      
+      # Create staging deploy
+      website_with_files.deploy(async: false, environment: 'staging')
+      staging_deploy = website_with_files.deploys.last
+      
+      # Rollback should only affect production
+      expect_any_instance_of(Deploy).to receive(:actually_rollback).and_call_original
+      website_with_files.rollback!
+      
+      prod_deploy1.reload
+      prod_deploy2.reload
+      staging_deploy.reload
+      
+      expect(prod_deploy1.is_live).to be true
+      expect(prod_deploy2.is_live).to be false
+      expect(staging_deploy.is_live).to be true # Staging should remain unaffected
+    end
+
+    it "cannot rollback preview deploys" do
+      website_with_files.preview!
+      preview_deploy = website_with_files.deploys.last
+      
+      expect {
+        preview_deploy.rollback!
+      }.to raise_error(RuntimeError, "Cannot rollback preview deploys")
+    end
+  end
+
   private
 
   def mock_r2_responses_for_successful_deploy
@@ -442,6 +803,7 @@ describe Website do
     allow(deploy_uploader).to receive(:list_objects).and_return(list_response)
     allow(deploy_uploader).to receive(:store!)
     allow(deploy_uploader).to receive(:hotswap_live).and_return(true)
+    allow(deploy_uploader).to receive(:hotswap_to_target).and_return(true)
     allow(deploy_uploader).to receive(:preserve_current_live)
     allow(deploy_uploader).to receive(:delete_prefix)
     allow(deploy_uploader).to receive(:copy_prefix).and_return(1)

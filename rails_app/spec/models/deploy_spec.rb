@@ -14,18 +14,23 @@
 #  is_live            :boolean          default("false")
 #  revertible         :boolean          default("false")
 #  version_path       :string
+#  environment        :string           default("production"), not null
+#  is_preview         :boolean          default("false"), not null
 #
 # Indexes
 #
-#  index_deploys_on_created_at              (created_at)
-#  index_deploys_on_is_live                 (is_live)
-#  index_deploys_on_revertible              (revertible)
-#  index_deploys_on_snapshot_id             (snapshot_id)
-#  index_deploys_on_status                  (status)
-#  index_deploys_on_trigger                 (trigger)
-#  index_deploys_on_website_history_id      (website_history_id)
-#  index_deploys_on_website_id              (website_id)
-#  index_deploys_on_website_id_and_is_live  (website_id,is_live)
+#  index_deploys_on_created_at                                 (created_at)
+#  index_deploys_on_environment                                (environment)
+#  index_deploys_on_is_live                                    (is_live)
+#  index_deploys_on_is_preview                                 (is_preview)
+#  index_deploys_on_revertible                                 (revertible)
+#  index_deploys_on_snapshot_id                                (snapshot_id)
+#  index_deploys_on_status                                     (status)
+#  index_deploys_on_trigger                                    (trigger)
+#  index_deploys_on_website_history_id                         (website_history_id)
+#  index_deploys_on_website_id                                 (website_id)
+#  index_deploys_on_website_id_and_environment_and_is_preview  (website_id,environment,is_preview)
+#  index_deploys_on_website_id_and_is_live                     (website_id,is_live)
 #
 
 require 'rails_helper'
@@ -185,6 +190,7 @@ RSpec.describe Deploy, type: :model do
       allow(DeployUploader).to receive(:new).and_return(uploader_double)
       allow(uploader_double).to receive(:store!)
       allow(uploader_double).to receive(:hotswap_live)
+      allow(uploader_double).to receive(:hotswap_to_target)
       allow(uploader_double).to receive(:cleanup_old_deploys)
       
       allow(FileUtils).to receive(:rm_rf)
@@ -200,6 +206,7 @@ RSpec.describe Deploy, type: :model do
       allow(DeployUploader).to receive(:new).and_return(uploader)
       expect(uploader).to receive(:store!).with(dist_path, match(/#{website.id}\/\d{14}/))
       allow(uploader).to receive(:hotswap_live)
+      allow(uploader).to receive(:hotswap_to_target)
       allow(uploader).to receive(:cleanup_old_deploys)
       deploy.upload!(dist_path)
     end
@@ -209,7 +216,7 @@ RSpec.describe Deploy, type: :model do
       allow(DeployUploader).to receive(:new).and_return(uploader)
       allow(uploader).to receive(:store!)
       allow(uploader).to receive(:cleanup_old_deploys)
-      expect(uploader).to receive(:hotswap_live).with(match(/#{website.id}\/\d{14}/))
+      expect(uploader).to receive(:hotswap_to_target).with(match(/#{website.id}\/\d{14}/), 'live')
       deploy.upload!(dist_path)
     end
 
@@ -230,6 +237,7 @@ RSpec.describe Deploy, type: :model do
       allow(DeployUploader).to receive(:new).and_return(uploader)
       allow(uploader).to receive(:store!).and_raise(StandardError.new('Upload error'))
       allow(uploader).to receive(:cleanup_old_deploys)
+      allow(uploader).to receive(:hotswap_to_target)
       
       expect(deploy).to receive(:update!).with(status: 'uploading').ordered
       expect(deploy).to receive(:update!).with(status: 'failed', stacktrace: anything).ordered
@@ -330,6 +338,7 @@ RSpec.describe Deploy, type: :model do
       allow(DeployUploader).to receive(:new).and_return(uploader)
       allow(uploader).to receive(:store!)
       allow(uploader).to receive(:hotswap_live)
+      allow(uploader).to receive(:hotswap_to_target)
       allow(uploader).to receive(:cleanup_old_deploys)
       expect(deploy.deploy!).to eq(true)
     end
@@ -339,6 +348,7 @@ RSpec.describe Deploy, type: :model do
       allow(DeployUploader).to receive(:new).and_return(uploader)
       allow(uploader).to receive(:store!)
       allow(uploader).to receive(:hotswap_live)
+      allow(uploader).to receive(:hotswap_to_target)
       allow(uploader).to receive(:cleanup_old_deploys)
       expect(deploy.deploy!).to eq(true)
     end
@@ -374,6 +384,7 @@ RSpec.describe Deploy, type: :model do
       allow(DeployUploader).to receive(:new).and_return(uploader_double)
       allow(uploader_double).to receive(:store!)
       allow(uploader_double).to receive(:hotswap_live)
+      allow(uploader_double).to receive(:hotswap_to_target)
       allow(uploader_double).to receive(:preserve_current_live)
       allow(uploader_double).to receive(:cleanup_old_deploys)
     end
@@ -399,6 +410,7 @@ RSpec.describe Deploy, type: :model do
         expect(uploader).to receive(:preserve_current_live).with(website.id, deploy1.created_at.strftime('%Y%m%d%H%M%S'))
         allow(uploader).to receive(:store!)
         allow(uploader).to receive(:hotswap_live)
+        allow(uploader).to receive(:hotswap_to_target)
         allow(uploader).to receive(:cleanup_old_deploys)
         
         deploy2.upload!('/tmp/deploy_2/dist')

@@ -2,11 +2,12 @@ require 'aws-sdk-s3'
 require 'fileutils'
 
 class DeployUploader
-  attr_reader :client, :bucket_name
+  attr_reader :client, :bucket_name, :environment
 
-  def initialize
-    @bucket_name = Cloudflare.r2_bucket_name
-    @client = Cloudflare::R2.new
+  def initialize(environment: Rails.env)
+    @environment = environment
+    @bucket_name = "#{Cloudflare.r2_bucket_prefix}-#{environment}"
+    @client = Cloudflare::R2.new(bucket_name: @bucket_name)
   end
 
   def store!(local_path, remote_path)
@@ -31,8 +32,12 @@ class DeployUploader
   end
 
   def hotswap_live(timestamp_path)
+    hotswap_to_target(timestamp_path, 'live')
+  end
+
+  def hotswap_to_target(timestamp_path, target_dir)
     project_id = timestamp_path.split('/').first
-    live_path = "#{project_id}/live"
+    target_path = "#{project_id}/#{target_dir}"
     
     # Verify source exists before attempting operations
     source_objects = list_objects(timestamp_path, max_keys: 1)
@@ -42,31 +47,31 @@ class DeployUploader
       raise StandardError, error_msg
     end
     
-    Rails.logger.info "Starting hotswap: #{timestamp_path} -> #{live_path}"
+    Rails.logger.info "Starting hotswap: #{timestamp_path} -> #{target_path}"
     Rails.logger.info "Found #{list_objects(timestamp_path).contents.size} objects in source"
     
-    # Delete existing live directory
-    Rails.logger.info "Deleting existing live directory: #{live_path}"
-    delete_prefix(live_path)
+    # Delete existing target directory
+    Rails.logger.info "Deleting existing #{target_dir} directory: #{target_path}"
+    delete_prefix(target_path)
     
-    # Copy timestamp directory to live
-    Rails.logger.info "Copying #{timestamp_path} to #{live_path}"
-    copied_count = copy_prefix(timestamp_path, live_path)
+    # Copy timestamp directory to target
+    Rails.logger.info "Copying #{timestamp_path} to #{target_path}"
+    copied_count = copy_prefix(timestamp_path, target_path)
     
     if copied_count == 0
-      error_msg = "No files were copied from #{timestamp_path} to #{live_path}"
+      error_msg = "No files were copied from #{timestamp_path} to #{target_path}"
       Rails.logger.error error_msg
       raise StandardError, error_msg
     end
     
-    Rails.logger.info "Copied #{copied_count} files to live directory"
+    Rails.logger.info "Copied #{copied_count} files to #{target_dir} directory"
     
-    # Validate that live directory now exists and has content
-    Rails.logger.info "Validating live directory..."
-    live_objects = list_objects(live_path)
+    # Validate that target directory now exists and has content
+    Rails.logger.info "Validating #{target_dir} directory..."
+    target_objects = list_objects(target_path)
     
-    if live_objects.contents.empty?
-      error_msg = "CRITICAL: Live directory is empty after hotswap! Source: #{timestamp_path}, Destination: #{live_path}"
+    if target_objects.contents.empty?
+      error_msg = "CRITICAL: #{target_dir} directory is empty after hotswap! Source: #{timestamp_path}, Destination: #{target_path}"
       Rails.logger.error error_msg
       
       # Log diagnostic information
@@ -80,8 +85,8 @@ class DeployUploader
       raise StandardError, error_msg
     end
     
-    Rails.logger.info "Successfully hotswapped live deploy for project #{project_id}"
-    Rails.logger.info "Live directory now contains #{live_objects.contents.size} objects"
+    Rails.logger.info "Successfully hotswapped #{target_dir} deploy for project #{project_id}"
+    Rails.logger.info "#{target_dir.capitalize} directory now contains #{target_objects.contents.size} objects"
     
     # Return true to indicate success
     true

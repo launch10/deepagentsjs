@@ -5,6 +5,7 @@ require_relative '../config/environment'
 abort("The Rails environment is running in production mode!") if Rails.env.production?
 require 'rspec/rails'
 require 'sidekiq/testing'
+require 'database_cleaner/active_record'
 
 Rails.root.glob('spec/support/**/*.rb').sort_by(&:to_s).each { |f| require f }
 
@@ -20,13 +21,34 @@ RSpec.configure do |config|
   config.fixture_paths = [
     Rails.root.join('spec/fixtures')
   ]
-  config.use_transactional_fixtures = true
+  config.use_transactional_fixtures = false # Changed to false to use database_cleaner
   config.include FactoryBot::Syntax::Methods
   
   # Include helper modules for request specs
   config.include JwtHelpers, type: :request
   config.include SubscriptionHelpers, type: :request
   config.include PlanHelpers, type: :request
+
+  # Database cleaner configuration
+  config.before(:suite) do
+    DatabaseCleaner.clean_with(:truncation)
+  end
+
+  config.before(:each) do
+    DatabaseCleaner.strategy = :transaction
+  end
+
+  config.before(:each, js: true) do
+    DatabaseCleaner.strategy = :truncation
+  end
+
+  config.before(:each) do
+    DatabaseCleaner.start
+  end
+
+  config.after(:each) do
+    DatabaseCleaner.clean
+  end
 
   config.before(:each, :logsql) do
     ActiveRecord::Base.logger = Logger.new(STDOUT)

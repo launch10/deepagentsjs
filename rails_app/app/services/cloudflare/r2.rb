@@ -2,8 +2,8 @@ class Cloudflare
   class R2
     attr_reader :client, :bucket_name
 
-    def initialize
-      @bucket_name = Cloudflare.config.r2_bucket_name
+    def initialize(bucket_name: nil)
+      @bucket_name = bucket_name || "#{Cloudflare.config.r2_bucket_prefix}-#{Rails.env}"
       @client = Aws::S3::Client.new(
         endpoint: Cloudflare.config.r2_endpoint,
         access_key_id: Cloudflare.config.r2_access_key_id,
