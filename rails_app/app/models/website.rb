@@ -64,6 +64,11 @@ class Website < ApplicationRecord
     deploy.deploy!
   end
 
+  def rollback!
+    deploy = deploys.revertible.order(id: :desc).last
+    deploy.rollback!
+  end
+
   # Creates website_files from the fixture
   def make_fixture_files
     fixture_files = JSON.parse(File.read(Rails.root.join('spec/fixtures/valid_website_files.json')))

@@ -34,13 +34,57 @@ class DeployUploader
     project_id = timestamp_path.split('/').first
     live_path = "#{project_id}/live"
     
+    # Verify source exists before attempting operations
+    source_objects = list_objects(timestamp_path, max_keys: 1)
+    if source_objects.contents.empty?
+      error_msg = "Source path #{timestamp_path} does not exist or is empty"
+      Rails.logger.error error_msg
+      raise StandardError, error_msg
+    end
+    
+    Rails.logger.info "Starting hotswap: #{timestamp_path} -> #{live_path}"
+    Rails.logger.info "Found #{list_objects(timestamp_path).contents.size} objects in source"
+    
     # Delete existing live directory
+    Rails.logger.info "Deleting existing live directory: #{live_path}"
     delete_prefix(live_path)
     
     # Copy timestamp directory to live
-    copy_prefix(timestamp_path, live_path)
+    Rails.logger.info "Copying #{timestamp_path} to #{live_path}"
+    copied_count = copy_prefix(timestamp_path, live_path)
+    
+    if copied_count == 0
+      error_msg = "No files were copied from #{timestamp_path} to #{live_path}"
+      Rails.logger.error error_msg
+      raise StandardError, error_msg
+    end
+    
+    Rails.logger.info "Copied #{copied_count} files to live directory"
+    
+    # Validate that live directory now exists and has content
+    Rails.logger.info "Validating live directory..."
+    live_objects = list_objects(live_path)
+    
+    if live_objects.contents.empty?
+      error_msg = "CRITICAL: Live directory is empty after hotswap! Source: #{timestamp_path}, Destination: #{live_path}"
+      Rails.logger.error error_msg
+      
+      # Log diagnostic information
+      Rails.logger.error "Attempting to diagnose issue..."
+      all_project_objects = list_objects(project_id)
+      Rails.logger.error "All objects under project #{project_id}:"
+      all_project_objects.contents.each do |obj|
+        Rails.logger.error "  - #{obj.key} (size: #{obj.size} bytes)"
+      end
+      
+      raise StandardError, error_msg
+    end
     
     Rails.logger.info "Successfully hotswapped live deploy for project #{project_id}"
+    Rails.logger.info "Live directory now contains #{live_objects.contents.size} objects"
+    
+    # Return true to indicate success
+    true
   end
 
   def list_objects(prefix, **kwargs)
@@ -82,22 +126,47 @@ class DeployUploader
 
   def copy_prefix(source_prefix, dest_prefix)
     begin
-      puts "Copying prefix: #{source_prefix} to #{dest_prefix}"
+      Rails.logger.info "Starting copy operation: #{source_prefix} -> #{dest_prefix}"
       objects = list_objects(source_prefix)
-    rescue Aws::S3::Errors::NoSuchKey
-      return # No objects to copy
+    rescue Aws::S3::Errors::NoSuchKey => e
+      Rails.logger.error "Source prefix not found: #{source_prefix}"
+      raise e
     end
+    
+    if objects.contents.empty?
+      Rails.logger.warn "No objects to copy from #{source_prefix}"
+      return 0
+    end
+    
+    copied_count = 0
+    failed_keys = []
     
     objects.contents.each do |object|
       source_key = object.key
       dest_key = source_key.sub(source_prefix, dest_prefix)
       
-      client.copy_object(
-        bucket: bucket_name,
-        copy_source: "#{bucket_name}/#{source_key}",
-        key: dest_key
-      )
+      begin
+        Rails.logger.debug "Copying: #{source_key} -> #{dest_key}"
+        client.copy_object(
+          bucket: bucket_name,
+          copy_source: "#{bucket_name}/#{source_key}",
+          key: dest_key
+        )
+        copied_count += 1
+      rescue => e
+        Rails.logger.error "Failed to copy #{source_key}: #{e.message}"
+        failed_keys << source_key
+      end
     end
+    
+    if failed_keys.any?
+      error_msg = "Failed to copy #{failed_keys.size} objects: #{failed_keys.join(', ')}"
+      Rails.logger.error error_msg
+      raise StandardError, error_msg
+    end
+    
+    Rails.logger.info "Successfully copied #{copied_count} objects from #{source_prefix} to #{dest_prefix}"
+    copied_count
   end
 
   private

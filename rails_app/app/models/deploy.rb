@@ -29,6 +29,8 @@
 #
 
 class Deploy < ApplicationRecord
+  KEEP_DEPLOY_LIMIT = 5
+
   belongs_to :website
 
   validates :status, presence: true
@@ -141,14 +143,17 @@ class Deploy < ApplicationRecord
   def rollback!
     raise "Cannot rollback non-completed deploy" unless status == 'completed'
     raise "Cannot rollback non-revertible deploy" unless revertible?
-    raise "Deploy is already live" if is_live?
+    raise "Cannot roll back any further!" if is_live?
     
     begin
       uploader = DeployUploader.new
       
       # Mark current live as not live
       current_live = website.deploys.live.first
-      current_live&.update!(is_live: false)
+      if current_live && current_live != self
+        uploader.preserve_current_live(website.id, current_live.created_at.strftime('%Y%m%d%H%M%S'))
+        current_live.update!(is_live: false)
+      end
       
       # Hotswap to this version
       uploader.hotswap_live(version_path)
@@ -189,14 +194,14 @@ class Deploy < ApplicationRecord
   
   def update_revertible_deploys
     # Only keep the last 3 completed deploys as revertible
-    completed_deploys = website.deploys.completed.order(created_at: :desc)
+    completed_deploys = website.deploys.completed.order(created_at: :desc).where(is_live: false)
     
     # Mark the last 3 as revertible
-    completed_deploys.limit(3).update_all(revertible: true)
+    completed_deploys.limit(KEEP_DEPLOY_LIMIT).update_all(revertible: true)
     
     # Mark all others as not revertible
-    if completed_deploys.count > 3
-      completed_deploys.offset(3).update_all(revertible: false)
+    if completed_deploys.count > KEEP_DEPLOY_LIMIT
+      completed_deploys.offset(KEEP_DEPLOY_LIMIT).update_all(revertible: false)
     end
   end
 end
