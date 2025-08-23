@@ -51,30 +51,33 @@ class Cloudflare
       firewall_service = Cloudflare::FirewallService.new
       response = firewall_service.block_domains(unblocked_domains)
       if response.success?
+        cloudflare_ids_by_domain = firewall_service.search_blocked_domains(unblocked_domains)
         firewall.update!(status: Cloudflare::FirewallStatuses::BLOCKED, blocked_at: Time.current)
-        response = firewall_service.search_blocked_domains(unblocked_domains)
 
         to_insert = unblocked_domains.map do |domain|
           firewall_rule = Cloudflare::FirewallRule.find_or_initialize_by(
             domain_id: domain.id,
           )
-          firewall_rule.status = Cloudflare::FirewallStatuses::INACTIVE
+          firewall_rule.status = Cloudflare::FirewallStatuses::BLOCKED
           firewall_rule.user = user
           firewall_rule.firewall = firewall
+          firewall_rule.cloudflare_rule_id = cloudflare_ids_by_domain[domain.domain]
+          firewall_rule.blocked_at = Time.current
+          firewall_rule.unblocked_at = nil
           firewall_rule
         end
 
         Cloudflare::FirewallRule.import(to_insert, 
           on_duplicate_key_update: { 
             conflict_target: [:domain_id], 
-            columns: [:status] 
+            columns: [
+              :status,
+              :blocked_at,
+              :unblocked_at,
+              :cloudflare_rule_id,
+              :firewall_id
+            ] 
           }
-        )
-
-        firewall_rules.update_all(
-          status: Cloudflare::FirewallStatuses::BLOCKED,
-          blocked_at: Time.current,
-          unblocked_at: nil
         )
       else
         # We raise so that the worker retries, and eventually succeeds

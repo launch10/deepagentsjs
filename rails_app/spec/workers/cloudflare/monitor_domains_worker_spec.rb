@@ -278,21 +278,11 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         allow(firewall_service).to receive(:block_domains).and_return(
           mock_api_response(mock_response)
         )
-        allow(firewall_service).to receive(:search_blocked_domains).twice.and_return(
-          mock_api_response({
-            id: "274d104045dd4c2492192ca565f8d7e7",
-            hostname: {url_hostname: "www.abeverything.com"},
-            comment: "Auto-suspended by worker on 2025-08-23 14:42:24 -0400",
-            created_on: "2025-08-23T18:42:24Z",
-            modified_on: "2025-08-23T18:42:24Z"
-          }),
-          mock_api_response({
-            id: "3b17fd8fdc6443c7b34844bdb53fb104",
-            hostname: {url_hostname: "www.blorps.com"},
-            comment: "Auto-suspended by worker on 2025-08-23 14:42:24 -0400",
-            created_on: "2025-08-23T18:42:24Z",
-            modified_on: "2025-08-23T18:42:24Z"
-          })
+        allow(firewall_service).to receive(:search_blocked_domains).and_return(
+          {
+            "www.example.com" => "274d104045dd4c2492192ca565f8d7e7",
+            "apples.example.com" => "3b17fd8fdc6443c7b34844bdb53fb104"
+          }
         )
         
         # First get to just under the limit
@@ -319,12 +309,23 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         Sidekiq::Worker.drain_all
         
         # Verify firewall rules were created with 'blocked' status
-        firewall_rules = Cloudflare::Firewall.where(user: apples_user)
+        firewall_rules = Cloudflare::FirewallRule.where(user: apples_user)
         expect(firewall_rules).not_to be_empty
-        firewall_rules.each do |rule|
-          expect(rule.status).to eq("blocked")
-          expect(rule.cloudflare_zone_id).to eq(zone_id)
-        end
+
+        www_rule = firewall_rules.find_by(domain_id: www_domain.id)
+        expect(www_rule).to be_present
+        expect(www_rule.status).to eq("blocked")
+        expect(www_rule.cloudflare_rule_id).to eq("274d104045dd4c2492192ca565f8d7e7")
+
+        apples_rule = firewall_rules.find_by(domain_id: apples_domain.id)
+        expect(apples_rule).to be_present
+        expect(apples_rule.status).to eq("blocked")
+        expect(apples_rule.cloudflare_rule_id).to eq("3b17fd8fdc6443c7b34844bdb53fb104")
+
+        firewall = apples_user.firewall
+        expect(firewall).to be_present
+        expect(firewall.status).to eq("blocked")
+        expect(firewall.blocked_at).to be_present
       end
 
       it "raises error when Cloudflare API returns non-success response" do
