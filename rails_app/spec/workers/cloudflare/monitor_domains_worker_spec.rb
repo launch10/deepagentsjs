@@ -6,9 +6,9 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
   let(:bananas_user) { create(:user) }
   let(:apples_account) { create(:account, owner: apples_user) }
   let(:bananas_account) { create(:account, owner: bananas_user) }
-  let(:apples_domain) { create(:domain, user: apples_user, hostname: "apples.example.com", website: apples_website) }
-  let(:bananas_domain) { create(:domain, user: bananas_user, hostname: "bananas.example.com", website: bananas_website) }
-  let(:www_domain) { create(:domain, user: apples_user, hostname: "www.example.com", website: website) }
+  let(:apples_domain) { create(:domain, user: apples_user, domain: "apples.example.com", website: apples_website) }
+  let(:bananas_domain) { create(:domain, user: bananas_user, domain: "bananas.example.com", website: bananas_website) }
+  let(:www_domain) { create(:domain, user: apples_user, domain: "www.example.com", website: website) }
   let(:website) { create(:website, user: apples_user, name: "www") }
   let(:apples_website) { create(:website, user: apples_user, name: "apples") }
   let(:bananas_website) { create(:website, user: bananas_user, name: "bananas") }
@@ -105,7 +105,6 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           end
         end
       end
-
       it "creates domain request counts for each domain" do
         Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
           expect {
@@ -119,53 +118,6 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           expect(report["www.example.com"]).to eq(70_000) # 50k + 20k
           expect(report["apples.example.com"]).to eq(30_000)
           expect(report["bananas.example.com"]).to eq(300)
-        end
-      end
-
-      it "UserRequestCounts equal the sum of all DomainRequestCounts for a user for the month" do
-        Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
-          subject.perform(zone_id)
-          
-          # UserRequestCount should be updated automatically by process_traffic_report
-          
-          # Check apples_user's total
-          apples_total = DomainRequestCount.total_for_user(apples_user, day1.beginning_of_month, day1.end_of_month)
-          apples_user_count = UserRequestCount.find_by(user: apples_user, month: day1.beginning_of_month)
-          
-          expect(apples_user_count).to be_present
-          expect(apples_user_count.request_count).to eq(apples_total)
-          # Should be 70k (example.com + www) + 30k (apples) = 100k
-          expect(apples_user_count.request_count).to eq(100_000)
-        end
-      end
-
-      it "domain request counts are summarized for each hour" do
-        # First hour - 10am
-        Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
-          subject.perform(zone_id)
-          
-          count_10am = DomainRequestCount.find_by(
-            domain: www_domain,
-            user: apples_user,
-            hour: UTC.now.beginning_of_hour
-          )
-          expect(count_10am.request_count).to eq(70_000) # 50k + 20k
-        end
-
-        # Second hour - 11am
-        Timecop.freeze(UTC.parse("2025-08-01 11:00:00")) do
-          subject.perform(zone_id)
-          
-          count_11am = DomainRequestCount.find_by(
-            domain: www_domain,
-            user: apples_user,
-            hour: UTC.now.beginning_of_hour
-          )
-          expect(count_11am.request_count).to eq(2500) # 2000 + 500
-          
-          # Total for the day should be sum of both hours
-          total = DomainRequestCount.total_for_domain(www_domain, day1, day1.end_of_day)
-          expect(total).to eq(72_500) # 70k + 2.5k
         end
       end
 
@@ -197,6 +149,61 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           # Total for user should be updated values
           total = DomainRequestCount.total_for_user(apples_user, day1, day1.end_of_day)
           expect(total).to eq(130_000) # 95k (www) + 35k (apples)
+
+          user_total = UserRequestCount.find_by(user: apples_user, month: day1.beginning_of_month)
+          expect(user_total.request_count).to eq(130_000) # User total matches domain totals
+        end
+      end
+      it "UserRequestCounts equal the sum of all DomainRequestCounts for a user for the month", :focus do
+        # Run the worker for each hour in the traffic report
+        traffic_report.each do |time, traffic|
+          Timecop.freeze(UTC.parse(time)) do
+            subject.perform(zone_id)
+          end
+        end
+
+        # Check apples_user's total
+        apples_total = DomainRequestCount.total_for_user(apples_user, day1.beginning_of_month, day1.end_of_month)
+        apples_user_count = UserRequestCount.find_by(user: apples_user, month: day1.beginning_of_month)
+        
+        expect(apples_user_count).to be_present
+        expect(apples_user_count.request_count).to eq(apples_total)
+        expect(apples_user_count.request_count).to eq(134_200)
+
+        apples_total = DomainRequestCount.total_for_user(apples_user, next_month_day1.beginning_of_month, next_month_day1.end_of_month)
+        apples_user_count = UserRequestCount.find_by(user: apples_user, month: next_month_day1.beginning_of_month)
+        expect(apples_user_count).to be_present
+        expect(apples_user_count.request_count).to eq(apples_total)
+        expect(apples_user_count.request_count).to eq(1900)
+      end
+
+      it "domain request counts are summarized for each hour" do
+        # First hour - 10am
+        Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
+          subject.perform(zone_id)
+          
+          count_10am = DomainRequestCount.find_by(
+            domain: www_domain,
+            user: apples_user,
+            hour: UTC.now.beginning_of_hour
+          )
+          expect(count_10am.request_count).to eq(70_000) # 50k + 20k
+        end
+
+        # Second hour - 11am
+        Timecop.freeze(UTC.parse("2025-08-01 11:00:00")) do
+          subject.perform(zone_id)
+          
+          count_11am = DomainRequestCount.find_by(
+            domain: www_domain,
+            user: apples_user,
+            hour: UTC.now.beginning_of_hour
+          )
+          expect(count_11am.request_count).to eq(2500) # 2000 + 500
+          
+          # Total for the day should be sum of both hours
+          total = DomainRequestCount.total_for_domain(www_domain, day1, day1.end_of_day)
+          expect(total).to eq(72_500) # 70k + 2.5k
         end
       end
 

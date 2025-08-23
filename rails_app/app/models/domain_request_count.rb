@@ -59,7 +59,7 @@ class DomainRequestCount < ApplicationRecord
       .for_user(user)
       .recent(hours_ago.hours)
       .with_traffic
-      .group('domains.hostname')
+      .group('domains.domain')
       .sum(:request_count)
   end
   

@@ -23,7 +23,7 @@ class Cloudflare
         .joins(:domain)
         .where(user: user)
         .where('counted_at >= ?', 24.hours.ago)
-        .group('domains.hostname')
+        .group('domains.domain')
         .sum(:request_count)
         .select { |_domain, count| count > 0 }
       
@@ -36,9 +36,9 @@ class Cloudflare
       )
       
       # Prepare domains for blocking
-      domains_to_block = recent_domains.map do |hostname, request_count|
+      domains_to_block = recent_domains.map do |domain, request_count|
         {
-          domain: hostname,
+          domain: domain,
           request_count: request_count,
           first_seen_at: 24.hours.ago,
           last_seen_at: Time.current,

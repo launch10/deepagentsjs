@@ -29,9 +29,6 @@ class Domain < ApplicationRecord
   has_many :domain_request_counts, dependent: :destroy
   has_one :firewall_rule
 
-  # Alias hostname to domain for compatibility with TrafficWorker
-  alias_attribute :hostname, :domain
-
   validates :domain, presence: true, uniqueness: true
   validates :website_id, presence: true
   validates :user_id, presence: true
