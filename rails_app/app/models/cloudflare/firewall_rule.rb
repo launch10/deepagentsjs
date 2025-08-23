@@ -2,27 +2,30 @@
 #
 # Table name: cloudflare_firewall_rules
 #
-#  id            :integer          not null, primary key
-#  firewall_id   :integer
-#  user_id       :integer
-#  status        :string
-#  cloudflare_id :string
-#  blocked_at    :datetime
-#  created_at    :datetime         not null
-#  updated_at    :datetime         not null
+#  id                 :integer          not null, primary key
+#  firewall_id        :integer          not null
+#  domain_id          :integer          not null
+#  user_id            :integer          not null
+#  status             :string           default("inactive"), not null
+#  cloudflare_rule_id :string           not null
+#  blocked_at         :datetime
+#  unblocked_at       :datetime
+#  created_at         :datetime         not null
+#  updated_at         :datetime         not null
 #
 # Indexes
 #
 #  index_cloudflare_firewall_rules_on_blocked_at          (blocked_at)
-#  index_cloudflare_firewall_rules_on_cloudflare_id       (cloudflare_id)
+#  index_cloudflare_firewall_rules_on_cloudflare_rule_id  (cloudflare_rule_id) UNIQUE
 #  index_cloudflare_firewall_rules_on_created_at          (created_at)
+#  index_cloudflare_firewall_rules_on_domain_id           (domain_id) UNIQUE
 #  index_cloudflare_firewall_rules_on_firewall_id         (firewall_id)
 #  index_cloudflare_firewall_rules_on_status              (status)
+#  index_cloudflare_firewall_rules_on_unblocked_at        (unblocked_at)
 #  index_cloudflare_firewall_rules_on_user_id             (user_id)
-#  index_cloudflare_firewall_rules_on_user_id_and_status  (user_id,status)
 #
 
-module Cloudflare
+class Cloudflare
   class FirewallRule < ApplicationRecord
     self.table_name = "cloudflare_firewall_rules"
 

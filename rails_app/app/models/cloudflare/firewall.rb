@@ -17,7 +17,7 @@
 #  index_cloudflare_firewalls_on_user_id     (user_id)
 #
 
-module Cloudflare
+class Cloudflare
   class Firewall < ApplicationRecord
     include Cloudflare::Statuses
     self.table_name = "cloudflare_firewalls"

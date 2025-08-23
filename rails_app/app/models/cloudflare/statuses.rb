@@ -1,4 +1,4 @@
-module Cloudflare
+class Cloudflare
   class Statuses < ApplicationRecord
     STATUS = %w[inactive blocked]
     enum status: STATUS

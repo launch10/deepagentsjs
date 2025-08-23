@@ -8,32 +8,33 @@ class CreateDomainRequestCounts < ActiveRecord::Migration[8.0]
               domain_id BIGINT NOT NULL,
               user_id BIGINT NOT NULL,
               request_count BIGINT NOT NULL,
+              hour TIMESTAMPTZ NOT NULL,
               created_at TIMESTAMPTZ NOT NULL,
-            PRIMARY KEY (id, created_at)
-        ) PARTITION BY RANGE (created_at);
+            PRIMARY KEY (id, hour)
+        ) PARTITION BY RANGE (hour);
       SQL
     end
 
       # Note: This index is created on the parent and automatically propagated to all partitions.
       execute <<-SQL
-        CREATE INDEX IF NOT EXISTS index_domain_request_counts_on_domain_id_and_created_at
-        ON domain_request_counts (domain_id, created_at);
+        CREATE INDEX IF NOT EXISTS index_domain_request_counts_on_domain_id_and_hour
+        ON domain_request_counts (domain_id, hour);
 
-        CREATE INDEX IF NOT EXISTS index_domain_request_counts_on_domain_created_count
-        ON domain_request_counts (domain_id, created_at, request_count);
+        CREATE INDEX IF NOT EXISTS index_domain_request_counts_on_domain_hour_count
+        ON domain_request_counts (domain_id, hour, request_count);
 
-        CREATE INDEX IF NOT EXISTS index_domain_request_counts_on_user_id_and_created_at
-        ON domain_request_counts (user_id, created_at);
+        CREATE INDEX IF NOT EXISTS index_domain_request_counts_on_user_id_and_hour
+        ON domain_request_counts (user_id, hour);
 
-        CREATE INDEX IF NOT EXISTS index_domain_request_counts_on_user_domain_and_created_at
-        ON domain_request_counts (user_id, domain_id, created_at);
+        CREATE INDEX IF NOT EXISTS index_domain_request_counts_on_user_domain_and_hour
+        ON domain_request_counts (user_id, domain_id, hour);
       SQL
     end
   end
 
   def down
     safety_assured do
-      execute `DROP TABLE IF EXISTS domain_request_counts;`
+      execute "DROP TABLE IF EXISTS domain_request_counts;"
     end
   end
 end

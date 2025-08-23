@@ -96,6 +96,11 @@ class Website < ApplicationRecord
     rollbackable = deploys.revertible.where("id < ?", current_live.id).order(id: :desc).limit(1).first
     rollbackable
   end
+  
+  # Get the primary domain for this website
+  def domain
+    domains.first&.domain || name
+  end
 
   # Creates website_files from the fixture
   def make_fixture_files

@@ -81,9 +81,17 @@ class User < ApplicationRecord
 
   has_many :projects, through: :owned_account
   has_many :websites, through: :projects
+  has_many :domains
+  has_many :domain_request_counts
+  has_many :user_request_counts
+  has_many :firewalls
   
   def current_plan_id
     plan&.id
+  end
+  
+  def account
+    owned_account
   end
 
   private

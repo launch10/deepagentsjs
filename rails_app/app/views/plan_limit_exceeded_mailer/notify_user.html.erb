@@ -1,0 +1,23 @@
+<h2>Plan Limit Exceeded</h2>
+
+<p>Hello <%= @user.name %>,</p>
+
+<p>Your account has exceeded its monthly request limit. To prevent further charges and maintain service stability, we've temporarily blocked traffic to your domains.</p>
+
+<h3>Usage Details:</h3>
+<ul>
+  <li><strong>Current Usage:</strong> <%= number_with_delimiter(@current_usage) %> requests</li>
+  <li><strong>Plan Limit:</strong> <%= number_with_delimiter(@limit) %> requests</li>
+  <li><strong>Overage:</strong> <%= number_with_delimiter(@overage) %> requests (<%= @percentage_used %>% of limit)</li>
+</ul>
+
+<h3>What happens now?</h3>
+<p>Your domains will remain blocked until the start of your next billing period. At that time, your request count will reset and your domains will be automatically unblocked.</p>
+
+<h3>Need more requests?</h3>
+<p>Consider upgrading your plan to increase your monthly request limit. You can review available plans and upgrade your subscription in your account settings.</p>
+
+<p>If you have any questions or concerns, please don't hesitate to contact our support team.</p>
+
+<p>Best regards,<br>
+The <%= Rails.application.config.application_name %> Team</p>
