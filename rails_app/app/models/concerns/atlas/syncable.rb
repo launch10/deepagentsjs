@@ -5,9 +5,9 @@ module Atlas
     extend ActiveSupport::Concern
 
     included do
-      after_create_commit :sync_to_atlas_on_create
-      after_update_commit :sync_to_atlas_on_update, if: :sync_to_atlas_required?
-      before_destroy :sync_to_atlas_on_destroy
+      after_create_commit :enqueue_sync_to_atlas_on_create
+      after_update_commit :enqueue_sync_to_atlas_on_update, if: :sync_to_atlas_required?
+      before_destroy :enqueue_sync_to_atlas_on_destroy
     end
 
     def sync_to_atlas
@@ -15,6 +15,24 @@ module Atlas
     end
 
     private
+
+    def enqueue_sync_to_atlas_on_create
+      return unless atlas_sync_enabled?
+      
+      Atlas::SyncWorker.perform_async(self.class.name, id, 'sync_to_atlas_on_create')
+    end
+
+    def enqueue_sync_to_atlas_on_update
+      return unless atlas_sync_enabled?
+      
+      Atlas::SyncWorker.perform_async(self.class.name, id, 'sync_to_atlas_on_update')
+    end
+
+    def enqueue_sync_to_atlas_on_destroy
+      return unless atlas_sync_enabled?
+      
+      Atlas::SyncWorker.perform_async(self.class.name, id, 'sync_to_atlas_on_destroy')
+    end
 
     def sync_to_atlas_on_create
       return unless atlas_sync_enabled?

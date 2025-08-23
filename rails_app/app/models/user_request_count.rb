@@ -11,7 +11,7 @@
 # Indexes
 #
 #  index_user_request_counts_on_user_id_and_month  (user_id,month)
-#  index_user_request_counts_on_user_month         (user_id,month,request_count)
+#  index_user_request_counts_on_user_month         (user_id,month,request_count) UNIQUE
 #
 
 class UserRequestCount < ApplicationRecord

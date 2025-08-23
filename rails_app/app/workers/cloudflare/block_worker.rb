@@ -3,7 +3,7 @@ class Cloudflare::BlockWorker
   
   class BlockingError < StandardError; end
   
-  sidekiq_options queue: :cloudflare, retry: 5
+  sidekiq_options queue: :critical, retry: 5
   
   sidekiq_retry_in do |count, exception|
     # Exponential backoff: 1min, 5min, 15min, 1hr, 2hr

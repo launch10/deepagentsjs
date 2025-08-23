@@ -3,7 +3,7 @@ module Atlas
   class BaseService < ApplicationClient
     include ActiveSupport::Configurable
     
-    config_accessor :base_url, default: 'http://localhost:8787'
+    config_accessor :base_url
     config_accessor :api_secret
     config_accessor :timeout, default: 30
     

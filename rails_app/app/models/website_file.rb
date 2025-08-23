@@ -3,7 +3,7 @@
 # Table name: website_files
 #
 #  id                    :integer          not null, primary key
-#  website_id            :integer          not null
+#  project_id            :integer          not null
 #  file_specification_id :integer
 #  path                  :string           not null
 #  content               :string           not null

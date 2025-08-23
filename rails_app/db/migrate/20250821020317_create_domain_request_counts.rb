@@ -26,7 +26,7 @@ class CreateDomainRequestCounts < ActiveRecord::Migration[8.0]
         CREATE INDEX IF NOT EXISTS index_domain_request_counts_on_user_id_and_hour
         ON domain_request_counts (user_id, hour);
 
-        CREATE INDEX IF NOT EXISTS index_domain_request_counts_on_user_domain_and_hour
+        CREATE UNIQUE INDEX IF NOT EXISTS index_domain_request_counts_on_user_domain_and_hour
         ON domain_request_counts (user_id, domain_id, hour);
       SQL
     end

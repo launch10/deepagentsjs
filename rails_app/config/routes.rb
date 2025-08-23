@@ -1,4 +1,14 @@
+require 'sidekiq/web'
+
+ADMIN_ONLY = lambda do |request|
+  request.session[:role_type] == "AdminUser"
+end
+
 Rails.application.routes.draw do
+  constraints ADMIN_ONLY do
+    mount Sidekiq::Web => "/sidekiq"
+  end
+
   draw :accounts
   draw :api
   draw :billing

@@ -37,7 +37,7 @@ namespace :seeds do
     limits_to_import = plan_limits.map do |limit_type, limits|
         limits.map do |plan_name, limit|
           { 
-            plan_id: Plan.find_by_name(plan_name).id, 
+            plan_id: Plan.find_by(name: plan_name).id, 
             limit_type: limit_type, 
             limit: limit 
           }

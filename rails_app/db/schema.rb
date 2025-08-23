@@ -217,7 +217,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_22_161443) do
     t.timestamptz "created_at", null: false
     t.index ["domain_id", "hour", "request_count"], name: "index_domain_request_counts_on_domain_hour_count"
     t.index ["domain_id", "hour"], name: "index_domain_request_counts_on_domain_id_and_hour"
-    t.index ["user_id", "domain_id", "hour"], name: "index_domain_request_counts_on_user_domain_and_hour"
+    t.index ["user_id", "domain_id", "hour"], name: "index_domain_request_counts_on_user_domain_and_hour", unique: true
     t.index ["user_id", "hour"], name: "index_domain_request_counts_on_user_id_and_hour"
   end
 
@@ -564,7 +564,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_22_161443) do
     t.bigint "request_count", null: false
     t.timestamptz "month", null: false
     t.timestamptz "created_at", null: false
-    t.index ["user_id", "month", "request_count"], name: "index_user_request_counts_on_user_month"
+    t.index ["user_id", "month", "request_count"], name: "index_user_request_counts_on_user_month", unique: true
     t.index ["user_id", "month"], name: "index_user_request_counts_on_user_id_and_month"
   end
 

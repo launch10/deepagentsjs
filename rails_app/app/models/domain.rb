@@ -22,6 +22,7 @@
 class Domain < ApplicationRecord
   include Atlas::Domain
   include Cloudflare::Monitorable
+  include Domain::NormalizeDomain
   
   belongs_to :website
   belongs_to :user
@@ -36,7 +37,7 @@ class Domain < ApplicationRecord
   validates :user_id, presence: true
 
   before_validation :set_default_domain, on: :create
-  before_validation :normalize_domain
+  before_validation :set_normalized_domain, on: :create
 
   private
 
@@ -66,18 +67,8 @@ class Domain < ApplicationRecord
     end
   end
 
-  def normalize_domain
-    subdomain = extract_subdomain(domain)
-    if subdomain.nil?
-      write_attribute(:domain, "www.#{domain}")
-    end
-  end
-
-  def extract_subdomain(url)
-    uri = URI.parse(url.start_with?('http') ? url : "http://#{url}")
-    parts = uri.host.split('.')
-    return nil if parts.length <= 2
-    parts.first
+  def set_normalized_domain
+    write_attribute(:domain, normalize_domain(domain))
   end
 
 end

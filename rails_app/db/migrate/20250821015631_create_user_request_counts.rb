@@ -23,7 +23,7 @@ class CreateUserRequestCounts < ActiveRecord::Migration[8.0]
 
       unless index_exists?(:user_request_counts, :index_user_request_counts_on_user_month) 
         execute <<-SQL
-          CREATE INDEX IF NOT EXISTS index_user_request_counts_on_user_month
+          CREATE UNIQUE INDEX IF NOT EXISTS index_user_request_counts_on_user_month
           ON user_request_counts (user_id, month, request_count);
         SQL
       end

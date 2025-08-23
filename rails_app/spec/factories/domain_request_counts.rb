@@ -13,7 +13,7 @@
 #
 #  index_domain_request_counts_on_domain_hour_count     (domain_id,hour,request_count)
 #  index_domain_request_counts_on_domain_id_and_hour    (domain_id,hour)
-#  index_domain_request_counts_on_user_domain_and_hour  (user_id,domain_id,hour)
+#  index_domain_request_counts_on_user_domain_and_hour  (user_id,domain_id,hour) UNIQUE
 #  index_domain_request_counts_on_user_id_and_hour      (user_id,hour)
 #
 

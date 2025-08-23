@@ -13,7 +13,7 @@
 #
 #  index_domain_request_counts_on_domain_hour_count     (domain_id,hour,request_count)
 #  index_domain_request_counts_on_domain_id_and_hour    (domain_id,hour)
-#  index_domain_request_counts_on_user_domain_and_hour  (user_id,domain_id,hour)
+#  index_domain_request_counts_on_user_domain_and_hour  (user_id,domain_id,hour) UNIQUE
 #  index_domain_request_counts_on_user_id_and_hour      (user_id,hour)
 #
 
@@ -24,15 +24,18 @@ class DomainRequestCount < ApplicationRecord
   validates :domain, presence: true
   validates :user, presence: true
   validates :request_count, presence: true, numericality: { greater_than_or_equal_to: 0 }
-  validates :counted_at, presence: true
-  validates :domain_id, uniqueness: { scope: [:user_id, :counted_at] }
+  validates :domain_id, uniqueness: { scope: [:user_id, :hour] }
 
   # Scopes for querying
   scope :for_user, ->(user) { where(user: user) }
   scope :for_domain, ->(domain) { where(domain: domain) }
-  scope :in_period, ->(start_time, end_time) { where(counted_at: start_time..end_time) }
-  scope :recent, ->(duration = 24.hours) { where('counted_at >= ?', duration.ago) }
+  scope :in_period, ->(start_time, end_time) { where(hour: start_time..end_time) }
+  scope :recent, ->(duration = 24.hours) { where('hour >= ?', duration.ago) }
   scope :with_traffic, -> { where('request_count > 0') }
+
+  class << self
+    include Domain::NormalizeDomain
+  end
   
   # Get total requests for a user in a given period
   def self.total_for_user(user, start_time, end_time = Time.current)
@@ -66,7 +69,7 @@ class DomainRequestCount < ApplicationRecord
     # Group by hour manually if group_by_hour is not available
     results = {}
     query.in_period(start_time, end_time).find_each do |record|
-      hour_key = record.counted_at.beginning_of_hour
+      hour_key = record.hour.beginning_of_hour
       results[hour_key] ||= 0
       results[hour_key] += record.request_count
     end
@@ -91,7 +94,7 @@ class DomainRequestCount < ApplicationRecord
     
     return if traffic_report.blank?
     
-    domain_names = traffic_report.keys
+    domain_names = traffic_report.keys.map { |domain| normalize_domain(domain) }
     domains = Domain.where(domain: domain_names).includes(:user)
     domains_by_domain = domains.index_by(&:domain)
     domains.update_all(cloudflare_zone_id: zone_id)
@@ -99,9 +102,10 @@ class DomainRequestCount < ApplicationRecord
     
     to_insert = traffic_report.map do |domain, request_count|
       # Upsert domain request count for this hour
-      domain_record = domains_by_domain[domain]
+      domain_record = domains_by_domain[normalize_domain(domain)]
       if domain_record.blank?
-        binding.pry
+        Rollbar.error("Traffic report found for domain without a domain record", domain: domain)
+        next
       end
       
       domain_request_count = DomainRequestCount.find_or_initialize_by(
@@ -112,8 +116,11 @@ class DomainRequestCount < ApplicationRecord
       
       domain_request_count.request_count = request_count
       domain_request_count
-    end
+    end.compact
 
+    return if to_insert.blank?
+
+    binding.pry
     DomainRequestCount.import(to_insert, on_duplicate_key_update: { 
       conflict_target: [:domain_id, :user_id, :hour], 
       columns: [:request_count] 

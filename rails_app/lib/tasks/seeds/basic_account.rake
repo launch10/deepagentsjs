@@ -1,8 +1,8 @@
-namespace :seed do
+namespace :seeds do
   desc "Create a basic account"
   task basic_account: :environment do
     user = User.find_or_initialize_by(
-      email: "brettt@abeverything.com",
+      email: "brett@abeverything.com",
     )
     user.update(
       password: "password",
@@ -55,7 +55,8 @@ namespace :seed do
       domain: "abeverything.com",
     )
     domain.update(
-      website: website
+      website: website,
+      user: user
     )
 
     puts "Created project: #{project.name}"

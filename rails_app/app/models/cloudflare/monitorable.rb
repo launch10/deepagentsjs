@@ -23,22 +23,47 @@ class Cloudflare
       end
 
       def monitor_cloudflare_zone(zone_id)
-        start_time = UTC.now.beginning_of_hour
-        end_time = UTC.now.end_of_hour
-
-        # sample report: {"abeverything.com" => 16, "example.abeverything.com" => 50}
-        traffic_report = Cloudflare::Analytics::Queries::MonitorDomains.new.hourly_traffic_by_host(
-          zone_id: zone_id,
-          start_time: start_time,
-          end_time: end_time
-        )
+        start_time = EST.now.beginning_of_hour
+        end_time = EST.now.end_of_hour
 
         DomainRequestCount.process_traffic_report(
-          traffic_report: traffic_report,
+          traffic_report: get_hourly_traffic_report(zone_id, start_time: start_time, end_time: end_time),
           start_time: start_time,
           zone_id: zone_id
         )
       end
+
+    private
+      # These methods are useful for testing, but should not be used in production
+      def monitor_domains_sync
+        Cloudflare::Analytics::Queries::MonitorDomains.new.get_all_cloudflare_zones do |zones|
+          zones.each do |zone|
+            monitor_cloudflare_zone(zone)
+          end
+        end
+      end
+
+      def all_traffic_reports
+        reports = []
+        Cloudflare::Analytics::Queries::MonitorDomains.new.get_all_cloudflare_zones do |zones|
+          zones.each do |zone|
+            reports << get_hourly_traffic_report(zone)
+          end
+        end
+        reports
+      end
+
+      def get_hourly_traffic_report(zone_id, start_time: nil, end_time: nil)
+        start_time ||= EST.now.beginning_of_hour
+        end_time ||= EST.now.end_of_hour
+
+        Cloudflare::Analytics::Queries::MonitorDomains.new.hourly_traffic_by_host(
+          zone_id: zone_id,
+          start_time: start_time,
+          end_time: end_time
+        )
+      end
+
     end
   end
 end
