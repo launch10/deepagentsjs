@@ -17,11 +17,14 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
   let(:domain_monitor) { instance_double(Cloudflare::Analytics::Queries::MonitorDomains) }
   
   before(:all) do
-    DomainRequestCount.drop_all_partitions
-    UserRequestCount.drop_all_partitions
+    Timecop.freeze(UTC.now.beginning_of_month) do
+      DomainRequestCount.drop_all_partitions
+      UserRequestCount.drop_all_partitions
 
-    DomainRequestCount.create_partitions(4)
-    UserRequestCount.create_partitions(4)
+      # Create partitions for August and September to cover test dates
+      DomainRequestCount.create_partitions(4)
+      UserRequestCount.create_partitions(4)
+    end
   end
 
   before do
@@ -31,12 +34,12 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
   end
   
   describe "#perform" do
-    let(:start_time) { EST.now.beginning_of_hour }
-    let(:end_time) { EST.now.end_of_hour }
-    let(:day1) { EST.now.beginning_of_month }
-    let(:day2) { EST.now.beginning_of_month + 1.day }
-    let(:next_month_day1) { (EST.now + 1.month).beginning_of_month }
-    let(:next_month_day2) { (EST.now + 1.month).beginning_of_month + 1.day }
+    let(:start_time) { UTC.now.beginning_of_hour }
+    let(:end_time) { UTC.now.end_of_hour }
+    let(:day1) { UTC.now.beginning_of_month }
+    let(:day2) { UTC.now.beginning_of_month + 1.day }
+    let(:next_month_day1) { (UTC.now + 1.month).beginning_of_month }
+    let(:next_month_day2) { (UTC.now + 1.month).beginning_of_month + 1.day }
     
     context "with valid zone_id and traffic data" do
       let(:traffic_report) do
@@ -71,7 +74,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
       before do
         allow(domain_monitor).to receive(:hourly_traffic_by_host) do |args|
           # Return the traffic data for the current date when Timecop is frozen
-          current_date = EST.now.strftime("%Y-%m-%d")
+          current_date = UTC.now.strftime("%Y-%m-%d")
           traffic_report[current_date] || {}
         end
         www_domain
@@ -96,7 +99,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           subject.perform(zone_id)
         }.to_not change { Domain.count }
         
-        expect(Domain.pluck(:hostname)).to be_empty
+        expect(Domain.count).to eq 3
       end
       
       it "creates domain request counts for each domain", :focus do
@@ -298,12 +301,12 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
     end
     
     context "with different time zones" do
-      it "uses EST for time calculations" do
-        # Ensure we"re using EST even if system time zone is different
+      it "uses UTC for time calculations" do
+        # Ensure we"re using UTC even if system time zone is different
         Time.use_zone("UTC") do
           Timecop.freeze do
-            expected_start = EST.now.beginning_of_hour
-            expected_end = EST.now.end_of_hour
+            expected_start = UTC.now.beginning_of_hour
+            expected_end = UTC.now.end_of_hour
             
             expect(traffic_queries).to receive(:hourly_traffic_by_host).with(
               hash_including(

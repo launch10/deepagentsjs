@@ -54,6 +54,18 @@ class UserRequestCount < ApplicationRecord
     end
   end
 
+  # Drop all existing partitions first
+  def self.drop_all_partitions
+    partitions = ActiveRecord::Base.connection.execute(<<-SQL).to_a
+      SELECT tablename FROM pg_tables 
+      WHERE tablename LIKE 'user_request_counts_%';
+    SQL
+    
+    partitions.each do |partition|
+      ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS #{partition['tablename']};")
+    end
+  end
+
   def self.update_users(users, hour)
     # Group domain request counts by user and sum them
     domain_requests_by_user = DomainRequestCount.where(
