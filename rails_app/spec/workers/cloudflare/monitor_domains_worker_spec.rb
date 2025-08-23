@@ -263,7 +263,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         end
       end
 
-      it "blocks user when exceeding plan limit", :focus do
+      it "blocks user when exceeding plan limit" do
         # Mock successful Cloudflare API response
         mock_response = {
           result: { operation_id: "3234eb584eaa461abd7d4be7d070c32a" },
@@ -328,7 +328,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         expect(firewall.blocked_at).to be_present
       end
 
-      it "raises error when Cloudflare API returns non-success response" do
+      it "raises error when Cloudflare API returns non-success response", :focus do
         # Mock error response from Cloudflare API
         mock_error_response = {
           result: nil,
@@ -340,7 +340,9 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         # Mock the FirewallService to return error response
         firewall_service = instance_double(Cloudflare::FirewallService)
         allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
-        allow(firewall_service).to receive(:block_user).and_return(mock_error_response)
+        allow(firewall_service).to receive(:block_domains).and_return(
+          mock_api_response(mock_error_response, code: 400)
+        )
         
         # First get to just under the limit
         Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
@@ -360,11 +362,13 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         # Processing the blocking job should raise an error for retry
         expect {
           Sidekiq::Worker.drain_all
-        }.to raise_error(StandardError, /Failed to block user/)
+        }.to raise_error(StandardError, /Failed to block domains for user/)
         
         # Verify no firewall rules were created due to the error
-        firewall_rules = Cloudflare::Firewall.where(user: apples_user)
+        firewall_rules = Cloudflare::FirewallRule.where(user: apples_user)
         expect(firewall_rules).to be_empty
+
+        expect(apples_user.firewall).to be_inactive
       end
     end
   end
