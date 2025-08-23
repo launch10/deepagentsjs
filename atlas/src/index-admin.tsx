@@ -8,13 +8,9 @@ const app = new Hono<{ Bindings: Env }>();
 const internalAPI = createInternalAPI();
 app.route('/api/internal', internalAPI);
 
-// Health check at root
+// Redirect root to protected API - don't expose any information
 app.get('/', (c) => {
-  return c.json({ 
-    status: 'healthy',
-    service: 'landing-page-server-admin',
-    timestamp: new Date().toISOString()
-  });
+  return c.json({ error: 'Unauthorized' }, 401);
 });
 
 // 404 for any other routes
