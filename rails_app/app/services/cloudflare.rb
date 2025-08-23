@@ -4,6 +4,7 @@ class Cloudflare
   config_accessor :api_token
   config_accessor :account_id
   config_accessor :analytics_endpoint, default: "https://api.cloudflare.com/client/v4/graphql"
+  config_accessor :blocked_domains_list_id
   config_accessor :r2_endpoint
   config_accessor :r2_bucket_prefix, default: "deploys"
   config_accessor :r2_region, default: "auto"

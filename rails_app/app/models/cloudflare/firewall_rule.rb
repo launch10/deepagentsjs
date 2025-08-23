@@ -36,5 +36,8 @@ class Cloudflare
 
     validates_presence_of :user_id, :firewall_id, :status
     validates :status, presence: true, inclusion: { in: Cloudflare::Statuses::STATUSES }
+
+    scope :inactive, -> { where(status: Cloudflare::Statuses::INACTIVE) }
+    scope :blocked, -> { where(status: Cloudflare::Statuses::BLOCKED) }
   end
 end

@@ -1,130 +1,66 @@
 class Cloudflare::FirewallService < ApplicationClient
   class ApiError < StandardError; end
   
-  BASE_URI = 'https://api.cloudflare.com/client/v4'
+  ENDPOINT = "https://api.cloudflare.com/client/v4/accounts/#{Cloudflare.config.account_id}/rules/lists/#{Cloudflare.config.blocked_domains_list_id}/items"
   
-  attr_reader :zone_id
-  
-  def initialize(zone_id)
-    @zone_id = zone_id
+  def initialize
     super(token: Cloudflare.config.api_token)
   end
-  
-  def create_rule(expression:, action: 'block', description: nil, priority: 1, enabled: true)
-    payload = [
+
+  def block_domains(domains)
+    validate_domains(domains)
+    
+    body = domains.map do |domain|
       {
-        expression: expression,
-        action: action,
-        description: description,
-        priority: priority,
-        enabled: enabled
+        hostname: { url_hostname: domain.domain },
+        comment: "Auto-suspended by worker on #{Time.now.to_s}"
       }
-    ]
+    end
     
     begin
-      response = post("/zones/#{zone_id}/firewall/rules", payload)
+      response = post(ENDPOINT, body)
       response
     rescue ApplicationClient::Error => e
       raise ApiError, e.message
     end
   end
-  
-  def delete_rule(rule_id)
-    begin
-      response = delete("/zones/#{zone_id}/firewall/rules/#{rule_id}")
-      response
-    rescue ApplicationClient::Error => e
-      raise ApiError, e.message
-    end
-  end
-  
-  def list_rules(page: 1, per_page: 100, action: nil, fetch_all: false)
-    params = { page: page, per_page: per_page }
-    params[:action] = action if action
+
+  def unblock_domains(domains)
+    validate_domains(domains)
     
-    begin
-      if fetch_all
-        all_rules = []
-        current_page = 1
-        
-        loop do
-          params[:page] = current_page
-          response = get("/zones/#{zone_id}/firewall/rules", params: params)
-          
-          all_rules.concat(response['result']) if response['result']
-          
-          total_pages = response.dig('result_info', 'total_pages') || 1
-          break if current_page >= total_pages
-          
-          current_page += 1
-        end
-        
-        all_rules
-      else
-        response = get("/zones/#{zone_id}/firewall/rules", params: params)
-        response['result'] || []
+    body = {
+      items: domains.map do |domain|
+        { id: domain.cloudflare_rule_id }
       end
-    rescue ApplicationClient::Error => e
-      raise ApiError, e.message
-    end
-  end
-  
-  def get_rule(rule_id)
-    begin
-      response = get("/zones/#{zone_id}/firewall/rules/#{rule_id}")
-      response['result']
-    rescue ApplicationClient::Error => e
-      raise ApiError, e.message
-    end
-  end
-  
-  def update_rule(rule_id, updates)
-    begin
-      response = patch("/zones/#{zone_id}/firewall/rules/#{rule_id}", updates)
-      response
-    rescue ApplicationClient::Error => e
-      raise ApiError, e.message
-    end
-  end
-  
-  def bulk_delete_rules(rule_ids)
-    return { 'result' => [], 'success' => true } if rule_ids.empty?
+    }
     
     begin
-      response = delete(
-        "/zones/#{zone_id}/firewall/rules",
-        params: { id: rule_ids.join(',') }
-      )
+      response = delete(ENDPOINT, body)
       response
     rescue ApplicationClient::Error => e
       raise ApiError, e.message
     end
   end
-  
-  def validate_expression(expression)
+
+  def list_blocked_domains
     begin
-      response = post(
-        "/zones/#{zone_id}/firewall/rules/validate",
-        { expression: expression }
-      )
-      response.dig('result', 'valid') == true
+      response = get(ENDPOINT)
+      response
     rescue ApplicationClient::Error => e
       raise ApiError, e.message
     end
   end
   
   private
+
+  def validate_domains(domains)
+    raise ArgumentError, "Domains must be an array of Domain objects" unless domains.is_a?(Array) && domains.all? { |d| d.is_a?(Domain) }
+  end
   
   def authorization_header
-    if Cloudflare.config.api_token.present?
-      { 'Authorization' => "Bearer #{token}" }
-    elsif Cloudflare.config.api_email.present? && Cloudflare.config.api_key.present?
-      {
-        'X-Auth-Email' => Cloudflare.config.api_email,
-        'X-Auth-Key' => Cloudflare.config.api_key
-      }
-    else
-      {}
-    end
+    { 
+      'Authorization' => "Bearer #{Cloudflare.config.api_token}",
+      'Content-Type' => 'application/json'
+    }
   end
 end

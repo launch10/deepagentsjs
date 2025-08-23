@@ -58,10 +58,10 @@ class UserRequestCount < ApplicationRecord
 
     over_limit, under_limit = request_counts.partition(&:over_limit?)
     over_limit.each do |user_request_count|
-      FirewallRule.block_domains(user_request_count.user)
+      Cloudflare::Firewall.block_domains(user_request_count.user)
     end
     under_limit.each do |user_request_count|
-      FirewallRule.unblock_domains(user_request_count.user)
+      Cloudflare::Firewall.unblock_domains(user_request_count.user)
     end
   end
 

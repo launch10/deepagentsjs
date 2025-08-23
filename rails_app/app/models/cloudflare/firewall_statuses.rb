@@ -1,5 +1,5 @@
 class Cloudflare
-  class Statuses < ApplicationRecord
+  class FirewallStatuses < ApplicationRecord
     STATUS = %w[inactive blocked]
     enum status: STATUS
 

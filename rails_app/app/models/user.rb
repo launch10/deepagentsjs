@@ -84,7 +84,7 @@ class User < ApplicationRecord
   has_many :domains
   has_many :domain_request_counts
   has_many :user_request_counts
-  has_many :firewalls
+  has_one :firewall
   
   def current_plan_id
     plan&.id
@@ -95,27 +95,4 @@ class User < ApplicationRecord
   end
 
   private
-
-  def atlas_service
-    Atlas.users
-  end
-
-  def atlas_data_for_create
-    {
-      id: id,
-      plan_id: current_plan_id
-    }.compact
-  end
-
-  def atlas_data_for_update
-    {
-      plan_id: current_plan_id
-    }.compact
-  end
-
-  def sync_to_atlas_required?
-    # Atlas doesn't track user changes, only plan changes
-    # This will be triggered by subscription callbacks
-    false
-  end
 end

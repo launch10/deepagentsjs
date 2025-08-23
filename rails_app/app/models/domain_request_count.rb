@@ -115,6 +115,6 @@ class DomainRequestCount < ApplicationRecord
       columns: [:request_count] 
     })
 
-    UserRequestCount.increment_users(users)
+    UserRequestCount.update_users(users, start_time)
   end
 end

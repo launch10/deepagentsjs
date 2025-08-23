@@ -1,0 +1,33 @@
+module Atlas
+  module User
+    extend ActiveSupport::Concern
+
+    included do
+      include Atlas::Syncable
+    end
+
+private
+    def atlas_service
+      Atlas.users
+    end
+
+    def atlas_data_for_create
+      {
+        id: id,
+        plan_id: current_plan_id
+      }.compact
+    end
+
+    def atlas_data_for_update
+      {
+        plan_id: current_plan_id
+      }.compact
+    end
+
+    def sync_to_atlas_required?
+      # Atlas doesn't track user changes, only plan changes
+      # This will be triggered by subscription callbacks
+      false
+    end
+  end
+end

@@ -6,8 +6,8 @@ end
 
 Zhong.schedule do
   category "cloudflare" do
-    every(5.minutes, "monitor zones") do
-      Domain.monitor_zones
+    every(5.minutes, "monitor domains") do
+      Domain.monitor_domains
     end
   end
 end

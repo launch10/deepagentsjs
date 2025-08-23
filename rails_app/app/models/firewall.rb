@@ -7,13 +7,11 @@
 #  zone_id             :string           not null
 #  zone_name           :string           not null
 #  status              :string           default("active")
-#  has_blocked_domains :boolean          default("false")
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
 #
 # Indexes
 #
-#  index_firewalls_on_has_blocked_domains  (has_blocked_domains)
 #  index_firewalls_on_status               (status)
 #  index_firewalls_on_user_id              (user_id)
 #  index_firewalls_on_zone_id              (zone_id)
@@ -21,15 +19,7 @@
 #
 
 class Firewall < ApplicationRecord
-  belongs_to :user
-  has_many :firewall_rules, dependent: :destroy
-  
-  validates :user, presence: true
-  validates :zone_id, presence: true, uniqueness: { scope: :user_id }
-  validates :zone_name, presence: true
-  
-  scope :active, -> { where(status: 'active') }
-  scope :with_blocked_domains, -> { where(has_blocked_domains: true) }
+  STATUSES = %w(blocked inactive)
   
   def block_domains(domains_to_block)
     transaction do

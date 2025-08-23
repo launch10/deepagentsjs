@@ -29,77 +29,54 @@ class Cloudflare::BlockWorker
       end
     end
   end
-  
-  def perform(firewall_rule_id)
-    rule = FirewallRule.find(firewall_rule_id)
-    
-    # Skip if already blocked
-    return if rule.status == 'blocked' && rule.cloudflare_rule_id.present?
-    
-    # Update status to blocking
-    rule.update!(status: 'blocking')
-    
-    begin
-      # Initialize Cloudflare service
-      service = Cloudflare::FirewallService.new(rule.firewall.zone_id)
-      
-      # Create the firewall rule
-      response = service.create_rule(
-        expression: rule.build_cloudflare_expression,
-        action: 'block',
-        description: "Auto-blocked: #{rule.domain}"
-      )
-      
-      if response['success']
-        # Mark as successfully blocked
-        rule.block!(response['result']['id'])
-      else
-        # Handle API error
-        error_message = response['errors']&.first&.dig('message') || 'Unknown error'
-        rule.mark_failed!(error_message)
-        raise BlockingError, error_message
-      end
-    rescue Cloudflare::FirewallService::ApiError => e
-      rule.mark_failed!(e.message)
-      raise e
-    rescue StandardError => e
-      rule.mark_failed!(e.message)
-      raise e
-    end
+
+  def perform(options = {})
+    options = options.symbolize_keys
+    user = User.find(options[:user_id])
+    domains = user.firewall_rules.inactive.map(&:domain).map(&:domain)
   end
   
-  class BatchWorker
+  class BlockRuleWorker
     include Sidekiq::Worker
     
-    sidekiq_options queue: :cloudflare_batch, retry: 3
+    sidekiq_options queue: :cloudflare, retry: 5
     
-    def perform(user_id)
-      user = User.find(user_id)
-      rules_to_process = []
+    def perform(firewall_rule_id)
+      rule = FirewallRule.find(firewall_rule_id)
       
-      # Get all pending rules for the user
-      user.firewalls.each do |firewall|
-        rules_to_process += firewall.firewall_rules.pending.to_a
-        
-        # Also retry failed rules that are eligible
-        rules_to_process += firewall.firewall_rules.needs_retry.each do |rule|
-          rule.update!(status: 'blocking')
-        end
-      end
+      # Skip if already blocked
+      return if rule.status == 'blocked' && rule.cloudflare_rule_id.present?
       
-      # Process rules with rate limiting
-      rules_to_process.each_with_index do |rule, index|
-        # Add delay for every 10 rules to avoid rate limiting
-        delay = (index / 10) * 5
+      # Update status to blocking
+      rule.update!(status: 'blocking')
+      
+      begin
+        # Initialize Cloudflare service
+        service = Cloudflare::FirewallService.new(rule.firewall.zone_id)
         
-        if delay > 0
-          Cloudflare::BlockWorker.perform_in(delay.seconds, rule.id)
+        # Create the firewall rule
+        response = service.create_rule(
+          expression: rule.build_cloudflare_expression,
+          action: 'block',
+          description: "Auto-blocked: #{rule.domain}"
+        )
+        
+        if response['success']
+          # Mark as successfully blocked
+          rule.block!(response['result']['id'])
         else
-          Cloudflare::BlockWorker.perform_async(rule.id)
+          # Handle API error
+          error_message = response['errors']&.first&.dig('message') || 'Unknown error'
+          rule.mark_failed!(error_message)
+          raise BlockingError, error_message
         end
+      rescue Cloudflare::FirewallService::ApiError => e
+        rule.mark_failed!(e.message)
+        raise e
+      rescue StandardError => e
+        rule.mark_failed!(e.message)
+        raise e
       end
-      
-      rules_to_process.count
     end
   end
 end
