@@ -328,7 +328,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         expect(firewall.blocked_at).to be_present
       end
 
-      it "raises error when Cloudflare API returns non-success response", :focus do
+      it "raises error when Cloudflare API returns non-success response" do
         # Mock error response from Cloudflare API
         mock_error_response = {
           result: nil,
@@ -373,35 +373,142 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
     end
   end
 
-  describe "SimpleUnblockWorker behavior" do
-    let(:unblock_worker) { Cloudflare::SimpleUnblockWorker.new }
-    let!(:plan) { create(:plan, name: "starter") }
+  describe "Unblocking behavior" do
     let!(:plan_limit) { create(:plan_limit, plan: plan, limit_type: "requests_per_month", limit: 50_000) }
     
-    context "when user was blocked in August" do
-      before do
-        # Create a firewall record indicating user was blocked on August 15
-        create(:cloudflare_firewall, user: apples_user, cloudflare_zone_id: zone_id, status: 'blocked', blocked_at: UTC.parse("2025-08-15 12:00:00"))
+    let(:traffic_report) do
+      {
+        # August - Over limit traffic
+        "2025-08-01 10:00:00" => {
+          "example.com" => 40_000,
+          "apples.example.com" => 30_000,
+          "www.example.com" => 20_000
+        },
+        # September - Under limit traffic
+        "2025-09-01 10:00:00" => {
+          "example.com" => 5_000,
+          "apples.example.com" => 3_000,
+          "www.example.com" => 2_000
+        }
+      }
+    end
+    
+    before do
+      allow(domain_monitor).to receive(:hourly_traffic_by_host) do |args|
+        current_time = UTC.now.strftime("%Y-%m-%d %H:%M:%S")
+        traffic_report.select { |time, _| time.start_with?(current_time[0..12]) }.values.first || {}
       end
-
-      it "does not unblock user when still in August" do
-        Timecop.freeze(UTC.parse("2025-08-20 10:00:00")) do
-          # Should not unblock - still in the same month
-          expect_any_instance_of(Cloudflare::FirewallService).not_to receive(:unblock_user) if defined?(Cloudflare::FirewallService)
+    end
+    
+    context "when user was blocked in previous month" do
+      before do
+        # First block the user by exceeding limit in August
+        Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
+          # Mock successful blocking response
+          mock_block_response = {
+            result: { operation_id: "block_operation_123" },
+            success: true,
+            errors: [],
+            messages: []
+          }
           
-          unblock_worker.perform(apples_user.id, zone_id)
+          firewall_service = instance_double(Cloudflare::FirewallService)
+          allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
+          allow(firewall_service).to receive(:block_domains).and_return(
+            mock_api_response(mock_block_response)
+          )
+          allow(firewall_service).to receive(:search_blocked_domains).and_return(
+            {
+              "www.example.com" => "rule_www_123",
+              "apples.example.com" => "rule_apples_123"
+            }
+          )
+          
+          subject.perform(zone_id)
+          Sidekiq::Worker.drain_all
+          
+          # Verify user was blocked
+          expect(apples_user.firewall).to be_blocked
+          expect(Cloudflare::FirewallRule.where(user: apples_user).blocked.count).to eq(2)
         end
       end
 
-      it "unblocks user when in September (new month)" do
-        Timecop.freeze(UTC.parse("2025-09-01 00:00:00")) do
-          # Should unblock - new month has started
-          expect_any_instance_of(Cloudflare::FirewallService).to receive(:unblock_user).with(
-            user: apples_user,
-            zone_id: zone_id
-          ) if defined?(Cloudflare::FirewallService)
+      it "does not unblock user when still in same month" do
+        Timecop.freeze(UTC.parse("2025-08-20 10:00:00")) do
+          # User should remain blocked - same month
+          subject.perform(zone_id)
+          Sidekiq::Worker.drain_all
           
-          unblock_worker.perform(apples_user.id, zone_id)
+          # Verify user is still blocked
+          apples_user.firewall.reload
+          expect(apples_user.firewall).to be_blocked
+          expect(Cloudflare::FirewallRule.where(user: apples_user).blocked.count).to eq(2)
+        end
+      end
+
+      it "unblocks user when new month starts" do
+        Timecop.freeze(UTC.parse("2025-09-01 10:00:00")) do
+          # Mock successful unblocking response
+          mock_unblock_response = {
+            result: { operation_id: "unblock_operation_456" },
+            success: true,
+            errors: [],
+            messages: []
+          }
+          
+          firewall_service = instance_double(Cloudflare::FirewallService)
+          allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
+          allow(firewall_service).to receive(:unblock_domains).with(["rule_www_123", "rule_apples_123"]).and_return(
+            mock_api_response(mock_unblock_response)
+          )
+          
+          # Run the monitor worker in the new month
+          subject.perform(zone_id)
+          Sidekiq::Worker.drain_all
+          
+          # Verify user was unblocked
+          apples_user.firewall.reload
+          expect(apples_user.firewall).to be_inactive
+          expect(apples_user.firewall.unblocked_at).to be_present
+          
+          # Verify firewall rules were updated
+          firewall_rules = Cloudflare::FirewallRule.where(user: apples_user)
+          expect(firewall_rules.blocked.count).to eq(0)
+          expect(firewall_rules.inactive.count).to eq(2)
+          
+          firewall_rules.each do |rule|
+            expect(rule.unblocked_at).to be_present
+            expect(rule.blocked_at).to be_nil
+          end
+        end
+      end
+
+      it "raises error when Cloudflare unblock API fails" do
+        Timecop.freeze(UTC.parse("2025-09-01 10:00:00")) do
+          # Mock error response from unblock API
+          mock_error_response = {
+            result: nil,
+            success: false,
+            errors: [{ code: 1002, message: "Failed to unblock" }],
+            messages: []
+          }
+          
+          firewall_service = instance_double(Cloudflare::FirewallService)
+          allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
+          allow(firewall_service).to receive(:unblock_domains).and_return(
+            mock_api_response(mock_error_response, code: 500)
+          )
+          
+          # Should raise error for retry
+          expect {
+            subject.perform(zone_id)
+            Sidekiq::Worker.drain_all
+          }.to raise_error(StandardError, /Failed to block domains for user/)
+          
+          # Verify user remains blocked
+          apples_user.firewall.reload
+          expect(apples_user.firewall).to be_blocked
+          expect(Cloudflare::FirewallRule.where(user: apples_user).blocked.count).to eq(2)
         end
       end
     end
@@ -410,12 +517,14 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
       it "remains unblocked (no action taken)" do
         Timecop.freeze(UTC.parse("2025-08-15 10:00:00")) do
           # No firewall records exist
-          expect(Cloudflare::Firewall.where(user: apples_user)).to be_empty
+          expect(apples_user.firewall).to be_nil
           
-          # Should not attempt to unblock
-          expect_any_instance_of(Cloudflare::FirewallService).not_to receive(:unblock_user) if defined?(Cloudflare::FirewallService)
+          # Run monitor worker - should not attempt to unblock
+          subject.perform(zone_id)
+          Sidekiq::Worker.drain_all
           
-          unblock_worker.perform(apples_user.id, zone_id)
+          # Still no firewall records
+          expect(apples_user.firewall).to be_nil
         end
       end
     end

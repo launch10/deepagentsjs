@@ -101,6 +101,7 @@ class Cloudflare
 
       response = Cloudflare::FirewallService.new.unblock_domains(firewall_rules.map(&:cloudflare_rule_id))
       if response.success?
+        firewall = user.firewall
         firewall.update!(status: Cloudflare::FirewallStatuses::INACTIVE, unblocked_at: Time.current)
         firewall_rules.update_all(
           status: Cloudflare::FirewallStatuses::INACTIVE,
