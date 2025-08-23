@@ -63,4 +63,6 @@ end
 
 RSpec.configure do |config|
   config.include PartitionHelpers
+  # Also extend so methods are available at class level for before(:all) blocks
+  config.extend PartitionHelpers
 end

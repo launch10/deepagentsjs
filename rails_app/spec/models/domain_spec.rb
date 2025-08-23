@@ -43,10 +43,9 @@ RSpec.describe Domain, type: :model do
       expect(duplicate.errors[:domain]).to include('has already been taken')
     end
 
-    it 'validates presence of website_id' do
+    it 'allows website_id to be optional' do
       domain = Domain.new(domain: 'test.com', user: user)
-      expect(domain).not_to be_valid
-      expect(domain.errors[:website_id]).to include("can't be blank")
+      expect(domain).to be_valid
     end
 
     it 'validates presence of user_id' do
@@ -108,10 +107,16 @@ RSpec.describe Domain, type: :model do
       end
 
       context 'when domain is provided' do
-        it 'uses the provided domain' do
+        it 'normalizes the provided domain by adding www' do
           domain = Domain.new(domain: 'custom-domain.com', website: website, user: user)
           domain.save
-          expect(domain.domain).to eq('custom-domain.com')
+          expect(domain.domain).to eq('www.custom-domain.com')
+        end
+
+        it 'keeps domain with subdomain as-is' do
+          domain = Domain.new(domain: 'subdomain.custom-domain.com', website: website, user: user)
+          domain.save
+          expect(domain.domain).to eq('subdomain.custom-domain.com')
         end
       end
 

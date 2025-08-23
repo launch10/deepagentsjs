@@ -64,6 +64,7 @@ class Domain < ApplicationRecord
   end
 
   def set_normalized_domain
+    return if domain.blank?
     write_attribute(:domain, normalize_domain(domain))
   end
 

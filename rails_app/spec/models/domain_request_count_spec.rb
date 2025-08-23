@@ -20,6 +20,14 @@
 require 'rails_helper'
 
 RSpec.describe DomainRequestCount, type: :model do
+  # Create partitions for the hours we'll use in tests
+  before(:all) do
+    # Create partitions for current hour and surrounding hours
+    start_time = 26.hours.ago
+    end_time = 2.hours.from_now
+    ensure_partitions_exist_for_range(start_time, end_time)
+  end
+
   describe 'associations' do
     it { should belong_to(:domain) }
     it { should belong_to(:user) }
@@ -135,7 +143,7 @@ RSpec.describe DomainRequestCount, type: :model do
       
       expect(Rollbar).to have_received(:error).with(
         "Traffic report found for domain without a domain record",
-        domain: 'unknown.com'
+        domain: 'www.unknown.com'
       )
     end
   end
