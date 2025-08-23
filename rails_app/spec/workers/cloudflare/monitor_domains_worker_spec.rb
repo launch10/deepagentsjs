@@ -513,6 +513,115 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
       end
     end
 
+    context "when user upgrades plan after being blocked" do
+      let!(:pro_plan) { create(:plan, name: "pro") }
+      let!(:pro_plan_limit) { create(:plan_limit, plan: pro_plan, limit_type: "requests_per_month", limit: 150_000) }
+      
+      let(:upgrade_traffic_report) do
+        {
+          # 10:00 - Over starter limit (90k total)
+          "2025-08-01 10:00:00" => {
+            "example.com" => 40_000,
+            "apples.example.com" => 30_000,
+            "www.example.com" => 20_000
+          },
+          # 11:00 - Same traffic (still 90k total, but now under pro limit)
+          "2025-08-01 11:00:00" => {
+            "example.com" => 0,
+            "apples.example.com" => 0,
+            "www.example.com" => 0
+          }
+        }
+      end
+      
+      before do
+        # Override the mock for this context to use upgrade_traffic_report
+        allow(domain_monitor).to receive(:hourly_traffic_by_host) do |args|
+          current_time = UTC.now.strftime("%Y-%m-%d %H:%M:%S")
+          upgrade_traffic_report.select { |time, _| time.start_with?(current_time[0..12]) }.values.first || {}
+        end
+        
+        # First block the user by exceeding starter plan limit in August
+        Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
+          # Mock successful blocking response
+          mock_block_response = {
+            result: { operation_id: "block_operation_789" },
+            success: true,
+            errors: [],
+            messages: []
+          }
+          
+          firewall_service = instance_double(Cloudflare::FirewallService)
+          allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
+          allow(firewall_service).to receive(:block_domains).and_return(
+            mock_api_response(mock_block_response)
+          )
+          allow(firewall_service).to receive(:search_blocked_domains).and_return(
+            {
+              "www.example.com" => "rule_www_456",
+              "apples.example.com" => "rule_apples_456"
+            }
+          )
+          
+          subject.perform(zone_id)
+          Sidekiq::Worker.drain_all
+          
+          # Verify user was blocked (90k > 50k starter limit)
+          expect(apples_user.firewall).to be_blocked
+          expect(Cloudflare::FirewallRule.where(user: apples_user).blocked.count).to eq(2)
+        end
+      end
+      it "unblocks user when they upgrade to pro plan with higher limit" do
+        # Still in August, but user upgrades to pro plan
+        Timecop.freeze(UTC.parse("2025-08-01 11:00:00")) do
+          # Upgrade user to pro plan
+          subscribe_account(apples_user.owned_account, plan_name: "pro")
+          
+          # Mock both blocking and unblocking responses
+          firewall_service = instance_double(Cloudflare::FirewallService)
+          allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
+          
+          # Mock block_domains being called with empty array (all domains already blocked)
+          allow(firewall_service).to receive(:block_domains).with([]).and_return(
+            mock_api_response({ result: {}, success: true, errors: [], messages: [] })
+          )
+          
+          # Mock search_blocked_domains being called with empty array
+          allow(firewall_service).to receive(:search_blocked_domains).with([]).and_return({})
+          
+          # Mock successful unblocking response
+          mock_unblock_response = {
+            result: { operation_id: "unblock_operation_789" },
+            success: true,
+            errors: [],
+            messages: []
+          }
+          allow(firewall_service).to receive(:unblock_domains).with(["rule_www_456", "rule_apples_456"]).and_return(
+            mock_api_response(mock_unblock_response)
+          )
+          
+          # Run monitor worker - should unblock because 90k < 150k pro limit
+          subject.perform(zone_id)
+          Sidekiq::Worker.drain_all
+          
+          # Verify user was unblocked
+          apples_user.firewall.reload
+          expect(apples_user.firewall).to be_inactive
+          expect(apples_user.firewall.unblocked_at).to be_present
+          
+          # Verify firewall rules were updated
+          firewall_rules = Cloudflare::FirewallRule.where(user: apples_user)
+          expect(firewall_rules.blocked.count).to eq(0)
+          expect(firewall_rules.inactive.count).to eq(2)
+          
+          firewall_rules.each do |rule|
+            expect(rule.unblocked_at).to be_present
+            expect(rule.blocked_at).to be_nil
+          end
+        end
+      end
+    end
+
     context "when user has never been blocked" do
       it "remains unblocked (no action taken)" do
         Timecop.freeze(UTC.parse("2025-08-15 10:00:00")) do

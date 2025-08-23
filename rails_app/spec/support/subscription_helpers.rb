@@ -17,6 +17,12 @@ module SubscriptionHelpers
   end
 
   def subscribe_account(account, plan_name: 'pro')
+    user = account.users.first
+    if user.plan.present?
+      return if user.plan.name == plan_name
+      unsubscribe_account(account) # Unsubscribe from existing plan before subscribing to new plan
+    end
+
     # Set up payment processor
     account.set_payment_processor :fake_processor, allow_fake: true
     

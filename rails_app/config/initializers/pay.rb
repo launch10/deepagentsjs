@@ -64,6 +64,7 @@ Rails.application.config.after_initialize do
   if defined?(Pay::Subscription)
     Pay::Subscription.class_eval do
       after_commit :sync_user_to_atlas_after_subscription_change, on: [:create, :update, :destroy]
+      after_commit :unblock_firewall_after_subscription_change, on: [:create, :update]
       
       private
       
@@ -78,6 +79,20 @@ Rails.application.config.after_initialize do
         Atlas.users.update(user.id, plan_id: user.current_plan_id)
       rescue Atlas::BaseService::Error => e
         Rails.logger.error "[Atlas] Failed to sync user after subscription change: #{e.message}"
+      end
+
+      def unblock_firewall_after_subscription_change
+        return unless customer&.owner.is_a?(Account)
+        
+        user = customer.owner.owner # Account owner is the User
+        return unless user
+        
+        user.reload
+        if user.firewall && user.firewall.blocked?
+          Cloudflare::Firewall.unblock_user(user)
+        end
+      rescue Atlas::BaseService::Error => e
+        Rails.logger.error "[Atlas] Failed to unblock firewall after subscription change: #{e.message}"
       end
     end
   end

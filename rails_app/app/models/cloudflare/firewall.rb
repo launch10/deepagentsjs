@@ -86,6 +86,8 @@ class Cloudflare
     end
 
     def self.unblock_user(user, force: false)
+      return unless user.firewall && user.firewall.blocked?
+
       Cloudflare::UnblockWorker.perform_async(user_id: user.id, force: force)
     end
 
@@ -95,8 +97,9 @@ class Cloudflare
       # BUT if a user changes plans, and thus their monthly request limit changes,
       # we want to allow unblocking
       return if user.over_monthly_request_limit? && !force
+      return unless user.firewall.blocked? || user.firewall.firewall_rules.blocked.any?
 
-      firewall_rules = FirewallRule.where(user: user).blocked
+      firewall_rules = user.firewall.firewall_rules.blocked
       return unless firewall_rules.any?
 
       response = Cloudflare::FirewallService.new.unblock_domains(firewall_rules.map(&:cloudflare_rule_id))

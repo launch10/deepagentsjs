@@ -37,15 +37,4 @@ class Cloudflare::UnblockWorker
     force = options[:force] || false
     Cloudflare::Firewall.actually_unblock_user(user, force: force)
   end
-  
-  # Monthly job to unblock all users
-  class MonthlyJob
-    include Sidekiq::Worker
-    
-    sidekiq_options queue: :cloudflare_batch, retry: 3
-    
-    def perform
-      Firewall.monthly_unblock_all
-    end
-  end
 end
