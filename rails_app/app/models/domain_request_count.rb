@@ -18,6 +18,8 @@
 #
 
 class DomainRequestCount < ApplicationRecord
+  include Partitionable 
+
   belongs_to :domain
   belongs_to :user
 
@@ -37,38 +39,10 @@ class DomainRequestCount < ApplicationRecord
     include Domain::NormalizeDomain
   end
 
-  def self.create_partitions(num_days)
-    num_days.times do |i|
-      date = Date.current + i.days
-      
-      (0..23).each do |hour|
-        start_time = date.beginning_of_day + hour.hours
-        end_time = start_time + 1.hour
-        partition_name = "domain_request_counts_#{start_time.strftime('%Y_%m_%d_%H')}"
-        
-        puts "Creating partition for #{partition_name}"
-        
-        ActiveRecord::Base.connection.execute <<-SQL
-          CREATE TABLE IF NOT EXISTS #{partition_name} 
-          PARTITION OF domain_request_counts 
-          FOR VALUES FROM ('#{start_time.to_fs(:db)}') TO ('#{end_time.to_fs(:db)}');
-        SQL
-      end
-    end
+  def self.partition_by_hour?
+    true
   end
 
-  # Drop all existing partitions first
-  def self.drop_all_partitions
-    partitions = ActiveRecord::Base.connection.execute(<<-SQL).to_a
-      SELECT tablename FROM pg_tables 
-      WHERE tablename LIKE 'domain_request_counts_%';
-    SQL
-    
-    partitions.each do |partition|
-      ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS #{partition['tablename']};")
-    end
-  end
-    
   # Get total requests for a user in a given period
   def self.total_for_user(user, start_time, end_time = Time.current)
     for_user(user).in_period(start_time, end_time).sum(:request_count)

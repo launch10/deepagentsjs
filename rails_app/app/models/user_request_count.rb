@@ -15,6 +15,8 @@
 #
 
 class UserRequestCount < ApplicationRecord
+  include Partitionable
+  
   belongs_to :user
 
   validates :user, presence: true
@@ -40,30 +42,9 @@ class UserRequestCount < ApplicationRecord
     end
   end
 
-  def self.create_partitions(num_months)
-    num_months.times do |i|
-      start_time = (Date.current + i.months).beginning_of_month
-      end_time = start_time + 1.month
-      partition_name = "user_request_counts_#{start_time.strftime('%Y_%m')}"
-      
-      ActiveRecord::Base.connection.execute <<-SQL
-        CREATE TABLE IF NOT EXISTS #{partition_name} 
-        PARTITION OF user_request_counts 
-        FOR VALUES FROM ('#{start_time.to_fs(:db)}') TO ('#{end_time.to_fs(:db)}');
-      SQL
-    end
-  end
-
-  # Drop all existing partitions first
-  def self.drop_all_partitions
-    partitions = ActiveRecord::Base.connection.execute(<<-SQL).to_a
-      SELECT tablename FROM pg_tables 
-      WHERE tablename LIKE 'user_request_counts_%';
-    SQL
-    
-    partitions.each do |partition|
-      ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS #{partition['tablename']};")
-    end
+  # Override to indicate this table partitions by month, not hour
+  def self.partition_by_hour?
+    false
   end
 
   def self.update_users(users, hour)

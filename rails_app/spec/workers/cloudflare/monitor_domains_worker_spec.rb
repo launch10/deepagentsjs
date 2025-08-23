@@ -20,8 +20,6 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
     Timecop.freeze(UTC.now.beginning_of_month) do
       DomainRequestCount.drop_all_partitions
       UserRequestCount.drop_all_partitions
-
-      # Create partitions for August and September to cover test dates
       DomainRequestCount.create_partitions(4)
       UserRequestCount.create_partitions(4)
     end
@@ -93,7 +91,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           subject.perform(zone_id)
         end
       end
-      
+
       it "does NOT create domains for previously unseen domains" do
         expect {
           subject.perform(zone_id)
@@ -117,7 +115,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           expect(report["bananas.example.com"]).to eq(original_report["bananas.example.com"])
         end
       end
-      
+
       it "updates existing domain request counts on subsequent runs" do
         Timecop.freeze do
           # First run
@@ -125,7 +123,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           
           # Second run with updated data
           updated_report = { "example.com" => 600, "api.example.com" => 400, "www.example.com" => 250 }
-          allow(traffic_queries).to receive(:hourly_traffic_by_host).and_return(updated_report)
+          allow(domain_monitor).to receive(:hourly_traffic_by_host).and_return(updated_report)
           
           expect {
             subject.perform("zone_id" => zone_id)
