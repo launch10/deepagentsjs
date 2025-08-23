@@ -111,4 +111,5 @@ class Plan < ApplicationRecord
     limit = plan_limits.find_by(limit_type: 'requests_per_month')
     limit&.limit || 0
   end
+  alias_method :usage_limit, :monthly_request_limit
 end

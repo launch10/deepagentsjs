@@ -1,4 +1,5 @@
 require 'rails_helper'
+require 'sidekiq/testing'
 
 RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas_mocks: true do
   include SubscriptionHelpers
@@ -10,6 +11,9 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
   let(:atlas_plans) { instance_double(Atlas::PlanService) }
 
   before do
+    # Run Sidekiq jobs inline to make tests synchronous
+    Sidekiq::Testing.inline!
+    
     allow(Atlas).to receive(:users).and_return(atlas_users)
     allow(Atlas).to receive(:websites).and_return(atlas_websites)
     allow(Atlas).to receive(:domains).and_return(atlas_domains)
@@ -20,6 +24,11 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
     allow(atlas_websites).to receive(:create).and_return({ 'id' => 'website_123' })
     allow(atlas_domains).to receive(:create).and_return({ 'id' => 'domain_123' })
     allow(atlas_plans).to receive(:create).and_return({ 'id' => 'plan_123' })
+  end
+  
+  after do
+    # Reset Sidekiq testing mode
+    Sidekiq::Testing.fake!
   end
 
   describe 'User Atlas sync' do
@@ -47,8 +56,8 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
         # Expect Atlas to be updated when subscription is created
         expect(atlas_users).to receive(:update).with(
           user.id,
-          plan_id: plan.id
-        )
+          hash_including(plan_id: plan.id)
+        ).and_return({ 'id' => user.id })
         expect(plan.id).to_not be_nil
         
         # Subscribe the account
@@ -59,7 +68,7 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
         )
         
         # Verify the user now has the correct plan
-        expect(user.current_plan_id).to eq(plan.id)
+        expect(user.reload.current_plan_id).to eq(plan.id)
       end
     end
 
@@ -115,7 +124,8 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
         
         expect(atlas_domains).to receive(:create).with(
           hash_including(
-            domain: anything,
+            id: kind_of(Integer),
+            domain: kind_of(String),
             website_id: website.id
           )
         ).and_return({ 'id' => 'domain_123' })
@@ -131,6 +141,7 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
         expect(atlas_domains).to receive(:update).with(
           domain.id,
           hash_including(
+            id: domain.id,
             domain: 'newdomain.com',
             website_id: website.id
           )
