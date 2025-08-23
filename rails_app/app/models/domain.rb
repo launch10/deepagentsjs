@@ -36,6 +36,7 @@ class Domain < ApplicationRecord
   validates :user_id, presence: true
 
   before_validation :set_default_domain, on: :create
+  before_validation :normalize_domain
 
   private
 
@@ -63,6 +64,20 @@ class Domain < ApplicationRecord
     else
       self.domain = base_domain
     end
+  end
+
+  def normalize_domain
+    subdomain = extract_subdomain(domain)
+    if subdomain.nil?
+      write_attribute(:domain, "www.#{domain}")
+    end
+  end
+
+  def extract_subdomain(url)
+    uri = URI.parse(url.start_with?('http') ? url : "http://#{url}")
+    parts = uri.host.split('.')
+    return nil if parts.length <= 2
+    parts.first
   end
 
 end

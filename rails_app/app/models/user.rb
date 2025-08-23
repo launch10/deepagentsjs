@@ -59,7 +59,7 @@ class User < ApplicationRecord
   include Notifiable
   include Searchable
   include Theme
-  include AtlasSyncable
+  include Atlas::User
 
   has_one_attached :avatar
   has_person_name
@@ -94,5 +94,4 @@ class User < ApplicationRecord
     owned_account
   end
 
-  private
 end

@@ -100,6 +100,10 @@ class DomainRequestCount < ApplicationRecord
     to_insert = traffic_report.map do |domain, request_count|
       # Upsert domain request count for this hour
       domain_record = domains_by_domain[domain]
+      if domain_record.blank?
+        binding.pry
+      end
+      
       domain_request_count = DomainRequestCount.find_or_initialize_by(
         domain_id: domain_record.id,
         user_id: domain_record.user_id,

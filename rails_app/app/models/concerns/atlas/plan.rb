@@ -1,17 +1,12 @@
 module Atlas
   module Plan
     extend ActiveSupport::Concern
+    include Atlas::Syncable
 
-    included do
-      include Atlas::Syncable
-    end
-
-    private
-
-    # Atlas sync methods
     def atlas_service
       Atlas.plans
     end
+    private
 
     def atlas_data_for_create
       {

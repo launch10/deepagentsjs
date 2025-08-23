@@ -14,19 +14,19 @@ namespace :seeds do
         name: "starter",
         amount: 4900,
         interval: "month",
-        stripe_id: "starter"
+        stripe_id: Rails.application.credentials.dig(:stripe, :plans, :starter)
       },
       {
         name: "pro",
         amount: 9900,
         interval: "month",
-        stripe_id: "business"
+        stripe_id: Rails.application.credentials.dig(:stripe, :plans, :pro)
       },
       {
         name: "enterprise",
         amount: 24900,
         interval: "month",
-        stripe_id: "enterprise"
+        stripe_id: Rails.application.credentials.dig(:stripe, :plans, :enterprise)
       }
     ]
 

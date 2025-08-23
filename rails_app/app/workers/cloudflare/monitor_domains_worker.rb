@@ -2,8 +2,8 @@ class Cloudflare
   class MonitorDomainsWorker
     include Sidekiq::Worker
 
-    def perform(options = {})
-      Domain.monitor_cloudflare_zone(zone_id: options[:zone_id])
+    def perform(zone_id)
+      Domain.monitor_cloudflare_zone(zone_id)
     end
 
     class BatchWorker 

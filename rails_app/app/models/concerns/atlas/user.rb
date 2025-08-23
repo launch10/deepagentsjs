@@ -1,10 +1,7 @@
 module Atlas
   module User
     extend ActiveSupport::Concern
-
-    included do
-      include Atlas::Syncable
-    end
+    include Atlas::Syncable
 
 private
     def atlas_service

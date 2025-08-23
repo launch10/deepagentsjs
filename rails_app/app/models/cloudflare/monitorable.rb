@@ -2,7 +2,7 @@ class Cloudflare
   module Monitorable
     extend ActiveSupport::Concern
 
-    class << self
+    class_methods do
       def monitor_domains
         # Calls actually_monitor_domains
         Cloudflare::MonitorDomainsWorker::BatchWorker.perform_async
@@ -14,7 +14,7 @@ class Cloudflare
             # This is a successful response, an array of zone IDs
             # such as: ["53af2b7fed23483ab370ef62a78b411b", "5ea4ca3dddb10aa3bd8f3c848ad8a95f"]
             zones.each do |zone|
-              Cloudflare::MonitorDomainsWorker.perform_async(zone_id: zone)
+              Cloudflare::MonitorDomainsWorker.perform_async(zone)
             end
           else
             Rollbar.error("Failed to get zones", zones)

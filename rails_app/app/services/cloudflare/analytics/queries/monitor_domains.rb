@@ -16,7 +16,7 @@ class Cloudflare
 
           parser = lambda do |response|
             if response.success?
-              response.parsed_body.dig(:data, :viewer, :zones).map { |zone| zone[:zoneTag] }.with_indifferent_access
+              response.parsed_body.dig(:data, :viewer, :zones).map { |zone| zone[:zoneTag] }
             else
               response
             end
@@ -59,7 +59,7 @@ class Cloudflare
               }
             }
           GRAPHQL
-          
+
           variables = {
             zoneTag: zone_id,
             startTime: start_time.iso8601,

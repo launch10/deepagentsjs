@@ -33,50 +33,9 @@ class Cloudflare::BlockWorker
   def perform(options = {})
     options = options.symbolize_keys
     user = User.find(options[:user_id])
-    domains = user.firewall_rules.inactive.map(&:domain).map(&:domain)
-  end
-  
-  class BlockRuleWorker
-    include Sidekiq::Worker
-    
-    sidekiq_options queue: :cloudflare, retry: 5
-    
-    def perform(firewall_rule_id)
-      rule = FirewallRule.find(firewall_rule_id)
-      
-      # Skip if already blocked
-      return if rule.status == 'blocked' && rule.cloudflare_rule_id.present?
-      
-      # Update status to blocking
-      rule.update!(status: 'blocking')
-      
-      begin
-        # Initialize Cloudflare service
-        service = Cloudflare::FirewallService.new(rule.firewall.zone_id)
-        
-        # Create the firewall rule
-        response = service.create_rule(
-          expression: rule.build_cloudflare_expression,
-          action: 'block',
-          description: "Auto-blocked: #{rule.domain}"
-        )
-        
-        if response['success']
-          # Mark as successfully blocked
-          rule.block!(response['result']['id'])
-        else
-          # Handle API error
-          error_message = response['errors']&.first&.dig('message') || 'Unknown error'
-          rule.mark_failed!(error_message)
-          raise BlockingError, error_message
-        end
-      rescue Cloudflare::FirewallService::ApiError => e
-        rule.mark_failed!(e.message)
-        raise e
-      rescue StandardError => e
-        rule.mark_failed!(e.message)
-        raise e
-      end
-    end
+    domains = user.firewall_rules.inactive.map(&:domain)
+    response = Cloudflare::FirewallService.new(user.firewall.zone_id).block_domains(domains)
+    # get cloudflare ids and update domains
+    binding.pry
   end
 end

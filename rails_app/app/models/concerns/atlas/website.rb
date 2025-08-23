@@ -1,16 +1,12 @@
 module Atlas
   module Website
     extend ActiveSupport::Concern
+    include Atlas::Syncable
 
-    included do
-      include Atlas::Syncable
-    end
-
-  private
-    # Atlas sync methods
     def atlas_service
       Atlas.websites
     end
+  private
 
     def atlas_data_for_create
       {

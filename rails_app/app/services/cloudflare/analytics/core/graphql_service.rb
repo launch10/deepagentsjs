@@ -8,7 +8,7 @@ class Cloudflare
         
         def initialize(auth: nil, basic_auth: nil, token: nil)
           token ||= Cloudflare.config.api_token
-        super(auth: auth, basic_auth: basic_auth, token: token)
+          super(auth: auth, basic_auth: basic_auth, token: token)
         end
         
         # Override base_uri to use configured value
