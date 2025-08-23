@@ -22,6 +22,7 @@ FactoryBot.define do
     association :domain
     association :user
     request_count { 100 }
-    counted_at { Time.current.beginning_of_hour }
+    hour { Time.current.beginning_of_hour }
+    created_at { Time.current }
   end
 end

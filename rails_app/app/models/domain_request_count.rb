@@ -36,7 +36,39 @@ class DomainRequestCount < ApplicationRecord
   class << self
     include Domain::NormalizeDomain
   end
-  
+
+  def self.create_partitions(num_days)
+    num_days.times do |i|
+      date = Date.current + i.days
+      
+      (0..23).each do |hour|
+        start_time = date.beginning_of_day + hour.hours
+        end_time = start_time + 1.hour
+        partition_name = "domain_request_counts_#{start_time.strftime('%Y_%m_%d_%H')}"
+        
+        puts "Creating partition for #{partition_name}"
+        
+        ActiveRecord::Base.connection.execute <<-SQL
+          CREATE TABLE IF NOT EXISTS #{partition_name} 
+          PARTITION OF domain_request_counts 
+          FOR VALUES FROM ('#{start_time.to_fs(:db)}') TO ('#{end_time.to_fs(:db)}');
+        SQL
+      end
+    end
+  end
+
+  # Drop all existing partitions first
+  def self.drop_all_partitions
+    partitions = ActiveRecord::Base.connection.execute(<<-SQL).to_a
+      SELECT tablename FROM pg_tables 
+      WHERE tablename LIKE 'domain_request_counts_%';
+    SQL
+    
+    partitions.each do |partition|
+      ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS #{partition['tablename']};")
+    end
+  end
+    
   # Get total requests for a user in a given period
   def self.total_for_user(user, start_time, end_time = Time.current)
     for_user(user).in_period(start_time, end_time).sum(:request_count)
@@ -99,10 +131,16 @@ class DomainRequestCount < ApplicationRecord
     domains_by_domain = domains.index_by(&:domain)
     domains.update_all(cloudflare_zone_id: zone_id)
     users = domains.map(&:user).uniq
+    summarized_domains = traffic_report.reduce({}) do |summarized_domains, (domain, request_count)|
+      summarized_domains.tap do
+        summarized_domains[normalize_domain(domain)] ||= 0
+        summarized_domains[normalize_domain(domain)] += request_count
+      end
+    end
     
-    to_insert = traffic_report.map do |domain, request_count|
+    to_insert = summarized_domains.map do |domain, request_count|
       # Upsert domain request count for this hour
-      domain_record = domains_by_domain[normalize_domain(domain)]
+      domain_record = domains_by_domain[domain]
       if domain_record.blank?
         Rollbar.error("Traffic report found for domain without a domain record", domain: domain)
         next
@@ -120,12 +158,18 @@ class DomainRequestCount < ApplicationRecord
 
     return if to_insert.blank?
 
-    binding.pry
-    DomainRequestCount.import(to_insert, on_duplicate_key_update: { 
-      conflict_target: [:domain_id, :user_id, :hour], 
-      columns: [:request_count] 
-    })
+    # Use raw SQL for upsert to handle composite primary key and SERIAL id properly
+    to_insert.each do |record|
+      sql = <<-SQL
+        INSERT INTO domain_request_counts (domain_id, user_id, hour, request_count, created_at)
+        VALUES (#{record.domain_id}, #{record.user_id}, '#{record.hour.to_fs(:db)}', #{record.request_count}, '#{start_time.to_fs(:db)}')
+        ON CONFLICT (user_id, domain_id, hour)
+        DO UPDATE SET request_count = EXCLUDED.request_count
+      SQL
+      
+      connection.execute(sql)
+    end
 
-    UserRequestCount.update_users(users, start_time)
+    # UserRequestCount.update_users(users, start_time)
   end
 end

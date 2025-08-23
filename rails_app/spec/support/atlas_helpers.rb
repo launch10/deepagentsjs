@@ -51,14 +51,14 @@ module AtlasHelpers
   end
   
   def disable_atlas_sync
-    allow_any_instance_of(AtlasSyncable).to receive(:atlas_sync_enabled?).and_return(false)
+    allow_any_instance_of(Atlas::Syncable).to receive(:atlas_sync_enabled?).and_return(false)
     
     # Also stub the Atlas service methods to prevent HTTP calls
     stub_atlas_service_methods
   end
   
   def enable_atlas_sync
-    allow_any_instance_of(AtlasSyncable).to receive(:atlas_sync_enabled?).and_return(true)
+    allow_any_instance_of(Atlas::Syncable).to receive(:atlas_sync_enabled?).and_return(true)
   end
   
   def stub_atlas_service_methods

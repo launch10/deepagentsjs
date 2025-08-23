@@ -6,7 +6,7 @@
 #  name              :string           not null
 #  amount            :integer          default("0"), not null
 #  interval          :string           not null
-#  details           :jsonb            default("{}"), not null
+#  details           :jsonb
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null
 #  trial_period_days :integer          default("0")
@@ -26,7 +26,8 @@
 #
 # Indexes
 #
-#  index_plans_on_name  (name) UNIQUE
+#  index_plans_on_created_at  (created_at)
+#  index_plans_on_name        (name) UNIQUE
 #
 
 require "test_helper"

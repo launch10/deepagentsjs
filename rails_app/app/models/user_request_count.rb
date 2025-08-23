@@ -31,29 +31,45 @@ class UserRequestCount < ApplicationRecord
   
   # Callbacks
   before_validation :normalize_month
-  before_save :update_last_updated_at
   
   # Get or create the current month's counter for a user
   def self.current_for_user(user)
     find_or_create_by(user: user, month: Date.current.beginning_of_month) do |counter|
       counter.request_count = 0
-      counter.last_updated_at = Time.current
+      counter.created_at = Time.current
+    end
+  end
+
+  def self.create_partitions(num_months)
+    num_months.times do |i|
+      start_time = (Date.current + i.months).beginning_of_month
+      end_time = start_time + 1.month
+      partition_name = "user_request_counts_#{start_time.strftime('%Y_%m')}"
+      
+      ActiveRecord::Base.connection.execute <<-SQL
+        CREATE TABLE IF NOT EXISTS #{partition_name} 
+        PARTITION OF user_request_counts 
+        FOR VALUES FROM ('#{start_time.to_fs(:db)}') TO ('#{end_time.to_fs(:db)}');
+      SQL
     end
   end
 
   def self.update_users(users, hour)
+    # Group domain request counts by user and sum them
     domain_requests_by_user = DomainRequestCount.where(
       user_id: users.map(&:id),
       hour: hour.beginning_of_month..hour.end_of_month
-    ).index_by(&:user_id).sum(:request_count)
+    ).group(:user_id).sum(:request_count)
     
     request_counts = users.map do |user|
       user_request_count = UserRequestCount.find_or_initialize_by(
         user: user, 
-        hour: hour
+        month: hour.beginning_of_month
       )
       user_request_count.request_count = domain_requests_by_user[user.id] || 0
+      user_request_count.created_at ||= Time.current
       user_request_count.save!
+      user_request_count
     end
 
     over_limit, under_limit = request_counts.partition(&:over_limit?)
@@ -69,14 +85,13 @@ class UserRequestCount < ApplicationRecord
   def increment_by!(amount)
     with_lock do
       self.request_count += amount
-      self.last_updated_at = Time.current
       save!
     end
   end
   
   # Reset the counter (typically at the beginning of a new month)
   def reset!
-    update!(request_count: 0, last_updated_at: Time.current)
+    update!(request_count: 0)
   end
   
   # Check if user is over their plan limit
@@ -137,7 +152,4 @@ class UserRequestCount < ApplicationRecord
     self.month = month&.beginning_of_month
   end
   
-  def update_last_updated_at
-    self.last_updated_at ||= Time.current
-  end
 end

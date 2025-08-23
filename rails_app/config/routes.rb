@@ -1,10 +1,11 @@
 require 'sidekiq/web'
 
-ADMIN_ONLY = lambda do |request|
-  request.session[:role_type] == "AdminUser"
-end
-
 Rails.application.routes.draw do
+  ADMIN_ONLY ||= lambda do |request|
+    request.env["warden"].authenticate!(scope: :user)
+    request.env["warden"].user(:user).admin?
+  end
+
   constraints ADMIN_ONLY do
     mount Sidekiq::Web => "/sidekiq"
   end

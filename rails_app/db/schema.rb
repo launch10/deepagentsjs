@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_22_161443) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_23_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -219,6 +219,799 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_22_161443) do
     t.index ["domain_id", "hour"], name: "index_domain_request_counts_on_domain_id_and_hour"
     t.index ["user_id", "domain_id", "hour"], name: "index_domain_request_counts_on_user_domain_and_hour", unique: true
     t.index ["user_id", "hour"], name: "index_domain_request_counts_on_user_id_and_hour"
+  end
+
+  create_table "domain_request_counts_2025_08_01", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_08__domain_id_hour_request_count_idx"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_01_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_01_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_01_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_02", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_08_domain_id_hour_request_count_idx1"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_02_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_02_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_02_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_03", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_08_domain_id_hour_request_count_idx2"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_03_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_03_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_03_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_04", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_08_domain_id_hour_request_count_idx3"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_04_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_04_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_04_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_05", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_08_domain_id_hour_request_count_idx4"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_05_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_05_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_05_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_06", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_08_domain_id_hour_request_count_idx5"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_06_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_06_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_06_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_07", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_08_domain_id_hour_request_count_idx6"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_07_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_07_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_07_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_08", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_08_domain_id_hour_request_count_idx7"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_08_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_08_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_08_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_09", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_08_domain_id_hour_request_count_idx8"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_09_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_09_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_09_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_10", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_08_domain_id_hour_request_count_idx9"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_10_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_10_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_10_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_11", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx10"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_11_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_11_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_11_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_12", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx11"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_12_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_12_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_12_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_13", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx12"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_13_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_13_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_13_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_14", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx13"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_14_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_14_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_14_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_15", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx14"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_15_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_15_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_15_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_16", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx15"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_16_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_16_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_16_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_17", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx16"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_17_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_17_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_17_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_18", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx17"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_18_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_18_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_18_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_19", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx18"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_19_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_19_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_19_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_20", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx19"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_20_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_20_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_20_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_21", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx20"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_21_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_21_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_21_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_22", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx21"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_22_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_22_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_22_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_23", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx22"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_23_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_23_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_23_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_24", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx23"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_24_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_24_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_24_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_25", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx24"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_25_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_25_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_25_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_26", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx25"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_26_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_26_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_26_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_27", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx26"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_27_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_27_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_27_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_28", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx27"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_28_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_28_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_28_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_29", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx28"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_29_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_29_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_29_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_30", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx29"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_30_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_30_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_30_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_08_31", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx30"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_08_31_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_08_31_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_08_31_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_01", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_09__domain_id_hour_request_count_idx"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_01_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_01_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_01_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_02", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_09_domain_id_hour_request_count_idx1"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_02_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_02_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_02_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_03", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_09_domain_id_hour_request_count_idx2"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_03_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_03_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_03_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_04", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_09_domain_id_hour_request_count_idx3"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_04_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_04_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_04_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_05", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_09_domain_id_hour_request_count_idx4"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_05_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_05_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_05_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_06", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_09_domain_id_hour_request_count_idx5"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_06_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_06_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_06_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_07", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_09_domain_id_hour_request_count_idx6"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_07_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_07_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_07_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_08", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_09_domain_id_hour_request_count_idx7"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_08_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_08_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_08_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_09", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_09_domain_id_hour_request_count_idx8"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_09_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_09_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_09_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_10", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_09_domain_id_hour_request_count_idx9"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_10_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_10_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_10_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_11", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx31"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_11_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_11_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_11_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_12", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx32"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_12_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_12_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_12_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_13", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx33"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_13_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_13_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_13_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_14", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx34"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_14_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_14_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_14_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_15", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx35"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_15_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_15_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_15_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_16", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx36"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_16_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_16_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_16_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_17", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx37"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_17_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_17_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_17_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_18", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx38"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_18_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_18_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_18_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_19", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx39"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_19_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_19_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_19_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_20", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx40"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_20_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_20_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_20_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_21", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx41"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_21_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_21_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_21_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_22", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx42"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_22_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_22_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_22_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_23", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx43"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_23_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_23_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_23_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_24", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx44"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_24_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_24_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_24_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_25", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx45"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_25_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_25_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_25_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_26", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx46"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_26_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_26_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_26_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_27", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx47"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_27_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_27_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_27_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_28", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx48"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_28_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_28_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_28_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_29", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx49"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_29_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_29_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_29_user_id_hour_idx"
+  end
+
+  create_table "domain_request_counts_2025_09_30", primary_key: ["id", "hour"], options: "INHERITS (domain_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('domain_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "domain_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "hour", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["domain_id", "hour", "request_count"], name: "domain_request_counts_2025_0_domain_id_hour_request_count_idx50"
+    t.index ["domain_id", "hour"], name: "domain_request_counts_2025_09_30_domain_id_hour_idx"
+    t.index ["user_id", "domain_id", "hour"], name: "domain_request_counts_2025_09_30_user_id_domain_id_hour_idx", unique: true
+    t.index ["user_id", "hour"], name: "domain_request_counts_2025_09_30_user_id_hour_idx"
   end
 
   create_table "domains", force: :cascade do |t|
@@ -566,6 +1359,46 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_22_161443) do
     t.timestamptz "created_at", null: false
     t.index ["user_id", "month", "request_count"], name: "index_user_request_counts_on_user_month", unique: true
     t.index ["user_id", "month"], name: "index_user_request_counts_on_user_id_and_month"
+  end
+
+  create_table "user_request_counts_2025_08", primary_key: ["id", "month"], options: "INHERITS (user_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('user_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "month", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["user_id", "month", "request_count"], name: "user_request_counts_2025_08_user_id_month_request_count_idx", unique: true
+    t.index ["user_id", "month"], name: "user_request_counts_2025_08_user_id_month_idx"
+  end
+
+  create_table "user_request_counts_2025_09", primary_key: ["id", "month"], options: "INHERITS (user_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('user_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "month", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["user_id", "month", "request_count"], name: "user_request_counts_2025_09_user_id_month_request_count_idx", unique: true
+    t.index ["user_id", "month"], name: "user_request_counts_2025_09_user_id_month_idx"
+  end
+
+  create_table "user_request_counts_2025_10", primary_key: ["id", "month"], options: "INHERITS (user_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('user_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "month", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["user_id", "month", "request_count"], name: "user_request_counts_2025_10_user_id_month_request_count_idx", unique: true
+    t.index ["user_id", "month"], name: "user_request_counts_2025_10_user_id_month_idx"
+  end
+
+  create_table "user_request_counts_2025_11", primary_key: ["id", "month"], options: "INHERITS (user_request_counts)", force: :cascade do |t|
+    t.bigint "id", default: -> { "nextval('user_request_counts_id_seq'::regclass)" }, null: false
+    t.bigint "user_id", null: false
+    t.bigint "request_count", null: false
+    t.timestamptz "month", null: false
+    t.timestamptz "created_at", null: false
+    t.index ["user_id", "month", "request_count"], name: "user_request_counts_2025_11_user_id_month_request_count_idx", unique: true
+    t.index ["user_id", "month"], name: "user_request_counts_2025_11_user_id_month_idx"
   end
 
   create_table "users", force: :cascade do |t|

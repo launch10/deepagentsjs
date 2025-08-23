@@ -23,7 +23,7 @@ class Cloudflare
       end
 
       def monitor_cloudflare_zone(zone_id)
-        start_time = EST.now.beginning_of_hour
+        start_time = (EST.now - 2.hours).beginning_of_hour
         end_time = EST.now.end_of_hour
 
         DomainRequestCount.process_traffic_report(
@@ -54,7 +54,7 @@ class Cloudflare
       end
 
       def get_hourly_traffic_report(zone_id, start_time: nil, end_time: nil)
-        start_time ||= EST.now.beginning_of_hour
+        start_time ||= (EST.now - 2.hours).beginning_of_hour
         end_time ||= EST.now.end_of_hour
 
         Cloudflare::Analytics::Queries::MonitorDomains.new.hourly_traffic_by_host(
