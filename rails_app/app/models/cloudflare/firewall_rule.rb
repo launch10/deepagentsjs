@@ -32,12 +32,12 @@ class Cloudflare
     belongs_to :firewall
     belongs_to :user
 
-    include Cloudflare::Statuses
+    include Cloudflare::FirewallStatuses
 
     validates_presence_of :user_id, :firewall_id, :status
-    validates :status, presence: true, inclusion: { in: Cloudflare::Statuses::STATUSES }
+    validates :status, presence: true, inclusion: { in: Cloudflare::FirewallStatuses::STATUS }
 
-    scope :inactive, -> { where(status: Cloudflare::Statuses::INACTIVE) }
-    scope :blocked, -> { where(status: Cloudflare::Statuses::BLOCKED) }
+    scope :inactive, -> { where(status: Cloudflare::FirewallStatuses::INACTIVE) }
+    scope :blocked, -> { where(status: Cloudflare::FirewallStatuses::BLOCKED) }
   end
 end

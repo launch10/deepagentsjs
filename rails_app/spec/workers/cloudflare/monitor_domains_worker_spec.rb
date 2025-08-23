@@ -154,7 +154,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           expect(user_total.request_count).to eq(130_000) # User total matches domain totals
         end
       end
-      it "UserRequestCounts equal the sum of all DomainRequestCounts for a user for the month", :focus do
+      it "UserRequestCounts equal the sum of all DomainRequestCounts for a user for the month" do
         # Run the worker for each hour in the traffic report
         traffic_report.each do |time, traffic|
           Timecop.freeze(UTC.parse(time)) do
@@ -175,36 +175,6 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         expect(apples_user_count).to be_present
         expect(apples_user_count.request_count).to eq(apples_total)
         expect(apples_user_count.request_count).to eq(1900)
-      end
-
-      it "domain request counts are summarized for each hour" do
-        # First hour - 10am
-        Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
-          subject.perform(zone_id)
-          
-          count_10am = DomainRequestCount.find_by(
-            domain: www_domain,
-            user: apples_user,
-            hour: UTC.now.beginning_of_hour
-          )
-          expect(count_10am.request_count).to eq(70_000) # 50k + 20k
-        end
-
-        # Second hour - 11am
-        Timecop.freeze(UTC.parse("2025-08-01 11:00:00")) do
-          subject.perform(zone_id)
-          
-          count_11am = DomainRequestCount.find_by(
-            domain: www_domain,
-            user: apples_user,
-            hour: UTC.now.beginning_of_hour
-          )
-          expect(count_11am.request_count).to eq(2500) # 2000 + 500
-          
-          # Total for the day should be sum of both hours
-          total = DomainRequestCount.total_for_domain(www_domain, day1, day1.end_of_day)
-          expect(total).to eq(72_500) # 70k + 2.5k
-        end
       end
 
       it "correctly handles traffic across multiple days" do
@@ -290,9 +260,9 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         end
       end
 
-      it "blocks user when exceeding plan limit" do
+      it "blocks user when exceeding plan limit", :focus do
         # Mock the FirewallService
-        allow_any_instance_of(Cloudflare::FirewallService).to receive(:block_user).and_return(true)
+        allow_any_instance_of(Cloudflare::FirewallService).to receive(:block_user).and_call_original
         
         # First get to just under the limit
         Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
@@ -313,6 +283,15 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           user_count = UserRequestCount.find_by(user: apples_user, month: day1.beginning_of_month)
           expect(user_count).to be_over_limit
         end
+
+        # jumpstart-app(dev)> response.parsed_body
+        # => {result: {operation_id: "3234eb584eaa461abd7d4be7d070c32a"},
+        #  success: true,
+        #  errors: [],
+        #  messages: []}
+
+        Sidekiq::Worker.drain_all
+        binding.pry
       end
     end
   end

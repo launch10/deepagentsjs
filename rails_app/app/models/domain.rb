@@ -24,13 +24,12 @@ class Domain < ApplicationRecord
   include Cloudflare::Monitorable
   include Domain::NormalizeDomain
   
-  belongs_to :website
+  belongs_to :website, optional: true
   belongs_to :user
   has_many :domain_request_counts, dependent: :destroy
   has_one :firewall_rule
 
   validates :domain, presence: true, uniqueness: true
-  validates :website_id, presence: true
   validates :user_id, presence: true
 
   before_validation :set_default_domain, on: :create

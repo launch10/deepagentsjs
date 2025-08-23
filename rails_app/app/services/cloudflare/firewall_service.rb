@@ -18,8 +18,7 @@ class Cloudflare::FirewallService < ApplicationClient
     end
     
     begin
-      response = post(ENDPOINT, body)
-      response
+      post(ENDPOINT, body: body)
     rescue ApplicationClient::Error => e
       raise ApiError, e.message
     end
@@ -35,8 +34,7 @@ class Cloudflare::FirewallService < ApplicationClient
     }
     
     begin
-      response = delete(ENDPOINT, body)
-      response
+      delete(ENDPOINT, body: body)
     rescue ApplicationClient::Error => e
       raise ApiError, e.message
     end
@@ -44,8 +42,7 @@ class Cloudflare::FirewallService < ApplicationClient
 
   def list_blocked_domains
     begin
-      response = get(ENDPOINT)
-      response
+      get(ENDPOINT)
     rescue ApplicationClient::Error => e
       raise ApiError, e.message
     end

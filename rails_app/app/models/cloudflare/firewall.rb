@@ -2,19 +2,21 @@
 #
 # Table name: cloudflare_firewalls
 #
-#  id         :integer          not null, primary key
-#  user_id    :integer
-#  status     :string
-#  blocked_at :datetime
-#  created_at :datetime         not null
-#  updated_at :datetime         not null
+#  id           :integer          not null, primary key
+#  user_id      :integer          not null
+#  status       :string           default("inactive")
+#  blocked_at   :datetime
+#  unblocked_at :datetime
+#  created_at   :datetime         not null
+#  updated_at   :datetime         not null
 #
 # Indexes
 #
-#  index_cloudflare_firewalls_on_blocked_at  (blocked_at)
-#  index_cloudflare_firewalls_on_created_at  (created_at)
-#  index_cloudflare_firewalls_on_status      (status)
-#  index_cloudflare_firewalls_on_user_id     (user_id)
+#  index_cloudflare_firewalls_on_blocked_at    (blocked_at)
+#  index_cloudflare_firewalls_on_created_at    (created_at)
+#  index_cloudflare_firewalls_on_status        (status)
+#  index_cloudflare_firewalls_on_unblocked_at  (unblocked_at)
+#  index_cloudflare_firewalls_on_user_id       (user_id)
 #
 
 class Cloudflare
@@ -23,6 +25,7 @@ class Cloudflare
     self.table_name = "cloudflare_firewalls"
 
     has_many :rules, class_name: "Cloudflare::FirewallRule"
+    alias_method :firewall_rules, :rules
     belongs_to :user
 
     validates_presence_of :user_id, :status
@@ -31,15 +34,18 @@ class Cloudflare
     scope :blocked, -> { where(status: 'blocked') }
     scope :inactive, -> { where(status: 'inactive') }
 
-    def self.block_domains(user)
+    def self.block_user(user)
+      Cloudflare::BlockWorker.perform_async(user_id: user.id)
+    end
+
+    def self.actually_block_user(user)
       domains = Domain.where(user: user)
-      domain_names = domains.pluck(:domain)
       firewall = user.firewall
-      existing_firewall_rules = FirewallRule.where(domain: domain_names)
-      firewall_rules_by_domain = existing_firewall_rules.index_by(&:domain)
+      existing_firewall_rules = FirewallRule.where(domain_id: domains.pluck(:id))
+      firewall_rules_by_domain = existing_firewall_rules.index_by(&:domain_id)
       unblocked_domains = domains.select do |domain|
-        firewall_rules_by_domain[domain.domain].blank? ||
-        firewall_rules_by_domain[domain.domain].status == Cloudflare::FirewallStatuses::INACTIVE
+        firewall_rules_by_domain[domain.id].blank? ||
+        firewall_rules_by_domain[domain.id].status == Cloudflare::FirewallStatuses::INACTIVE
       end
       
       to_insert = unblocked_domains.map do |domain|
@@ -58,10 +64,11 @@ class Cloudflare
           columns: [:status] 
         }
       )
-      Cloudflare::BlockWorker.perform_async(user_id: user.id)
+
+      response = Cloudflare::FirewallService.new.block_domains(unblocked_domains)
     end
 
-    def self.unblock_domains(user)
+    def self.unblock_user(user)
       
     end
   end

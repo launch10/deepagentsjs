@@ -66,21 +66,30 @@ class UserRequestCount < ApplicationRecord
     end
 
     # Check for users over limit and trigger blocking if needed
-    over_limit, _under_limit = request_counts.partition(&:over_limit?)
-    over_limit.each do |user_request_count|
-      # Get the zone_id from the user's domains (assuming all domains share same zone)
-      zone_id = user_request_count.user.domains.first&.website&.cloudflare_zone_id
-      next unless zone_id
-      
-      # Use FirewallService to block the user
-      service = Cloudflare::FirewallService.new
-      limit = PlanLimit.find_by(limit_type: 'requests_per_month')&.limit || 0
-      service.block_user(
-        user: user_request_count.user,
-        zone_id: zone_id,
-        reason: "Plan limit exceeded: #{user_request_count.request_count}/#{limit} requests"
-      )
+    over_limit, under_limit = request_counts.partition(&:over_limit?)
+    over_limit.map(&:user).each do |user|
+      Cloudflare::Firewall.block_user(user)
     end
+    under_limit.map(&:user).each do |user|
+      Cloudflare::Firewall.unblock_user(user)
+    end
+    # over_limit.each do |user_request_count|
+    #   # Get the zone_id from the user's domains (assuming all domains share same zone)
+    #   zone_id = user_request_count.user.domains.first
+    #   raise "User #{user_request_count.user.id} has no domains, but we need to block them" unless zone_id
+
+    #   zone_id = zone_id.cloudflare_zone_id
+    #   raise "User #{user_request_count.user.id} has no zone_id, but we need to block them" unless zone_id
+      
+    #   # Use FirewallService to block the user
+    #   service = Cloudflare::FirewallService.new
+    #   limit = PlanLimit.find_by(limit_type: 'requests_per_month')&.limit || 0
+    #   service.block_user(
+    #     user: user_request_count.user,
+    #     zone_id: zone_id,
+    #     reason: "Plan limit exceeded: #{user_request_count.request_count}/#{limit} requests"
+    #   )
+    # end
   end
 
   # Increment the counter atomically

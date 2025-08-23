@@ -33,9 +33,10 @@ class Cloudflare::BlockWorker
   def perform(options = {})
     options = options.symbolize_keys
     user = User.find(options[:user_id])
+    binding.pry
+    firewall = user.firewall || user.create_firewall
     domains = user.firewall_rules.inactive.map(&:domain)
     response = Cloudflare::FirewallService.new(user.firewall.zone_id).block_domains(domains)
     # get cloudflare ids and update domains
-    binding.pry
   end
 end

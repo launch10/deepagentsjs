@@ -84,7 +84,7 @@ class User < ApplicationRecord
   has_many :domains
   has_many :domain_request_counts
   has_many :user_request_counts
-  has_one :firewall
+  has_one :firewall, class_name: "Cloudflare::Firewall"
   
   def current_plan_id
     plan&.id

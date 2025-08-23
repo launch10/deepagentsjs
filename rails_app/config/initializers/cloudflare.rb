@@ -33,12 +33,11 @@ Rails.application.config.after_initialize do
     config.r2_region = ENV.fetch('CLOUDFLARE_R2_REGION') do
       Rails.application.credentials.dig(:cloudflare, :r2_region) || 'auto'
     end
+
+    config.blocked_domains_list_id = ENV.fetch('CLOUDFLARE_BLOCKED_DOMAINS_LIST_ID') do
+      Rails.application.credentials.dig(:cloudflare, :blocked_domains_list_id)
+    end
     
     config.timeout = ENV.fetch('CLOUDFLARE_TIMEOUT', 30).to_i
-  end
-  
-  if Rails.env.development?
-    Rails.logger.info "[Cloudflare] Configured with endpoint: #{Cloudflare.config.analytics_endpoint}"
-    Rails.logger.info "[Cloudflare] R2 bucket: #{Cloudflare.config.r2_bucket_name}"
   end
 end
