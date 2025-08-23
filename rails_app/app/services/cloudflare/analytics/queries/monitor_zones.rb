@@ -2,7 +2,7 @@
 class Cloudflare
   module Analytics
     module Queries
-      class TrafficQueries < Cloudflare::Analytics::Core::GraphqlService
+      class MonitorZones < Cloudflare::Analytics::Core::GraphqlService
         def get_all_zones(&block)
           query = <<~GRAPHQL
             query getAllZones {

@@ -21,6 +21,7 @@
 
 class Domain < ApplicationRecord
   include AtlasSyncable
+  include Cloudflare::Monitorable
   
   belongs_to :website
   belongs_to :user

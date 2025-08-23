@@ -4,23 +4,30 @@ class Cloudflare
 
     class << self
       def monitor_zones
-        Cloudflare::Analytics::Queries::TrafficQueries.new.get_all_zones do |zones|
-          zones.each do |zone|
-            Cloudflare::TrafficMonitorWorker.perform_async(zone_id: zone)
+        # Calls actually_monitor_zones
+        Cloudflare::MonitorZonesWorker::BatchWorker.perform_async
+      end
+
+      def actually_monitor_zones
+        Cloudflare::Analytics::Queries::MonitorZones.new.get_all_zones do |zones|
+          if zones.is_a?(Array)
+            # This is a successful response, an array of zone IDs
+            # such as: ["53af2b7fed23483ab370ef62a78b411b", "5ea4ca3dddb10aa3bd8f3c848ad8a95f"]
+            zones.each do |zone|
+              Cloudflare::TrafficWorker.perform_async(zone_id: zone)
+            end
+          else
+            Rollbar.error("Failed to get zones", zones)
           end
         end
       end
 
-      def monitor_zone(options = {})
-        options = options.with_indifferent_access
-        zone_id = options[:zone_id]
-        raise ArgumentError, "Missing zone_id" unless zone_id
-
-        start_time = EST.now.beginning_of_hour
-        end_time = EST.now.end_of_hour
+      def monitor_zone(zone_id)
+        start_time = UTC.now.beginning_of_hour
+        end_time = UTC.now.end_of_hour
 
         # sample report: {"abeverything.com" => 16, "example.abeverything.com" => 50}
-        traffic_report = Cloudflare::Analytics::Queries::TrafficQueries.new.hourly_traffic_by_host(
+        traffic_report = Cloudflare::Analytics::Queries::MonitorZones.new.hourly_traffic_by_host(
           zone_id: zone_id,
           start_time: start_time,
           end_time: end_time
@@ -31,21 +38,12 @@ class Cloudflare
         domain_names = traffic_report.keys
         return if domain_names.empty?
 
-        # Process traffic data and store domain request counts
-        domain_counts = DomainRequestCount.process_traffic_report(
+        DomainRequestCount.process_traffic_report(
           traffic_report: traffic_report,
           start_time: start_time,
           zone_id: zone_id
         )
-        
-        # Update user's monthly request count
-        update_user_request_count(user, domain_counts, start_time)
-        
-        # Check if user has exceeded their plan limits
-        check_and_enforce_limits(user, website)
       end
-
-  
     end
   end
 end
