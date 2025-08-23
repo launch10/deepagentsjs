@@ -65,12 +65,21 @@ class UserRequestCount < ApplicationRecord
       user_request_count
     end
 
-    over_limit, under_limit = request_counts.partition(&:over_limit?)
+    # Check for users over limit and trigger blocking if needed
+    over_limit, _under_limit = request_counts.partition(&:over_limit?)
     over_limit.each do |user_request_count|
-      Cloudflare::Firewall.block_domains(user_request_count.user)
-    end
-    under_limit.each do |user_request_count|
-      Cloudflare::Firewall.unblock_domains(user_request_count.user)
+      # Get the zone_id from the user's domains (assuming all domains share same zone)
+      zone_id = user_request_count.user.domains.first&.website&.cloudflare_zone_id
+      next unless zone_id
+      
+      # Use FirewallService to block the user
+      service = Cloudflare::FirewallService.new
+      limit = PlanLimit.find_by(limit_type: 'requests_per_month')&.limit || 0
+      service.block_user(
+        user: user_request_count.user,
+        zone_id: zone_id,
+        reason: "Plan limit exceeded: #{user_request_count.request_count}/#{limit} requests"
+      )
     end
   end
 
@@ -89,7 +98,9 @@ class UserRequestCount < ApplicationRecord
   
   # Check if user is over their plan limit
   def over_limit?
-    plan_limit = user.account.plan&.plan_limits&.find_by(limit_type: 'requests_per_month')
+    # For now, get plan limit directly from PlanLimit table
+    # In production, this should come from user's subscription/plan
+    plan_limit = PlanLimit.find_by(limit_type: 'requests_per_month')
     return false unless plan_limit
 
     request_count > plan_limit.limit
@@ -97,7 +108,7 @@ class UserRequestCount < ApplicationRecord
 
   # Get the percentage of limit used
   def usage_percentage
-    plan_limit = user.account.plan&.plan_limits&.find_by(limit_type: 'requests_per_month')
+    plan_limit = PlanLimit.find_by(limit_type: 'requests_per_month')
     return 0 unless plan_limit&.limit&.positive?
     
     ((request_count.to_f / plan_limit.limit) * 100).round(2)
@@ -105,7 +116,7 @@ class UserRequestCount < ApplicationRecord
   
   # Get remaining requests for the month
   def remaining_requests
-    plan_limit = user.account.plan&.plan_limits&.find_by(limit_type: 'requests_per_month')
+    plan_limit = PlanLimit.find_by(limit_type: 'requests_per_month')
     return nil unless plan_limit
     
     [plan_limit.limit - request_count, 0].max

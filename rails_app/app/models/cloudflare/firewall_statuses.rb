@@ -1,7 +1,6 @@
 class Cloudflare
-  class FirewallStatuses < ApplicationRecord
-    STATUS = %w[inactive blocked]
-    enum status: STATUS
+  module FirewallStatuses
+    STATUS = %w[inactive blocked].freeze
 
     def blocked?
       status == "blocked"

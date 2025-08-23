@@ -51,6 +51,42 @@ class Cloudflare::FirewallService < ApplicationClient
     end
   end
   
+  def block_user(user:, zone_id:, reason: nil)
+    # Block user by creating firewall rules for their domains
+    Rails.logger.info "Blocking user #{user.id} on zone #{zone_id}: #{reason}"
+    
+    # Get user's domains for this zone
+    domains = user.domains.where(zone_id: zone_id)
+    return if domains.empty?
+    
+    # Block the domains
+    block_domains(domains)
+    
+    # Create or update firewall record
+    firewall = Cloudflare::Firewall.find_or_create_by(user: user, cloudflare_zone_id: zone_id)
+    firewall.update!(status: 'blocked', blocked_at: Time.current)
+    
+    true
+  end
+  
+  def unblock_user(user:, zone_id:)
+    # Unblock user by removing firewall rules for their domains
+    Rails.logger.info "Unblocking user #{user.id} on zone #{zone_id}"
+    
+    # Get user's domains for this zone
+    domains = user.domains.where(zone_id: zone_id)
+    return if domains.empty?
+    
+    # Unblock the domains
+    unblock_domains(domains)
+    
+    # Update firewall record
+    firewall = Cloudflare::Firewall.find_by(user: user, cloudflare_zone_id: zone_id)
+    firewall&.update!(status: 'inactive', blocked_at: nil)
+    
+    true
+  end
+  
   private
 
   def validate_domains(domains)

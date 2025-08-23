@@ -144,6 +144,6 @@ class DomainRequestCount < ApplicationRecord
       connection.execute(sql)
     end
 
-    # UserRequestCount.update_users(users, start_time)
+    UserRequestCount.update_users(users, start_time)
   end
 end
