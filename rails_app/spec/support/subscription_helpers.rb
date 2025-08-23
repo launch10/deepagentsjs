@@ -22,10 +22,11 @@ module SubscriptionHelpers
     
     # Find or create the plan
     plan = Plan.find_by(name: plan_name) || create(:plan, name: plan_name.to_sym)
+    plan.update!(fake_processor_id: plan_name) # or stripe_id, etc.
     
     # Subscribe to the plan
     account.payment_processor.subscribe(
-      plan: plan.fake_processor_id || plan.name,
+      plan: plan.fake_processor_id,
       ends_at: nil
     )
     

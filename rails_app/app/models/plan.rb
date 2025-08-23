@@ -107,7 +107,7 @@ class Plan < ApplicationRecord
     send(:"#{processor_name}_id")
   end
   # Get the usage limit for requests per month
-  def usage_limit
+  def monthly_request_limit
     limit = plan_limits.find_by(limit_type: 'requests_per_month')
     limit&.limit || 0
   end

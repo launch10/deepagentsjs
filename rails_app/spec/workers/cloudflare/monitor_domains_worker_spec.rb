@@ -1,9 +1,13 @@
 require "rails_helper"
+require "support/subscription_helpers"
 
 RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
+  include SubscriptionHelpers
+
   let(:zone_id) { "zone_123abc" }
-  let(:apples_user) { create(:user) }
-  let(:bananas_user) { create(:user) }
+  let!(:plan) { create(:plan, name: "starter") }
+  let(:apples_user) { create_subscribed_user(plan_name: plan.name) }
+  let(:bananas_user) { create_subscribed_user(plan_name: plan.name) }
   let(:apples_account) { create(:account, owner: apples_user) }
   let(:bananas_account) { create(:account, owner: bananas_user) }
   let(:apples_domain) { create(:domain, user: apples_user, domain: "apples.example.com", website: apples_website) }
@@ -219,7 +223,6 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
     end
 
     context "plan limit enforcement" do
-      let!(:plan) { create(:plan, name: "starter") }
       let!(:plan_limit) { create(:plan_limit, plan: plan, limit_type: "requests_per_month", limit: 50_000) }
       
       let(:traffic_report) do
@@ -261,8 +264,36 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
       end
 
       it "blocks user when exceeding plan limit", :focus do
-        # Mock the FirewallService
-        allow_any_instance_of(Cloudflare::FirewallService).to receive(:block_user).and_call_original
+        # Mock successful Cloudflare API response
+        mock_response = {
+          result: { operation_id: "3234eb584eaa461abd7d4be7d070c32a" },
+          success: true,
+          errors: [],
+          messages: []
+        }
+        
+        # Mock the FirewallService to return success response
+        firewall_service = instance_double(Cloudflare::FirewallService)
+        allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
+        allow(firewall_service).to receive(:block_domains).and_return(
+          mock_api_response(mock_response)
+        )
+        allow(firewall_service).to receive(:search_blocked_domains).twice.and_return(
+          mock_api_response({
+            id: "274d104045dd4c2492192ca565f8d7e7",
+            hostname: {url_hostname: "www.abeverything.com"},
+            comment: "Auto-suspended by worker on 2025-08-23 14:42:24 -0400",
+            created_on: "2025-08-23T18:42:24Z",
+            modified_on: "2025-08-23T18:42:24Z"
+          }),
+          mock_api_response({
+            id: "3b17fd8fdc6443c7b34844bdb53fb104",
+            hostname: {url_hostname: "www.blorps.com"},
+            comment: "Auto-suspended by worker on 2025-08-23 14:42:24 -0400",
+            created_on: "2025-08-23T18:42:24Z",
+            modified_on: "2025-08-23T18:42:24Z"
+          })
+        )
         
         # First get to just under the limit
         Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
@@ -271,7 +302,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
 
         # Now exceed the limit
         Timecop.freeze(UTC.parse("2025-08-01 11:00:00")) do
-          # This should trigger blocking (but will be skipped due to no zone_id)
+          # This should trigger blocking
           subject.perform(zone_id)
           
           # Verify user's total exceeds limit
@@ -284,14 +315,55 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           expect(user_count).to be_over_limit
         end
 
-        # jumpstart-app(dev)> response.parsed_body
-        # => {result: {operation_id: "3234eb584eaa461abd7d4be7d070c32a"},
-        #  success: true,
-        #  errors: [],
-        #  messages: []}
-
+        # Process the blocking job
         Sidekiq::Worker.drain_all
-        binding.pry
+        
+        # Verify firewall rules were created with 'blocked' status
+        firewall_rules = Cloudflare::Firewall.where(user: apples_user)
+        expect(firewall_rules).not_to be_empty
+        firewall_rules.each do |rule|
+          expect(rule.status).to eq("blocked")
+          expect(rule.cloudflare_zone_id).to eq(zone_id)
+        end
+      end
+
+      it "raises error when Cloudflare API returns non-success response" do
+        # Mock error response from Cloudflare API
+        mock_error_response = {
+          result: nil,
+          success: false,
+          errors: [{ code: 1001, message: "Invalid zone identifier" }],
+          messages: []
+        }
+        
+        # Mock the FirewallService to return error response
+        firewall_service = instance_double(Cloudflare::FirewallService)
+        allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
+        allow(firewall_service).to receive(:block_user).and_return(mock_error_response)
+        
+        # First get to just under the limit
+        Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
+          subject.perform(zone_id)
+        end
+
+        # Now exceed the limit - this should trigger blocking
+        Timecop.freeze(UTC.parse("2025-08-01 11:00:00")) do
+          subject.perform(zone_id)
+          
+          # Verify user's total exceeds limit
+          user_total = DomainRequestCount.total_for_user(apples_user, day1.beginning_of_month, day1.end_of_month)
+          expect(user_total).to eq(80_000)
+          expect(user_total).to be > plan_limit.limit
+        end
+
+        # Processing the blocking job should raise an error for retry
+        expect {
+          Sidekiq::Worker.drain_all
+        }.to raise_error(StandardError, /Failed to block user/)
+        
+        # Verify no firewall rules were created due to the error
+        firewall_rules = Cloudflare::Firewall.where(user: apples_user)
+        expect(firewall_rules).to be_empty
       end
     end
   end

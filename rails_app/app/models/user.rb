@@ -74,6 +74,14 @@ class User < ApplicationRecord
   def plan
     subscriptions.active.first&.plan
   end
+
+  def monthly_request_limit
+    plan&.monthly_request_limit || 0
+  end
+
+  def over_monthly_request_limit?
+    user_request_counts.current_month.any?(&:over_limit?)
+  end
   
   def plan_limits
     plan&.plan_limits || []

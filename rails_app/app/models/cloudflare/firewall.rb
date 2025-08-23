@@ -40,7 +40,7 @@ class Cloudflare
 
     def self.actually_block_user(user)
       domains = Domain.where(user: user)
-      firewall = user.firewall
+      firewall = user.firewall || user.create_firewall
       existing_firewall_rules = FirewallRule.where(domain_id: domains.pluck(:id))
       firewall_rules_by_domain = existing_firewall_rules.index_by(&:domain_id)
       unblocked_domains = domains.select do |domain|
@@ -48,28 +48,65 @@ class Cloudflare
         firewall_rules_by_domain[domain.id].status == Cloudflare::FirewallStatuses::INACTIVE
       end
       
-      to_insert = unblocked_domains.map do |domain|
-        firewall_rule = Cloudflare::FirewallRule.find_or_initialize_by(
-          domain_id: domain.id,
+      firewall_service = Cloudflare::FirewallService.new
+      response = firewall_service.block_domains(unblocked_domains)
+      if response.success?
+        firewall.update!(status: Cloudflare::FirewallStatuses::BLOCKED, blocked_at: Time.current)
+        response = firewall_service.search_blocked_domains(unblocked_domains)
+
+        to_insert = unblocked_domains.map do |domain|
+          firewall_rule = Cloudflare::FirewallRule.find_or_initialize_by(
+            domain_id: domain.id,
+          )
+          firewall_rule.status = Cloudflare::FirewallStatuses::INACTIVE
+          firewall_rule.user = user
+          firewall_rule.firewall = firewall
+          firewall_rule
+        end
+
+        Cloudflare::FirewallRule.import(to_insert, 
+          on_duplicate_key_update: { 
+            conflict_target: [:domain_id], 
+            columns: [:status] 
+          }
         )
-        firewall_rule.status = Cloudflare::FirewallStatuses::INACTIVE
-        firewall_rule.user = user
-        firewall_rule.firewall = firewall
-        firewall_rule
+
+        firewall_rules.update_all(
+          status: Cloudflare::FirewallStatuses::BLOCKED,
+          blocked_at: Time.current,
+          unblocked_at: nil
+        )
+      else
+        # We raise so that the worker retries, and eventually succeeds
+        raise "Failed to block domains for user #{user.id}: #{response.errors.join(', ')}"
       end
-
-      Cloudflare::FirewallRule.import(to_insert, 
-        on_duplicate_key_update: { 
-          conflict_target: [:domain_id], 
-          columns: [:status] 
-        }
-      )
-
-      response = Cloudflare::FirewallService.new.block_domains(unblocked_domains)
     end
 
-    def self.unblock_user(user)
-      
+    def self.unblock_user(user, force: false)
+      Cloudflare::UnblockWorker.perform_async(user_id: user.id, force: force)
     end
+
+    def self.actually_unblock_user(user, force: false)
+      # Don't allow unblocking if the user is over their monthly request limit
+      #
+      # BUT if a user changes plans, and thus their monthly request limit changes,
+      # we want to allow unblocking
+      return if user.over_monthly_request_limit? && !force
+
+      firewall_rules = FirewallRule.where(user: user).blocked
+      return unless firewall_rules.any?
+
+      response = Cloudflare::FirewallService.new.unblock_domains(firewall_rules.map(&:cloudflare_rule_id))
+      if response.success?
+        firewall.update!(status: Cloudflare::FirewallStatuses::INACTIVE, unblocked_at: Time.current)
+        firewall_rules.update_all(
+          status: Cloudflare::FirewallStatuses::INACTIVE,
+          unblocked_at: Time.current,
+          blocked_at: nil
+        )
+      else
+        raise "Failed to block domains for user #{user.id}: #{response.errors.join(', ')}"
+      end
+    end 
   end
 end

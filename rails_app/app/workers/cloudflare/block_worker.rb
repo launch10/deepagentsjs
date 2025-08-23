@@ -6,8 +6,8 @@ class Cloudflare::BlockWorker
   sidekiq_options queue: :critical, retry: 5
   
   sidekiq_retry_in do |count, exception|
-    # Exponential backoff: 1min, 5min, 15min, 1hr, 2hr
-    [60, 300, 900, 3600, 7200][count - 1] || 7200
+    # Exponential backoff: 1min, 1min, 5min, 15min, 30min
+    [60, 60, 60 * 5, 60 * 15, 60 * 30][count - 1] || 7200
   end
   
   sidekiq_retries_exhausted do |msg, ex|
@@ -33,10 +33,6 @@ class Cloudflare::BlockWorker
   def perform(options = {})
     options = options.symbolize_keys
     user = User.find(options[:user_id])
-    binding.pry
-    firewall = user.firewall || user.create_firewall
-    domains = user.firewall_rules.inactive.map(&:domain)
-    response = Cloudflare::FirewallService.new(user.firewall.zone_id).block_domains(domains)
-    # get cloudflare ids and update domains
+    Cloudflare::Firewall.actually_block_user(user)
   end
 end

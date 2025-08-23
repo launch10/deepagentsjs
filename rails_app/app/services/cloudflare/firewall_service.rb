@@ -40,9 +40,17 @@ class Cloudflare::FirewallService < ApplicationClient
     end
   end
 
-  def list_blocked_domains
+  def search_blocked_domains(domains)
     begin
-      get(ENDPOINT)
+      response = domains.map do |domain|
+        get(ENDPOINT, query: { search: domain.domain })
+      end.reduce({}) do |acc, response|
+        return acc unless response.success?
+
+        body = response.parsed_body
+        acc[body.dig(:result, 0, :hostname, :url_hostname)] = body.dig(:result, 0, :id)
+        acc
+      end
     rescue ApplicationClient::Error => e
       raise ApiError, e.message
     end

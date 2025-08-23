@@ -28,6 +28,7 @@ RSpec.configure do |config|
   config.include JwtHelpers, type: :request
   config.include SubscriptionHelpers, type: :request
   config.include PlanHelpers, type: :request
+  config.include ApiHelpers
 
   # Database cleaner configuration
   config.before(:suite) do

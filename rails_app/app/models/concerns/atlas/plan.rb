@@ -12,14 +12,14 @@ module Atlas
       {
         id: id,
         name: name,
-        usage_limit: usage_limit
+        usage_limit: monthly_request_limit
       }
     end
 
     def atlas_data_for_update
       {
         name: name,
-        usage_limit: usage_limit
+        usage_limit: monthly_request_limit
       }
     end
 

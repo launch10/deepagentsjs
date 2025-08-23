@@ -107,12 +107,7 @@ class UserRequestCount < ApplicationRecord
   
   # Check if user is over their plan limit
   def over_limit?
-    # For now, get plan limit directly from PlanLimit table
-    # In production, this should come from user's subscription/plan
-    plan_limit = PlanLimit.find_by(limit_type: 'requests_per_month')
-    return false unless plan_limit
-
-    request_count > plan_limit.limit
+    request_count > user.monthly_request_limit
   end
 
   # Get the percentage of limit used
