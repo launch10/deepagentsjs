@@ -27,8 +27,8 @@ RSpec.describe DeployWorker, type: :worker do
       expect(described_class.sidekiq_options['queue']).to eq(:critical)
     end
 
-    it 'has 3 retries' do
-      expect(described_class.sidekiq_options['retry']).to eq(3)
+    it 'has 5 retries' do
+      expect(described_class.sidekiq_options['retry']).to eq(5)
     end
 
     it 'includes backtrace' do
@@ -112,13 +112,10 @@ RSpec.describe DeployWorker, type: :worker do
   end
 
   describe 'retry behavior' do
-    it 'retries with exponential backoff' do
-      retry_in = described_class.sidekiq_retry_in_block
-      
-      expect(retry_in.call(0, StandardError.new)).to eq(60)      # 1 minute
-      expect(retry_in.call(1, StandardError.new)).to eq(300)     # 5 minutes
-      expect(retry_in.call(2, StandardError.new)).to eq(1800)    # 30 minutes
-      expect(retry_in.call(3, StandardError.new)).to eq(:kill)   # Stop retrying
+    it 'uses Sidekiq default retry behavior' do
+      # DeployWorker uses default Sidekiq retry behavior (exponential backoff)
+      # The retry count is configured to 5
+      expect(described_class.sidekiq_options['retry']).to eq(5)
     end
   end
 

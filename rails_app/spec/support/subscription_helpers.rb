@@ -27,8 +27,8 @@ module SubscriptionHelpers
     account.set_payment_processor :fake_processor, allow_fake: true
     
     # Find or create the plan
-    plan = Plan.find_by(name: plan_name) || create(:plan, name: plan_name.to_sym)
-    plan.update!(fake_processor_id: plan_name) # or stripe_id, etc.
+    plan = Plan.find_by(name: plan_name) || create(:plan, name: plan_name.to_sym, currency: 'usd')
+    plan.update!(fake_processor_id: plan_name, currency: 'usd') # or stripe_id, etc.
     
     # Subscribe to the plan
     account.payment_processor.subscribe(
