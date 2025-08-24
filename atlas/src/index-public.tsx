@@ -24,20 +24,16 @@ app.get('*', async (c) => {
 
   const isPreview = hostname.startsWith('preview.');
   const allowedEnvs = ['development', 'staging', 'production'];
-  const envRegex = new RegExp(`^env\\.(${allowedEnvs.join('|')})`);
-  const isSpecificEnv = envRegex.test(hostname);
-  let env;
+  
+  // Check query string for cloudEnv parameter
+  const cloudEnv = url.searchParams.get('cloudEnv');
+  const isSpecificEnv = cloudEnv !== null && allowedEnvs.includes(cloudEnv);
+  let env = isSpecificEnv ? cloudEnv : undefined;
   
   // Remove preview prefix to get the actual domain for lookup
   let lookupHostname = hostname;
   if (isPreview) {
     lookupHostname = hostname.replace('preview.', '');
-  } else if (isSpecificEnv) {
-    const match = envRegex.exec(hostname);
-    env = match ? match[1] : undefined;
-    if (match) {
-      lookupHostname = hostname.replace(`env.${match[1]}.`, '');
-    }
   }
 
   const websiteModel = new Website(c); 
