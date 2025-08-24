@@ -34,11 +34,17 @@ class Cloudflare
     scope :blocked, -> { where(status: 'blocked') }
     scope :inactive, -> { where(status: 'inactive') }
 
+    def already_blocked?
+      blocked? && user.domains.all?(&:blocked?)
+    end
+
     def self.block_user(user)
       Cloudflare::BlockWorker.perform_async(user_id: user.id)
     end
 
     def self.actually_block_user(user)
+      return unless user.over_monthly_request_limit?
+
       domains = Domain.where(user: user)
       firewall = user.firewall || user.create_firewall
       existing_firewall_rules = FirewallRule.where(domain_id: domains.pluck(:id))

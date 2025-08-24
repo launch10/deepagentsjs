@@ -6,6 +6,10 @@ Rails.application.config.after_initialize do
       Rails.application.credentials.dig(:cloudflare, :api_token)
     end
     
+    config.email = ENV.fetch('CLOUDFLARE_EMAIL') do
+      Rails.application.credentials.dig(:cloudflare, :email)
+    end
+    
     config.account_id = ENV.fetch('CLOUDFLARE_ACCOUNT_ID') do
       Rails.application.credentials.dig(:cloudflare, :account_id)
     end

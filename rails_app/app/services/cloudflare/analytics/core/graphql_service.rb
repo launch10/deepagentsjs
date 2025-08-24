@@ -6,11 +6,6 @@ class Cloudflare
       class GraphqlService < ApplicationClient
         class GraphQLError < Error; end
         
-        def initialize(auth: nil, basic_auth: nil, token: nil)
-          token ||= Cloudflare.config.api_token
-          super(auth: auth, basic_auth: basic_auth, token: token)
-        end
-        
         # Override base_uri to use configured value
         def base_uri
           Cloudflare.config.analytics_endpoint
@@ -18,7 +13,8 @@ class Cloudflare
         
         def authorization_header
           { 
-            "Authorization" => "Bearer #{token}" ,
+            "Authorization" => "Bearer #{Cloudflare.config.api_token}" ,
+            "X-Auth-Email" => Cloudflare.config.email
           }
         end
         

@@ -35,6 +35,9 @@ class Domain < ApplicationRecord
   before_validation :set_default_domain, on: :create
   before_validation :set_normalized_domain, on: :create
 
+  def blocked?
+  end
+
   private
 
   def set_default_domain

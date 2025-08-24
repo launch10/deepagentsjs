@@ -69,9 +69,21 @@ class UserRequestCount < ApplicationRecord
     over_limit, under_limit = request_counts.partition(&:over_limit?)
 
     over_limit.map(&:user).each do |user|
+      Rails.logger.info "[BLOCK] Blocking user #{user.id} for #{user.monthly_request_limit} requests"
+      Rails.logger.info "[BLOCK] Blocking user #{user.id} for #{user.monthly_request_limit} requests"
+      Rails.logger.info "[BLOCK] Blocking user #{user.id} for #{user.monthly_request_limit} requests"
+      Rails.logger.info "[BLOCK] Blocking user #{user.id} for #{user.monthly_request_limit} requests"
+      Rails.logger.info "[BLOCK] Blocking user #{user.id} for #{user.monthly_request_limit} requests"
+      Rails.logger.info "[BLOCK] Blocking user #{user.id} for #{user.monthly_request_limit} requests"
+      Rails.logger.info "[BLOCK] Blocking user #{user.id} for #{user.monthly_request_limit} requests"
       Cloudflare::Firewall.block_user(user)
     end
     under_limit.map(&:user).each do |user|
+      Rails.logger.info "[UNBLOCK] Unblocking user #{user.id} for #{user.monthly_request_limit} requests"
+      Rails.logger.info "[UNBLOCK] Unblocking user #{user.id} for #{user.monthly_request_limit} requests"
+      Rails.logger.info "[UNBLOCK] Unblocking user #{user.id} for #{user.monthly_request_limit} requests"
+      Rails.logger.info "[UNBLOCK] Unblocking user #{user.id} for #{user.monthly_request_limit} requests"
+      Rails.logger.info "[UNBLOCK] Unblocking user #{user.id} for #{user.monthly_request_limit} requests"
       Cloudflare::Firewall.unblock_user(user)
     end
   end

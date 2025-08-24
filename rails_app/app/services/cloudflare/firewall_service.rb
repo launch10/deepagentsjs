@@ -116,6 +116,7 @@ class Cloudflare::FirewallService < ApplicationClient
   def authorization_header
     { 
       'Authorization' => "Bearer #{Cloudflare.config.api_token}",
+      'X-Auth-Email' => Cloudflare.config.email,
       'Content-Type' => 'application/json'
     }
   end
