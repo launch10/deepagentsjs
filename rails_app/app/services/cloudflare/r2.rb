@@ -2,9 +2,9 @@ class Cloudflare
   class R2
     attr_reader :client, :bucket_name, :environment
 
-    def initialize(bucket_name: nil)
+    def initialize(bucket_name: nil, environment: nil)
       @bucket_name = bucket_name || Cloudflare.config.r3_bucket
-      @environment = Cloudflare.config.deploy_env
+      @environment = environment || Cloudflare.config.deploy_env
       @client = Aws::S3::Client.new(
         endpoint: Cloudflare.config.r2_endpoint,
         access_key_id: Cloudflare.config.r2_access_key_id,

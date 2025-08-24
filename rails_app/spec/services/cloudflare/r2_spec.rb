@@ -9,7 +9,23 @@ RSpec.describe Cloudflare::R2, type: :service do
   end
 
   describe 'environment prefixing' do
-    context 'when deploy_env is set' do
+    context 'when environment is passed to constructor' do
+      it 'uses the provided environment instead of config default' do
+        allow(Cloudflare.config).to receive(:deploy_env).and_return('development')
+        
+        # Pass production as explicit environment
+        r2 = Cloudflare::R2.new(bucket_name: bucket_name, environment: 'production')
+        
+        expect(s3_client).to receive(:put_object) do |args|
+          # Should use production, not development from config
+          expect(args[:key]).to eq('production/project/file.txt')
+        end
+        
+        r2.put_object(bucket: bucket_name, key: 'project/file.txt', body: 'test')
+      end
+    end
+    
+    context 'when deploy_env is set as default' do
       before do
         allow(Cloudflare.config).to receive(:deploy_env).and_return('staging')
       end

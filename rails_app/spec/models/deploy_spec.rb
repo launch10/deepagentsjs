@@ -366,6 +366,9 @@ RSpec.describe Deploy, type: :model do
       allow(File).to receive(:file?).and_return(true)
       allow(File).to receive(:open).and_yield(StringIO.new('test content'))
       
+      # Set a default environment in config
+      allow(Cloudflare.config).to receive(:deploy_env).and_return('development')
+      
       allow(s3_client).to receive(:list_objects_v2).and_return(
         double(contents: [double(key: 'test/file.html', size: 100)])
       )
@@ -374,46 +377,61 @@ RSpec.describe Deploy, type: :model do
       allow(s3_client).to receive(:copy_object)
     end
 
-    it 'uses single bucket with environment folders via Cloudflare::R2' do
-      # The DeployUploader initializes with the environment
-      # but Cloudflare::R2 is what actually adds the prefix to paths
-      deploy = website_with_files.deploys.create!(environment: 'development')
-      allow(deploy).to receive(:system).and_return(true)
-
-      # All environments use the same bucket
-      expect(s3_client).to receive(:put_object).at_least(:once) do |args|
-        expect(args[:bucket]).to eq('deploys')
-        # Note: In the actual implementation, Cloudflare::R2.prefixed_path
-        # adds the environment prefix before calling the S3 client
-        # So the S3 client sees keys like "development/project_id/timestamp/file.html"
-      end
-
-      deploy.deploy!
-    end
-
-    it 'verifies Cloudflare::R2 adds environment prefix to keys' do
-      # When DeployUploader passes environment to Cloudflare::R2.new
-      # the R2 wrapper uses Cloudflare.config.deploy_env to prefix all paths
-      
-      # Create a real R2 instance to test the actual behavior
-      allow(Cloudflare.config).to receive(:deploy_env).and_return('staging')
-      
+    it 'uses Deploy environment to override default config environment' do
+      # Deploy's environment should override the config default
       deploy = website_with_files.deploys.create!(environment: 'staging')
       allow(deploy).to receive(:system).and_return(true)
-      
-      # The S3 client should receive keys with staging prefix added by R2
+
+      # The S3 client should receive staging-prefixed paths, not development
       expect(s3_client).to receive(:put_object).at_least(:once) do |args|
-        # Cloudflare::R2 should have added the staging prefix
+        expect(args[:bucket]).to eq('deploys')
+        # Should use staging from Deploy, not development from config
         expect(args[:key]).to start_with('staging/')
+        expect(args[:key]).not_to start_with('development/')
       end
-      
+
       deploy.deploy!
     end
 
-    it 'handles environment separation transparently' do
-      # The beauty of Cloudflare::R2 is that DeployUploader doesn't need
-      # to know about environment prefixing - it's handled automatically
+    it 'properly prefixes all S3 operations with environment' do
+      deploy = website_with_files.deploys.create!(environment: 'production')
+      allow(deploy).to receive(:system).and_return(true)
       
+      # Track all S3 operations to verify prefixing
+      put_keys = []
+      list_prefixes = []
+      copy_operations = []
+      delete_operations = []
+      
+      allow(s3_client).to receive(:put_object) do |args|
+        put_keys << args[:key]
+      end
+      
+      allow(s3_client).to receive(:list_objects_v2) do |args|
+        list_prefixes << args[:prefix]
+        double(contents: [double(key: "production/#{website_with_files.id}/20240101120000/index.html", size: 100)])
+      end
+      
+      allow(s3_client).to receive(:copy_object) do |args|
+        copy_operations << { source: args[:copy_source], dest: args[:key] }
+      end
+      
+      allow(s3_client).to receive(:delete_objects) do |args|
+        delete_operations << args[:delete][:objects] if args[:delete]
+      end
+      
+      deploy.deploy!
+      
+      # Verify all operations use production prefix
+      expect(put_keys).to all(start_with('production/'))
+      expect(list_prefixes.compact).to all(start_with('production/'))
+      copy_operations.each do |op|
+        expect(op[:source]).to include('production/') if op[:source]
+        expect(op[:dest]).to start_with('production/') if op[:dest]
+      end
+    end
+
+    it 'isolates different environments in separate folders' do
       # Create deploys for different environments
       dev_deploy = website_with_files.deploys.create!(environment: 'development')
       staging_deploy = website_with_files.deploys.create!(environment: 'staging')
@@ -423,14 +441,34 @@ RSpec.describe Deploy, type: :model do
         allow(deploy).to receive(:system).and_return(true)
       end
       
-      # Each deploy uses the same bucket
-      expect(s3_client).to receive(:put_object).at_least(3).times do |args|
-        expect(args[:bucket]).to eq('deploys')
+      # Track which environment each operation belongs to
+      operations_by_env = { 'development' => [], 'staging' => [], 'production' => [] }
+      
+      allow(s3_client).to receive(:put_object) do |args|
+        key = args[:key]
+        if key.start_with?('development/')
+          operations_by_env['development'] << key
+        elsif key.start_with?('staging/')
+          operations_by_env['staging'] << key
+        elsif key.start_with?('production/')
+          operations_by_env['production'] << key
+        end
       end
       
+      # Deploy to each environment
       dev_deploy.deploy!
       staging_deploy.deploy!
       prod_deploy.deploy!
+      
+      # Verify each environment got its own operations
+      expect(operations_by_env['development']).not_to be_empty
+      expect(operations_by_env['staging']).not_to be_empty
+      expect(operations_by_env['production']).not_to be_empty
+      
+      # Verify no cross-contamination between environments
+      operations_by_env['development'].each { |key| expect(key).to start_with('development/') }
+      operations_by_env['staging'].each { |key| expect(key).to start_with('staging/') }
+      operations_by_env['production'].each { |key| expect(key).to start_with('production/') }
     end
   end
 
