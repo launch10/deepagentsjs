@@ -28,17 +28,17 @@ export interface PlanType extends Model {
   name: string;
   usageLimit: number;
 }
-export interface UserType extends Model {
+export interface AccountType extends Model {
   planId?: string;
 }
 
 export interface RequestType extends Model {
-  userId: string;
+  accountId: string;
   count: number;
 }
 
 export interface WebsiteType extends Model {
-  userId: string;
+  accountId: string;
 }
 
 export interface DomainType extends Model {
@@ -54,10 +54,10 @@ export const plans: Map<string, PlanType> = new Map([
 ]);
 
 // We will flow like this:
-// User visits www.example.com
+// Account visits www.example.com
 // We find domain www.example.com
 // Domain points to website: 1
 // We load r2/website/1/live/index.html
-// We look for website.user
-// We increment request count for website.user on request model.
+// We look for website.account
+// We increment request count for website.account on request model.
 // If request count exceeds plan limit, we block the request.

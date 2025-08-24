@@ -1,29 +1,29 @@
 import { Hono } from 'hono';
 import { SDKClient } from '../../sdk/index.js';
 import type { Env } from '../../types.js';
-import type { UserType } from '../../types.js';
+import type { AccountType } from '../../types.js';
 
-export function userRoutes() {
+export function accountRoutes() {
   const router = new Hono<{ Bindings: Env }>();
   
-  // GET /api/internal/users
+  // GET /api/internal/accounts
   router.get('/', async (c) => {
     const limit = parseInt(c.req.query('limit') || '100');
     const client = new SDKClient(c);
-    const result = await client.user.list(limit);
+    const result = await client.account.list(limit);
     
     if (!result.success) {
       return c.json({ error: result.error }, 500);
     }
     
-    return c.json({ users: result.data });
+    return c.json({ accounts: result.data });
   });
   
-  // GET /api/internal/users/:id
+  // GET /api/internal/accounts/:id
   router.get('/:id', async (c) => {
     const id = c.req.param('id');
     const client = new SDKClient(c);
-    const result = await client.user.get(id);
+    const result = await client.account.get(id);
     
     if (!result.success) {
       return c.json({ error: result.error }, result.error?.includes('not found') ? 404 : 500);
@@ -32,17 +32,17 @@ export function userRoutes() {
     return c.json(result.data);
   });
   
-  // POST /api/internal/users
+  // POST /api/internal/accounts
   router.post('/', async (c) => {
     try {
-      const body = await c.req.json<UserType>();
+      const body = await c.req.json<AccountType>();
       
       if (!body.id) {
         return c.json({ error: 'Missing required fields: id, planId' }, 400);
       }
       
       const client = new SDKClient(c);
-      const result = await client.user.set(body.id, body);
+      const result = await client.account.set(body.id, body);
       
       if (!result.success) {
         return c.json({ error: result.error }, 500);
@@ -54,28 +54,28 @@ export function userRoutes() {
     }
   });
   
-  // PUT /api/internal/users/:id
+  // PUT /api/internal/accounts/:id
   router.put('/:id', async (c) => {
     try {
       const id = c.req.param('id');
-      const body = await c.req.json<Partial<UserType>>();
+      const body = await c.req.json<Partial<AccountType>>();
       
       const client = new SDKClient(c);
       
-      // Get existing user
-      const existingResult = await client.user.get(id);
+      // Get existing account
+      const existingResult = await client.account.get(id);
       if (!existingResult.success) {
-        return c.json({ error: 'User not found' }, 404);
+        return c.json({ error: 'Account not found' }, 404);
       }
       
       // Merge with existing data
-      const updatedData: UserType = {
+      const updatedData: AccountType = {
         ...existingResult.data!,
         ...body,
         id // Ensure ID doesn't change
       };
       
-      const result = await client.user.set(id, updatedData);
+      const result = await client.account.set(id, updatedData);
       
       if (!result.success) {
         return c.json({ error: result.error }, 500);
@@ -87,11 +87,11 @@ export function userRoutes() {
     }
   });
   
-  // DELETE /api/internal/users/:id
+  // DELETE /api/internal/accounts/:id
   router.delete('/:id', async (c) => {
     const id = c.req.param('id');
     const client = new SDKClient(c);
-    const result = await client.user.delete(id);
+    const result = await client.account.delete(id);
     
     if (!result.success) {
       return c.json({ error: result.error }, 500);
@@ -100,50 +100,50 @@ export function userRoutes() {
     return c.json({ success: true, id });
   });
   
-  // POST /api/internal/users/:id/block
+  // POST /api/internal/accounts/:id/block
   router.post('/:id/block', async (c) => {
     const id = c.req.param('id');
     const client = new SDKClient(c);
-    const result = await client.user.block(id);
+    const result = await client.account.block(id);
     
     if (!result.success) {
       return c.json({ error: result.error }, 500);
     }
     
-    return c.json({ success: true, message: `User ${id} blocked successfully` });
+    return c.json({ success: true, message: `Account ${id} blocked successfully` });
   });
   
-  // POST /api/internal/users/:id/unblock
+  // POST /api/internal/accounts/:id/unblock
   router.post('/:id/unblock', async (c) => {
     const id = c.req.param('id');
     const client = new SDKClient(c);
-    const result = await client.user.unblock(id);
+    const result = await client.account.unblock(id);
     
     if (!result.success) {
       return c.json({ error: result.error }, 500);
     }
     
-    return c.json({ success: true, message: `User ${id} unblocked successfully` });
+    return c.json({ success: true, message: `Account ${id} unblocked successfully` });
   });
   
-  // POST /api/internal/users/:id/reset
+  // POST /api/internal/accounts/:id/reset
   router.post('/:id/reset', async (c) => {
     const id = c.req.param('id');
     const client = new SDKClient(c);
-    const result = await client.user.reset(id);
+    const result = await client.account.reset(id);
     
     if (!result.success) {
       return c.json({ error: result.error }, 500);
     }
     
-    return c.json({ success: true, message: `User ${id} reset successfully` });
+    return c.json({ success: true, message: `Account ${id} reset successfully` });
   });
   
-  // GET /api/internal/users/:id/status
+  // GET /api/internal/accounts/:id/status
   router.get('/:id/status', async (c) => {
     const id = c.req.param('id');
     const client = new SDKClient(c);
-    const result = await client.user.status(id);
+    const result = await client.account.status(id);
     
     if (!result.success) {
       return c.json({ error: result.error }, 500);
@@ -152,7 +152,7 @@ export function userRoutes() {
     return c.json({ 
       success: true, 
       status: result.data,
-      userId: id 
+      accountId: id 
     });
   });
   

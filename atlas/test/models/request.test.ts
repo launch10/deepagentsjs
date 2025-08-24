@@ -40,53 +40,53 @@ describe('Request Model', () => {
     }
   });
 
-  describe('findByUserId', () => {
-    it('should find request by user ID', async () => {
+  describe('findByAccountId', () => {
+    it('should find request by account ID', async () => {
       const requestData: RequestType = {
         id: uuidv4(),
-        userId: '1',
+        accountId: '1',
         count: 100,
       };
 
       await requestModel.set(requestData.id, requestData);
-      const found = await requestModel.findByUserId('1');
+      const found = await requestModel.findByAccountId('1');
 
       expect(found).toEqual(requestData);
     });
 
-    it('should handle numeric user IDs', async () => {
+    it('should handle numeric account IDs', async () => {
       const requestData: RequestType = {
         id: uuidv4(),
-        userId: '1',
+        accountId: '1',
         count: 100,
       };
 
       await requestModel.set(requestData.id, requestData);
 
       // Should find with numeric ID
-      const foundByNumber = await requestModel.findByUserId(1 as any);
+      const foundByNumber = await requestModel.findByAccountId(1 as any);
       expect(foundByNumber).toEqual(requestData);
 
       // Should find with string ID
-      const foundByString = await requestModel.findByUserId('1');
+      const foundByString = await requestModel.findByAccountId('1');
       expect(foundByString).toEqual(requestData);
     });
 
     it('should return null if not found', async () => {
-      const found = await requestModel.findByUserId('nonexistent');
+      const found = await requestModel.findByAccountId('nonexistent');
       expect(found).toBeNull();
     });
 
-    it('should prevent duplicate user IDs', async () => {
+    it('should prevent duplicate account IDs', async () => {
       const request1: RequestType = {
         id: uuidv4(),
-        userId: '1',
+        accountId: '1',
         count: 100,
       };
 
       const request2: RequestType = {
         id: uuidv4(),
-        userId: '1', // Same user ID
+        accountId: '1', // Same account ID
         count: 200,
       };
 
@@ -101,7 +101,7 @@ describe('Request Model', () => {
     it('should allow updating existing request', async () => {
       const requestData: RequestType = {
         id: uuidv4(),
-        userId: '1',
+        accountId: '1',
         count: 100,
       };
 
@@ -110,7 +110,7 @@ describe('Request Model', () => {
       // Update count
       await requestModel.set(requestData.id, { count: 200 });
 
-      const found = await requestModel.findByUserId('1');
+      const found = await requestModel.findByAccountId('1');
       expect(found?.count).toBe(200);
       expect(found?.id).toBe(requestData.id);
     });
@@ -118,15 +118,15 @@ describe('Request Model', () => {
 
   describe('Real-world scenario: rate limiter update', () => {
     it('should handle rate limiter increments correctly', async () => {
-      const userId = '1';
+      const accountId = '1';
       
       // First request - should create new
-      let existing = await requestModel.findByUserId(userId);
+      let existing = await requestModel.findByAccountId(accountId);
       expect(existing).toBeNull();
 
       const newRequest: RequestType = {
         id: uuidv4(),
-        userId,
+        accountId,
         count: 0,
       };
 
@@ -134,40 +134,40 @@ describe('Request Model', () => {
 
       // Subsequent requests - should update existing
       for (let i = 1; i <= 10; i++) {
-        existing = await requestModel.findByUserId(userId);
+        existing = await requestModel.findByAccountId(accountId);
         expect(existing).not.toBeNull();
         
         await requestModel.set(existing!.id, { count: existing!.count + 10 });
         
-        const updated = await requestModel.findByUserId(userId);
+        const updated = await requestModel.findByAccountId(accountId);
         expect(updated?.count).toBe(i * 10);
         expect(updated?.id).toBe(newRequest.id); // ID should not change
       }
     });
 
-    it('should not create duplicate requests for same user', async () => {
-      const userId = '1';
+    it('should not create duplicate requests for same account', async () => {
+      const accountId = '1';
       
       // Simulate what happens in rateLimiterMiddleware
-      const request1 = await requestModel.findByUserId(userId);
+      const request1 = await requestModel.findByAccountId(accountId);
       
       if (!request1) {
         const newRequest: RequestType = {
           id: uuidv4(),
-          userId: String(userId),
+          accountId: String(accountId),
           count: 10,
         };
         await requestModel.set(newRequest.id, newRequest);
       }
 
       // Simulate another request coming in
-      const request2 = await requestModel.findByUserId(userId);
+      const request2 = await requestModel.findByAccountId(accountId);
       expect(request2).not.toBeNull();
 
-      // Try to create another request with same user ID (simulating race condition)
+      // Try to create another request with same account ID (simulating race condition)
       const duplicateRequest: RequestType = {
         id: uuidv4(),
-        userId: String(userId),
+        accountId: String(accountId),
         count: 20,
       };
 
@@ -176,7 +176,7 @@ describe('Request Model', () => {
       ).rejects.toThrow('Unique constraint violation');
 
       // Verify only one request exists
-      const finalRequest = await requestModel.findByUserId(userId);
+      const finalRequest = await requestModel.findByAccountId(accountId);
       expect(finalRequest?.count).toBe(10); // Original count unchanged
     });
   });
@@ -185,7 +185,7 @@ describe('Request Model', () => {
     it('should store correct keys in KV', async () => {
       const requestData: RequestType = {
         id: 'request-123',
-        userId: '1',
+        accountId: '1',
         count: 100,
       };
 
@@ -197,7 +197,7 @@ describe('Request Model', () => {
       expect(JSON.parse(mainValue!)).toEqual(requestData);
 
       // Check unique index
-      const indexKey = 'index:request:userId:1';
+      const indexKey = 'index:request:accountId:1';
       const indexValue = await env.DEPLOYS_KV.get(indexKey);
       expect(indexValue).toBe('request-123');
     });
@@ -205,7 +205,7 @@ describe('Request Model', () => {
     it('should not create orphaned records', async () => {
       const request1: RequestType = {
         id: 'request-1',
-        userId: '1',
+        accountId: '1',
         count: 100,
       };
 
@@ -218,7 +218,7 @@ describe('Request Model', () => {
       // Try to create duplicate (should fail)
       const request2: RequestType = {
         id: 'request-2',
-        userId: '1',
+        accountId: '1',
         count: 200,
       };
 
@@ -233,7 +233,7 @@ describe('Request Model', () => {
       expect(keysAfter.keys).toHaveLength(2); // Should still be 2
 
       // Verify index still points to original
-      const found = await requestModel.findByUserId('1');
+      const found = await requestModel.findByAccountId('1');
       expect(found?.id).toBe('request-1');
     });
   });

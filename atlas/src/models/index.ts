@@ -1,7 +1,7 @@
 import { Website } from "./website";
-import { User } from "./user";
+import { Account } from "./account";
 import { Domain } from "./domain";
 import { Request } from "./request";
 import { Plan } from "./plan";
 
-export { Website, User, Domain, Request, Plan };
+export { Website, Account, Domain, Request, Plan };

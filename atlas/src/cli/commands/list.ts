@@ -5,27 +5,27 @@ import { createMockContext, cleanupMockContext } from '../utils/context.js';
 export const listCommand = new Command('list')
   .description('List data from KV store')
   .addCommand(
-    new Command('users')
-      .description('List all users')
+    new Command('accounts')
+      .description('List all accounts')
       .option('-l, --limit <limit>', 'Limit number of results', '100')
       .action(async (options) => {
         try {
           const context = await createMockContext();
           const client = new SDKClient(context);
           
-          const result = await client.user.list(parseInt(options.limit));
+          const result = await client.account.list(parseInt(options.limit));
           
           if (!result.success) {
             throw new Error(result.error || 'List failed');
           }
           
-          const users = result.data || [];
-          console.log(`Found ${users.length} users:`);
-          console.log(JSON.stringify(users, null, 2));
+          const accounts = result.data || [];
+          console.log(`Found ${accounts.length} accounts:`);
+          console.log(JSON.stringify(accounts, null, 2));
           await cleanupMockContext();
           process.exit(0);
         } catch (error) {
-          console.error('❌ Error listing users:', error);
+          console.error('❌ Error listing accounts:', error);
           await cleanupMockContext();
           process.exit(1);
         }
@@ -35,19 +35,19 @@ export const listCommand = new Command('list')
     new Command('websites')
       .description('List all websites')
       .option('-l, --limit <limit>', 'Limit number of results', '100')
-      .option('--user <userId>', 'Filter by user ID')
+      .option('--account <accountId>', 'Filter by account ID')
       .action(async (options) => {
         try {
           const context = await createMockContext();
           const client = new SDKClient(context);
           
-          if (options.user) {
-            const result = await client.website.findByUser(options.user);
+          if (options.account) {
+            const result = await client.website.findByAccount(options.account);
             if (!result.success) {
               throw new Error(result.error || 'List failed');
             }
             const websites = result.data || [];
-            console.log(`Found ${websites.length} websites for user ${options.user}:`);
+            console.log(`Found ${websites.length} websites for account ${options.account}:`);
             console.log(JSON.stringify(websites, null, 2));
           } else {
             const result = await client.website.list(parseInt(options.limit));

@@ -6,7 +6,7 @@ import { Domain } from "./domain";
 const isWebsiteType = createTypeGuard<WebsiteType>(
     (data: any): data is WebsiteType => {
         return data.id !== undefined &&
-            data.userId !== undefined;
+            data.accountId !== undefined;
     }
 );
 
@@ -17,8 +17,8 @@ export class Website extends BaseModel<WebsiteType> {
 
     protected defineIndexes(): void {
         this.addIndex({
-            name: 'userId',
-            keyExtractor: (website) => website.userId ? String(website.userId) : null,
+            name: 'accountId',
+            keyExtractor: (website) => website.accountId ? String(website.accountId) : null,
             type: 'unique'
         });
     }

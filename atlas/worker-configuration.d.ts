@@ -371,7 +371,7 @@ declare abstract class PromiseRejectionEvent extends Event {
 }
 declare abstract class Navigator {
     sendBeacon(url: string, body?: (ReadableStream | string | (ArrayBuffer | ArrayBufferView) | Blob | FormData | URLSearchParams | URLSearchParams)): boolean;
-    readonly userAgent: string;
+    readonly accountAgent: string;
     readonly hardwareConcurrency: number;
     readonly language: string;
     readonly languages: string[];
@@ -589,7 +589,7 @@ declare class Event {
      */
     get timeStamp(): number;
     /**
-     * Returns true if event was dispatched by the user agent, and false otherwise.
+     * Returns true if event was dispatched by the account agent, and false otherwise.
      *
      * [MDN Reference](https://developer.mozilla.org/docs/Web/API/Event/isTrusted)
      */
@@ -774,7 +774,7 @@ interface CustomEventCustomEventInit {
     detail?: any;
 }
 /**
- * A file-like object of immutable, raw data. Blobs represent data that isn't necessarily in a JavaScript-native format. The File interface is based on Blob, inheriting blob functionality and expanding it to support files on the user's system.
+ * A file-like object of immutable, raw data. Blobs represent data that isn't necessarily in a JavaScript-native format. The File interface is based on Blob, inheriting blob functionality and expanding it to support files on the account's system.
  *
  * [MDN Reference](https://developer.mozilla.org/docs/Web/API/Blob)
  */
@@ -1393,7 +1393,7 @@ interface Request<CfHostMetadata = unknown, Cf = CfProperties<CfHostMetadata>> e
      */
     url: string;
     /**
-     * Returns a Headers object consisting of the headers associated with request. Note that headers added in the network layer by the user agent will not be accounted for in this object, e.g., the "Host" header.
+     * Returns a Headers object consisting of the headers associated with request. Note that headers added in the network layer by the account agent will not be accounted for in this object, e.g., the "Host" header.
      *
      * [MDN Reference](https://developer.mozilla.org/docs/Web/API/Request/headers)
      */
@@ -2143,10 +2143,10 @@ declare class URL {
     get protocol(): string;
     /* [MDN Reference](https://developer.mozilla.org/docs/Web/API/URL/protocol) */
     set protocol(value: string);
-    /* [MDN Reference](https://developer.mozilla.org/docs/Web/API/URL/username) */
-    get username(): string;
-    /* [MDN Reference](https://developer.mozilla.org/docs/Web/API/URL/username) */
-    set username(value: string);
+    /* [MDN Reference](https://developer.mozilla.org/docs/Web/API/URL/accountname) */
+    get accountname(): string;
+    /* [MDN Reference](https://developer.mozilla.org/docs/Web/API/URL/accountname) */
+    set accountname(value: string);
     /* [MDN Reference](https://developer.mozilla.org/docs/Web/API/URL/password) */
     get password(): string;
     /* [MDN Reference](https://developer.mozilla.org/docs/Web/API/URL/password) */
@@ -2253,7 +2253,7 @@ declare class URLSearchParams {
 declare class URLPattern {
     constructor(input?: (string | URLPatternInit), baseURL?: (string | URLPatternOptions), patternOptions?: URLPatternOptions);
     get protocol(): string;
-    get username(): string;
+    get accountname(): string;
     get password(): string;
     get hostname(): string;
     get port(): string;
@@ -2266,7 +2266,7 @@ declare class URLPattern {
 }
 interface URLPatternInit {
     protocol?: string;
-    username?: string;
+    accountname?: string;
     password?: string;
     hostname?: string;
     port?: string;
@@ -2282,7 +2282,7 @@ interface URLPatternComponentResult {
 interface URLPatternResult {
     inputs: (string | URLPatternInit)[];
     protocol: URLPatternComponentResult;
-    username: URLPatternComponentResult;
+    accountname: URLPatternComponentResult;
     password: URLPatternComponentResult;
     hostname: URLPatternComponentResult;
     port: URLPatternComponentResult;
@@ -2667,7 +2667,7 @@ declare abstract class BaseAiTextEmbeddings {
     postProcessedOutputs: AiTextEmbeddingsOutput;
 }
 type RoleScopedChatInput = {
-    role: "user" | "assistant" | "system" | "tool" | (string & NonNullable<unknown>);
+    role: "account" | "assistant" | "system" | "tool" | (string & NonNullable<unknown>);
     content: string;
     name?: string;
 };
@@ -3308,7 +3308,7 @@ interface Messages {
      */
     messages: {
         /**
-         * The role of the message sender (e.g., 'user', 'assistant', 'system', 'tool').
+         * The role of the message sender (e.g., 'account', 'assistant', 'system', 'tool').
          */
         role?: string;
         /**
@@ -3555,7 +3555,7 @@ interface Meta_Llama_3_3_70B_Instruct_Fp8_Fast_Messages {
      */
     messages: {
         /**
-         * The role of the message sender (e.g., 'user', 'assistant', 'system', 'tool').
+         * The role of the message sender (e.g., 'account', 'assistant', 'system', 'tool').
          */
         role: string;
         /**
@@ -3699,7 +3699,7 @@ interface Meta_Llama_3_3_70B_Instruct_Fp8_Fast_Messages {
 interface AsyncBatch {
     requests?: {
         /**
-         * User-supplied reference. This field will be present in the response as well it can be used to reference the request and response. It's NOT validated to be unique.
+         * Account-supplied reference. This field will be present in the response as well it can be used to reference the request and response. It's NOT validated to be unique.
          */
         external_reference?: string;
         /**
@@ -3787,9 +3787,9 @@ interface Ai_Cf_Meta_Llama_Guard_3_8B_Input {
      */
     messages: {
         /**
-         * The role of the message sender must alternate between 'user' and 'assistant'.
+         * The role of the message sender must alternate between 'account' and 'assistant'.
          */
-        role: "user" | "assistant";
+        role: "account" | "assistant";
         /**
          * The content of the message as a string.
          */
@@ -3939,7 +3939,7 @@ interface Qwen2_5_Coder_32B_Instruct_Messages {
      */
     messages: {
         /**
-         * The role of the message sender (e.g., 'user', 'assistant', 'system', 'tool').
+         * The role of the message sender (e.g., 'account', 'assistant', 'system', 'tool').
          */
         role: string;
         /**
@@ -4177,7 +4177,7 @@ interface Qwen_Qwq_32B_Messages {
      */
     messages: {
         /**
-         * The role of the message sender (e.g., 'user', 'assistant', 'system', 'tool').
+         * The role of the message sender (e.g., 'account', 'assistant', 'system', 'tool').
          */
         role?: string;
         /**
@@ -4443,7 +4443,7 @@ interface Mistral_Small_3_1_24B_Instruct_Messages {
      */
     messages: {
         /**
-         * The role of the message sender (e.g., 'user', 'assistant', 'system', 'tool').
+         * The role of the message sender (e.g., 'account', 'assistant', 'system', 'tool').
          */
         role?: string;
         /**
@@ -4709,7 +4709,7 @@ interface Google_Gemma_3_12B_It_Messages {
      */
     messages: {
         /**
-         * The role of the message sender (e.g., 'user', 'assistant', 'system', 'tool').
+         * The role of the message sender (e.g., 'account', 'assistant', 'system', 'tool').
          */
         role?: string;
         content?: string | {
@@ -4972,7 +4972,7 @@ interface Ai_Cf_Meta_Llama_4_Messages {
      */
     messages: {
         /**
-         * The role of the message sender (e.g., 'user', 'assistant', 'system', 'tool').
+         * The role of the message sender (e.g., 'account', 'assistant', 'system', 'tool').
          */
         role?: string;
         /**
@@ -5722,7 +5722,7 @@ interface RequestInitCfPropertiesImage extends BasicImageTransformations {
     /**
      * Whether to preserve animation frames from input files. Default is true.
      * Setting it to false reduces animations to still images. This setting is
-     * recommended when enlarging images or processing arbitrary user content,
+     * recommended when enlarging images or processing arbitrary account content,
      * because large GIF animations can weigh tens or even hundreds of megabytes.
      * It is also useful to set anim:false when using format:"json" to get the
      * response quicker without the number of frames.
@@ -6323,7 +6323,7 @@ declare abstract class D1PreparedStatement {
 }
 // `Disposable` was added to TypeScript's standard lib types in version 5.2.
 // To support older TypeScript versions, define an empty `Disposable` interface.
-// Users won't be able to use `using`/`Symbol.dispose` without upgrading to 5.2,
+// Accounts won't be able to use `using`/`Symbol.dispose` without upgrading to 5.2,
 // but this will ensure type checking on older versions still passes.
 // TypeScript's interface merging will ensure our empty interface is effectively
 // ignored when `Disposable` is included in the standard lib.
@@ -6442,10 +6442,10 @@ interface Hyperdrive {
      */
     readonly port: number;
     /*
-     * The username to use when authenticating to your database via Hyperdrive.
+     * The accountname to use when authenticating to your database via Hyperdrive.
      * Unlike the host and password, this will be the same every time
      */
-    readonly user: string;
+    readonly account: string;
     /*
      * The randomly generated password to use when authenticating to your
      * database via Hyperdrive. Like the host field, this password is only valid
@@ -6566,7 +6566,7 @@ type ImageTransformationOutputOptions = {
 };
 interface ImageTransformationResult {
     /**
-     * The image as a response, ready to store in cache or return to users
+     * The image as a response, ready to store in cache or return to accounts
      */
     response(): Response;
     /**
@@ -7161,7 +7161,7 @@ interface VectorizeIndexInfo {
  * Represents a single vector value set along with its associated metadata.
  */
 interface VectorizeVector {
-    /** The ID for the vector. This can be user-defined, and must be unique. It should uniquely identify the object, and is best set based on the ID of what the vector represents. */
+    /** The ID for the vector. This can be account-defined, and must be unique. It should uniquely identify the object, and is best set based on the ID of what the vector represents. */
     id: string;
     /** The vector values */
     values: VectorFloatArray | number[];
@@ -7347,7 +7347,7 @@ interface DispatchNamespace {
 }
 declare module 'cloudflare:workflows' {
     /**
-     * NonRetryableError allows for a user to throw a fatal error
+     * NonRetryableError allows for a account to throw a fatal error
      * that makes a Workflow instance fail immediately without triggering a retry
      */
     export class NonRetryableError extends Error {
@@ -7398,7 +7398,7 @@ interface WorkflowInstanceCreateOptions<PARAMS = unknown> {
 }
 type InstanceStatus = {
     status: 'queued' // means that instance is waiting to be started (see concurrency limits)
-     | 'running' | 'paused' | 'errored' | 'terminated' // user terminated the instance while it was running
+     | 'running' | 'paused' | 'errored' | 'terminated' // account terminated the instance while it was running
      | 'complete' | 'waiting' // instance is hibernating and waiting for sleep or event to finish
      | 'waitingForPause' // instance is finishing the current work to pause
      | 'unknown';

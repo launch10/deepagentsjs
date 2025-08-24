@@ -1,14 +1,14 @@
 import { Command } from 'commander';
 import { SDKClient } from '../../sdk/index.js';
-import type { UserType, WebsiteType, PlanType } from '../../types.js';
+import type { AccountType, WebsiteType, PlanType } from '../../types.js';
 import { createMockContext, cleanupMockContext } from '../utils/context.js';
 
 export const setCommand = new Command('set')
   .description('Set data in KV store')
   .addCommand(
-    new Command('user')
-      .description('Set user data')
-      .requiredOption('-i, --id <id>', 'User ID')
+    new Command('account')
+      .description('Set account data')
+      .requiredOption('-i, --id <id>', 'Account ID')
       .requiredOption('-o, --org-id <orgId>', 'Organization ID')
       .requiredOption('-p, --plan-id <planId>', 'Plan ID')
       .action(async (options) => {
@@ -16,18 +16,18 @@ export const setCommand = new Command('set')
           const context = await createMockContext();
           const client = new SDKClient(context);
           
-          const data: UserType = {
+          const data: AccountType = {
             id: options.id,
             orgId: options.orgId,
             planId: options.planId
           };
           
-          const result = await client.user.set(options.id, data);
+          const result = await client.account.set(options.id, data);
           
           if (result.success) {
-            console.log(`✅ User ${options.id} saved successfully`);
+            console.log(`✅ Account ${options.id} saved successfully`);
           } else {
-            console.error(`❌ Error saving user: ${result.error}`);
+            console.error(`❌ Error saving account: ${result.error}`);
             process.exit(1);
           }
           
@@ -45,7 +45,7 @@ export const setCommand = new Command('set')
       .description('Set website data')
       .requiredOption('-i, --id <id>', 'Website ID')
       .requiredOption('-u, --url <url>', 'Website URL')
-      .requiredOption('-t, --user-id <userId>', 'User ID')
+      .requiredOption('-t, --account-id <accountId>', 'Account ID')
       .option('-l, --live <live>', 'Live deploy SHA', 'ABCD')
       .option('-p, --preview <preview>', 'Preview deploy SHA', 'EFGH')
       .action(async (options) => {
@@ -56,7 +56,7 @@ export const setCommand = new Command('set')
           const data: WebsiteType = {
             id: options.id,
             url: options.url,
-            userId: options.userId,
+            accountId: options.accountId,
             live: options.live,
             preview: options.preview
           };

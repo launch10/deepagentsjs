@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { Env } from '../types.js';
-import { userRoutes } from './routes/user.js';
+import { accountRoutes } from './routes/account.js';
 import { websiteRoutes } from './routes/website.js';
 import { planRoutes } from './routes/plan.js';
 import { domainRoutes } from './routes/domain.js';
@@ -22,7 +22,7 @@ export function createInternalAPI() {
   });
   
   // Mount route groups
-  api.route('/users', userRoutes());
+  api.route('/accounts', accountRoutes());
   api.route('/websites', websiteRoutes());
   api.route('/plans', planRoutes());
   api.route('/domains', domainRoutes());

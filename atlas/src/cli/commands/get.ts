@@ -5,20 +5,20 @@ import { createMockContext, cleanupMockContext } from '../utils/context.js';
 export const getCommand = new Command('get')
   .description('Get data from KV store')
   .addCommand(
-    new Command('user')
-      .description('Get user data')
-      .argument('<id>', 'User ID')
+    new Command('account')
+      .description('Get account data')
+      .argument('<id>', 'Account ID')
       .action(async (id) => {
         try {
           const context = await createMockContext();
           const client = new SDKClient(context);
           
-          const result = await client.user.get(id);
+          const result = await client.account.get(id);
           
           if (result.success && result.data) {
             console.log(JSON.stringify(result.data, null, 2));
           } else {
-            console.log(result.error || `User ${id} not found`);
+            console.log(result.error || `Account ${id} not found`);
           }
           
           await cleanupMockContext();

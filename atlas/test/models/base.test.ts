@@ -8,7 +8,7 @@ import { Miniflare } from 'miniflare';
 interface TestModel {
   id: string;
   name: string;
-  userId: string;
+  accountId: string;
   category?: string;
   count?: number;
 }
@@ -18,7 +18,7 @@ const isTestModel = createTypeGuard<TestModel>(
   (data: any): data is TestModel => {
     return data.id !== undefined &&
       data.name !== undefined &&
-      data.userId !== undefined;
+      data.accountId !== undefined;
   }
 );
 
@@ -30,14 +30,14 @@ class TestModelClass extends BaseModel<TestModel> {
 
   protected defineIndexes(): void {
     this.addIndex({
-      name: 'userId',
-      keyExtractor: (model) => model.userId || null,
+      name: 'accountId',
+      keyExtractor: (model) => model.accountId || null,
       type: 'unique'
     });
   }
 
-  async findByUserId(userId: string | number): Promise<TestModel | null> {
-    return this.findByIndex('userId', String(userId));
+  async findByAccountId(accountId: string | number): Promise<TestModel | null> {
+    return this.findByIndex('accountId', String(accountId));
   }
 }
 
@@ -81,7 +81,7 @@ describe('BaseModel', () => {
       const testData: TestModel = {
         id: 'test-1',
         name: 'Test Item',
-        userId: '1',
+        accountId: '1',
         category: 'test-category',
       };
 
@@ -95,7 +95,7 @@ describe('BaseModel', () => {
       const testData: TestModel = {
         id: 'test-1',
         name: 'Test Item',
-        userId: '1',
+        accountId: '1',
       };
 
       await testModel.set(testData.id, testData);
@@ -103,14 +103,14 @@ describe('BaseModel', () => {
 
       const retrieved = await testModel.get(testData.id);
       expect(retrieved?.name).toBe('Updated Item');
-      expect(retrieved?.userId).toBe('1');
+      expect(retrieved?.accountId).toBe('1');
     });
 
     it('should delete a model', async () => {
       const testData: TestModel = {
         id: 'test-1',
         name: 'Test Item',
-        userId: '1',
+        accountId: '1',
       };
 
       await testModel.set(testData.id, testData);
@@ -124,7 +124,7 @@ describe('BaseModel', () => {
       const invalidData = {
         id: 'test-1',
         // missing required 'name' field
-        userId: '1',
+        accountId: '1',
       };
 
       await expect(
@@ -138,11 +138,11 @@ describe('BaseModel', () => {
       const testData: TestModel = {
         id: 'test-1',
         name: 'Test Item',
-        userId: '1',
+        accountId: '1',
       };
 
       await testModel.set(testData.id, testData);
-      const found = await testModel.findByUserId('1');
+      const found = await testModel.findByAccountId('1');
 
       expect(found).toEqual(testData);
     });
@@ -151,13 +151,13 @@ describe('BaseModel', () => {
       const testData1: TestModel = {
         id: 'test-1',
         name: 'Test Item 1',
-        userId: '1',
+        accountId: '1',
       };
 
       const testData2: TestModel = {
         id: 'test-2',
         name: 'Test Item 2',
-        userId: '1', // Same userId - should violate unique constraint
+        accountId: '1', // Same accountId - should violate unique constraint
       };
 
       await testModel.set(testData1.id, testData1);
@@ -171,7 +171,7 @@ describe('BaseModel', () => {
       const testData: TestModel = {
         id: 'test-1',
         name: 'Test Item',
-        userId: '1',
+        accountId: '1',
       };
 
       await testModel.set(testData.id, testData);
@@ -189,31 +189,31 @@ describe('BaseModel', () => {
       const testData: TestModel = {
         id: 'test-1',
         name: 'Test Item',
-        userId: '1',
+        accountId: '1',
       };
 
       await testModel.set(testData.id, testData);
       
-      // Change userId
-      await testModel.set(testData.id, { userId: '2' });
+      // Change accountId
+      await testModel.set(testData.id, { accountId: '2' });
 
       // Old index should not find it
-      const foundOld = await testModel.findByUserId('1');
+      const foundOld = await testModel.findByAccountId('1');
       expect(foundOld).toBeNull();
 
       // New index should find it
-      const foundNew = await testModel.findByUserId('2');
+      const foundNew = await testModel.findByAccountId('2');
       expect(foundNew?.id).toBe(testData.id);
-      expect(foundNew?.userId).toBe('2');
+      expect(foundNew?.accountId).toBe('2');
     });
   });
 
   describe('List index operations', () => {
     it('should find multiple models by list index', async () => {
       const models: TestModel[] = [
-        { id: 'test-1', name: 'Item 1', userId: '1', category: 'electronics' },
-        { id: 'test-2', name: 'Item 2', userId: '2', category: 'electronics' },
-        { id: 'test-3', name: 'Item 3', userId: '3', category: 'books' },
+        { id: 'test-1', name: 'Item 1', accountId: '1', category: 'electronics' },
+        { id: 'test-2', name: 'Item 2', accountId: '2', category: 'electronics' },
+        { id: 'test-3', name: 'Item 3', accountId: '3', category: 'books' },
       ];
 
       for (const model of models) {
@@ -238,7 +238,7 @@ describe('BaseModel', () => {
       const testData: TestModel = {
         id: 'test-1',
         name: 'Test Item',
-        userId: '1',
+        accountId: '1',
         category: 'electronics',
       };
 
@@ -257,21 +257,21 @@ describe('BaseModel', () => {
   });
 
   describe('Type coercion tests', () => {
-    it('should handle numeric userId consistently', async () => {
+    it('should handle numeric accountId consistently', async () => {
       const testData: TestModel = {
         id: 'test-1',
         name: 'Test Item',
-        userId: '1',
+        accountId: '1',
       };
 
       await testModel.set(testData.id, testData);
 
       // Test finding with number
-      const foundByNumber = await testModel.findByUserId(1);
+      const foundByNumber = await testModel.findByAccountId(1);
       expect(foundByNumber).toEqual(testData);
 
       // Test finding with string
-      const foundByString = await testModel.findByUserId('1');
+      const foundByString = await testModel.findByAccountId('1');
       expect(foundByString).toEqual(testData);
     });
 
@@ -279,21 +279,21 @@ describe('BaseModel', () => {
       const testData1: TestModel = {
         id: 'test-1',
         name: 'Test Item 1',
-        userId: '123',
+        accountId: '123',
       };
 
       await testModel.set(testData1.id, testData1);
 
       // Verify the actual KV key stored
-      const indexKey = 'index:test:userId:123';
+      const indexKey = 'index:test:accountId:123';
       const storedId = await env.DEPLOYS_KV.get(indexKey);
       expect(storedId).toBe('test-1');
 
-      // Try to create another with numeric user ID
+      // Try to create another with numeric account ID
       const testData2: TestModel = {
         id: 'test-2',
         name: 'Test Item 2',
-        userId: '123', // Same value, should conflict
+        accountId: '123', // Same value, should conflict
       };
 
       await expect(
@@ -307,7 +307,7 @@ describe('BaseModel', () => {
       const testData: TestModel = {
         id: 'test-1',
         name: 'Test Item',
-        userId: '1',
+        accountId: '1',
         category: 'electronics',
       };
 
@@ -319,7 +319,7 @@ describe('BaseModel', () => {
       expect(JSON.parse(mainValue!)).toEqual(testData);
 
       // Check unique index
-      const uniqueIndexKey = 'index:test:userId:1';
+      const uniqueIndexKey = 'index:test:accountId:1';
       const uniqueIndexValue = await env.DEPLOYS_KV.get(uniqueIndexKey);
       expect(uniqueIndexValue).toBe('test-1');
     });
@@ -328,7 +328,7 @@ describe('BaseModel', () => {
       const testData: TestModel = {
         id: 'test-1',
         name: 'Test Item',
-        userId: '1',
+        accountId: '1',
       };
 
       await testModel.set(testData.id, testData);
@@ -336,7 +336,7 @@ describe('BaseModel', () => {
 
       // Check all keys are deleted
       const mainKey = 'test:test-1';
-      const uniqueIndexKey = 'index:test:userId:1';
+      const uniqueIndexKey = 'index:test:accountId:1';
 
       expect(await env.DEPLOYS_KV.get(mainKey)).toBeNull();
       expect(await env.DEPLOYS_KV.get(uniqueIndexKey)).toBeNull();
@@ -348,18 +348,18 @@ describe('BaseModel', () => {
       const existing: TestModel = {
         id: 'test-1',
         name: 'Existing Item',
-        userId: '1',
+        accountId: '1',
       };
 
       await testModel.set(existing.id, existing);
 
       const result = await testModel.findOrCreateByIndex(
-        'userId',
+        'accountId',
         '1',
         () => ({
           id: 'test-2',
           name: 'New Item',
-          userId: '1',
+          accountId: '1',
         })
       );
 
@@ -369,12 +369,12 @@ describe('BaseModel', () => {
 
     it('should create new record if not found', async () => {
       const result = await testModel.findOrCreateByIndex(
-        'userId',
+        'accountId',
         '1',
         () => ({
           id: 'test-1',
           name: 'New Item',
-          userId: '1',
+          accountId: '1',
         })
       );
 
@@ -388,7 +388,7 @@ describe('BaseModel', () => {
 
     it('should handle async create function', async () => {
       const result = await testModel.findOrCreateByIndex(
-        'userId',
+        'accountId',
         '1',
         async () => {
           // Simulate async operation
@@ -396,7 +396,7 @@ describe('BaseModel', () => {
           return {
             id: 'test-1',
             name: 'Async Item',
-            userId: '1',
+            accountId: '1',
           };
         }
       );

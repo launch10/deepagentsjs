@@ -1,22 +1,22 @@
 import { Context } from "hono";
-import { Env, UserType } from "~/types";
+import { Env, AccountType } from "~/types";
 import { BaseModel, createTypeGuard } from "./base";
 
-const isUserType = createTypeGuard<UserType>(
-    (data: any): data is UserType => {
+const isAccountType = createTypeGuard<AccountType>(
+    (data: any): data is AccountType => {
         return data.id !== undefined
     }
 );
 
-export class User extends BaseModel<UserType> {
+export class Account extends BaseModel<AccountType> {
     constructor(c: Context<{ Bindings: Env }>) {
-        super(c, 'user', isUserType);
+        super(c, 'account', isAccountType);
     }
 
     protected defineIndexes(): void {
         this.addIndex({
             name: 'planId',
-            keyExtractor: (user) => user.planId ? String(user.planId) : null,
+            keyExtractor: (account) => account.planId ? String(account.planId) : null,
             type: 'unique'
         });
     }

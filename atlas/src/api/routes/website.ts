@@ -65,8 +65,8 @@ export function websiteRoutes() {
     try {
       const body = await c.req.json<WebsiteType>();
       
-      if (!body.id || !body.userId) {
-        return c.json({ error: 'Missing required fields: id, userId' }, 400);
+      if (!body.id || !body.accountId) {
+        return c.json({ error: 'Missing required fields: id, accountId' }, 400);
       }
       
       const client = new SDKClient(c);

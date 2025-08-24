@@ -5,14 +5,14 @@ import { createMockContext, cleanupMockContext } from '../utils/context.js';
 export const deleteCommand = new Command('delete')
   .description('Delete data from KV store')
   .addCommand(
-    new Command('user')
-      .description('Delete user data')
-      .argument('<id>', 'User ID')
+    new Command('account')
+      .description('Delete account data')
+      .argument('<id>', 'Account ID')
       .option('--force', 'Skip confirmation')
       .action(async (id, options) => {
         try {
           if (!options.force) {
-            console.log(`⚠️  This will delete user ${id}. Use --force to confirm.`);
+            console.log(`⚠️  This will delete account ${id}. Use --force to confirm.`);
             await cleanupMockContext();
             process.exit(0);
           }
@@ -20,16 +20,16 @@ export const deleteCommand = new Command('delete')
           const context = await createMockContext();
           const client = new SDKClient(context);
           
-          const result = await client.user.delete(id);
+          const result = await client.account.delete(id);
           
           if (!result.success) {
             throw new Error(result.error || 'Delete failed');
           }
-          console.log(`✅ User ${id} deleted successfully`);
+          console.log(`✅ Account ${id} deleted successfully`);
           await cleanupMockContext();
           process.exit(0);
         } catch (error) {
-          console.error('❌ Error deleting user:', error);
+          console.error('❌ Error deleting account:', error);
           await cleanupMockContext();
           process.exit(1);
         }

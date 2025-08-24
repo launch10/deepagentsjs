@@ -1,5 +1,5 @@
-import { User, Website, Plan, Domain } from '../models/index.js';
-import type { UserType, WebsiteType, PlanType, DomainType } from '../types.js';
+import { Account, Website, Plan, Domain } from '../models/index.js';
+import type { AccountType, WebsiteType, PlanType, DomainType } from '../types.js';
 import type { SDKContext, OperationResult } from './types.js';
 export class SDKClient {
   private context: SDKContext;
@@ -8,15 +8,15 @@ export class SDKClient {
     this.context = context;
   }
   
-  // User operations
-  user = {
-    get: async (id: string): Promise<OperationResult<UserType>> => {
+  // Account operations
+  account = {
+    get: async (id: string): Promise<OperationResult<AccountType>> => {
       try {
-        const model = new User(this.context as any);
+        const model = new Account(this.context as any);
         const data = await model.get(id);
         
         if (!data) {
-          return { success: false, error: `User ${id} not found` };
+          return { success: false, error: `Account ${id} not found` };
         }
         
         return { success: true, data };
@@ -25,9 +25,9 @@ export class SDKClient {
       }
     },
     
-    set: async (id: string, data: UserType): Promise<OperationResult<void>> => {
+    set: async (id: string, data: AccountType): Promise<OperationResult<void>> => {
       try {
-        const model = new User(this.context as any);
+        const model = new Account(this.context as any);
         await model.set(id, data);
         return { success: true };
       } catch (error) {
@@ -37,7 +37,7 @@ export class SDKClient {
     
     delete: async (id: string): Promise<OperationResult<void>> => {
       try {
-        const model = new User(this.context as any);
+        const model = new Account(this.context as any);
         await model.delete(id);
         return { success: true };
       } catch (error) {
@@ -45,9 +45,9 @@ export class SDKClient {
       }
     },
     
-    list: async (limit?: number): Promise<OperationResult<UserType[]>> => {
+    list: async (limit?: number): Promise<OperationResult<AccountType[]>> => {
       try {
-        const model = new User(this.context as any);
+        const model = new Account(this.context as any);
         const data = await model.listAll(limit);
         return { success: true, data };
       } catch (error) {
