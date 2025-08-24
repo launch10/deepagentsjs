@@ -1,3 +1,5 @@
+require_relative "config/environment"
+
 Zhong.redis = Redis.new(url: ENV["REDIS_URL"])
 
 def est_time(time)
@@ -6,7 +8,7 @@ end
 
 Zhong.schedule do
   category "cloudflare" do
-    every(5.minutes, "monitor domains") do
+    every(1.minutes, "monitor domains") do
       Domain.monitor_domains
     end
   end

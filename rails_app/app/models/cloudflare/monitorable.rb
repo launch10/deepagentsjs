@@ -3,18 +3,25 @@ class Cloudflare
     extend ActiveSupport::Concern
 
     class_methods do
-      def monitor_domains
-        # Calls actually_monitor_domains
-        Cloudflare::MonitorDomainsWorker::BatchWorker.perform_async
+      def monitor_domains(async: true)
+        if async
+          Cloudflare::MonitorDomainsWorker::BatchWorker.perform_async
+        else
+          actually_monitor_domains
+        end
       end
 
-      def actually_monitor_domains
+      def actually_monitor_domains(async: true)
         Cloudflare::Analytics::Queries::MonitorDomains.new.get_all_cloudflare_zones do |zones|
           if zones.is_a?(Array)
             # This is a successful response, an array of zone IDs
             # such as: ["53af2b7fed23483ab370ef62a78b411b", "5ea4ca3dddb10aa3bd8f3c848ad8a95f"]
             zones.each do |zone|
-              Cloudflare::MonitorDomainsWorker.perform_async(zone)
+              if async
+                Cloudflare::MonitorDomainsWorker.perform_async(zone)
+              else
+                monitor_cloudflare_zone(zone)
+              end
             end
           else
             Rollbar.error("Failed to get zones", zones)

@@ -1,14 +1,25 @@
 class Cloudflare::FirewallService < ApplicationClient
   class ApiError < StandardError; end
   
-  ENDPOINT = "https://api.cloudflare.com/client/v4/accounts/#{Cloudflare.config.account_id}/rules/lists/#{Cloudflare.config.blocked_domains_list_id}/items"
+  BASE_URI = "https://api.cloudflare.com/client/v4"
   
   def initialize
     super(token: Cloudflare.config.api_token)
   end
+  
+  def endpoint
+    "/accounts/#{Cloudflare.config.account_id}/rules/lists/#{Cloudflare.config.blocked_domains_list_id}/items"
+  end
 
   def block_domains(domains)
+    domains = domains.is_a?(Array) ? domains : [domains]
     validate_domains(domains)
+    
+    # Return early if no domains to block
+    if domains.empty?
+      Rails.logger.info "[FirewallService] No domains to block, skipping API call"
+      return OpenStruct.new(success?: true, parsed_body: { result: [] })
+    end
     
     body = domains.map do |domain|
       {
@@ -18,32 +29,36 @@ class Cloudflare::FirewallService < ApplicationClient
     end
     
     begin
-      post(ENDPOINT, body: body)
+      post(endpoint, body: body)
     rescue ApplicationClient::Error => e
       raise ApiError, e.message
     end
   end
 
-  def unblock_domains(domains)
-    validate_domains(domains)
+  def unblock_domains(cloudflare_rule_ids)
+    unless cloudflare_rule_ids.is_a?(Array)
+      raise ArgumentError, "cloudflare_rule_ids must be an array of IDs"
+    end
     
     body = {
-      items: domains.map do |domain|
-        { id: domain.cloudflare_rule_id }
+      items: cloudflare_rule_ids.map do |id|
+        { id: id }
       end
     }
     
     begin
-      delete(ENDPOINT, body: body)
+      delete(endpoint, body: body)
     rescue ApplicationClient::Error => e
       raise ApiError, e.message
     end
   end
 
   def search_blocked_domains(domains)
+    return {} if domains.empty?
+    
     begin
       response = domains.map do |domain|
-        get(ENDPOINT, query: { search: domain.domain })
+        get(endpoint, query: { search: domain.domain })
       end.reduce({}) do |acc, response|
         return acc unless response.success?
 
@@ -97,7 +112,7 @@ class Cloudflare::FirewallService < ApplicationClient
   def validate_domains(domains)
     raise ArgumentError, "Domains must be an array of Domain objects" unless domains.is_a?(Array) && domains.all? { |d| d.is_a?(Domain) }
   end
-  
+
   def authorization_header
     { 
       'Authorization' => "Bearer #{Cloudflare.config.api_token}",

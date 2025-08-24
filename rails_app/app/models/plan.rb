@@ -35,6 +35,7 @@ class Plan < ApplicationRecord
   has_prefix_id :plan
 
   has_many :plan_limits, dependent: :destroy
+  alias_method :limits, :plan_limits
 
   store_accessor :details, :features, :stripe_tax
   attribute :currency, default: "usd"

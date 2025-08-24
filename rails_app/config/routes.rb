@@ -1,4 +1,5 @@
 require 'sidekiq/web'
+require "zhong/web"
 
 Rails.application.routes.draw do
   ADMIN_ONLY ||= lambda do |request|
@@ -8,6 +9,7 @@ Rails.application.routes.draw do
 
   constraints ADMIN_ONLY do
     mount Sidekiq::Web => "/sidekiq"
+    mount Zhong::Web => "/zhong"
   end
 
   draw :accounts

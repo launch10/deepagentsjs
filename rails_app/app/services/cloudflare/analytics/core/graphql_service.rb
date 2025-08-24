@@ -19,7 +19,6 @@ class Cloudflare
         def authorization_header
           { 
             "Authorization" => "Bearer #{token}" ,
-            "X-Auth-Email" => "brett@easyml.app"
           }
         end
         

@@ -2,3 +2,4 @@
 stripe: stripe listen --forward-to localhost:3000/webhooks/stripe
 worker: bundle exec sidekiq
 vite: bin/vite dev
+zhong: zhong schedule.rb
