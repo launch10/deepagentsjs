@@ -11,5 +11,9 @@ Zhong.schedule do
     every(1.minutes, "monitor domains") do
       Domain.monitor_domains
     end
+
+    every(1.day, at: '1:00 am') do
+      PartitionMaintenanceWorker.perform_async
+    end
   end
 end

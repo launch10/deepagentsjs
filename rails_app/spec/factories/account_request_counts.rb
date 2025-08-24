@@ -1,6 +1,6 @@
 # == Schema Information
 #
-# Table name: user_request_counts
+# Table name: account_request_counts
 #
 #  id            :integer          not null, primary key
 #  user_id       :integer          not null
@@ -15,8 +15,8 @@
 #
 
 FactoryBot.define do
-  factory :user_request_count do
-    association :user
+  factory :account_request_count do
+    association :account
     month { Time.current.beginning_of_month }
     request_count { 1000 }
     last_updated_at { Time.current }

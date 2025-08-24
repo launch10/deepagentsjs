@@ -2,7 +2,7 @@ namespace :atlas do
   desc "Sync all models to Atlas"
   task sync: :environment do
     [
-      User,
+      Account,
       Domain,
       Plan,
       Website
