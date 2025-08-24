@@ -38,11 +38,16 @@ class Cloudflare
       blocked? && user.domains.all?(&:blocked?)
     end
 
+    def already_unblocked?
+      !blocked? && user.domains.none?(&:blocked?)
+    end
+
     def self.block_user(user)
       Cloudflare::BlockWorker.perform_async(user_id: user.id)
     end
 
     def self.actually_block_user(user)
+      return if already_blocked?
       return unless user.over_monthly_request_limit?
 
       domains = Domain.where(user: user)
@@ -92,7 +97,7 @@ class Cloudflare
     end
 
     def self.unblock_user(user, force: false)
-      return unless user.firewall && user.firewall.blocked?
+      return if user.firewall.present? && user.firewall.already_unblocked?
 
       Cloudflare::UnblockWorker.perform_async(user_id: user.id, force: force)
     end

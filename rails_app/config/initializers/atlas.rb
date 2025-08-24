@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Configure Atlas admin service integration
-Rails.application.config.after_initialize do
+Rails.application.config.to_prepare do
   Atlas.configure do |config|
     config.base_url = ENV.fetch('ATLAS_BASE_URL') do
       Rails.env.production? ? 'https://atlas-admin.your-domain.com' : 'http://localhost:8788'

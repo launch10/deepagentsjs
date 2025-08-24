@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
-Rails.application.config.after_initialize do
+# MUST use to_prepare (not after_initialize), because in development, whenever classes are reloaded, the config is not reloaded and would be LOST
+# This would cause problems in Sidekiq if improperly initialized
+Rails.application.config.to_prepare do
   Cloudflare.configure do |config|
     config.api_token = ENV.fetch('CLOUDFLARE_API_TOKEN') do
       Rails.application.credentials.dig(:cloudflare, :api_token)

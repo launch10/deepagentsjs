@@ -27,7 +27,7 @@ class Domain < ApplicationRecord
   belongs_to :website, optional: true
   belongs_to :user
   has_many :domain_request_counts, dependent: :destroy
-  has_one :firewall_rule
+  has_one :firewall_rule, class_name: "Cloudflare::FirewallRule"
 
   validates :domain, presence: true, uniqueness: true
   validates :user_id, presence: true
@@ -36,6 +36,7 @@ class Domain < ApplicationRecord
   before_validation :set_normalized_domain, on: :create
 
   def blocked?
+    firewall_rule&.blocked? || false
   end
 
   private
