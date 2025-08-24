@@ -8,15 +8,7 @@ observability = { enabled = true }
 # R2 Buckets for different environments
 [[r2_buckets]]
 binding = "DEPLOYS_R2"
-bucket_name = "deploys-production"
-
-[[r2_buckets]]
-binding = "DEPLOYS_R2_STAGING"
-bucket_name = "deploys-staging"
-
-[[r2_buckets]]
-binding = "DEPLOYS_R2_DEVELOPMENT"
-bucket_name = "deploys-development"
+bucket_name = "deploys"
 
 [[kv_namespaces]]
 binding = "DEPLOYS_KV"

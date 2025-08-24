@@ -27,11 +27,15 @@ Rails.application.config.after_initialize do
     end
     
     config.r2_bucket_name = ENV.fetch('CLOUDFLARE_R2_BUCKET_NAME') do
-      Rails.application.credentials.dig(:cloudflare, :r2_bucket_name) || 'deploys'
+      Rails.application.credentials.dig(:cloudflare, :r2_bucket) || 'deploys'
     end
     
     config.r2_region = ENV.fetch('CLOUDFLARE_R2_REGION') do
       Rails.application.credentials.dig(:cloudflare, :r2_region) || 'auto'
+    end
+
+    config.deploy_env = ENV.fetch('CLOUDFLARE_DEPLOY_ENV') do
+      Rails.application.credentials.dig(:cloudflare, :deploy_env) || Rails.env
     end
 
     config.blocked_domains_list_id = ENV.fetch('CLOUDFLARE_BLOCKED_DOMAINS_LIST_ID') do

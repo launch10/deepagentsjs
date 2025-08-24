@@ -22,19 +22,26 @@ app.get('*', async (c) => {
   const hostname = url.hostname;
   let pathname = url.pathname;
 
-  // Determine if this is a preview, staging, or production request
   const isPreview = hostname.startsWith('preview.');
-  const isStaging = hostname.startsWith('staging.');
+  const allowedEnvs = ['development', 'staging', 'production'];
+  const envRegex = new RegExp(`^env\\.(${allowedEnvs.join('|')})`);
+  const isSpecificEnv = envRegex.test(hostname);
+  let env;
   
-  // Remove preview/staging prefix to get the actual domain for lookup
+  // Remove preview prefix to get the actual domain for lookup
   let lookupHostname = hostname;
   if (isPreview) {
     lookupHostname = hostname.replace('preview.', '');
-  } else if (isStaging) {
-    lookupHostname = hostname.replace('staging.', '');
+  } else if (isSpecificEnv) {
+    const match = envRegex.exec(hostname);
+    env = match ? match[1] : undefined;
+    if (match) {
+      lookupHostname = hostname.replace(`env.${match[1]}.`, '');
+    }
   }
 
   const websiteModel = new Website(c); 
+  console.log(`Looking up website for hostname: ${lookupHostname}`);
   const website: WebsiteType | null = await websiteModel.findByUrl(lookupHostname);
 
   if (!website) {
@@ -54,40 +61,23 @@ app.get('*', async (c) => {
 
   // 3. Determine the target directory and environment
   const targetDir = isPreview ? 'preview' : 'live';
-  const environment = isStaging ? 'staging' : 'production';
+  const envBucket = env ? env : 'production';
   
   // 4. Construct the object key.
-  const objectKey = `${website.id}/${targetDir}/${pathname}`;
-  requestLogger.debug(`objectKey: ${objectKey}, environment: ${environment}`);
+  const objectKey = `${envBucket}/${website.id}/${targetDir}/${pathname}`;
+  requestLogger.debug(`objectKey: ${objectKey}, environment: ${envBucket}`);
   
-  // 5. Determine which bucket to use based on environment
-  let r2Bucket: R2Bucket | undefined;
-  if (environment === 'staging' && c.env.DEPLOYS_R2_STAGING) {
-    r2Bucket = c.env.DEPLOYS_R2_STAGING;
-  } else if (environment === 'development' && c.env.DEPLOYS_R2_DEVELOPMENT) {
-    r2Bucket = c.env.DEPLOYS_R2_DEVELOPMENT;
-  } else {
-    r2Bucket = c.env.DEPLOYS_R2; // Default to production bucket
-  }
+  let r2Bucket: R2Bucket = c.env.DEPLOYS_R2;
   
-  // Check if R2 binding exists
-  if (!r2Bucket) {
-    return new Response(`R2 bucket binding not available for environment: ${environment}. Run with: npx wrangler dev --remote`, { 
-      status: 503,
-      headers: { 'Content-Type': 'text/plain' }
-    });
-  }
-  
-  requestLogger.debug(`Using bucket for environment: ${environment}`);
-  
+  // 5. Fetch from R2
   const object = await r2Bucket.get(objectKey);
 
-  // 4. Handle the "Not Found" case.
+  // 6. Handle the "Not Found" case.
   if (object === null) {
-    return new Response(`Object Not Found: ${objectKey}`, { status: 404 });
+    return new Response(`Website not found, error 505`, { status: 404 });
   }
 
-  // 5. Build the response.
+  // 7. Build the response.
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set('etag', object.httpEtag);

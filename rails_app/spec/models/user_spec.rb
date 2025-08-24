@@ -128,4 +128,194 @@ RSpec.describe User, type: :model do
       expect(user.plan_limits).to eq([])
     end
   end
+
+  describe 'one active subscription per user validation' do
+    let(:user) { create(:user) }
+    let(:account) { user.owned_account }
+    let(:payment_processor) { account.set_payment_processor(:fake_processor, allow_fake: true) }
+
+    before do
+      # Ensure payment processor is initialized with a customer ID
+      payment_processor.update!(processor_id: "cus_#{SecureRandom.hex(8)}")
+    end
+
+    it 'allows creating the first subscription' do
+      subscription = payment_processor.subscriptions.build(
+        processor_id: "sub_#{SecureRandom.hex(8)}",
+        name: "default",
+        processor_plan: "starter",
+        status: "active",
+        current_period_start: Time.current,
+        current_period_end: 30.days.from_now
+      )
+
+      expect(subscription).to be_valid
+      expect { subscription.save! }.not_to raise_error
+      expect(user.subscriptions.active.count).to eq(1)
+    end
+
+    it 'prevents creating a second active subscription for the same user' do
+      # Create first active subscription
+      first_subscription = payment_processor.subscriptions.create!(
+        processor_id: "sub_#{SecureRandom.hex(8)}",
+        name: "default",
+        processor_plan: "starter",
+        status: "active",
+        current_period_start: Time.current,
+        current_period_end: 30.days.from_now
+      )
+
+      # Attempt to create second active subscription
+      second_subscription = payment_processor.subscriptions.build(
+        processor_id: "sub_#{SecureRandom.hex(8)}",
+        name: "default",
+        processor_plan: "professional",
+        status: "active",
+        current_period_start: Time.current,
+        current_period_end: 30.days.from_now
+      )
+
+      expect(second_subscription).not_to be_valid
+      expect(second_subscription.errors[:base]).to include("Customer can only have one active subscription")
+    end
+
+    it 'allows creating a new subscription after canceling the previous one' do
+      # Create and then cancel first subscription
+      first_subscription = payment_processor.subscriptions.create!(
+        processor_id: "sub_#{SecureRandom.hex(8)}",
+        name: "default",
+        processor_plan: "starter",
+        status: "active",
+        current_period_start: Time.current,
+        current_period_end: 30.days.from_now
+      )
+
+      first_subscription.update!(status: "canceled", ends_at: Time.current)
+
+      # Now create a new subscription
+      new_subscription = payment_processor.subscriptions.build(
+        processor_id: "sub_#{SecureRandom.hex(8)}",
+        name: "default",
+        processor_plan: "professional",
+        status: "active",
+        current_period_start: Time.current,
+        current_period_end: 30.days.from_now
+      )
+
+      expect(new_subscription).to be_valid
+      expect { new_subscription.save! }.not_to raise_error
+    end
+
+    it 'allows different users to each have their own active subscription' do
+      # First user's subscription
+      user1_subscription = payment_processor.subscriptions.create!(
+        processor_id: "sub_#{SecureRandom.hex(8)}",
+        name: "default",
+        processor_plan: "starter",
+        status: "active",
+        current_period_start: Time.current,
+        current_period_end: 30.days.from_now
+      )
+
+      # Second user's subscription
+      user2 = create(:user)
+      user2_processor = user2.owned_account.set_payment_processor(:fake_processor, allow_fake: true)
+      user2_processor.update!(processor_id: "cus_#{SecureRandom.hex(8)}")
+
+      user2_subscription = user2_processor.subscriptions.build(
+        processor_id: "sub_#{SecureRandom.hex(8)}",
+        name: "default",
+        processor_plan: "professional",
+        status: "active",
+        current_period_start: Time.current,
+        current_period_end: 30.days.from_now
+      )
+
+      expect(user2_subscription).to be_valid
+      expect { user2_subscription.save! }.not_to raise_error
+      
+      # Verify both users have their subscriptions
+      expect(user.subscriptions.active.count).to eq(1)
+      expect(user2.subscriptions.active.count).to eq(1)
+    end
+
+    it 'uses subscription helpers to enforce one active subscription' do
+      # Using the helper to create first subscription
+      subscribe_user(user, plan_name: "starter", processor: "fake_processor")
+      expect(user.subscriptions.active.count).to eq(1)
+      expect(user.plan.name).to eq("starter")
+
+      # Using helper again should replace the subscription (helper handles unsubscribe)
+      subscribe_user(user, plan_name: "professional", processor: "fake_processor")
+      expect(user.subscriptions.active.count).to eq(1)
+      expect(user.plan.name).to eq("professional")
+    end
+
+    context 'with non-active subscriptions' do
+      it 'allows multiple non-active subscriptions' do
+        # Create a canceled subscription
+        canceled_sub = payment_processor.subscriptions.create!(
+          processor_id: "sub_#{SecureRandom.hex(8)}",
+          name: "default",
+          processor_plan: "starter",
+          status: "canceled",
+          current_period_start: 1.month.ago,
+          current_period_end: Time.current,
+          ends_at: Time.current
+        )
+
+        # Create a past_due subscription
+        past_due_sub = payment_processor.subscriptions.create!(
+          processor_id: "sub_#{SecureRandom.hex(8)}",
+          name: "default",
+          processor_plan: "professional",
+          status: "past_due",
+          current_period_start: Time.current,
+          current_period_end: 30.days.from_now
+        )
+
+        # Should still be able to create an active subscription
+        active_sub = payment_processor.subscriptions.build(
+          processor_id: "sub_#{SecureRandom.hex(8)}",
+          name: "default",
+          processor_plan: "starter",
+          status: "active",
+          current_period_start: Time.current,
+          current_period_end: 30.days.from_now
+        )
+
+        expect(active_sub).to be_valid
+        expect { active_sub.save! }.not_to raise_error
+        expect(user.subscriptions.count).to eq(3)
+        expect(user.subscriptions.active.count).to eq(1)
+      end
+    end
+
+    context 'validation error handling' do
+      it 'provides clear error message when attempting multiple active subscriptions' do
+        # Create first subscription
+        payment_processor.subscriptions.create!(
+          processor_id: "sub_#{SecureRandom.hex(8)}",
+          name: "default",
+          processor_plan: "starter",
+          status: "active",
+          current_period_start: Time.current,
+          current_period_end: 30.days.from_now
+        )
+
+        # Attempt second subscription and capture error
+        second_subscription = payment_processor.subscriptions.build(
+          processor_id: "sub_#{SecureRandom.hex(8)}",
+          name: "default",
+          processor_plan: "professional",
+          status: "active",
+          current_period_start: Time.current,
+          current_period_end: 30.days.from_now
+        )
+
+        second_subscription.valid?
+        expect(second_subscription.errors.full_messages).to include("Customer can only have one active subscription")
+      end
+    end
+  end
 end

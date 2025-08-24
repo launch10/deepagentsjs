@@ -6,7 +6,7 @@ class DeployUploader
 
   def initialize(environment: Rails.env)
     @environment = environment
-    @bucket_name = "#{Cloudflare.r2_bucket_prefix}-#{environment}"
+    @bucket_name = Cloudflare.r2_bucket
     @client = Cloudflare::R2.new(bucket_name: @bucket_name)
   end
 

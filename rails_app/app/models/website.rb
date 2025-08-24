@@ -63,8 +63,8 @@ class Website < ApplicationRecord
     deploy_record.deploy(async: async)
   end
 
-  def deploy!
-    deploy(async: false)
+  def deploy!(async: true)
+    deploy(async: async)
   end
 
   def preview(async: true, environment: nil)
