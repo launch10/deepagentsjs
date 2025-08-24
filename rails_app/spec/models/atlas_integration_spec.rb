@@ -192,7 +192,7 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
     it 'logs errors but does not prevent model operations' do
       allow(atlas_accounts).to receive(:create).and_raise(Atlas::BaseService::ServerError, 'Connection failed')
       
-      expect(Rails.logger).to receive(:error).with(/Failed to sync/)
+      expect(Rails.logger).to receive(:error).with(/Failed to sync/).twice
       
       account = build(:account)
       expect { account.save! }.not_to raise_error

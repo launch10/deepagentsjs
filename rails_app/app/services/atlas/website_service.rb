@@ -4,10 +4,10 @@ module Atlas
   class WebsiteService < BaseService
     BASE_PATH = '/api/internal/websites'
 
-    def list(limit: nil, user_id: nil)
+    def list(limit: nil, account_id: nil)
       params = {}
       params[:limit] = limit if limit
-      params[:userId] = user_id if user_id
+      params[:accountId] = account_id if account_id
 
       get(BASE_PATH, query: params)
     end
@@ -24,10 +24,10 @@ module Atlas
       get(path, query: params)
     end
 
-    def create(id:, user_id:, **attributes)
+    def create(id:, account_id:, **attributes)
       params = {
         id: id,
-        userId: user_id
+        accountId: account_id
       }.merge(format_params(attributes))
 
       post(BASE_PATH, body: params)
@@ -47,7 +47,7 @@ module Atlas
 
     def format_params(attributes)
       {}.tap do |params|
-        params[:userId] = attributes[:user_id] if attributes[:user_id]
+        params[:accountId] = attributes[:account_id] if attributes[:account_id]
       end
     end
   end
