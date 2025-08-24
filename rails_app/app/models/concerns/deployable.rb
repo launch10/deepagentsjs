@@ -82,7 +82,6 @@ module Deployable
       cleanup_old_deploys(uploader) unless is_preview?
     rescue => e
       update!(status: 'failed', stacktrace: e.backtrace.join("\n"))
-      puts "Was attempting to upload #{dist_path} to R2 bucket #{r2_path}"
       raise e
     ensure
       if dist_path
