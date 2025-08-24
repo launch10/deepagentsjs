@@ -72,7 +72,7 @@ class User < ApplicationRecord
   has_many :subscriptions, through: :owned_account
   
   def plan
-    subscriptions.active.first&.plan
+    subscriptions.active.order(id: :desc).limit(1).first&.plan
   end
 
   def monthly_request_limit

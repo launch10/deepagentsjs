@@ -50,9 +50,11 @@
 #
 
 require 'rails_helper'
+require "support/subscription_helpers"
 
 RSpec.describe User, type: :model do
   let(:user) { build(:user) }
+  include SubscriptionHelpers
 
   describe 'Atlas integration' do
     it 'syncs to Atlas with id when user is created' do
@@ -96,20 +98,15 @@ RSpec.describe User, type: :model do
 
   describe '#plan' do
     it 'returns the active subscription plan' do
-      plan = create(:plan)
+      plan = create(:plan, name: 'pro')
       user.save!
-      account = user.owned_account || create(:account, owner: user)
-      
-      subscription = double('subscription')
-      allow(user).to receive(:subscriptions).and_return(double(active: double(first: subscription)))
-      allow(subscription).to receive(:plan).and_return(plan)
+      subscribe_user(user, plan_name: "pro")
       
       expect(user.plan).to eq(plan)
     end
 
     it 'returns nil when no active subscription' do
       user.save!
-      allow(user).to receive(:subscriptions).and_return(double(active: double(first: nil)))
       
       expect(user.plan).to be_nil
     end
@@ -117,20 +114,16 @@ RSpec.describe User, type: :model do
 
   describe '#plan_limits' do
     it 'returns plan limits when plan exists' do
-      plan = create(:plan)
+      plan = create(:plan, name: 'pro')
       plan_limit = create(:plan_limit, plan: plan)
       user.save!
-      
-      subscription = double('subscription')
-      allow(user).to receive(:subscriptions).and_return(double(active: double(first: subscription)))
-      allow(subscription).to receive(:plan).and_return(plan)
+      subscribe_user(user, plan_name: "pro")
       
       expect(user.plan_limits).to include(plan_limit)
     end
 
     it 'returns empty array when no plan' do
       user.save!
-      allow(user).to receive(:subscriptions).and_return(double(active: double(first: nil)))
       
       expect(user.plan_limits).to eq([])
     end
