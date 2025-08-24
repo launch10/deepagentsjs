@@ -76,7 +76,7 @@ RSpec.describe "Websites", type: :request do
           
           website = Website.last
           expect(website.thread_id).to eq(valid_params[:website][:thread_id])
-          expect(website.user_id).to eq(user.id)
+          expect(website.account_id).to eq(account.id)
           expect(website.project_id).to eq(project.id)
         end
 

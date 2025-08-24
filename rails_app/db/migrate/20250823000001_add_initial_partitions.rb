@@ -22,6 +22,6 @@ class AddInitialPartitions < ActiveRecord::Migration[8.0]
   end
 
   def create_user_request_count_partitions
-    UserRequestCount.create_partitions(4)
+    AccountRequestCount.create_partitions(4)
   end
 end

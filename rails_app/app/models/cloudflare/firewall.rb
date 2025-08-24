@@ -3,7 +3,7 @@
 # Table name: cloudflare_firewalls
 #
 #  id           :integer          not null, primary key
-#  user_id      :integer          not null
+#  account_id   :integer          not null
 #  status       :string           default("inactive")
 #  blocked_at   :datetime
 #  unblocked_at :datetime
@@ -12,11 +12,11 @@
 #
 # Indexes
 #
+#  index_cloudflare_firewalls_on_account_id    (account_id)
 #  index_cloudflare_firewalls_on_blocked_at    (blocked_at)
 #  index_cloudflare_firewalls_on_created_at    (created_at)
 #  index_cloudflare_firewalls_on_status        (status)
 #  index_cloudflare_firewalls_on_unblocked_at  (unblocked_at)
-#  index_cloudflare_firewalls_on_user_id       (user_id)
 #
 
 class Cloudflare
@@ -26,32 +26,32 @@ class Cloudflare
 
     has_many :rules, class_name: "Cloudflare::FirewallRule"
     alias_method :firewall_rules, :rules
-    belongs_to :user
+    belongs_to :account, class_name: "Account", inverse_of: :firewall
 
-    validates_presence_of :user_id, :status
+    validates_presence_of :account_id, :status
     validates :status, presence: true, inclusion: { in: Cloudflare::FirewallStatuses::STATUS }
 
     scope :blocked, -> { where(status: 'blocked') }
     scope :inactive, -> { where(status: 'inactive') }
 
     def already_blocked?
-      blocked? && user.domains.all?(&:blocked?)
+      blocked? && account.domains.all?(&:blocked?)
     end
 
     def already_unblocked?
-      !blocked? && user.domains.none?(&:blocked?)
+      !blocked? && account.domains.none?(&:blocked?)
     end
 
-    def self.block_user(user)
-      Cloudflare::BlockWorker.perform_async(user_id: user.id)
+    def self.block_account(account)
+      Cloudflare::BlockWorker.perform_async(account_id: account.id)
     end
 
-    def self.actually_block_user(user)
-      firewall = user.firewall || user.create_firewall
+    def self.actually_block_account(account)
+      firewall = account.firewall || account.create_firewall
       return if firewall.already_blocked?
-      return unless user.over_monthly_request_limit?
+      return unless account.over_monthly_request_limit?
 
-      domains = Domain.where(user: user)
+      domains = Domain.where(account: account)
       existing_firewall_rules = FirewallRule.where(domain_id: domains.pluck(:id))
       firewall_rules_by_domain = existing_firewall_rules.index_by(&:domain_id)
       unblocked_domains = domains.select do |domain|
@@ -70,7 +70,7 @@ class Cloudflare
             domain_id: domain.id,
           )
           firewall_rule.status = Cloudflare::FirewallStatuses::BLOCKED
-          firewall_rule.user = user
+          firewall_rule.account = account
           firewall_rule.firewall = firewall
           firewall_rule.cloudflare_rule_id = cloudflare_ids_by_domain[domain.domain]
           firewall_rule.blocked_at = Time.current
@@ -92,30 +92,30 @@ class Cloudflare
         )
       else
         # We raise so that the worker retries, and eventually succeeds
-        raise "Failed to block domains for user #{user.id}: #{response.errors.join(', ')}"
+        raise "Failed to block domains for account #{account.id}: #{response.errors.join(', ')}"
       end
     end
 
-    def self.unblock_user(user, force: false)
-      return if user.firewall.present? && user.firewall.already_unblocked?
+    def self.unblock_account(account, force: false)
+      return if account.firewall.present? && account.firewall.already_unblocked?
 
-      Cloudflare::UnblockWorker.perform_async(user_id: user.id, force: force)
+      Cloudflare::UnblockWorker.perform_async(account_id: account.id, force: force)
     end
 
-    def self.actually_unblock_user(user, force: false)
-      # Don't allow unblocking if the user is over their monthly request limit
+    def self.actually_unblock_account(account, force: false)
+      # Don't allow unblocking if the account is over their monthly request limit
       #
-      # BUT if a user changes plans, and thus their monthly request limit changes,
+      # BUT if a account changes plans, and thus their monthly request limit changes,
       # we want to allow unblocking
-      return if user.over_monthly_request_limit? && !force
-      return unless user.firewall.blocked? || user.firewall.firewall_rules.blocked.any?
+      return if account.over_monthly_request_limit? && !force
+      return unless account.firewall.blocked? || account.firewall.firewall_rules.blocked.any?
 
-      firewall_rules = user.firewall.firewall_rules.blocked
+      firewall_rules = account.firewall.firewall_rules.blocked
       return unless firewall_rules.any?
 
       response = Cloudflare::FirewallService.new.unblock_domains(firewall_rules.map(&:cloudflare_rule_id))
       if response.success?
-        firewall = user.firewall
+        firewall = account.firewall
         firewall.update!(status: Cloudflare::FirewallStatuses::INACTIVE, unblocked_at: Time.current)
         firewall_rules.update_all(
           status: Cloudflare::FirewallStatuses::INACTIVE,
@@ -123,7 +123,7 @@ class Cloudflare
           blocked_at: nil
         )
       else
-        raise "Failed to block domains for user #{user.id}: #{response.errors.join(', ')}"
+        raise "Failed to block domains for account #{account.id}: #{response.errors.join(', ')}"
       end
     end 
   end

@@ -69,11 +69,11 @@ module AtlasHelpers
       parsed_body: { success: true }
     )
     
-    # Stub UserService
-    allow_any_instance_of(Atlas::UserService).to receive(:create).and_return(mock_response)
-    allow_any_instance_of(Atlas::UserService).to receive(:update).and_return(mock_response)
-    allow_any_instance_of(Atlas::UserService).to receive(:destroy).and_return(mock_response)
-    allow_any_instance_of(Atlas::UserService).to receive(:find).and_return(mock_response)
+    # Stub AccountService
+    allow_any_instance_of(Atlas::AccountService).to receive(:create).and_return(mock_response)
+    allow_any_instance_of(Atlas::AccountService).to receive(:update).and_return(mock_response)
+    allow_any_instance_of(Atlas::AccountService).to receive(:destroy).and_return(mock_response)
+    allow_any_instance_of(Atlas::AccountService).to receive(:find).and_return(mock_response)
     
     # Stub WebsiteService
     allow_any_instance_of(Atlas::WebsiteService).to receive(:create).and_return(mock_response)

@@ -2,21 +2,23 @@
 #
 # Table name: websites
 #
-#  id         :integer          not null, primary key
-#  name       :string
-#  project_id :integer
-#  user_id    :integer
-#  created_at :datetime         not null
-#  updated_at :datetime         not null
+#  id          :integer          not null, primary key
+#  name        :string
+#  project_id  :integer
+#  account_id  :integer
+#  created_at  :datetime         not null
+#  updated_at  :datetime         not null
+#  thread_id   :string
+#  template_id :integer
 #
 # Indexes
 #
+#  index_websites_on_account_id   (account_id)
 #  index_websites_on_created_at   (created_at)
 #  index_websites_on_name         (name)
 #  index_websites_on_project_id   (project_id)
 #  index_websites_on_template_id  (template_id)
 #  index_websites_on_thread_id    (thread_id) UNIQUE
-#  index_websites_on_user_id      (user_id)
 #
 
 require "rails_helper"
@@ -66,7 +68,7 @@ describe Website do
   end
 
   describe "#deploy!" do
-    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: website.account, project: website.project, files: minimal_website_files) }
     let(:dist_path) { Rails.root.join("tmp/deploy_#{Deploy.last&.id || "test"}/dist") }
 
     before do
@@ -217,7 +219,7 @@ describe Website do
   end
 
   describe "#rollback!" do
-    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: website.account, project: website.project, files: minimal_website_files) }
     let(:dist_path) { Rails.root.join("tmp/deploy_test/dist") }
 
     before do
@@ -442,7 +444,7 @@ describe Website do
   end
 
   describe "#deploy (async)" do
-    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: website.account, project: website.project, files: minimal_website_files) }
 
     before do
       website_with_files.snapshot
@@ -534,7 +536,7 @@ describe Website do
   end
 
   describe "#rollback (async)" do
-    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: website.account, project: website.project, files: minimal_website_files) }
 
     before do
       website_with_files.snapshot
@@ -663,7 +665,7 @@ describe Website do
   end
 
   describe "#deploy with environments" do
-    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: website.account, project: website.project, files: minimal_website_files) }
 
     before do
       website_with_files.snapshot
@@ -694,7 +696,7 @@ describe Website do
   end
 
   describe "#preview!" do
-    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: website.account, project: website.project, files: minimal_website_files) }
 
     before do
       website_with_files.snapshot
@@ -750,7 +752,7 @@ describe Website do
   end
 
   describe "environment-aware rollbacks" do
-    let(:website_with_files) { create_website_with_files(user: website.user, project: website.project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: website.account, project: website.project, files: minimal_website_files) }
 
     before do
       website_with_files.snapshot

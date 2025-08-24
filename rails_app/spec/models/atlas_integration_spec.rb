@@ -5,7 +5,7 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
   include SubscriptionHelpers
   include PlanHelpers
 
-  let(:atlas_users) { instance_double(Atlas::UserService) }
+  let(:atlas_accounts) { instance_double(Atlas::AccountService) }
   let(:atlas_websites) { instance_double(Atlas::WebsiteService) }
   let(:atlas_domains) { instance_double(Atlas::DomainService) }
   let(:atlas_plans) { instance_double(Atlas::PlanService) }
@@ -14,13 +14,13 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
     # Run Sidekiq jobs inline to make tests synchronous
     Sidekiq::Testing.inline!
     
-    allow(Atlas).to receive(:users).and_return(atlas_users)
+    allow(Atlas).to receive(:accounts).and_return(atlas_accounts)
     allow(Atlas).to receive(:websites).and_return(atlas_websites)
     allow(Atlas).to receive(:domains).and_return(atlas_domains)
     allow(Atlas).to receive(:plans).and_return(atlas_plans)
     
     # Allow all creates by default
-    allow(atlas_users).to receive(:create).and_return({ 'id' => 'user_123' })
+    allow(atlas_accounts).to receive(:create).and_return({ 'id' => 'account_123' })
     allow(atlas_websites).to receive(:create).and_return({ 'id' => 'website_123' })
     allow(atlas_domains).to receive(:create).and_return({ 'id' => 'domain_123' })
     allow(atlas_plans).to receive(:create).and_return({ 'id' => 'plan_123' })
@@ -31,33 +31,32 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
     Sidekiq::Testing.fake!
   end
 
-  describe 'User Atlas sync' do
-    context 'when user is created' do
+  describe 'Account Atlas sync' do
+    context 'when account is created' do
       it 'syncs to Atlas' do
-        user = build(:user)
+        account = build(:account)
         
-        expect(atlas_users).to receive(:create).with(
+        expect(atlas_accounts).to receive(:create).with(
           hash_including(
             id: kind_of(Integer)
           )
-        ).and_return({ 'id' => user.id })
+        ).and_return({ 'id' => account.id })
 
-        user.save!
+        account.save!
       end
 
-      it 'syncs plan_id to Atlas when user subscribes' do
+      it 'syncs plan_id to Atlas when account subscribes' do
         ensure_plans_exist
         plan = pro_plan
         
-        # Create user first (without plan)
-        user = create(:user)
-        account = user.owned_account || create(:account, owner: user)
+        # Create account first (without plan)
+        account = create(:account)
         
         # Expect Atlas to be updated when subscription is created
-        expect(atlas_users).to receive(:update).with(
-          user.id,
+        expect(atlas_accounts).to receive(:update).with(
+          account.id,
           hash_including(plan_id: plan.id)
-        ).and_return({ 'id' => user.id })
+        ).and_return({ 'id' => account.id })
         expect(plan.id).to_not be_nil
         
         # Subscribe the account
@@ -67,34 +66,34 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
           ends_at: nil
         )
         
-        # Verify the user now has the correct plan
-        expect(user.reload.current_plan_id).to eq(plan.id)
+        # Verify the account now has the correct plan
+        expect(account.reload.current_plan_id).to eq(plan.id)
       end
     end
 
-    context 'when user is updated' do
+    context 'when account is updated' do
       it 'does not sync on regular attribute changes' do
-        user = create(:user)
+        account = create(:account)
         
-        expect(atlas_users).not_to receive(:update)
+        expect(atlas_accounts).not_to receive(:update)
         
-        user.update!(first_name: 'NewName')
+        account.update!(name: 'NewName')
       end
     end
   end
 
   describe 'Website Atlas sync' do
-    let(:user) { create(:user) }
-    let(:project) { create(:project, account: user.owned_account) }
+    let(:account) { create(:account) }
+    let(:project) { create(:project, account: account) }
 
     context 'when website is created' do
-      it 'syncs to Atlas with user_id' do
-        website = build(:website, project: project, user: user, thread_id: 'thread_123')
+      it 'syncs to Atlas with account_id' do
+        website = build(:website, project: project, account: account, thread_id: 'thread_123')
         
         expect(atlas_websites).to receive(:create).with(
           hash_including(
             id: kind_of(Integer),
-            user_id: user.id
+            account_id: account.id
           )
         ).and_return({ 'id' => website.id })
 
@@ -104,7 +103,7 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
 
     context 'when website is destroyed' do
       it 'removes from Atlas' do
-        website = create(:website, project: project, user: user, thread_id: 'thread_456')
+        website = create(:website, project: project, account: account, thread_id: 'thread_456')
         
         expect(atlas_websites).to receive(:destroy).with(website.id)
         
@@ -114,13 +113,13 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
   end
 
   describe 'Domain Atlas sync' do
-    let(:user) { create(:user) }
-    let(:project) { create(:project, account: user.owned_account) }
-    let(:website) { create(:website, project: project, user: user, thread_id: 'thread_789') }
+    let(:account) { create(:account) }
+    let(:project) { create(:project, account: account) }
+    let(:website) { create(:website, project: project, account: account, thread_id: 'thread_789') }
 
     context 'when domain is created' do
       it 'syncs to Atlas with domain and website_id' do
-        domain = build(:domain, website: website, user: user)
+        domain = build(:domain, website: website, account: account)
         
         expect(atlas_domains).to receive(:create).with(
           hash_including(
@@ -136,7 +135,7 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
 
     context 'when domain is updated' do
       it 'syncs changes to Atlas' do
-        domain = create(:domain, website: website, user: user)
+        domain = create(:domain, website: website, account: account)
         
         expect(atlas_domains).to receive(:update).with(
           domain.id,
@@ -191,23 +190,23 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
 
   describe 'Error handling' do
     it 'logs errors but does not prevent model operations' do
-      allow(atlas_users).to receive(:create).and_raise(Atlas::BaseService::ServerError, 'Connection failed')
+      allow(atlas_accounts).to receive(:create).and_raise(Atlas::BaseService::ServerError, 'Connection failed')
       
       expect(Rails.logger).to receive(:error).with(/Failed to sync/)
       
-      user = build(:user)
-      expect { user.save! }.not_to raise_error
-      expect(user).to be_persisted
+      account = build(:account)
+      expect { account.save! }.not_to raise_error
+      expect(account).to be_persisted
     end
 
     it 'handles not found errors gracefully on destroy' do
-      user = create(:user)
-      allow(atlas_users).to receive(:destroy).and_raise(Atlas::BaseService::NotFoundError, 'Not found')
+      account = create(:account)
+      allow(atlas_accounts).to receive(:destroy).and_raise(Atlas::BaseService::NotFoundError, 'Not found')
       
       expect(Rails.logger).to receive(:warn).with(/not found in Atlas/)
       
-      expect { user.destroy }.not_to raise_error
-      expect(User.exists?(user.id)).to be false
+      expect { account.destroy }.not_to raise_error
+      expect(Account.exists?(account.id)).to be false
     end
   end
 end

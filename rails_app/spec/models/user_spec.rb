@@ -119,13 +119,13 @@ RSpec.describe User, type: :model do
       user.save!
       subscribe_user(user, plan_name: "pro")
       
-      expect(user.plan_limits).to include(plan_limit)
+      expect(user.owned_account.plan_limits).to include(plan_limit)
     end
 
     it 'returns empty array when no plan' do
       user.save!
       
-      expect(user.plan_limits).to eq([])
+      expect(user.owned_account.plan_limits).to eq([])
     end
   end
 

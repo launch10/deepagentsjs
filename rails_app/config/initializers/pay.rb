@@ -57,10 +57,7 @@ module AtlasExtensions
     # Find the user through the customer's owner (Account)
     return unless customer&.owner.is_a?(Account)
     
-    user = customer.owner.owner # Account owner is the User
-    return unless user
-    
-    user.send(:enqueue_sync_to_atlas_on_update)
+    customer.owner.send(:enqueue_sync_to_atlas_on_update)
   rescue Atlas::BaseService::Error => e
     Rails.logger.error "[Atlas] Failed to sync user after subscription change: #{e.message}"
   end
@@ -96,12 +93,9 @@ private
   def unblock_firewall_after_subscription_change
     return unless customer&.owner.is_a?(Account)
     
-    user = customer.owner.owner # Account owner is the User
-    return unless user
-    
-    user.reload
-    if user.firewall && user.firewall.blocked?
-      Cloudflare::Firewall.unblock_user(user)
+    customer.owner.reload
+    if customer.owner.firewall && customer.owner.firewall.blocked?
+      Cloudflare::Firewall.unblock_account(customer.owner)
     end
   rescue Atlas::BaseService::Error => e
     Rails.logger.error "[Atlas] Failed to unblock firewall after subscription change: #{e.message}"

@@ -59,7 +59,6 @@ class User < ApplicationRecord
   include Notifiable
   include Searchable
   include Theme
-  include Atlas::User
 
   has_one_attached :avatar
   has_person_name
@@ -75,30 +74,6 @@ class User < ApplicationRecord
     subscriptions.active.order(id: :desc).limit(1).first&.plan
   end
 
-  def monthly_request_limit
-    plan&.monthly_request_limit || 0
-  end
-  alias_method :usage_limit, :monthly_request_limit
-
-  def request_count
-    user_request_counts.current_month.sum(&:request_count)
-  end
-
-  def over_monthly_request_limit?
-    request_count > monthly_request_limit
-  end
-  
-  def plan_limits
-    plan&.plan_limits || []
-  end
-
-  has_many :projects, through: :owned_account
-  has_many :websites, through: :projects
-  has_many :domains
-  has_many :domain_request_counts
-  has_many :user_request_counts
-  has_one :firewall, class_name: "Cloudflare::Firewall"
-  
   def current_plan_id
     plan&.id
   end

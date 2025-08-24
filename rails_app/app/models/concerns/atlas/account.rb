@@ -1,11 +1,11 @@
 module Atlas
-  module User
+  module Account
     extend ActiveSupport::Concern
     include Atlas::Syncable
 
 private
     def atlas_service
-      Atlas.users
+      Atlas.accounts
     end
 
     def atlas_data_for_create
@@ -22,7 +22,7 @@ private
     end
 
     def sync_to_atlas_required?
-      # Atlas doesn't track user changes, only plan changes
+      # Atlas doesn't track account changes, only plan changes
       # This will be triggered by subscription callbacks
       false
     end

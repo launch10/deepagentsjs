@@ -1,7 +1,7 @@
 FactoryBot.define do
   factory :domain do
     association :website
-    association :user
+    association :account
     sequence(:domain) { |n| "test-domain-#{n}.abeverything.com" }
     cloudflare_zone_id { nil }
 

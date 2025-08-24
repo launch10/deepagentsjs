@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Atlas
-  class UserService < BaseService
-    BASE_PATH = '/api/internal/users'
+  class AccountService < BaseService
+    BASE_PATH = '/api/internal/accounts'
 
     def list(limit: nil)
       params = {}

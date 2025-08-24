@@ -42,7 +42,7 @@ RSpec.describe Deploy, type: :model do
   let(:user) { create(:user) }
   let(:account) { create(:account) }
   let(:project) { create(:project, account: account) }
-  let(:website) { create(:website, project: project, user: user) }
+  let(:website) { create(:website, project: project, account: account) }
   let(:s3_client) { instance_double(Aws::S3::Client) }
 
   before do
@@ -77,7 +77,7 @@ RSpec.describe Deploy, type: :model do
   end
 
   describe '#deploy!' do
-    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
     
     before do
       website_with_files.snapshot
@@ -206,7 +206,7 @@ RSpec.describe Deploy, type: :model do
   end
 
   describe '#rollback!' do
-    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
     
     before do
       website_with_files.snapshot
@@ -306,7 +306,7 @@ RSpec.describe Deploy, type: :model do
   end
 
   describe '#preview!' do
-    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
     let(:deploy) { website_with_files.deploys.create!(environment: 'development', is_preview: true) }
     
     before do
@@ -351,7 +351,7 @@ RSpec.describe Deploy, type: :model do
   end
 
   describe 'environment isolation via Cloudflare::R2' do
-    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
     
     before do
       website_with_files.snapshot
@@ -473,7 +473,7 @@ RSpec.describe Deploy, type: :model do
   end
 
   describe 'cleanup of old deploys' do
-    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
     
     before do
       website_with_files.snapshot
@@ -511,7 +511,7 @@ RSpec.describe Deploy, type: :model do
   end
 
   describe 'later_deploy_exists check' do
-    let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
 
     before do
       website_with_files.snapshot

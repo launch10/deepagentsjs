@@ -71,7 +71,7 @@ class Cloudflare::FirewallService < ApplicationClient
     end
   end
   
-  def block_user(user:, zone_id:, reason: nil)
+  def block_account(user:, zone_id:, reason: nil)
     # Block user by creating firewall rules for their domains
     Rails.logger.info "Blocking user #{user.id} on zone #{zone_id}: #{reason}"
     
@@ -89,7 +89,7 @@ class Cloudflare::FirewallService < ApplicationClient
     true
   end
   
-  def unblock_user(user:, zone_id:)
+  def unblock_account(user:, zone_id:)
     # Unblock user by removing firewall rules for their domains
     Rails.logger.info "Unblocking user #{user.id} on zone #{zone_id}"
     

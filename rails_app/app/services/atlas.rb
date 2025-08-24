@@ -5,8 +5,8 @@ module Atlas
     BaseService.configure(&block)
   end
 
-  def self.users
-    @users ||= UserService.new
+  def self.accounts
+    @accounts ||= AccountService.new
   end
 
   def self.websites

@@ -4,17 +4,17 @@
 #
 #  id            :integer          not null, primary key
 #  domain_id     :integer          not null
-#  user_id       :integer          not null
+#  account_id    :integer          not null
 #  request_count :integer          not null
 #  hour          :timestamptz      not null, primary key
 #  created_at    :timestamptz      not null
 #
 # Indexes
 #
-#  index_domain_request_counts_on_domain_hour_count     (domain_id,hour,request_count)
-#  index_domain_request_counts_on_domain_id_and_hour    (domain_id,hour)
-#  index_domain_request_counts_on_user_domain_and_hour  (user_id,domain_id,hour) UNIQUE
-#  index_domain_request_counts_on_user_id_and_hour      (user_id,hour)
+#  index_domain_request_counts_on_account_domain_and_hour  (account_id,domain_id,hour) UNIQUE
+#  index_domain_request_counts_on_account_id_and_hour      (account_id,hour)
+#  index_domain_request_counts_on_domain_hour_count        (domain_id,hour,request_count)
+#  index_domain_request_counts_on_domain_id_and_hour       (domain_id,hour)
 #
 
 require 'rails_helper'
@@ -30,20 +30,20 @@ RSpec.describe DomainRequestCount, type: :model do
 
   describe 'associations' do
     it { should belong_to(:domain) }
-    it { should belong_to(:user) }
+    it { should belong_to(:account) }
   end
 
   describe 'validations' do
     it { should validate_presence_of(:domain) }
-    it { should validate_presence_of(:user) }
+    it { should validate_presence_of(:account) }
     it { should validate_presence_of(:request_count) }
     it { should validate_numericality_of(:request_count).is_greater_than_or_equal_to(0) }
   end
 
   describe '.process_traffic_report' do
-    let(:user) { create(:user) }
-    let(:domain1) { create(:domain, user: user, domain: 'example.com') }
-    let(:domain2) { create(:domain, user: user, domain: 'test.com') }
+    let(:account) { create(:account) }
+    let(:domain1) { create(:domain, account: account, domain: 'example.com') }
+    let(:domain2) { create(:domain, account: account, domain: 'test.com') }
     let(:zone_id) { 'zone123' }
     let(:start_time) { Time.current.beginning_of_hour }
     
@@ -86,7 +86,7 @@ RSpec.describe DomainRequestCount, type: :model do
       # Create initial record
       existing = DomainRequestCount.create!(
         domain: domain1,
-        user: user,
+        account: account,
         hour: start_time,
         request_count: 25,
         created_at: Time.current
@@ -149,18 +149,18 @@ RSpec.describe DomainRequestCount, type: :model do
   end
 
   describe 'scopes' do
-    let(:user1) { create(:user) }
-    let(:user2) { create(:user) }
-    let(:domain1) { create(:domain, user: user1) }
-    let(:domain2) { create(:domain, user: user2) }
+    let(:account1) { create(:account) }
+    let(:account2) { create(:account) }
+    let(:domain1) { create(:domain, account: account1) }
+    let(:domain2) { create(:domain, account: account2) }
     
-    let!(:count1) { create(:domain_request_count, domain: domain1, user: user1, hour: 1.hour.ago, request_count: 100) }
-    let!(:count2) { create(:domain_request_count, domain: domain2, user: user2, hour: 2.hours.ago, request_count: 50) }
-    let!(:count3) { create(:domain_request_count, domain: domain1, user: user1, hour: 25.hours.ago, request_count: 75) }
+    let!(:count1) { create(:domain_request_count, domain: domain1, account: account1, hour: 1.hour.ago, request_count: 100) }
+    let!(:count2) { create(:domain_request_count, domain: domain2, account: account2, hour: 2.hours.ago, request_count: 50) }
+    let!(:count3) { create(:domain_request_count, domain: domain1, account: account1, hour: 25.hours.ago, request_count: 75) }
     
-    describe '.for_user' do
-      it 'returns counts for specific user' do
-        results = DomainRequestCount.for_user(user1)
+    describe '.for_account' do
+      it 'returns counts for specific account' do
+        results = DomainRequestCount.for_account(account1)
         expect(results).to include(count1, count3)
         expect(results).not_to include(count2)
       end
@@ -183,7 +183,7 @@ RSpec.describe DomainRequestCount, type: :model do
     end
     
     describe '.with_traffic' do
-      let!(:count4) { create(:domain_request_count, domain: domain1, user: user1, hour: 1.hour.ago, request_count: 0) }
+      let!(:count4) { create(:domain_request_count, domain: domain1, account: account1, hour: 1.hour.ago, request_count: 0) }
       
       it 'returns only counts with traffic > 0' do
         results = DomainRequestCount.with_traffic

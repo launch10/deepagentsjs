@@ -5,17 +5,17 @@
 #  id                 :integer          not null, primary key
 #  domain             :string
 #  website_id         :integer
-#  user_id            :integer
+#  account_id         :integer
 #  cloudflare_zone_id :string
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
 #
 # Indexes
 #
+#  index_domains_on_account_id          (account_id)
 #  index_domains_on_cloudflare_zone_id  (cloudflare_zone_id)
 #  index_domains_on_created_at          (created_at)
 #  index_domains_on_domain              (domain)
-#  index_domains_on_user_id             (user_id)
 #  index_domains_on_website_id          (website_id)
 #
 
@@ -25,12 +25,12 @@ class Domain < ApplicationRecord
   include Domain::NormalizeDomain
   
   belongs_to :website, optional: true
-  belongs_to :user
+  belongs_to :account
   has_many :domain_request_counts, dependent: :destroy
   has_one :firewall_rule, class_name: "Cloudflare::FirewallRule"
 
   validates :domain, presence: true, uniqueness: true
-  validates :user_id, presence: true
+  validates :account_id, presence: true
 
   before_validation :set_default_domain, on: :create
   before_validation :set_normalized_domain, on: :create

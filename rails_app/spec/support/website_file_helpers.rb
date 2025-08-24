@@ -47,13 +47,13 @@ module WebsiteFileHelpers
     }
   end
 
-  def create_website_with_files(user:, project:, files: nil)
+  def create_website_with_files(account:, project:, files: nil)
     files ||= website_files_attributes
     
     website = Website.create!(
       name: "Test Website",
       thread_id: "thread_#{SecureRandom.hex(8)}",
-      user: user,
+      account: account,
       project: project
     )
     

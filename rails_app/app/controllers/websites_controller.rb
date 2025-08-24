@@ -1,7 +1,7 @@
 class WebsitesController < SubscribedController
   def create
     website = Website.new(website_params)
-    website.user_id = current_user.id
+    website.account_id = current_account.id
     
     if website.save
       render json: website_json(website), status: :created

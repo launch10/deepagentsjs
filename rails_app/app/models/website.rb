@@ -2,21 +2,23 @@
 #
 # Table name: websites
 #
-#  id         :integer          not null, primary key
-#  name       :string
-#  project_id :integer
-#  user_id    :integer
-#  created_at :datetime         not null
-#  updated_at :datetime         not null
+#  id          :integer          not null, primary key
+#  name        :string
+#  project_id  :integer
+#  account_id  :integer
+#  created_at  :datetime         not null
+#  updated_at  :datetime         not null
+#  thread_id   :string
+#  template_id :integer
 #
 # Indexes
 #
+#  index_websites_on_account_id   (account_id)
 #  index_websites_on_created_at   (created_at)
 #  index_websites_on_name         (name)
 #  index_websites_on_project_id   (project_id)
 #  index_websites_on_template_id  (template_id)
 #  index_websites_on_thread_id    (thread_id) UNIQUE
-#  index_websites_on_user_id      (user_id)
 #
 
 class Website < ApplicationRecord
@@ -25,7 +27,7 @@ class Website < ApplicationRecord
   historiographer_mode :snapshot_only
 
   belongs_to :project
-  belongs_to :user
+  belongs_to :account
   belongs_to :template, optional: true
 
   has_many :website_files, dependent: :destroy, class_name: "WebsiteFile"
@@ -35,7 +37,7 @@ class Website < ApplicationRecord
   
   accepts_nested_attributes_for :website_files
 
-  validates_presence_of :name, :project_id, :user_id
+  validates_presence_of :name, :project_id, :account_id
 
   # Returns the merged set of template_files + website_files
   # Website files override template files with the same path

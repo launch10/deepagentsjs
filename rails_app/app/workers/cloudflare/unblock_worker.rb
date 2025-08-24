@@ -33,8 +33,8 @@ class Cloudflare::UnblockWorker
   
   def perform(options = {})
     options = options.symbolize_keys
-    user = User.find(options[:user_id])
+    account = Account.find(options[:account_id])
     force = options[:force] || false
-    Cloudflare::Firewall.actually_unblock_user(user, force: force)
+    Cloudflare::Firewall.actually_unblock_account(account, force: force)
   end
 end

@@ -8,7 +8,7 @@ RSpec.describe 'Environment-aware deploys', type: :integration do
   let(:account) { create(:account) }
   let(:project) { create(:project, account: account) }
   let(:website) { create(:website, project: project, user: user) }
-  let(:website_with_files) { create_website_with_files(user: user, project: project, files: minimal_website_files) }
+  let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
   let(:s3_client) { instance_double(Aws::S3::Client) }
   
   before do

@@ -6,7 +6,7 @@ RSpec.describe Website, type: :model do
     let(:account) { create(:account) }
     let(:project) { create(:project, account: account) }
     let(:template) { create(:template, name: "test_template") }
-    let(:website) { create(:website, user: user, project: project, template: template) }
+    let(:website) { create(:website, account: account, project: project, template: template) }
     
     before do
       # Create template files
@@ -47,7 +47,7 @@ RSpec.describe Website, type: :model do
       end
       
       it "returns only website files when no template is set" do
-        website_no_template = create(:website, user: user, project: project, template: nil)
+        website_no_template = create(:website, account: account, project: project, template: nil)
         website_no_template.website_files.create!(path: "test.html", content: "Test")
         
         expect(website_no_template.files.count).to eq(1)
@@ -62,13 +62,13 @@ RSpec.describe Website, type: :model do
       end
       
       it "returns empty relation when no template" do
-        website_no_template = create(:website, user: user, project: project, template: nil)
+        website_no_template = create(:website, account: account, project: project, template: nil)
         expect(website_no_template.template_files).to be_empty
       end
     end
     
     describe "#make_fixture_files" do
-      let(:website_for_fixtures) { create(:website, user: user, project: project) }
+      let(:website_for_fixtures) { create(:website, account: account, project: project) }
       
       it "creates website files from fixtures" do
         expect {
@@ -104,7 +104,7 @@ RSpec.describe Website, type: :model do
       website = Website.create!(
         name: "Test",
         thread_id: "thread_123",
-        user: user,
+        account: account,
         project: project,
         website_files_attributes: [
           { path: "index.html", content: "Hello" },

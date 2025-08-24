@@ -23,7 +23,7 @@ class Cloudflare::BlockWorker
         error: msg['error_message']
       })
       
-      # Notify user if configured
+      # Notify account if configured
       if defined?(BlockingFailureMailer)
         BlockingFailureMailer.max_retries_exceeded(rule).deliver_later
       end
@@ -32,7 +32,7 @@ class Cloudflare::BlockWorker
 
   def perform(options = {})
     options = options.symbolize_keys
-    user = User.find(options[:user_id])
-    Cloudflare::Firewall.actually_block_user(user)
+    account = Account.find(options[:account_id])
+    Cloudflare::Firewall.actually_block_account(account)
   end
 end
