@@ -32,7 +32,7 @@ describe Website do
     allow(Aws::S3::Client).to receive(:new).and_return(s3_client)
     allow(DeployUploader).to receive(:new).and_return(deploy_uploader)
     allow(deploy_uploader).to receive(:client).and_return(s3_client)
-    allow(deploy_uploader).to receive(:bucket_name).and_return('test-bucket')
+    allow(deploy_uploader).to receive(:bucket_name).and_return('deploys')
     Sidekiq::Testing.fake!
   end
 
@@ -83,7 +83,7 @@ describe Website do
 
       it "creates a new deploy record" do
         expect {
-          website_with_files.deploy!
+          website_with_files.deploy!(async: false)
         }.to change { website_with_files.deploys.count }.by(1)
       end
 
@@ -91,11 +91,11 @@ describe Website do
         expect_any_instance_of(Deploy).to receive(:build!).and_return(dist_path.to_s)
         expect_any_instance_of(Deploy).to receive(:upload!).with(dist_path.to_s)
 
-        website_with_files.deploy!
+        website_with_files.deploy!(async: false)
       end
 
       it "marks the deploy as completed and live" do
-        website_with_files.deploy!
+        website_with_files.deploy!(async: false)
 
         deploy = website_with_files.deploys.last
         expect(deploy.status).to eq('completed')
@@ -104,7 +104,7 @@ describe Website do
       end
 
       it "stores the version path for the deploy" do
-        website_with_files.deploy!
+        website_with_files.deploy!(async: false)
 
         deploy = website_with_files.deploys.last
         expect(deploy.version_path).to match(/#{website_with_files.id}\/\d{14}/)
@@ -120,7 +120,7 @@ describe Website do
           first_deploy.created_at.strftime('%Y%m%d%H%M%S')
         )
 
-        website_with_files.deploy!
+        website_with_files.deploy!(async: false)
       end
 
       it "performs R2 operations in correct order" do
@@ -128,7 +128,7 @@ describe Website do
         expect(deploy_uploader).to receive(:hotswap_to_target).ordered
         expect(deploy_uploader).to receive(:cleanup_old_deploys).ordered
 
-        website_with_files.deploy!
+        website_with_files.deploy!(async: false)
       end
 
       it "uploads files to R2 with correct paths" do
@@ -139,7 +139,7 @@ describe Website do
           expect(remote_path).to match(/#{website_with_files.id}\/#{timestamp_regex}/)
         end
 
-        website_with_files.deploy!
+        website_with_files.deploy!(async: false)
       end
 
       it "hotswaps the live directory after upload" do
@@ -150,7 +150,7 @@ describe Website do
           expect(target_dir).to eq('live')
         end
 
-        website_with_files.deploy!
+        website_with_files.deploy!(async: false)
       end
 
       it "cleans up old deploys from R2" do
@@ -172,7 +172,7 @@ describe Website do
           expect(keep_timestamps.size).to be <= Deploy::KEEP_DEPLOY_LIMIT + 2
         end
 
-        website_with_files.deploy!
+        website_with_files.deploy!(async: false)
       end
     end
 
@@ -191,7 +191,7 @@ describe Website do
       end
 
       it "returns false" do
-        expect(website_with_files.deploy!).to be false
+        expect(website_with_files.deploy!(async: false)).to be false
       end
 
       it "does not create a successful deploy" do
@@ -207,7 +207,7 @@ describe Website do
       end
 
       it "marks the deploy as failed" do
-        website_with_files.deploy!
+        website_with_files.deploy!(async: false)
 
         deploy = website_with_files.deploys.last
         expect(deploy.status).to eq('failed')
@@ -679,7 +679,7 @@ describe Website do
       expect(deploy.is_preview).to be false
     end
 
-    it "uses environment-specific bucket" do
+    it "passes environment to deploy uploader" do
       expect(DeployUploader).to receive(:new).with(environment: 'staging').and_call_original
       
       website_with_files.deploy(async: false, environment: 'staging')
@@ -719,7 +719,7 @@ describe Website do
 
     it "does not affect live deploys" do
       # Create a live deploy first
-      website_with_files.deploy!
+      website_with_files.deploy!(async: false)
       live_deploy = website_with_files.deploys.last
       expect(live_deploy.is_live).to be true
       

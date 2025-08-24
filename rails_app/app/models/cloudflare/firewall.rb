@@ -47,11 +47,11 @@ class Cloudflare
     end
 
     def self.actually_block_user(user)
-      return if already_blocked?
+      firewall = user.firewall || user.create_firewall
+      return if firewall.already_blocked?
       return unless user.over_monthly_request_limit?
 
       domains = Domain.where(user: user)
-      firewall = user.firewall || user.create_firewall
       existing_firewall_rules = FirewallRule.where(domain_id: domains.pluck(:id))
       firewall_rules_by_domain = existing_firewall_rules.index_by(&:domain_id)
       unblocked_domains = domains.select do |domain|

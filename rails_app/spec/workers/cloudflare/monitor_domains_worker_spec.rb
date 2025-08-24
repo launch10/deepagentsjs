@@ -434,7 +434,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
       end
 
       it "does not unblock user when still in same month" do
-        Timecop.freeze(UTC.parse("2025-08-20 10:00:00")) do
+        Timecop.freeze(UTC.parse("2025-08-02 15:00:00")) do
           # User should remain blocked - same month
           subject.perform(zone_id)
           Sidekiq::Worker.drain_all
@@ -624,7 +624,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
 
     context "when user has never been blocked" do
       it "remains unblocked (no action taken)" do
-        Timecop.freeze(UTC.parse("2025-08-15 10:00:00")) do
+        Timecop.freeze(UTC.parse("2025-08-02 10:00:00")) do
           # No firewall records exist
           expect(apples_user.firewall).to be_nil
           
@@ -634,6 +634,98 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           
           # Still no firewall records
           expect(apples_user.firewall).to be_nil
+        end
+      end
+    end
+    
+    context "when blocked user adds new domain" do
+      before do
+        # First block the user by exceeding limit
+        Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
+          # Mock successful blocking response
+          mock_block_response = {
+            result: { operation_id: "initial_block_123" },
+            success: true,
+            errors: [],
+            messages: []
+          }
+          
+          firewall_service = instance_double(Cloudflare::FirewallService)
+          allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
+          allow(firewall_service).to receive(:block_domains).and_return(
+            mock_api_response(mock_block_response)
+          )
+          allow(firewall_service).to receive(:search_blocked_domains).and_return(
+            {
+              "www.example.com" => "rule_www_initial",
+              "apples.example.com" => "rule_apples_initial"
+            }
+          )
+          
+          subject.perform(zone_id)
+          Sidekiq::Worker.drain_all
+          
+          # Verify user was blocked
+          expect(apples_user.firewall).to be_blocked
+          expect(Cloudflare::FirewallRule.where(user: apples_user).blocked.count).to eq(2)
+        end
+      end
+      
+      it "blocks the new domain when user is already over limit" do
+        Timecop.freeze(UTC.parse("2025-08-02 10:00:00")) do
+          # Create a new domain for the already blocked user
+          new_website = create(:website, user: apples_user, name: "new-site")
+          new_domain = create(:domain, user: apples_user, domain: "new.example.com", website: new_website)
+          
+          # Update traffic report to include the new domain
+          allow(domain_monitor).to receive(:hourly_traffic_by_host) do |args|
+            {
+              "example.com" => 40_000,
+              "apples.example.com" => 30_000,
+              "www.example.com" => 20_000,
+              "new.example.com" => 5_000  # New domain traffic
+            }
+          end
+          
+          # Mock blocking only the new domain
+          mock_block_response = {
+            result: { operation_id: "additional_block_456" },
+            success: true,
+            errors: [],
+            messages: []
+          }
+          
+          firewall_service = instance_double(Cloudflare::FirewallService)
+          allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
+          
+          # Should only block the new domain (others already blocked)
+          allow(firewall_service).to receive(:block_domains) do |domains|
+            expect(domains.map(&:domain)).to eq(["new.example.com"])
+            mock_api_response(mock_block_response)
+          end
+          
+          allow(firewall_service).to receive(:search_blocked_domains) do |domains|
+            expect(domains.map(&:domain)).to eq(["new.example.com"])
+            { "new.example.com" => "rule_new_123" }
+          end
+          
+          # Run monitor worker - should block only the new domain
+          subject.perform(zone_id)
+          Sidekiq::Worker.drain_all
+          
+          # Verify all domains are now blocked (2 original + 1 new)
+          firewall_rules = Cloudflare::FirewallRule.where(user: apples_user)
+          expect(firewall_rules.blocked.count).to eq(3)
+          
+          # Verify the new domain has a firewall rule
+          new_rule = firewall_rules.find_by(domain_id: new_domain.id)
+          expect(new_rule).to be_present
+          expect(new_rule.status).to eq("blocked")
+          expect(new_rule.cloudflare_rule_id).to eq("rule_new_123")
+          
+          # Firewall should remain in blocked status
+          apples_user.firewall.reload
+          expect(apples_user.firewall).to be_blocked
         end
       end
     end
