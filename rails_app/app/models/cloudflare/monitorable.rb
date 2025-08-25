@@ -3,15 +3,15 @@ class Cloudflare
     extend ActiveSupport::Concern
 
     class_methods do
-      def monitor_domains(async: true)
+      def monitor_cloudflare_domains(async: true)
         if async
           Cloudflare::MonitorDomainsWorker::BatchWorker.perform_async
         else
-          actually_monitor_domains
+          actually_monitor_cloudflare_domains
         end
       end
 
-      def actually_monitor_domains(async: true)
+      def actually_monitor_cloudflare_domains(async: true)
         Cloudflare::Analytics::Queries::MonitorDomains.new.get_all_cloudflare_zones do |zones|
           if zones.is_a?(Array)
             # This is a successful response, an array of zone IDs
@@ -42,7 +42,7 @@ class Cloudflare
 
     private
       # These methods are useful for testing, but should not be used in production
-      def monitor_domains_sync
+      def monitor_cloudflare_domains_sync
         Cloudflare::Analytics::Queries::MonitorDomains.new.get_all_cloudflare_zones do |zones|
           zones.each do |zone|
             monitor_cloudflare_zone(zone)

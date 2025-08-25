@@ -8,8 +8,8 @@ end
 
 Zhong.schedule do
   category "cloudflare" do
-    every(1.minutes, "monitor domains") do
-      Domain.monitor_domains
+    every(5.minutes, "monitor domains") do
+      Domain.monitor_cloudflare_domains
     end
 
     every(1.day, "partition maintenance", at: '01:00') do

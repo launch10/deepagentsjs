@@ -42,14 +42,26 @@ class Cloudflare
       !blocked? && account.domains.none?(&:blocked?)
     end
 
+    def should_block?
+      return false if already_blocked?
+      return account.over_monthly_request_limit?
+    end
+
+    def should_unblock?
+      return false if already_unblocked?
+      return account.under_monthly_request_limit?
+    end
+
     def self.block_account(account)
+      account.firewall ||= account.build_firewall
+      return unless account.firewall.should_block?
+
       Cloudflare::BlockWorker.perform_async(account_id: account.id)
     end
 
     def self.actually_block_account(account)
-      firewall = account.firewall || account.create_firewall
-      return if firewall.already_blocked?
-      return unless account.over_monthly_request_limit?
+      account.firewall ||= account.build_firewall
+      return unless account.firewall.should_block?
 
       domains = Domain.where(account: account)
       existing_firewall_rules = FirewallRule.where(domain_id: domains.pluck(:id))
@@ -59,6 +71,7 @@ class Cloudflare
         firewall_rules_by_domain[domain.id].status == Cloudflare::FirewallStatuses::INACTIVE
       end
       
+      firewall = account.firewall
       firewall_service = Cloudflare::FirewallService.new
       response = firewall_service.block_domains(unblocked_domains)
       if response.success?
@@ -97,18 +110,15 @@ class Cloudflare
     end
 
     def self.unblock_account(account, force: false)
-      return if account.firewall.present? && account.firewall.already_unblocked?
+      account.firewall ||= account.build_firewall
+      return unless account.firewall.should_unblock? || force
 
       Cloudflare::UnblockWorker.perform_async(account_id: account.id, force: force)
     end
 
     def self.actually_unblock_account(account, force: false)
-      # Don't allow unblocking if the account is over their monthly request limit
-      #
-      # BUT if a account changes plans, and thus their monthly request limit changes,
-      # we want to allow unblocking
-      return if account.over_monthly_request_limit? && !force
-      return unless account.firewall.blocked? || account.firewall.firewall_rules.blocked.any?
+      account.firewall ||= account.build_firewall
+      return unless account.firewall.should_unblock? || force
 
       firewall_rules = account.firewall.firewall_rules.blocked
       return unless firewall_rules.any?

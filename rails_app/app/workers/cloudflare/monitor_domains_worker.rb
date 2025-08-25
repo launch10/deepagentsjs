@@ -12,7 +12,7 @@ class Cloudflare
       include Sidekiq::Worker
       
       def perform
-        Domain.actually_monitor_domains
+        Domain.actually_monitor_cloudflare_domains
       end
     end
   end
