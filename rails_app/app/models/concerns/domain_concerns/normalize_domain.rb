@@ -1,4 +1,4 @@
-class Domain
+module DomainConcerns
   module NormalizeDomain
     extend ActiveSupport::Concern
 

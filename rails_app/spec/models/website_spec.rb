@@ -715,7 +715,7 @@ describe Website do
     it "uploads to preview directory instead of live" do
       expect(deploy_uploader).to receive(:hotswap_to_target).with(anything, 'preview').and_return(true)
       
-      website_with_files.preview!
+      website_with_files.preview!(async: false)
     end
 
     it "does not affect live deploys" do
@@ -785,7 +785,7 @@ describe Website do
     end
 
     it "cannot rollback preview deploys" do
-      website_with_files.preview!
+      website_with_files.preview!(async: false)
       preview_deploy = website_with_files.reload.deploys.last
       
       expect {

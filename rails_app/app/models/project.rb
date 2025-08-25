@@ -35,5 +35,5 @@ class Project < ApplicationRecord
   has_one :plan, class_name: "ProjectPlan"
   has_one :website
 
-  include ProjectSerialization
+  include ProjectConcerns::Serialization
 end

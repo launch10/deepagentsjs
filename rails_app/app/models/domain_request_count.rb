@@ -36,7 +36,7 @@ class DomainRequestCount < ApplicationRecord
   scope :with_traffic, -> { where('request_count > 0') }
 
   class << self
-    include Domain::NormalizeDomain
+    include DomainConcerns::NormalizeDomain
   end
 
   def self.partition_by_hour?

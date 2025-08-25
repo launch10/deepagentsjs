@@ -22,7 +22,7 @@
 class Domain < ApplicationRecord
   include Atlas::Domain
   include Cloudflare::Monitorable
-  include Domain::NormalizeDomain
+  include DomainConcerns::NormalizeDomain
   
   belongs_to :website, optional: true
   belongs_to :account

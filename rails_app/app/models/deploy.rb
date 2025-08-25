@@ -36,8 +36,8 @@
 #
 
 class Deploy < ApplicationRecord
-  include Deploy::Buildable
-  include Deploy::Deployable
+  include DeployConcerns::Buildable
+  include DeployConcerns::Deployable
 
   STATUS = %w[pending building uploading completed failed skipped]
   ENVIRONMENTS = %w[development staging production]

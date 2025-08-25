@@ -1,4 +1,4 @@
-class Deploy < ApplicationRecord
+module DeployConcerns
   module Buildable
     extend ActiveSupport::Concern
 

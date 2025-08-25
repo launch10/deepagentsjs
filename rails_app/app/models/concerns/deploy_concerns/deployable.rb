@@ -1,4 +1,4 @@
-class Deploy
+module DeployConcerns
   module Deployable
     extend ActiveSupport::Concern
     KEEP_DEPLOY_LIMIT = 5
