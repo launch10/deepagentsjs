@@ -11,6 +11,7 @@ account_types: team
 apns: false
 fcm: false
 integrations:
+- rollbar
 omniauth_providers:
 payment_processors:
 - stripe

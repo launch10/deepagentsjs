@@ -68,5 +68,9 @@ module JumpstartApp
 
     # We already authenticate /admin routes
     ::MissionControl::Jobs.http_basic_auth_enabled = false if defined?(::MissionControl::Jobs)
+
+    # Use structure.sql for database structure
+    # Required for PostgreSQL partitioning features
+    config.active_record.schema_format = :sql
   end
 end

@@ -1,9 +1,0 @@
-module FileSetters
-  extend ActiveSupport::Concern
-
-  def path=(path)
-    path.gsub(/^\//, '').tap do |p|
-      write_attribute(:path, p)
-    end
-  end
-end

@@ -16,7 +16,7 @@ Optionally, the [Stripe CLI](https://docs.stripe.com/stripe-cli) to sync webhook
 
 Subscribed endpoints require a user to be subscribed to a plan.
 
-1. On Stripe, create a sandbox environment (https://dashboard.stripe.com/test/products), and ensure you enter details like privacy policy (https://example.com/privacy-policy) and terms of service (https://example.com/terms-of-service).
+1. On Stripe, create a sandbox environment (https://dashboard.stripe.com/test/products), and ensure you enter details like privacy policy (https://example.com/privacy-policy) and terms of service (https://example.com/terms-of-service). MAKE ABSOLUTELY SURE YOU LOGIN TO SANDBOX... NOT JUST TEST! CLICK THE BUTTON IN THE SIDEBAR THAT SAYS "SANDBOX", don't just navigate to the URL!
 
 2. Create a sample Price (e.g. $49/month for Starter Plan), and copy the `Price ID` from the Stripe dashboard (e.g.
    price_1RQXb4RprCIA8pPkGvSp8eoz NOT prod_SLE3hs6ILQzxrS)

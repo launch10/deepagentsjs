@@ -1,0 +1,22 @@
+# Public-facing worker configuration
+name = "landing-page-server"
+main = "src/index-public.tsx"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+observability = { enabled = true }
+
+# R2 Buckets for different environments
+[[r2_buckets]]
+binding = "DEPLOYS_R2"
+bucket_name = "deploys"
+
+[[kv_namespaces]]
+binding = "DEPLOYS_KV"
+id = "4ad010a8f77d43478998f7e0117e3588"
+
+[durable_objects]
+bindings = []
+
+[[durable_objects.migrations]]
+tag = "v1"
+deleted_classes = ["FirewallDO"]

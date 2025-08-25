@@ -57,7 +57,6 @@ export class RailsApiService {
             console.log(`Making ${method} request to: ${url}`);
             
             const response = await fetch(url, requestOptions);
-            debugger
             
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));

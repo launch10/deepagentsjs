@@ -22,6 +22,12 @@ const router = async(state: GraphState): Promise<string> => {
     return "update";
 }
 
+const bloop = async(state: GraphState): Promise<Partial<GraphState>> => {
+    return {
+        messages: [...state.messages, { content: "bloooooop", role: "assistant" }]
+    }
+}
+
 export const routerGraph = new StateGraph(GraphAnnotation)
     .addNode("addMessage", addMessage)
     .addNode("nameProject", nameProjectGraph)

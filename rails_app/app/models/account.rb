@@ -25,6 +25,8 @@ class Account < ApplicationRecord
   include Billing
   include Domains
   include Transfer
+  include Atlas::Account
+  include AccountConcerns::TrafficLimits
 
   belongs_to :owner, class_name: "User"
   has_many :account_invitations, dependent: :destroy
@@ -33,6 +35,11 @@ class Account < ApplicationRecord
   has_many :account_notifications, dependent: :destroy, class_name: "Noticed::Event"
   has_many :users, through: :account_users
   has_many :projects, dependent: :destroy
+  has_many :websites, through: :projects
+  has_many :domains
+  has_many :domain_request_counts
+  has_many :account_request_counts
+  has_one :firewall, class_name: "Cloudflare::Firewall"
 
   scope :personal, -> { where(personal: true) }
   scope :team, -> { where(personal: false) }
@@ -53,5 +60,17 @@ class Account < ApplicationRecord
 
   def owner?(user)
     owner_id == user&.id
+  end
+
+  def plan
+    subscriptions.active.order(id: :desc).limit(1).first&.plan
+  end
+
+  def current_plan_id
+    plan&.id
+  end 
+
+  def plan_limits
+    plan&.plan_limits || []
   end
 end

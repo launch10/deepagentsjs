@@ -6,7 +6,7 @@
 #  user_id      :integer          not null
 #  token        :string
 #  name         :string
-#  metadata     :jsonb            default("{}")
+#  metadata     :jsonb
 #  transient    :boolean          default("false")
 #  last_used_at :datetime
 #  expires_at   :datetime

@@ -6,7 +6,7 @@
 #  name              :string           not null
 #  amount            :integer          default("0"), not null
 #  interval          :string           not null
-#  details           :jsonb            default("{}"), not null
+#  details           :jsonb
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null
 #  trial_period_days :integer          default("0")
@@ -24,9 +24,18 @@
 #  fake_processor_id :string
 #  contact_url       :string
 #
+# Indexes
+#
+#  index_plans_on_created_at  (created_at)
+#  index_plans_on_name        (name) UNIQUE
+#
 
 class Plan < ApplicationRecord
+  include Atlas::Plan
   has_prefix_id :plan
+
+  has_many :plan_limits, dependent: :destroy
+  alias_method :limits, :plan_limits
 
   store_accessor :details, :features, :stripe_tax
   attribute :currency, default: "usd"
@@ -98,4 +107,10 @@ class Plan < ApplicationRecord
     processor_name = :braintree if processor_name.to_s == "paypal"
     send(:"#{processor_name}_id")
   end
+  # Get the usage limit for requests per month
+  def monthly_request_limit
+    limit = plan_limits.find_by(limit_type: 'requests_per_month')
+    limit&.limit || 0
+  end
+  alias_method :usage_limit, :monthly_request_limit
 end

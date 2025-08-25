@@ -6,9 +6,6 @@
 Rails.application.config.filter_parameters += [
   :passw, :email, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn, :cvv, :cvc,
   :otp_attempt,
-  :name,
-  :first_name,
-  :last_name,
   :current_sign_in_ip,
   :last_sign_in_ip,
   :access_token,

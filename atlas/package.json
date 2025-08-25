@@ -1,0 +1,49 @@
+{
+  "name": "atlas",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:public": "wrangler dev -c wrangler-public.toml --local --persist-to .wrangler/state",
+    "dev:admin": "wrangler dev -c wrangler-admin.toml --port 8788 --local --persist-to .wrangler/state",
+    "dev:all": "concurrently \"npm:dev:public\" \"npm:dev:admin\"",
+    "build": "vite build",
+    "build:public": "WRANGLER_CONFIG=wrangler-public.toml vite build",
+    "build:admin": "WRANGLER_CONFIG=wrangler-admin.toml vite build",
+    "preview": "$npm_execpath run build && vite preview",
+    "deploy:public": "$npm_execpath run build:public && wrangler deploy -c wrangler-public.toml",
+    "deploy:admin": "$npm_execpath run build:admin && wrangler deploy -c wrangler-admin.toml",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "cli": "tsx src/cli/index.ts",
+    "cli:build": "esbuild src/cli/index.ts --bundle --platform=node --target=node18 --outfile=dist/cli.js --external:miniflare",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest watch",
+    "test:ui": "vitest --ui",
+    "test:integration": "vitest run test/integration",
+    "test:models": "vitest run test/models",
+    "test:middleware": "vitest run test/middleware"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "hono": "^4.9.2",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.2.3",
+    "@cloudflare/workers-types": "^4.20250813.0",
+    "@types/node": "^24.3.0",
+    "@vitest/ui": "^3.2.4",
+    "concurrently": "^8.2.2",
+    "dotenv": "^17.2.1",
+    "esbuild": "^0.24.2",
+    "miniflare": "^3.20241205.0",
+    "toml": "^3.0.0",
+    "tsx": "^4.19.2",
+    "vite": "^6.3.5",
+    "vite-ssr-components": "^0.3.0",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4",
+    "vitest-environment-miniflare": "^2.14.4",
+    "wrangler": "^4.31.0"
+  }
+}
