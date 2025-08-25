@@ -3,15 +3,15 @@
 # Table name: account_request_counts
 #
 #  id            :integer          not null, primary key
-#  user_id       :integer          not null
+#  account_id    :integer          not null
 #  request_count :integer          not null
 #  month         :timestamptz      not null, primary key
 #  created_at    :timestamptz      not null
 #
 # Indexes
 #
-#  index_user_request_counts_on_user_id_and_month  (user_id,month)
-#  index_user_request_counts_on_user_month         (user_id,month,request_count) UNIQUE
+#  index_account_request_counts_on_account_id_and_month  (account_id,month)
+#  index_account_request_counts_on_account_month         (account_id,month,request_count) UNIQUE
 #
 
 FactoryBot.define do

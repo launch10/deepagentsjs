@@ -24,14 +24,16 @@ namespace :seeds do
     plan = Plan.last
     
     # Create subscription through the payment processor
-    subscription = account.payment_processor.subscribe(
-      plan: plan.fake_processor_id || plan.name,
-      ends_at: nil # No end date, ongoing subscription
-    )
+    unless account.plan&.present?
+      subscription = account.payment_processor.subscribe(
+        plan: plan.fake_processor_id || plan.name,
+        ends_at: nil # No end date, ongoing subscription
+      )
+      puts "Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"
+    end
     
     puts "Created user: #{user.email}"
     puts "Account: #{account.name} (ID: #{account.id})"
-    puts "Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"
 
     thread_id = SecureRandom.uuid
     project = Project.find_or_initialize_by(
@@ -44,20 +46,23 @@ namespace :seeds do
 
     website = Website.find_or_initialize_by(
       name: "My Great Site",
-      user: user,
+      account: account,
     )
     website.update(
       thread_id: thread_id,
-      project: project
+      project: project,
+      template: Template.first
     )
     
     domain = Domain.find_or_initialize_by(
-      domain: "abeverything.com",
+      domain: "example.abeverything.com",
     )
     domain.update(
       website: website,
-      user: user
+      account: account
     )
+    website.make_fixture_files
+    website.deploy!(async: false)
 
     puts "Created project: #{project.name}"
     puts "Created website: #{website.name}"

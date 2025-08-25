@@ -16,6 +16,7 @@
 #  version_path       :string
 #  environment        :string           default("production"), not null
 #  is_preview         :boolean          default("false"), not null
+#  shasum             :string
 #
 # Indexes
 #
@@ -24,6 +25,7 @@
 #  index_deploys_on_is_live                                    (is_live)
 #  index_deploys_on_is_preview                                 (is_preview)
 #  index_deploys_on_revertible                                 (revertible)
+#  index_deploys_on_shasum                                     (shasum)
 #  index_deploys_on_snapshot_id                                (snapshot_id)
 #  index_deploys_on_status                                     (status)
 #  index_deploys_on_trigger                                    (trigger)
@@ -34,8 +36,8 @@
 #
 
 class Deploy < ApplicationRecord
-  include Buildable
-  include Deployable
+  include Deploy::Buildable
+  include Deploy::Deployable
 
   STATUS = %w[pending building uploading completed failed skipped]
   ENVIRONMENTS = %w[development staging production]

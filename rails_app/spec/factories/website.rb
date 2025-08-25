@@ -6,5 +6,6 @@ FactoryBot.define do
     project { FactoryBot.create(:project) }
     account { FactoryBot.create(:account) }
     thread_id { SecureRandom.uuid }
+    template { FactoryBot.create(:template) }
   end
 end

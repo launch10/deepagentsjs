@@ -16,6 +16,7 @@
 #  version_path       :string
 #  environment        :string           default("production"), not null
 #  is_preview         :boolean          default("false"), not null
+#  shasum             :string
 #
 # Indexes
 #
@@ -24,6 +25,7 @@
 #  index_deploys_on_is_live                                    (is_live)
 #  index_deploys_on_is_preview                                 (is_preview)
 #  index_deploys_on_revertible                                 (revertible)
+#  index_deploys_on_shasum                                     (shasum)
 #  index_deploys_on_snapshot_id                                (snapshot_id)
 #  index_deploys_on_status                                     (status)
 #  index_deploys_on_trigger                                    (trigger)
@@ -507,6 +509,139 @@ RSpec.describe Deploy, type: :model do
       # The important thing is the deploy completes successfully
       expect { current_deploy.deploy! }.not_to raise_error
       expect(current_deploy.reload.status).to eq('completed')
+    end
+  end
+
+  describe 'shasum functionality' do
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
+    
+    before do
+      website_with_files.snapshot
+    end
+
+    describe 'shasum generation on create' do
+      it 'sets shasum when creating a deploy' do
+        deploy = website_with_files.deploys.create!(environment: 'development')
+        expect(deploy.shasum).to be_present
+        expect(deploy.shasum).to eq(website_with_files.generate_shasum)
+      end
+      
+      it 'generates the same shasum for the same files' do
+        deploy1 = website_with_files.deploys.create!(environment: 'development')
+        deploy2 = website_with_files.deploys.create!(environment: 'development')
+        
+        expect(deploy1.shasum).to eq(deploy2.shasum)
+      end
+      
+      it 'generates different shasums when files change' do
+        deploy1 = website_with_files.deploys.create!(environment: 'development')
+        
+        # Change a file
+        website_with_files.website_files.first.update!(content: 'changed content')
+        
+        deploy2 = website_with_files.deploys.create!(environment: 'development')
+        
+        expect(deploy1.shasum).not_to eq(deploy2.shasum)
+      end
+    end
+    
+    describe 'snapshot creation based on shasum' do
+      context 'when files have not changed' do
+        let!(:existing_deploy) do
+          deploy = website_with_files.deploys.create!(environment: 'development')
+          deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum)
+          deploy
+        end
+        
+        it 'reuses existing snapshot when shasum matches' do
+          # Expect snapshot to not be called since files haven't changed
+          expect(website_with_files).not_to receive(:snapshot)
+          
+          new_deploy = website_with_files.deploys.create!(environment: 'development')
+          expect(new_deploy.snapshot_id).to eq(existing_deploy.snapshot_id)
+        end
+      end
+      
+      context 'when files have changed' do
+        let!(:existing_deploy) do
+          deploy = website_with_files.deploys.create!(environment: 'development')
+          deploy.update!(status: 'completed')
+          deploy
+        end
+        
+        it 'creates new snapshot when shasum differs' do
+          # Change a file to trigger new shasum
+          website_with_files.website_files.first.update!(content: 'new content')
+          
+          # Don't test the exact number of calls, just that a new snapshot is created
+          initial_snapshot_count = website_with_files.snapshots.count
+          
+          new_deploy = website_with_files.deploys.create!(environment: 'development')
+          
+          expect(website_with_files.snapshots.count).to be > initial_snapshot_count
+          expect(new_deploy.shasum).not_to eq(existing_deploy.shasum)
+        end
+      end
+      
+      context 'when no previous snapshot exists' do
+        it 'creates a new snapshot' do
+          # Create a fresh website without any snapshots
+          fresh_website = create_website_with_files(account: account, project: project, files: minimal_website_files)
+          
+          # Verify a snapshot is created
+          initial_snapshot_count = fresh_website.snapshots.count
+          
+          deploy = fresh_website.deploys.create!(environment: 'development')
+          
+          expect(fresh_website.snapshots.count).to be > initial_snapshot_count
+          expect(deploy.snapshot_id).to be_present
+        end
+      end
+    end
+    
+    describe 'rebuild detection' do
+      let!(:completed_deploy) do
+        deploy = website_with_files.deploys.create!(environment: 'development')
+        deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum)
+        deploy
+      end
+      
+      it 'does not rebuild when shasum matches latest deploy' do
+        expect(website_with_files.files_changed?).to be false
+      end
+      
+      it 'rebuilds when shasum differs from latest deploy' do
+        website_with_files.website_files.first.update!(content: 'changed')
+        expect(website_with_files.files_changed?).to be true
+      end
+      
+      it 'rebuilds when new files are added' do
+        create(:website_file, website: website_with_files, path: '/new.html', content: 'new file')
+        expect(website_with_files.files_changed?).to be true
+      end
+      
+      it 'rebuilds when files are removed' do
+        website_with_files.website_files.first.destroy
+        expect(website_with_files.files_changed?).to be true
+      end
+      
+      it 'considers only completed deploys for comparison' do
+        # files_changed? should initially be false
+        expect(website_with_files.files_changed?).to be false
+        
+        # Change content
+        website_with_files.website_files.first.update!(content: 'changed content')
+        
+        # files_changed? should now be true
+        expect(website_with_files.files_changed?).to be true
+        
+        # Create a failed deploy with the changed content
+        failed_deploy = website_with_files.deploys.create!(environment: 'development')
+        failed_deploy.update!(status: 'failed')
+        
+        # files_changed? should still be true - it should ignore the failed deploy
+        expect(website_with_files.files_changed?).to be true
+      end
     end
   end
 

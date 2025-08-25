@@ -6,6 +6,7 @@ RSpec.describe "Websites", type: :request do
   let(:account) { user.owned_account || create(:account, owner: user) }
   let(:project) { create(:project, account: account) }
   let(:headers) { auth_headers_for(user) }
+  let!(:template) { create(:template) }
   
   describe "POST /websites" do
     let(:valid_params) do
@@ -86,7 +87,7 @@ RSpec.describe "Websites", type: :request do
           }.to change(WebsiteFile, :count).by(2)
 
           website = Website.last
-          files = website.files
+          files = website.website_files
           
           expect(files.map(&:path)).to contain_exactly("index.html", "styles.css")
           expect(files.find_by(path: "index.html").content).to include("Hello World")

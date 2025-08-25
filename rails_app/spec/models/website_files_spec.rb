@@ -45,25 +45,12 @@ RSpec.describe Website, type: :model do
         expect(custom_file.content).to eq("Custom styles")
         expect(custom_file).to be_a(WebsiteFile)
       end
-      
-      it "returns only website files when no template is set" do
-        website_no_template = create(:website, account: account, project: project, template: nil)
-        website_no_template.website_files.create!(path: "test.html", content: "Test")
-        
-        expect(website_no_template.files.count).to eq(1)
-        expect(website_no_template.files.first.path).to eq("test.html")
-      end
     end
     
     describe "#template_files" do
       it "returns template files through association" do
         expect(website.template_files.count).to eq(3)
         expect(website.template_files).to all(be_a(TemplateFile))
-      end
-      
-      it "returns empty relation when no template" do
-        website_no_template = create(:website, account: account, project: project, template: nil)
-        expect(website_no_template.template_files).to be_empty
       end
     end
     
@@ -99,6 +86,7 @@ RSpec.describe Website, type: :model do
     let(:user) { create(:user) }
     let(:account) { create(:account) }
     let(:project) { create(:project, account: account) }
+    let(:template) { create(:template) }
     
     it "accepts nested attributes for website_files" do
       website = Website.create!(
@@ -106,6 +94,7 @@ RSpec.describe Website, type: :model do
         thread_id: "thread_123",
         account: account,
         project: project,
+        template: template,
         website_files_attributes: [
           { path: "index.html", content: "Hello" },
           { path: "styles.css", content: "body {}" }

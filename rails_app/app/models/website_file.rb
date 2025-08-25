@@ -9,11 +9,13 @@
 #  content               :string           not null
 #  created_at            :datetime         not null
 #  updated_at            :datetime         not null
+#  shasum                :string
 #
 # Indexes
 #
 #  index_website_files_on_created_at             (created_at)
 #  index_website_files_on_file_specification_id  (file_specification_id)
+#  index_website_files_on_shasum                 (shasum)
 #  index_website_files_on_updated_at             (updated_at)
 #  index_website_files_on_website_id             (website_id)
 #
@@ -44,6 +46,7 @@ class WebsiteFile < ApplicationRecord
 
   belongs_to :website, inverse_of: :website_files
 
-  include FileSerialization
-  include FileSetters
+  include FileConcerns::Setters
+  include FileConcerns::ShasumHashable
+  include FileConcerns::Serialization
 end

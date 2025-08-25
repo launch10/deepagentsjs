@@ -24,11 +24,12 @@
 class Website < ApplicationRecord
   include Historiographer::Safe
   include Atlas::Website
+  include WebsiteConcerns::ShasumHashable
   historiographer_mode :snapshot_only
 
   belongs_to :project
   belongs_to :account
-  belongs_to :template, optional: true
+  belongs_to :template
 
   has_many :website_files, dependent: :destroy, class_name: "WebsiteFile"
   has_many :template_files, through: :template, source: :files
@@ -38,6 +39,7 @@ class Website < ApplicationRecord
   accepts_nested_attributes_for :website_files
 
   validates_presence_of :name, :project_id, :account_id
+  before_validation :set_default_template
 
   # Returns the merged set of template_files + website_files
   # Website files override template files with the same path
@@ -129,6 +131,10 @@ class Website < ApplicationRecord
     else
       'development'
     end
+  end
+
+  def set_default_template
+    self.template = Template.first if template.nil?
   end
 
 end

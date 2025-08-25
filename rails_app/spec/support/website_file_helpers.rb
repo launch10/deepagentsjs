@@ -47,14 +47,16 @@ module WebsiteFileHelpers
     }
   end
 
-  def create_website_with_files(account:, project:, files: nil)
+  def create_website_with_files(account:, project:, files: nil, template: nil)
     files ||= website_files_attributes
+    template ||= FactoryBot.create(:template)
     
     website = Website.create!(
       name: "Test Website",
       thread_id: "thread_#{SecureRandom.hex(8)}",
       account: account,
-      project: project
+      project: project,
+      template: template
     )
     
     files.each do |file_attrs|
