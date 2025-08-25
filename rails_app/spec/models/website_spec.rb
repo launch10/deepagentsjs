@@ -454,13 +454,13 @@ describe Website do
       it "enqueues a DeployWorker job" do
         expect {
           website_with_files.deploy
-        }.to change(DeployWorker.jobs, :size).by(1)
+        }.to change(Deploy::DeployWorker.jobs, :size).by(1)
       end
 
       it "passes the deploy ID to the worker" do
         website_with_files.deploy
         
-        job = DeployWorker.jobs.last
+        job = Deploy::DeployWorker.jobs.last
         deploy_id = job['args'].first
         deploy = Deploy.find(deploy_id)
         
@@ -489,7 +489,7 @@ describe Website do
           website_with_files.deploy
           
           expect {
-            DeployWorker.drain
+            Deploy::DeployWorker.drain
           }.to change { website_with_files.deploys.reload.completed.count }.by(1)
           
           deploy = website_with_files.deploys.last.reload
@@ -503,7 +503,7 @@ describe Website do
           website_with_files.deploy
           
           expect {
-            DeployWorker.drain
+            Deploy::DeployWorker.drain
           }.to raise_error(StandardError)
           
           deploy = website_with_files.reload.deploys.last
@@ -521,7 +521,7 @@ describe Website do
       it "does not enqueue a worker job" do
         expect {
           website_with_files.deploy(async: false)
-        }.not_to change(DeployWorker.jobs, :size)
+        }.not_to change(Deploy::DeployWorker.jobs, :size)
       end
 
       it "executes deploy synchronously" do
@@ -568,13 +568,13 @@ describe Website do
       it "enqueues a RollbackWorker job" do
         expect {
           website_with_files.rollback
-        }.to change(RollbackWorker.jobs, :size).by(1)
+        }.to change(Deploy::RollbackWorker.jobs, :size).by(1)
       end
 
       it "passes the correct deploy ID to the worker" do
         website_with_files.rollback
         
-        job = RollbackWorker.jobs.last
+        job = Deploy::RollbackWorker.jobs.last
         deploy_id = job['args'].first
         
         expect(deploy_id).to eq(deploy1.id)
@@ -583,7 +583,7 @@ describe Website do
       it "can rollback to a specific deploy asynchronously" do
         website_with_files.rollback(deploy1.id)
         
-        job = RollbackWorker.jobs.last
+        job = Deploy::RollbackWorker.jobs.last
         deploy_id = job['args'].first
         
         expect(deploy_id).to eq(deploy1.id)
@@ -592,7 +592,7 @@ describe Website do
       it "uses the critical queue" do
         website_with_files.rollback
         
-        job = RollbackWorker.jobs.last
+        job = Deploy::RollbackWorker.jobs.last
         expect(job['queue']).to eq('critical')
       end
 
@@ -601,7 +601,7 @@ describe Website do
           website_with_files.rollback
           
           expect {
-            RollbackWorker.drain
+            Deploy::RollbackWorker.drain
           }.not_to raise_error
           
           deploy1.reload
@@ -617,7 +617,7 @@ describe Website do
           website_with_files.rollback
           
           expect {
-            RollbackWorker.drain
+            Deploy::RollbackWorker.drain
           }.to raise_error(StandardError, /Rollback error/)
         end
       end
@@ -627,7 +627,7 @@ describe Website do
       it "does not enqueue a worker job" do
         expect {
           website_with_files.rollback(nil, async: false)
-        }.not_to change(RollbackWorker.jobs, :size)
+        }.not_to change(Deploy::RollbackWorker.jobs, :size)
       end
 
       it "executes rollback synchronously" do
@@ -645,21 +645,21 @@ describe Website do
 
   describe "worker queue configuration" do
     it "DeployWorker uses the critical queue" do
-      expect(DeployWorker.sidekiq_options['queue']).to eq(:critical)
+      expect(Deploy::DeployWorker.sidekiq_options['queue']).to eq(:critical)
     end
 
     it "RollbackWorker uses the critical queue" do
-      expect(RollbackWorker.sidekiq_options['queue']).to eq(:critical)
+      expect(Deploy::RollbackWorker.sidekiq_options['queue']).to eq(:critical)
     end
 
     it "DeployWorker has retry configuration" do
-      expect(DeployWorker.sidekiq_options['retry']).to eq(5)
-      expect(DeployWorker.sidekiq_options['backtrace']).to be true
+      expect(Deploy::DeployWorker.sidekiq_options['retry']).to eq(5)
+      expect(Deploy::DeployWorker.sidekiq_options['backtrace']).to be true
     end
 
     it "RollbackWorker has retry configuration" do
-      expect(RollbackWorker.sidekiq_options['retry']).to eq(3)
-      expect(RollbackWorker.sidekiq_options['backtrace']).to be true
+      expect(Deploy::RollbackWorker.sidekiq_options['retry']).to eq(3)
+      expect(Deploy::RollbackWorker.sidekiq_options['backtrace']).to be true
     end
   end
 
@@ -738,7 +738,7 @@ describe Website do
     it "supports async preview deploys" do
       expect {
         website_with_files.preview(async: true)
-      }.to change(DeployWorker.jobs, :size).by(1)
+      }.to change(Deploy::DeployWorker.jobs, :size).by(1)
     end
 
     it "supports different environments for preview" do

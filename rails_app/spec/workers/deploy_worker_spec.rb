@@ -2,7 +2,7 @@ require 'rails_helper'
 require 'sidekiq/testing'
 require 'support/website_file_helpers'
 
-RSpec.describe DeployWorker, type: :worker do
+RSpec.describe Deploy::DeployWorker, type: :worker do
   include WebsiteFileHelpers
   
   let(:website) do
@@ -12,7 +12,7 @@ RSpec.describe DeployWorker, type: :worker do
     site
   end
   let(:deploy) { FactoryBot.create(:deploy, website: website) }
-  let(:worker) { DeployWorker.new }
+  let(:worker) { Deploy::DeployWorker.new }
 
   before do
     Sidekiq::Testing.fake!
@@ -162,14 +162,14 @@ RSpec.describe DeployWorker, type: :worker do
   describe 'async enqueueing' do
     it 'can be enqueued' do
       expect {
-        DeployWorker.perform_async(deploy.id)
-      }.to change(DeployWorker.jobs, :size).by(1)
+        Deploy::DeployWorker.perform_async(deploy.id)
+      }.to change(Deploy::DeployWorker.jobs, :size).by(1)
     end
 
     it 'enqueues with correct arguments' do
-      DeployWorker.perform_async(deploy.id)
+      Deploy::DeployWorker.perform_async(deploy.id)
       
-      job = DeployWorker.jobs.last
+      job = Deploy::DeployWorker.jobs.last
       expect(job['args']).to eq([deploy.id])
       expect(job['queue']).to eq('critical')
     end

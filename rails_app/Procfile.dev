@@ -1,5 +1,5 @@
 #web: bin/rails server -p $PORT
 stripe: stripe listen --forward-to localhost:3000/webhooks/stripe
-worker: RAILS_ENV=development bundle exec sidekiq
+worker: bundle exec sidekiq
 vite: bin/vite dev
 zhong: zhong schedule.rb

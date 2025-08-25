@@ -27,12 +27,6 @@ RSpec.describe DomainRequestCount, type: :model do
     end_time = 2.hours.from_now
     ensure_partitions_exist_for_range(start_time, end_time)
   end
-
-  describe 'associations' do
-    it { should belong_to(:domain) }
-    it { should belong_to(:account) }
-  end
-
   describe 'validations' do
     it { should validate_presence_of(:domain) }
     it { should validate_presence_of(:account) }

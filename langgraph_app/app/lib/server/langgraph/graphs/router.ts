@@ -29,21 +29,18 @@ const bloop = async(state: GraphState): Promise<Partial<GraphState>> => {
 }
 
 export const routerGraph = new StateGraph(GraphAnnotation)
-    .addNode("bloop", bloop)
-    .addEdge(START, "bloop")
-    .addEdge("bloop", END)
-    // .addNode("addMessage", addMessage)
-    // .addNode("nameProject", nameProjectGraph)
-    // .addNode("create", createGraph)
-    // .addNode("update", updateGraph)
+    .addNode("addMessage", addMessage)
+    .addNode("nameProject", nameProjectGraph)
+    .addNode("create", createGraph)
+    .addNode("update", updateGraph)
 
-    // .addEdge(START, "addMessage")
-    // .addConditionalEdges("addMessage", router, {
-    //     "nameProject": "nameProject",
-    //     "update": "update"
-    // })
-    // .addEdge("nameProject", "create")
-    // .addEdge("create", END)
-    // .addEdge("update", END)
+    .addEdge(START, "addMessage")
+    .addConditionalEdges("addMessage", router, {
+        "nameProject": "nameProject",
+        "update": "update"
+    })
+    .addEdge("nameProject", "create")
+    .addEdge("create", END)
+    .addEdge("update", END)
 
 export const graph = routerGraph.compile(graphParams)

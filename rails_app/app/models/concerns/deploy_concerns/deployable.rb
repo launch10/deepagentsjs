@@ -11,7 +11,7 @@ module DeployConcerns
 
     def deploy(async: true)
       if async
-        DeployWorker.perform_async(id)
+        Deploy::DeployWorker.perform_async(id)
       else
         actually_deploy
       end
@@ -89,7 +89,7 @@ module DeployConcerns
     
     def rollback(async: true)
       if async
-        RollbackWorker.perform_async(id)
+        Deploy::RollbackWorker.perform_async(id)
       else
         actually_rollback
       end

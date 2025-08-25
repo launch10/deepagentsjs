@@ -13,11 +13,11 @@ Zhong.schedule do
     end
 
     every(1.day, "partition maintenance", at: '01:00') do
-      PartitionMaintenanceWorker.perform_async
+      Database::PartitionMaintenanceWorker.perform_async
     end
     
     every(1.day, "partition cleanup", at: '02:00') do
-      PartitionCleanupWorker.perform_async
+      Database::PartitionCleanupWorker.perform_async
     end
   end
 end

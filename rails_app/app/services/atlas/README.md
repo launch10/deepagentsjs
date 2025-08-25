@@ -2,6 +2,10 @@
 
 This module provides a Ruby/Rails client for the Atlas admin service (Cloudflare Worker).
 
+You DO NOT need to interact with this service directly. Models that inherit from `Atlas::Syncable` will automatically sync to Atlas when they are created, updated, or destroyed.
+
+This allows us to create websites for users, and have them automatically registered into Cloudflare KV when they are deployed.
+
 ## Configuration
 
 Configure in `config/initializers/atlas.rb` or via environment variables:
@@ -25,49 +29,49 @@ Environment variables:
 ### User Management
 
 ```ruby
-# List all users
-users = Atlas.users.list(limit: 10)
+# List all accounts
+accounts = Atlas.accounts.list(limit: 10)
 
-# Get a specific user
-user = Atlas.users.find('user-123')
+# Get a specific account
+account = Atlas.accounts.find(1)
 
-# Create a new user
-user = Atlas.users.create(
-  id: 'user-456',
+# Create a new account
+account = Atlas.accounts.create(
+  id: 'account-456',
   plan_id: 'plan-pro'
 )
 
 # Update a user
-Atlas.users.update('user-456', planId: 'plan-enterprise')
+Atlas.accounts.update(1, planId: 'plan-enterprise')
 
 # Delete a user
-Atlas.users.destroy('user-456')
+Atlas.accounts.destroy(1)
 ```
 
 ### Website Management
 
 ```ruby
 # List websites
-websites = Atlas.websites.list(user_id: 'user-123')
+websites = Atlas.websites.list(account_id: 1)
 
 # Find website by URL
 website = Atlas.websites.find_by_url('https://example.com')
 
 # Get a specific website
-website = Atlas.websites.find('website-123')
+website = Atlas.websites.find(1)
 
 # Create a new website
 website = Atlas.websites.create(
-  id: 'website-456',
+  id: 1,
   url: 'https://mywebsite.com',
-  user_id: 'user-123'
+  account_id: 1
 )
 
 # Update a website
-Atlas.websites.update('website-456', url: 'https://newdomain.com')
+Atlas.websites.update(1, url: 'https://newdomain.com')
 
 # Delete a website
-Atlas.websites.destroy('website-456')
+Atlas.websites.destroy(1)
 ```
 
 ### Plan Management
@@ -77,141 +81,18 @@ Atlas.websites.destroy('website-456')
 plans = Atlas.plans.list
 
 # Get a specific plan
-plan = Atlas.plans.find('plan-pro')
+plan = Atlas.plans.find(1)
 
 # Create a new plan
 plan = Atlas.plans.create(
-  id: 'plan-enterprise',
+  id: 1,
   name: 'Enterprise',
   usage_limit: 10000
 )
 
 # Update a plan
-Atlas.plans.update('plan-enterprise', usage_limit: 20000)
+Atlas.plans.update(1, usage_limit: 20000)
 
 # Delete a plan
-Atlas.plans.destroy('plan-enterprise')
-```
-
-### Deployment
-
-```ruby
-# Simple deployment
-Atlas.deploy(
-  website_id: 'website-123',
-  files: {
-    'index.html' => { content: '<h1>Hello World</h1>', type: 'text/html' },
-    'style.css' => { content: 'body { color: red; }', type: 'text/css' }
-  }
-)
-
-# Deploy a Rails project
-project = Project.find(123)
-Atlas.deployments.deploy_project(project)
-
-# Deploy with custom config
-Atlas.deployments.deploy(
-  website_id: 'website-123',
-  files: files_hash,
-  config: {
-    projectId: project.id,
-    version: '2.0.0',
-    metadata: { environment: 'production' }
-  }
-)
-```
-
-### Health Checks
-
-```ruby
-# Check service health
-status = Atlas.health.check
-# => { status: 'healthy' }
-
-# Root health check
-status = Atlas.health.root_check
-```
-
-## Error Handling
-
-```ruby
-begin
-  website = Atlas.websites.find('website-123')
-rescue Atlas::BaseService::NotFoundError => e
-  # Handle 404 errors
-  Rails.logger.error "Website not found: #{e.message}"
-rescue Atlas::BaseService::ValidationError => e
-  # Handle validation errors (400)
-  Rails.logger.error "Invalid request: #{e.message}"
-rescue Atlas::BaseService::AuthenticationError => e
-  # Handle auth errors (401/403)
-  Rails.logger.error "Authentication failed: #{e.message}"
-rescue Atlas::BaseService::ServerError => e
-  # Handle server errors (500+)
-  Rails.logger.error "Server error: #{e.message}"
-rescue Atlas::BaseService::Error => e
-  # Handle any other Atlas errors
-  Rails.logger.error "Atlas error: #{e.message}"
-end
-```
-
-## Testing
-
-In your specs, you can mock the Atlas services:
-
-```ruby
-# spec/support/atlas_helpers.rb
-RSpec.configure do |config|
-  config.before(:each) do
-    Atlas.reset!
-  end
-end
-
-# In your specs
-RSpec.describe MyController do
-  before do
-    allow(Atlas.websites).to receive(:create).and_return({ id: 'website-123' })
-  end
-
-  it 'creates a website' do
-    # Your test
-  end
-end
-```
-
-## Logging
-
-All requests are automatically logged with timing information:
-
-```
-[Atlas] GET /api/internal/websites - 125.5ms
-[Atlas] POST /api/internal/deploy - 2500.0ms
-```
-
-Debug logging (with params) is available in development mode.
-
-## Integration with ActiveJob
-
-For long-running deployments, consider using background jobs:
-
-```ruby
-class DeployProjectJob < ApplicationJob
-  def perform(project_id)
-    project = Project.find(project_id)
-
-    result = Atlas.deployments.deploy_project(project)
-
-    project.update!(
-      deployment_status: 'deployed',
-      deployed_at: Time.current,
-      deployment_result: result
-    )
-  rescue Atlas::BaseService::Error => e
-    project.update!(
-      deployment_status: 'failed',
-      deployment_error: e.message
-    )
-    raise # Re-raise for job retry logic
-  end
-end
+Atlas.plans.destroy(1)
 ```

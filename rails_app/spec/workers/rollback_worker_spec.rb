@@ -2,7 +2,7 @@ require 'rails_helper'
 require 'sidekiq/testing'
 require 'support/website_file_helpers'
 
-RSpec.describe RollbackWorker, type: :worker do
+RSpec.describe Deploy::RollbackWorker, type: :worker do
   include WebsiteFileHelpers
   
   let(:website) do
@@ -20,7 +20,7 @@ RSpec.describe RollbackWorker, type: :worker do
     )
     d
   end
-  let(:worker) { RollbackWorker.new }
+  let(:worker) { Deploy::RollbackWorker.new }
 
   before do
     Sidekiq::Testing.fake!
@@ -169,14 +169,14 @@ RSpec.describe RollbackWorker, type: :worker do
   describe 'async enqueueing' do
     it 'can be enqueued' do
       expect {
-        RollbackWorker.perform_async(deploy.id)
-      }.to change(RollbackWorker.jobs, :size).by(1)
+        Deploy::RollbackWorker.perform_async(deploy.id)
+      }.to change(Deploy::RollbackWorker.jobs, :size).by(1)
     end
 
     it 'enqueues with correct arguments' do
-      RollbackWorker.perform_async(deploy.id)
+      Deploy::RollbackWorker.perform_async(deploy.id)
       
-      job = RollbackWorker.jobs.last
+      job = Deploy::RollbackWorker.jobs.last
       expect(job['args']).to eq([deploy.id])
       expect(job['queue']).to eq('critical')
     end
