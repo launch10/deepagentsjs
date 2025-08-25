@@ -25,6 +25,7 @@ class Website < ApplicationRecord
   include Historiographer::Safe
   include Atlas::Website
   include WebsiteConcerns::ShasumHashable
+  include WebsiteConcerns::FileManagement
   historiographer_mode :snapshot_only
 
   belongs_to :project
@@ -36,9 +37,9 @@ class Website < ApplicationRecord
   has_many :domains, dependent: :destroy
   has_many :deploys, dependent: :destroy
   
-  accepts_nested_attributes_for :website_files
+  accepts_nested_attributes_for :website_files, allow_destroy: true
 
-  validates_presence_of :name, :project_id, :account_id
+  validates_presence_of :name, :project_id, :account_id, :template
   before_validation :set_default_template
 
   # Returns the merged set of template_files + website_files
@@ -67,8 +68,8 @@ class Website < ApplicationRecord
     deploy_record.deploy(async: async)
   end
 
-  def deploy!(async: true)
-    deploy(async: async)
+  def deploy!(async: true, environment: nil)
+    deploy(async: async, environment: environment)
   end
 
   def preview(async: true, environment: nil)
@@ -77,8 +78,8 @@ class Website < ApplicationRecord
     deploy_record.deploy(async: async)
   end
 
-  def preview!
-    preview(async: false)
+  def preview!(async: true, environment: nil)
+    preview(async: async, environment: environment)
   end
 
   def rollback(deploy_id = nil, async: true)
@@ -106,6 +107,8 @@ class Website < ApplicationRecord
 
   # Creates website_files from the fixture
   def make_fixture_files
+    website_files.destroy_all
+
     fixture_files = JSON.parse(File.read(Rails.root.join('spec/fixtures/valid_website_files.json')))
     
     fixture_files.each do |file_data|

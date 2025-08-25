@@ -46164,6 +46164,13 @@ CREATE INDEX index_website_files_on_website_id ON public.website_files USING btr
 
 
 --
+-- Name: index_website_files_on_website_id_and_path_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_website_files_on_website_id_and_path_unique ON public.website_files USING btree (website_id, path);
+
+
+--
 -- Name: index_website_histories_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -72633,6 +72640,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20250825171143'),
 ('20250825152350'),
 ('20250825152347'),
 ('20250825152345'),

@@ -13,11 +13,12 @@
 #
 # Indexes
 #
-#  index_website_files_on_created_at             (created_at)
-#  index_website_files_on_file_specification_id  (file_specification_id)
-#  index_website_files_on_shasum                 (shasum)
-#  index_website_files_on_updated_at             (updated_at)
-#  index_website_files_on_website_id             (website_id)
+#  index_website_files_on_created_at                  (created_at)
+#  index_website_files_on_file_specification_id       (file_specification_id)
+#  index_website_files_on_shasum                      (shasum)
+#  index_website_files_on_updated_at                  (updated_at)
+#  index_website_files_on_website_id                  (website_id)
+#  index_website_files_on_website_id_and_path_unique  (website_id,path) UNIQUE
 #
 
 # = Schema Information
@@ -45,6 +46,9 @@ class WebsiteFile < ApplicationRecord
   historiographer_mode :snapshot_only
 
   belongs_to :website, inverse_of: :website_files
+  
+  validates :path, presence: true, uniqueness: { scope: :website_id, message: "already exists for this website" }
+  validates :content, presence: true
 
   include FileConcerns::Setters
   include FileConcerns::ShasumHashable

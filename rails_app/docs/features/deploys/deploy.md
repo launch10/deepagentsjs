@@ -2,14 +2,26 @@
 
 Users can deploy their own websites via our Cloudflare account.
 
+## Example
+
+```ruby
+website.create!(name: "Test Website", thread_id: "thread_id", template_id: 1)
+website.website_files.create(path: "/index.html", content: "<h1>Test Website</h1>")
+website.domains.create(domain: "example.abeverything.com", account: Account.first)
+website.deploy! # Deploys to r2 bucket deploys/production/<website_id>
+# Can now be visited from https://example.abeverything.com
+
+website.deploy!(environment: "development") # Deploys to r2 bucket deploys/development/<website_id>
+# Can now be visited from https://example.abeverything.com?cloudEnv=development
+```
+
 ## Background
 
 The `atlas` project in this monorepo is responsible for serving the user's pages.
 
-A few of our core models (User, Website, Domain, Plan) are synced to Atlas via the `Atlas::Syncable` mixin, which
-enqueues Sidekiq jobs to sync the models to Cloudflare's KV store.
+A few of our core models (Account, Website, Domain, Plan) are synced to Atlas via the `Atlas::Syncable` mixin, which syncs the models to Cloudflare's KV store.
 
-We have R2 buckets that serve the user's built pages, which are organized into folders for each environment (development, production, staging).
+When a website is deployed, the files are uploaded to R2, which is served from Cloudflare's edge networks.
 
 ## How It Fits Together
 
