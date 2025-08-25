@@ -27,8 +27,22 @@ app.get('*', async (c) => {
   
   // Check query string for cloudEnv parameter
   const cloudEnv = url.searchParams.get('cloudEnv');
-  const isSpecificEnv = cloudEnv !== null && allowedEnvs.includes(cloudEnv);
-  let env = isSpecificEnv ? cloudEnv : undefined;
+  
+  // For asset requests, check the Referer header to inherit cloudEnv from the parent page
+  let env: string | undefined;
+  if (cloudEnv && allowedEnvs.includes(cloudEnv)) {
+    env = cloudEnv;
+  } else if (pathname.includes('/assets/') || pathname.endsWith('.js') || pathname.endsWith('.css')) {
+    // Check referer header for cloudEnv parameter
+    const referer = c.req.header('referer');
+    if (referer) {
+      const refererUrl = new URL(referer);
+      const refererCloudEnv = refererUrl.searchParams.get('cloudEnv');
+      if (refererCloudEnv && allowedEnvs.includes(refererCloudEnv)) {
+        env = refererCloudEnv;
+      }
+    }
+  }
   
   // Remove preview prefix to get the actual domain for lookup
   let lookupHostname = hostname;
@@ -61,6 +75,7 @@ app.get('*', async (c) => {
   
   // 4. Construct the object key.
   const objectKey = `${envBucket}/${website.id}/${targetDir}/${pathname}`;
+  console.log(`objectKey: ${objectKey}, environment: ${envBucket}`);
   requestLogger.debug(`objectKey: ${objectKey}, environment: ${envBucket}`);
   
   let r2Bucket: R2Bucket = c.env.DEPLOYS_R2;
