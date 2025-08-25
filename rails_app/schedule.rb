@@ -12,7 +12,7 @@ Zhong.schedule do
       Domain.monitor_domains
     end
 
-    every(1.day, at: '1:00 am') do
+    every(1.day, "partition maintenance", at: '01:00') do
       PartitionMaintenanceWorker.perform_async
     end
   end
