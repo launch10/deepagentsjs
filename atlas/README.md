@@ -30,7 +30,7 @@ atlas/
 │   ├── api/                  # Internal API (admin worker only)
 │   │   ├── index.ts          # API setup with JWT auth
 │   │   └── routes/           # CRUD endpoints
-│   │       ├── user.ts
+│   │       ├── account.ts
 │   │       ├── website.ts
 │   │       └── plan.ts
 │   ├── sdk/                  # Shared SDK for KV operations
@@ -41,7 +41,7 @@ atlas/
 │   │   └── commands/         # CLI commands
 │   └── models/               # Data models
 │       ├── base.ts           # Base model with indexing
-│       ├── user.ts
+│       ├── account.ts
 │       ├── website.ts
 │       └── plan.ts
 ├── wrangler-public.toml      # Public worker config
@@ -51,7 +51,7 @@ atlas/
 
 ## Interaction With Rails Server
 
-Rails hits the internal admin API to create/update users, websites, plans, and deploy landing pages. The admin API is protected by IP allowlisting and JWT authentication.
+Rails hits the internal admin API to create/update accounts, websites, plans, and deploy landing pages. The admin API is protected by IP allowlisting and JWT authentication.
 
 ## Development
 
@@ -72,8 +72,8 @@ pnpm run dev:public  # Public worker on http://localhost:8787
 pnpm run dev:admin   # Admin worker on http://localhost:8788
 
 # Use the CLI for local management
-pnpm cli set user --id 1 --org-id org1 --plan-id starter
-pnpm cli get user 1
+pnpm cli set account --id 1 --org-id org1 --plan-id starter
+pnpm cli get account 1
 ```
 
 ### Basic Local Setup
@@ -83,8 +83,8 @@ pnpm cli get user 1
 pnpm cli set website --id 1 --url localhost:8787 -t 1
 pnpm cli set website --id 2 --url localhost:9898 -t 2
 pnpm cli set website --id 3 --url c0e82a814b8a.ngrok-free.app -t 1
-pnpm cli set user --id 1 --org-id 1 --plan-id 1
-pnpm cli set user --id 2 --org-id 2 --plan-id 2
+pnpm cli set account --id 1 --org-id 1 --plan-id 1
+pnpm cli set account --id 2 --org-id 2 --plan-id 2
 pnpm cli set plan --id 1 --name "starter" --limit 1000000
 pnpm cli set plan --id 2 --name "pro" --limit 5000000
 pnpm cli set plan --id 3 --name "enterprise" --limit 20000000
@@ -154,7 +154,7 @@ jwt_token = JWT.encode(
 
 ```ruby
 # Create/Update User
-HTTParty.post("https://admin-api.internal.nichefinder.com/api/internal/users",
+HTTParty.post("https://admin.abeverything.com/api/internal/accounts",
   headers: { 'Authorization' => "Bearer #{jwt_token}" },
   body: { id: "user-1", orgId: "org-1", planId: "starter" }
 )
@@ -178,23 +178,23 @@ The CLI is for local development and debugging only:
 
 ```bash
 # Set operations
-pnpm cli set user --id 1 --org-id org1 --plan-id starter
-pnpm cli set website --id 1 --url example.com --user-id 1
+pnpm cli set account --id 1 --org-id org1 --plan-id starter
+pnpm cli set website --id 1 --url example.com --account-id 1
 pnpm cli set plan --id starter --name "Starter" --limit 1000000
-pnpm cli set website --id 1 --url c0e82a814b8a.ngrok-free.app --user-id 1
+pnpm cli set website --id 1 --url c0e82a814b8a.ngrok-free.app --account-id 1
 
 # Get operations
-pnpm cli get user 1
+pnpm cli get account 1
 pnpm cli get website 1
 pnpm cli get website --by-url example.com
 
 # List operations
-pnpm cli list users
-pnpm cli list websites --user 1
+pnpm cli list accounts
+pnpm cli list websites --account-id 1
 pnpm cli list plans
 
 # Delete operations
-pnpm cli delete user 1 --force
+pnpm cli delete account 1 --force
 pnpm cli delete website 1 --force
 ```
 
@@ -203,7 +203,8 @@ pnpm cli delete website 1 --force
 ### Development (.dev.vars)
 
 ```env
-JWT_SECRET=your-development-secret
+ATLAS_API_SECRET=development-secret
+CLOUDFLARE_API_TOKEN=development-token
 NODE_ENV=development
 LOG_LEVEL=debug
 ```
@@ -212,7 +213,7 @@ LOG_LEVEL=debug
 
 ```bash
 # Set secrets for admin worker
-wrangler secret put JWT_SECRET -c wrangler-admin.toml
+wrangler secret put ATLAS_API_SECRET -c wrangler-admin.toml
 wrangler secret put ALLOWED_IPS -c wrangler-admin.toml
 
 # Set secrets for public worker (if needed)
