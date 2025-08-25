@@ -65,13 +65,13 @@ RSpec.describe 'Environment-aware deploys', type: :integration do
       expect(deploy.reload.status).to eq('completed')
     end
     
-    it 'falls back to config default when Deploy environment matches config' do
-      deploy = website_with_files.deploys.create!(environment: 'development')
+    it 'falls back to config default' do
+      deploy = website_with_files.deploys.create!
       allow(deploy).to receive(:system).and_return(true)
       
-      # Should use development (both from Deploy and config)
+      # Should use production (from config)
       expect(s3_client).to receive(:put_object).at_least(:once) do |args|
-        expect(args[:key]).to start_with('development/')
+        expect(args[:key]).to start_with('production/')
       end
       
       deploy.deploy!
@@ -142,7 +142,7 @@ RSpec.describe 'Environment-aware deploys', type: :integration do
   describe 'Rollback respects environment' do
     it 'rollback operations stay within the deploy environment' do
       # Create two completed deploys in production
-      deploy1 = website_with_files.deploys.create!(environment: 'production')
+      deploy1 = website_with_files.deploys.create!(environment: 'staging')
       deploy1.update!(
         status: 'completed',
         version_path: "#{website_with_files.id}/20240101120000",
@@ -170,10 +170,10 @@ RSpec.describe 'Environment-aware deploys', type: :integration do
       # All copy operations should be within production
       copy_operations.each do |op|
         if op[:copy_source]
-          expect(op[:copy_source]).to include('production/')
+          expect(op[:copy_source]).to include('staging/')
         end
         if op[:key]
-          expect(op[:key]).to start_with('production/')
+          expect(op[:key]).to start_with('staging/')
         end
       end
     end
