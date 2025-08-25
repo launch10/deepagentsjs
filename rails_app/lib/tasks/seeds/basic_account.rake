@@ -62,7 +62,6 @@ namespace :seeds do
       account: account
     )
     website.make_fixture_files
-    website.deploy!(async: false)
 
     puts "Created project: #{project.name}"
     puts "Created website: #{website.name}"
