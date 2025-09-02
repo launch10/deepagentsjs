@@ -18,7 +18,7 @@ namespace :seeds do
     
     # Set up payment processor for the account
     # Use fake_processor for development/testing
-    account.set_payment_processor :fake_processor, allow_fake: true
+    account.set_payment_processor :stripe, allow_fake: true
     
     # Subscribe to a plan
     plan = Plan.last
@@ -26,7 +26,7 @@ namespace :seeds do
     # Create subscription through the payment processor
     unless account.plan&.present?
       subscription = account.payment_processor.subscribe(
-        plan: plan.fake_processor_id || plan.name,
+        plan: plan.stripe_id,
         ends_at: nil # No end date, ongoing subscription
       )
       puts "Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"

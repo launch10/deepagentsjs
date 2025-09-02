@@ -11,4 +11,6 @@
 #
 
 class ThemeLabel < ApplicationRecord
+  has_many :theme_to_theme_labels, dependent: :destroy
+  has_many :themes, through: :theme_to_theme_labels
 end
