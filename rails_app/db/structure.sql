@@ -11143,7 +11143,7 @@ CREATE TABLE public.file_specifications (
     canonical_path character varying,
     description character varying,
     filetype character varying,
-    subtype character varying,
+    component_type character varying,
     language character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
@@ -45604,17 +45604,17 @@ CREATE INDEX index_file_specifications_on_canonical_path ON public.file_specific
 
 
 --
+-- Name: index_file_specifications_on_component_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_file_specifications_on_component_type ON public.file_specifications USING btree (component_type);
+
+
+--
 -- Name: index_file_specifications_on_filetype; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_file_specifications_on_filetype ON public.file_specifications USING btree (filetype);
-
-
---
--- Name: index_file_specifications_on_subtype; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_file_specifications_on_subtype ON public.file_specifications USING btree (subtype);
 
 
 --
@@ -72640,6 +72640,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20250910211652'),
 ('20250825171143'),
 ('20250825152350'),
 ('20250825152347'),

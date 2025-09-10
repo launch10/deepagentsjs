@@ -6,7 +6,7 @@
 #  canonical_path :string
 #  description    :string
 #  filetype       :string
-#  subtype        :string
+#  component_type :string
 #  language       :string
 #  created_at     :datetime         not null
 #  updated_at     :datetime         not null
@@ -14,8 +14,8 @@
 # Indexes
 #
 #  index_file_specifications_on_canonical_path  (canonical_path)
+#  index_file_specifications_on_component_type  (component_type)
 #  index_file_specifications_on_filetype        (filetype)
-#  index_file_specifications_on_subtype         (subtype)
 #
 
 class FileSpecification < ApplicationRecord

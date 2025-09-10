@@ -13,8 +13,11 @@ class WebsitesController < SubscribedController
   private
 
   def website_params
-    params.require(:website).permit(:name, :thread_id, :project_id, 
-      website_files_attributes: [:path, :content])
+    params.require(:website).permit(
+      :name, 
+      :thread_id, 
+      :project_id, 
+      website_files_attributes: [:path, :content, :file_specification_id])
   end
 
   def website_json(website)
@@ -29,7 +32,8 @@ class WebsitesController < SubscribedController
         {
           id: file.id,
           path: file.path,
-          content: file.content
+          content: file.content,
+          file_specification_id: file.file_specification_id
         }
       end
     }
