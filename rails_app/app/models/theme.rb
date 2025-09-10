@@ -15,4 +15,12 @@
 #
 
 class Theme < ApplicationRecord
+  has_many :theme_to_theme_labels, dependent: :destroy
+  has_many :theme_labels, through: :theme_to_theme_labels
+  alias_method :labels, :theme_labels
+
+  scope :with_label, ->(label) do 
+    joins(theme_labels: :theme_to_theme_labels).
+      where("theme_labels.name = ?", label)
+  end
 end

@@ -2,7 +2,7 @@ namespace :seeds do
   desc "Create a basic account"
   task basic_account: :environment do
     user = User.find_or_initialize_by(
-      email: "brett@abeverything.com",
+      email: "test_user@abeverything.com",
     )
     user.update(
       password: "password",
@@ -16,17 +16,21 @@ namespace :seeds do
     # Account is automatically created via after_create callback
     account = user.owned_account
     
-    # Set up payment processor for the account
-    # Use fake_processor for development/testing
-    account.set_payment_processor :fake_processor, allow_fake: true
-    
     # Subscribe to a plan
     plan = Plan.last
     
     # Create subscription through the payment processor
     unless account.plan&.present?
+      # Use fake_processor for development/test, stripe for production
+      if Rails.env.development? || Rails.env.test?
+        account.set_payment_processor :fake_processor
+        account.payment_processor.payment_method_token = 'fake_token'
+      else
+        account.set_payment_processor :stripe
+      end
+
       subscription = account.payment_processor.subscribe(
-        plan: plan.fake_processor_id || plan.name,
+        plan: plan.stripe_id,
         ends_at: nil # No end date, ongoing subscription
       )
       puts "Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"

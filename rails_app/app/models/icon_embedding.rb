@@ -16,4 +16,7 @@
 #
 
 class IconEmbedding < ApplicationRecord
+  has_neighbors :embedding
+
+  scope :random, -> { order(Arel.sql("RANDOM()")) }
 end
