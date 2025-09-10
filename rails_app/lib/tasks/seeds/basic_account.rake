@@ -16,6 +16,10 @@ namespace :seeds do
     # Account is automatically created via after_create callback
     account = user.owned_account
     
+    # Set up payment processor for the account
+    # Use fake_processor for development/testing
+    account.set_payment_processor :stripe, allow_fake: true
+    
     # Subscribe to a plan
     plan = Plan.last
     
