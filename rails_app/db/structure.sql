@@ -12287,7 +12287,8 @@ CREATE TABLE public.website_file_histories (
     history_ended_at timestamp(6) without time zone,
     history_user_id integer,
     snapshot_id character varying,
-    shasum character varying
+    shasum character varying,
+    content_tsv tsvector
 );
 
 
@@ -12346,7 +12347,8 @@ CREATE TABLE public.website_histories (
     history_user_id integer,
     snapshot_id character varying,
     thread_id character varying,
-    template_id integer
+    template_id integer,
+    theme_id integer
 );
 
 
@@ -45363,6 +45365,13 @@ CREATE INDEX idx_template_files_path_trgm ON public.template_files USING gin (pa
 
 
 --
+-- Name: idx_website_file_histories_content_tsv; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_website_file_histories_content_tsv ON public.website_file_histories USING gin (content_tsv);
+
+
+--
 -- Name: idx_website_files_content_tsv; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -46340,6 +46349,13 @@ CREATE INDEX index_website_histories_on_snapshot_id ON public.website_histories 
 --
 
 CREATE INDEX index_website_histories_on_template_id ON public.website_histories USING btree (template_id);
+
+
+--
+-- Name: index_website_histories_on_theme_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_histories_on_theme_id ON public.website_histories USING btree (theme_id);
 
 
 --
@@ -72770,6 +72786,8 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20250911224320'),
+('20250911224216'),
 ('20250911222652'),
 ('20250911222149'),
 ('20250911144717'),

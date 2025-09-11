@@ -33,7 +33,7 @@ class Website < ApplicationRecord
   belongs_to :project
   belongs_to :account
   belongs_to :template
-  belongs_to :theme
+  belongs_to :theme, optional: true
 
   has_many :website_files, dependent: :destroy, class_name: "WebsiteFile"
   has_many :template_files, through: :template, source: :files
@@ -44,20 +44,13 @@ class Website < ApplicationRecord
 
   validates_presence_of :name, :project_id, :account_id, :template
   before_validation :set_default_template
+  before_validation :set_default_theme
 
   # Returns the merged set of template_files + website_files
   # Website files override template files with the same path
+  # Uses the code_files view for better performance
   def files
-    return website_files unless template.present?
-    
-    template_files_by_path = template_files.index_by(&:path)
-    website_files_by_path = website_files.index_by(&:path)
-    
-    # Merge, with website files taking precedence
-    all_paths = (template_files_by_path.keys + website_files_by_path.keys).uniq
-    all_paths.map do |path|
-      website_files_by_path[path] || template_files_by_path[path]
-    end
+    CodeFile.where(website_id: id)
   end
   
   def build
@@ -141,6 +134,10 @@ class Website < ApplicationRecord
 
   def set_default_template
     self.template = Template.first if template.nil?
+  end
+
+  def set_default_theme
+    self.theme = Theme.first if theme.nil?
   end
 
 end

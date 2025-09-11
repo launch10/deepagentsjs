@@ -31,19 +31,22 @@ RSpec.describe Website, type: :model do
       it "prioritizes website files over template files" do
         index_file = website.files.find { |f| f.path == "index.html" }
         expect(index_file.content).to eq("Website index")
-        expect(index_file).to be_a(WebsiteFile)
+        expect(index_file).to be_a(CodeFile)
+        expect(index_file.source).to eq("website")
       end
       
       it "includes template files not overridden by website" do
         styles_file = website.files.find { |f| f.path == "styles.css" }
         expect(styles_file.content).to eq("Template styles")
-        expect(styles_file).to be_a(TemplateFile)
+        expect(styles_file).to be_a(CodeFile)
+        expect(styles_file.source).to eq("template")
       end
       
       it "includes website-only files" do
         custom_file = website.files.find { |f| f.path == "custom.css" }
         expect(custom_file.content).to eq("Custom styles")
-        expect(custom_file).to be_a(WebsiteFile)
+        expect(custom_file).to be_a(CodeFile)
+        expect(custom_file.source).to eq("website")
       end
     end
     

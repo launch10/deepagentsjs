@@ -1,6 +1,7 @@
 class WebsitesController < SubscribedController
   def create
     website = current_account.websites.new(website_params)
+    website.account_id = current_account.id
     
     if website.save
       render json: website_json(website), status: :created
@@ -46,10 +47,10 @@ class WebsitesController < SubscribedController
       updated_at: website.updated_at,
       files: website.files.map do |file|
         {
-          id: file.id,
           path: file.path,
           content: file.content,
-          file_specification_id: file.file_specification_id
+          file_specification_id: file.file_specification_id,
+          source: file.source
         }
       end
     }
