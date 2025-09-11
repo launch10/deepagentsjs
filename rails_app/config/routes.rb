@@ -1,12 +1,12 @@
 require 'sidekiq/web'
 require "zhong/web"
 
-Rails.application.routes.draw do
-  ADMIN_ONLY ||= lambda do |request|
-    request.env["warden"].authenticate!(scope: :user)
-    request.env["warden"].user(:user).admin?
-  end
+ADMIN_ONLY ||= lambda do |request|
+  request.env["warden"].authenticate!(scope: :user)
+  request.env["warden"].user(:user).admin?
+end
 
+Rails.application.routes.draw do
   constraints ADMIN_ONLY do
     mount Sidekiq::Web => "/sidekiq"
     mount Zhong::Web => "/zhong"
@@ -54,5 +54,6 @@ Rails.application.routes.draw do
   resources :projects, controller: :projects, param: :thread_id do 
     get :files, on: :member
   end
-  resources :websites, only: [:create]
+  resources :websites, only: [:update]
+
 end

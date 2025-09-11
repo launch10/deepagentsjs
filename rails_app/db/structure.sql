@@ -11863,7 +11863,8 @@ CREATE TABLE public.template_files (
     content text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    shasum character varying
+    shasum character varying,
+    file_specification_id integer
 );
 
 
@@ -45919,6 +45920,13 @@ CREATE INDEX index_sections_on_page_id ON public.sections USING btree (page_id);
 
 
 --
+-- Name: index_template_files_on_file_specification_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_template_files_on_file_specification_id ON public.template_files USING btree (file_specification_id);
+
+
+--
 -- Name: index_template_files_on_path; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -72640,6 +72648,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20250911144717'),
 ('20250911015053'),
 ('20250910211652'),
 ('20250825171143'),
