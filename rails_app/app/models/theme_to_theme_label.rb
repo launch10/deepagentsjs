@@ -8,10 +8,10 @@
 #
 # Indexes
 #
-#  index_themes_to_theme_labels_on_theme_id                        (theme_id)
-#  index_themes_to_theme_labels_on_theme_label_id                  (theme_label_id)
-#  index_themes_to_theme_labels_on_theme_id_and_theme_label_id     (theme_id,theme_label_id) UNIQUE
-
+#  index_themes_to_theme_labels_on_theme_id                     (theme_id)
+#  index_themes_to_theme_labels_on_theme_id_and_theme_label_id  (theme_id,theme_label_id)
+#  index_themes_to_theme_labels_on_theme_label_id               (theme_label_id)
+#
 
 class ThemeToThemeLabel < ApplicationRecord
   self.table_name = "themes_to_theme_labels"

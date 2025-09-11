@@ -11782,7 +11782,6 @@ CREATE TABLE public.projects (
     id bigint NOT NULL,
     name character varying NOT NULL,
     account_id bigint NOT NULL,
-    theme_id bigint,
     thread_id character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
@@ -12284,7 +12283,8 @@ CREATE TABLE public.websites (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     thread_id character varying,
-    template_id bigint
+    template_id bigint,
+    theme_id integer
 );
 
 
@@ -45877,13 +45877,6 @@ CREATE INDEX index_projects_on_name ON public.projects USING btree (name);
 
 
 --
--- Name: index_projects_on_theme_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_projects_on_theme_id ON public.projects USING btree (theme_id);
-
-
---
 -- Name: index_projects_on_thread_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -46280,6 +46273,13 @@ CREATE INDEX index_websites_on_project_id ON public.websites USING btree (projec
 --
 
 CREATE INDEX index_websites_on_template_id ON public.websites USING btree (template_id);
+
+
+--
+-- Name: index_websites_on_theme_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_websites_on_theme_id ON public.websites USING btree (theme_id);
 
 
 --
@@ -72640,6 +72640,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20250911015053'),
 ('20250910211652'),
 ('20250825171143'),
 ('20250825152350'),

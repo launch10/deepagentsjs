@@ -10,6 +10,7 @@
 #  updated_at  :datetime         not null
 #  thread_id   :string
 #  template_id :integer
+#  theme_id    :integer
 #
 # Indexes
 #
@@ -18,6 +19,7 @@
 #  index_websites_on_name         (name)
 #  index_websites_on_project_id   (project_id)
 #  index_websites_on_template_id  (template_id)
+#  index_websites_on_theme_id     (theme_id)
 #  index_websites_on_thread_id    (thread_id) UNIQUE
 #
 
@@ -31,6 +33,7 @@ class Website < ApplicationRecord
   belongs_to :project
   belongs_to :account
   belongs_to :template
+  belongs_to :theme
 
   has_many :website_files, dependent: :destroy, class_name: "WebsiteFile"
   has_many :template_files, through: :template, source: :files
