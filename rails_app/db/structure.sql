@@ -10,6 +10,20 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching based on trigrams';
+
+
+--
 -- Name: vector; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -21,6 +35,25 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 --
 
 COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access methods';
+
+
+--
+-- Name: update_content_tsv(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_content_tsv() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+        BEGIN
+            -- Use english configuration for better programming term handling
+            -- Also include file path in search
+            NEW.content_tsv := to_tsvector('english', 
+              COALESCE(NEW.content, '') || ' ' || 
+              COALESCE(regexp_replace(NEW.path, '[/.]', ' ', 'g'), '')
+            );
+            RETURN NEW;
+        END;
+        $$;
 
 
 SET default_tablespace = '';
@@ -535,6 +568,102 @@ CREATE SEQUENCE public.cloudflare_firewalls_id_seq
 --
 
 ALTER SEQUENCE public.cloudflare_firewalls_id_seq OWNED BY public.cloudflare_firewalls.id;
+
+
+--
+-- Name: template_files; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.template_files (
+    id bigint NOT NULL,
+    template_id bigint,
+    path character varying,
+    content text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    shasum character varying,
+    file_specification_id integer,
+    content_tsv tsvector
+);
+
+
+--
+-- Name: website_files; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.website_files (
+    id bigint NOT NULL,
+    website_id bigint NOT NULL,
+    file_specification_id bigint,
+    path character varying NOT NULL,
+    content character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    shasum character varying,
+    content_tsv tsvector
+);
+
+
+--
+-- Name: websites; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.websites (
+    id bigint NOT NULL,
+    name character varying,
+    project_id bigint,
+    account_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    thread_id character varying,
+    template_id bigint,
+    theme_id integer
+);
+
+
+--
+-- Name: code_files; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.code_files AS
+ WITH merged_files AS (
+         SELECT wf.website_id,
+            wf.path,
+            wf.content,
+            wf.content_tsv,
+            wf.shasum,
+            wf.file_specification_id,
+            wf.created_at,
+            wf.updated_at,
+            'website'::text AS source
+           FROM public.website_files wf
+        UNION ALL
+         SELECT w.id AS website_id,
+            tf.path,
+            tf.content,
+            tf.content_tsv,
+            tf.shasum,
+            tf.file_specification_id,
+            tf.created_at,
+            tf.updated_at,
+            'template'::text AS source
+           FROM (public.template_files tf
+             JOIN public.websites w ON ((w.template_id = tf.template_id)))
+          WHERE (NOT (EXISTS ( SELECT 1
+                   FROM public.website_files wf2
+                  WHERE ((wf2.website_id = w.id) AND ((wf2.path)::text = (tf.path)::text)))))
+        )
+ SELECT website_id,
+    path,
+    content,
+    content_tsv,
+    shasum,
+    file_specification_id,
+    source,
+    created_at,
+    updated_at
+   FROM merged_files
+  ORDER BY website_id, path;
 
 
 --
@@ -11853,22 +11982,6 @@ ALTER SEQUENCE public.sections_id_seq OWNED BY public.sections.id;
 
 
 --
--- Name: template_files; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.template_files (
-    id bigint NOT NULL,
-    template_id bigint,
-    path character varying,
-    content text,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    shasum character varying,
-    file_specification_id integer
-);
-
-
---
 -- Name: template_files_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -12198,22 +12311,6 @@ ALTER SEQUENCE public.website_file_histories_id_seq OWNED BY public.website_file
 
 
 --
--- Name: website_files; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.website_files (
-    id bigint NOT NULL,
-    website_id bigint NOT NULL,
-    file_specification_id bigint,
-    path character varying NOT NULL,
-    content character varying NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    shasum character varying
-);
-
-
---
 -- Name: website_files_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -12270,23 +12367,6 @@ CREATE SEQUENCE public.website_histories_id_seq
 --
 
 ALTER SEQUENCE public.website_histories_id_seq OWNED BY public.website_histories.id;
-
-
---
--- Name: websites; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.websites (
-    id bigint NOT NULL,
-    name character varying,
-    project_id bigint,
-    account_id bigint,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    thread_id character varying,
-    template_id bigint,
-    theme_id integer
-);
 
 
 --
@@ -45269,6 +45349,34 @@ CREATE INDEX idx_icon_embeddings_text ON public.icon_embeddings USING ivfflat (e
 
 
 --
+-- Name: idx_template_files_content_tsv; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_template_files_content_tsv ON public.template_files USING gin (content_tsv);
+
+
+--
+-- Name: idx_template_files_path_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_template_files_path_trgm ON public.template_files USING gin (path public.gin_trgm_ops);
+
+
+--
+-- Name: idx_website_files_content_tsv; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_website_files_content_tsv ON public.website_files USING gin (content_tsv);
+
+
+--
+-- Name: idx_website_files_path_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_website_files_path_trgm ON public.website_files USING gin (path public.gin_trgm_ops);
+
+
+--
 -- Name: index_account_invitations_on_account_id_and_email; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -72562,6 +72670,20 @@ ALTER INDEX public.index_user_request_counts_on_user_month ATTACH PARTITION publ
 
 
 --
+-- Name: template_files tsvector_update_template_files; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tsvector_update_template_files BEFORE INSERT OR UPDATE OF content, path ON public.template_files FOR EACH ROW EXECUTE FUNCTION public.update_content_tsv();
+
+
+--
+-- Name: website_files tsvector_update_website_files; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tsvector_update_website_files BEFORE INSERT OR UPDATE OF content, path ON public.website_files FOR EACH ROW EXECUTE FUNCTION public.update_content_tsv();
+
+
+--
 -- Name: account_invitations fk_rails_04a176d6ed; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -72648,6 +72770,8 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20250911222652'),
+('20250911222149'),
 ('20250911144717'),
 ('20250911015053'),
 ('20250910211652'),

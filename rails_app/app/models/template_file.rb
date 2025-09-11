@@ -10,9 +10,12 @@
 #  updated_at            :datetime         not null
 #  shasum                :string
 #  file_specification_id :integer
+#  content_tsv           :tsvector
 #
 # Indexes
 #
+#  idx_template_files_content_tsv                 (content_tsv)
+#  idx_template_files_path_trgm                   (path)
 #  index_template_files_on_file_specification_id  (file_specification_id)
 #  index_template_files_on_path                   (path)
 #  index_template_files_on_shasum                 (shasum)
