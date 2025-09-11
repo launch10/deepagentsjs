@@ -303,11 +303,11 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           # Verify the account is marked as over limit
           account_count = AccountRequestCount.find_by(account: apples_account, month: day1.beginning_of_month)
           expect(account_count).to be_over_limit
+
+          # Process the blocking job
+          Sidekiq::Worker.drain_all
         end
 
-        # Process the blocking job
-        Sidekiq::Worker.drain_all
-        
         # Verify firewall rules were created with 'blocked' status
         firewall_rules = Cloudflare::FirewallRule.where(account: apples_account)
         expect(firewall_rules).not_to be_empty
@@ -357,13 +357,13 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           account_total = DomainRequestCount.total_for_account(apples_account, day1.beginning_of_month, day1.end_of_month)
           expect(account_total).to eq(80_000)
           expect(account_total).to be > plan_limit.limit
+
+          # Processing the blocking job should raise an error for retry
+          expect {
+            Sidekiq::Worker.drain_all
+          }.to raise_error(StandardError, /Failed to block domains for account/)
         end
 
-        # Processing the blocking job should raise an error for retry
-        expect {
-          Sidekiq::Worker.drain_all
-        }.to raise_error(StandardError, /Failed to block domains for account/)
-        
         # Verify no firewall rules were created due to the error
         firewall_rules = Cloudflare::FirewallRule.where(account: apples_account)
         expect(firewall_rules).to be_empty
