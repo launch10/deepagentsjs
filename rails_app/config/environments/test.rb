@@ -55,6 +55,10 @@ Rails.application.configure do
   # or in config/master.key. This key is used to decrypt credentials (and other encrypted files).
   config.require_master_key = true
 
+  # Allow accessing localhost on any domain. Important for testing multi-tenant apps.
+  # This matches the development configuration
+  config.hosts = nil
+
   # Reduce key stretching for performance in tests
   config.stretches = 1
 

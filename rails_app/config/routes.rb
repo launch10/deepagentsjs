@@ -18,11 +18,9 @@ Rails.application.routes.draw do
 
   constraints TEST_ENV_ONLY do
     namespace :test do
-      namespace :database do
-        post "truncate", to: "database#truncate"
-        post "snapshots", to: "database#snapshots"
-        post "restore_snapshot", to: "database#restore_snapshot"
-      end
+      post "database/truncate", to: "database#truncate"
+      post "database/snapshots", to: "database#create_snapshot"
+      post "database/restore_snapshot", to: "database#restore_snapshot"
     end
   end
 

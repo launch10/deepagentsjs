@@ -13,6 +13,9 @@ Jumpstart::Engine.routes.draw do
     get :screencasts
     get :adding_docs
 
+    # Testing
+    get :e2e_testing
+
     # Users
     get :authentication
     get :accounts

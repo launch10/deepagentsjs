@@ -1,4 +1,4 @@
-class Test::DatabaseController < TestController
+class Test::DatabaseController < Test::TestController
   SNAPSHOT_DIR = Rails.root.join("test/fixtures/database/snapshots")
 
   before_action :ensure_snapshots_directory_exists
@@ -9,14 +9,18 @@ class Test::DatabaseController < TestController
   end
 
   def create_snapshot
-    name = params.require(:name)
-    output_path = SNAPSHOT_DIR.join("#{name}.sql")
-    result = Database::Snapshotter.new.dump(output_path)
+    begin
+      name = params.require(:name)
+      output_path = SNAPSHOT_DIR.join("#{name}.sql")
+      result = Database::Snapshotter.new.dump(output_path)
+    rescue => e
+      render json: { status: 'error', message: "Failed to create snapshot: #{e.message}" }, status: :unprocessable_content and return
+    end
 
     if result.success?
       render json: { status: 'ok', message: "Snapshot '#{name}' created." }, status: :created
     else
-      render json: { status: 'error', message: "Failed to create snapshot: #{result.stderr}" }, status: :unprocessable_entity
+      render json: { status: 'error', message: "Failed to create snapshot: #{result.stderr}" }, status: :unprocessable_content
     end
   end
 
@@ -28,7 +32,7 @@ class Test::DatabaseController < TestController
     if result.success?
       render json: { status: 'ok', message: "Snapshot '#{name}' restored." }, status: :ok
     else
-      render json: { status: 'error', message: "Failed to restore snapshot: #{result.stderr}" }, status: :unprocessable_entity
+      render json: { status: 'error', message: "Failed to restore snapshot: #{result.stderr}" }, status: :unprocessable_content
     end
   end
 
