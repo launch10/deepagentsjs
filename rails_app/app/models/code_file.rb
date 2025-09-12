@@ -1,24 +1,38 @@
 # == Schema Information
 #
+# Table name: code_files
+#
+#  website_id            :integer
+#  path                  :string
+#  content               :string
+#  content_tsv           :tsvector
+#  shasum                :string
+#  file_specification_id :integer
+#  source                :text
+#  created_at            :datetime
+#  updated_at            :datetime
+class CodeFile < ApplicationRecord
 # This is a read-only model backed by a database view
 # The view merges template_files and website_files
 #
-class CodeFile < ApplicationRecord
   self.table_name = 'code_files'
   self.primary_key = nil # View doesn't have a primary key
   
-  # Make this model read-only since it's backed by a view
   def readonly?
     true
   end
   
-  # Associations
   belongs_to :website
   
   # Scopes for full-text search
   scope :search, ->(query) {
     where("content_tsv @@ plainto_tsquery('english', ?)", query)
-      .select("*, ts_rank(content_tsv, plainto_tsquery('english', ?)) AS rank", query)
+  }
+  
+  scope :search_with_rank, ->(query) {
+    sanitized = connection.quote(query)
+    search(query)
+      .select("code_files.*, ts_rank(content_tsv, plainto_tsquery('english', #{sanitized})) AS rank")
       .order("rank DESC")
   }
   
@@ -32,8 +46,9 @@ class CodeFile < ApplicationRecord
   
   # Fuzzy path search using trigrams
   scope :path_similar_to, ->(path, threshold = 0.3) {
+    sanitized_path = connection.quote(path)
     where("similarity(path, ?) > ?", path, threshold)
-      .select("*, similarity(path, ?) AS path_similarity", path)
+      .select("code_files.*, similarity(path, #{sanitized_path}) AS path_similarity")
       .order("path_similarity DESC")
   }
   
@@ -57,18 +72,22 @@ class CodeFile < ApplicationRecord
     stop_sel = options[:stop_sel] || '</mark>'
     max_words = options[:max_words] || 20
     
-    search(query).select(
-      "ts_headline('english', content, plainto_tsquery('english', ?), 
-        'StartSel=#{start_sel}, StopSel=#{stop_sel}, MaxWords=#{max_words}, MinWords=10') AS highlighted_content",
-      query
-    )
+    sanitized_query = connection.quote(query)
+    highlight_sql = "ts_headline('english', content, plainto_tsquery('english', #{sanitized_query}), 
+      'StartSel=#{start_sel}, StopSel=#{stop_sel}, MaxWords=#{max_words}, MinWords=10') AS highlighted_content"
+    
+    search(query).select("code_files.*", highlight_sql)
   end
   
-  # Get top matching files with context
+  # Get top matching files with context  
   def self.search_with_context(query, limit = 10)
-    search_with_highlights(query)
+    sanitized_query = connection.quote(query)
+    highlight_sql = "ts_headline('english', content, plainto_tsquery('english', #{sanitized_query}), 
+      'MaxWords=20, MinWords=10') AS highlighted_content"
+    
+    search(query)
+      .select("code_files.*", highlight_sql)
       .limit(limit)
-      .select(:website_id, :path, :source)
   end
   
   # Count matches per website

@@ -24,7 +24,7 @@ class AddFullTextSearchToFiles < ActiveRecord::Migration[8.0]
         BEGIN
             -- Use simple configuration for better programming term handling
             -- Also include file path in search
-            NEW.content_tsv := to_tsvector('simple', 
+            NEW.content_tsv := to_tsvector('english', 
               COALESCE(NEW.content, '') || ' ' || 
               COALESCE(regexp_replace(NEW.path, '[/.]', ' ', 'g'), '')
             );
@@ -45,13 +45,13 @@ class AddFullTextSearchToFiles < ActiveRecord::Migration[8.0]
         
         -- Update existing rows to populate tsvector
         UPDATE website_files 
-        SET content_tsv = to_tsvector('simple', 
+        SET content_tsv = to_tsvector('english', 
           COALESCE(content, '') || ' ' || 
           COALESCE(regexp_replace(path, '[/.]', ' ', 'g'), '')
         );
         
         UPDATE template_files 
-        SET content_tsv = to_tsvector('simple', 
+        SET content_tsv = to_tsvector('english', 
           COALESCE(content, '') || ' ' || 
           COALESCE(regexp_replace(path, '[/.]', ' ', 'g'), '')
         );

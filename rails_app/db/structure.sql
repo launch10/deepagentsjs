@@ -45,7 +45,7 @@ CREATE FUNCTION public.update_content_tsv() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
         BEGIN
-            -- Use english configuration for better programming term handling
+            -- Use simple configuration for better programming term handling
             -- Also include file path in search
             NEW.content_tsv := to_tsvector('english', 
               COALESCE(NEW.content, '') || ' ' || 

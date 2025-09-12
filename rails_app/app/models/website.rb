@@ -37,6 +37,8 @@ class Website < ApplicationRecord
 
   has_many :website_files, dependent: :destroy, class_name: "WebsiteFile"
   has_many :template_files, through: :template, source: :files
+  has_many :code_files
+  alias_method :files, :code_files
   has_many :domains, dependent: :destroy
   has_many :deploys, dependent: :destroy
   
@@ -46,13 +48,6 @@ class Website < ApplicationRecord
   before_validation :set_default_template
   before_validation :set_default_theme
 
-  # Returns the merged set of template_files + website_files
-  # Website files override template files with the same path
-  # Uses the code_files view for better performance
-  def files
-    CodeFile.where(website_id: id)
-  end
-  
   def build
     deploy = deploys.create!
     deploy.build!
