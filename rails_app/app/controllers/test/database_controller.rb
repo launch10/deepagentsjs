@@ -1,0 +1,40 @@
+class Test::DatabaseController < TestController
+  SNAPSHOT_DIR = Rails.root.join("test/fixtures/database/snapshots")
+
+  before_action :ensure_snapshots_directory_exists
+
+  def truncate
+    DatabaseCleaner.clean_with(:truncation)
+    render json: { status: "ok", message: "Database truncated" }, status: :ok
+  end
+
+  def create_snapshot
+    name = params.require(:name)
+    output_path = SNAPSHOT_DIR.join("#{name}.sql")
+    result = Database::Snapshotter.new.dump(output_path)
+
+    if result.success?
+      render json: { status: 'ok', message: "Snapshot '#{name}' created." }, status: :created
+    else
+      render json: { status: 'error', message: "Failed to create snapshot: #{result.stderr}" }, status: :unprocessable_entity
+    end
+  end
+
+  def restore_snapshot
+    name = params.require(:name)
+    input_path = SNAPSHOT_DIR.join("#{name}.sql")
+    result = Database::Snapshotter.new.restore(input_path)
+
+    if result.success?
+      render json: { status: 'ok', message: "Snapshot '#{name}' restored." }, status: :ok
+    else
+      render json: { status: 'error', message: "Failed to restore snapshot: #{result.stderr}" }, status: :unprocessable_entity
+    end
+  end
+
+private
+
+  def ensure_snapshots_directory_exists
+    SNAPSHOT_DIR.mkpath unless SNAPSHOT_DIR.exist?
+  end
+end

@@ -11,23 +11,12 @@ namespace :db do
 
     puts "Importing data from #{filepath}..."
 
-    config = ActiveRecord::Base.connection_db_config.configuration_hash
+    result = Database::Snapshotter.new.restore(filepath)
 
-    command = "psql"
-    command << " -U #{config[:username]}" if config[:username]
-    command << " -h #{config[:host]}" if config[:host]
-    command << " -p #{config[:port]}" if config[:port]
-    command << " -d #{config[:database]}"
-    command << " -f #{filepath}"
-
-    puts "Executing: #{command.gsub(config[:password].to_s, '********')}"
-    
-    success = system(command)
-
-    if success
+    if result.success?
       puts "Successfully imported data from #{filepath}."
     else
-      puts "Error importing data. Check psql output above. Exit status: #{$?.exitstatus}"
+      puts "Error importing data. Check psql output above. Exit status: #{result.status.exitstatus}"
     end
   end
 end

@@ -6,10 +6,24 @@ ADMIN_ONLY ||= lambda do |request|
   request.env["warden"].user(:user).admin?
 end
 
+TEST_ENV_ONLY ||= lambda do |request|
+  Rails.env.test?
+end
+
 Rails.application.routes.draw do
   constraints ADMIN_ONLY do
     mount Sidekiq::Web => "/sidekiq"
     mount Zhong::Web => "/zhong"
+  end
+
+  constraints TEST_ENV_ONLY do
+    namespace :test do
+      namespace :database do
+        post "truncate", to: "database#truncate"
+        post "snapshots", to: "database#snapshots"
+        post "restore_snapshot", to: "database#restore_snapshot"
+      end
+    end
   end
 
   draw :accounts
