@@ -635,7 +635,8 @@ CREATE VIEW public.code_files AS
             wf.file_specification_id,
             wf.created_at,
             wf.updated_at,
-            'website'::text AS source
+            'WebsiteFile'::text AS source_type,
+            wf.id AS source_id
            FROM public.website_files wf
         UNION ALL
          SELECT w.id AS website_id,
@@ -646,7 +647,8 @@ CREATE VIEW public.code_files AS
             tf.file_specification_id,
             tf.created_at,
             tf.updated_at,
-            'template'::text AS source
+            'TemplateFile'::text AS source_type,
+            tf.id AS source_id
            FROM (public.template_files tf
              JOIN public.websites w ON ((w.template_id = tf.template_id)))
           WHERE (NOT (EXISTS ( SELECT 1
@@ -659,7 +661,8 @@ CREATE VIEW public.code_files AS
     content_tsv,
     shasum,
     file_specification_id,
-    source,
+    source_type,
+    source_id,
     created_at,
     updated_at
    FROM merged_files

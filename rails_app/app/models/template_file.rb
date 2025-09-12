@@ -25,7 +25,7 @@
 
 class TemplateFile < ApplicationRecord
   belongs_to :template
-
+  
   include FileConcerns::Setters
   include FileConcerns::ShasumHashable
   include FileConcerns::Serialization

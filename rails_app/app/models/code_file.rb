@@ -8,9 +8,12 @@
 #  content_tsv           :tsvector
 #  shasum                :string
 #  file_specification_id :integer
-#  source                :text
+#  source_type           :text
+#  source_id             :integer
 #  created_at            :datetime
 #  updated_at            :datetime
+#
+
 class CodeFile < ApplicationRecord
 # This is a read-only model backed by a database view
 # The view merges template_files and website_files
@@ -18,11 +21,17 @@ class CodeFile < ApplicationRecord
   self.table_name = 'code_files'
   self.primary_key = nil # View doesn't have a primary key
   
+  # Default ordering since the view has no primary key
+  default_scope { order(created_at: :desc, path: :asc) }
+  
   def readonly?
     true
   end
   
   belongs_to :website
+  
+  belongs_to :source_file, polymorphic: true, optional: true, 
+    foreign_type: :source_type, foreign_key: :source_id
   
   # Scopes for full-text search
   scope :search, ->(query) {
@@ -59,6 +68,11 @@ class CodeFile < ApplicationRecord
   # Filter by source (website or template)
   scope :from_website, -> { where(source: 'website') }
   scope :from_template, -> { where(source: 'template') }
+  
+  # Filter by polymorphic source
+  scope :for_source, ->(source_type, source_id) { where(source_type: source_type, source_id: source_id) }
+  scope :for_website_file, ->(website_file_id) { where(source_type: 'WebsiteFile', source_id: website_file_id) }
+  scope :for_template_file, ->(template_file_id) { where(source_type: 'TemplateFile', source_id: template_file_id) }
   
   # Filter by file type
   scope :javascript, -> { where("path ILIKE '%.js' OR path ILIKE '%.jsx'") }
@@ -104,6 +118,16 @@ class CodeFile < ApplicationRecord
   
   def template_file?
     source == 'template'
+  end
+  
+  # Get the actual source file object (WebsiteFile or TemplateFile)
+  def source_file_object
+    case source_type
+    when 'WebsiteFile'
+      WebsiteFile.find_by(id: source_id)
+    when 'TemplateFile'
+      TemplateFile.find_by(id: source_id)
+    end
   end
   
   def file_type

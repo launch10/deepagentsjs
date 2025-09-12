@@ -14,7 +14,8 @@ class CreateCodeFilesView < ActiveRecord::Migration[8.0]
             wf.file_specification_id,
             wf.created_at,
             wf.updated_at,
-            'website' AS source
+            'WebsiteFile' AS source_type,
+            wf.id AS source_id
           FROM website_files wf
           
           UNION ALL
@@ -29,7 +30,8 @@ class CreateCodeFilesView < ActiveRecord::Migration[8.0]
             tf.file_specification_id,
             tf.created_at,
             tf.updated_at,
-            'template' AS source
+            'TemplateFile' AS source_type,
+            tf.id AS source_id
           FROM template_files tf
           INNER JOIN websites w ON w.template_id = tf.template_id
           WHERE NOT EXISTS (
@@ -46,7 +48,8 @@ class CreateCodeFilesView < ActiveRecord::Migration[8.0]
           content_tsv,
           shasum,
           file_specification_id,
-          source,
+          source_type,
+          source_id,
           created_at,
           updated_at
         FROM merged_files
