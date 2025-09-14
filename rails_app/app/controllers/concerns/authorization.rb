@@ -51,6 +51,7 @@ module Authorization
     if user
       Current.user = user
       sign_in(user, store: false)
+      set_request_details # sets account, etc.
     else
       render json: { error: 'Missing token' }, status: :unauthorized and return
     end
@@ -73,11 +74,11 @@ module Authorization
     can_use_test_jwt = Rails.env.development? || Rails.env.test?
     return nil unless can_use_test_jwt
 
-    # sent_test_proof = request.headers['X-Test-Proof'] && request.headers['X-Test-Mode'] == 'true'
-    # return nil unless sent_test_proof
+    sent_test_proof = request.headers['X-Test-Proof'] && request.headers['X-Test-Mode'] == 'true'
+    return nil unless sent_test_proof
     
-    # test_proof = request.headers['X-Test-Proof']
-    # return nil unless test_proof
+    test_proof = request.headers['X-Test-Proof']
+    return nil unless test_proof
     
     begin
       payload = JWT.decode(test_proof, Rails.application.credentials.devise_jwt_secret_key!, 'HS256')[0]

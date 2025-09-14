@@ -48,7 +48,7 @@ const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
 );
 
 export function LanggraphProvider({ children }: { children: React.ReactNode }): React.ReactElement {
-  const { jwt, rootPath, threadId, pageId } = useStore(pageStore);
+  const { jwt, accountId, rootPath, threadId, pageId } = useStore(pageStore);
   const [chatHasStarted, setChatHasStarted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isFetchingThreads, setIsFetchingThreads] = React.useState(false);
@@ -85,6 +85,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       assistantId: import.meta.env.VITE_LANGGRAPH_ASSISTANT_ID!,
       defaultHeaders: {
         Authorization: `Bearer ${jwt}`, // remove, use http-only encrypted cookie
+        'X-Account-Id': accountId ? accountId.toString() : '',
       },
       onThreadId: (threadId: string) => {
         redirectToThreadId(threadId);
@@ -116,6 +117,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     const input = {
       userRequest: { type: "human", content: message },
       jwt: jwt!,
+      accountId: accountId!,
     };
     const checkpointConfig = checkpoint ? { checkpoint } : undefined;
     const config = {

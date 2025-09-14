@@ -9,12 +9,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { useStore } from '@nanostores/react';
 import { LanggraphProvider } from '@context/LanggraphContext';
 interface HomepageProps {
-    jwt: string;
-    root_path: string;
+    // Page-specific props can go here
+    projects?: any[];
+    thread_id?: string;
 }
 
 export default function Home(props: HomepageProps) {
-    const { jwt, root_path: rootPath } = props;
+    const page = usePage();
+    // Access shared props from Inertia
+    const { jwt, account_id, root_path: rootPath } = page.props as any;
     const { pageId, isNewThread, threadId } = useStore(pageStore);
     const urlThreadId = getUrlThreadId() || 'new';
 
@@ -22,9 +25,10 @@ export default function Home(props: HomepageProps) {
         pageStore.set({
             ...pageStore.get(),
             jwt,
+            accountId: account_id,
             rootPath,
         });
-    }, [jwt, rootPath]);
+    }, [jwt, account_id, rootPath]);
 
     // When threadId changes because user navigates to a project, it should become the pageId (causing a re-render of the Chat)
     // When threadId changes because the user started a NEW chat, pageId should remain stable, in order to preserve the ongoing Chat state

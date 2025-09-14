@@ -1,4 +1,6 @@
 class ProjectsController < SubscribedController
+  before_action :authenticate_with_jwt!, if: -> { request.format.json? }
+  
   def index
     _, projects_records = pagy(current_user.projects.order(id: :desc))
     projects = projects_records.map(&:to_mini_json)
@@ -6,7 +8,6 @@ class ProjectsController < SubscribedController
     respond_to do |format|
       format.html do
         render inertia: 'Home', props: {
-          jwt: cookies[:jwt],
           projects: projects,
         }, layout: "layouts/webcontainer"
       end
@@ -28,7 +29,6 @@ class ProjectsController < SubscribedController
     respond_to do |format|
       format.html do
         render inertia: 'Home', props: {
-          jwt: cookies[:jwt],
           thread_id: project.thread_id,
         }, layout: "layouts/webcontainer"
       end

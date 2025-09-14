@@ -17,6 +17,7 @@ Jumpstart::Engine.routes.draw do
     get :e2e_testing
 
     # Users
+    get :langgraph_auth
     get :authentication
     get :accounts
     get :roles

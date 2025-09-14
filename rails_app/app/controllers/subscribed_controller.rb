@@ -18,6 +18,8 @@ class SubscribedController < ApplicationController
 
     {
       root_path: root_path,
+      jwt: cookies[:jwt],
+      account_id: current_account&.id,
       errors: session.delete(:errors) || {},
       flash: flash_messages,
     }
