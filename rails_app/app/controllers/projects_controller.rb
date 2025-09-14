@@ -1,6 +1,4 @@
 class ProjectsController < SubscribedController
-  before_action :authenticate_with_jwt!, if: -> { request.format.json? }
-  
   def index
     _, projects_records = pagy(current_user.projects.order(id: :desc))
     projects = projects_records.map(&:to_mini_json)
@@ -40,6 +38,7 @@ class ProjectsController < SubscribedController
 
   def create
     begin
+      binding.pry
       project = current_account.projects.create!(project_params)
       website = current_account.websites.create!(project_id: project.id, name: project.name, thread_id: project.thread_id)
     rescue => e

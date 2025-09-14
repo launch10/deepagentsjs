@@ -7,7 +7,8 @@ Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
   # While tests run files are not watched, reloading is not necessary.
-  config.enable_reloading = false
+  # Enable reloading for development-like experience when running server in test mode
+  config.enable_reloading = ENV["ENABLE_RELOADING"] == "true" ? true : false
 
   # Eager loading loads your entire application. When running a single test locally,
   # this is usually not necessary, and can slow down your test suite. However, it's
@@ -41,6 +42,18 @@ Rails.application.configure do
 
   # Print deprecation notices to the stderr.
   config.active_support.deprecation = :stderr
+
+  # Set log level to debug for full request logging in test environment
+  config.log_level = :debug
+  
+  # Enable verbose query logs to see database queries
+  config.active_record.verbose_query_logs = true
+  
+  # Show full request/response details in logs
+  config.action_controller.logger = ActiveSupport::Logger.new(STDOUT)
+  
+  # Enable SQL query tags
+  config.active_record.query_log_tags_enabled = true
 
   # Raises error for missing translations.
   config.i18n.raise_on_missing_translations = true

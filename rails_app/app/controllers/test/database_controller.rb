@@ -4,7 +4,8 @@ class Test::DatabaseController < Test::TestController
   before_action :ensure_snapshots_directory_exists
 
   def truncate
-    DatabaseCleaner.clean_with(:truncation)
+    actually_truncate
+    puts "Database truncated"
     render json: { status: "ok", message: "Database truncated" }, status: :ok
   end
 
@@ -25,13 +26,25 @@ class Test::DatabaseController < Test::TestController
   end
 
   def restore_snapshot
-    name = params.require(:name)
-    input_path = SNAPSHOT_DIR.join("#{name}.sql")
-    result = Database::Snapshotter.new.restore(input_path)
+    begin
+      name = params.require(:name)
+      truncate_first = params[:truncate_first] == "true"
+      input_path = SNAPSHOT_DIR.join("#{name}.sql")
+
+      if truncate_first
+        actually_truncate
+      end
+      result = Database::Snapshotter.new.restore(input_path)
+    rescue => e
+      puts "error restoring snapshot"
+      render json: { status: 'error', message: "Failed to restore snapshot: #{e.message}" }, status: :unprocessable_content and return
+    end
 
     if result.success?
+      puts "Database restored"
       render json: { status: 'ok', message: "Snapshot '#{name}' restored." }, status: :ok
     else
+      puts "Wtf"
       render json: { status: 'error', message: "Failed to restore snapshot: #{result.stderr}" }, status: :unprocessable_content
     end
   end
@@ -40,5 +53,9 @@ private
 
   def ensure_snapshots_directory_exists
     SNAPSHOT_DIR.mkpath unless SNAPSHOT_DIR.exist?
+  end
+
+  def actually_truncate
+    DatabaseCleaner.clean_with(:truncation)
   end
 end

@@ -28,21 +28,50 @@ module Database
     # @param options [Array<String>] Extra flags for pg_dump (e.g., ['--clean', '--if-exists'])
     # @return [Result]
     def dump(output_path, options: [])
-      # Securely build the command arguments
-      command_args = [
+      # First dump the data
+      data_command_args = [
         'pg_dump',
         '-U', @config[:username],
         '-h', @config[:host] || 'localhost',
         '-p', @config[:port].to_s,
-        '--no-password', # Important: we are using PGPASSWORD
+        '--no-password',
+        '--data-only',
+        '--inserts',
+        '--column-inserts',
+        '--disable-triggers', # Disable triggers during restore for faster loading
         *options,
         @config[:database]
       ]
 
-      # Redirect stdout to the file
-      command_string = Shellwords.join(command_args) + " > #{Shellwords.escape(output_path)}"
+      # Dump data to temp file first
+      temp_data_file = "#{output_path}.data.tmp"
+      data_command = Shellwords.join(data_command_args) + " > #{Shellwords.escape(temp_data_file)}"
+      data_result = execute_command(data_command)
+      
+      return data_result unless data_result.success?
 
-      execute_command(command_string)
+      # Now get sequence values and append them
+      sequence_sql = get_sequence_reset_sql
+      
+      # Combine data and sequences into final output
+      File.open(output_path, 'w') do |f|
+        f.puts "-- Database snapshot created at #{Time.now}"
+        f.puts "-- Disable triggers during restore"
+        f.puts "SET session_replication_role = 'replica';"
+        f.puts
+        f.write File.read(temp_data_file)
+        f.puts
+        f.puts "-- Re-enable triggers"
+        f.puts "SET session_replication_role = 'origin';"
+        f.puts
+        f.puts "-- Reset sequences to current values"
+        f.puts sequence_sql
+      end
+      
+      # Clean up temp file
+      File.delete(temp_data_file) if File.exist?(temp_data_file)
+      
+      Result.new(success?: true, stdout: "Snapshot created with data and sequences", stderr: "", status: nil)
     end
 
     # Restores the database from a file.
@@ -66,6 +95,31 @@ module Database
     end
 
     private
+
+    def get_sequence_reset_sql
+      connection = ActiveRecord::Base.connection
+      
+      # Query to get all sequences and their current values
+      sequence_query = <<-SQL
+        SELECT 
+          schemaname,
+          sequencename,
+          last_value,
+          increment_by
+        FROM pg_sequences
+        WHERE schemaname = 'public'
+      SQL
+      
+      sequences = connection.execute(sequence_query)
+      
+      sql_statements = sequences.map do |seq|
+        # Generate a setval statement for each sequence
+        # The third parameter (true) ensures the next value will be correct
+        "SELECT setval('#{seq['schemaname']}.#{seq['sequencename']}', #{seq['last_value'] || 1}, true);"
+      end
+      
+      sql_statements.join("\n")
+    end
 
     def execute_command(command)
       puts "Executing command..." # Don't log the full command if it contains secrets
