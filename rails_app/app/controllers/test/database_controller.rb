@@ -28,7 +28,7 @@ class Test::DatabaseController < Test::TestController
   def restore_snapshot
     begin
       name = params.require(:name)
-      truncate_first = params[:truncate_first] == "true"
+      truncate_first = params[:truncate_first] == "true" || params[:truncate_first] == true
       input_path = SNAPSHOT_DIR.join("#{name}.sql")
 
       if truncate_first
