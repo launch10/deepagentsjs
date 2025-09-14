@@ -6,8 +6,8 @@ ADMIN_ONLY ||= lambda do |request|
   request.env["warden"].user(:user).admin?
 end
 
-TEST_ENV_ONLY ||= lambda do |request|
-  Rails.env.test?
+LOCAL_ENV_ONLY ||= lambda do |request|
+  Rails.env.local?  # Returns true for development and test environments
 end
 
 Rails.application.routes.draw do
@@ -16,7 +16,7 @@ Rails.application.routes.draw do
     mount Zhong::Web => "/zhong"
   end
 
-  constraints TEST_ENV_ONLY do
+  constraints LOCAL_ENV_ONLY do
     namespace :test do
       post "database/truncate", to: "database#truncate"
       post "database/snapshots", to: "database#create_snapshot"

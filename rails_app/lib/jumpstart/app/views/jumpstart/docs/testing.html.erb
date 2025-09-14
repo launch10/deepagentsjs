@@ -7,24 +7,30 @@
 
 <p>We have multiple levels of testing going from lowest->highest fidelity:</p>
 
-<strong>For Rails:</strong>
-<ol>
-    <li>Unit Tests</li>
-    <li>API Tests</li>
-</ol>
+<div>
+    <p><strong>For Rails:</strong></p>
+    <ol>
+        <li>Unit Tests</li>
+        <li>API Tests</li>
+    </ol>
+</div>
 
-<strong>For Langgraph:</strong>
-<ol>
-    <li>Prompt Tests</li>
-    <li>Prompt Evals</li>
-    <li>Service Tests</li>
-    <li>Node/Agent Tests</li>
-</ol>
+<div>
+    <p><strong>For Langgraph:</strong></p>
+    <ol>
+        <li>Prompt Tests</li>
+        <li>Prompt Evals</li>
+        <li>Service Tests</li>
+        <li>Node/Agent Tests</li>
+    </ol>
+</div>
 
-<strong>For End-to-End:</strong>
-<ol>
-    <li>End-to-End Tests (Langgraph -> Rails together)</li>
-</ol>
+<div>
+    <p><strong>For End-to-End:</strong></p>
+    <ol>
+        <li>End-to-End Tests (Langgraph -> Rails together)</li>
+    </ol>
+</div>
 
 <p>Each level of testing has different properties and requirements, so you can familiarize yourself with these here:</p>
 
@@ -69,35 +75,25 @@
 
 <p>To generate a mock, you add it to the <code>MockRegistry</code>, and then run using the <code>CLI</code></p>
 
-<code>
-    pnpm mocks record CreateFlow
-</code>
+<pre><code class="language-bash">NODE_ENV=test pnpm mocks record CreateFlow # important to run in test mode to trigger JWT authentication for you</code></pre>
 
 <p>You can then reuse these mocks (or any inputs to them) in your prompt tests:</p>
 
-<pre>
-<code>
-    const planWebsiteOutput = await mocks.get(
-        "PlanWebsiteService",
-        "dev-mode",
-        "websites"
-    ) as PlanWebsiteOutputType;
-</code>
-</pre>
+<pre><code class="language-typescript">const planWebsiteOutput = await mocks.get(
+    "PlanWebsiteService",
+    "dev-mode",
+    "websites"
+) as PlanWebsiteOutputType;</code></pre>
 
 <p>Remember: The goal of prompt tests is merely to assert that the expected data is injected into the prompt. You can use the helper:</p>
 
-<pre>
-<code>
-    expect(prompt).toMatchXml(`
-        <prompt>
-            <website>
-                <name>My Landing Page</name>
-            </website>
-        </prompt>
-    `);
-</code>
-</pre>
+<pre><code class="language-javascript">expect(prompt).toMatchXml(`
+    &lt;prompt&gt;
+        &lt;website&gt;
+            &lt;name&gt;My Landing Page&lt;/name&gt;
+        &lt;/website&gt;
+    &lt;/prompt&gt;
+`);</code></pre>
 
 <%= h3_with_anchor "Prompt Evals" %>
 
@@ -110,22 +106,21 @@
 
 <p>Here is an example:</p>
 
-<code>
-    import { mocks } from '@mocks';
-    import { evalite } from 'evalite';
-    import { PlanPageService, type PlanPageProps, type PlanPageOutputType } from '@services';
-    import { createClosedQAScorer } from '@tests/support/evals';
+<pre><code class="language-typescript">import { mocks } from '@mocks';
+import { evalite } from 'evalite';
+import { PlanPageService, type PlanPageProps, type PlanPageOutputType } from '@services';
+import { createClosedQAScorer } from '@tests/support/evals';
 
-    evalite('PagePlanService', {
+evalite('PagePlanService', {
     data: async() => {
         return [{
-        input: {
-            userRequest: await mocks.input(
-            "PlanPageService",
-            "dev-mode",
-            "websites"
-            )
-        }
+            input: {
+                userRequest: await mocks.input(
+                    "PlanPageService",
+                    "dev-mode",
+                    "websites"
+                )
+            }
         }]
     },
     task: async (input: PlanPageProps) => {
@@ -164,8 +159,7 @@
             }
         },
     ]
-    });
-</code>
+});</code></pre>
 
 <%= h3_with_anchor "Service Tests" %>
 
@@ -185,20 +179,18 @@
 
 <p>In order to run these properly, you should almost ALWAYS test the highest-level node (the <code>routerGraph</code>), and allow state to flow through</p>
 
-<code>
-    it('should generate project name for a dogs website', async () => {
-        const result = await testGraph() // start the test library
-            .withGraph(routerGraph) // which graph to run
-            .withState({ testState }) // if you have any existing test state to reuse
-            .withPrompt("Create a cool website about dogs with animations") // the prompt to send to the graph
-            .stopAfter('nameProject') // stop at the 'nameProject' node
-            .execute(); // run the graph
+<pre><code class="language-javascript">it('should generate project name for a dogs website', async () => {
+    const result = await testGraph() // start the test library
+        .withGraph(routerGraph) // which graph to run
+        .withState({ testState }) // if you have any existing test state to reuse
+        .withPrompt("Create a cool website about dogs with animations") // the prompt to send to the graph
+        .stopAfter('nameProject') // stop at the 'nameProject' node
+        .execute(); // run the graph
 
-        expect(result.error).toBeUndefined();
-        expect(result.state.projectName).toBeDefined();
-        expect(typeof result.state.projectName).toBe('string'); // assert on the expected outcome of the node itself
-    });
-</code>
+    expect(result.error).toBeUndefined();
+    expect(result.state.projectName).toBeDefined();
+    expect(typeof result.state.projectName).toBe('string'); // assert on the expected outcome of the node itself
+});</code></pre>
 
 <%= h3_with_anchor "End-to-End Tests" %>
 
@@ -214,31 +206,19 @@
 
 <p>To facilitate this, we have API endpoints in Rails that ONLY run in test mode:</p>
 
-<code>
-    curl -L -X POST http://localhost:3000/database/truncate
-</code>
+<pre><code class="language-bash">curl -L -X POST http://localhost:3000/database/truncate</code></pre>
 
-<code>
-    curl -L -X POST http://localhost:3000/database/restore_snapshot -d "name=snapshot_name"
-</code>
+<pre><code class="language-bash">curl -L -X POST http://localhost:3000/database/restore_snapshot -d "name=snapshot_name"</code></pre>
 
-<code>
-    curl -L -X POST http://localhost:3000/database/snapshots -d "name=snapshot_name"
-</code>
+<pre><code class="language-bash">curl -L -X POST http://localhost:3000/database/snapshots -d "name=snapshot_name"</code></pre>
 
 <p>You can also additionally run these as rake tasks:</p>
 
-<code>
-    bin/rails database:truncate
-</code>
+<pre><code class="language-bash">bin/rails database:truncate</code></pre>
 
-<code>
-    bin/rails database:restore_snapshot\[snapshot_name\]
-</code>
+<pre><code class="language-bash">bin/rails database:restore_snapshot[snapshot_name]</code></pre>
 
-<code>
-    bin/rails database:snapshots\[snapshot_name\]
-</code>
+<pre><code class="language-bash">bin/rails database:snapshots[snapshot_name]</code></pre>
 
 <p>And then you can weave everything together to create known test state:</p>
 
