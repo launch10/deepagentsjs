@@ -5,6 +5,7 @@ module ProjectConcerns
     def to_mini_json
       {
         id: id,
+        website_id: website.id,
         name: name,
         thread_id: thread_id,
         created_at: created_at,

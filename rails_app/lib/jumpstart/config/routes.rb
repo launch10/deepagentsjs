@@ -14,6 +14,7 @@ Jumpstart::Engine.routes.draw do
     get :adding_docs
 
     # Testing
+    get :testing
     get :e2e_testing
 
     # Users

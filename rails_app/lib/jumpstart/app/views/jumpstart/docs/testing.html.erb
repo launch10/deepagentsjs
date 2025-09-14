@@ -1,0 +1,253 @@
+<% content_for :title, "Testing" %>
+<% content_for :subtitle do %>
+    Learn the different approaches to testing the application
+<% end %>
+
+<%= h2_with_anchor "Overview" %>
+
+<p>We have multiple levels of testing going from lowest->highest fidelity:</p>
+
+<strong>For Rails:</strong>
+<ol>
+    <li>Unit Tests</li>
+    <li>API Tests</li>
+</ol>
+
+<strong>For Langgraph:</strong>
+<ol>
+    <li>Prompt Tests</li>
+    <li>Prompt Evals</li>
+    <li>Service Tests</li>
+    <li>Node/Agent Tests</li>
+</ol>
+
+<strong>For End-to-End:</strong>
+<ol>
+    <li>End-to-End Tests (Langgraph -> Rails together)</li>
+</ol>
+
+<p>Each level of testing has different properties and requirements, so you can familiarize yourself with these here:</p>
+
+<%= h2_with_anchor "Rails Testing" %>
+
+<%= h3_with_anchor "Unit Tests" %>
+
+<p>Unit tests are the lowest fidelity tests. They use traditional Rails tooling such as:</p>
+
+<ol>
+    <li>FactoryBot</li>
+    <li>Sidekiq/testing</li>
+</ol>
+
+<%= h3_with_anchor "API Tests" %>
+
+<p>API tests are the highest fidelity tests in Rails. They are tagged with <code>type: :request</code> and include additional helpers for testing:</p>
+
+<ol>
+    <li>JWT Authentication</li>
+    <li>Subscription</li>
+    <li>User's plan has enough credits</li>
+</ol>
+
+<p>This is the way we would test APIs on the Rails side (prior to the full integration tests)</p>
+
+<%= h2_with_anchor "Langgraph Testing" %>
+
+<%= h3_with_anchor "Prompt Tests" %>
+
+<p>Prompt tests are the lowest-level tests in Langgraph. We use this simply to validate that the expected data is injected into the prompt, because this is a common silent failure mode that would cause models to perform poorly, but not fail other types of tests.</p>
+
+<p>They are in the tests/prompts directory (in the Langgraph app), and use traditional tooling such as:</p>
+
+<ol>
+    <li>vitest</li>
+    <li>fishery factories</li>
+    <li>vi.mock</li>
+</ol>
+
+<p>They also use several unique helpers, such as the <code>mocks</code> library, which allows us to reuse the output of PREVIOUS nodes in the chain to generate realistic Langgraph state.</p>
+
+<p>To generate a mock, you add it to the <code>MockRegistry</code>, and then run using the <code>CLI</code></p>
+
+<code>
+    pnpm mocks record CreateFlow
+</code>
+
+<p>You can then reuse these mocks (or any inputs to them) in your prompt tests:</p>
+
+<pre>
+<code>
+    const planWebsiteOutput = await mocks.get(
+        "PlanWebsiteService",
+        "dev-mode",
+        "websites"
+    ) as PlanWebsiteOutputType;
+</code>
+</pre>
+
+<p>Remember: The goal of prompt tests is merely to assert that the expected data is injected into the prompt. You can use the helper:</p>
+
+<pre>
+<code>
+    expect(prompt).toMatchXml(`
+        <prompt>
+            <website>
+                <name>My Landing Page</name>
+            </website>
+        </prompt>
+    `);
+</code>
+</pre>
+
+<%= h3_with_anchor "Prompt Evals" %>
+
+<p>Prompt evals assert on the quality of the output from the model. They are the highest fidelity of INDIVIDUAL prompt testing. We use the libraries:</p>
+
+<ol>
+    <li>evalite</li>
+    <li>support/evals helpers based on autoevals</li>
+</ol>
+
+<p>Here is an example:</p>
+
+<code>
+    import { mocks } from '@mocks';
+    import { evalite } from 'evalite';
+    import { PlanPageService, type PlanPageProps, type PlanPageOutputType } from '@services';
+    import { createClosedQAScorer } from '@tests/support/evals';
+
+    evalite('PagePlanService', {
+    data: async() => {
+        return [{
+        input: {
+            userRequest: await mocks.input(
+            "PlanPageService",
+            "dev-mode",
+            "websites"
+            )
+        }
+        }]
+    },
+    task: async (input: PlanPageProps) => {
+        // We pre-recorded this output so we don't re-run it during development. 
+        // You would actually want to run the service and record the output before merging.
+        return await mocks.get(
+            "PlanPageService",
+            "dev-mode",
+            "websites"
+        )
+    },
+    scorers: [
+        {
+            name: "Returns a list of code tasks",
+            scorer: async ({output}: {output: PlanPageOutputType}) => {
+                return output.codeTasks.length > 1 ? 1 : 0;
+            }
+        }, // Scorers can do whatever you want. 
+        // With ClosedQAScorer, you can aggregate multiple criteria into a single score.
+        {
+            name: "It is a sensible plan",
+            scorer: async ({output, input}: {output: PlanPageOutputType, input: string}) => {
+                const PlanPageScorer = createClosedQAScorer({
+                    criteria: {
+                        listOfCodeTasks: "The output should include a list of code tasks, each of which should be for different sections of the page",
+                        sensiblePlan: "The output should be a sensible plan for a website page, which clearly follows from the user's original prompt",
+                        persuasiveCopy: "The output should be persuasive copy for a website page, which clearly follows from the user's original prompt",
+                    }
+                });
+                const response: number = await PlanPageScorer({
+                    input: input.userRequest.content,
+                    output: output,
+                    useCoT: true
+                })
+                return response;
+            }
+        },
+    ]
+    });
+</code>
+
+<%= h3_with_anchor "Service Tests" %>
+
+<p>Service tests are unit tests for individual services. Most of the time, we don't need to re-test serivces based on model prompts, because we've already tested these in evals. Instead, these are for testing plain Typescript services that don't use Langgraph.</p>
+
+<%= h3_with_anchor "Node/Agent Tests" %>
+
+<p>We've developed a custom testing framework for testing Langgraph nodes and agents based on the unique requirements:</p>
+
+<ol>
+    <li>We need to be able to run an entire graph, including subgraphs</li>
+    <li>The graphs must receive known input/state</li>
+    <li>The graphs must be able to stop at any point to assert the outcome of individual nodes</li>
+    <li>HTTP requests (to models or Rails) should be recorded and replayed using Polly</li>
+    <li>HTTP requests (to Rails) must be authenticated using the test JWT</li>
+</ol>
+
+<p>In order to run these properly, you should almost ALWAYS test the highest-level node (the <code>routerGraph</code>), and allow state to flow through</p>
+
+<code>
+    it('should generate project name for a dogs website', async () => {
+        const result = await testGraph() // start the test library
+            .withGraph(routerGraph) // which graph to run
+            .withState({ testState }) // if you have any existing test state to reuse
+            .withPrompt("Create a cool website about dogs with animations") // the prompt to send to the graph
+            .stopAfter('nameProject') // stop at the 'nameProject' node
+            .execute(); // run the graph
+
+        expect(result.error).toBeUndefined();
+        expect(result.state.projectName).toBeDefined();
+        expect(typeof result.state.projectName).toBe('string'); // assert on the expected outcome of the node itself
+    });
+</code>
+
+<%= h3_with_anchor "End-to-End Tests" %>
+
+<p>End-to-end tests are essential for testing deeper nodes in the Langgraph experience. For example, to properly test a code update when a user has a bug, we need to first create a project that has a known bug.</p>
+
+<p>This means E2E tests have several additional tool needs:</p>
+
+<ol>
+    <li>Database Snapshots</li>
+    <li>Restarting based on previous graph state</li>
+    <li>Rails running in test mode</li>
+</ol>
+
+<p>To facilitate this, we have API endpoints in Rails that ONLY run in test mode:</p>
+
+<code>
+    curl -L -X POST http://localhost:3000/database/truncate
+</code>
+
+<code>
+    curl -L -X POST http://localhost:3000/database/restore_snapshot -d "name=snapshot_name"
+</code>
+
+<code>
+    curl -L -X POST http://localhost:3000/database/snapshots -d "name=snapshot_name"
+</code>
+
+<p>You can also additionally run these as rake tasks:</p>
+
+<code>
+    bin/rails database:truncate
+</code>
+
+<code>
+    bin/rails database:restore_snapshot\[snapshot_name\]
+</code>
+
+<code>
+    bin/rails database:snapshots\[snapshot_name\]
+</code>
+
+<p>And then you can weave everything together to create known test state:</p>
+
+<ol>
+    <li>Run Rails in test mode <code>RAILS_ENV=test rails s</code></li>
+    <li>Create a mock in the mock registry that runs a graph (e.g. see <code>tests/support/mocks/registry/CreateFlow.ts</code>)</li>
+    <li>At the end of the mock, create a database snapshot (<code>snapshotter.createSnapshot("snapshot_name")</code>)</li>
+    <li>In your test, start from the known snapshot (<code>DatabaseSnapshotter.restoreSnapshot("snapshot_name")</code>)</li>
+    <li>Run your test</li>
+</ol>
+
+<p>This allows us to start with an existing user, project, website, files, etc. and run tests from that state.</p>

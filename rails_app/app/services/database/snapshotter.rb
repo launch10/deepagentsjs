@@ -28,6 +28,8 @@ module Database
     # @param options [Array<String>] Extra flags for pg_dump (e.g., ['--clean', '--if-exists'])
     # @return [Result]
     def dump(output_path, options: [])
+      # Normalize the output path by replacing hyphens with underscores in filename
+      output_path = normalize_snapshot_path(output_path)
       # First dump the data
       data_command_args = [
         'pg_dump',
@@ -79,6 +81,8 @@ module Database
     # @param input_path [String] The path to the input .sql file.
     # @return [Result]
     def restore(input_path)
+      # Normalize the input path by replacing hyphens with underscores in filename
+      input_path = normalize_snapshot_path(input_path)
       raise "File not found: #{input_path}" unless File.exist?(input_path)
 
       command_args = [
@@ -95,6 +99,20 @@ module Database
     end
 
     private
+
+    def normalize_snapshot_path(path)
+      # Convert path to Pathname for easier manipulation
+      pathname = Pathname.new(path)
+      
+      # Get the filename without extension
+      basename = pathname.basename('.sql').to_s
+      
+      # Replace hyphens with underscores in the filename
+      normalized_basename = basename.gsub('-', '_')
+      
+      # Reconstruct the path with normalized filename
+      pathname.dirname.join("#{normalized_basename}.sql").to_s
+    end
 
     def get_sequence_reset_sql
       connection = ActiveRecord::Base.connection

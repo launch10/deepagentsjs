@@ -38,9 +38,13 @@ class ProjectsController < SubscribedController
 
   def create
     begin
-      binding.pry
       project = current_account.projects.create!(project_params)
-      website = current_account.websites.create!(project_id: project.id, name: project.name, thread_id: project.thread_id)
+      website = Website.create!(
+        project_id: project.id, 
+        name: project.name, 
+        thread_id: project.thread_id,
+        account_id: project.account_id
+      )
     rescue => e
       render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity and return
     end
