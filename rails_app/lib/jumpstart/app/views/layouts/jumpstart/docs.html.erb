@@ -2,21 +2,107 @@
 <html class="docs-layout <%= class_names("h-full antialiased", "dark": current_user&.dark_theme?) %>" lang="<%= I18n.locale %>">
   <head>
     <%= render "head" %>
+    
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/core.min.js"></script>
+    
+    <!-- Load common languages -->
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/ruby.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/javascript.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/typescript.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/bash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/json.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/yaml.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/sql.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/xml.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/css.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/diff.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/erb.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/shell.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/plaintext.min.js"></script>
+
+    <style>
+      /* Override for light mode */
+      :not(.dark) .docs-content pre code.hljs {
+        background: #fafafa !important;
+        color: #383a42 !important;
+      }
+      
+      /* Better code block styling */
+      .docs-content pre {
+        border-radius: 0.5rem;
+        margin: 1.25rem 0;
+        position: relative;
+      }
+      
+      .docs-content pre code {
+        display: block;
+        padding: 1.25rem !important;
+        overflow-x: auto;
+        font-size: 0.875rem;
+        line-height: 1.6;
+      }
+    </style>
 
     <script>
-      document.addEventListener("turbo:load", function() {
-        const themeSelector = document.querySelector('#theme-select');
-        const currentTheme = ['jumpstart', 'dark', 'juicy'].find(cls => document.documentElement.classList.contains(cls)) || null;
-
-        for (const option of themeSelector.options) {
-          option.selected = (option.value === currentTheme) || (option.value === 'light' && currentTheme === null);
-        }
-
-        themeSelector.addEventListener('change', function() {
-          document.documentElement.classList.remove('jumpstart', 'dark', 'juicy');
-          document.documentElement.classList.add(this.value);
-        });
+      // Register highlight.js languages
+      hljs.registerLanguage('ruby', window.hljsDefineRuby);
+      hljs.registerLanguage('javascript', window.hljsDefineJavascript);
+      hljs.registerLanguage('typescript', window.hljsDefineTypescript);
+      hljs.registerLanguage('bash', window.hljsDefineBash);
+      hljs.registerLanguage('json', window.hljsDefineJson);
+      hljs.registerLanguage('yaml', window.hljsDefineYaml);
+      hljs.registerLanguage('sql', window.hljsDefineSql);
+      hljs.registerLanguage('xml', window.hljsDefineXml);
+      hljs.registerLanguage('css', window.hljsDefineCss);
+      hljs.registerLanguage('diff', window.hljsDefineDiff);
+      hljs.registerLanguage('erb', window.hljsDefineErb);
+      hljs.registerLanguage('shell', window.hljsDefineShell);
+      hljs.registerLanguage('plaintext', window.hljsDefinePlaintext);
+      
+      // Initialize when DOM is ready
+      document.addEventListener("DOMContentLoaded", function() {
+        initializeDocs();
       });
+      
+      // Re-initialize after Turbo loads
+      document.addEventListener("turbo:load", function() {
+        initializeDocs();
+      });
+      
+      function initializeDocs() {
+        // Theme selector
+        const themeSelector = document.querySelector('#theme-select');
+        if (themeSelector) {
+          const currentTheme = ['jumpstart', 'dark', 'juicy'].find(cls => document.documentElement.classList.contains(cls)) || null;
+
+          for (const option of themeSelector.options) {
+            option.selected = (option.value === currentTheme) || (option.value === 'light' && currentTheme === null);
+          }
+
+          themeSelector.addEventListener('change', function() {
+            document.documentElement.classList.remove('jumpstart', 'dark', 'juicy');
+            document.documentElement.classList.add(this.value);
+          });
+        }
+        
+        // Syntax highlighting
+        highlightCode();
+      }
+      
+      function highlightCode() {
+        // Find all code blocks
+        document.querySelectorAll('.docs-content pre code').forEach((block) => {
+          // Skip if already highlighted
+          if (block.classList.contains('hljs')) {
+            return;
+          }
+          
+          // Apply highlighting
+          hljs.highlightElement(block);
+        });
+      }
     </script>
   </head>
 

@@ -32,6 +32,12 @@ class Test::DatabaseController < Test::TestController
       input_path = SNAPSHOT_DIR.join("#{name}.sql")
 
       if truncate_first
+        puts "Truncating binch"
+        puts "Truncating binch"
+        puts "Truncating binch"
+        puts "Truncating binch"
+        puts "Truncating binch"
+        puts "Truncating binch"
         actually_truncate
       end
       result = Database::Snapshotter.new.restore(input_path)

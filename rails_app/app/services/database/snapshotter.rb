@@ -17,6 +17,14 @@ module Database
     # A read-only struct for the command result
     Result = Struct.new(:success?, :stdout, :stderr, :status, keyword_init: true)
 
+    # Rails system tables that should not be included in data snapshots
+    # These tables are managed by Rails and should maintain their state
+    # across test runs to ensure proper framework operation
+    EXCLUDED_SYSTEM_TABLES = %w[
+      ar_internal_metadata
+      schema_migrations
+    ].freeze
+
     def initialize
       @config = ActiveRecord::Base.connection_db_config.configuration_hash
       @env = { 'PGPASSWORD' => @config[:password].to_s }
@@ -30,6 +38,9 @@ module Database
     def dump(output_path, options: [])
       # Normalize the output path by replacing hyphens with underscores in filename
       output_path = normalize_snapshot_path(output_path)
+      # Build exclusion flags for system tables
+      exclusions = EXCLUDED_SYSTEM_TABLES.flat_map { |table| ['--exclude-table', table] }
+      
       # First dump the data
       data_command_args = [
         'pg_dump',
@@ -41,6 +52,7 @@ module Database
         '--inserts',
         '--column-inserts',
         '--disable-triggers', # Disable triggers during restore for faster loading
+        *exclusions,  # Exclude Rails system tables
         *options,
         @config[:database]
       ]
@@ -91,6 +103,7 @@ module Database
         '-h', @config[:host] || 'localhost',
         '-p', @config[:port].to_s,
         '--no-password',
+        '-v', 'ON_ERROR_STOP=1',  # Stop on first error
         '-d', @config[:database],
         '-f', input_path
       ]
@@ -143,11 +156,23 @@ module Database
       puts "Executing command..." # Don't log the full command if it contains secrets
       stdout, stderr, status = Open3.capture3(@env, command)
 
+      # Always show stderr if there's any output, even on success
+      # psql writes normal output to stderr, so only show if it looks like an error
+      if stderr.present? && (stderr.include?('ERROR') || stderr.include?('FATAL') || !status.success?)
+        puts "\n⚠️  Database output:"
+        puts stderr
+      end
+
       if status.success?
-        puts "Command successful."
+        puts "✅ Command successful."
         Result.new(success?: true, stdout: stdout, stderr: stderr, status: status)
       else
-        puts "Command failed!"
+        # Don't duplicate stderr output if we already showed it above
+        unless stderr.present? && (stderr.include?('ERROR') || stderr.include?('FATAL'))
+          puts "\n❌ Command failed!"
+          puts "Error output: #{stderr}" if stderr.present?
+        end
+        
         # Raise an error or return a failed result object
         raise CommandError.new(
           "Database command failed with status #{status.exitstatus}.",
