@@ -1,0 +1,379 @@
+<% content_for :title, "PostgreSQL Embeddings Service" %>
+<% content_for :subtitle do %>
+    A subclassable vector similarity search service for semantic text matching
+<% end %>
+
+<%= h2_with_anchor "Overview" %>
+
+<p>Langgraph Feature (not Rails): </p>
+
+<p>The <code>PostgresEmbeddingsService</code> provides a generic, reusable foundation for building semantic search capabilities using PostgreSQL's pgvector extension. This service powers various AI-driven features across the application by enabling similarity-based text retrieval.</p>
+
+<div class="alert alert-info">
+    <p><strong>Key Use Cases:</strong></p>
+    <ul>
+        <li>Semantic search across documents and code</li>
+        <li>Finding similar content based on meaning, not just keywords</li>
+        <li>Building specialized search tools (icons, files, documentation)</li>
+        <li>Intelligent caching of embedding results</li>
+    </ul>
+</div>
+
+<%= h2_with_anchor "Architecture" %>
+
+<p>The service leverages several key technologies:</p>
+
+<ol>
+    <li><strong>PostgreSQL with pgvector</strong>: Stores and searches vector embeddings</li>
+    <li><strong>OpenAI Embeddings</strong>: Converts text to high-dimensional vectors</li>
+    <li><strong>LangChain PGVector</strong>: Manages vector store operations</li>
+    <li><strong>Built-in Caching</strong>: Reduces API calls and improves performance</li>
+</ol>
+
+<%= h3_with_anchor "How It Works" %>
+
+<pre><code class="language-mermaid">
+graph LR
+    A[Text Input] --> B[Generate Embedding]
+    B --> C{Check Cache}
+    C -->|Cache Hit| D[Return Cached Results]
+    C -->|Cache Miss| E[Vector Similarity Search]
+    E --> F[PostgreSQL pgvector]
+    F --> G[Rank by Similarity]
+    G --> H[Cache Results]
+    H --> I[Return Results]
+</code></pre>
+
+<%= h2_with_anchor "Core Features" %>
+
+<%= h3_with_anchor "Vector Storage" %>
+
+<p>Store text with its vector representation for future similarity searches:</p>
+
+<pre><code class="language-typescript">await embeddingsService.storeEmbeddings([
+    {
+        pageContent: "User authentication flow",
+        metadata: { 
+            docId: "auth-001",
+            category: "authentication" 
+        }
+    },
+    {
+        pageContent: "Payment processing system",
+        metadata: { 
+            docId: "payment-002",
+            category: "billing" 
+        }
+    }
+]);</code></pre>
+
+<%= h3_with_anchor "Similarity Search" %>
+
+<p>Find semantically similar content based on meaning:</p>
+
+<pre><code class="language-typescript">// Single query search
+const results = await embeddingsService.search(
+    "login and security",  // Query
+    5,                      // Top K results
+    {
+        filter: { category: "authentication" },  // Optional metadata filter
+        includeEmbedding: false                   // Don't return raw vectors
+    }
+);
+
+// Results include similarity scores
+results.forEach(doc => {
+    console.log(`Score: ${doc.similarityScore}, Content: ${doc.pageContent}`);
+});</code></pre>
+
+<%= h3_with_anchor "Multi-Query Search" %>
+
+<p>Execute multiple searches in parallel for better performance:</p>
+
+<pre><code class="language-typescript">const results = await embeddingsService.multiQuerySearch(
+    ["user profile", "settings page", "dashboard"],  // Multiple queries
+    3  // Top K per query
+);
+
+// Returns array of result sets, one per query</code></pre>
+
+<%= h3_with_anchor "Hybrid Search" %>
+
+<p>Combine semantic vector search with traditional text matching:</p>
+
+<pre><code class="language-typescript">// The service automatically enhances vector search with ILIKE matching
+// This catches exact matches that might have lower semantic similarity
+const results = await embeddingsService.search(
+    "PostgresEmbeddingsService",  // Exact class name
+    5
+);
+// Will find both semantic matches AND exact text matches</code></pre>
+
+<%= h2_with_anchor "Caching System" %>
+
+<p>The service includes an intelligent caching layer that significantly improves performance:</p>
+
+<%= h3_with_anchor "Cache Configuration" %>
+
+<pre><code class="language-typescript">const service = new PostgresEmbeddingsService({
+    tableName: "my_embeddings",
+    cacheOptions: {
+        ttlHours: 24,           // Cache lifetime (default: 24 hours)
+        minSimilarity: 0.25     // Minimum score to cache (default: 0.25)
+    }
+});</code></pre>
+
+<%= h3_with_anchor "How Caching Works" %>
+
+<ol>
+    <li><strong>Query Hashing</strong>: Each search query is hashed with its parameters</li>
+    <li><strong>TTL Management</strong>: Cached results expire after the configured time</li>
+    <li><strong>Similarity Threshold</strong>: Only results above the threshold are cached</li>
+    <li><strong>Automatic Cleanup</strong>: Expired cache entries are removed on access</li>
+</ol>
+
+<%= h2_with_anchor "Database Schema" %>
+
+<p>Use Rails to provide your subclass with a matching database schema.</p>
+
+<%= h3_with_anchor "Embeddings Table" %>
+
+<pre><code class="language-ruby">
+    create_table :icon_embeddings do |t|
+      t.string :key, null: false
+      t.text :text, null: false
+      t.vector :embedding, limit: 1536, null: false
+      t.jsonb :metadata, null: false, default: {}
+      t.timestamp :created_at
+
+      t.index :key, unique: true
+    end
+
+    safety_assured do
+      execute "CREATE INDEX idx_icon_embeddings_text ON icon_embeddings USING IVFFlat (embedding vector_cosine_ops);"
+    end
+</code></pre>
+
+<%= h3_with_anchor "Cache Table" %>
+
+Optionally, you can create a cache table which will be used to store the results of previous searches. 
+
+This can be useful for reducing the number of API calls to the embedding model and improving performance.
+
+<pre><code class="language-ruby">
+    create_table :icon_query_caches do |t|
+      t.string :query, null: false
+      t.jsonb :results, null: false, default: []
+      t.integer :use_count, null: false, default: 0
+      t.integer :ttl_seconds, null: false, default: 86400
+      t.float :min_similarity, null: false, default: 0.7
+      t.integer :top_k, null: false
+      t.timestamp :last_used_at, null: false
+      t.timestamps
+
+      t.index :query
+      t.index :top_k
+      t.index :use_count
+      t.index :ttl_seconds
+      t.index :last_used_at
+      t.index :min_similarity
+    end
+</code></pre>
+
+<%= h2_with_anchor "Configuration Options" %>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Default</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>tableName</code></td>
+            <td>string</td>
+            <td>required</td>
+            <td>Base name for database tables</td>
+        </tr>
+        <tr>
+            <td><code>embeddingDimensions</code></td>
+            <td>number</td>
+            <td>1536</td>
+            <td>Vector dimensions (must match model)</td>
+        </tr>
+        <tr>
+            <td><code>embeddingModel</code></td>
+            <td>string</td>
+            <td>text-embedding-3-small</td>
+            <td>OpenAI embedding model to use</td>
+        </tr>
+        <tr>
+            <td><code>cacheOptions.ttlHours</code></td>
+            <td>number</td>
+            <td>24</td>
+            <td>Cache time-to-live in hours</td>
+        </tr>
+        <tr>
+            <td><code>cacheOptions.minSimilarity</code></td>
+            <td>number</td>
+            <td>0.25</td>
+            <td>Minimum similarity score to cache</td>
+        </tr>
+    </tbody>
+</table>
+
+<%= h2_with_anchor "Building on PostgresEmbeddingsService" %>
+
+<p>This service is designed to be extended for specific use cases. Here are examples of services built on top of it:</p>
+
+<%= h3_with_anchor "Example: Icon Search Service" %>
+
+<pre><code class="language-typescript">class SearchIconsService {
+    private embeddingsService: PostgresEmbeddingsService;
+    
+    constructor() {
+        this.embeddingsService = new PostgresEmbeddingsService({
+            tableName: "lucide_icons",
+            cacheOptions: { ttlHours: 168 }  // Cache for 1 week
+        });
+    }
+    
+    async indexIcons(icons: IconData[]) {
+        const embeddings = icons.map(icon => ({
+            pageContent: `${icon.name} ${icon.tags.join(' ')}`,
+            metadata: { 
+                name: icon.name,
+                category: icon.category 
+            }
+        }));
+        
+        await this.embeddingsService.storeEmbeddings(embeddings);
+    }
+    
+    async searchIcons(query: string, limit: number = 5) {
+        return await this.embeddingsService.search(query, limit);
+    }
+}</code></pre>
+
+<%= h3_with_anchor "Example: Code Search Service" %>
+
+<pre><code class="language-typescript">class CodeSearchService {
+    private embeddingsService: PostgresEmbeddingsService;
+    
+    constructor() {
+        this.embeddingsService = new PostgresEmbeddingsService({
+            tableName: "code_files",
+            embeddingModel: "text-embedding-3-large",  // Better model for code
+            embeddingDimensions: 3072
+        });
+    }
+    
+    async indexCodebase(files: CodeFile[]) {
+        const embeddings = files.map(file => ({
+            pageContent: file.content,
+            metadata: { 
+                path: file.path,
+                language: file.language,
+                lastModified: file.lastModified 
+            }
+        }));
+        
+        await this.embeddingsService.storeEmbeddings(embeddings);
+    }
+    
+    async findSimilarCode(snippet: string) {
+        return await this.embeddingsService.search(snippet, 10, {
+            filter: { language: "typescript" }  // Filter by language
+        });
+    }
+}</code></pre>
+
+<%= h2_with_anchor "Performance Considerations" %>
+
+<%= h3_with_anchor "Optimization Tips" %>
+
+<ol>
+    <li><strong>Use Multi-Query Search</strong>: When searching for multiple items, use <code>multiQuerySearch()</code> instead of multiple individual searches</li>
+    <li><strong>Configure Appropriate Cache TTL</strong>: Longer TTL for stable content, shorter for frequently changing data</li>
+    <li><strong>Index Strategically</strong>: Only index searchable content, not entire documents</li>
+    <li><strong>Use Metadata Filters</strong>: Narrow search space with metadata filters when possible</li>
+</ol>
+
+<%= h3_with_anchor "Scaling Guidelines" %>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Dataset Size</th>
+            <th>Recommended Approach</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>&lt; 10,000 documents</td>
+            <td>Standard configuration works well</td>
+        </tr>
+        <tr>
+            <td>10,000 - 100,000 documents</td>
+            <td>Consider increasing cache TTL, use metadata filters extensively</td>
+        </tr>
+        <tr>
+            <td>100,000 - 1M documents</td>
+            <td>Implement partitioning by metadata, consider dedicated read replicas</td>
+        </tr>
+        <tr>
+            <td>&gt; 1M documents</td>
+            <td>Consider specialized vector databases, implement sharding</td>
+        </tr>
+    </tbody>
+</table>
+
+<%= h2_with_anchor "Error Handling" %>
+
+<p>The service includes comprehensive error handling:</p>
+
+<pre><code class="language-typescript">try {
+    const results = await embeddingsService.search("query", 5);
+} catch (error) {
+    if (error.code === 'ECONNREFUSED') {
+        // Database connection issue
+    } else if (error.message.includes('dimension')) {
+        // Embedding dimension mismatch
+    } else if (error.message.includes('rate_limit')) {
+        // OpenAI rate limiting
+    }
+}</code></pre>
+
+<%= h2_with_anchor "Testing" %>
+
+<p>When testing services that use PostgresEmbeddingsService:</p>
+
+<pre><code class="language-typescript">import { vi } from 'vitest';
+
+// Mock the embeddings service
+vi.mock('@services/core/postgresEmbeddingsService', () => ({
+    PostgresEmbeddingsService: vi.fn().mockImplementation(() => ({
+        search: vi.fn().mockResolvedValue([
+            { pageContent: "mocked result", similarityScore: 0.95 }
+        ]),
+        storeEmbeddings: vi.fn().mockResolvedValue(undefined),
+        multiQuerySearch: vi.fn().mockResolvedValue([[]])
+    }))
+}));</code></pre>
+
+<%= h2_with_anchor "Best Practices" %>
+
+<ol>
+    <li><strong>Preprocess Text</strong>: Clean and normalize text before storing embeddings</li>
+    <li><strong>Use Descriptive Metadata</strong>: Include relevant metadata for filtering and debugging</li>
+    <li><strong>Monitor Cache Hit Rates</strong>: Track cache effectiveness and adjust TTL accordingly</li>
+    <li><strong>Batch Operations</strong>: Store embeddings in batches rather than one at a time</li>
+    <li><strong>Version Your Embeddings</strong>: Include model version in metadata when upgrading models</li>
+</ol>
+
+<div class="alert alert-warning">
+    <p><strong>Important:</strong> When changing embedding models or dimensions, you must recreate the embeddings table as vectors are not compatible across different models or dimensions.</p>
+</div>

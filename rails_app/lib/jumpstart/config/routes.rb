@@ -75,7 +75,11 @@ Jumpstart::Engine.routes.draw do
     get :existing_apps
     get :integrations
 
+    # Langgraph Backend
     get :langgraph_overview
+    get :search_files_tool
+    get :search_icons_tool
+    get :postgres_embeddings_service
   end
 
   root to: "admin#show"

@@ -45,7 +45,7 @@ CREATE FUNCTION public.update_content_tsv() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
         BEGIN
-            -- Use english configuration for better programming term handling
+            -- Use simple configuration for better programming term handling
             -- Also include file path in search
             NEW.content_tsv := to_tsvector('english', 
               COALESCE(NEW.content, '') || ' ' || 
@@ -663,7 +663,8 @@ CREATE VIEW public.code_files AS
             wf.file_specification_id,
             wf.created_at,
             wf.updated_at,
-            'website'::text AS source
+            'WebsiteFile'::text AS source_type,
+            wf.id AS source_id
            FROM public.website_files wf
         UNION ALL
          SELECT w.id AS website_id,
@@ -674,7 +675,8 @@ CREATE VIEW public.code_files AS
             tf.file_specification_id,
             tf.created_at,
             tf.updated_at,
-            'template'::text AS source
+            'TemplateFile'::text AS source_type,
+            tf.id AS source_id
            FROM (public.template_files tf
              JOIN public.websites w ON ((w.template_id = tf.template_id)))
           WHERE (NOT (EXISTS ( SELECT 1
@@ -687,7 +689,8 @@ CREATE VIEW public.code_files AS
     content_tsv,
     shasum,
     file_specification_id,
-    source,
+    source_type,
+    source_id,
     created_at,
     updated_at
    FROM merged_files
@@ -2285,6 +2288,43 @@ CREATE SEQUENCE public.icon_embeddings_id_seq
 --
 
 ALTER SEQUENCE public.icon_embeddings_id_seq OWNED BY public.icon_embeddings.id;
+
+
+--
+-- Name: icon_query_caches; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.icon_query_caches (
+    id bigint NOT NULL,
+    query character varying NOT NULL,
+    results jsonb DEFAULT '[]'::jsonb NOT NULL,
+    use_count integer DEFAULT 0 NOT NULL,
+    ttl_seconds integer DEFAULT 86400 NOT NULL,
+    min_similarity double precision DEFAULT 0.7 NOT NULL,
+    top_k integer NOT NULL,
+    last_used_at timestamp without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: icon_query_caches_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.icon_query_caches_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: icon_query_caches_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.icon_query_caches_id_seq OWNED BY public.icon_query_caches.id;
 
 
 --
@@ -4201,6 +4241,13 @@ ALTER TABLE ONLY public.icon_embeddings ALTER COLUMN id SET DEFAULT nextval('pub
 
 
 --
+-- Name: icon_query_caches id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.icon_query_caches ALTER COLUMN id SET DEFAULT nextval('public.icon_query_caches_id_seq'::regclass);
+
+
+--
 -- Name: inbound_webhooks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5378,6 +5425,14 @@ ALTER TABLE ONLY public.file_specifications
 
 ALTER TABLE ONLY public.icon_embeddings
     ADD CONSTRAINT icon_embeddings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: icon_query_caches icon_query_caches_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.icon_query_caches
+    ADD CONSTRAINT icon_query_caches_pkey PRIMARY KEY (id);
 
 
 --
@@ -8806,6 +8861,48 @@ CREATE INDEX index_file_specifications_on_filetype ON public.file_specifications
 --
 
 CREATE UNIQUE INDEX index_icon_embeddings_on_key ON public.icon_embeddings USING btree (key);
+
+
+--
+-- Name: index_icon_query_caches_on_last_used_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_icon_query_caches_on_last_used_at ON public.icon_query_caches USING btree (last_used_at);
+
+
+--
+-- Name: index_icon_query_caches_on_min_similarity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_icon_query_caches_on_min_similarity ON public.icon_query_caches USING btree (min_similarity);
+
+
+--
+-- Name: index_icon_query_caches_on_query; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_icon_query_caches_on_query ON public.icon_query_caches USING btree (query);
+
+
+--
+-- Name: index_icon_query_caches_on_top_k; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_icon_query_caches_on_top_k ON public.icon_query_caches USING btree (top_k);
+
+
+--
+-- Name: index_icon_query_caches_on_ttl_seconds; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_icon_query_caches_on_ttl_seconds ON public.icon_query_caches USING btree (ttl_seconds);
+
+
+--
+-- Name: index_icon_query_caches_on_use_count; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_icon_query_caches_on_use_count ON public.icon_query_caches USING btree (use_count);
 
 
 --
@@ -13130,6 +13227,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20250916122108'),
 ('20250911224320'),
 ('20250911224216'),
 ('20250911222652'),

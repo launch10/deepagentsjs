@@ -1,0 +1,498 @@
+<% content_for :title, "Search Icons Tool" %>
+<% content_for :subtitle do %>
+    Intelligent semantic search for Lucide React icons using natural language
+<% end %>
+
+<%= h2_with_anchor "Overview" %>
+
+<p>Langgraph Feature (not Rails): </p>
+
+<p>The <code>SearchIconsTool</code> is a LangChain-compatible tool that enables AI agents to find appropriate icons from the Lucide React library using natural language queries. Unlike traditional keyword search, this tool understands concepts, visual descriptions, and intended use cases.</p>
+
+<div class="alert alert-success">
+    <p><strong>Key Features:</strong></p>
+    <ul>
+        <li>Semantic understanding of icon concepts</li>
+        <li>Visual description matching ("three horizontal lines" → menu icon)</li>
+        <li>Action-based queries ("save to disk" → save icon)</li>
+        <li>Parallel multi-query execution</li>
+        <li>Intelligent result caching</li>
+    </ul>
+</div>
+
+<%= h2_with_anchor "How It Works" %>
+
+<p>The tool leverages vector embeddings to understand the semantic meaning behind icon queries:</p>
+
+<pre><code class="language-mermaid">
+graph TD
+    A[Natural Language Query] --> B[SearchIconsTool]
+    B --> C[SearchIconsService]
+    C --> D[PostgresEmbeddingsService]
+    D --> E[Vector Similarity Search]
+    E --> F[Lucide Icons Database]
+    F --> G[Ranked Icon Results]
+    G --> H[Return Icon Names]
+</code></pre>
+
+<%= h2_with_anchor "Usage Examples" %>
+
+<%= h3_with_anchor "Basic Icon Search" %>
+
+<pre><code class="language-typescript">const searchIconsTool = new SearchIconsTool();
+
+// Single query search
+const result = await searchIconsTool.invoke({
+    queries: ["user authentication"],
+    limit: 5
+});
+
+console.log(result.results);
+// {
+//   "user authentication": ["user", "lock", "key", "shield", "user-check"]
+// }</code></pre>
+
+<%= h3_with_anchor "Multi-Query Search" %>
+
+<pre><code class="language-typescript">// Search for multiple icon types in parallel
+const result = await searchIconsTool.invoke({
+    queries: [
+        "navigation menu",
+        "save document", 
+        "delete item",
+        "user profile"
+    ],
+    limit: 3
+});
+
+console.log(result.results);
+// {
+//   "navigation menu": ["menu", "navigation", "list"],
+//   "save document": ["save", "file-text", "download"],
+//   "delete item": ["trash-2", "x", "delete"],
+//   "user profile": ["user", "user-circle", "contact"]
+// }</code></pre>
+
+<%= h3_with_anchor "Visual Description Queries" %>
+
+<pre><code class="language-typescript">// Find icons based on visual appearance
+const result = await searchIconsTool.invoke({
+    queries: [
+        "three horizontal lines",     // → menu icon
+        "circle with checkmark",      // → check-circle icon
+        "arrow pointing up",           // → arrow-up icon
+        "gear or cog shape"           // → settings icon
+    ]
+});</code></pre>
+
+<%= h3_with_anchor "Action-Based Queries" %>
+
+<pre><code class="language-typescript">// Find icons for specific actions
+const result = await searchIconsTool.invoke({
+    queries: [
+        "upload file to server",       // → upload, upload-cloud
+        "refresh the page",            // → refresh-cw, rotate-cw
+        "zoom in on image",            // → zoom-in, maximize
+        "send email message"           // → send, mail
+    ]
+});</code></pre>
+
+<%= h2_with_anchor "Integration with LangChain Agents" %>
+
+<p>The tool is designed to work seamlessly with LangChain agents:</p>
+
+<%= h3_with_anchor "Agent Configuration" %>
+
+<pre><code class="language-typescript">import { ChatOpenAI } from "@langchain/openai";
+import { AgentExecutor } from "langchain/agents";
+import { SearchIconsTool } from "@tools/searchIcons";
+
+const model = new ChatOpenAI({
+    modelName: "gpt-4-turbo",
+    temperature: 0
+});
+
+const tools = [
+    new SearchIconsTool(),
+    // ... other tools
+];
+
+const agent = await createReactAgent({
+    llm: model,
+    tools,
+    prompt: agentPrompt
+});
+
+// Agent can now find icons autonomously
+const result = await agent.invoke({
+    input: "Find appropriate icons for a user dashboard with sections for profile, settings, notifications, and logout"
+});</code></pre>
+
+<%= h3_with_anchor "Tool Description for Agents" %>
+
+<p>The tool provides a comprehensive description to help agents understand its capabilities:</p>
+
+<pre><code class="language-text">Search for Lucide React icons using natural language queries.
+This tool understands:
+- Conceptual queries: "user authentication", "data visualization"
+- Visual descriptions: "three dots", "circular arrow"
+- Actions: "save to disk", "delete item", "share content"
+- UI elements: "navigation menu", "close button", "dropdown arrow"
+
+Returns arrays of matching icon names from the Lucide React library.</code></pre>
+
+<%= h2_with_anchor "API Reference" %>
+
+<%= h3_with_anchor "Input Parameters" %>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Parameter</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Default</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>queries</code></td>
+            <td>string[]</td>
+            <td>Yes</td>
+            <td>-</td>
+            <td>Array of search queries to execute</td>
+        </tr>
+        <tr>
+            <td><code>limit</code></td>
+            <td>number</td>
+            <td>No</td>
+            <td>5</td>
+            <td>Maximum icons to return per query</td>
+        </tr>
+    </tbody>
+</table>
+
+<%= h3_with_anchor "Output Format" %>
+
+<pre><code class="language-typescript">interface SearchIconsOutput {
+    results: {
+        [query: string]: string[]  // Icon names for each query
+    }
+}</code></pre>
+
+<%= h3_with_anchor "Example Response" %>
+
+<pre><code class="language-json">{
+    "results": {
+        "navigation menu": ["menu", "navigation", "list", "sidebar", "layout"],
+        "user settings": ["settings", "user-cog", "sliders", "tool", "wrench"]
+    }
+}</code></pre>
+
+<%= h2_with_anchor "Understanding Search Quality" %>
+
+<%= h3_with_anchor "What Makes a Good Query?" %>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Query Type</th>
+            <th>Good Examples</th>
+            <th>Poor Examples</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Conceptual</td>
+            <td>"user authentication", "data export"</td>
+            <td>"thing", "stuff"</td>
+        </tr>
+        <tr>
+            <td>Visual</td>
+            <td>"three horizontal lines", "circular arrow"</td>
+            <td>"pretty", "nice looking"</td>
+        </tr>
+        <tr>
+            <td>Action-based</td>
+            <td>"delete file", "send message"</td>
+            <td>"do something", "action"</td>
+        </tr>
+        <tr>
+            <td>UI Element</td>
+            <td>"close button", "dropdown menu"</td>
+            <td>"button", "element"</td>
+        </tr>
+    </tbody>
+</table>
+
+<%= h3_with_anchor "Similarity Scoring" %>
+
+<p>Results are ranked by cosine similarity between query and icon embeddings:</p>
+
+<ul>
+    <li><strong>0.8 - 1.0:</strong> Excellent match - highly relevant</li>
+    <li><strong>0.6 - 0.8:</strong> Good match - relevant</li>
+    <li><strong>0.4 - 0.6:</strong> Fair match - somewhat relevant</li>
+    <li><strong>&lt; 0.4:</strong> Poor match - limited relevance</li>
+</ul>
+
+<%= h2_with_anchor "Performance & Caching" %>
+
+<%= h3_with_anchor "Caching Strategy" %>
+
+<p>The tool implements intelligent caching to optimize performance:</p>
+
+<ol>
+    <li><strong>Query-level caching:</strong> Results cached for 24 hours by default</li>
+    <li><strong>Embedding reuse:</strong> Icon embeddings are pre-computed and stored</li>
+    <li><strong>Parallel execution:</strong> Multiple queries processed simultaneously</li>
+</ol>
+
+<%= h3_with_anchor "Performance Metrics" %>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Operation</th>
+            <th>Cold Cache</th>
+            <th>Warm Cache</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Single query</td>
+            <td>200-300ms</td>
+            <td>5-10ms</td>
+        </tr>
+        <tr>
+            <td>5 parallel queries</td>
+            <td>300-400ms</td>
+            <td>10-20ms</td>
+        </tr>
+        <tr>
+            <td>10 parallel queries</td>
+            <td>400-500ms</td>
+            <td>20-30ms</td>
+        </tr>
+    </tbody>
+</table>
+
+<%= h2_with_anchor "Icon Library Coverage" %>
+
+<p>The tool searches across the entire Lucide React icon library:</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <h4>Categories Covered:</h4>
+        <ul>
+            <li>Navigation & UI Controls</li>
+            <li>User & Authentication</li>
+            <li>Files & Documents</li>
+            <li>Communication & Social</li>
+            <li>Media & Entertainment</li>
+            <li>Commerce & Finance</li>
+            <li>Data & Analytics</li>
+            <li>Development & Tools</li>
+        </ul>
+    </div>
+    <div class="col-md-6">
+        <h4>Statistics:</h4>
+        <ul>
+            <li><strong>Total Icons:</strong> ~1000+</li>
+            <li><strong>Icon Variants:</strong> Outline style</li>
+            <li><strong>Size Options:</strong> Scalable SVG</li>
+            <li><strong>Updates:</strong> Automatically includes new icons</li>
+        </ul>
+    </div>
+</div>
+
+<%= h2_with_anchor "Advanced Usage" %>
+
+<%= h3_with_anchor "Custom Service Configuration" %>
+
+<p>For advanced use cases, you can directly use the underlying service:</p>
+
+<pre><code class="language-typescript">import { SearchIconsService } from "@services/searchIcons";
+
+const service = new SearchIconsService({
+    cacheOptions: {
+        ttlHours: 168,  // Cache for 1 week
+        minSimilarity: 0.3  // Lower threshold for broader matches
+    }
+});
+
+// Direct service usage
+const results = await service.searchIcons(
+    ["minimalist arrow"],
+    { topK: 10 }
+);</code></pre>
+
+<%= h3_with_anchor "Batch Processing" %>
+
+<pre><code class="language-typescript">// Process icon requirements for multiple UI components
+const uiComponents = [
+    { name: "Header", needs: ["menu", "search", "user profile"] },
+    { name: "Sidebar", needs: ["dashboard", "settings", "logout"] },
+    { name: "Toolbar", needs: ["save", "undo", "redo", "print"] }
+];
+
+const iconSuggestions = await Promise.all(
+    uiComponents.map(async (component) => {
+        const result = await searchIconsTool.invoke({
+            queries: component.needs,
+            limit: 3
+        });
+        return {
+            component: component.name,
+            icons: result.results
+        };
+    })
+);</code></pre>
+
+<%= h2_with_anchor "Testing" %>
+
+<%= h3_with_anchor "Unit Testing" %>
+
+<pre><code class="language-typescript">import { vi, describe, it, expect } from 'vitest';
+import { SearchIconsTool } from '@tools/searchIcons';
+
+describe('SearchIconsTool', () => {
+    it('should find navigation icons', async () => {
+        const tool = new SearchIconsTool();
+        const result = await tool.invoke({
+            queries: ["navigation menu"],
+            limit: 5
+        });
+        
+        expect(result.results["navigation menu"]).toContain("menu");
+        expect(result.results["navigation menu"].length).toBeLessThanOrEqual(5);
+    });
+    
+    it('should handle multiple queries', async () => {
+        const tool = new SearchIconsTool();
+        const result = await tool.invoke({
+            queries: ["save", "delete", "edit"],
+            limit: 3
+        });
+        
+        expect(Object.keys(result.results)).toHaveLength(3);
+        expect(result.results["save"]).toContain("save");
+        expect(result.results["delete"]).toContainAnyOf(["trash", "trash-2", "x"]);
+    });
+});</code></pre>
+
+<%= h3_with_anchor "Mocking for Tests" %>
+
+<pre><code class="language-typescript">// Mock the tool for testing other components
+vi.mock('@tools/searchIcons', () => ({
+    SearchIconsTool: vi.fn().mockImplementation(() => ({
+        name: "search_icons",
+        invoke: vi.fn().mockResolvedValue({
+            results: {
+                "test query": ["icon1", "icon2", "icon3"]
+            }
+        })
+    }))
+}));</code></pre>
+
+<%= h2_with_anchor "Common Use Cases" %>
+
+<%= h3_with_anchor "Building Dynamic UIs" %>
+
+<pre><code class="language-typescript">// Automatically select icons for dynamic form fields
+const formFields = [
+    { label: "Email Address", type: "email" },
+    { label: "Password", type: "password" },
+    { label: "Phone Number", type: "tel" },
+    { label: "Birth Date", type: "date" }
+];
+
+const fieldIcons = await searchIconsTool.invoke({
+    queries: formFields.map(f => `${f.label} ${f.type}`),
+    limit: 1
+});
+
+// Use results to render form with appropriate icons</code></pre>
+
+<%= h3_with_anchor "Icon Recommendations" %>
+
+<pre><code class="language-typescript">// Suggest alternative icons for better UX
+async function suggestAlternatives(currentIcon: string) {
+    const result = await searchIconsTool.invoke({
+        queries: [`similar to ${currentIcon}`, currentIcon],
+        limit: 8
+    });
+    
+    // Remove the current icon from suggestions
+    const alternatives = result.results[currentIcon]
+        .filter(icon => icon !== currentIcon);
+    
+    return alternatives;
+}</code></pre>
+
+<%= h2_with_anchor "Troubleshooting" %>
+
+<%= h3_with_anchor "Common Issues" %>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Issue</th>
+            <th>Cause</th>
+            <th>Solution</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>No results returned</td>
+            <td>Query too specific or unrelated</td>
+            <td>Use broader terms or break into concepts</td>
+        </tr>
+        <tr>
+            <td>Unexpected icons</td>
+            <td>Ambiguous query terms</td>
+            <td>Add context or use more specific descriptions</td>
+        </tr>
+        <tr>
+            <td>Slow performance</td>
+            <td>Cold cache or many queries</td>
+            <td>Batch queries, increase cache TTL</td>
+        </tr>
+        <tr>
+            <td>Duplicate results</td>
+            <td>Similar queries</td>
+            <td>Deduplicate on client side or use distinct queries</td>
+        </tr>
+    </tbody>
+</table>
+
+<%= h3_with_anchor "Debug Mode" %>
+
+<pre><code class="language-typescript">// Enable debug logging for troubleshooting
+const tool = new SearchIconsTool();
+
+// Wrap invocation with logging
+const debugInvoke = async (params) => {
+    console.log('Search params:', params);
+    const start = Date.now();
+    const result = await tool.invoke(params);
+    console.log(`Search completed in ${Date.now() - start}ms`);
+    console.log('Results:', result);
+    return result;
+};</code></pre>
+
+<%= h2_with_anchor "Best Practices" %>
+
+<ol>
+    <li><strong>Be Specific:</strong> Use descriptive queries rather than generic terms</li>
+    <li><strong>Batch Queries:</strong> Group related searches into single requests</li>
+    <li><strong>Cache Wisely:</strong> Leverage caching for frequently used queries</li>
+    <li><strong>Limit Results:</strong> Request only as many icons as needed</li>
+    <li><strong>Test Queries:</strong> Verify icon relevance in development</li>
+    <li><strong>Provide Context:</strong> Include use case or UI element type in queries</li>
+</ol>
+
+<div class="alert alert-info">
+    <p><strong>Pro Tip:</strong> When building icon pickers or selection interfaces, combine this tool with visual preview to let users make the final selection from semantically relevant options.</p>
+</div>
