@@ -68,6 +68,8 @@ module Database
       sequence_sql = get_sequence_reset_sql
       
       # Combine data and sequences into final output
+      FileUtils.rm(output_path) if File.exist?(output_path)
+
       File.open(output_path, 'w') do |f|
         f.puts "-- Database snapshot created at #{Time.now}"
         f.puts "-- Disable triggers during restore"

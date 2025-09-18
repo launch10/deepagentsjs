@@ -30,7 +30,6 @@ class Project < ApplicationRecord
   validates :thread_id, presence: true
   validates :account_id, presence: true
 
-  has_one :plan, class_name: "ProjectPlan"
   has_one :website
 
   include ProjectConcerns::Serialization
