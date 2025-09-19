@@ -55,14 +55,14 @@ RSpec.describe CodeFile, type: :model do
     # Ensure tsvector columns are populated (triggers may not fire in test transactions)
     ActiveRecord::Base.connection.execute(<<-SQL)
       UPDATE website_files 
-      SET content_tsv = to_tsvector('simple', 
+      SET content_tsv = to_tsvector('english', 
         COALESCE(content, '') || ' ' || 
         COALESCE(regexp_replace(path, '[/.]', ' ', 'g'), '')
       )
       WHERE website_id = #{website.id};
       
       UPDATE template_files 
-      SET content_tsv = to_tsvector('simple', 
+      SET content_tsv = to_tsvector('english', 
         COALESCE(content, '') || ' ' || 
         COALESCE(regexp_replace(path, '[/.]', ' ', 'g'), '')
       )
@@ -221,14 +221,14 @@ RSpec.describe CodeFile, type: :model do
     it "highlights matching terms" do
       results = CodeFile.search_with_highlights("useState", start_sel: "**", stop_sel: "**")
                         .where(website_id: website.id)
-      expect(results.count).to eq(1)
+      expect(results.to_a.size).to eq(1)
       expect(results.first.highlighted_content).to include("**useState**")
     end
     
     it "provides context around matches" do
       results = CodeFile.search_with_context("useState", 5)
                         .where(website_id: website.id)
-      expect(results.count).to eq(1)
+      expect(results.to_a.size).to eq(1)
       expect(results.first.path).to eq("src/components/Header.tsx")
     end
   end
@@ -242,9 +242,19 @@ RSpec.describe CodeFile, type: :model do
         content: "import React, { useState } from 'react';"
       )
       
+      # Update content_tsv for website2's files
+      ActiveRecord::Base.connection.execute(<<-SQL)
+        UPDATE website_files 
+        SET content_tsv = to_tsvector('english', 
+          COALESCE(content, '') || ' ' || 
+          COALESCE(regexp_replace(path, '[/.]', ' ', 'g'), '')
+        )
+        WHERE website_id = #{website2.id};
+      SQL
+      
       counts = CodeFile.count_matches_by_website("useState")
-      expect(counts[website.id]).to eq(1)
-      expect(counts[website2.id]).to eq(1)
+      expect(counts[website.id]).to eq(1) # website has custom Header.tsx with useState
+      expect(counts[website2.id]).to eq(2) # website2 has App.tsx + inherits Header.tsx from template (both have useState)
     end
   end
   
@@ -252,13 +262,15 @@ RSpec.describe CodeFile, type: :model do
     let(:file) { CodeFile.where(website_id: website.id).first }
     
     it "#website_file? returns true for website files" do
-      website_file = CodeFile.where(website_id: website.id, source_type: "website").first
+      website_file = CodeFile.where(website_id: website.id, source_type: "WebsiteFile").first
+      expect(website_file).not_to be_nil
       expect(website_file.website_file?).to be true
       expect(website_file.template_file?).to be false
     end
     
     it "#template_file? returns true for template files" do
-      template_file = CodeFile.where(website_id: website.id, source_type: "template").first
+      template_file = CodeFile.where(website_id: website.id, source_type: "TemplateFile").first
+      expect(template_file).not_to be_nil
       expect(template_file.template_file?).to be true
       expect(template_file.website_file?).to be false
     end

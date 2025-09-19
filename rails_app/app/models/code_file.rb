@@ -54,15 +54,16 @@ class CodeFile < ApplicationRecord
   }
   
   # Fuzzy path search using trigrams
-  scope :path_similar_to, ->(path, threshold = 0.3) {
+  def self.path_similar_to(path, threshold = 0.3)
     sanitized_path = connection.quote(path)
     
-    unscope(:select)
-      .where("similarity(path, ?) > ?", path, threshold)
-      .select("code_files.*")
-      .select("similarity(path, #{sanitized_path}) AS path_similarity")
-      .order("path_similarity DESC")
-  }
+    # Use a subquery to avoid conflicts with default scope
+    from(
+      unscoped.select("code_files.*", "similarity(path, #{sanitized_path}) AS path_similarity"),
+      :code_files
+    ).where("similarity(path, ?) > ?", path, threshold)
+     .order("path_similarity DESC")
+  end
   
   scope :path_fuzzy, ->(pattern) {
     where("path % ?", pattern)
@@ -90,21 +91,21 @@ class CodeFile < ApplicationRecord
     max_words = options[:max_words] || 20
     
     sanitized_query = connection.quote(query)
+    highlight_col = "ts_headline('english', content, plainto_tsquery('english', #{sanitized_query}), 'StartSel=#{start_sel}, StopSel=#{stop_sel}, MaxWords=#{max_words}, MinWords=10') AS highlighted_content"
     
+    # Use reselect to override any default select
     search(query)
-      .unscope(:select)
-      .select("code_files.*")
-      .select("ts_headline('english', content, plainto_tsquery('english', #{sanitized_query}), 'StartSel=#{start_sel}, StopSel=#{stop_sel}, MaxWords=#{max_words}, MinWords=10') AS highlighted_content")
+      .reselect("code_files.*", highlight_col)
   end
   
   # Get top matching files with context  
   def self.search_with_context(query, limit = 10)
     sanitized_query = connection.quote(query)
+    highlight_col = "ts_headline('english', content, plainto_tsquery('english', #{sanitized_query}), 'MaxWords=20, MinWords=10') AS highlighted_content"
     
+    # Use reselect to override any default select
     search(query)
-      .unscope(:select)
-      .select("code_files.*")
-      .select("ts_headline('english', content, plainto_tsquery('english', #{sanitized_query}), 'MaxWords=20, MinWords=10') AS highlighted_content")
+      .reselect("code_files.*", highlight_col)
       .limit(limit)
   end
   
