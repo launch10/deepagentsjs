@@ -1,7 +1,6 @@
 class CreateComponentOverviews < ActiveRecord::Migration[8.0]
   def change
     create_table :component_overviews do |t|
-      t.bigint :page_plan_id, null: false
       t.bigint :website_id, null: false
       t.bigint :page_id
       t.string :component_type
@@ -17,7 +16,6 @@ class CreateComponentOverviews < ActiveRecord::Migration[8.0]
       t.timestamps
 
       t.index :created_at
-      t.index :page_plan_id
       t.index :website_id
       t.index :page_id
       t.index :component_type

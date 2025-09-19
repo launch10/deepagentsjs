@@ -125,6 +125,8 @@ module Database
       # Replace hyphens with underscores in the filename
       normalized_basename = basename.gsub('-', '_')
       
+      FileUtils.mkdir_p(pathname.dirname)
+
       # Reconstruct the path with normalized filename
       pathname.dirname.join("#{normalized_basename}.sql").to_s
     end

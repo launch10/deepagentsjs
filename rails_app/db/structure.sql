@@ -500,6 +500,60 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: checkpoint_blobs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.checkpoint_blobs (
+    thread_id text NOT NULL,
+    checkpoint_ns text DEFAULT ''::text NOT NULL,
+    channel text NOT NULL,
+    version text NOT NULL,
+    type text NOT NULL,
+    blob bytea
+);
+
+
+--
+-- Name: checkpoint_migrations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.checkpoint_migrations (
+    v integer NOT NULL
+);
+
+
+--
+-- Name: checkpoint_writes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.checkpoint_writes (
+    thread_id text NOT NULL,
+    checkpoint_ns text DEFAULT ''::text NOT NULL,
+    checkpoint_id text NOT NULL,
+    task_id text NOT NULL,
+    idx integer NOT NULL,
+    channel text NOT NULL,
+    type text,
+    blob bytea NOT NULL
+);
+
+
+--
+-- Name: checkpoints; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.checkpoints (
+    thread_id text NOT NULL,
+    checkpoint_ns text DEFAULT ''::text NOT NULL,
+    checkpoint_id text NOT NULL,
+    parent_checkpoint_id text,
+    type text,
+    checkpoint jsonb NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL
+);
+
+
+--
 -- Name: cloudflare_firewall_rules; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -708,7 +762,6 @@ ALTER SEQUENCE public.component_content_plans_id_seq OWNED BY public.component_c
 
 CREATE TABLE public.component_overviews (
     id bigint NOT NULL,
-    page_plan_id bigint NOT NULL,
     website_id bigint NOT NULL,
     page_id bigint,
     component_type character varying,
@@ -842,7 +895,8 @@ CREATE TABLE public.content_strategies (
     landing_page_copy text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    website_id integer
+    website_id integer,
+    summary text
 );
 
 
@@ -11704,39 +11758,6 @@ ALTER SEQUENCE public.notifications_id_seq OWNED BY public.notifications.id;
 
 
 --
--- Name: page_plans; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.page_plans (
-    id bigint NOT NULL,
-    website_id bigint,
-    page_type character varying,
-    description character varying,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: page_plans_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.page_plans_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: page_plans_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.page_plans_id_seq OWNED BY public.page_plans.id;
-
-
---
 -- Name: pages; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -12147,7 +12168,8 @@ CREATE TABLE public.tasks (
     action character varying,
     file_specification_id bigint,
     component_id bigint,
-    inputs jsonb,
+    component_type character varying,
+    component_overview_id bigint,
     results jsonb,
     project_id bigint,
     website_id bigint,
@@ -18095,13 +18117,6 @@ ALTER TABLE ONLY public.notifications ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
--- Name: page_plans id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.page_plans ALTER COLUMN id SET DEFAULT nextval('public.page_plans_id_seq'::regclass);
-
-
---
 -- Name: pages id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -18388,6 +18403,38 @@ ALTER TABLE ONLY public.api_tokens
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: checkpoint_blobs checkpoint_blobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.checkpoint_blobs
+    ADD CONSTRAINT checkpoint_blobs_pkey PRIMARY KEY (thread_id, checkpoint_ns, channel, version);
+
+
+--
+-- Name: checkpoint_migrations checkpoint_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.checkpoint_migrations
+    ADD CONSTRAINT checkpoint_migrations_pkey PRIMARY KEY (v);
+
+
+--
+-- Name: checkpoint_writes checkpoint_writes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.checkpoint_writes
+    ADD CONSTRAINT checkpoint_writes_pkey PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx);
+
+
+--
+-- Name: checkpoints checkpoints_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.checkpoints
+    ADD CONSTRAINT checkpoints_pkey PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id);
 
 
 --
@@ -24492,14 +24539,6 @@ ALTER TABLE ONLY public.notification_tokens
 
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
-
-
---
--- Name: page_plans page_plans_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.page_plans
-    ADD CONSTRAINT page_plans_pkey PRIMARY KEY (id);
 
 
 --
@@ -45951,13 +45990,6 @@ CREATE INDEX index_component_overviews_on_page_id ON public.component_overviews 
 
 
 --
--- Name: index_component_overviews_on_page_plan_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_overviews_on_page_plan_id ON public.component_overviews USING btree (page_plan_id);
-
-
---
 -- Name: index_component_overviews_on_path; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -46343,27 +46375,6 @@ CREATE INDEX index_notifications_on_recipient_type_and_recipient_id ON public.no
 
 
 --
--- Name: index_page_plans_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_page_plans_on_created_at ON public.page_plans USING btree (created_at);
-
-
---
--- Name: index_page_plans_on_page_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_page_plans_on_page_type ON public.page_plans USING btree (page_type);
-
-
---
--- Name: index_page_plans_on_website_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_page_plans_on_website_id ON public.page_plans USING btree (website_id);
-
-
---
 -- Name: index_pages_on_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -46574,6 +46585,20 @@ CREATE INDEX index_tasks_on_component_id ON public.tasks USING btree (component_
 
 
 --
+-- Name: index_tasks_on_component_overview_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tasks_on_component_overview_id ON public.tasks USING btree (component_overview_id);
+
+
+--
+-- Name: index_tasks_on_component_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tasks_on_component_type ON public.tasks USING btree (component_type);
+
+
+--
 -- Name: index_tasks_on_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -46585,13 +46610,6 @@ CREATE INDEX index_tasks_on_created_at ON public.tasks USING btree (created_at);
 --
 
 CREATE INDEX index_tasks_on_file_specification_id ON public.tasks USING btree (file_specification_id);
-
-
---
--- Name: index_tasks_on_inputs; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_tasks_on_inputs ON public.tasks USING gin (inputs);
 
 
 --
@@ -73400,13 +73418,13 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20250918180911'),
 ('20250917204530'),
 ('20250917201500'),
 ('20250917200014'),
 ('20250917191837'),
 ('20250917185529'),
 ('20250917185329'),
-('20250917185324'),
 ('20250917185319'),
 ('20250917185049'),
 ('20250917182443'),

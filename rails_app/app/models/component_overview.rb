@@ -3,7 +3,6 @@
 # Table name: component_overviews
 #
 #  id                    :integer          not null, primary key
-#  page_plan_id          :integer          not null
 #  website_id            :integer          not null
 #  page_id               :integer
 #  component_type        :string
@@ -26,7 +25,6 @@
 #  index_component_overviews_on_file_specification_id  (file_specification_id)
 #  index_component_overviews_on_name                   (name)
 #  index_component_overviews_on_page_id                (page_id)
-#  index_component_overviews_on_page_plan_id           (page_plan_id)
 #  index_component_overviews_on_path                   (path)
 #  index_component_overviews_on_website_id             (website_id)
 #
