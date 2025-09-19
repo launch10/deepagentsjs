@@ -117,7 +117,7 @@ module Database
     end
 
     def truncate
-      execute_command('bundle exec rails db:truncate_all')
+      DatabaseCleaner.clean_with(:truncation)
     end
 
     private
@@ -199,18 +199,11 @@ module Database
 
     def normalize_snapshot_path(path)
       # Convert path to Pathname for easier manipulation
-      pathname = Pathname.new(path)
-      
-      # Get the filename without extension
-      basename = pathname.basename('.sql').to_s
-      
-      # Replace hyphens with underscores in the filename
-      normalized_basename = basename.gsub('-', '_')
+      pathname = Pathname.new(path.to_s.gsub('-', '_'))
       
       FileUtils.mkdir_p(pathname.dirname)
 
-      # Reconstruct the path with normalized filename
-      pathname.dirname.join("#{normalized_basename}.sql").to_s
+      pathname.to_s
     end
 
     def get_sequence_reset_sql

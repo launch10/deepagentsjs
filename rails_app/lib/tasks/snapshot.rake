@@ -61,13 +61,13 @@ namespace :db do
     unless File.exist?(input_path)
       puts "ERROR: Snapshot '#{args[:name]}' does not exist at #{input_path}"
       puts "Available snapshots:"
-      Dir.glob(SNAPSHOT_DIR.join("*.sql")).each do |file|
+      Dir.glob(SNAPSHOT_DIR.join("**/*.sql")).each do |file|
         puts "  - #{File.basename(file, '.sql')}"
       end
       exit 1
     end
 
-    if args[:truncate_first] == "true"
+    if args[:truncate_first] != "false"
       Database::Snapshotter.new.truncate
       puts "Database truncated before restore"
     end
