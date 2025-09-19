@@ -99,6 +99,9 @@ module Database
       input_path = normalize_snapshot_path(input_path)
       raise "File not found: #{input_path}" unless File.exist?(input_path)
 
+      # Create necessary partitions before restoring data
+      ensure_partitions_exist(input_path)
+
       command_args = [
         'psql',
         '-U', @config[:username],
@@ -114,6 +117,64 @@ module Database
     end
 
     private
+
+    def ensure_partitions_exist(snapshot_path)
+      # Read the snapshot file to identify partition tables referenced
+      content = File.read(snapshot_path)
+      
+      # Find all partition table references for domain_request_counts and account_request_counts
+      domain_partitions = content.scan(/domain_request_counts_(\d{4}_\d{2}_\d{2}_\d{2})/).flatten.uniq
+      account_partitions = content.scan(/account_request_counts_(\d{4}_\d{2})/).flatten.uniq
+      
+      # Create domain_request_counts hourly partitions
+      domain_partitions.each do |partition_suffix|
+        if partition_suffix =~ /(\d{4})_(\d{2})_(\d{2})_(\d{2})/
+          year, month, day, hour = $1.to_i, $2.to_i, $3.to_i, $4.to_i
+          start_time = Time.zone.local(year, month, day, hour)
+          end_time = start_time + 1.hour
+          partition_name = "domain_request_counts_#{partition_suffix}"
+          
+          create_partition_if_not_exists('domain_request_counts', partition_name, start_time, end_time)
+        end
+      end
+      
+      # Create account_request_counts monthly partitions  
+      account_partitions.each do |partition_suffix|
+        if partition_suffix =~ /(\d{4})_(\d{2})/
+          year, month = $1.to_i, $2.to_i
+          start_time = Time.zone.local(year, month, 1)
+          end_time = start_time + 1.month
+          partition_name = "account_request_counts_#{partition_suffix}"
+          
+          create_partition_if_not_exists('account_request_counts', partition_name, start_time, end_time)
+        end
+      end
+    rescue => e
+      Rails.logger.warn "Failed to ensure partitions exist: #{e.message}"
+      # Continue with restore even if partition creation fails
+    end
+    
+    def create_partition_if_not_exists(parent_table, partition_name, start_time, end_time)
+      # Check if partition already exists
+      result = ActiveRecord::Base.connection.execute(<<-SQL)
+        SELECT 1 FROM pg_tables 
+        WHERE tablename = '#{partition_name}'
+        AND schemaname = 'public'
+        LIMIT 1;
+      SQL
+      
+      # Create partition if it doesn't exist
+      if result.count == 0
+        ActiveRecord::Base.connection.execute(<<-SQL)
+          CREATE TABLE IF NOT EXISTS #{partition_name} 
+          PARTITION OF #{parent_table} 
+          FOR VALUES FROM ('#{start_time.to_fs(:db)}') TO ('#{end_time.to_fs(:db)}')
+        SQL
+        puts "✅ Created partition #{partition_name}"
+      end
+    rescue => e
+      Rails.logger.warn "Failed to create partition #{partition_name}: #{e.message}"
+    end
 
     def normalize_snapshot_path(path)
       # Convert path to Pathname for easier manipulation
