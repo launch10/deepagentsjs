@@ -40,7 +40,7 @@ class DomainRequestCount < ApplicationRecord
   end
 
   def self.partition_by_hour?
-    true
+    false
   end
 
   # Get total requests for a account in a given period

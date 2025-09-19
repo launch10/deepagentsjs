@@ -1,14 +1,16 @@
 module PartitionHelpers
   # Create only the specific partitions needed for test data
   def create_minimal_partitions_for_dates(*dates)
-    dates.flatten.each do |date|
-      hour = date.beginning_of_hour
-      partition_name = "domain_request_counts_#{hour.strftime('%Y_%m_%d_%H')}"
+    # Create monthly partitions for all unique months in the dates
+    months = dates.flatten.map { |date| date.beginning_of_month }.uniq
+    
+    months.each do |month|
+      partition_name = "domain_request_counts_#{month.strftime('%Y_%m')}"
       
       ActiveRecord::Base.connection.execute <<-SQL
         CREATE TABLE IF NOT EXISTS #{partition_name} 
         PARTITION OF domain_request_counts 
-        FOR VALUES FROM ('#{hour.to_fs(:db)}') TO ('#{(hour + 1.hour).to_fs(:db)}')
+        FOR VALUES FROM ('#{month.to_fs(:db)}') TO ('#{(month + 1.month).to_fs(:db)}')
       SQL
     end
   end
@@ -17,9 +19,9 @@ module PartitionHelpers
   def ensure_partitions_exist_for_range(start_date, end_date)
     @partition_cache ||= Set.new
     
-    current = start_date.beginning_of_hour
+    current = start_date.beginning_of_month
     while current <= end_date
-      cache_key = current.strftime('%Y_%m_%d_%H')
+      cache_key = current.strftime('%Y_%m')
       
       unless @partition_cache.include?(cache_key)
         partition_name = "domain_request_counts_#{cache_key}"
@@ -28,7 +30,7 @@ module PartitionHelpers
           ActiveRecord::Base.connection.execute <<-SQL
             CREATE TABLE IF NOT EXISTS #{partition_name} 
             PARTITION OF domain_request_counts 
-            FOR VALUES FROM ('#{current.to_fs(:db)}') TO ('#{(current + 1.hour).to_fs(:db)}')
+            FOR VALUES FROM ('#{current.to_fs(:db)}') TO ('#{(current + 1.month).to_fs(:db)}')
           SQL
           @partition_cache.add(cache_key)
         rescue ActiveRecord::StatementInvalid => e
@@ -37,7 +39,7 @@ module PartitionHelpers
         end
       end
       
-      current += 1.hour
+      current += 1.month
     end
   end
 

@@ -29,14 +29,9 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
       DomainRequestCount.drop_all_partitions
       AccountRequestCount.drop_all_partitions
 
-      # Create partitions only for the days we're testing
-      DomainRequestCount.create_partitions(3) # Aug 1-3
+      # Create monthly partitions for the months we're testing
+      DomainRequestCount.create_partitions(2) # Aug and Sept
       AccountRequestCount.create_partitions(2) # Aug and Sept
-    end
-    
-    # Also create Sept 1 partitions since we test month boundaries
-    Timecop.freeze(UTC.parse("2025-09-01 00:00:00")) do
-      DomainRequestCount.create_partitions(1) # Sept 1
     end
   end
 

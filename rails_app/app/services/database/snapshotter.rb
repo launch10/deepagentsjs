@@ -123,16 +123,33 @@ module Database
       content = File.read(snapshot_path)
       
       # Find all partition table references for domain_request_counts and account_request_counts
-      domain_partitions = content.scan(/domain_request_counts_(\d{4}_\d{2}_\d{2}_\d{2})/).flatten.uniq
+      # Both are now monthly partitions with format YYYY_MM
+      domain_partitions = content.scan(/domain_request_counts_(\d{4}_\d{2})(?:_\d{2}_\d{2})?/).flatten.uniq
       account_partitions = content.scan(/account_request_counts_(\d{4}_\d{2})/).flatten.uniq
       
-      # Create domain_request_counts hourly partitions
+      # Create domain_request_counts monthly partitions
       domain_partitions.each do |partition_suffix|
-        if partition_suffix =~ /(\d{4})_(\d{2})_(\d{2})_(\d{2})/
-          year, month, day, hour = $1.to_i, $2.to_i, $3.to_i, $4.to_i
-          start_time = Time.zone.local(year, month, day, hour)
-          end_time = start_time + 1.hour
+        # Handle both old hourly format (for migration) and new monthly format
+        if partition_suffix =~ /^(\d{4})_(\d{2})$/
+          year, month = $1.to_i, $2.to_i
+          start_time = Time.zone.local(year, month, 1)
+          end_time = start_time + 1.month
           partition_name = "domain_request_counts_#{partition_suffix}"
+          
+          create_partition_if_not_exists('domain_request_counts', partition_name, start_time, end_time)
+        end
+      end
+      
+      # Also handle old hourly partitions in snapshots (for backward compatibility)
+      hourly_domain_partitions = content.scan(/domain_request_counts_(\d{4}_\d{2}_\d{2}_\d{2})/).flatten.uniq
+      hourly_domain_partitions.each do |partition_suffix|
+        if partition_suffix =~ /(\d{4})_(\d{2})_(\d{2})_(\d{2})/
+          year, month = $1.to_i, $2.to_i
+          # Convert hourly to monthly partition
+          monthly_suffix = "#{year.to_s.rjust(4, '0')}_#{month.to_s.rjust(2, '0')}"
+          start_time = Time.zone.local(year, month, 1)
+          end_time = start_time + 1.month
+          partition_name = "domain_request_counts_#{monthly_suffix}"
           
           create_partition_if_not_exists('domain_request_counts', partition_name, start_time, end_time)
         end

@@ -1,6 +1,6 @@
 # == Schema Information
 #
-# Table name: component_plans
+# Table name: component_content_plans
 #
 #  id                    :integer          not null, primary key
 #  component_overview_id :integer          not null
@@ -11,10 +11,10 @@
 #
 # Indexes
 #
-#  index_component_plans_on_component_overview_id  (component_overview_id)
-#  index_component_plans_on_component_type         (component_type)
-#  index_component_plans_on_created_at             (created_at)
-#  index_component_plans_on_data                   (data)
+#  index_component_content_plans_on_component_overview_id  (component_overview_id)
+#  index_component_content_plans_on_component_type         (component_type)
+#  index_component_content_plans_on_created_at             (created_at)
+#  index_component_content_plans_on_data                   (data)
 #
 
 class ComponentContentPlan < ApplicationRecord
