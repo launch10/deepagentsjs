@@ -41,7 +41,7 @@ class CodeFile < ApplicationRecord
   scope :search_with_rank, ->(query) {
     sanitized = connection.quote(query)
     search(query)
-      .select("code_files.*, ts_rank(content_tsv, plainto_tsquery('english', #{sanitized})) AS rank")
+      .reselect("code_files.*, ts_rank(content_tsv, plainto_tsquery('english', #{sanitized})) AS rank")
       .order("rank DESC")
   }
   
@@ -56,8 +56,11 @@ class CodeFile < ApplicationRecord
   # Fuzzy path search using trigrams
   scope :path_similar_to, ->(path, threshold = 0.3) {
     sanitized_path = connection.quote(path)
-    where("similarity(path, ?) > ?", path, threshold)
-      .select("code_files.*, similarity(path, #{sanitized_path}) AS path_similarity")
+    
+    unscope(:select)
+      .where("similarity(path, ?) > ?", path, threshold)
+      .select("code_files.*")
+      .select("similarity(path, #{sanitized_path}) AS path_similarity")
       .order("path_similarity DESC")
   }
   
@@ -66,8 +69,8 @@ class CodeFile < ApplicationRecord
   }
   
   # Filter by source (website or template)
-  scope :from_website, -> { where(source: 'website') }
-  scope :from_template, -> { where(source: 'template') }
+  scope :from_website, -> { where(source_type: 'WebsiteFile') }
+  scope :from_template, -> { where(source_type: 'TemplateFile') }
   
   # Filter by polymorphic source
   scope :for_source, ->(source_type, source_id) { where(source_type: source_type, source_id: source_id) }
@@ -87,40 +90,51 @@ class CodeFile < ApplicationRecord
     max_words = options[:max_words] || 20
     
     sanitized_query = connection.quote(query)
-    highlight_sql = "ts_headline('english', content, plainto_tsquery('english', #{sanitized_query}), 
-      'StartSel=#{start_sel}, StopSel=#{stop_sel}, MaxWords=#{max_words}, MinWords=10') AS highlighted_content"
     
-    search(query).select("code_files.*", highlight_sql)
+    search(query)
+      .unscope(:select)
+      .select("code_files.*")
+      .select("ts_headline('english', content, plainto_tsquery('english', #{sanitized_query}), 'StartSel=#{start_sel}, StopSel=#{stop_sel}, MaxWords=#{max_words}, MinWords=10') AS highlighted_content")
   end
   
   # Get top matching files with context  
   def self.search_with_context(query, limit = 10)
     sanitized_query = connection.quote(query)
-    highlight_sql = "ts_headline('english', content, plainto_tsquery('english', #{sanitized_query}), 
-      'MaxWords=20, MinWords=10') AS highlighted_content"
     
     search(query)
-      .select("code_files.*", highlight_sql)
+      .unscope(:select)
+      .select("code_files.*")
+      .select("ts_headline('english', content, plainto_tsquery('english', #{sanitized_query}), 'MaxWords=20, MinWords=10') AS highlighted_content")
       .limit(limit)
   end
   
   # Count matches per website
   def self.count_matches_by_website(query)
     search(query)
+      .unscope(:order)  # Remove default ordering for grouped queries
       .group(:website_id)
       .count
   end
   
-  # Instance methods
   def website_file?
-    source == 'website'
+    source_type == 'WebsiteFile'
   end
   
   def template_file?
-    source == 'template'
+    source_type == 'TemplateFile'
   end
   
-  # Get the actual source file object (WebsiteFile or TemplateFile)
+  def source
+    case source_type
+    when 'WebsiteFile'
+      'website'
+    when 'TemplateFile'
+      'template'
+    else
+      source_type
+    end
+  end
+  
   def source_file_object
     case source_type
     when 'WebsiteFile'

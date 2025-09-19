@@ -8,8 +8,8 @@
 #  content_tsv           :tsvector
 #  shasum                :string
 #  file_specification_id :integer
-#  source_type           :text
-#  source_id             :integer
+#  source_type_type           :text
+#  source_type_id             :integer
 #  created_at            :datetime
 #  updated_at            :datetime
 #
@@ -86,7 +86,7 @@ RSpec.describe CodeFile, type: :model do
     
     it "website files override template files with same path" do
       header_file = CodeFile.where(website_id: website.id, path: "src/components/Header.tsx").first
-      expect(header_file.source).to eq("website")
+      expect(header_file.source_type).to eq("WebsiteFile")
       expect(header_file.content).to include("CustomHeader")
       expect(header_file.content).not_to include("function Header()")
     end
@@ -188,17 +188,17 @@ RSpec.describe CodeFile, type: :model do
   end
   
   describe "filtering scopes" do
-    describe "source filters" do
+    describe "source_type filters" do
       it ".from_website returns only website files" do
         results = CodeFile.where(website_id: website.id).from_website
         expect(results.count).to eq(2)
-        expect(results.pluck(:source).uniq).to eq(["website"])
+        expect(results.pluck(:source_type).uniq).to eq(["WebsiteFile"])
       end
       
       it ".from_template returns only template files" do
         results = CodeFile.where(website_id: website.id).from_template
         expect(results.count).to eq(2)
-        expect(results.pluck(:source).uniq).to eq(["template"])
+        expect(results.pluck(:source_type).uniq).to eq(["TemplateFile"])
       end
     end
     
@@ -252,13 +252,13 @@ RSpec.describe CodeFile, type: :model do
     let(:file) { CodeFile.where(website_id: website.id).first }
     
     it "#website_file? returns true for website files" do
-      website_file = CodeFile.where(website_id: website.id, source: "website").first
+      website_file = CodeFile.where(website_id: website.id, source_type: "website").first
       expect(website_file.website_file?).to be true
       expect(website_file.template_file?).to be false
     end
     
     it "#template_file? returns true for template files" do
-      template_file = CodeFile.where(website_id: website.id, source: "template").first
+      template_file = CodeFile.where(website_id: website.id, source_type: "template").first
       expect(template_file.template_file?).to be true
       expect(template_file.website_file?).to be false
     end
