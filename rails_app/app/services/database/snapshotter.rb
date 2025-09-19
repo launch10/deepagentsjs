@@ -116,6 +116,10 @@ module Database
       execute_command(Shellwords.join(command_args))
     end
 
+    def truncate
+      execute_command('bundle exec rails db:truncate_all')
+    end
+
     private
 
     def ensure_partitions_exist(snapshot_path)

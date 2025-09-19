@@ -56,6 +56,6 @@ private
   end
 
   def actually_truncate
-    DatabaseCleaner.clean_with(:truncation)
+    Database::Snapshotter.new.truncate
   end
 end

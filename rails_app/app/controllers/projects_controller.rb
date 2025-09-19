@@ -38,7 +38,7 @@ class ProjectsController < SubscribedController
 
   def create
     begin
-      project = current_account.projects.create!(project_params)
+      project = creation_account.projects.create!(project_params)
       website = Website.create!(
         project_id: project.id, 
         name: project.name, 
@@ -89,6 +89,18 @@ class ProjectsController < SubscribedController
 private
   def current_project
     @project ||= current_account.projects.find_by(thread_id: params[:thread_id])
+  end
+  
+  def creation_account
+    @creation_account ||= begin
+      if params[:account_id].present?
+        account_id = params[:account_id]
+        project_params.delete(:account_id)
+        Account.find(account_id)
+      else
+        current_account
+      end
+    end
   end
 
   def project_params
