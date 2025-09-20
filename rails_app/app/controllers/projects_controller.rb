@@ -45,6 +45,7 @@ class ProjectsController < SubscribedController
         thread_id: project.thread_id,
         account_id: project.account_id
       )
+      puts website.as_json
     rescue => e
       render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity and return
     end
