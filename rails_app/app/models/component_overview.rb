@@ -16,6 +16,7 @@
 #  background_color      :string
 #  created_at            :datetime         not null
 #  updated_at            :datetime         not null
+#  sort_order            :integer
 #
 # Indexes
 #
@@ -26,6 +27,7 @@
 #  index_component_overviews_on_name                   (name)
 #  index_component_overviews_on_page_id                (page_id)
 #  index_component_overviews_on_path                   (path)
+#  index_component_overviews_on_sort_order             (sort_order)
 #  index_component_overviews_on_website_id             (website_id)
 #
 

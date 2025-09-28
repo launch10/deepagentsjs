@@ -746,7 +746,8 @@ CREATE TABLE public.component_content_plans (
     component_type character varying,
     data jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    component_id integer
 );
 
 
@@ -787,7 +788,8 @@ CREATE TABLE public.component_overviews (
     copy character varying,
     background_color character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    sort_order integer
 );
 
 
@@ -823,10 +825,11 @@ CREATE TABLE public.components (
     component_type character varying,
     file_specification_id bigint NOT NULL,
     theme_variant_id integer,
-    component_plan_id integer,
+    component_overview_id integer,
     component_content_plan_id integer,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    website_file_id integer
 );
 
 
@@ -1827,7 +1830,8 @@ CREATE TABLE public.tasks (
     project_id bigint,
     website_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    website_file_id integer
 );
 
 
@@ -3782,6 +3786,13 @@ CREATE INDEX index_cloudflare_firewalls_on_unblocked_at ON public.cloudflare_fir
 
 
 --
+-- Name: index_component_content_plans_on_component_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_component_content_plans_on_component_id ON public.component_content_plans USING btree (component_id);
+
+
+--
 -- Name: index_component_content_plans_on_component_overview_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3859,6 +3870,13 @@ CREATE INDEX index_component_overviews_on_path ON public.component_overviews USI
 
 
 --
+-- Name: index_component_overviews_on_sort_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_component_overviews_on_sort_order ON public.component_overviews USING btree (sort_order);
+
+
+--
 -- Name: index_component_overviews_on_website_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3873,10 +3891,10 @@ CREATE INDEX index_components_on_component_content_plan_id ON public.components 
 
 
 --
--- Name: index_components_on_component_plan_id; Type: INDEX; Schema: public; Owner: -
+-- Name: index_components_on_component_overview_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_components_on_component_plan_id ON public.components USING btree (component_plan_id);
+CREATE INDEX index_components_on_component_overview_id ON public.components USING btree (component_overview_id);
 
 
 --
@@ -3919,6 +3937,13 @@ CREATE UNIQUE INDEX index_components_on_page_id_and_name ON public.components US
 --
 
 CREATE INDEX index_components_on_theme_variant_id ON public.components USING btree (theme_variant_id);
+
+
+--
+-- Name: index_components_on_website_file_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_components_on_website_file_id ON public.components USING btree (website_file_id);
 
 
 --
@@ -4507,6 +4532,13 @@ CREATE INDEX index_tasks_on_subtype ON public.tasks USING btree (subtype);
 --
 
 CREATE INDEX index_tasks_on_type ON public.tasks USING btree (type);
+
+
+--
+-- Name: index_tasks_on_website_file_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tasks_on_website_file_id ON public.tasks USING btree (website_file_id);
 
 
 --
@@ -5401,6 +5433,11 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20250925210226'),
+('20250925190459'),
+('20250924170806'),
+('20250924124014'),
+('20250924121729'),
 ('20250918180911'),
 ('20250917204530'),
 ('20250917201500'),

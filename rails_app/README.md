@@ -9,8 +9,15 @@ You'll need the following installed to run the template successfully:
 - Ruby 3.2+
 - PostgreSQL 12+ (can be switched to SQLite or MySQL)
 - Libvips or Imagemagick
+- Git LFS
 
 Optionally, the [Stripe CLI](https://docs.stripe.com/stripe-cli) to sync webhooks in development.
+
+## Database Snapshots
+
+To pull snapshots from Git LFS: `git lfs pull`
+To create a snapshot, run `bin/rails db:snapshot`.
+To load a snapshot, run `bin/rails db:restore_snapshot`.
 
 ## Creating A Subscribed User
 

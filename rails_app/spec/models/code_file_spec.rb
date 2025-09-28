@@ -8,8 +8,8 @@
 #  content_tsv           :tsvector
 #  shasum                :string
 #  file_specification_id :integer
-#  source_type_type           :text
-#  source_type_id             :integer
+#  source_type           :text
+#  source_id             :integer
 #  created_at            :datetime
 #  updated_at            :datetime
 #
