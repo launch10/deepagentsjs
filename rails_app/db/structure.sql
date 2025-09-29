@@ -1831,7 +1831,8 @@ CREATE TABLE public.tasks (
     website_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    website_file_id integer
+    website_file_id integer,
+    path character varying
 );
 
 
@@ -4500,6 +4501,13 @@ CREATE INDEX index_tasks_on_file_specification_id ON public.tasks USING btree (f
 
 
 --
+-- Name: index_tasks_on_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tasks_on_path ON public.tasks USING btree (path);
+
+
+--
 -- Name: index_tasks_on_project_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5433,6 +5441,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20250928143302'),
 ('20250925210226'),
 ('20250925190459'),
 ('20250924170806'),
