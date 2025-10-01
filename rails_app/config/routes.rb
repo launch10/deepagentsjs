@@ -21,6 +21,7 @@ Rails.application.routes.draw do
       post "database/truncate", to: "database#truncate"
       post "database/snapshots", to: "database#create_snapshot"
       post "database/restore_snapshot", to: "database#restore_snapshot"
+      get "database/snapshots", to: "database#index"
     end
   end
 
