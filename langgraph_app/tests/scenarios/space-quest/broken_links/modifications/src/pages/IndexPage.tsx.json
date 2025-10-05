@@ -1,0 +1,10 @@
+{
+  "path": "src/pages/IndexPage.tsx",
+  "modifications": [
+    {
+      "searchPattern": "export const IndexPage = () => {\n  return (\n    <div id=\"IndexPage\" className=\"min-h-screen bg-background\">\n      <Nav />\n      <main>\n        <Hero />\n        <Features />\n        <HowItWorks />\n        <Testimonials />\n        <CTA />\n      </main>\n      <Footer />\n    </div>\n  )\n}",
+      "replacement": "// comment is saved\nexport const IndexPage = () => {\n  return (\n    <div id=\"IndexPage\" className=\"min-h-screen bg-background\">\n      <Nav />\n      <main>\n        <Hero />\n        <Features />\n        <HowItWorks />\n        <Testimonials />\n        <CTA />\n      </main>\n      <Footer />\n    </div>\n  )\n}",
+      "description": "Modified end of src/pages/IndexPage.tsx"
+    }
+  ]
+}

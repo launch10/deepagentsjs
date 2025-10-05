@@ -1,0 +1,15 @@
+{
+  "path": "src/pages/IndexPage.tsx",
+  "modifications": [
+    {
+      "searchPattern": "import { Nav } from \"../components/Nav.tsx\"",
+      "replacement": "import { NavNonexistent } from \"../components/Nav.tsx\"",
+      "description": "Modified lines 1-1 in src/pages/IndexPage.tsx"
+    },
+    {
+      "searchPattern": "      <Nav />",
+      "replacement": "      <NavNonexistent />",
+      "description": "Modified lines 12-12 in src/pages/IndexPage.tsx"
+    }
+  ]
+}

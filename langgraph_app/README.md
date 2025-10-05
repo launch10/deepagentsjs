@@ -1,103 +1,208 @@
-[![Bolt.new: AI-Powered Full-Stack Web Development in the Browser](./public/social_preview_index.jpg)](https://bolt.new)
+# ABEverything
 
-# Running locally (dev mode, good for debugging)
+AI-powered A/B tests for solo founders and marketers.
 
-WARNING: This is the fastest possible way to run Langgraph, but it does not persist any data (local file-based persistence)
-
-```bash
-npx @langchain/langgraph-cli dev # run backend service
-NODE_OPTIONS="--inspect-brk" npx @langchain/langgraph-cli dev -n 1 # debug (use 1 worker to avoid debugger issues)
-pnpm run dev # run dev server
-```
-
-# Running locally w/ Postgres
-
-This is slightly more time-consuming, but it allows you to run the Langgraph server with proper Postgres database.
+## Quick Start
 
 ```bash
-langgraph up --no-pull -p 2024 --postgres-uri postgres://host.docker.internal:5432/nichefinder_development -d docker-compose.yml
-pnpm run dev
+pnpm install
+cp .env.example .env
+pnpm test
 ```
 
-# Running locally (Must be rebuilt after code changes):
+### Run Database Schema Generation (For Drizzle)
 
-WARNING: If you do this, YOUR CODE CHANGES WILL NOT BE REFLECTED IN THE APP. You will need to rebuild the app after every code change.
-Use langgraph dev to run the backend service.
-
-Run the Langgraph server with the custom Postgres and Redis databases.
-
-1. Ensure .env.docker is configured, using `host.docker.interal` to connect to the host machine (for Redis + Postgres)
+- We don't manage the database in this application, we manage it in Rails
+- In order to generate the database schema, run:
 
 ```bash
-docker build -t nichefinder .
-docker compose up
+bundle exec rake db:migrate # In the Rails app
+pnpm db:reflect # In this app
 ```
 
-2. Run the frontend
+We have to perform a handful of database normalizations in order to make the schema consistent. If you need to add new
+ones, you add them to `scripts/db/preserve-relations.ts`.
+
+### REPL
+
+Run `pnpm repl` to start a REPL.
 
 ```bash
-pnpm run dev
+pnpm repl
 ```
 
-# Connecting Langgraph to Postgres
+### Editing AI-Generated Websites / Creating Test Scenarios
 
-1. Ensure Postgres is configured to accept connections from your host machine. (edit the pg_hba.conf + postgresql.conf files)
-2. Create langgraph user and grant create + usage on the database to the langgraph user.
-3. Copy the docker compose file from: https://langchain-ai.github.io/langgraph/cloud/deployment/standalone_container/
-4. Connect in your `POSTGRES_URI`, `DATABASE_URI`, `REDIS_URI` to the docker compose file.
-5. Expose port 2024 to the host machine.
-6. Run `docker compose up`
+You may want to edit a generated website for debugging, or to manually create
+test scenarios.
 
-# Bolt.new: AI-Powered Full-Stack Web Development in the Browser
+Run `pnpm run edit:website` to start the editor.
 
-Bolt.new is an AI-powered web development agent that allows you to prompt, run, edit, and deploy full-stack applications directly from your browser—no local setup required. If you're here to build your own AI-powered web dev agent using the Bolt open source codebase, [click here to get started!](./CONTRIBUTING.md)
+Workflow:
 
-## What Makes Bolt.new Different
+1. Runs in `NODE_ENV=test`
+2. Uses `DatabaseSnapshotter` to load an existing snapshot
+3. Opens a dev server so you can preview the website
+4. Opens a code editor, so you can make changes.
+5. Preview your changes in the dev server.
+6. Make changes, such as creating new components or introducing bugs for testing
+7. Once you're done, the script will create a list of modifications that it
+   can replay (instead of generating a completely new snapshot, which is heavy).
 
-Claude, v0, etc are incredible- but you can't install packages, run backends or edit code. That’s where Bolt.new stands out:
+To use your scenario in tests, you can load it like this:
 
-- **Full-Stack in the Browser**: Bolt.new integrates cutting-edge AI models with an in-browser development environment powered by **StackBlitz’s WebContainers**. This allows you to:
+```typescript
+// This will load your original snapshot
+// Apply the changes you made in the editor
+// Then give you the test database in the correct state
+scenario = await runScenario({ name: "my-scenario" });
+```
 
-  - Install and run npm tools and libraries (like Vite, Next.js, and more)
-  - Run Node.js servers
-  - Interact with third-party APIs
-  - Deploy to production from chat
-  - Share your work via a URL
+## Testing
 
-- **AI with Environment Control**: Unlike traditional dev environments where the AI can only assist in code generation, Bolt.new gives AI models **complete control** over the entire environment including the filesystem, node server, package manager, terminal, and browser console. This empowers AI agents to handle the entire app lifecycle—from creation to deployment.
+Running tests:
 
-Whether you’re an experienced developer, a PM or designer, Bolt.new allows you to build production-grade full-stack applications with ease.
+```typescript
+vitest tests --no-file-parallelism # Essential to get all tests to run in isolation!
+```
 
-For developers interested in building their own AI-powered development tools with WebContainers, check out the open-source Bolt codebase in this repo!
+We have 3 levels of testing, from highest to lowest:
 
-## Tips and Tricks
+1. Langgraph Integration Tests (tests nodes + graphs end-to-end with Polly for mocking API calls)
+2. LLM Evals (test individual LLM calls with Evalite)
+3. Unit Tests (tests individual LLM services + prompts)
 
-Here are some tips to get the most out of Bolt.new:
+#e Langgraph Integration Tests
 
-- **Be specific about your stack**: If you want to use specific frameworks or libraries (like Astro, Tailwind, ShadCN, or any other popular JavaScript framework), mention them in your initial prompt to ensure Bolt scaffolds the project accordingly.
+1. Uses Polly to mock both LLM calls + Rails API calls separately
 
-- **Use the enhance prompt icon**: Before sending your prompt, try clicking the 'enhance' icon to have the AI model help you refine your prompt, then edit the results before submitting.
+- When using this, will automatically decorate `test-jwt` plus a timestamped header signed with `JWT_SECRET` from the environment
+- Rails will validate this in test + development environments, so ensure your Rails app is configured with the same `JWT_SECRET`
+- Run the Rails server
 
-- **Scaffold the basics first, then add features**: Make sure the basic structure of your application is in place before diving into more advanced functionality. This helps Bolt understand the foundation of your project and ensure everything is wired up right before building out more advanced functionality.
+2. Use the special `testGraph` helper to run tests:
 
-- **Batch simple instructions**: Save time by combining simple instructions into one message. For example, you can ask Bolt to change the color scheme, add mobile responsiveness, and restart the dev server, all in one go saving you time and reducing API credit consumption significantly.
+- Use `withPrompt` to mock the user's prompt
+- Use `stopAfter` to stop the graph at a specific node
+- Use `execute` to run the graph
+- Will return the state of the graph at the stopped node, allowing us to assert on the output of the graph
 
-## FAQs
+```typescript
+const result = await testGraph()
+  .withGraph(routerGraph)
+  .withPrompt(`Create a website about space exploration`)
+  .stopAfter("saveInitialProject")
+  .execute();
+```
 
-**Where do I sign up for a paid plan?**  
-Bolt.new is free to get started. If you need more AI tokens or want private projects, you can purchase a paid subscription in your [Bolt.new](https://bolt.new) settings, in the lower-left hand corner of the application.
+## LLM Evals with Evalite
 
-**What happens if I hit the free usage limit?**  
-Once your free daily token limit is reached, AI interactions are paused until the next day or until you upgrade your plan.
+These allow us to assert the QUALITY of the output of an LLM call.
 
-**Is Bolt in beta?**  
-Yes, Bolt.new is in beta, and we are actively improving it based on feedback.
+> This is how we do service integration tests. Test individual nodes with expected outputs.
 
-**How can I report Bolt.new issues?**  
-Check out the [Issues section](https://github.com/stackblitz/bolt.new/issues) to report an issue or request a new feature. Please use the search feature to check if someone else has already submitted the same issue/request.
+```bash
+pnpm eval:dev
+```
 
-**What frameworks/libraries currently work on Bolt?**  
-Bolt.new supports most popular JavaScript frameworks and libraries. If it runs on StackBlitz, it will run on Bolt.new as well.
+Name your files `xyz.eval.ts`.
 
-**How can I add make sure my framework/project works well in bolt?**  
-We are excited to work with the JavaScript ecosystem to improve functionality in Bolt. Reach out to us via [hello@stackblitz.com](mailto:hello@stackblitz.com) to discuss how we can partner!
+- Tips:
+  - Autoeval has helpful scorers pre-built.
+
+## 🏗️ Architecture
+
+### Services
+
+Services handle business logic and AI interactions:
+
+- `PlanComponentService` - Plans website components
+- `CreateComponentService` - Generates React code
+- `SearchIconsService` - Finds appropriate icons
+
+### Prompts
+
+AI prompts are organized by domain:
+
+- `websites/` - Website generation prompts
+- `state/` - State management prompts
+- `components/` - Reusable prompt components
+
+### Registries
+
+Component registries define available website elements:
+
+- `SectionRegistry` - Website sections (Hero, Features, etc.)
+- `LayoutRegistry` - Layout components (Nav, Footer, etc.)
+- `FileSpecRegistry` - File specifications
+- `TemplateRegistry` - Project templates
+
+## 📝 Scripts
+
+```bash
+# Testing
+pnpm test             # Run all tests
+pnpm test:watch       # Watch mode
+pnpm test:coverage    # Coverage report
+
+# Development
+pnpm dev              # Start dev server
+pnpm build            # Build for production
+pnpm preview          # Preview production build
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file with:
+
+```env
+# Required for AI services
+OPENAI_API_KEY=your-key-here
+ANTHROPIC_API_KEY=your-key-here
+
+# Optional
+NODE_ENV=development
+LOG_LEVEL=info
+```
+
+### TypeScript Paths
+
+The project uses path aliases for cleaner imports:
+
+```typescript
+@services    → app/services
+@prompts     → app/prompts
+@models      → app/models
+@types       → app/shared/types
+@registries  → app/registries
+```
+
+## 🧩 Key Components
+
+### Website Generation Flow
+
+1. **Plan Component** - AI plans the content and structure
+2. **Write Code** - AI generates React/TypeScript code
+3. **File Management** - Code is organized into proper files
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a pull request
+
+## 📄 License
+
+MIT
+
+## 🙏 Acknowledgments
+
+Built with:
+
+- [LangGraph](https://github.com/langchain-ai/langgraph)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Vitest](https://vitest.dev/)
+- [Commander.js](https://github.com/tj/commander.js)

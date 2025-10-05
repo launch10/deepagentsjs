@@ -1,82 +1,61 @@
 {
   "compilerOptions": {
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ESNext"
-    ],
-    "types": [
-      "vite/client",
-    ],
-    "isolatedModules": true,
+    /* Base Options: */
+    // enables better interoperability between ES modules and CommonJS modules, specifically with imports
     "esModuleInterop": true,
-    "jsx": "preserve",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "resolveJsonModule": true,
-    "target": "ESNext",
-    "strict": true,
-    "allowJs": true,
+    // Skips type checking of .d.ts files, which prevents node_modules from causing errors
     "skipLibCheck": true,
+    // Use latest stable version
+    "target": "ES2022",
+    // Required for using our decorators
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    // Use ES module syntax
     "verbatimModuleSyntax": true,
+    // Allow JS files to be imported
+    "allowJs": true,
+    // Allow JSON files to be imported
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+
+    /* Strictness */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+
+    /* We're not transpiliing */
+    "moduleResolution": "Bundler",
+    "module": "preserve",
+    "noEmit": true,
+
+    "lib": ["ES2022", "ESNext.Disposable"],
+    "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "~/*": [
-        "./app/*",
-        "./db/*"
-      ],
-      "@schemas/*": [
-        "./app/lib/server/langgraph/schemas/*"
-      ],
-      "@prompts/*": [
-        "./app/lib/server/langgraph/prompts/*"
-      ],
-      "@nodes/*": [
-        "./app/lib/server/langgraph/nodes/*"
-      ],
-      "@graphs/*": [
-        "./app/lib/server/langgraph/graphs/*"
-      ],
-      "@state/*": [
-        "./app/lib/server/langgraph/state/*"
-      ],
-      "@services/*": [
-        "./app/lib/server/langgraph/services/*"
-      ],
-      "@utils/*": [
-        "./app/lib/server/langgraph/utils/*"
-      ],
-      "@tools/*": [
-        "./app/lib/server/langgraph/tools/*"
-      ],
-      "@langgraph/*": [
-        "./app/lib/server/langgraph/*"
-      ],
-      "@rails_api/*": [
-        "./app/lib/server/langgraph/rails_api/*"
-      ],
-      "@ext/*": [
-        "./app/lib/server/langgraph/ext/*"
-      ],
-      "@shared/*": [
-        "./app/lib/shared/*"
-      ],
-      "@models/*": [
-        "./app/lib/shared/models/*"
-      ],
-      "@db/*": [
-        "./db/*"
-      ],
-      "@db": [
-        "./db/index.ts"
-      ],
-      "@lib/*": [
-        "./app/lib/*"
-      ]
+      "@app": ["./app/index.ts"],
+      "@annotation": ["./app/annotation/index.ts"],
+      "@prompts": ["./app/prompts/index.ts"],
+      "@nodes": ["./app/nodes/index.ts"],
+      "@graphs": ["./app/graphs/index.ts"],
+      "@langgraph": ["./app/lib/server/langgraph/index.ts"],
+      "@rails_api": ["./app/lib/server/langgraph/rails_api/index.ts"],
+      "@ext": ["./app/ext/index.ts"],
+      "@factories": ["./tests/factories/index.ts"],
+      "@state": ["./app/shared/state/index.ts"],
+      "@types": ["./app/shared/types/index.ts"],
+      "@models": ["app/models/index.ts"],
+      "@db": ["app/db/index.ts"],
+      "@core": ["./app/core/index.ts"],
+      "@services": ["./app/services/index.ts"],
+      "@tools": ["./app/tools/index.ts"],
+      "@tests/*": ["./tests/*"],
+      "@registries": ["./app/models/registries/index.ts"],
+      "@support": ["./tests/support/index.ts"],
+      "@utils": ["./app/utils/index.ts"],
     },
     // vite takes care of building everything, not tsc
-    "noEmit": true,
     "incremental": true,
     "plugins": [
       {
@@ -85,15 +64,9 @@
     ]
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "**/.client/**/*.ts",
-    "**/.client/**/*.tsx",
-    "**/server/**/*.ts",
-    "**/server/**/*.tsx",
-    ".next/types/**/*.ts"
+    "app/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

@@ -1,1 +1,0 @@
-export { nameProjectGraph } from "./nameProject";

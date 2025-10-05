@@ -1,0 +1,15 @@
+{
+  "websiteId": 2,
+  "website": "space-quest",
+  "snapshot": "space_exploration",
+  "scenario": "import_errors",
+  "errors": [
+    {
+      "type": "error",
+      "message": "The requested module '/src/components/Nav.tsx' does not provide an export named 'NavNonexistent'",
+      "stack": "",
+      "timestamp": "2025-09-29T13:48:33.341Z"
+    }
+  ],
+  "recordedAt": "2025-09-29T13:48:36.846Z"
+}

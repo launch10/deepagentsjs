@@ -1,0 +1,1 @@
+export { databaseSnapshotter, DatabaseSnapshotter } from './snapshotter';

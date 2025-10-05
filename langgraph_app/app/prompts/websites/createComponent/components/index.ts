@@ -1,0 +1,1 @@
+export { componentSpecificInstructions } from "./componentSpecificInstructions";
