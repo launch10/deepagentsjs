@@ -9,17 +9,23 @@ class Test::DatabaseController < Test::TestController
     render json: { status: "ok", message: "Database truncated" }, status: :ok
   end
 
+  def index
+    @snapshots = SNAPSHOT_DIR.children.map { |f| f.basename.to_s }.sort
+    @snapshots = @snapshots.map { |s| s.gsub(Regexp.new("#{Pathname.new(s).extname.to_s}$"), "") }
+    render json: { snapshots: @snapshots }, status: :ok
+  end
+
   def create_snapshot
     begin
-      name = params.require(:name)
-      output_path = SNAPSHOT_DIR.join("#{name}.sql")
+      params = snapshot_params
+      output_path = SNAPSHOT_DIR.join("#{params[:name]}.sql")
       result = Database::Snapshotter.new.dump(output_path)
     rescue => e
       render json: { status: 'error', message: "Failed to create snapshot: #{e.message}" }, status: :unprocessable_content and return
     end
 
     if result.success?
-      render json: { status: 'ok', message: "Snapshot '#{name}' created." }, status: :created
+      render json: { status: 'ok', message: "Snapshot '#{params[:name]}' created." }, status: :created
     else
       render json: { status: 'error', message: "Failed to create snapshot: #{result.stderr}" }, status: :unprocessable_content
     end
@@ -27,9 +33,9 @@ class Test::DatabaseController < Test::TestController
 
   def restore_snapshot
     begin
-      name = params.require(:name)
+      params = snapshot_params
       truncate_first = params[:truncate_first] == "true" || params[:truncate_first] == true
-      input_path = SNAPSHOT_DIR.join("#{name}.sql")
+      input_path = SNAPSHOT_DIR.join("#{params[:name]}.sql")
 
       if truncate_first
         actually_truncate
@@ -42,7 +48,7 @@ class Test::DatabaseController < Test::TestController
 
     if result.success?
       puts "Database restored"
-      render json: { status: 'ok', message: "Snapshot '#{name}' restored." }, status: :ok
+      render json: { status: 'ok', message: "Snapshot '#{params[:name]}' restored." }, status: :ok
     else
       puts "Wtf"
       render json: { status: 'error', message: "Failed to restore snapshot: #{result.stderr}" }, status: :unprocessable_content
@@ -50,6 +56,10 @@ class Test::DatabaseController < Test::TestController
   end
 
 private
+
+  def snapshot_params
+    params.require(:snapshot).permit(:name, :truncate_first)
+  end
 
   def ensure_snapshots_directory_exists
     SNAPSHOT_DIR.mkpath unless SNAPSHOT_DIR.exist?

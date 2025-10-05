@@ -94,9 +94,8 @@ private
   
   def creation_account
     @creation_account ||= begin
-      if params[:account_id].present?
-        account_id = params[:account_id]
-        project_params.delete(:account_id)
+      if project_params[:account_id].present?
+        account_id = project_params[:account_id]
         Account.find(account_id)
       else
         current_account
@@ -105,6 +104,6 @@ private
   end
 
   def project_params
-    params.require(:project).permit(:name, :thread_id, files_attributes: [:id, :path, :content, :file_type, :_destroy])
+    params.require(:project).permit(:name, :thread_id, :account_id, files_attributes: [:id, :path, :content, :file_type, :_destroy])
   end
 end

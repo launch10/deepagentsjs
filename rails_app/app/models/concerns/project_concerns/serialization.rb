@@ -6,6 +6,7 @@ module ProjectConcerns
       {
         id: id,
         website_id: website.id,
+        account_id: account_id,
         name: name,
         thread_id: thread_id,
         created_at: created_at,

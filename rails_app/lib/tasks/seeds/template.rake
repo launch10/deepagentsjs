@@ -1,9 +1,11 @@
 non_text_formats = ["lockb", "ico", "png", "jpg", "jpeg", "gif", "svg", "webp"]
 
+# Run this to sync data from the templates/ directory with the database
+# The templates directory IS the source of truth!
 namespace :seeds do
   desc "Load template seeds"
   task template: :environment do
-    template_dirs = Dir.glob(Rails.root.join("data", "templates", "*"))
+    template_dirs = Dir.glob(Rails.root.join("templates", "*"))
     templates = []
     template_files = []
     template_dirs.map do |template_dir|
@@ -34,5 +36,12 @@ namespace :seeds do
     # Import templates and their files
     Template.import(templates, on_duplicate_key_update: { conflict_target: :name, columns: :all })
     TemplateFile.import(template_files, on_duplicate_key_update: { conflict_target: [:template_id, :path], columns: :all })
+    
+    templates.each do |template|
+      # Destroy any template files that are no longer in the seed data
+      current_files = Dir.glob(Rails.root.join("templates", template.name, "**", "*")).map { |file| file.sub(
+        Regexp.new(Rails.root.join("templates", template.name).to_s), "").gsub(/^\//, "") }
+      TemplateFile.where(template_id: template.id).where.not(path: current_files).destroy_all
+    end
   end
 end

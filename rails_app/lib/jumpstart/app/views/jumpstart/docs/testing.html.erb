@@ -20,8 +20,8 @@
     <ol>
         <li>Prompt Tests</li>
         <li>Prompt Evals</li>
-        <li>Service Tests</li>
         <li>Node/Agent Tests</li>
+        <li>Multi-Step Agent Tests</li>
     </ol>
 </div>
 
@@ -68,24 +68,36 @@
 <ol>
     <li>vitest</li>
     <li>fishery factories</li>
-    <li>vi.mock</li>
 </ol>
 
-<p>They also use several unique helpers, such as the <code>mocks</code> library, which allows us to reuse the output of PREVIOUS nodes in the chain to generate realistic Langgraph state.</p>
+<p>For very simple prompts that are easy to build, you can just build using fishery factories.</p>
 
-<p>To generate a mock, you add it to the <code>MockRegistry</code>, and then run using the <code>CLI</code></p>
+<pre><code class="language-typescript">
+import { componentOverviewFactory } from '@factories';
+import { componentOverviewPrompt } from '@prompts';
 
-<pre><code class="language-bash">NODE_ENV=test pnpm mocks record CreateFlow # important to run in test mode to trigger JWT authentication for you</code></pre>
+const componentOverview = await componentOverviewFactory.create();
+const result = await componentOverviewPrompt({ 
+    overview: componentOverview as ComponentOverviewType 
+});
+</code></pre>
 
-<p>You can then reuse these mocks (or any inputs to them) in your prompt tests:</p>
+<p>For more complex prompts, you can just run the entire graph, and add a `promptSpy` to the graph.</p>
 
-<pre><code class="language-typescript">const planWebsiteOutput = await mocks.get(
-    "PlanWebsiteService",
-    "dev-mode",
-    "websites"
-) as PlanWebsiteOutputType;</code></pre>
+<pre><code class="language-typescript">
+import { testGraph } from '@tests/support/testGraph';
 
-<p>Remember: The goal of prompt tests is merely to assert that the expected data is injected into the prompt. You can use the helper:</p>
+const result = await testGraph()
+    .withGraph(routerGraph)
+    .withPrompt("Create a cool website about dogs with animations")
+    .withPromptSpy(['assemblePagePrompt'])
+    .stopAfter('nameProject')
+    .execute();
+
+const prompt = result.promptSpy?.get('assemblePagePrompt')[0];
+</code></pre>
+
+<p>From there, we want to assert values are injected into the prompt in a way that is easy for a model or human to understand.</p>
 
 <pre><code class="language-javascript">expect(prompt).toMatchXml(`
     &lt;prompt&gt;
@@ -111,26 +123,18 @@ import { evalite } from 'evalite';
 import { PlanPageService, type PlanPageProps, type PlanPageOutputType } from '@services';
 import { createClosedQAScorer } from '@tests/support/evals';
 
-evalite('PagePlanService', {
-    data: async() => {
-        return [{
-            input: {
-                userRequest: await mocks.input(
-                    "PlanPageService",
-                    "dev-mode",
-                    "websites"
-                )
-            }
-        }]
-    },
+evalite('PagePlanPrompt', {
     task: async (input: PlanPageProps) => {
-        // We pre-recorded this output so we don't re-run it during development. 
-        // You would actually want to run the service and record the output before merging.
-        return await mocks.get(
-            "PlanPageService",
-            "dev-mode",
-            "websites"
-        )
+        const result = await testGraph()
+            .withGraph(routerGraph)
+            .withPrompt("Create a cool website about dogs with animations")
+            .withServiceSpy(['planPageService']) // Use service spy to spy on the OUTPUT of the service
+            .stopAfter('planPage')
+            .execute();
+
+        // Here we get the OUTPUT returned from the service
+        // Which is the output of the prompt. This is what we want to evaluate
+        return result.serviceSpy?.get('planPageService')[0];
     },
     scorers: [
         {
@@ -161,10 +165,6 @@ evalite('PagePlanService', {
     ]
 });</code></pre>
 
-<%= h3_with_anchor "Service Tests" %>
-
-<p>Service tests are unit tests for individual services. Most of the time, we don't need to re-test serivces based on model prompts, because we've already tested these in evals. Instead, these are for testing plain Typescript services that don't use Langgraph.</p>
-
 <%= h3_with_anchor "Node/Agent Tests" %>
 
 <p>We've developed a custom testing framework for testing Langgraph nodes and agents based on the unique requirements:</p>
@@ -173,7 +173,7 @@ evalite('PagePlanService', {
     <li>We need to be able to run an entire graph, including subgraphs</li>
     <li>The graphs must receive known input/state</li>
     <li>The graphs must be able to stop at any point to assert the outcome of individual nodes</li>
-    <li>HTTP requests (to models or Rails) should be recorded and replayed using Polly</li>
+    <li>HTTP requests (to AI models) should be recorded and replayed using Polly</li>
     <li>HTTP requests (to Rails) must be authenticated using the test JWT</li>
 </ol>
 
@@ -231,3 +231,82 @@ evalite('PagePlanService', {
 </ol>
 
 <p>This allows us to start with an existing user, project, website, files, etc. and run tests from that state.</p>
+
+<%= h3_with_anchor "Multi-Step Agent Tests" %>
+
+<p>Our websites aren't finished being built after a single prompt. AI agents can introduce errors, and users can wish to make edits to their websites. For this reason, we have several additional tools for testing multi-step workflows:</p>
+
+<ol>
+    <li>Database Snapshots</li>
+    <li>Pre-built Scenarios</li>
+</ol>
+
+<p>Database snapshots allow us to start from a known state, and run tests from that state. We usually use these to create "known-good" websites, and then apply changes to them.</p>
+
+<p>Pre-built scenarios allow us to make minor modifications on top of a database snapshot. For example, we can take a fully functional website, and apply a bug to it (breaking some of the links), and then test that the AI agent can fix it.</p>
+
+<p>To build a scenario, you can open the scenario editor:</p>
+
+<pre><code class="language-bash">
+    pnpm run scenario:create # new scenarios
+    pnpm run scenario:edit # existing scenarios
+</code></pre>
+
+<p>This will ask you which database snapshot you want to start with, which website we should edit, and then it will do 2 things:</p>
+
+<ol>
+    <li>Open a website preview with HMR enabled</li>
+    <li>Open a website editor, so you can make changes to the website</li>
+</ol>
+
+<p>For example, you can open the code editor, break some of the links, and then test in your website preview that the links are indeed broken.</p>
+
+<p>You will then name your scenario, and it will be saved to the <code>tests/scenarios</code> directory.</p>
+
+<p>Let's see for example:</p>
+
+<pre><code class="language-bash">
+    scenarios
+    └── space-quest
+        ├── broken_links
+        │   ├── config.json
+        │   └── modifications
+        │       └── src
+        │           ├── components
+        │           │   └── Nav.tsx.json
+        │           └── hooks
+        │               └── use-scroll-to-anchor.tsx.json
+        ├── import_errors
+        │   ├── config.json
+        │   ├── errors.json
+        │   └── modifications
+        │       └── src
+        │           └── pages
+        │               └── IndexPage.tsx.json
+</code></pre>
+
+<p>Each scenario has a <code>config.json</code> file that contains metadata about the scenario, and a <code>modifications</code> directory that contains the modified files.</p>
+
+<p>We can now start a test from this known scenario:</p>
+
+<pre><code class="language-bash">
+    const scenario = await runScenario({
+        website: 'space-quest',
+        scenario: 'broken_links',
+    })
+
+    // scenario.getJSErrors() will actually RUN a browser, capture the Javascript console errors,
+    // and return them to you.
+    expect(scenario.getJSErrors()).toBeDefined();
+
+    const result = await testGraph()
+        .withGraph(routerGraph)
+        .withPrompt("Fix the bug")
+        .withConsoleErrors(scenario.getJSErrors()) // We can feed the AI model the errors the user would see
+        .stopAfter('buildTasks')
+        .execute();
+
+    expect(result.error).toBeUndefined();
+    expect(result.state.tasks).toBeDefined(); // Should be an array of bug fix tasks
+    expect(result.state.tasks.length).toBeGreaterThan(0);
+</code></pre>
