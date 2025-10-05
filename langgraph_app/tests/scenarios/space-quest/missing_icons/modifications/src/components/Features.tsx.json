@@ -1,0 +1,15 @@
+{
+  "path": "src/components/Features.tsx",
+  "modifications": [
+    {
+      "searchPattern": "import { Rocket, Telescope, Network, Leaf } from \"lucide-react\";",
+      "replacement": "import { Rocket, Telescope, Network, Bleaf } from \"lucide-react\";",
+      "description": "Modified lines 2-2 in src/components/Features.tsx"
+    },
+    {
+      "searchPattern": "      icon: <Leaf className=\"w-8 h-8 text-primary\" />,",
+      "replacement": "      icon: <Bleaf className=\"w-8 h-8 text-primary\" />,",
+      "description": "Modified lines 22-22 in src/components/Features.tsx"
+    }
+  ]
+}

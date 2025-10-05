@@ -1,9 +1,0 @@
-{
-    "node_version": "20",
-    "dockerfile_lines": [],
-    "dependencies": ".",
-    "graphs": {
-        "router": "./app/lib/server/langgraph/graphs/router.ts:graph"
-    },
-    "env": ".env"
-}

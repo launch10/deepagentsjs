@@ -1,2 +1,0 @@
-CREATE INDEX "sections_page_component_id_idx" ON "sections" USING btree ("page_id","component_id");--> statement-breakpoint
-ALTER TABLE "sections" ADD CONSTRAINT "section_page_component_unique_idx" UNIQUE("page_id","component_id");

@@ -1,1 +1,0 @@
-export { isFirstMessage } from "./isFirstMessage";

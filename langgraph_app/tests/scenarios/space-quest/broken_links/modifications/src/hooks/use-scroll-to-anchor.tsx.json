@@ -1,0 +1,10 @@
+{
+  "path": "src/hooks/use-scroll-to-anchor.tsx",
+  "modifications": [
+    {
+      "searchPattern": "",
+      "replacement": "import { useEffect } from 'react';\nimport { useLocation } from 'react-router-dom';\n\nexport const useScrollToAnchor = () => {\n  const location = useLocation();\n\n  useEffect(() => {\n    if (!location.hash) return;\n\n    const scrollToElement = () => {\n      const id = location.hash.replace('#', '');\n      const element = document.getElementById(id);\n      \n      if (element) {\n        element.scrollIntoView({ behavior: 'smooth' });\n      }\n    };\n\n    // Check if DOM is already loaded\n    if (document.readyState === 'complete') {\n      scrollToElement();\n    } else {\n      // Wait for DOM to load\n      window.addEventListener('load', scrollToElement);\n      return () => window.removeEventListener('load', scrollToElement);\n    }\n  }, [location]);\n};",
+      "description": "Modified end of src/hooks/use-scroll-to-anchor.tsx"
+    }
+  ]
+}

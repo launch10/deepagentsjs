@@ -1,1 +1,0 @@
-ALTER TABLE "files" ALTER COLUMN "file_specification_id" DROP NOT NULL;
