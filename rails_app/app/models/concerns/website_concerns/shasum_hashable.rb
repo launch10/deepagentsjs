@@ -3,17 +3,9 @@ module WebsiteConcerns
     extend ActiveSupport::Concern
 
     def generate_shasum
-      # Generate a shasum based on all file shasums
-      # Force reload of associations to get latest data
-      website_files.reload if website_files.loaded?
-      template_files.reload if template.present? && template_files.loaded?
-
-      file_shasums = files.sort_by(&:path).map do |file|
-        # Ensure file has current data if it's persisted
-        file = file.class.find(file.id) if file.persisted? && file.changed?
-        (file.respond_to?(:shasum) && file.shasum.present?) ? file.shasum : file.generate_shasum
-      end
-      Digest::SHA256.hexdigest(file_shasums.join)
+      Digest::SHA256.hexdigest(
+        website_files.reload.sort_by(&:path).map(&:generate_shasum).join
+      )
     end
 
     def files_changed?

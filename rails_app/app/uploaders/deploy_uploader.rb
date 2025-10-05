@@ -1,6 +1,5 @@
 require 'aws-sdk-s3'
 require 'fileutils'
-
 class DeployUploader
   attr_reader :client, :bucket_name, :environment
 

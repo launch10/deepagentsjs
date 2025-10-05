@@ -9,8 +9,38 @@ You'll need the following installed to run the template successfully:
 - Ruby 3.2+
 - PostgreSQL 12+ (can be switched to SQLite or MySQL)
 - Libvips or Imagemagick
+- Git LFS
 
 Optionally, the [Stripe CLI](https://docs.stripe.com/stripe-cli) to sync webhooks in development.
+
+## Getting Started
+
+1. Clone the repository
+2. Run `bin/setup`
+
+## On Every Merge
+
+After pulling main, you should always run:
+
+```bash
+bundle install # sync gems
+bundle exec rake db:migrate # sync database
+bundle exec rake seeds:template # sync templates
+```
+
+## Templates Are The Source of Truth
+
+In the rails app, we have a `templates` directory which is the source of truth. If you want to edit any templates, do so in the `templates` directory, and run `bundle exec rake seeds:template` to sync them to the database.
+
+This allows us to approve template changes in pull requests.
+
+We then sync templates when merging to production.
+
+## Database Snapshots
+
+To pull snapshots from Git LFS: `git lfs pull`
+To create a snapshot, run `bin/rails db:snapshot`.
+To load a snapshot, run `bin/rails db:restore_snapshot`.
 
 ## Creating A Subscribed User
 
@@ -45,38 +75,6 @@ user.accounts.create(name: "YOUR_ACCOUNT_NAME")
 
 11. You should also now be able to access `SubscribedController` endpoints (e.g. `localhost:3000/projects`)
 
-## Create Your Repository
-
-Create a [new Git](https://github.com/new) repository for your project. Then you can clone Jumpstart Pro and push it to your new repository.
-
-```bash
-git clone https://github.com/jumpstart-pro/jumpstart-pro-rails.git myapp
-cd myapp
-git remote rename origin jumpstart-pro
-git remote add origin https://github.com/your-account/your-repo.git # Replace with your new Git repository url
-git push -u origin main
-```
-
-## Initial Setup
-
-First, edit `config/database.yml` and change the database credentials for your server.
-
-Run `bin/setup` to install Ruby and JavaScript dependencies and setup your database.
-
-```bash
-bin/setup
-```
-
-## Running Jumpstart Pro Rails
-
-To run your application, you'll use the `bin/dev` command:
-
-```bash
-bin/dev
-```
-
-This starts up Overmind running the processes defined in `Procfile.dev`. We've configured this to run the Rails server, CSS bundling, and JS bundling out of the box. You can add background workers like Sidekiq, the Stripe CLI, etc to have them run at the same time.
-
 #### Running on Windows
 
 See the [Installation docs](https://jumpstartrails.com/docs/installation#windows)
@@ -84,16 +82,3 @@ See the [Installation docs](https://jumpstartrails.com/docs/installation#windows
 #### Running with Docker or Docker Compose
 
 See the [Installation docs](https://jumpstartrails.com/docs/installation#docker)
-
-## Merging Updates
-
-To merge changes from Jumpstart Pro, you will merge from the `jumpstart-pro` remote.
-
-```bash
-git fetch jumpstart-pro
-git merge jumpstart-pro/main
-```
-
-## Contributing
-
-If you have an improvement you'd like to share, create a fork of the repository and send us a pull request.

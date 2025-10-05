@@ -6,7 +6,6 @@ import { hexToCssHsl } from "@services/theme/service";
  * Example: { "--background": "hsl(43, 74%, 66%)", "--primary": "hsl(12, 76%, 61%)", ... }
  */
 type ThemeObject = Record<string, string>;
-
 export class IndexCssService {
     private themeObject: ThemeObject;
     private templateName: string;

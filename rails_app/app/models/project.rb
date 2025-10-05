@@ -5,7 +5,6 @@
 #  id         :integer          not null, primary key
 #  name       :string           not null
 #  account_id :integer          not null
-#  theme_id   :integer
 #  thread_id  :string           not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
@@ -19,7 +18,6 @@
 #  index_projects_on_account_id_and_updated_at  (account_id,updated_at)
 #  index_projects_on_created_at                 (created_at)
 #  index_projects_on_name                       (name)
-#  index_projects_on_theme_id                   (theme_id)
 #  index_projects_on_thread_id                  (thread_id)
 #  index_projects_on_updated_at                 (updated_at)
 #
@@ -32,7 +30,6 @@ class Project < ApplicationRecord
   validates :thread_id, presence: true
   validates :account_id, presence: true
 
-  has_one :plan, class_name: "ProjectPlan"
   has_one :website
 
   include ProjectConcerns::Serialization

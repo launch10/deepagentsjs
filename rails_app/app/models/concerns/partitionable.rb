@@ -72,7 +72,7 @@ module Partitionable
 
     def partition_by_hour?
       # Override this in including classes if needed
-      table_name == 'domain_request_counts'
+      false
     end
 
     def create_hourly_partitions(num_days)

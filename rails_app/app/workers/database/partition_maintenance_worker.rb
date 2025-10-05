@@ -6,7 +6,7 @@ module Database
 
     def perform
       AccountRequestCount.create_partitions(2) # Monthly
-      DomainRequestCount.create_partitions(48) # Hourly
+      DomainRequestCount.create_partitions(2) # Monthly
     end
   end
 end

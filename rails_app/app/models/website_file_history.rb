@@ -15,9 +15,11 @@
 #  history_user_id       :integer
 #  snapshot_id           :string
 #  shasum                :string
+#  content_tsv           :tsvector
 #
 # Indexes
 #
+#  idx_website_file_histories_content_tsv                 (content_tsv)
 #  index_website_file_histories_on_created_at             (created_at)
 #  index_website_file_histories_on_file_specification_id  (file_specification_id)
 #  index_website_file_histories_on_history_ended_at       (history_ended_at)

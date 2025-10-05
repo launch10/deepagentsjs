@@ -10,6 +10,7 @@
 #  updated_at  :datetime         not null
 #  thread_id   :string
 #  template_id :integer
+#  theme_id    :integer
 #
 # Indexes
 #
@@ -18,6 +19,7 @@
 #  index_websites_on_name         (name)
 #  index_websites_on_project_id   (project_id)
 #  index_websites_on_template_id  (template_id)
+#  index_websites_on_theme_id     (theme_id)
 #  index_websites_on_thread_id    (thread_id) UNIQUE
 #
 
@@ -31,32 +33,23 @@ class Website < ApplicationRecord
   belongs_to :project
   belongs_to :account
   belongs_to :template
+  belongs_to :theme, optional: true
 
   has_many :website_files, dependent: :destroy, class_name: "WebsiteFile"
   has_many :template_files, through: :template, source: :files
+  has_many :code_files
+  alias_method :files, :code_files
   has_many :domains, dependent: :destroy
   has_many :deploys, dependent: :destroy
+  has_one :content_strategy, class_name: "ContentStrategy"
+  alias_method :strategy, :content_strategy
   
   accepts_nested_attributes_for :website_files, allow_destroy: true
 
   validates_presence_of :name, :project_id, :account_id, :template
   before_validation :set_default_template
+  before_validation :set_default_theme
 
-  # Returns the merged set of template_files + website_files
-  # Website files override template files with the same path
-  def files
-    return website_files unless template.present?
-    
-    template_files_by_path = template_files.index_by(&:path)
-    website_files_by_path = website_files.index_by(&:path)
-    
-    # Merge, with website files taking precedence
-    all_paths = (template_files_by_path.keys + website_files_by_path.keys).uniq
-    all_paths.map do |path|
-      website_files_by_path[path] || template_files_by_path[path]
-    end
-  end
-  
   def build
     deploy = deploys.create!
     deploy.build!
@@ -138,6 +131,10 @@ class Website < ApplicationRecord
 
   def set_default_template
     self.template = Template.first if template.nil?
+  end
+
+  def set_default_theme
+    self.theme = Theme.first if theme.nil?
   end
 
 end

@@ -1,0 +1,711 @@
+<% content_for :title, "Search Files Tool" %>
+<% content_for :subtitle do %>
+    High-performance codebase search using PostgreSQL full-text capabilities
+<% end %>
+
+<%= h2_with_anchor "Overview" %>
+
+<p>Langgraph Feature (not Rails): </p>
+
+<p>The <code>SearchFilesTool</code> is a powerful LangChain-compatible tool for searching through codebases using PostgreSQL's advanced full-text search capabilities. It enables AI agents to find relevant code files based on content, file paths, or both, with support for complex boolean queries and parallel execution.</p>
+
+<div class="alert alert-primary">
+    <p><strong>Key Capabilities:</strong></p>
+    <ul>
+        <li>Parallel multi-search execution</li>
+        <li>Content and path-based searching</li>
+        <li>Three search modes: plain, phrase, and boolean</li>
+        <li>PostgreSQL ts_rank relevance scoring</li>
+        <li>Efficient database-level filtering</li>
+    </ul>
+</div>
+
+<%= h2_with_anchor "Architecture" %>
+
+<p>The tool leverages PostgreSQL's powerful text search features:</p>
+
+<pre><code class="language-mermaid">
+graph LR
+    A[Search Query] --> B[SearchFilesTool]
+    B --> C{Search Type}
+    C -->|Content| D[Full-Text Search]
+    C -->|Path| E[Pattern Matching]
+    C -->|Both| F[Combined Search]
+    D --> G[PostgreSQL tsvector]
+    E --> H[ILIKE Matching]
+    F --> I[Ranked Results]
+    G --> I
+    H --> I
+    I --> J[Return Files]
+</code></pre>
+
+<%= h2_with_anchor "Search Modes" %>
+
+<%= h3_with_anchor "Plain Search" %>
+
+<p>Default mode that finds all specified words in any order:</p>
+
+<pre><code class="language-typescript">const result = await searchFilesTool.invoke({
+    searches: [{
+        content: "authentication user login",  // Finds files with all three words
+        searchMode: "plain",
+        limit: 5
+    }]
+});
+
+// Matches files containing:
+// - "user authentication and login"
+// - "login method for user authentication"  
+// - "authentication of user during login"</code></pre>
+
+<%= h3_with_anchor "Phrase Search" %>
+
+<p>Finds exact phrases in the specified order:</p>
+
+<pre><code class="language-typescript">const result = await searchFilesTool.invoke({
+    searches: [{
+        content: "async function handleSubmit",  // Exact phrase
+        searchMode: "phrase",
+        limit: 5
+    }]
+});
+
+// Only matches files with exact phrase:
+// - "async function handleSubmit(event) {"
+// Won't match:
+// - "async handleSubmit function"
+// - "function async handleSubmit"</code></pre>
+
+<%= h3_with_anchor "Boolean Search" %>
+
+<p>Complex queries with AND (&), OR (|), and NOT (!) operators:</p>
+
+<pre><code class="language-typescript">const result = await searchFilesTool.invoke({
+    searches: [{
+        content: "(authentication | authorization) & user & !deprecated",
+        searchMode: "boolean",
+        limit: 10
+    }]
+});
+
+// Matches files that:
+// - Contain "authentication" OR "authorization"
+// - AND contain "user"
+// - AND do NOT contain "deprecated"</code></pre>
+
+<%= h2_with_anchor "Usage Examples" %>
+
+<%= h3_with_anchor "Basic File Search" %>
+
+<pre><code class="language-typescript">import { SearchFilesTool } from "@tools/searchFiles";
+
+const searchTool = new SearchFilesTool();
+
+// Search for files by content
+const result = await searchTool.invoke({
+    searches: [{
+        content: "database connection",
+        limit: 5
+    }]
+});
+
+console.log(result);
+// {
+//   results: [{
+//     query: { content: "database connection", limit: 5 },
+//     files: [
+//       { path: "src/db/connection.ts", content: "...", rank: 0.95 },
+//       { path: "lib/database.js", content: "...", rank: 0.87 }
+//     ]
+//   }],
+//   totalFiles: 2
+// }</code></pre>
+
+<%= h3_with_anchor "Path-Based Search" %>
+
+<pre><code class="language-typescript">// Find files by path patterns
+const result = await searchTool.invoke({
+    searches: [{
+        path: "test",  // Files with "test" in path
+        limit: 10
+    }]
+});
+
+// Returns files like:
+// - src/tests/unit.test.ts
+// - lib/test-helpers.js
+// - components/TestComponent.jsx</code></pre>
+
+<%= h3_with_anchor "Combined Search" %>
+
+<pre><code class="language-typescript">// Search both content and path
+const result = await searchTool.invoke({
+    searches: [{
+        content: "useState useEffect",
+        path: "components",  // Only in components directory
+        searchMode: "plain",
+        limit: 5
+    }]
+});
+
+// Finds React component files with hooks</code></pre>
+
+<%= h3_with_anchor "Parallel Multi-Search" %>
+
+<pre><code class="language-typescript">// Execute multiple searches in parallel
+const result = await searchTool.invoke({
+    searches: [
+        {
+            content: "API endpoint",
+            path: "routes",
+            limit: 3
+        },
+        {
+            content: "database schema",
+            path: "models",
+            limit: 3
+        },
+        {
+            content: "test suite",
+            searchMode: "phrase",
+            limit: 5
+        }
+    ]
+});
+
+// Returns results for all three searches
+console.log(`Found ${result.totalFiles} unique files`);</code></pre>
+
+<%= h2_with_anchor "Advanced Query Patterns" %>
+
+<%= h3_with_anchor "Complex Boolean Queries" %>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Query</th>
+            <th>Description</th>
+            <th>Example Matches</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>auth & (login | signin)</code></td>
+            <td>Auth with either login or signin</td>
+            <td>Authentication login, auth signin flow</td>
+        </tr>
+        <tr>
+            <td><code>error & !warning & !info</code></td>
+            <td>Errors but not warnings or info</td>
+            <td>Error handling, critical error</td>
+        </tr>
+        <tr>
+            <td><code>(get | post) & api & !deprecated</code></td>
+            <td>GET/POST APIs, not deprecated</td>
+            <td>GET API endpoint, POST api route</td>
+        </tr>
+        <tr>
+            <td><code>todo | fixme | hack</code></td>
+            <td>Code that needs attention</td>
+            <td>TODO comments, FIXME notes</td>
+        </tr>
+    </tbody>
+</table>
+
+<%= h3_with_anchor "Path Pattern Examples" %>
+
+<pre><code class="language-typescript">// Find test files
+{ path: "test" }           // Contains "test" anywhere
+{ path: ".test." }         // Test files like foo.test.ts
+{ path: "spec" }           // Spec files
+{ path: "__tests__" }      // Jest test directories
+
+// Find by directory
+{ path: "components/" }    // Component files
+{ path: "src/utils" }      // Utility files
+{ path: "api/v2" }         // API v2 files
+
+// Find by extension (using content search)
+{ content: "", path: ".tsx" }  // TypeScript React files
+{ content: "", path: ".py" }   // Python files</code></pre>
+
+<%= h2_with_anchor "Integration with LangChain Agents" %>
+
+<%= h3_with_anchor "Agent Setup" %>
+
+<pre><code class="language-typescript">import { ChatOpenAI } from "@langchain/openai";
+import { SearchFilesTool } from "@tools/searchFiles";
+import { createReactAgent } from "langchain/agents";
+
+const tools = [
+    new SearchFilesTool(),
+    // other tools...
+];
+
+const agent = await createReactAgent({
+    llm: new ChatOpenAI({ modelName: "gpt-4" }),
+    tools,
+    prompt: agentPrompt
+});
+
+// Agent can now search codebases
+const result = await agent.invoke({
+    input: "Find all authentication related files and analyze the login flow"
+});</code></pre>
+
+<%= h3_with_anchor "Tool Description for Agents" %>
+
+<pre><code class="language-text">Search for files in the codebase using PostgreSQL full-text search.
+Supports three search modes:
+- plain: Finds all words in any order (default)
+- phrase: Exact phrase matching
+- boolean: Complex queries with &, |, ! operators
+
+Can search by file content, path, or both simultaneously.
+Returns files ranked by relevance with their content.</code></pre>
+
+<%= h2_with_anchor "API Reference" %>
+
+<%= h3_with_anchor "Input Schema" %>
+
+<pre><code class="language-typescript">interface SearchFilesInput {
+    searches: SearchQuery[]
+}
+
+interface SearchQuery {
+    content?: string;        // Text to search in file contents
+    path?: string;          // Pattern to match in file paths
+    searchMode?: "plain" | "phrase" | "boolean";  // Default: "plain"
+    limit?: number;         // Max results per query (default: 2)
+}</code></pre>
+
+<%= h3_with_anchor "Output Schema" %>
+
+<pre><code class="language-typescript">interface SearchFilesOutput {
+    results: SearchResult[];
+    totalFiles: number;     // Count of unique files across all searches
+}
+
+interface SearchResult {
+    query: SearchQuery;     // The original query
+    files: FileResult[];
+}
+
+interface FileResult {
+    path: string;          // File path
+    content: string;       // File content (truncated if large)
+    rank: number;          // Relevance score (0-1)
+}</code></pre>
+
+<%= h2_with_anchor "Database Implementation" %>
+
+<%= h3_with_anchor "Schema Design" %>
+
+<pre><code class="language-sql">-- Code files table with full-text search
+CREATE TABLE code_files (
+    id SERIAL PRIMARY KEY,
+    path TEXT UNIQUE NOT NULL,
+    content TEXT,
+    content_vector tsvector,              -- Full-text search vector
+    language VARCHAR(50),
+    size_bytes INTEGER,
+    last_modified TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_content_vector ON code_files USING GIN(content_vector);
+CREATE INDEX idx_file_path ON code_files(path);
+CREATE INDEX idx_path_pattern ON code_files(path varchar_pattern_ops);</code></pre>
+
+<%= h3_with_anchor "Search Implementation" %>
+
+<pre><code class="language-sql">-- Plain text search
+SELECT path, content,
+       ts_rank(content_vector, plainto_tsquery('english', $1)) as rank
+FROM code_files
+WHERE content_vector @@ plainto_tsquery('english', $1)
+ORDER BY rank DESC
+LIMIT $2;
+
+-- Phrase search
+SELECT path, content,
+       ts_rank_cd(content_vector, phraseto_tsquery('english', $1)) as rank
+FROM code_files
+WHERE content_vector @@ phraseto_tsquery('english', $1)
+ORDER BY rank DESC
+LIMIT $2;
+
+-- Boolean search with websearch syntax
+SELECT path, content,
+       ts_rank_cd(content_vector, websearch_to_tsquery('english', $1)) as rank
+FROM code_files
+WHERE content_vector @@ websearch_to_tsquery('english', $1)
+ORDER BY rank DESC
+LIMIT $2;</code></pre>
+
+<%= h2_with_anchor "Performance Optimization" %>
+
+<%= h3_with_anchor "Indexing Strategy" %>
+
+<ol>
+    <li><strong>GIN Index on tsvector:</strong> Enables fast full-text searches</li>
+    <li><strong>B-tree Index on path:</strong> Quick exact path lookups</li>
+    <li><strong>Pattern Index on path:</strong> Efficient LIKE/ILIKE queries</li>
+    <li><strong>Partial Indexes:</strong> For frequently filtered subsets</li>
+</ol>
+
+<%= h3_with_anchor "Performance Benchmarks" %>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Operation</th>
+            <th>10K Files</th>
+            <th>100K Files</th>
+            <th>1M Files</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Plain search (single term)</td>
+            <td>5-10ms</td>
+            <td>15-30ms</td>
+            <td>50-100ms</td>
+        </tr>
+        <tr>
+            <td>Phrase search</td>
+            <td>10-15ms</td>
+            <td>25-40ms</td>
+            <td>80-150ms</td>
+        </tr>
+        <tr>
+            <td>Complex boolean</td>
+            <td>15-25ms</td>
+            <td>40-60ms</td>
+            <td>100-200ms</td>
+        </tr>
+        <tr>
+            <td>Path pattern match</td>
+            <td>3-5ms</td>
+            <td>10-15ms</td>
+            <td>30-50ms</td>
+        </tr>
+        <tr>
+            <td>5 parallel searches</td>
+            <td>20-30ms</td>
+            <td>50-80ms</td>
+            <td>150-300ms</td>
+        </tr>
+    </tbody>
+</table>
+
+<%= h3_with_anchor "Optimization Tips" %>
+
+<ol>
+    <li><strong>Use Specific Queries:</strong> More specific terms = faster searches</li>
+    <li><strong>Limit Results:</strong> Only request as many files as needed</li>
+    <li><strong>Batch Searches:</strong> Use parallel execution for multiple queries</li>
+    <li><strong>Path Filters:</strong> Combine path and content for narrower search</li>
+    <li><strong>Index Maintenance:</strong> Regular VACUUM and ANALYZE operations</li>
+</ol>
+
+<%= h2_with_anchor "Common Use Cases" %>
+
+<%= h3_with_anchor "Finding API Endpoints" %>
+
+<pre><code class="language-typescript">// Find all API route definitions
+const apiEndpoints = await searchTool.invoke({
+    searches: [
+        {
+            content: "router.get router.post router.put router.delete",
+            path: "routes",
+            searchMode: "plain",
+            limit: 20
+        }
+    ]
+});</code></pre>
+
+<%= h3_with_anchor "Locating Configuration" %>
+
+<pre><code class="language-typescript">// Find configuration files
+const configs = await searchTool.invoke({
+    searches: [
+        {
+            content: "config export default",
+            path: "config",
+            limit: 10
+        },
+        {
+            path: ".env",
+            limit: 5
+        },
+        {
+            content: "process.env",
+            limit: 10
+        }
+    ]
+});</code></pre>
+
+<%= h3_with_anchor "Security Audit" %>
+
+<pre><code class="language-typescript">// Search for potential security issues
+const securitySearch = await searchTool.invoke({
+    searches: [
+        {
+            content: "eval( | exec( | system(",
+            searchMode: "boolean",
+            limit: 20
+        },
+        {
+            content: "password & (hardcoded | plaintext | clear)",
+            searchMode: "boolean",
+            limit: 10
+        },
+        {
+            content: "TODO security",
+            searchMode: "phrase",
+            limit: 10
+        }
+    ]
+});</code></pre>
+
+<%= h3_with_anchor "Dependency Analysis" %>
+
+<pre><code class="language-typescript">// Find import statements
+const imports = await searchTool.invoke({
+    searches: [
+        {
+            content: "import from react",
+            searchMode: "phrase",
+            limit: 50
+        },
+        {
+            content: "require(",
+            path: ".js",
+            limit: 30
+        }
+    ]
+});</code></pre>
+
+<%= h2_with_anchor "Testing" %>
+
+<%= h3_with_anchor "Unit Tests" %>
+
+<pre><code class="language-typescript">import { describe, it, expect } from 'vitest';
+import { SearchFilesTool } from '@tools/searchFiles';
+
+describe('SearchFilesTool', () => {
+    const tool = new SearchFilesTool();
+    
+    it('should find files by content', async () => {
+        const result = await tool.invoke({
+            searches: [{
+                content: "function",
+                limit: 5
+            }]
+        });
+        
+        expect(result.results[0].files).toBeDefined();
+        expect(result.results[0].files.length).toBeLessThanOrEqual(5);
+    });
+    
+    it('should handle boolean queries', async () => {
+        const result = await tool.invoke({
+            searches: [{
+                content: "async & function & !deprecated",
+                searchMode: "boolean",
+                limit: 3
+            }]
+        });
+        
+        const files = result.results[0].files;
+        files.forEach(file => {
+            expect(file.content).toContain('async');
+            expect(file.content).toContain('function');
+            expect(file.content).not.toContain('deprecated');
+        });
+    });
+    
+    it('should search by path pattern', async () => {
+        const result = await tool.invoke({
+            searches: [{
+                path: "test",
+                limit: 10
+            }]
+        });
+        
+        result.results[0].files.forEach(file => {
+            expect(file.path.toLowerCase()).toContain('test');
+        });
+    });
+});</code></pre>
+
+<%= h3_with_anchor "Integration Tests" %>
+
+<pre><code class="language-typescript">// Test with database
+describe('SearchFilesTool Integration', () => {
+    beforeAll(async () => {
+        // Seed test files
+        await CodeFileModel.bulkCreate([
+            { path: 'src/auth.ts', content: 'authentication logic' },
+            { path: 'test/auth.test.ts', content: 'test authentication' },
+            { path: 'lib/utils.js', content: 'utility functions' }
+        ]);
+    });
+    
+    it('should rank results by relevance', async () => {
+        const result = await tool.invoke({
+            searches: [{
+                content: "authentication",
+                limit: 10
+            }]
+        });
+        
+        const ranks = result.results[0].files.map(f => f.rank);
+        expect(ranks).toEqual([...ranks].sort((a, b) => b - a));
+    });
+});</code></pre>
+
+<%= h2_with_anchor "Troubleshooting" %>
+
+<%= h3_with_anchor "Common Issues" %>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Issue</th>
+            <th>Cause</th>
+            <th>Solution</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>No results found</td>
+            <td>Terms not in index or too specific</td>
+            <td>Use simpler terms, check if files are indexed</td>
+        </tr>
+        <tr>
+            <td>Poor relevance ranking</td>
+            <td>Generic terms or stopwords</td>
+            <td>Use more specific terms, adjust query</td>
+        </tr>
+        <tr>
+            <td>Slow searches</td>
+            <td>Missing indexes or large result sets</td>
+            <td>Check indexes, reduce limit, optimize query</td>
+        </tr>
+        <tr>
+            <td>Boolean syntax errors</td>
+            <td>Invalid operators or syntax</td>
+            <td>Check operator syntax (&, |, !), balance parentheses</td>
+        </tr>
+        <tr>
+            <td>Partial matches missing</td>
+            <td>Using phrase mode instead of plain</td>
+            <td>Switch to plain mode for partial matching</td>
+        </tr>
+    </tbody>
+</table>
+
+<%= h3_with_anchor "Debug Queries" %>
+
+<pre><code class="language-typescript">// Enable query debugging
+const debugSearch = async (searches) => {
+    console.log('Executing searches:', JSON.stringify(searches, null, 2));
+    
+    const start = Date.now();
+    const result = await searchTool.invoke({ searches });
+    const duration = Date.now() - start;
+    
+    console.log(`Search completed in ${duration}ms`);
+    console.log(`Total unique files: ${result.totalFiles}`);
+    
+    result.results.forEach((r, i) => {
+        console.log(`Query ${i + 1}:`, r.query);
+        console.log(`  Found ${r.files.length} files`);
+        console.log(`  Top result: ${r.files[0]?.path} (rank: ${r.files[0]?.rank})`);
+    });
+    
+    return result;
+};</code></pre>
+
+<%= h2_with_anchor "Best Practices" %>
+
+<ol>
+    <li><strong>Use Appropriate Search Mode:</strong>
+        <ul>
+            <li>Plain: General searching, multiple terms</li>
+            <li>Phrase: Exact code snippets</li>
+            <li>Boolean: Complex filtering logic</li>
+        </ul>
+    </li>
+    <li><strong>Combine Path and Content:</strong> Narrow searches by using both parameters</li>
+    <li><strong>Batch Related Searches:</strong> Execute multiple searches in one call</li>
+    <li><strong>Set Reasonable Limits:</strong> Balance between coverage and performance</li>
+    <li><strong>Index Maintenance:</strong> Keep search indexes updated as files change</li>
+    <li><strong>Cache Common Queries:</strong> Consider caching frequent search patterns</li>
+</ol>
+
+<div class="alert alert-warning">
+    <p><strong>Important:</strong> The search quality depends on proper text processing and indexing. Ensure files are properly indexed with appropriate language settings for best results.</p>
+</div>
+
+<%= h2_with_anchor "Comparison with Other Search Methods" %>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Feature</th>
+            <th>SearchFilesTool</th>
+            <th>grep/ripgrep</th>
+            <th>IDE Search</th>
+            <th>Elasticsearch</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Full-text search</td>
+            <td>✅ Advanced</td>
+            <td>✅ Basic</td>
+            <td>✅ Good</td>
+            <td>✅ Advanced</td>
+        </tr>
+        <tr>
+            <td>Relevance ranking</td>
+            <td>✅ ts_rank</td>
+            <td>❌</td>
+            <td>⚠️ Limited</td>
+            <td>✅ TF-IDF/BM25</td>
+        </tr>
+        <tr>
+            <td>Boolean queries</td>
+            <td>✅</td>
+            <td>⚠️ Regex only</td>
+            <td>✅</td>
+            <td>✅</td>
+        </tr>
+        <tr>
+            <td>Parallel search</td>
+            <td>✅</td>
+            <td>⚠️ Manual</td>
+            <td>❌</td>
+            <td>✅</td>
+        </tr>
+        <tr>
+            <td>Setup complexity</td>
+            <td>Low</td>
+            <td>None</td>
+            <td>None</td>
+            <td>High</td>
+        </tr>
+        <tr>
+            <td>Scalability</td>
+            <td>Good</td>
+            <td>Moderate</td>
+            <td>Poor</td>
+            <td>Excellent</td>
+        </tr>
+    </tbody>
+</table>

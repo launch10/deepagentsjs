@@ -67,6 +67,10 @@ RSpec.describe "Websites", type: :request do
           
           expect {
             post "/websites", params: valid_params, headers: headers, as: :json
+            if response.status != 201
+              puts "Response status: #{response.status}"
+              puts "Response body: #{response.body}"
+            end
           }.to change(Website, :count).by(1)
           
           expect(response).to have_http_status(:created)

@@ -18,6 +18,8 @@ module Authorization
   end
 
   def refresh_jwt
+    return unless current_user
+
     payload = {
       jti: current_user.jwt_payload["jti"],
       sub: current_user.id,
@@ -36,14 +38,7 @@ module Authorization
   end
 
   def jwt_user(allow_headers: false)
-    jwt = cookies[:jwt] || (allow_headers ? request.headers['Authorization']&.split(' ')&.last : nil)
-    
-    if jwt
-      payload = jwt_payload(jwt)
-      return nil if payload.blank? || payload.dig(0, "sub").blank?
-
-      User.find(payload.dig(0, "sub"))
-    end
+    test_jwt_user || real_jwt_user(allow_headers: allow_headers)
   end
 
   def authenticate_with_jwt!
@@ -56,12 +51,50 @@ module Authorization
     if user
       Current.user = user
       sign_in(user, store: false)
+      set_request_details # sets account, etc.
     else
       render json: { error: 'Missing token' }, status: :unauthorized and return
     end
   end
 
   private
+
+  def real_jwt_user(allow_headers: false)
+    jwt = cookies[:jwt] || (allow_headers ? request.headers['Authorization']&.split(' ')&.last : nil)
+    
+    if jwt
+      payload = jwt_payload(jwt)
+      return nil if payload.blank? || payload.dig(0, "sub").blank?
+
+      User.find(payload.dig(0, "sub"))
+    end
+  end
+
+  def test_jwt_user
+    can_use_test_jwt = Rails.env.development? || Rails.env.test?
+    return nil unless can_use_test_jwt
+
+    sent_test_proof = request.headers['X-Test-Proof'] && request.headers['X-Test-Mode'] == 'true'
+    return nil unless sent_test_proof
+    
+    test_proof = request.headers['X-Test-Proof']
+    return nil unless test_proof
+    
+    begin
+      payload = JWT.decode(test_proof, Rails.application.credentials.devise_jwt_secret_key!, 'HS256')[0]
+      timestamp = payload['timestamp'].to_i
+
+      # Check timestamp is recent (within last minute)
+      if Time.at(timestamp / 1000) > 1.minute.ago
+        User.find_by(email: 'test_user@abeverything.com')
+      else
+        nil
+      end
+    rescue => e
+      nil
+    end
+  end
+
 
   # You can also customize the messages using the policy and action to generate the I18n key
   # https://github.com/varvet/pundit#creating-custom-error-messages

@@ -1,15 +1,28 @@
 require 'sidekiq/web'
 require "zhong/web"
 
-Rails.application.routes.draw do
-  ADMIN_ONLY ||= lambda do |request|
-    request.env["warden"].authenticate!(scope: :user)
-    request.env["warden"].user(:user).admin?
-  end
+ADMIN_ONLY ||= lambda do |request|
+  request.env["warden"].authenticate!(scope: :user)
+  request.env["warden"].user(:user).admin?
+end
 
+LOCAL_ENV_ONLY ||= lambda do |request|
+  Rails.env.local?  # Returns true for development and test environments
+end
+
+Rails.application.routes.draw do
   constraints ADMIN_ONLY do
     mount Sidekiq::Web => "/sidekiq"
     mount Zhong::Web => "/zhong"
+  end
+
+  constraints LOCAL_ENV_ONLY do
+    namespace :test do
+      post "database/truncate", to: "database#truncate"
+      post "database/snapshots", to: "database#create_snapshot"
+      post "database/restore_snapshot", to: "database#restore_snapshot"
+      get "database/snapshots", to: "database#index"
+    end
   end
 
   draw :accounts
@@ -54,5 +67,6 @@ Rails.application.routes.draw do
   resources :projects, controller: :projects, param: :thread_id do 
     get :files, on: :member
   end
-  resources :websites, only: [:create]
+  resources :websites, only: [:create, :update]
+
 end

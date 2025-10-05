@@ -192,12 +192,14 @@ RSpec.describe WebsiteConcerns::FileManagement do
       # Verify index is the custom one
       index = files.find { |f| f.path == 'index.html' }
       expect(index.content).to eq('<h1>Custom Index</h1>')
-      expect(index).to be_a(WebsiteFile)
+      expect(index).to be_a(CodeFile)
+      expect(index.source).to eq('website')
       
       # Verify styles is from template
       styles = files.find { |f| f.path == 'styles.css' }
       expect(styles.content).to eq('body { background: white; }')
-      expect(styles).to be_a(TemplateFile)
+      expect(styles).to be_a(CodeFile)
+      expect(styles.source).to eq('template')
     end
   end
   

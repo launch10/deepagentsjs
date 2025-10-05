@@ -1,6 +1,7 @@
 class SubscribedController < ApplicationController
   include Webcontainer
   before_action :refresh_jwt, if: proc { !request.format.json? && jwt_expired? }
+  before_action :authenticate_with_jwt!, if: proc { request.format.json? }
   before_action :require_subscription!, unless: -> { Plan.none? }
 
   def root_path
@@ -18,6 +19,8 @@ class SubscribedController < ApplicationController
 
     {
       root_path: root_path,
+      jwt: cookies[:jwt],
+      account_id: current_account&.id,
       errors: session.delete(:errors) || {},
       flash: flash_messages,
     }

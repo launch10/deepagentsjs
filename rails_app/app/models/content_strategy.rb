@@ -1,9 +1,8 @@
 # == Schema Information
 #
-# Table name: project_plans
+# Table name: content_strategies
 #
 #  id                    :integer          not null, primary key
-#  project_id            :integer          not null
 #  tone                  :string           not null
 #  core_emotional_driver :string
 #  attention_grabber     :string
@@ -18,14 +17,16 @@
 #  landing_page_copy     :text
 #  created_at            :datetime         not null
 #  updated_at            :datetime         not null
+#  website_id            :integer
+#  summary               :text
 #
 # Indexes
 #
-#  index_project_plans_on_created_at  (created_at)
-#  index_project_plans_on_project_id  (project_id)
-#  index_project_plans_on_updated_at  (updated_at)
+#  index_content_strategies_on_created_at  (created_at)
+#  index_content_strategies_on_updated_at  (updated_at)
+#  index_content_strategies_on_website_id  (website_id)
 #
 
-class ProjectPlan < ApplicationRecord
-  belongs_to :project, as: :plan
+class ContentStrategy < ApplicationRecord
+  belongs_to :website
 end

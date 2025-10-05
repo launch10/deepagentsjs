@@ -1,0 +1,121 @@
+<% content_for :title, "E2E Testing" %>
+<% content_for :subtitle do %>
+    Learn how to run tests from the Langgraph Application -> Rails Application
+<% end %>
+
+<%= h2_with_anchor "Overview" %>
+
+<p>The Langgraph application runs our AI services and the Rails application runs our web application.</p>
+
+<p>In order to test the Langgraph application, we need to integrate with the Rails API. We run rails in test mode, and expose a few endpoints for database management.</p>
+
+<%= h2_with_anchor "Why" %>
+
+<p>We need to start LOTS of AI tests from complex workflows. For example, Langgraph may need:</p>
+
+<ol>
+    <li>Website files to already exist</li>
+    <li>Project to already exist</li>
+    <li>Website to already exist</li>
+    <li>One of the project files to have a bug</li>
+</ol>
+
+<p>To facilitate quickly starting from a known state, we use database snapshots. Then we can write code that allows us to have the user prompt to fix the bug.</p>
+
+<%= h2_with_anchor "Routes for Database Management" %>
+
+<%= h3_with_anchor "1. Truncate" %>
+
+<p>Before each test, truncate the database to start from a clean slate:</p>
+
+<div class="not-prose">
+  <pre><code>curl -L -X POST http://localhost:3000/database/truncate</code></pre>
+</div>
+
+Or from Langgraph code:
+
+<div class="not-prose">
+  <pre><code>
+    import { DatabaseSnapshotter } from "@tests/support";
+
+    await DatabaseSnapshotter.truncate();
+  </code></pre>
+</div>
+
+<%= h3_with_anchor "2. Restore Snapshot" %>
+
+<p>Restore a snapshot of the database:</p>
+
+<div class="not-prose">
+  <pre><code>curl -L -X POST http://localhost:3000/database/restore_snapshot -d "name=snapshot_name"</code></pre>
+</div>
+
+Or from Langgraph code:
+
+<div class="not-prose">
+  <pre><code>
+    import { DatabaseSnapshotter } from "@tests/support";
+
+    await DatabaseSnapshotter.restoreSnapshot("snapshot_name");
+</code></pre>
+</div>
+
+<%= h3_with_anchor "3. Create a Snapshot" %>
+
+<p>Create a snapshot of the database:</p>
+
+<div class="not-prose">
+  <pre><code>curl -L -X POST http://localhost:3000/database/snapshots -d "name=snapshot_name"</code></pre>
+</div>
+
+Or from Langgraph code:
+
+<div class="not-prose">
+  <pre><code>
+    import { DatabaseSnapshotter } from "@tests/support";
+
+    // do some work to build the snapshot
+    const result = await testGraph()
+        .withGraph(routerGraph)
+        .withPrompt(prompt)
+        .stopAfter('__END__')
+        .execute();
+
+    // save the snapshot
+    await DatabaseSnapshotter.createSnapshot("snapshot_name");
+  </code></pre>
+</div>
+
+<%= h2_with_anchor "Testing Authentication" %>
+
+<p>Additionally, we need our tests to be able to authenticate as a user. To facilitate this, we generate headers like X-Test-Mode: true, and X-Test-Proof, which proves that a known test server generated the request. We then authenticate any user using the jwt: <code>test-jwt</code>. This is a jwt that is generated in the test environment.</p>
+
+<%= h2_with_anchor "Running Langgraph Tests" %>
+
+First, run Rails server in test mode:
+
+```bash
+RAILS_ENV=test bin/rails server
+```
+
+Then, run Langgraph tests:
+
+```typescript
+beforeEach(async () => {
+  await DatabaseSnapshotter.truncate();
+  await DatabaseSnapshotter.restoreSnapshot("snapshot_name");
+})
+
+describe("it does some stuff from known state", () => {
+  it("does stuff", () => {
+    const website = await Website.findBy({id: 1});
+    expect(website).toBeDefined();
+  });
+});
+```
+
+To generate a snapshot, we prefer to add mocks, such as:
+
+```typescript
+
+```

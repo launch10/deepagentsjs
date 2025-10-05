@@ -1,0 +1,312 @@
+<% content_for :title, "Testing" %>
+<% content_for :subtitle do %>
+    Learn the different approaches to testing the application
+<% end %>
+
+<%= h2_with_anchor "Overview" %>
+
+<p>We have multiple levels of testing going from lowest->highest fidelity:</p>
+
+<div>
+    <p><strong>For Rails:</strong></p>
+    <ol>
+        <li>Unit Tests</li>
+        <li>API Tests</li>
+    </ol>
+</div>
+
+<div>
+    <p><strong>For Langgraph:</strong></p>
+    <ol>
+        <li>Prompt Tests</li>
+        <li>Prompt Evals</li>
+        <li>Node/Agent Tests</li>
+        <li>Multi-Step Agent Tests</li>
+    </ol>
+</div>
+
+<div>
+    <p><strong>For End-to-End:</strong></p>
+    <ol>
+        <li>End-to-End Tests (Langgraph -> Rails together)</li>
+    </ol>
+</div>
+
+<p>Each level of testing has different properties and requirements, so you can familiarize yourself with these here:</p>
+
+<%= h2_with_anchor "Rails Testing" %>
+
+<%= h3_with_anchor "Unit Tests" %>
+
+<p>Unit tests are the lowest fidelity tests. They use traditional Rails tooling such as:</p>
+
+<ol>
+    <li>FactoryBot</li>
+    <li>Sidekiq/testing</li>
+</ol>
+
+<%= h3_with_anchor "API Tests" %>
+
+<p>API tests are the highest fidelity tests in Rails. They are tagged with <code>type: :request</code> and include additional helpers for testing:</p>
+
+<ol>
+    <li>JWT Authentication</li>
+    <li>Subscription</li>
+    <li>User's plan has enough credits</li>
+</ol>
+
+<p>This is the way we would test APIs on the Rails side (prior to the full integration tests)</p>
+
+<%= h2_with_anchor "Langgraph Testing" %>
+
+<%= h3_with_anchor "Prompt Tests" %>
+
+<p>Prompt tests are the lowest-level tests in Langgraph. We use this simply to validate that the expected data is injected into the prompt, because this is a common silent failure mode that would cause models to perform poorly, but not fail other types of tests.</p>
+
+<p>They are in the tests/prompts directory (in the Langgraph app), and use traditional tooling such as:</p>
+
+<ol>
+    <li>vitest</li>
+    <li>fishery factories</li>
+</ol>
+
+<p>For very simple prompts that are easy to build, you can just build using fishery factories.</p>
+
+<pre><code class="language-typescript">
+import { componentOverviewFactory } from '@factories';
+import { componentOverviewPrompt } from '@prompts';
+
+const componentOverview = await componentOverviewFactory.create();
+const result = await componentOverviewPrompt({ 
+    overview: componentOverview as ComponentOverviewType 
+});
+</code></pre>
+
+<p>For more complex prompts, you can just run the entire graph, and add a `promptSpy` to the graph.</p>
+
+<pre><code class="language-typescript">
+import { testGraph } from '@tests/support/testGraph';
+
+const result = await testGraph()
+    .withGraph(routerGraph)
+    .withPrompt("Create a cool website about dogs with animations")
+    .withPromptSpy(['assemblePagePrompt'])
+    .stopAfter('nameProject')
+    .execute();
+
+const prompt = result.promptSpy?.get('assemblePagePrompt')[0];
+</code></pre>
+
+<p>From there, we want to assert values are injected into the prompt in a way that is easy for a model or human to understand.</p>
+
+<pre><code class="language-javascript">expect(prompt).toMatchXml(`
+    &lt;prompt&gt;
+        &lt;website&gt;
+            &lt;name&gt;My Landing Page&lt;/name&gt;
+        &lt;/website&gt;
+    &lt;/prompt&gt;
+`);</code></pre>
+
+<%= h3_with_anchor "Prompt Evals" %>
+
+<p>Prompt evals assert on the quality of the output from the model. They are the highest fidelity of INDIVIDUAL prompt testing. We use the libraries:</p>
+
+<ol>
+    <li>evalite</li>
+    <li>support/evals helpers based on autoevals</li>
+</ol>
+
+<p>Here is an example:</p>
+
+<pre><code class="language-typescript">import { mocks } from '@mocks';
+import { evalite } from 'evalite';
+import { PlanPageService, type PlanPageProps, type PlanPageOutputType } from '@services';
+import { createClosedQAScorer } from '@tests/support/evals';
+
+evalite('PagePlanPrompt', {
+    task: async (input: PlanPageProps) => {
+        const result = await testGraph()
+            .withGraph(routerGraph)
+            .withPrompt("Create a cool website about dogs with animations")
+            .withServiceSpy(['planPageService']) // Use service spy to spy on the OUTPUT of the service
+            .stopAfter('planPage')
+            .execute();
+
+        // Here we get the OUTPUT returned from the service
+        // Which is the output of the prompt. This is what we want to evaluate
+        return result.serviceSpy?.get('planPageService')[0];
+    },
+    scorers: [
+        {
+            name: "Returns a list of code tasks",
+            scorer: async ({output}: {output: PlanPageOutputType}) => {
+                return output.codeTasks.length > 1 ? 1 : 0;
+            }
+        }, // Scorers can do whatever you want. 
+        // With ClosedQAScorer, you can aggregate multiple criteria into a single score.
+        {
+            name: "It is a sensible plan",
+            scorer: async ({output, input}: {output: PlanPageOutputType, input: string}) => {
+                const PlanPageScorer = createClosedQAScorer({
+                    criteria: {
+                        listOfCodeTasks: "The output should include a list of code tasks, each of which should be for different sections of the page",
+                        sensiblePlan: "The output should be a sensible plan for a website page, which clearly follows from the user's original prompt",
+                        persuasiveCopy: "The output should be persuasive copy for a website page, which clearly follows from the user's original prompt",
+                    }
+                });
+                const response: number = await PlanPageScorer({
+                    input: input.userRequest.content,
+                    output: output,
+                    useCoT: true
+                })
+                return response;
+            }
+        },
+    ]
+});</code></pre>
+
+<%= h3_with_anchor "Node/Agent Tests" %>
+
+<p>We've developed a custom testing framework for testing Langgraph nodes and agents based on the unique requirements:</p>
+
+<ol>
+    <li>We need to be able to run an entire graph, including subgraphs</li>
+    <li>The graphs must receive known input/state</li>
+    <li>The graphs must be able to stop at any point to assert the outcome of individual nodes</li>
+    <li>HTTP requests (to AI models) should be recorded and replayed using Polly</li>
+    <li>HTTP requests (to Rails) must be authenticated using the test JWT</li>
+</ol>
+
+<p>In order to run these properly, you should almost ALWAYS test the highest-level node (the <code>routerGraph</code>), and allow state to flow through</p>
+
+<pre><code class="language-javascript">it('should generate project name for a dogs website', async () => {
+    const result = await testGraph() // start the test library
+        .withGraph(routerGraph) // which graph to run
+        .withState({ testState }) // if you have any existing test state to reuse
+        .withPrompt("Create a cool website about dogs with animations") // the prompt to send to the graph
+        .stopAfter('nameProject') // stop at the 'nameProject' node
+        .execute(); // run the graph
+
+    expect(result.error).toBeUndefined();
+    expect(result.state.projectName).toBeDefined();
+    expect(typeof result.state.projectName).toBe('string'); // assert on the expected outcome of the node itself
+});</code></pre>
+
+<%= h3_with_anchor "End-to-End Tests" %>
+
+<p>End-to-end tests are essential for testing deeper nodes in the Langgraph experience. For example, to properly test a code update when a user has a bug, we need to first create a project that has a known bug.</p>
+
+<p>This means E2E tests have several additional tool needs:</p>
+
+<ol>
+    <li>Database Snapshots</li>
+    <li>Restarting based on previous graph state</li>
+    <li>Rails running in test mode</li>
+</ol>
+
+<p>To facilitate this, we have API endpoints in Rails that ONLY run in test mode:</p>
+
+<pre><code class="language-bash">curl -L -X POST http://localhost:3000/database/truncate</code></pre>
+
+<pre><code class="language-bash">curl -L -X POST http://localhost:3000/database/restore_snapshot -d "name=snapshot_name"</code></pre>
+
+<pre><code class="language-bash">curl -L -X POST http://localhost:3000/database/snapshots -d "name=snapshot_name"</code></pre>
+
+<p>You can also additionally run these as rake tasks:</p>
+
+<pre><code class="language-bash">bin/rails database:truncate</code></pre>
+
+<pre><code class="language-bash">bin/rails database:restore_snapshot[snapshot_name]</code></pre>
+
+<pre><code class="language-bash">bin/rails database:snapshots[snapshot_name]</code></pre>
+
+<p>And then you can weave everything together to create known test state:</p>
+
+<ol>
+    <li>Run Rails in test mode <code>RAILS_ENV=test rails s</code></li>
+    <li>Create a mock in the mock registry that runs a graph (e.g. see <code>tests/support/mocks/registry/CreateFlow.ts</code>)</li>
+    <li>At the end of the mock, create a database snapshot (<code>snapshotter.createSnapshot("snapshot_name")</code>)</li>
+    <li>In your test, start from the known snapshot (<code>DatabaseSnapshotter.restoreSnapshot("snapshot_name")</code>)</li>
+    <li>Run your test</li>
+</ol>
+
+<p>This allows us to start with an existing user, project, website, files, etc. and run tests from that state.</p>
+
+<%= h3_with_anchor "Multi-Step Agent Tests" %>
+
+<p>Our websites aren't finished being built after a single prompt. AI agents can introduce errors, and users can wish to make edits to their websites. For this reason, we have several additional tools for testing multi-step workflows:</p>
+
+<ol>
+    <li>Database Snapshots</li>
+    <li>Pre-built Scenarios</li>
+</ol>
+
+<p>Database snapshots allow us to start from a known state, and run tests from that state. We usually use these to create "known-good" websites, and then apply changes to them.</p>
+
+<p>Pre-built scenarios allow us to make minor modifications on top of a database snapshot. For example, we can take a fully functional website, and apply a bug to it (breaking some of the links), and then test that the AI agent can fix it.</p>
+
+<p>To build a scenario, you can open the scenario editor:</p>
+
+<pre><code class="language-bash">
+    pnpm run scenario:create # new scenarios
+    pnpm run scenario:edit # existing scenarios
+</code></pre>
+
+<p>This will ask you which database snapshot you want to start with, which website we should edit, and then it will do 2 things:</p>
+
+<ol>
+    <li>Open a website preview with HMR enabled</li>
+    <li>Open a website editor, so you can make changes to the website</li>
+</ol>
+
+<p>For example, you can open the code editor, break some of the links, and then test in your website preview that the links are indeed broken.</p>
+
+<p>You will then name your scenario, and it will be saved to the <code>tests/scenarios</code> directory.</p>
+
+<p>Let's see for example:</p>
+
+<pre><code class="language-bash">
+    scenarios
+    └── space-quest
+        ├── broken_links
+        │   ├── config.json
+        │   └── modifications
+        │       └── src
+        │           ├── components
+        │           │   └── Nav.tsx.json
+        │           └── hooks
+        │               └── use-scroll-to-anchor.tsx.json
+        ├── import_errors
+        │   ├── config.json
+        │   ├── errors.json
+        │   └── modifications
+        │       └── src
+        │           └── pages
+        │               └── IndexPage.tsx.json
+</code></pre>
+
+<p>Each scenario has a <code>config.json</code> file that contains metadata about the scenario, and a <code>modifications</code> directory that contains the modified files.</p>
+
+<p>We can now start a test from this known scenario:</p>
+
+<pre><code class="language-bash">
+    const scenario = await runScenario({
+        website: 'space-quest',
+        scenario: 'broken_links',
+    })
+
+    // scenario.getJSErrors() will actually RUN a browser, capture the Javascript console errors,
+    // and return them to you.
+    expect(scenario.getJSErrors()).toBeDefined();
+
+    const result = await testGraph()
+        .withGraph(routerGraph)
+        .withPrompt("Fix the bug")
+        .withConsoleErrors(scenario.getJSErrors()) // We can feed the AI model the errors the user would see
+        .stopAfter('buildTasks')
+        .execute();
+
+    expect(result.error).toBeUndefined();
+    expect(result.state.tasks).toBeDefined(); // Should be an array of bug fix tasks
+    expect(result.state.tasks.length).toBeGreaterThan(0);
+</code></pre>

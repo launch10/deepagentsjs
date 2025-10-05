@@ -64,8 +64,9 @@ RSpec.describe 'WebsiteConcerns::ShasumHashable' do
         files = website.files
         template_file_in_result = files.find { |f| f.path == 'template.html' }
         
-        expect(template_file_in_result).to eq(override_file)
+        expect(template_file_in_result).to be_a(CodeFile)
         expect(template_file_in_result.content).to eq('override')
+        expect(template_file_in_result.source).to eq('website')
       end
       
       it 'includes both website and non-overridden template files' do

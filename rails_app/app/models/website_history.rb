@@ -15,6 +15,7 @@
 #  snapshot_id        :string
 #  thread_id          :string
 #  template_id        :integer
+#  theme_id           :integer
 #
 # Indexes
 #
@@ -27,6 +28,7 @@
 #  index_website_histories_on_project_id          (project_id)
 #  index_website_histories_on_snapshot_id         (snapshot_id)
 #  index_website_histories_on_template_id         (template_id)
+#  index_website_histories_on_theme_id            (theme_id)
 #  index_website_histories_on_thread_id           (thread_id)
 #  index_website_histories_on_website_id          (website_id)
 #
