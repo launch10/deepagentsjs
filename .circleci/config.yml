@@ -1,0 +1,145 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.2.0
+  ruby: circleci/ruby@2.1.0
+
+jobs:
+  langgraph-tests:
+    docker:
+      - image: cimg/node:20.16
+      - image: cimg/postgres:16.0
+        environment:
+          POSTGRES_USER: circleci
+          POSTGRES_PASSWORD: circleci
+          POSTGRES_DB: nichefinder_test
+      - image: cimg/redis:7.2
+    working_directory: ~/project/langgraph_app
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Install Ruby in primary container
+          command: |
+            curl -sSL https://get.rvm.io | bash -s stable
+            source ~/.rvm/scripts/rvm
+            rvm install 3.4.4
+            rvm use 3.4.4 --default
+            echo 'source ~/.rvm/scripts/rvm' >> $BASH_ENV
+      - run:
+          name: Install pnpm
+          command: |
+            curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=9.15.0 sh -
+            echo 'export PNPM_HOME="$HOME/.local/share/pnpm"' >> $BASH_ENV
+            echo 'export PATH="$PNPM_HOME:$PATH"' >> $BASH_ENV
+      - restore_cache:
+          keys:
+            - rails-gems-v1-{{ checksum "../rails_app/Gemfile.lock" }}
+            - rails-gems-v1-
+      - restore_cache:
+          keys:
+            - langgraph-deps-v1-{{ checksum "pnpm-lock.yaml" }}
+            - langgraph-deps-v1-
+      - run:
+          name: Install Rails dependencies
+          command: |
+            cd ~/project/rails_app
+            bundle install
+      - save_cache:
+          key: rails-gems-v1-{{ checksum "../rails_app/Gemfile.lock" }}
+          paths:
+            - ~/project/rails_app/vendor/bundle
+      - run:
+          name: Install langgraph dependencies
+          command: pnpm install --frozen-lockfile
+      - save_cache:
+          key: langgraph-deps-v1-{{ checksum "pnpm-lock.yaml" }}
+          paths:
+            - node_modules
+            - ~/.pnpm-store
+      - run:
+          name: Wait for Postgres
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
+      - run:
+          name: Wait for Redis
+          command: dockerize -wait tcp://localhost:6379 -timeout 1m
+      - run:
+          name: Setup Rails database
+          command: |
+            cd ~/project/rails_app
+            bundle exec rake db:create db:schema:load
+          environment:
+            RAILS_ENV: test
+            DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
+      - run:
+          name: Start Rails test server
+          command: |
+            cd ~/project/rails_app
+            bundle exec rails server -e test -p 3000
+          background: true
+          environment:
+            RAILS_ENV: test
+            DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
+            REDIS_URL: redis://localhost:6379
+      - run:
+          name: Wait for Rails server
+          command: npx wait-on http://localhost:3000 -t 60000
+      - run:
+          name: Run tests
+          command: pnpm run test
+          environment:
+            POSTGRES_URI: postgres://circleci:circleci@localhost:5432/nichefinder_test
+            REDIS_URI: redis://localhost:6379
+            USE_CACHE: false
+      - run:
+          name: Run typecheck
+          command: pnpm run typecheck
+      - run:
+          name: Run lint
+          command: pnpm run lint
+
+  rails-tests:
+    docker:
+      - image: cimg/ruby:3.4.4-node
+      - image: cimg/postgres:16.0
+        environment:
+          POSTGRES_USER: circleci
+          POSTGRES_PASSWORD: circleci
+          POSTGRES_DB: nichefinder_test
+      - image: cimg/redis:7.2
+    working_directory: ~/project/rails_app
+    steps:
+      - checkout:
+          path: ~/project
+      - ruby/install-deps:
+          key: rails-gems-v1
+      - run:
+          name: Wait for Postgres
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
+      - run:
+          name: Wait for Redis
+          command: dockerize -wait tcp://localhost:6379 -timeout 1m
+      - run:
+          name: Setup database
+          command: |
+            bundle exec rake db:create
+            bundle exec rake db:schema:load
+          environment:
+            DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
+            RAILS_ENV: test
+      - run:
+          name: Run RSpec tests
+          command: bundle exec rspec
+          environment:
+            DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
+            RAILS_ENV: test
+      - run:
+          name: Run Rubocop
+          command: bundle exec rubocop
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - langgraph-tests
+      - rails-tests
