@@ -4,6 +4,24 @@ orbs:
   node: circleci/node@5.2.0
   ruby: circleci/ruby@2.1.0
 
+commands:
+  setup-database:
+    steps:
+      - run:
+          name: Wait for Postgres
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
+      - run:
+          name: Wait for Redis
+          command: dockerize -wait tcp://localhost:6379 -timeout 1m
+      - run:
+          name: Setup Rails database
+          command: |
+            cd ~/project/rails_app
+            bundle exec rake db:create db:schema:load
+          environment:
+            RAILS_ENV: test
+            DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
+
 jobs:
   langgraph-tests:
     docker:
@@ -58,21 +76,7 @@ jobs:
           paths:
             - node_modules
             - ~/.pnpm-store
-      - run:
-          name: Wait for Postgres
-          command: dockerize -wait tcp://localhost:5432 -timeout 1m
-      - run:
-          name: Wait for Redis
-          command: dockerize -wait tcp://localhost:6379 -timeout 1m
-      - run:
-          name: Setup Rails database
-          command: |
-            cd ~/project/rails_app
-            bundle exec rake db:create db:schema:load
-          environment:
-            RAILS_ENV: test
-            DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
-            RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+      - setup-database
       - run:
           name: Start Rails test server
           command: |
@@ -83,7 +87,6 @@ jobs:
             RAILS_ENV: test
             DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
             REDIS_URL: redis://localhost:6379
-            RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
       - run:
           name: Wait for Rails server
           command: npx wait-on http://localhost:3000 -t 60000
@@ -116,28 +119,13 @@ jobs:
           path: ~/project
       - ruby/install-deps:
           key: rails-gems-v1
-      - run:
-          name: Wait for Postgres
-          command: dockerize -wait tcp://localhost:5432 -timeout 1m
-      - run:
-          name: Wait for Redis
-          command: dockerize -wait tcp://localhost:6379 -timeout 1m
-      - run:
-          name: Setup database
-          command: |
-            bundle exec rake db:create
-            bundle exec rake db:schema:load
-          environment:
-            DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
-            RAILS_ENV: test
-            RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+      - setup-database
       - run:
           name: Run RSpec tests
           command: bundle exec rspec
           environment:
             DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
             RAILS_ENV: test
-            RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
       - run:
           name: Run Rubocop
           command: bundle exec rubocop
