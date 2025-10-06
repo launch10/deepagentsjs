@@ -112,6 +112,7 @@ jobs:
           name: Run tests
           command: pnpm run test
           environment:
+            NODE_ENV: test
             POSTGRES_URI: postgres://postgres:postgres@localhost:5432/nichefinder_test
             REDIS_URI: redis://localhost:6379
             USE_CACHE: false
