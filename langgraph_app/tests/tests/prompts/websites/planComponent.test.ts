@@ -29,7 +29,7 @@ describe.sequential('planComponentPrompt', () => {
 
     const promptOutput = detect(
       result.promptSpy?.get('planComponentPrompt'),
-      (output) => output.match(/The goal of the Hero section/)
+      (output: string) => output.match(/The goal of the Hero section/)
     )
 
     if (!isString(promptOutput)) {
@@ -52,13 +52,13 @@ describe.sequential('planComponentPrompt', () => {
       .expectSection('Brand guidelines', `
         <brand-guidelines>
           <overall-tone>
-            Inspirational and Awe-Inspiring
+            Inspirational and awe-inspiring, with a foundation of scientific authority
           </overall-tone>
           <page-mood>
-            Like looking through a telescope at a newly discovered galaxy - evoking wonder, possibility, exploration, and future-focused energy
+            Like looking through a telescope at a newly discovered galaxy - awe-inspiring yet accessible, mixing wonder with scientific credibility
           </page-mood>
           <visual-evocation>
-            Visually resembles the vastness of space itself - deep, rich blacks punctuated by brilliant points of light, with smooth gradients suggesting nebulae and star fields. Modern, clean typography floating in space, with subtle particle effects suggesting stellar movement.
+            Deep space imagery with pin-sharp stars against infinite black, clean modern typography, strategic use of bioluminescent blues and purples, constellation-like connecting elements, and smooth parallax scrolling effects that evoke movement through space
           </visual-evocation>
         </brand-guidelines>
       `)
@@ -71,13 +71,13 @@ describe.sequential('planComponentPrompt', () => {
             First impression section that sets the emotional tone for the entire landing page
           </context>
           <copy>
-            The Final Frontier Awaits: Join Humanity's Greatest Adventure
+            The Stars Are Calling. Will You Answer?
           </copy>
           <name>
             Hero
           </name>
           <purpose>
-            Capture immediate attention and communicate the grand vision of space exploration
+            Capture immediate attention and inspire users to explore space
           </purpose>
           <text-color>
             Suggest a color that contrasts well with the background color, ideally a color from the global brand theme.
@@ -130,8 +130,9 @@ describe.sequential('planComponentPrompt', () => {
       <available-sections>
         <section>Hero</section>
         <section>Features</section>
-        <section>HowItWorks</section>
+        <section>Benefits</section>
         <section>Testimonials</section>
+        <section>SocialProof</section>
         <section>CTA</section>
       </available-sections>
     `)
@@ -169,8 +170,9 @@ describe.sequential('planComponentPrompt', () => {
       <available-sections>
         <section>Hero</section>
         <section>Features</section>
-        <section>HowItWorks</section>
+        <section>Benefits</section>
         <section>Testimonials</section>
+        <section>SocialProof</section>
         <section>CTA</section>
       </available-sections>
     `)
