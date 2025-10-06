@@ -33,6 +33,8 @@ jobs:
           POSTGRES_DB: nichefinder_test
       - image: cimg/redis:7.2
     working_directory: ~/project/langgraph_app
+    environment:
+      NODE_ENV: test
     steps:
       - checkout:
           path: ~/project
@@ -110,12 +112,12 @@ jobs:
             npx wait-on http://localhost:3000 -t 30000 --verbose
       - run:
           name: Run tests
-          command: pnpm run test
+          command: NODE_ENV=test pnpm run test
           environment:
-            NODE_ENV: test
             POSTGRES_URI: postgres://postgres:postgres@localhost:5432/nichefinder_test
             REDIS_URI: redis://localhost:6379
             USE_CACHE: false
+            NODE_ENV: test
       # TODO: Add typecheck once these will pass!!
       # - run:
       #     name: Run typecheck
