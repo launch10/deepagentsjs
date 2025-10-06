@@ -11,11 +11,11 @@ account_types: team
 apns: false
 fcm: false
 integrations:
-  - rollbar
+- rollbar
 omniauth_providers:
 payment_processors:
-  - stripe
+- stripe
 multitenancy:
 gems:
-  - acts_as_tenant
-  - whenever
+- acts_as_tenant
+- whenever
