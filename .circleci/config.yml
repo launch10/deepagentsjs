@@ -17,7 +17,7 @@ commands:
           name: Setup Rails database
           command: |
             cd ~/project/rails_app
-            bundle exec rake db:create db:schema:load
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rake db:create db:schema:load
           environment:
             RAILS_ENV: test
             DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
@@ -81,7 +81,7 @@ jobs:
           name: Start Rails test server
           command: |
             cd ~/project/rails_app
-            bundle exec rails server -e test -p 3000
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rails server -e test -p 3000
           background: true
           environment:
             RAILS_ENV: test
@@ -122,7 +122,7 @@ jobs:
       - setup-database
       - run:
           name: Run RSpec tests
-          command: bundle exec rspec
+          command: RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rspec
           environment:
             DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
             RAILS_ENV: test
