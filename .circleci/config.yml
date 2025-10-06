@@ -82,15 +82,19 @@ jobs:
           name: Start Rails test server
           command: |
             cd ~/project/rails_app
-            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rails server -e test -p 3000
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rails server -e test -p 3000 2>&1 | tee ~/rails_server.log
           background: true
           environment:
             RAILS_ENV: test
             DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
             REDIS_URL: redis://localhost:6379
+            CI: true
       - run:
           name: Wait for Rails server
-          command: npx wait-on http://localhost:3000 -t 60000
+          command: |
+            sleep 5
+            cat ~/rails_server.log
+            npx wait-on http://localhost:3000 -t 30000 --verbose
       - run:
           name: Run tests
           command: pnpm run test
