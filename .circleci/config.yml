@@ -21,14 +21,12 @@ jobs:
       - run:
           name: Install Ruby in primary container
           command: |
-            wget -O ruby-install-0.9.3.tar.gz https://github.com/postmodern/ruby-install/releases/download/v0.9.3/ruby-install-0.9.3.tar.gz
-            tar -xzvf ruby-install-0.9.3.tar.gz
-            cd ruby-install-0.9.3/
-            sudo make install
-            cd ..
-            sudo ruby-install ruby 3.4.4 -- --disable-install-doc
-            echo 'export PATH="/opt/rubies/ruby-3.4.4/bin:$PATH"' >> $BASH_ENV
-            source $BASH_ENV
+            gpg --keyserver hkp://keyserver.ubuntu.com --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
+            curl -sSL https://get.rvm.io | bash -s stable
+            source ~/.rvm/scripts/rvm
+            rvm install 3.4.4
+            rvm use 3.4.4 --default
+            echo 'source ~/.rvm/scripts/rvm' >> $BASH_ENV
       - run:
           name: Install pnpm
           command: |
