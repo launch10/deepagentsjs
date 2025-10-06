@@ -73,7 +73,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             {!chatStarted && (
               <div id="intro" className="mt-[26vh] max-w-chat mx-auto">
                 <h1 className="text-5xl text-center font-bold text-bolt-elements-textPrimary mb-2">
-                  NicheFinder
+                  Launch10
                 </h1>
                 <p className="mb-4 text-center text-bolt-elements-textSecondary">
                   Figure out if your business idea has legs.

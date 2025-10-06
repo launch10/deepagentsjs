@@ -7,8 +7,8 @@ export const corsMiddleware = cors({
       const allowedOrigins = [
         'http://localhost:3000',
         'http://127.0.0.1:3000',
-        'https://nichefinder.com',
-        'https://www.nichefinder.com'
+        'https://launch10.ai',
+        'https://www.launch10.ai'
       ];
       
       return allowedOrigins.includes(origin) ? origin : null;

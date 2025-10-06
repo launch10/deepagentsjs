@@ -1,11 +1,11 @@
-# ABEverything
+# Launch10
 
 AI-powered A/B tests for solo founders and marketers.
 
 ## Quick Start
 
 ```bash
-pnpm install
+nvm use && pnpm install
 cp .env.example .env
 pnpm test
 ```

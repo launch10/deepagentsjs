@@ -92,7 +92,7 @@ class DomainRequestCount < ApplicationRecord
          .sum(:request_count)
   end
 
-  # sample report: {"abeverything.com" => 16, "example.abeverything.com" => 50}
+  # sample report: {"launch10.ai" => 16, "example.launch10.ai" => 50}
   def self.process_traffic_report(traffic_report: nil, start_time: nil, zone_id: nil)
     raise "Traffic report must be a hash" unless traffic_report.is_a?(Hash)
     raise "Start time must be a time object" unless start_time.is_a?(Time)

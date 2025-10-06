@@ -77,11 +77,11 @@ RSpec.describe Domain, type: :model do
           expect(domain.domain).to eq('test-site.test-deploy.com')
         end
 
-        it 'falls back to abeverything.com when env var not set' do
+        it 'falls back to launch10.ai when env var not set' do
           ENV.delete('DEPLOYMENT_BASE_URL')
           domain = Domain.new(website: website, account: account)
           domain.save
-          expect(domain.domain).to eq('test-site.abeverything.com')
+          expect(domain.domain).to eq('test-site.launch10.ai')
         end
 
         context 'when the default domain is already taken' do

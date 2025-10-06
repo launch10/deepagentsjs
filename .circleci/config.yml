@@ -25,7 +25,7 @@ commands:
 jobs:
   langgraph-tests:
     docker:
-      - image: cimg/node:22.12
+      - image: cimg/node:22.12.0
       - image: pgvector/pgvector:pg16
         environment:
           POSTGRES_USER: circleci

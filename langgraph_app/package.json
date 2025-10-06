@@ -6,9 +6,6 @@
     "packageManager": "pnpm@9.15.0",
     "sideEffects": false,
     "type": "module",
-    "engines": {
-        "node": ">=20.16.0"
-    },
     "scripts": {
         "dev": "tsx ./server.mts",
         "dev:debug": "NODE_OPTIONS=--inspect-brk langgraph dev -n 1",

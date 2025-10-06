@@ -16,7 +16,7 @@ It's a Cloudflare edge gateway that serves user-generated static websites with i
 
 2. **Admin Worker** (`src/index-admin.tsx`)
    - **Purpose**: Internal API for Rails to manage websites/configuration
-   - **Access**: Private network only (`admin.nichefinder.com`)
+   - **Access**: Private network only (`admin.launch10.ai`)
    - **Features**: Full CRUD operations on KV store
    - **Security**: JWT auth, IP allowlisting, network isolation
 
@@ -124,7 +124,7 @@ pnpm run deploy:admin
 
 #### Admin Worker (`wrangler-admin.toml`)
 
-- **Route**: `admin-api.internal.nichefinder.com/*`
+- **Route**: `admin-api.internal.launch10.ai/*`
 - **Purpose**: Internal API for Rails
 - **Bindings**: DEPLOYS_KV, DEPLOYS_R2
 - **Security**: Set `ALLOWED_IPS` environment variable
@@ -154,19 +154,19 @@ jwt_token = JWT.encode(
 
 ```ruby
 # Create/Update User
-HTTParty.post("https://admin.abeverything.com/api/internal/accounts",
+HTTParty.post("https://admin.launch10.ai/api/internal/accounts",
   headers: { 'Authorization' => "Bearer #{jwt_token}" },
   body: { id: "user-1", orgId: "org-1", planId: "starter" }
 )
 
 # Create/Update Website
-HTTParty.post("https://admin-api.internal.nichefinder.com/api/internal/websites",
+HTTParty.post("https://admin-api.internal.launch10.ai/api/internal/websites",
   headers: { 'Authorization' => "Bearer #{jwt_token}" },
   body: { id: "website-1", url: "example.com", userId: "user-1" }
 )
 
 # Trigger Deploy
-HTTParty.post("https://admin-api.internal.nichefinder.com/api/internal/deploy",
+HTTParty.post("https://admin-api.internal.launch10.ai/api/internal/deploy",
   headers: { 'Authorization' => "Bearer #{jwt_token}" },
   body: { websiteId: "website-1", files: [...], config: {...} }
 )

@@ -1,8 +1,8 @@
-# NicheFinder Project Guide
+# Launch10 Project Guide
 
 ## Overview
 
-NicheFinder is a full-stack application that helps users build landing pages. It consists of:
+Launch10 is a full-stack application that helps users build landing pages. It consists of:
 
 1. **Rails Frontend** (Rails 8 + Jumpstart Pro + Inertia.js + React + Vite)
 2. **Langgraph Backend** (Node.js + TypeScript + AI agents for page generation)
