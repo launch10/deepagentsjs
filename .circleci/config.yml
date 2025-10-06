@@ -14,6 +14,12 @@ commands:
           name: Wait for Redis
           command: dockerize -wait tcp://localhost:6379 -timeout 1m
       - run:
+          name: Install pgvector extension
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y postgresql-common
+            sudo apt-get install -y postgresql-16-pgvector
+      - run:
           name: Setup Rails database
           command: |
             cd ~/project/rails_app
