@@ -127,6 +127,7 @@ jobs:
           environment:
             DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
             RAILS_ENV: test
+            CI: true
       - run:
           name: Run Rubocop
           command: bundle exec rubocop
