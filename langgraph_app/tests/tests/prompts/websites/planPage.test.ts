@@ -28,9 +28,10 @@ describe.sequential('planPage Prompt', async () => {
       
       const promptOutput = result.promptSpy?.get('planPagePrompt')?.[0];
       expect(promptOutput).toBeDefined();
+      console.log(promptOutput)
       expect(promptOutput).toMatchXml(`
         <attention-grabber>
-          The Final Frontier Awaits: Join Humanity's Greatest Adventure
+          The Stars Are Calling. Will You Answer?
         </attention-grabber>
       `);
       expect(promptOutput).toMatchXml(`

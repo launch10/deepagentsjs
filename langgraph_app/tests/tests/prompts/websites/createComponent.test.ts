@@ -52,36 +52,35 @@ describe.sequential('createComponentPrompt', async () => {
         {
           "content": {
             "componentType": "Hero",
-            "ctaText": "Discover Our Mission",
-            "headline": "The Final Frontier Awaits: Join Humanity's Greatest Adventure",
+            "ctaText": "Explore the Cosmos",
+            "headline": "The Stars Are Calling. Will You Answer?",
             "layoutVariant": "text-left-image-right",
-            "paragraphs": "Space is not just a destination—it's humanity's next great frontier. Every moment, every mission, brings us closer to understanding our place in the universe.",
-            "subheadline": "Explore the cosmos, push the boundaries of human knowledge, and be part of our journey beyond Earth",
+            "paragraphs": null,
+            "subheadline": "Embark on a journey beyond our world, where every discovery brings us closer to understanding the infinite universe.",
             "suggestedComponents": [
               "@/components/ui/button.tsx",
               "@/components/ui/aspect-ratio.tsx"
             ],
             "trustSignals": [
-              "Endorsed by NASA Researchers",
-              "Featured in Scientific American",
-              "5+ Years of Space Exploration Expertise"
+              "Backed by NASA Research",
+              "Trusted by Leading Astronomers"
             ],
-            "visualConcept": "A breathtaking high-resolution image of a distant galaxy or nebula, with subtle particle effects suggesting stellar movement, captured by the Hubble Space Telescope or a similar high-quality astronomical image",
+            "visualConcept": "A breathtaking high-resolution image of a distant galaxy, with vibrant blues and purples, showcasing the depth and mystery of space. The image should have a slight parallax effect to create depth and movement.",
             "visualEmphasis": "image-focus"
           },
           "overview": {
             "backgroundColor": "primary",
             "context": "First impression section that sets the emotional tone for the entire landing page",
-            "copy": "The Final Frontier Awaits: Join Humanity's Greatest Adventure",
+            "copy": "The Stars Are Calling. Will You Answer?",
             "name": "Hero",
-            "purpose": "Capture immediate attention and communicate the grand vision of space exploration"
+            "purpose": "Capture immediate attention and inspire users to explore space"
           }
         }
       </content-plan>
     `).expectSection('context', `
       <context>
         <landing-page-summary>
-          A space exploration landing page that captures humanity's innate curiosity about the cosmos and our drive to explore the final frontier, focusing on the wonder, possibility and aspirational nature of space travel.
+          A space exploration landing page that taps into humanity's innate wonder about the cosmos and desire to be part of something bigger than ourselves. The copy focuses on making space exploration personal and accessible while maintaining scientific credibility.
         </landing-page-summary>
         <user-request>
           Create a website about space exploration
@@ -132,44 +131,44 @@ describe.sequential('createComponentPrompt', async () => {
     xmlTest(result)
       .expectSection('Content Plan', `
         <content-plan>
-        {
-          "content": {
-            "componentType": "Features",
-            "cta": "Join the Cosmic Journey",
-            "features": [
-              {
-                "description": "Cutting-edge propulsion systems and materials that enable longer, safer journeys into deep space, pushing the boundaries of human exploration beyond previous limitations.",
-                "name": "Advanced Spacecraft Technology",
-                "visual": "rocket icon from lucide-react"
-              },
-              {
-                "description": "Comprehensive global and interplanetary monitoring systems that provide unprecedented insights into planetary dynamics, climate patterns, and cosmic phenomena.",
-                "name": "Satellite Observation Networks",
-                "visual": "telescope icon from lucide-react"
-              },
-              {
-                "description": "Modular research stations designed to support extended missions, enabling scientific teams to conduct groundbreaking experiments in microgravity and extreme environments.",
-                "name": "Interplanetary Research Platforms",
-                "visual": "satellite icon from lucide-react"
-              }
-            ],
-            "headline": "Exploring the Cosmic Frontier",
-            "paragraphs": "Space exploration represents more than technological achievement—it's a testament to human curiosity, innovation, and our collective potential to transcend known boundaries. Each mission expands our understanding of the universe and our place within it.",
-            "subheadline": "Transforming Humanity's Greatest Adventure into Tangible Progress",
-            "suggestedComponents": [
-              "@/components/ui/card.tsx",
-              "@/components/ui/icons/telescope.tsx",
-              "@/components/ui/icons/rocket.tsx"
-            ]
-          },
-          "overview": {
-            "backgroundColor": "secondary",
-            "context": "Provide context for why space exploration matters and why now is an exciting time",
-            "copy": "For millennia, humans have gazed at the stars and dreamed of reaching them. Today, that dream is becoming reality. But space exploration isn't just about rockets and satellites - it's about expanding the realm of human possibility.",
-            "name": "Features",
-            "purpose": "Articulate the historical human desire to explore space and frame the opportunity"
+          {
+            "content": {
+              "componentType": "Features",
+              "cta": "Start Your Space Journey",
+              "features": [
+                {
+                  "description": "Experience immersive, scientifically accurate simulations of space exploration. Navigate spacecraft, conduct experiments, and explore distant planets from the comfort of your home.",
+                  "name": "Virtual Space Missions",
+                  "visual": "Telescope icon representing exploration and discovery"
+                },
+                {
+                  "description": "Access live feeds, satellite imagery, and cutting-edge research directly from space agencies. Stay connected with the latest discoveries and scientific breakthroughs.",
+                  "name": "Real-Time Space Data",
+                  "visual": "Rocket icon symbolizing active exploration"
+                },
+                {
+                  "description": "Join a global network of space enthusiasts, scientists, and dreamers. Participate in forums, webinars, and collaborative research projects that push the boundaries of human knowledge.",
+                  "name": "Community of Explorers",
+                  "visual": "Constellation-like connecting graphic representing community"
+                }
+              ],
+              "headline": "Unlock the Mysteries of Space Exploration",
+              "paragraphs": "For too long, space has felt distant and unreachable. We're changing that by bringing the universe closer to you, making space exploration accessible, engaging, and deeply personal.",
+              "subheadline": "Breaking down barriers between humanity and the cosmos",
+              "suggestedComponents": [
+                "@/components/ui/card.tsx",
+                "@/components/ui/icons/telescope.tsx",
+                "@/components/ui/icons/rocket.tsx"
+              ]
+            },
+            "overview": {
+              "backgroundColor": "secondary",
+              "context": "Highlight the historical barrier to space exploration and create empathy",
+              "copy": "For too long, space has felt distant and unreachable. We've gazed up at the night sky, dreaming of what lies beyond, but feeling like space exploration was something that happened to other people, in other places.",
+              "name": "Features",
+              "purpose": "Articulate the current challenge in space exploration accessibility"
+            }
           }
-        }
       `)
     .assertAll();
 
@@ -201,27 +200,28 @@ describe.sequential('createComponentPrompt', async () => {
 
     xmlTest(result)
       .expectSection('Content Plan', `
-          <content-plan>
-            {
-              "content": {
-                "availableSections": [
-                  "Hero",
-                  "Features",
-                  "HowItWorks",
-                  "Testimonials",
-                  "CTA"
-                ],
-                "componentType": "Nav"
-              },
-              "overview": {
-                "backgroundColor": "primary",
-                "context": "Core navigation element",
-                "copy": null,
-                "name": "Nav",
-                "purpose": "Provide navigation"
-              }
+        <content-plan>
+          {
+            "content": {
+              "availableSections": [
+                "Hero",
+                "Features",
+                "Benefits",
+                "Testimonials",
+                "SocialProof",
+                "CTA"
+              ],
+              "componentType": "Nav"
+            },
+            "overview": {
+              "backgroundColor": "primary",
+              "context": "Core navigation element",
+              "copy": null,
+              "name": "Nav",
+              "purpose": "Provide navigation"
             }
-          </content-plan>
+          }
+        </content-plan>
     `)
     .assertAll();
 
@@ -250,27 +250,28 @@ describe.sequential('createComponentPrompt', async () => {
 
     xmlTest(result)
       .expectSection('Content Plan', `
-          <content-plan>
-            {
-              "content": {
-                "availableSections": [
-                  "Hero",
-                  "Features",
-                  "HowItWorks",
-                  "Testimonials",
-                  "CTA"
-                ],
-                "componentType": "Footer"
-              },
-              "overview": {
-                "backgroundColor": "primary",
-                "context": "Core navigation element",
-                "copy": null,
-                "name": "Footer",
-                "purpose": "Provide navigation"
-              }
+        <content-plan>
+          {
+            "content": {
+              "availableSections": [
+                "Hero",
+                "Features",
+                "Benefits",
+                "Testimonials",
+                "SocialProof",
+                "CTA"
+              ],
+              "componentType": "Footer"
+            },
+            "overview": {
+              "backgroundColor": "primary",
+              "context": "Core navigation element",
+              "copy": null,
+              "name": "Footer",
+              "purpose": "Provide navigation"
             }
-          </content-plan>
+          }
+        </content-plan>
     `)
     .assertAll();
 
