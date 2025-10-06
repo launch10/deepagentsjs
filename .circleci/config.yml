@@ -82,11 +82,10 @@ jobs:
           name: Precompile assets
           command: |
             cd ~/project/rails_app
-            bundle exec rake assets:precompile
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rake assets:precompile
           environment:
             RAILS_ENV: test
             DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
-            RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
       - run:
           name: Start Rails test server
           command: |
