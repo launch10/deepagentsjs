@@ -71,6 +71,7 @@ jobs:
           environment:
             RAILS_ENV: test
             DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
+            RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
       - run:
           name: Start Rails test server
           command: |
@@ -81,6 +82,7 @@ jobs:
             RAILS_ENV: test
             DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
             REDIS_URL: redis://localhost:6379
+            RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
       - run:
           name: Wait for Rails server
           command: npx wait-on http://localhost:3000 -t 60000
@@ -127,12 +129,14 @@ jobs:
           environment:
             DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
             RAILS_ENV: test
+            RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
       - run:
           name: Run RSpec tests
           command: bundle exec rspec
           environment:
             DATABASE_URL: postgres://circleci:circleci@localhost:5432/nichefinder_test
             RAILS_ENV: test
+            RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
       - run:
           name: Run Rubocop
           command: bundle exec rubocop
