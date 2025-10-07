@@ -111,17 +111,6 @@ jobs:
             cat ~/rails_server.log
             npx wait-on http://localhost:3000 -t 30000 --verbose
       - run:
-          name: Debug - Check recordings exist
-          command: |
-            echo "Current directory: $(pwd)"
-            echo "NODE_ENV: $NODE_ENV"
-            echo "Recordings directory:"
-            ls -la tests/recordings/ || echo "Recordings directory not found!"
-            echo "Plan-page recording content check:"
-            grep -o "The Stars Are Calling\|The Final Frontier" tests/recordings/plan-page_*/recording.har || echo "Neither phrase found"
-            echo "Plan-website recording content check:"
-            grep -o "The Stars Are Calling\|The Final Frontier" tests/recordings/plan-website_*/recording.har || echo "Neither phrase found"
-      - run:
           name: Run tests
           command: NODE_ENV=test pnpm run test
           environment:

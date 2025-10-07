@@ -31,7 +31,7 @@ describe.sequential('planPage Prompt', async () => {
 
       expect(promptOutput).toMatchXml(`
         <attention-grabber>
-          The Stars Are Calling. Will You Answer?
+          The Final Frontier Is Calling. Will You Answer?
         </attention-grabber>
       `);
       expect(promptOutput).toMatchXml(`

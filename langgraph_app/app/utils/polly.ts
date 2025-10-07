@@ -176,12 +176,13 @@ class PollyManager {
             persisterOptions: {
                 fs: {
                     recordingsDir: PollyManager.RECORDINGS_DIR
-                }
+                },
+                keepUnusedRequests: true  // CRITICAL: Keep entries from previous nodes
             },
             recordIfMissing: process.env.CI !== 'true',
             matchRequestsBy: {
                 method: true,
-                headers: true,   // CRITICAL: Match headers for API calls by default
+                headers: false,
                 body: true,
                 order: false,
                 url: true
