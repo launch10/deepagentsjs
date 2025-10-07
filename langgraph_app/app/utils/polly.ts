@@ -137,9 +137,12 @@ class PollyManager {
         server
             .any()
             .on('beforePersist', (req: any, recording: any) => {
-                const headersToIgnore = ['x-api-key', 'authorization', 'api-key', 'x-test-proof', 'x-test-mode', 
-                                        'anthropic-ratelimit-input-tokens-limit', 'anthropic-ratelimit-input-tokens-remaining', 
-                                        'anthropic-ratelimit-input-tokens-reset'];
+                const headersToIgnore = [
+                    'x-api-key', 'authorization', 'api-key', 'x-test-proof', 'x-test-mode', 
+                    'anthropic-ratelimit-input-tokens-limit', 'anthropic-ratelimit-input-tokens-remaining', 
+                    'anthropic-ratelimit-input-tokens-reset',
+                    'x-stainless-os', 'x-stainless-arch', 'x-stainless-runtime-version'
+                ];
                 // Remove sensitive headers from recorded request
                 if (recording.request && recording.request.headers && Array.isArray(recording.request.headers)) {
                     recording.request.headers = recording.request.headers.filter((header: any) => {
@@ -179,10 +182,10 @@ class PollyManager {
                 },
                 keepUnusedRequests: true  // CRITICAL: Keep entries from previous nodes
             },
-            recordIfMissing: process.env.CI !== 'true',
+            recordIfMissing: true,
             matchRequestsBy: {
                 method: true,
-                headers: false,
+                headers: true,
                 body: true,
                 order: false,
                 url: true
