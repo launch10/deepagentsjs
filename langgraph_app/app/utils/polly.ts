@@ -185,7 +185,7 @@ class PollyManager {
             recordIfMissing: true,
             matchRequestsBy: {
                 method: true,
-                headers: true,
+                headers: false,
                 body: true,
                 order: false,
                 url: true
