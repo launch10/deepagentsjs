@@ -1,5 +1,9 @@
 # Launch10 Project Guide
 
+## NEVER
+
+Never commit or push code. You are not permitted to.
+
 ## Overview
 
 Launch10 is a full-stack application that helps users build landing pages. It consists of:
