@@ -4,13 +4,10 @@ import FetchAdapter from '@pollyjs/adapter-fetch';
 import FSPersister from '@pollyjs/persister-fs';
 import path from 'path';
 
-// Only initialize Polly in test mode
-if (process.env.NODE_ENV === 'test') {
-    // Register Polly adapters and persisters once globally
-    Polly.register(NodeHttpAdapter);
-    Polly.register(FetchAdapter);
-    Polly.register(FSPersister);
-}
+// Register Polly adapters and persisters once globally
+Polly.register(NodeHttpAdapter);
+Polly.register(FetchAdapter);
+Polly.register(FSPersister);
 
 // Use global to ensure singleton across module boundaries
 // This is necessary because TypeScript path aliases can cause module duplication
@@ -50,11 +47,7 @@ class PollyManager {
         recordingName: string, 
         mode?: 'record' | 'replay' | 'passthrough' | 'stopped',
         configure?: (polly: Polly) => void
-    ): Promise<Polly | null> {
-        if (process.env.NODE_ENV !== 'test') {
-            return null;
-        }
-        
+    ): Promise<Polly> {
         let polly = PollyManager.polly;
         if (!polly) {
             polly = PollyManager.hardStartPolly({
@@ -91,9 +84,6 @@ class PollyManager {
      * Persists all recordings for the active Polly instance.
      */
     public static async persistRecordings(): Promise<void> {
-        if (process.env.NODE_ENV !== 'test') {
-            return;
-        }
         await PollyManager.polly?.persister?.persist();
     }
 

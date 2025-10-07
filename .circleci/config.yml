@@ -121,14 +121,14 @@ jobs:
             grep -o "The Stars Are Calling\|The Final Frontier" tests/recordings/plan-page_*/recording.har || echo "Neither phrase found"
             echo "Plan-website recording content check:"
             grep -o "The Stars Are Calling\|The Final Frontier" tests/recordings/plan-website_*/recording.har || echo "Neither phrase found"
-      # - run:
-      #     name: Run tests
-      #     command: NODE_ENV=test pnpm run test
-      #     environment:
-      #       POSTGRES_URI: postgres://postgres:postgres@localhost:5432/nichefinder_test
-      #       REDIS_URI: redis://localhost:6379
-      #       USE_CACHE: false
-      #       NODE_ENV: test
+      - run:
+          name: Run tests
+          command: NODE_ENV=test pnpm run test
+          environment:
+            POSTGRES_URI: postgres://postgres:postgres@localhost:5432/nichefinder_test
+            REDIS_URI: redis://localhost:6379
+            USE_CACHE: false
+            NODE_ENV: test
       # TODO: Add typecheck once these will pass!!
       # - run:
       #     name: Run typecheck
