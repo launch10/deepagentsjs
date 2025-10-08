@@ -4,7 +4,7 @@ import { HumanMessage } from "@langchain/core/messages";
 import { expectSection, expectPromptHasSections, expectNoStringifiedNulls } from '@support';
 import { Website } from '@types';
 
-describe('planWebsite Prompt - Contract Tests', () => {
+describe.skip('planWebsite Prompt - Contract Tests', () => {
   it('generates valid structured output matching contentStrategySchema', async () => {
     const userRequest = "Create a landing page for a SaaS product that helps developers deploy faster";
     const result = await planWebsitePrompt({

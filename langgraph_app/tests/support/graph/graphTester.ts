@@ -395,7 +395,6 @@ export class GraphTestBuilder {
                     // Create a mocked class that extends the original
                     mockedServices[name] = class extends actual[name] {
                         async execute(...args: any[]) {
-                            console.log(`calling mocked ${name}`)
                             const output = await super.execute(...args);
                             
                             // Store the output

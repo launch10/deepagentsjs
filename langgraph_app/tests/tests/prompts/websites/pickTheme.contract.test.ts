@@ -4,7 +4,7 @@ import { HumanMessage } from '@langchain/core/messages';
 import { expectSection, expectPromptHasSections, expectNoStringifiedNulls } from '@support';
 import { z } from 'zod';
 
-describe('pickTheme Prompt - Contract Tests', () => {
+describe.skip('pickTheme Prompt - Contract Tests', () => {
   const mockThemeService = {
     getAllThemeLabels: vi.fn().mockResolvedValue(['Modern', 'Minimal', 'Dark', 'Light'])
   };

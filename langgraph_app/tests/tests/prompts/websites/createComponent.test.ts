@@ -33,7 +33,6 @@ describe.sequential('createComponentPrompt', async () => {
     if (!isString(result)) {
       throw new Error('Result is not a string');
     }
-    console.log(result)
 
     xmlTest(result)
       .expectSection('Role', `
