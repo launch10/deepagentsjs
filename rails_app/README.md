@@ -16,7 +16,7 @@ Optionally, the [Stripe CLI](https://docs.stripe.com/stripe-cli) to sync webhook
 
 ## CI
 
-Tests run on CircleCI, and are configured in .circleci/config.yml
+Tests run on CircleCI and are configured in .circleci/config.yml
 
 ## Getting Started
 
