@@ -9,6 +9,7 @@ export const envSchema = z.object({
     ANTHROPIC_API_KEY: z.string().min(1),
     GROQ_API_KEY: z.string().min(1),
     OPENAI_API_KEY: z.string().min(1),
+    GOOGLE_API_KEY: z.string().min(1),
     LANGSMITH_TRACING: z.string().min(1),
     LANGSMITH_ENDPOINT: z.string().min(1),
     LANGSMITH_API_KEY: z.string().min(1),
