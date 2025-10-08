@@ -2,7 +2,7 @@ namespace :seeds do
   desc "Create a basic account"
   task basic_account: :environment do
     user = User.find_or_initialize_by(
-      email: "test_user@abeverything.com",
+      email: "test_user@launch10.ai",
     )
     user.update(
       password: "password",

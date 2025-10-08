@@ -17,7 +17,6 @@ export type CreateProjectProps = {
 
 export class SaveProjectService {
     async execute(input: CreateProjectProps, config?: LangGraphRunnableConfig): Promise<CreateProjectOutputType> {
-      console.log('SaveProjectService config:', config?.configurable)
       const apiResponse = await projectsApi.createProject({
         name: input.projectName,
         threadId: config?.configurable?.thread_id,

@@ -22,7 +22,7 @@ namespace :seeds do
     )
     
     domain = Domain.find_or_initialize_by(
-      domain: "example.abeverything.com",
+      domain: "example.launch10.ai",
     )
     domain.update(
       website: website,

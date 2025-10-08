@@ -4,13 +4,10 @@ import FetchAdapter from '@pollyjs/adapter-fetch';
 import FSPersister from '@pollyjs/persister-fs';
 import path from 'path';
 
-// Only initialize Polly in test mode
-if (process.env.NODE_ENV === 'test') {
-    // Register Polly adapters and persisters once globally
-    Polly.register(NodeHttpAdapter);
-    Polly.register(FetchAdapter);
-    Polly.register(FSPersister);
-}
+// Register Polly adapters and persisters once globally
+Polly.register(NodeHttpAdapter);
+Polly.register(FetchAdapter);
+Polly.register(FSPersister);
 
 // Use global to ensure singleton across module boundaries
 // This is necessary because TypeScript path aliases can cause module duplication
@@ -50,11 +47,7 @@ class PollyManager {
         recordingName: string, 
         mode?: 'record' | 'replay' | 'passthrough' | 'stopped',
         configure?: (polly: Polly) => void
-    ): Promise<Polly | null> {
-        if (process.env.NODE_ENV !== 'test') {
-            return null;
-        }
-        
+    ): Promise<Polly> {
         let polly = PollyManager.polly;
         if (!polly) {
             polly = PollyManager.hardStartPolly({
@@ -91,9 +84,6 @@ class PollyManager {
      * Persists all recordings for the active Polly instance.
      */
     public static async persistRecordings(): Promise<void> {
-        if (process.env.NODE_ENV !== 'test') {
-            return;
-        }
         await PollyManager.polly?.persister?.persist();
     }
 
@@ -147,9 +137,12 @@ class PollyManager {
         server
             .any()
             .on('beforePersist', (req: any, recording: any) => {
-                const headersToIgnore = ['x-api-key', 'authorization', 'api-key', 'x-test-proof', 'x-test-mode', 
-                                        'anthropic-ratelimit-input-tokens-limit', 'anthropic-ratelimit-input-tokens-remaining', 
-                                        'anthropic-ratelimit-input-tokens-reset'];
+                const headersToIgnore = [
+                    'x-api-key', 'authorization', 'api-key', 'x-test-proof', 'x-test-mode', 
+                    'anthropic-ratelimit-input-tokens-limit', 'anthropic-ratelimit-input-tokens-remaining', 
+                    'anthropic-ratelimit-input-tokens-reset',
+                    'x-stainless-os', 'x-stainless-arch', 'x-stainless-runtime-version'
+                ];
                 // Remove sensitive headers from recorded request
                 if (recording.request && recording.request.headers && Array.isArray(recording.request.headers)) {
                     recording.request.headers = recording.request.headers.filter((header: any) => {
@@ -186,12 +179,13 @@ class PollyManager {
             persisterOptions: {
                 fs: {
                     recordingsDir: PollyManager.RECORDINGS_DIR
-                }
+                },
+                keepUnusedRequests: true  // CRITICAL: Keep entries from previous nodes
             },
             recordIfMissing: true,
             matchRequestsBy: {
                 method: true,
-                headers: true,   // CRITICAL: Match headers for API calls by default
+                headers: false,
                 body: true,
                 order: false,
                 url: true

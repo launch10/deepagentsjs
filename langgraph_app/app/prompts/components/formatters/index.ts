@@ -1,3 +1,4 @@
-export { toXML } from './toXML';
-export { toJSON } from './toJSON';
-export { stripTimestamps } from './utils';
+export * from './toXML';
+export * from './toJSON';
+export * from './toPipe';
+export * from './utils';

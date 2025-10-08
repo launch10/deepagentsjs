@@ -212,7 +212,7 @@ const outputters = {
 }
 
 export async function initListFiles(state: GraphState): Promise<{ listFiles: Tool }> {
-    const websiteId = state?.website?.id!;
+    const websiteId = state?.website?.id;
 
     async function listFiles(args?: ListFilesInput): Promise<ListFilesOutput> {
         const { limit = 100, view = 'list' } = args || {};

@@ -3,6 +3,7 @@ import {
   renderPrompt,
   type PromptMetadata,
   toXML,
+  toPipe,
   filesPrompt, 
 } from "@prompts";
 import { 
@@ -79,12 +80,11 @@ export const assemblePagePrompt = async({ page, website }: AssemblePageProps): P
         Generate the React/TSX code for the page detailed below.
       </task>
 
-      ${toXML({ 
-        tag: "page-plan",
-        itemTag: "react-component",
-        values: sortedComponents.map((c) => c.name!),
-        sortOption: 'none'
-      })}
+      ${toPipe(
+        sortedComponents.map((c) => {
+          return { 'expected-components':  c.name! }
+        })
+      )}
 
       <instructions>
         1. **Maintain Existing Code:** You may receive an existing page file to modify. If so, insert any new sections, and output the FULL page code.
@@ -121,11 +121,11 @@ export const assemblePagePrompt = async({ page, website }: AssemblePageProps): P
         3. Imports will be provided in the \`import-statements\` tag — they will never be default imports (always named imports)
       </important>
 
-      ${toXML({ 
-        tag: "import-statements",
-        values: sortedComponents.map((c) => `import { ${c.name} } from "@/${c.path}"`),
-        sortOption: 'none'
-      })}
+      ${toPipe(
+        sortedComponents.map((c) => {
+          return { 'import-statements':  `import { ${c.name} } from "@/${c.path}"` }
+        })
+      )}
 
       ${filesStr}
 

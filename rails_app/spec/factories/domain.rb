@@ -2,7 +2,7 @@ FactoryBot.define do
   factory :domain do
     association :website
     association :account
-    sequence(:domain) { |n| "test-domain-#{n}.abeverything.com" }
+    sequence(:domain) { |n| "test-domain-#{n}.launch10.ai" }
     cloudflare_zone_id { nil }
 
     trait :with_cloudflare do

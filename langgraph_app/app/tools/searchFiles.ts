@@ -140,8 +140,7 @@ const FileSearchOutputSchema = z.object({
 type FileSearchOutput = z.infer<typeof FileSearchOutputSchema>;
 
 export async function initSearchFiles(state: GraphState): Promise<{ searchFiles: Tool }> {
-    let theState = state;
-    const websiteId = state?.website?.id!;
+    const websiteId = state?.website?.id;
 
     async function executeSearch(search: SingleSearch): Promise<{
         query: SingleSearch,

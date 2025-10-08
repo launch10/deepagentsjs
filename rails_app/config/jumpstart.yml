@@ -1,12 +1,12 @@
 ---
-application_name: NicheFinder
-business_name: NicheFinder
-business_address: 
+application_name: Launch10
+business_name: Launch10
+business_address:
 domain: example.com
 support_email: support@example.com
 default_from_email: My App <no-reply@example.com>
 background_job_processor: sidekiq
-email_provider: 
+email_provider:
 account_types: team
 apns: false
 fcm: false

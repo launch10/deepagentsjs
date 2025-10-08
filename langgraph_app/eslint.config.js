@@ -1,0 +1,39 @@
+import js from "@eslint/js";
+import globals from "globals";
+import tseslint from "typescript-eslint";
+
+export default tseslint.config(
+  {
+    ignores: [
+      "dist",
+      "node_modules",
+      "app/templates/**/node_modules",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "tests/**/*",
+    ],
+  },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ["**/*.{ts,tsx,mts,cts}"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: {
+        ...globals.node,
+        ...globals.es2022,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unsafe-function-type": "off",
+      // "no-case-declarations": "off",
+      "no-useless-catch": "off",
+      "no-empty": "off",
+      "no-useless-escape": "off",
+      "no-irregular-whitespace": "off",
+      "no-prototype-builtins": "off",
+      "prefer-const": "off",
+    },
+  }
+);

@@ -62,7 +62,7 @@ function formatPromptContent(content: string): string {
       
       // First wrap in root if needed for proper XML parsing
       const hasMultipleRoots = !processedContent.match(/^<([^>\s]+)[^>]*>[\s\S]*<\/\1>$/);
-      let toFormat = hasMultipleRoots ? `<root>${processedContent}</root>` : processedContent;
+      const toFormat = hasMultipleRoots ? `<root>${processedContent}</root>` : processedContent;
       
       // Format with xml-formatter
       let formatted = xmlFormat(toFormat, {

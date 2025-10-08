@@ -45,7 +45,7 @@ class Domain < ApplicationRecord
     return if domain.present?
     return unless website
 
-    base_url = ENV.fetch('DEPLOYMENT_BASE_URL', 'abeverything.com')
+    base_url = ENV.fetch('DEPLOYMENT_BASE_URL', 'launch10.ai')
     base_domain = "#{website.name.parameterize}.#{base_url}"
     
     if self.class.exists?(domain: base_domain)
@@ -53,7 +53,7 @@ class Domain < ApplicationRecord
       pattern = "#{website.name.parameterize}%.#{base_url}"
       existing_domains = Domain.where("domain LIKE ?", pattern).pluck(:domain)
       
-      # Extract numbers from domains like test-site1.abeverything.com
+      # Extract numbers from domains like test-site1.launch10.ai
       numbers = existing_domains.map do |d|
         match = d.match(/#{Regexp.escape(website.name.parameterize)}(\d+)\.#{Regexp.escape(base_url)}/)
         match ? match[1].to_i : 0

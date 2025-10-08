@@ -13,7 +13,7 @@ export class PageModel extends BaseModel<typeof pages, typeof pageSchema> {
   protected static schema = pageSchema;
 
   public static addPage(pages: Website.PageType[] | undefined, page: Website.PageType): Website.PageType[] {
-    let existingPage = PageModel.findPage(pages, page.pageType);
+    const existingPage = PageModel.findPage(pages, page.pageType);
     let pageToAdd;
 
     if (existingPage) {
@@ -25,7 +25,7 @@ export class PageModel extends BaseModel<typeof pages, typeof pageSchema> {
       pageToAdd = page;
     }
 
-    let otherPages = pages?.filter(page => page.pageType !== pageToAdd.componentType);
+    const otherPages = pages?.filter(page => page.pageType !== pageToAdd.componentType);
     return [...(otherPages || []), pageToAdd];
   }
 

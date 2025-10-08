@@ -71,8 +71,8 @@ export abstract class ScenarioCore {
   public async selectSnapshot(): Promise<string> {
     // Get all available snapshots
     const snapshots: string[] = await databaseSnapshotter.listSnapshots();
-    let snapsById: Record<number, string> = {}
-    let snapsByName: Record<string, string> = {}
+    const snapsById: Record<number, string> = {}
+    const snapsByName: Record<string, string> = {}
     
     console.log('\n📸 Available snapshots:');
     snapshots.forEach((snapshot, index) => {

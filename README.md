@@ -1,6 +1,6 @@
-# NicheFinder
+# Launch10
 
-NicheFinder consists of two main components that work together:
+Launch10 consists of two main components that work together:
 
 1. The Rails repo (built off Jumpstart Pro + inertia rails frontend)
 2. The Langgraph repo (builds the landing pages, SEO plans, and deployments)
@@ -9,6 +9,7 @@ NicheFinder consists of two main components that work together:
 
 ```bash
 cd rails_app
+nvm use && pnpm install
 bin/dev
 ```
 
@@ -23,6 +24,7 @@ bundle exec rails s
 
 ```bash
 cd langgraph_app
+nvm use && pnpm install
 bin/dev # or directly run langdev dev
 ```
 
@@ -30,7 +32,7 @@ bin/dev # or directly run langdev dev
 
 ```bash
 cd langgraph_app
-pnpm install
+nvm use && pnpm install
 cd ../rails_app
 bundle install
 bundle exec rake db:create db:migrate db:seed

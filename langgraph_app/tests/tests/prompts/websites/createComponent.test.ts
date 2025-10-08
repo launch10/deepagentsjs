@@ -52,11 +52,11 @@ describe.sequential('createComponentPrompt', async () => {
         {
           "content": {
             "componentType": "Hero",
-            "ctaText": "Discover Our Mission",
-            "headline": "The Final Frontier Awaits: Join Humanity's Greatest Adventure",
+            "ctaText": "Begin Your Cosmic Journey",
+            "headline": "The Final Frontier Is Calling. Will You Answer?",
             "layoutVariant": "text-left-image-right",
-            "paragraphs": "Space is not just a destination—it's humanity's next great frontier. Every moment, every mission, brings us closer to understanding our place in the universe.",
-            "subheadline": "Explore the cosmos, push the boundaries of human knowledge, and be part of our journey beyond Earth",
+            "paragraphs": "Discover the boundless possibilities of space travel, scientific discovery, and humanity's next great adventure. From distant galaxies to unexplored planets, your exploration starts here.",
+            "subheadline": "Embark on a journey beyond our world, where human curiosity meets cosmic exploration",
             "suggestedComponents": [
               "@/components/ui/button.tsx",
               "@/components/ui/aspect-ratio.tsx"
@@ -64,24 +64,24 @@ describe.sequential('createComponentPrompt', async () => {
             "trustSignals": [
               "Endorsed by NASA Researchers",
               "Featured in Scientific American",
-              "5+ Years of Space Exploration Expertise"
+              "5+ Years of Space Exploration Insights"
             ],
-            "visualConcept": "A breathtaking high-resolution image of a distant galaxy or nebula, with subtle particle effects suggesting stellar movement, captured by the Hubble Space Telescope or a similar high-quality astronomical image",
+            "visualConcept": "A breathtaking, high-resolution image of a spacecraft against a backdrop of stars and a distant nebula, with subtle particle animations suggesting movement and possibility",
             "visualEmphasis": "image-focus"
           },
           "overview": {
             "backgroundColor": "primary",
-            "context": "First impression section that sets the emotional tone for the entire landing page",
-            "copy": "The Final Frontier Awaits: Join Humanity's Greatest Adventure",
+            "context": "First section that sets the tone and inspires visitors to engage with the space exploration journey",
+            "copy": "The Final Frontier Is Calling. Will You Answer?",
             "name": "Hero",
-            "purpose": "Capture immediate attention and communicate the grand vision of space exploration"
+            "purpose": "Capture immediate attention and communicate the core emotional driver of space exploration"
           }
         }
       </content-plan>
     `).expectSection('context', `
       <context>
         <landing-page-summary>
-          A space exploration landing page that captures humanity's innate curiosity about the cosmos and our drive to explore the final frontier, focusing on the wonder, possibility and aspirational nature of space travel.
+          A space exploration landing page that captures humanity's innate curiosity about the cosmos and inspires wonder about our future among the stars
         </landing-page-summary>
         <user-request>
           Create a website about space exploration
@@ -132,44 +132,44 @@ describe.sequential('createComponentPrompt', async () => {
     xmlTest(result)
       .expectSection('Content Plan', `
         <content-plan>
-        {
-          "content": {
-            "componentType": "Features",
-            "cta": "Join the Cosmic Journey",
-            "features": [
-              {
-                "description": "Cutting-edge propulsion systems and materials that enable longer, safer journeys into deep space, pushing the boundaries of human exploration beyond previous limitations.",
-                "name": "Advanced Spacecraft Technology",
-                "visual": "rocket icon from lucide-react"
-              },
-              {
-                "description": "Comprehensive global and interplanetary monitoring systems that provide unprecedented insights into planetary dynamics, climate patterns, and cosmic phenomena.",
-                "name": "Satellite Observation Networks",
-                "visual": "telescope icon from lucide-react"
-              },
-              {
-                "description": "Modular research stations designed to support extended missions, enabling scientific teams to conduct groundbreaking experiments in microgravity and extreme environments.",
-                "name": "Interplanetary Research Platforms",
-                "visual": "satellite icon from lucide-react"
-              }
-            ],
-            "headline": "Exploring the Cosmic Frontier",
-            "paragraphs": "Space exploration represents more than technological achievement—it's a testament to human curiosity, innovation, and our collective potential to transcend known boundaries. Each mission expands our understanding of the universe and our place within it.",
-            "subheadline": "Transforming Humanity's Greatest Adventure into Tangible Progress",
-            "suggestedComponents": [
-              "@/components/ui/card.tsx",
-              "@/components/ui/icons/telescope.tsx",
-              "@/components/ui/icons/rocket.tsx"
-            ]
-          },
-          "overview": {
-            "backgroundColor": "secondary",
-            "context": "Provide context for why space exploration matters and why now is an exciting time",
-            "copy": "For millennia, humans have gazed at the stars and dreamed of reaching them. Today, that dream is becoming reality. But space exploration isn't just about rockets and satellites - it's about expanding the realm of human possibility.",
-            "name": "Features",
-            "purpose": "Articulate the historical human desire to explore space and frame the opportunity"
+          {
+            "content": {
+              "componentType": "Features",
+              "cta": "Start Your Space Journey",
+              "features": [
+                {
+                  "description": "Commercial space flight is transforming from science fiction to reality. Companies like SpaceX and Blue Origin are making space more accessible than ever before, offering unprecedented opportunities for civilian space exploration.",
+                  "name": "Private Space Travel",
+                  "visual": "rocket icon from lucide-react"
+                },
+                {
+                  "description": "Advanced technologies and online platforms now allow everyday people to contribute to real space research. From analyzing satellite data to participating in crowdsourced astronomical observations, anyone can be a space explorer.",
+                  "name": "Citizen Science",
+                  "visual": "telescope icon from lucide-react"
+                },
+                {
+                  "description": "Cutting-edge telescopes and satellite networks are providing unprecedented views of the universe. High-resolution imaging and real-time data streaming bring cosmic discoveries directly to your fingertips.",
+                  "name": "Advanced Observation Technologies",
+                  "visual": "satellite icon from lucide-react"
+                }
+              ],
+              "headline": "Space Exploration: No Longer Just a Dream",
+              "paragraphs": "For millennia, humans have gazed at the stars and wondered what lies beyond. Today, space exploration isn't just the domain of government agencies - it's becoming accessible to dreamers, innovators, and pioneers like you.",
+              "subheadline": "Discover How Modern Technology is Opening the Cosmos to Everyone",
+              "suggestedComponents": [
+                "@/components/ui/card.tsx",
+                "@/components/ui/icons/telescope.tsx",
+                "@/components/ui/icons/rocket.tsx"
+              ]
+            },
+            "overview": {
+              "backgroundColor": "secondary",
+              "context": "Explain how space exploration has evolved and is now more accessible than ever",
+              "copy": "For millennia, humans have gazed at the stars and wondered what lies beyond. Today, space exploration isn't just the domain of government agencies - it's becoming accessible to dreamers, innovators, and pioneers like you.",
+              "name": "Features",
+              "purpose": "Articulate the historical context and current accessibility of space exploration"
+            }
           }
-        }
       `)
     .assertAll();
 
@@ -201,27 +201,28 @@ describe.sequential('createComponentPrompt', async () => {
 
     xmlTest(result)
       .expectSection('Content Plan', `
-          <content-plan>
-            {
-              "content": {
-                "availableSections": [
-                  "Hero",
-                  "Features",
-                  "HowItWorks",
-                  "Testimonials",
-                  "CTA"
-                ],
-                "componentType": "Nav"
-              },
-              "overview": {
-                "backgroundColor": "primary",
-                "context": "Core navigation element",
-                "copy": null,
-                "name": "Nav",
-                "purpose": "Provide navigation"
-              }
+        <content-plan>
+          {
+            "content": {
+              "availableSections": [
+                "Hero",
+                "Features",
+                "Benefits",
+                "SocialProof",
+                "Testimonials",
+                "CTA"
+              ],
+              "componentType": "Nav"
+            },
+            "overview": {
+              "backgroundColor": "primary",
+              "context": "Core navigation element",
+              "copy": null,
+              "name": "Nav",
+              "purpose": "Provide navigation"
             }
-          </content-plan>
+          }
+        </content-plan>
     `)
     .assertAll();
 
@@ -250,27 +251,28 @@ describe.sequential('createComponentPrompt', async () => {
 
     xmlTest(result)
       .expectSection('Content Plan', `
-          <content-plan>
-            {
-              "content": {
-                "availableSections": [
-                  "Hero",
-                  "Features",
-                  "HowItWorks",
-                  "Testimonials",
-                  "CTA"
-                ],
-                "componentType": "Footer"
-              },
-              "overview": {
-                "backgroundColor": "primary",
-                "context": "Core navigation element",
-                "copy": null,
-                "name": "Footer",
-                "purpose": "Provide navigation"
-              }
+        <content-plan>
+          {
+            "content": {
+              "availableSections": [
+                "Hero",
+                "Features",
+                "Benefits",
+                "SocialProof",
+                "Testimonials",
+                "CTA"
+              ],
+              "componentType": "Footer"
+            },
+            "overview": {
+              "backgroundColor": "primary",
+              "context": "Core navigation element",
+              "copy": null,
+              "name": "Footer",
+              "purpose": "Provide navigation"
             }
-          </content-plan>
+          }
+        </content-plan>
     `)
     .assertAll();
 

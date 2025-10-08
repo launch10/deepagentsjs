@@ -62,7 +62,7 @@ export class SaveTaskHistoryService {
   private async summarizeTaskHistories(histories: TaskHistoryType[]) {
     const annotatedTasks: AnnotatedTask[] = this.annotateTasks(histories);
     const targetTokenCount = Math.floor(this.maxTokensBeforeSummary() * 0.8);
-    let preserved: TaskHistoryType[] = [];
+    const preserved: TaskHistoryType[] = [];
     let preservedTokenCount = 0;
     
     // Preserve recent messages up to 80% of max tokens

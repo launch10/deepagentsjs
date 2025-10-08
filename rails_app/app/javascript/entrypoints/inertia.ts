@@ -16,7 +16,7 @@ type ResolvedComponent = {
   layout?: (page: ReactNode) => ReactNode
 }
 
-const appName = "NicheFinder";
+const appName = "Launch10";
 
 createInertiaApp({
   title: (title) => (title ? `${title} - ${appName}` : appName),

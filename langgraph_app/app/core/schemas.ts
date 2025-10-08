@@ -57,7 +57,7 @@ const MODELS_TO_VALIDATE = [
   { name: 'WebsiteFileModel', model: WebsiteFileModel },
 ];
 
-let _validatedModels = false;
+const _validatedModels = false;
 export default function validateSchemas(): void {
   if (_validatedModels) {
     return;

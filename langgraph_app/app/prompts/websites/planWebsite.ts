@@ -50,7 +50,7 @@ export const planWebsitePrompt = async({ userRequest }: PlanWebsitePromptProps):
       **Key Question:** _"What deep emotional desire or fear am I primarily addressing?"_
 
       Example:
-      - User input was: "NicheFinder — A tool to find profitable niches to launch validated busienss ideas"
+      - User input was: "Launch10 — A tool to find profitable niches to launch validated busienss ideas"
       - You write an expansive paragraph detailing the emotional core of the product:
         - "Relief: Validating a business idea takes weeks or month before you even start building anything. What if you could validate dozens of business ideas at once and pick the best one?"
         - "Belonging: Identify hot ideas before the rest of the market does."
@@ -124,7 +124,7 @@ export const planWebsitePrompt = async({ userRequest }: PlanWebsitePromptProps):
       - **Technique:** Emotional anchoring.
 
       Example output:
-      "NicheFinder is specifically designed to identify new hot subcommunities who are actually willing to pay to solve a problem. Tell us what businesses you’d actually be good at making, and we’ll find you validated business ideas that no one else is on top of. Or your money back."
+      "Launch10 is specifically designed to identify new hot subcommunities who are actually willing to pay to solve a problem. Tell us what businesses you’d actually be good at making, and we’ll find you validated business ideas that no one else is on top of. Or your money back."
 
       **Template:**
       “Our [product name] is specifically designed to [action verb related to emotional payoff], so you can [desired emotional outcome].”
@@ -138,13 +138,13 @@ export const planWebsitePrompt = async({ userRequest }: PlanWebsitePromptProps):
       - **Security/Relief:** Emphasize reliability and dependability (“Trusted by over X satisfied users”)
 
       Example outputs:
-      1. "Before we launched NicheFinder, *we used it to test over 200 business ideas,* and successfully launch a 2-person business for $1M ARR. 
+      1. "Before we launched Launch10, *we used it to test over 200 business ideas,* and successfully launch a 2-person business for $1M ARR. 
 
-      Then we said *fuck it*: let’s share NicheFinder."
+      Then we said *fuck it*: let’s share Launch10."
 
       2. "We've helped solo founders from Apple, Github, Twitter, Linkedin, and Meta...
 
-      NicheFinder Users:
+      Launch10 Users:
       $3.4M+ MRR Generated
 
       Success Rate:
@@ -168,7 +168,7 @@ export const planWebsitePrompt = async({ userRequest }: PlanWebsitePromptProps):
       Example output:
       "SOLD OUT
 
-      NicheFinder can’t accept too many customers… or our customers won’t actually get the edge they’re paying for. Add your name to our waitlist for the next time we’re accepting new friends."
+      Launch10 can’t accept too many customers… or our customers won’t actually get the edge they’re paying for. Add your name to our waitlist for the next time we’re accepting new friends."
 
       ### Step 8: Call to Action (CTA)
 

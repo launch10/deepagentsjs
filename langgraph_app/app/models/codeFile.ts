@@ -109,7 +109,7 @@ export class CodeFileModel extends BaseView<typeof codeFilesView, typeof codeFil
       conditions = and(conditions, sql`${this.entity.path} ILIKE ${'%' + pathFilter + '%'}`)!;
     }
     
-    let baseQuery = db
+    const baseQuery = db
       .select({
         ...this.getBaseSelectFields(),
         rank: sql<number>`${rankExpr}`
@@ -138,7 +138,7 @@ export class CodeFileModel extends BaseView<typeof codeFilesView, typeof codeFil
       conditions = and(conditions, sql`${this.entity.path} ILIKE ${'%' + pathFilter + '%'}`)!;
     }
     
-    let baseQuery = db
+    const baseQuery = db
       .select({
         ...this.getBaseSelectFields(),
         rank: sql<number>`${rankExpr}`

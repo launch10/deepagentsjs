@@ -36,7 +36,6 @@ describe('listFiles Tool', () => {
                 pattern: 'component'
             });
 
-            console.log(result.files)
             expect(result.files).toBeDefined();
             expect(Array.isArray(result.files)).toBe(true);
             expect(result.totalMatches).toBeGreaterThanOrEqual(0);

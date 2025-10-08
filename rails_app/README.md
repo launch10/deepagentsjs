@@ -7,7 +7,8 @@ Welcome! To get started, clone the repository and push it to a new repository.
 You'll need the following installed to run the template successfully:
 
 - Ruby 3.2+
-- PostgreSQL 12+ (can be switched to SQLite or MySQL)
+- PostgreSQL 16
+- NVM & PNPM
 - Libvips or Imagemagick
 - Git LFS
 
@@ -23,14 +24,15 @@ Optionally, the [Stripe CLI](https://docs.stripe.com/stripe-cli) to sync webhook
 After pulling main, you should always run:
 
 ```bash
+nvm use && pnpm install
 bundle install # sync gems
 bundle exec rake db:migrate # sync database
 bundle exec rake seeds:template # sync templates
 ```
 
-## Templates Are The Source of Truth
+## Templates Are The Source of Truth For Websites
 
-In the rails app, we have a `templates` directory which is the source of truth. If you want to edit any templates, do so in the `templates` directory, and run `bundle exec rake seeds:template` to sync them to the database.
+In the rails app, we have a `templates` directory which is the source of truth for website templates (a simple ShadCN + Tailwind starter template). When we build new websites, we start from these template files. If you want to edit any templates, do so in the `templates` directory, and run `bundle exec rake seeds:template` to sync them to the database.
 
 This allows us to approve template changes in pull requests.
 

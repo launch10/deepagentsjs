@@ -36,7 +36,7 @@ class AssemblePageNode extends BaseNode<GraphState> {
     const completedTasks = output.completedTasks;
 
     return {
-      completedTasks: [...state.completedTasks, ...completedTasks],
+      completedTasks: [...(state.completedTasks || []), ...completedTasks],
     };
   }
 }

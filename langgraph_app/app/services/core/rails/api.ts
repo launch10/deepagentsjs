@@ -179,7 +179,7 @@ export abstract class RailsApiService<TInternal extends GenericAPIResponse, TExt
         options: RailsApiRequestOptions = {}
     ): Promise<RailsApiResponse<TExternal>> {
         const { method = 'GET', body, headers = {} } = options;
-        let authToken = options.jwt || (env.NODE_ENV === 'test' ? 'test-jwt' : undefined);
+        const authToken = options.jwt || (env.NODE_ENV === 'test' ? 'test-jwt' : undefined);
 
         const requestOptions: RequestInit = {
             method,

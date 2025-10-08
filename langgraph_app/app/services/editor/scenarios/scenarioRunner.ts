@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { databaseSnapshotter } from '@services';
 import { ErrorExporter } from "@services";
-import { existsSync, readFileSync, writeFileSync, statSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, statSync, readdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { db, websiteFiles, websites, eq, sql } from '@db';
 import type { WebsiteFileType, ConsoleError } from '@types';
@@ -173,8 +173,7 @@ export class ScenarioRunner {
     const modificationsDir = join(this.scenarioDir, 'modifications');
     if (existsSync(modificationsDir)) {
       const checkModificationTimes = (dir: string): boolean => {
-        const fs = require('fs');
-        const items = fs.readdirSync(dir, { withFileTypes: true });
+        const items = readdirSync(dir, { withFileTypes: true });
         
         for (const item of items) {
           const fullPath = join(dir, item.name);
@@ -340,26 +339,6 @@ export class ScenarioRunner {
     return this.errors;
   }
 
-  /**
-   * Clear the cache for this scenario
-   */
-  clearCache(): void {
-    if (existsSync(this.cacheFile)) {
-      this.log(`🗑️  Clearing cache: ${this.cacheFile}`);
-      require('fs').unlinkSync(this.cacheFile);
-    }
-  }
-
-  /**
-   * Static method to clear all scenario caches
-   */
-  static clearAllCaches(): void {
-    const cacheDir = join(process.cwd(), '.scenario-cache');
-    if (existsSync(cacheDir)) {
-      console.log(`🗑️  Clearing all scenario caches...`);
-      require('fs').rmSync(cacheDir, { recursive: true, force: true });
-    }
-  }
 }
 
 /**

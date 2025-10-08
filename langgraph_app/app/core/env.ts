@@ -9,6 +9,7 @@ export const envSchema = z.object({
     ANTHROPIC_API_KEY: z.string().min(1),
     GROQ_API_KEY: z.string().min(1),
     OPENAI_API_KEY: z.string().min(1),
+    GOOGLE_API_KEY: z.string().min(1),
     LANGSMITH_TRACING: z.string().min(1),
     LANGSMITH_ENDPOINT: z.string().min(1),
     LANGSMITH_API_KEY: z.string().min(1),
@@ -44,7 +45,8 @@ export type RuntimeEnv = Env | TestEnv;
 
 export const env = ((): RuntimeEnv => {
   const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
-  const envFile = isTestEnv ? '.env.test' : '.env';
+  const isCIEnv = process.env.CI === 'true';
+  const envFile = isCIEnv ? '.env.ci' : isTestEnv ? '.env.test' : '.env';
 
   expand(config({ path: envFile, override: true }));
 

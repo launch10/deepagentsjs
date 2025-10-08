@@ -86,7 +86,7 @@ module Authorization
 
       # Check timestamp is recent (within last minute)
       if Time.at(timestamp / 1000) > 1.minute.ago
-        User.find_by(email: 'test_user@abeverything.com')
+        User.find_by(email: 'test_user@launch10.ai')
       else
         nil
       end

@@ -1,8 +1,8 @@
 import { renderPrompt, toXML } from '@prompts';
-import { type WebsiteContentStrategyType } from "@types";
+import { type ContentStrategyType } from "@types";
 
 type WebsiteContentStrategyProps = {
-  contentStrategy: WebsiteContentStrategyType
+  contentStrategy: ContentStrategyType
 }
 
 export const websiteContentStrategyPrompt = async ({ contentStrategy }: WebsiteContentStrategyProps): Promise<string> => {
