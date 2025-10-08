@@ -41,7 +41,8 @@ describe.sequential('PlanPageNode', () => {
           import { Nav } from "@/src/components/Nav.tsx"
           import { Hero } from "@/src/components/Hero.tsx"
           import { Features } from "@/src/components/Features.tsx"
-          import { HowItWorks } from "@/src/components/HowItWorks.tsx"
+          import { Benefits } from "@/src/components/Benefits.tsx"
+          import { SocialProof } from "@/src/components/SocialProof.tsx"
           import { Testimonials } from "@/src/components/Testimonials.tsx"
           import { CTA } from "@/src/components/CTA.tsx"
           import { Footer } from "@/src/components/Footer.tsx"
@@ -53,16 +54,18 @@ describe.sequential('PlanPageNode', () => {
                 <main className="flex-grow">
                   <Hero />
                   <Features />
-                  <HowItWorks />
+                  <Benefits />
+                  <SocialProof />
                   <Testimonials />
                   <CTA />
                 </main>
                 <Footer />
               </div>
-            )
-          }
+            );
+          };
         `;
 
+        console.log(savedTask?.results?.code);
         expectCodeMatch(savedTask?.results?.code!, expectedCode);
 
         // Verify WebsiteFile is created

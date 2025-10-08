@@ -66,5 +66,5 @@ expect.extend({
 });
 
 export function expectCodeMatch(actual: string, expected: string): void {
-  expect(actual).toEqualCode(expected);
+  expect(actual, 'Code strings should match (ignoring whitespace)').toEqualCode(expected);
 }
