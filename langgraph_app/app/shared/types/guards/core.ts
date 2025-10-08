@@ -14,7 +14,7 @@ export function isObject(value: unknown): value is object {
     return typeof value === 'object' && value !== null;
 }
 
-export function isArray(value: unknown): value is object {
+export function isArray(value: unknown): value is any[] {
     return Array.isArray(value);
 }
 

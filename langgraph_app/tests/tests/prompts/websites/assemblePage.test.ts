@@ -45,44 +45,29 @@ describe.sequential('planComponent Prompt', async () => {
           You are the Page Assembly Agent.
       `)
       .expectSection('Page plan', `
-        <page-plan>
-          <react-component> Nav </react-component>
-          <react-component> Hero </react-component>
-          <react-component> Features </react-component>
-          <react-component> Benefits </react-component>
-          <react-component> Testimonials </react-component>
-          <react-component> SocialProof </react-component>
-          <react-component> CTA </react-component>
-          <react-component> Footer </react-component>
-      </page-plan>
+        <expected-components>
+          Nav
+          Hero
+          Features
+          Benefits
+          SocialProof
+          Testimonials
+          CTA
+          Footer
+        </expected-components>
     `)
     .expectSection('Import statements', `
       <import-statements>
-        <import-statement>
-          import { Nav } from "@/src/components/Nav.tsx"
-        </import-statement>
-        <import-statement>
-          import { Hero } from "@/src/components/Hero.tsx"
-        </import-statement>
-        <import-statement>
-          import { Features } from "@/src/components/Features.tsx"
-        </import-statement>
-        <import-statement>
-          import { Benefits } from "@/src/components/Benefits.tsx"
-        </import-statement>
-        <import-statement>
-          import { Testimonials } from "@/src/components/Testimonials.tsx"
-        </import-statement>
-        <import-statement>
-          import { SocialProof } from "@/src/components/SocialProof.tsx"
-        </import-statement>
-        <import-statement>
-          import { CTA } from "@/src/components/CTA.tsx"
-        </import-statement>
-        <import-statement>
-          import { Footer } from "@/src/components/Footer.tsx"
-        </import-statement>
+        import { Nav } from "@/src/components/Nav.tsx"
+        import { Hero } from "@/src/components/Hero.tsx"
+        import { Features } from "@/src/components/Features.tsx"
+        import { Benefits } from "@/src/components/Benefits.tsx"
+        import { SocialProof } from "@/src/components/SocialProof.tsx"
+        import { Testimonials } from "@/src/components/Testimonials.tsx"
+        import { CTA } from "@/src/components/CTA.tsx"
+        import { Footer } from "@/src/components/Footer.tsx"
       </import-statements>
+
     `)
     .expectSection('Files', `
       <files>

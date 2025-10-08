@@ -29,7 +29,7 @@
       "request": "attach",
       "name": "Attach to Script",
       "port": 9229,
-      "skipFiles": ["<node_internals>/**"]
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**", "**/.cache/node/**"]
     },
     {
       "name": "Wrangler Debug",
