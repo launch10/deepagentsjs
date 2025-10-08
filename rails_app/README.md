@@ -14,6 +14,10 @@ You'll need the following installed to run the template successfully:
 
 Optionally, the [Stripe CLI](https://docs.stripe.com/stripe-cli) to sync webhooks in development.
 
+## CI
+
+Tests run on CircleCI, and are configured in .circleci/config.yml
+
 ## Getting Started
 
 1. Clone the repository
