@@ -44,7 +44,8 @@ export type RuntimeEnv = Env | TestEnv;
 
 export const env = ((): RuntimeEnv => {
   const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
-  const envFile = isTestEnv ? '.env.test' : '.env';
+  const isCIEnv = process.env.CI === 'true';
+  const envFile = isCIEnv ? '.env.ci' : isTestEnv ? '.env.test' : '.env';
 
   expand(config({ path: envFile, override: true }));
 

@@ -112,7 +112,7 @@ jobs:
             npx wait-on http://localhost:3000 -t 30000 --verbose
       - run:
           name: Run tests
-          command: NODE_ENV=test pnpm run test tests/tests/prompts/websites/planComponent.test.ts
+          command: pnpm run test
           environment:
             POSTGRES_URI: postgres://postgres:postgres@localhost:5432/nichefinder_test
             REDIS_URI: redis://localhost:6379
