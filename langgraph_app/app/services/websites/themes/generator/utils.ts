@@ -397,7 +397,7 @@ function _selectSecondaryColor(
         return hexToColorInfo(deriveColor(derivedHex, 'darken', 0.2));
     }
     const hueShift = 150; // Complementary-ish
-    let newHue = (primaryHsl[0] + hueShift) % 360;
+    const newHue = (primaryHsl[0] + hueShift) % 360;
     
     const derivedColor = chroma.hsl(
       newHue,
@@ -454,7 +454,7 @@ function _selectAccentColor(
         return hexToColorInfo(DEFAULT_FALLBACK_BRAND_COLORS.ACCENT);
     }
     const hueShift = 60; // Different enough from primary
-    let newHue = (primaryHsl[0] + hueShift) % 360;
+    const newHue = (primaryHsl[0] + hueShift) % 360;
     
     const derivedColor = chroma.hsl(
       newHue,
@@ -794,7 +794,7 @@ export function _findContrastingForeground(
   const bgLuminance = backgroundInfo.luminance;
 
   // Start with either black or white depending on background luminance
-  let fgChroma = bgLuminance > 0.5 ? chroma(CONTRAST_COLORS.DARK) : chroma(CONTRAST_COLORS.LIGHT);
+  const fgChroma = bgLuminance > 0.5 ? chroma(CONTRAST_COLORS.DARK) : chroma(CONTRAST_COLORS.LIGHT);
   let currentContrast = chroma.contrast(bgChroma, fgChroma);
 
   if (currentContrast >= targetContrast) {

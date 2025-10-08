@@ -1891,7 +1891,7 @@ export const codeTaskFactory = {
     // Auto-create project and website if not provided
     let projectId = overrides.projectId;
     let websiteId = overrides.websiteId;
-    let componentId = overrides.componentId;
+    const componentId = overrides.componentId;
     
     if (!projectId) {
       const project = await projectFactory.create();

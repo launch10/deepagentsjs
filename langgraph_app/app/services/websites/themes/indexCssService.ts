@@ -30,8 +30,8 @@ export class IndexCssService {
 
         const layerPrefix = match[1];
         const rootPrefix = match[2];
-        let rootContent = match[3];
-        let themeData = theme.theme as Theme.CssThemeType;
+        const rootContent = match[3];
+        const themeData = theme.theme as Theme.CssThemeType;
 
         let updatedRootContent = rootContent;
         let variablesFound = 0;

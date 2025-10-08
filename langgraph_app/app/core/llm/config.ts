@@ -6,6 +6,7 @@ import { type BaseChatModel } from "@langchain/core/language_models/chat_models"
 import { env } from "../env";
 import { shasum } from "@ext";
 import { assert } from "../assert";
+import { isNull, isUndefined } from "@types";
 
 const enum LLMProvider {
   Ollama = 'ollama',
@@ -41,47 +42,97 @@ export const enum LLM {
   // 128k context, 8k completion, ~750tps, $0.05/1M in, $0.08/1M out
   LlamaInstant = "llama-3.1-8b-instant",
 }
-interface LLMConfig {
+interface LocalConfig {
   provider: LLMProvider;
   model: LLM;
   temperature: number;
   tags?: string[];
   maxTokens: number;
 }
+interface APIConfig extends Omit<LocalConfig, 'type'> {
+  apiKey: string;
+}
 
-const HaikuConfig: LLMConfig = {
+const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+const groqApiKey = process.env.GROQ_API_KEY;
+const googleApiKey = process.env.GOOGLE_API_KEY;
+const openaiApiKey = process.env.OPENAI_API_KEY;
+
+if (isNull(anthropicApiKey) || isUndefined(anthropicApiKey)) {
+  throw new Error("Anthropic API key (ANTHROPIC_API_KEY) is missing!");
+}
+
+if (isNull(groqApiKey) || isUndefined(groqApiKey)) {
+  throw new Error("Groq API key (GROQ_API_KEY) is missing!");
+}
+
+if (isNull(googleApiKey) || isUndefined(googleApiKey)) {
+  throw new Error("Google API key (GOOGLE_API_KEY) is missing!");
+}
+
+if (isNull(openaiApiKey) || isUndefined(openaiApiKey)) {
+  throw new Error("OpenAI API key (OPENAI_API_KEY) is missing!");
+}
+
+interface AnthropicConfig extends APIConfig {
+  provider: LLMProvider.Anthropic;
+}
+
+interface OpenAIConfig extends APIConfig {
+  provider: LLMProvider.OpenAI;
+}
+
+interface GroqConfig extends APIConfig {
+  provider: LLMProvider.Groq;
+}
+
+interface GoogleConfig extends APIConfig {
+  provider: LLMProvider.Google;
+}
+
+interface OllamaConfig extends LocalConfig {
+  provider: LLMProvider.Ollama;
+}
+
+type LLMConfig = LocalConfig | AnthropicConfig | GroqConfig | GoogleConfig | OpenAIConfig | OllamaConfig;
+
+const HaikuConfig: AnthropicConfig = {
   provider: LLMProvider.Anthropic,
   model: LLM.Haiku,
   temperature: 0,
   maxTokens: 180_000,
+  apiKey: anthropicApiKey,
 }
 
-const SonnetConfig: LLMConfig = {
+const SonnetConfig: AnthropicConfig = {
   provider: LLMProvider.Anthropic,
   model: LLM.Sonnet,
   temperature: 0,
   maxTokens: 180_000,
+  apiKey: anthropicApiKey,
 }
 
-const GptOssConfig: LLMConfig = {
+const GptOssConfig: OllamaConfig = {
   provider: LLMProvider.Ollama,
   model: LLM.GptOss,
   temperature: 0,
   maxTokens: 128_000,
 }
 
-const GeminiFlashConfig: LLMConfig = {
+const GeminiFlashConfig: APIConfig = {
   provider: LLMProvider.OpenAI,
   model: LLM.GeminiFlash,
   temperature: 0,
   maxTokens: 1_000_000,
+  apiKey: googleApiKey,
 }
 
-const LlamaInstantConfig: LLMConfig = {
+const LlamaInstantConfig: APIConfig = {
   provider: LLMProvider.Groq,
   model: LLM.LlamaInstant,
   temperature: 0,
   maxTokens: 128_000,
+  apiKey: groqApiKey,
 }
 
 export const configuredModels: LLMConfig[] = [HaikuConfig, SonnetConfig, GptOssConfig, GeminiFlashConfig, LlamaInstantConfig];
@@ -161,10 +212,14 @@ export const llmConfig: LLMAppConfig = {
 const llmPaid= env.LLM_PAID || LLMFree.Free;
 const appLLMConfig = llmConfig[llmPaid as keyof LLMAppConfig];
 
-let llmInstances: Partial<Record<string, BaseChatModel>> = {}; // Key format: "skill-speed"
+const llmInstances: Partial<Record<string, BaseChatModel>> = {}; // Key format: "skill-speed"
 
 // Lazy getter for the LLM instance, configurable via environment variables
 const LLM_SPEED_DEFAULT = (env.LLM_SPEED === 'fast') ? LLMSpeed.Fast : LLMSpeed.Slow;
+
+function hasApiKey(config: LLMConfig): config is APIConfig & { provider: LLMProvider } {
+  return 'apiKey' in config;
+}
 
 export function getLlm(
   llmSkill: LLMSkill,
@@ -202,54 +257,37 @@ export function getLlm(
       });
       break;
     case LLMProvider.Anthropic:
-      const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-      if (!anthropicApiKey) {
+      if (!hasApiKey(config)) {
         throw new Error("Anthropic API key (ANTHROPIC_API_KEY) is missing!");
       }
       modelInstance = new ChatAnthropic({
-        apiKey: anthropicApiKey,
+        apiKey: config.apiKey,
         model: config.model,
         temperature: config.temperature,
       });
       break;
     case LLMProvider.Groq:
-      const groqApiKey = process.env.GROQ_API_KEY;
-      if (!groqApiKey) {
+      if (!hasApiKey(config)) {
         throw new Error("Groq API key (GROQ_API_KEY) is missing!");
       }
       modelInstance = new ChatGroq({
-        apiKey: groqApiKey,
+        apiKey: config.apiKey,
         model: config.model,
         temperature: config.temperature,
       });
       break;
-    case LLMProvider.Google:
-      const googleApiKey = process.env.GOOGLE_API_KEY;
-      if (!googleApiKey) {
-        throw new Error("Google API key (GOOGLE_API_KEY) is missing!");
-      }
-      // modelInstance = new ChatGoogleGenerativeAI({
-      //   cache, // Pass cache if defined and used
-      //   apiKey: googleApiKey,
-      //   model: config.model,
-      //   temperature: config.temperature,
-      // });
-      break;
     case LLMProvider.OpenAI:
-      const openaiApiKey = process.env.OPENAI_API_KEY;
-      if (!openaiApiKey) {
+      if (!hasApiKey(config)) {
         throw new Error("OpenAI API key (OPENAI_API_KEY) is missing!");
       }
       modelInstance = new ChatOpenAI({
-        apiKey: openaiApiKey,
+        apiKey: config.apiKey,
         model: config.model,
         temperature: 1,
       });
       break;
     default:
-      // Assert we are never here
-      assert(false, `Unsupported LLM provider: ${config.provider}`)
-      break;
+      throw new Error(`Unsupported LLM provider`);
   }
 
   llmInstances[cacheKey] = modelInstance;

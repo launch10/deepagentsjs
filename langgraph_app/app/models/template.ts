@@ -6,7 +6,7 @@ export class TemplateModel extends BaseModel<typeof templates, typeof templateSc
     protected static schema = templateSchema;
 
     public static async getTemplate(templateKey: string = "default"): Promise<TemplateModel> {
-        let templateData = (await db.select().from(templates).where(eq(templates.name, templateKey))).at(0);
+        const templateData = (await db.select().from(templates).where(eq(templates.name, templateKey))).at(0);
         if (!templateData) {
             throw new Error(`Template not found for name: ${templateKey}`);
         }
@@ -26,7 +26,7 @@ export class TemplateModel extends BaseModel<typeof templates, typeof templateSc
     }
 
     public async availableShadCnComponents(): Promise<string[]> { 
-        let query = db
+        const query = db
                 .select({ path: templateFiles.path }).from(templateFiles)
                 .where(
                     and(
@@ -35,7 +35,7 @@ export class TemplateModel extends BaseModel<typeof templates, typeof templateSc
                     )
                 )
                 .orderBy(asc(templateFiles.path));
-        let components = await query;
+        const components = await query;
         return components.map(component => component.path!.replace("src", "@"));
     }
 }

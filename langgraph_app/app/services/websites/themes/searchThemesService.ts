@@ -2,7 +2,7 @@ import { db, type DB, themes, themeLabels, themesToThemeLabels } from 'app/db';
 import { eq, inArray, sql } from 'drizzle-orm';
 import { type ThemeType } from "@types";
 interface DBThemeType extends ThemeType {
-    id: BigInt;
+    id: bigint;
 }
 export class SearchThemesService {
     private db: DB;

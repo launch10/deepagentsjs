@@ -65,7 +65,6 @@ describe.sequential('PlanPageNode', () => {
           };
         `;
 
-        console.log(savedTask?.results?.code);
         expectCodeMatch(savedTask?.results?.code!, expectedCode);
 
         // Verify WebsiteFile is created
