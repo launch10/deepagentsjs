@@ -33,6 +33,7 @@ describe.sequential('createComponentPrompt', async () => {
     if (!isString(result)) {
       throw new Error('Result is not a string');
     }
+    console.log(result)
 
     xmlTest(result)
       .expectSection('Role', `
@@ -52,35 +53,36 @@ describe.sequential('createComponentPrompt', async () => {
         {
           "content": {
             "componentType": "Hero",
-            "ctaText": "Explore the Cosmos",
-            "headline": "The Stars Are Calling. Will You Answer?",
+            "ctaText": "Begin Your Cosmic Journey",
+            "headline": "The Final Frontier Is Calling. Will You Answer?",
             "layoutVariant": "text-left-image-right",
-            "paragraphs": null,
-            "subheadline": "Embark on a journey beyond our world, where every discovery brings us closer to understanding the infinite universe.",
+            "paragraphs": "Discover the boundless possibilities of space travel, scientific discovery, and humanity's next great adventure. From distant galaxies to unexplored planets, your exploration starts here.",
+            "subheadline": "Embark on a journey beyond our world, where human curiosity meets cosmic exploration",
             "suggestedComponents": [
               "@/components/ui/button.tsx",
               "@/components/ui/aspect-ratio.tsx"
             ],
             "trustSignals": [
-              "Backed by NASA Research",
-              "Trusted by Leading Astronomers"
+              "Endorsed by NASA Researchers",
+              "Featured in Scientific American",
+              "5+ Years of Space Exploration Insights"
             ],
-            "visualConcept": "A breathtaking high-resolution image of a distant galaxy, with vibrant blues and purples, showcasing the depth and mystery of space. The image should have a slight parallax effect to create depth and movement.",
+            "visualConcept": "A breathtaking, high-resolution image of a spacecraft against a backdrop of stars and a distant nebula, with subtle particle animations suggesting movement and possibility",
             "visualEmphasis": "image-focus"
           },
           "overview": {
             "backgroundColor": "primary",
-            "context": "First impression section that sets the emotional tone for the entire landing page",
-            "copy": "The Stars Are Calling. Will You Answer?",
+            "context": "First section that sets the tone and inspires visitors to engage with the space exploration journey",
+            "copy": "The Final Frontier Is Calling. Will You Answer?",
             "name": "Hero",
-            "purpose": "Capture immediate attention and inspire users to explore space"
+            "purpose": "Capture immediate attention and communicate the core emotional driver of space exploration"
           }
         }
       </content-plan>
     `).expectSection('context', `
       <context>
         <landing-page-summary>
-          A space exploration landing page that taps into humanity's innate wonder about the cosmos and desire to be part of something bigger than ourselves. The copy focuses on making space exploration personal and accessible while maintaining scientific credibility.
+          A space exploration landing page that captures humanity's innate curiosity about the cosmos and inspires wonder about our future among the stars
         </landing-page-summary>
         <user-request>
           Create a website about space exploration
@@ -137,24 +139,24 @@ describe.sequential('createComponentPrompt', async () => {
               "cta": "Start Your Space Journey",
               "features": [
                 {
-                  "description": "Experience immersive, scientifically accurate simulations of space exploration. Navigate spacecraft, conduct experiments, and explore distant planets from the comfort of your home.",
-                  "name": "Virtual Space Missions",
-                  "visual": "Telescope icon representing exploration and discovery"
+                  "description": "Commercial space flight is transforming from science fiction to reality. Companies like SpaceX and Blue Origin are making space more accessible than ever before, offering unprecedented opportunities for civilian space exploration.",
+                  "name": "Private Space Travel",
+                  "visual": "rocket icon from lucide-react"
                 },
                 {
-                  "description": "Access live feeds, satellite imagery, and cutting-edge research directly from space agencies. Stay connected with the latest discoveries and scientific breakthroughs.",
-                  "name": "Real-Time Space Data",
-                  "visual": "Rocket icon symbolizing active exploration"
+                  "description": "Advanced technologies and online platforms now allow everyday people to contribute to real space research. From analyzing satellite data to participating in crowdsourced astronomical observations, anyone can be a space explorer.",
+                  "name": "Citizen Science",
+                  "visual": "telescope icon from lucide-react"
                 },
                 {
-                  "description": "Join a global network of space enthusiasts, scientists, and dreamers. Participate in forums, webinars, and collaborative research projects that push the boundaries of human knowledge.",
-                  "name": "Community of Explorers",
-                  "visual": "Constellation-like connecting graphic representing community"
+                  "description": "Cutting-edge telescopes and satellite networks are providing unprecedented views of the universe. High-resolution imaging and real-time data streaming bring cosmic discoveries directly to your fingertips.",
+                  "name": "Advanced Observation Technologies",
+                  "visual": "satellite icon from lucide-react"
                 }
               ],
-              "headline": "Unlock the Mysteries of Space Exploration",
-              "paragraphs": "For too long, space has felt distant and unreachable. We're changing that by bringing the universe closer to you, making space exploration accessible, engaging, and deeply personal.",
-              "subheadline": "Breaking down barriers between humanity and the cosmos",
+              "headline": "Space Exploration: No Longer Just a Dream",
+              "paragraphs": "For millennia, humans have gazed at the stars and wondered what lies beyond. Today, space exploration isn't just the domain of government agencies - it's becoming accessible to dreamers, innovators, and pioneers like you.",
+              "subheadline": "Discover How Modern Technology is Opening the Cosmos to Everyone",
               "suggestedComponents": [
                 "@/components/ui/card.tsx",
                 "@/components/ui/icons/telescope.tsx",
@@ -163,10 +165,10 @@ describe.sequential('createComponentPrompt', async () => {
             },
             "overview": {
               "backgroundColor": "secondary",
-              "context": "Highlight the historical barrier to space exploration and create empathy",
-              "copy": "For too long, space has felt distant and unreachable. We've gazed up at the night sky, dreaming of what lies beyond, but feeling like space exploration was something that happened to other people, in other places.",
+              "context": "Explain how space exploration has evolved and is now more accessible than ever",
+              "copy": "For millennia, humans have gazed at the stars and wondered what lies beyond. Today, space exploration isn't just the domain of government agencies - it's becoming accessible to dreamers, innovators, and pioneers like you.",
               "name": "Features",
-              "purpose": "Articulate the current challenge in space exploration accessibility"
+              "purpose": "Articulate the historical context and current accessibility of space exploration"
             }
           }
       `)
@@ -207,8 +209,8 @@ describe.sequential('createComponentPrompt', async () => {
                 "Hero",
                 "Features",
                 "Benefits",
-                "Testimonials",
                 "SocialProof",
+                "Testimonials",
                 "CTA"
               ],
               "componentType": "Nav"
@@ -257,8 +259,8 @@ describe.sequential('createComponentPrompt', async () => {
                 "Hero",
                 "Features",
                 "Benefits",
-                "Testimonials",
                 "SocialProof",
+                "Testimonials",
                 "CTA"
               ],
               "componentType": "Footer"
