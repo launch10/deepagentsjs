@@ -19,10 +19,13 @@ import { toXML } from '@prompts';
  * fewShotExamplesPrompt(examples, schema);
  * ```
  */
-export async function fewShotExamplesPrompt<T extends z.ZodType<any>>(
-  fewShotExamples: SchemaFewShotExample<T>[],
-  schema: T
-) {
+export async function fewShotExamplesPrompt<T extends z.ZodType<any>>({
+    fewShotExamples,
+    schema
+}: {
+    fewShotExamples: SchemaFewShotExample<T>[],
+    schema: T
+}) {
   const exampleElements = fewShotExamples?.map(({ input, output }: SchemaFewShotExample<T>) => {
     const validatedOutput = schema.parse(output);
 

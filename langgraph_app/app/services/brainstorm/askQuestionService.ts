@@ -13,10 +13,6 @@ export const askQuestionInputSchema = z.object({
 
 export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
 
-const askQuestionOutputSchema = z.object({
-    askQuestion: z.string().describe("The unique-name-of-the-project using kebab-case"),
-});
-
 // Define a schema that matches the desired output structure
 const semiStructuredQuestionSchema = z.object({
   intro: z.string().describe("A brief, engaging introductory sentence or two, personalized to the user's business."),
@@ -27,7 +23,27 @@ const semiStructuredQuestionSchema = z.object({
 
 export type SemiStructuredQuestionType = z.infer<typeof semiStructuredQuestionSchema>;
 
-const basePrompt = (messages: { role: string; content: string }[], question: QuestionType, schema: z.ZodType<any>) => {
+const stringQuestionOutputSchema = z.object({
+  question: z.string().describe("The question to ask the user")
+});
+
+const structuredQuestionOutputSchema = z.object({
+  question: semiStructuredQuestionSchema.describe("The structured question to ask the user")
+});
+
+export type AskQuestionOutput = 
+  | { question: string }
+  | { question: SemiStructuredQuestionType };
+
+const basePrompt = ({
+  messages, 
+  question, 
+  schema,
+}: {
+  messages: { role: string; content: string }[], 
+  question: QuestionType, 
+  schema: z.ZodType<any>,
+}) => {
   return renderPrompt(`
     <background>
       The user wants to create a website for their business. 
@@ -48,18 +64,18 @@ const basePrompt = (messages: { role: string; content: string }[], question: Que
       answers BASED ON what they've already told you about their business.
     </task>
 
-    ${fewShotExamplesPrompt<typeof semiStructuredQuestionSchema>({ 
+    ${question.fewShotExamples ? fewShotExamplesPrompt<typeof semiStructuredQuestionSchema>({ 
         fewShotExamples: question.fewShotExamples, 
         schema: semiStructuredQuestionSchema 
-      })}
+      }) : ""}
 
     ${chatHistoryPrompt({messages})}
 
     <question>
-      ${question}
+      ${question.question}
     </question>
 
-    ${structuredOutputPrompt(schema)}
+    ${structuredOutputPrompt({ schema })}
 `);
 }
 
@@ -73,17 +89,6 @@ interface QuestionType {
     style: QuestionStyle;
     fewShotExamples?: SchemaFewShotExample<typeof semiStructuredQuestionSchema>[];
 }
-
-const exampleData = {
-  intro: "Great! Let's dig into what makes ImpactZone special.",
-  question: "How does ImpactZone solve the customer's problem?",
-  sampleResponses: [
-    "ImpactZone offers a wide range of high-intensity workouts, including HIIT, Tabata, and circuit training.",
-    "ImpactZone is proven to increase caloric burn by 20%.",
-    "ImpactZone builds accountability through group training and community."
-  ],
-  conclusion: "So what do you think? How does ImpactZone solve the customer's problem?"
-};
 
 const QUESTIONS: QuestionType[] = [
   {
@@ -124,7 +129,7 @@ const QUESTIONS: QuestionType[] = [
 ]
 
 export class AskQuestionService {
-  async execute(input: AskQuestionInput, config?: LangGraphRunnableConfig): Promise<{ question: string }> {
+  async execute(input: AskQuestionInput, config?: LangGraphRunnableConfig): Promise<AskQuestionOutput> {
       const { messages, questionIndex } = input;
       if (!messages) {
           throw new Error('User request is required');
@@ -139,16 +144,14 @@ export class AskQuestionService {
       if (nextQuestion.style === "Verbatim") {
         return { question: nextQuestion.question }
       }
+
+      const outputSchema = nextQuestion.fewShotExamples 
+        ? structuredQuestionOutputSchema 
+        : stringQuestionOutputSchema;
       
       const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
-      const schemaPrompt = await structuredOutputPrompt({ schema: askQuestionOutputSchema });
-      const prompt = await basePrompt.format({ messages, question, schema: schemaPrompt });
-      // const structuredLlm = llm.withStructuredOutput(projectNameOutputSchema);
-      // return await structuredLlm.invoke(prompt) as { projectName: string };
-      return withStructuredResponse({
-          llm,
-          prompt,
-          schema: askQuestionOutputSchema
-      })
+      const prompt = await basePrompt({ messages, question: nextQuestion, schema: outputSchema });
+      const structuredLlm = llm.withStructuredOutput(outputSchema);
+      return await structuredLlm.invoke(prompt) as AskQuestionOutput;
   }
 }
