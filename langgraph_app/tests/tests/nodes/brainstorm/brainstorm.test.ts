@@ -20,9 +20,30 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result.error).toBeUndefined();
-            expect(result.state.nextQuestion).toBe("Tell us about your business. More info -> better outcomes.");
-            expect(result.state.questionIndex).toBe(1);
-            expect(result.state.messages).toHaveLength(2);
+
+            const question = result.state.nextQuestion;
+            expect(typeof question).toBe('object');
+            
+            if (typeof question === 'object') {
+                expect(question.intro).toBeTruthy();
+                expect(question.intro.toLowerCase()).toContain('friend of the pod');
+                
+                expect(question.question).toBeTruthy();
+                
+                expect(question.sampleResponses).toHaveLength(3);
+                expect(question.sampleResponses[0]).toBeTruthy();
+                expect(question.sampleResponses[1]).toBeTruthy();
+                expect(question.sampleResponses[2]).toBeTruthy();
+                
+                expect(question.conclusion).toBeTruthy();
+            }
+            
+            expect(result.state.questionIndex).toBe(2);
+
+            // 1 tacit AI message ("What is your business?") + 
+            // 1 human ("Friend of the Pod is a podcast matchmaking service.") + 
+            // 1 AI ("Who are your customers, and what are they trying to achieve? + 3 sample responses")
+            expect(result.state.messages).toHaveLength(3);
         });
 
         it('should ask second question (structured with samples) after first response', async () => {

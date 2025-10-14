@@ -94,10 +94,25 @@ const QUESTIONS: QuestionTemplate[] = [
     question: "Tell us about your business. More info -> better outcomes.",
     style: "Verbatim"
   },
-  // {
-  //   question: "Who are your customers, and what are they trying to achieve?",
-  //   style: "Verbatim"
-  // },
+  {
+    question: "Who are your customers, and what are they trying to achieve?",
+    style: "Rephrased",
+    fewShotExamples: [
+      { 
+        input: "The user is a gym owner, whose gym (ImpactZone) is focused on high-impact cardio.",
+        output: {
+          intro: "Great! Let's talk about your customers.",
+          question: "Who are your customers, and what are they trying to achieve?",
+          sampleResponses: [
+            "Our customers are fitness enthusiasts looking for high-intensity workouts.",
+            "Our customers are newbies, looking for a friendly and approachable workout experience.",
+            "Our customers community-oriented, looking for a way to build accountability through group training and community.",
+          ],
+          conclusion: "So what do you think? Who are your customers, and what are they trying to achieve?"
+        }
+      }
+    ]
+  },
   {
     question: "How does [BUSINESS NAME] solve the customer's problem? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
     style: "Rephrased",
