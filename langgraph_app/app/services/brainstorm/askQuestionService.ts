@@ -4,7 +4,7 @@ import { getLlm, LLMSkill, LLMSpeed } from "@core";
 import { type NotificationOptions } from "@core";
 import { withStructuredResponse } from "@utils";
 import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
-import { type SchemaFewShotExample } from "@types";
+import { type SchemaFewShotExample, type QuestionType } from "@types";
 import { AIMessage } from "@langchain/core/messages";
 
 export const askQuestionInputSchema = z.object({
@@ -14,28 +14,7 @@ export const askQuestionInputSchema = z.object({
 
 export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
 
-// Define a schema that matches the desired output structure
-const semiStructuredQuestionSchema = z.object({
-  intro: z.string().describe("A brief, engaging introductory sentence or two, personalized to the user's business."),
-  question: z.string().describe("The core question being asked, adapted for the user's context."),
-  sampleResponses: z.array(z.string()).describe("A list of 3 high-quality, diverse sample responses relevant to the user's business."),
-  conclusion: z.string().describe("A concluding sentence to re-engage the user, potentially repeating the core question."),
-});
-
-export type SemiStructuredQuestionType = z.infer<typeof semiStructuredQuestionSchema>;
-
-const stringQuestionOutputSchema = z.object({
-  question: z.string().describe("The question to ask the user")
-});
-
-const structuredQuestionOutputSchema = z.object({
-  question: semiStructuredQuestionSchema.describe("The structured question to ask the user")
-});
-
-export type AskQuestionOutput = 
-  | { question: string }
-  | { question: SemiStructuredQuestionType };
-
+export type AskQuestionOutput = { question: QuestionType };
 
 const basePrompt = async ({
   messages, 
@@ -92,7 +71,7 @@ type QuestionStyle = "Verbatim" | "Rephrased";
 interface QuestionType {
     question: string;
     style: QuestionStyle;
-    fewShotExamples?: SchemaFewShotExample<typeof semiStructuredQuestionSchema>[];
+    fewShotExamples?: SchemaFewShotExample<typeof structuredQuestionSchema>[];
 }
 
 const QUESTIONS: QuestionType[] = [
