@@ -3,7 +3,8 @@ import { testGraph } from '@support';
 import { type BrainstormGraphState } from '@state';
 import { databaseSnapshotter } from '@services';
 import { brainstormGraph } from '@graphs';
-import { HumanMessage } from '@langchain/core/messages';
+import { HumanMessage, AIMessage } from '@langchain/core/messages';
+import { isHumanMessage, isAIMessage } from '@types';
 
 describe.sequential('Brainstorming Flow', () => {
     beforeAll(async () => {
@@ -11,7 +12,7 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Full brainstorming conversation flow", () => {
-        it('should ask first question (verbatim)', async () => {
+        it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -21,6 +22,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.error).toBeUndefined();
             expect(result.state.nextQuestion).toBe("Tell us about your business. More info -> better outcomes.");
             expect(result.state.questionIndex).toBe(1);
+            expect(result.state.messages).toHaveLength(2);
         });
 
         it('should ask second question (structured with samples) after first response', async () => {
@@ -60,6 +62,9 @@ describe.sequential('Brainstorming Flow', () => {
             }
             
             expect(result2.state.questionIndex).toBe(2);
+            expect(result2.state.messages).toHaveLength(4);
+            expect(result2.state.messages?.filter((msg) => isHumanMessage(msg))).toHaveLength(2);
+            expect(result2.state.messages?.filter((msg) => isAIMessage(msg))).toHaveLength(2);
         });
 
         it('should ask third question (verbatim) after second response', async () => {

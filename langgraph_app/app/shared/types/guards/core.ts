@@ -1,3 +1,5 @@
+import { HumanMessage, AIMessage } from "@langchain/core/messages";
+
 export function isNumber(value: unknown): value is number {
     return typeof value === 'number';
 }
@@ -40,4 +42,12 @@ export function isSymbol(value: unknown): value is symbol {
 
 export function isError(err: unknown): err is Error {
     return err instanceof Error;
+}
+
+export function isHumanMessage(msg: unknown): msg is HumanMessage {
+    return msg instanceof HumanMessage;
+}
+
+export function isAIMessage(msg: unknown): msg is AIMessage {
+    return msg instanceof AIMessage;
 }
