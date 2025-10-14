@@ -6,15 +6,9 @@ import type {
     CodeTaskType, 
     TaskHistoryType, 
     ComponentOverviewType,
-    ConsoleError,
 } from "@types";
-import type { BaseMessage } from "@langchain/core/messages";
-export interface GraphState {
-    error?: string;
-    jwt?: string;
-    accountId?: number;
-    projectName?: string;
-    messages: BaseMessage[];
+import type { CoreGraphState } from "./core";
+export interface WebsiteBuilderGraphState extends CoreGraphState {
     task?: CodeTaskType;
     queue?: CodeTaskType[];
     completedTasks?: CodeTaskType[];
@@ -24,5 +18,4 @@ export interface GraphState {
     pages?: PageType[];
     website?: WebsiteType;
     files?: FileMap;
-    consoleErrors: ConsoleError[];
 }

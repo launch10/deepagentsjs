@@ -36,7 +36,7 @@
 
 import { z } from "zod";
 import { tool, Tool } from "@langchain/core/tools";
-import type { GraphState } from "@state";
+import type { WebsiteBuilderGraphState} from "@state";
 import { type FileType, fileSchema } from "@types";
 import { CodeFileModel } from "@models";
 import { compactObject } from "@utils";

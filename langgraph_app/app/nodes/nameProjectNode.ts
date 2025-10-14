@@ -1,4 +1,4 @@
-import { type GraphState } from "@state"
+import { type WebsiteBuilderGraphState } from "@state"
 import { NameProjectService } from "@services";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { lastHumanMessage } from "@annotation";

@@ -4,7 +4,7 @@ import { getLlm, LLMSkill, LLMSpeed } from "@core";
 import { type NotificationOptions } from "@core";
 import { withStructuredResponse } from "@utils";
 import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
-import { type SchemaFewShotExample, type QuestionType } from "@types";
+import { type SchemaFewShotExample, type QuestionType as OutputQuestionType } from "@types";
 import { AIMessage } from "@langchain/core/messages";
 
 export const askQuestionInputSchema = z.object({
@@ -14,7 +14,22 @@ export const askQuestionInputSchema = z.object({
 
 export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
 
-export type AskQuestionOutput = { question: QuestionType };
+export type AskQuestionOutput = { question: OutputQuestionType };
+
+const semiStructuredQuestionSchema = z.object({
+  intro: z.string().describe("A brief, engaging introductory sentence or two, personalized to the user's business."),
+  question: z.string().describe("The core question being asked, adapted for the user's context."),
+  sampleResponses: z.array(z.string()).describe("A list of 3 high-quality, diverse sample responses relevant to the user's business."),
+  conclusion: z.string().describe("A concluding sentence to re-engage the user, potentially repeating the core question."),
+});
+
+const stringQuestionOutputSchema = z.object({
+  question: z.string().describe("The question to ask the user")
+});
+
+const structuredQuestionOutputSchema = z.object({
+  question: semiStructuredQuestionSchema.describe("The structured question to ask the user")
+});
 
 const basePrompt = async ({
   messages, 
@@ -22,7 +37,7 @@ const basePrompt = async ({
   schema,
 }: {
   messages: { role: string; content: string }[], 
-  question: QuestionType, 
+  question: QuestionTemplate, 
   schema: z.ZodType<any>,
 }) => {
   const [fewShotExamples, chatHistory, formatInstructions] = await Promise.all([
@@ -68,13 +83,13 @@ export const notificationContext: NotificationOptions = {
 };
 
 type QuestionStyle = "Verbatim" | "Rephrased";
-interface QuestionType {
+interface QuestionTemplate {
     question: string;
     style: QuestionStyle;
-    fewShotExamples?: SchemaFewShotExample<typeof structuredQuestionSchema>[];
+    fewShotExamples?: SchemaFewShotExample<typeof semiStructuredQuestionSchema>[];
 }
 
-const QUESTIONS: QuestionType[] = [
+const QUESTIONS: QuestionTemplate[] = [
   {
     question: "Tell us about your business. More info -> better outcomes.",
     style: "Verbatim"
@@ -120,14 +135,6 @@ export class AskQuestionService {
       }
       questionIndex = questionIndex || 0;
 
-      if (questionIndex === 0) {
-        messages = [
-          new AIMessage(QUESTIONS[questionIndex]!.question),
-          ...messages,
-        ]
-        questionIndex++;
-      }
-
       const nextQuestion = QUESTIONS[questionIndex];
 
       if (!nextQuestion) {
@@ -144,15 +151,9 @@ export class AskQuestionService {
       
       const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
       const prompt = await basePrompt({ messages, question: nextQuestion, schema: outputSchema });
-      // console.log(prompt);
-      // const result = await llm.invoke("Hello Mr. Antrhopic!")
-      // console.log(result);
       const structuredLlm = llm.withStructuredOutput(outputSchema);
-      const result = await structuredLlm.invoke(prompt) as AskQuestionOutput;
+      const result = await structuredLlm.invoke(prompt);
 
-      return [
-        ...messages,
-        new AIMessage(result.question),
-      ]
+      return { question: result.question };
   }
 }

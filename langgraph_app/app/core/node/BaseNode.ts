@@ -1,4 +1,4 @@
-import { type GraphState } from "@state";
+import { type CoreGraphState } from "@state";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { withInfrastructure, type InfrastructureOptions } from "./decorators";
 import { Send } from "@langchain/langgraph";
@@ -115,9 +115,9 @@ export abstract class BaseNode<TState> {
  * const myNode = createNodeFunction(MyNodeClass);
  * graph.addNode("myNode", myNode);
  */
-export function createNodeFunction<TNode extends BaseNode>(
+export function createNodeFunction<TNode extends BaseNode<TState>, TState extends CoreGraphState>(
     NodeClass: new () => TNode
-): (state: GraphState, config?: LangGraphRunnableConfig) => Promise<Partial<GraphState>> {
+): (state: TState, config?: LangGraphRunnableConfig) => Promise<Partial<TState>> {
     const instance = new NodeClass();
     return instance.toNodeFunction();
 }

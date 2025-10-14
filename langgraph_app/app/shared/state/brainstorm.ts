@@ -1,11 +1,7 @@
 import type { BrainstormNextStepType, QuestionType } from "@types";
-import type { BaseMessage } from "@langchain/core/messages";
+import type { CoreGraphState } from "./core";
 
-export interface BrainstormGraphState {
-    error?: string;
-    jwt?: string;
-    accountId?: number;
-    messages: BaseMessage[];
+export interface BrainstormGraphState extends CoreGraphState {
     nextQuestion: QuestionType;
     nextStep?: BrainstormNextStepType;
     questionIndex: number;

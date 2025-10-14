@@ -1,6 +1,6 @@
 import { tool } from "@langchain/core/tools"; 
 import { z } from "zod";
-import { type GraphState } from "@shared/state/graph";
+import { type WebsiteBuilderGraphState } from "@shared/state/graph";
 import { CodeTaskType, type CompletedCodeTask } from "@models/codeTask"; 
 import { type CodeTaskSummary } from "@models/codeTask";
 import { type TaskHistoryType, TaskHistory } from "@models/taskHistory"; 

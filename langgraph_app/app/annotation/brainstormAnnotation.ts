@@ -1,6 +1,6 @@
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
 import { BaseMessage, type BaseMessageLike } from "@langchain/core/messages";
-import type { BrainstormNextStepType } from "@types";
+import type { BrainstormNextStepType, QuestionType } from "@types";
 
 export const BrainstormAnnotation = Annotation.Root({
     error: Annotation<string | undefined>({
@@ -21,6 +21,11 @@ export const BrainstormAnnotation = Annotation.Root({
     messages: Annotation<BaseMessage[], BaseMessageLike[]>({ 
         default: () => [],
         reducer: messagesStateReducer
+    }),
+
+    nextQuestion: Annotation<QuestionType | undefined>({
+        default: () => undefined,
+        reducer: (current, next) => next
     }),
 
     nextStep: Annotation<BrainstormNextStepType | undefined>({

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { StructuredTool } from "@langchain/core/tools";
 import { SearchThemesService } from "@services";
 import { type ThemeType } from "@types";
-import type { GraphState } from "~/core/decorators/types";
+import type { WebsiteBuilderGraphState} from "~/core/decorators/types";
 
 // --- Helper to format ThemeType for LLM ---
 // Format to clearly show the theme ID for selection

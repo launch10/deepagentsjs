@@ -1,4 +1,4 @@
-import type { GraphState } from '@shared/state/graph';
+import type { WebsiteBuilderGraphState} from '@shared/state/graph';
 import stringify from "fast-json-stable-stringify";
 
 // TODO: MOVE TO PROMPTS!!!

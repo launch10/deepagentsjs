@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { initTools } from '@tools';
-import type { GraphState } from '@state';
+import type { WebsiteBuilderGraphState} from '@state';
 import type { WebsiteType } from '@types';
 import { databaseSnapshotter } from '@services';
 
@@ -14,7 +14,7 @@ describe('listFiles Tool', () => {
         // For testing, we'll use website ID 1
         websiteId = 2;
         
-        const mockState: GraphState = {
+        const mockState: WebsiteBuilderGraphState= {
             website: {
                 id: websiteId,
                 name: 'Test Website',

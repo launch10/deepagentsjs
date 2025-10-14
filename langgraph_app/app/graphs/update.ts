@@ -1,6 +1,6 @@
 import { START, END, Send, StateGraph } from "@langchain/langgraph";
 import { GraphAnnotation } from "@annotation";
-import { type GraphState } from "@state";
+import { type WebsiteBuilderGraphState } from "@state";
 import { graphParams } from "@core";
 // import { createPageGraph, createSectionGraph } from "@graphs/createPage";
 // import { CodeTaskType } from "@models/codeTask";
@@ -38,7 +38,7 @@ import { buildTasksAgent, resetStateNode } from "@nodes";
 //     });
 // }
 
-// const waitForUpdates = async(state: GraphState) => {
+// const waitForUpdates = async(state: WebsiteBuilderGraphState) => {
 //     return state;
 // }
 

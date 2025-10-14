@@ -1,12 +1,12 @@
 import { HumanMessage, BaseMessage } from '@langchain/core/messages';
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { type GraphState } from "@state";
+import { type CoreGraphState } from "@state";
 import { generateUUID, type ConsoleError } from "@types";
 import { isGraphInterrupt } from "@langchain/langgraph";
 import { runScenario } from '@services';
 import { vi } from 'vitest';
-export interface NodeTestResult {
-    state: GraphState;
+export interface NodeTestResult<TState extends CoreGraphState> {
+    state: TState;
     output: any;
     messages: BaseMessage[];
     error?: Error;
@@ -41,10 +41,10 @@ export interface GraphTestConfig {
  *   .stopAfter("nameProject")  // Can be any node, even in subgraphs
  *   .execute();
  */
-export class GraphTestBuilder {
+export class GraphTestBuilder<TGraphState extends CoreGraphState> {
     private prompt!: string;
     private targetNode!: string;
-    private initialState: Partial<GraphState> = {};
+    private initialState: Partial<TGraphState> = {};
     private config: Partial<LangGraphRunnableConfig> = {};
     private graph: any;
     private websiteName?: string; // Store project name for deferred loading
@@ -71,7 +71,7 @@ export class GraphTestBuilder {
     /**
      * Set the initial user prompt for the test
      */
-    withPrompt(prompt: string): GraphTestBuilder {
+    withPrompt(prompt: string): GraphTestBuilder<TGraphState> {
         this.prompt = prompt;
         return this;
     }
@@ -79,12 +79,12 @@ export class GraphTestBuilder {
     /**
      * Set the graph instance to test
      */
-    withGraph(graph: any): GraphTestBuilder {
+    withGraph(graph: any): GraphTestBuilder<TGraphState> {
         this.graph = graph;
         return this;
     }
 
-    withScenario(scenario: string): GraphTestBuilder {
+    withScenario(scenario: string): GraphTestBuilder<TGraphState> {
         this.scenario = scenario;
         return this;
     }
@@ -92,7 +92,7 @@ export class GraphTestBuilder {
     /**
      * Set additional initial state
      */
-    withState(state: Partial<GraphState>): GraphTestBuilder {
+    withState(state: Partial<TGraphState>): GraphTestBuilder<TGraphState> {
         this.initialState = { ...this.initialState, ...state };
         return this;
     }
@@ -100,7 +100,7 @@ export class GraphTestBuilder {
     /**
      * Set additional config options
      */
-    withConfig(config: Partial<LangGraphRunnableConfig>): GraphTestBuilder {
+    withConfig(config: Partial<LangGraphRunnableConfig>): GraphTestBuilder<TGraphState> {
         this.config = { ...this.config, ...config };
         return this;
     }
@@ -109,7 +109,7 @@ export class GraphTestBuilder {
      * Resume from a project's saved thread state (deferred until execution)
      * @param websiteName The name of the website to resume from
      */
-    withWebsite(websiteName: string): GraphTestBuilder {
+    withWebsite(websiteName: string): GraphTestBuilder<TGraphState> {
         this.websiteName = websiteName;
         // Clear any existing thread_id as it will be loaded from the project
         delete this.config.configurable?.thread_id;
@@ -142,7 +142,7 @@ export class GraphTestBuilder {
     /**
      * Specify which node to stop after (alias for testNode)
      */
-    stopAfter(nodeName: string): GraphTestBuilder {
+    stopAfter(nodeName: string): GraphTestBuilder<TGraphState> {
         this.targetNode = nodeName;
         return this;
     }
@@ -150,14 +150,14 @@ export class GraphTestBuilder {
     /**
      * Specify which node to test (alias for stopAfter)
      */
-    testNode(nodeName: string): GraphTestBuilder {
+    testNode(nodeName: string): GraphTestBuilder<TGraphState> {
         return this.stopAfter(nodeName);
     }
 
     /**
      * Capture outputs from specified prompt functions
      */
-    withPromptSpy(promptNames: string[]): GraphTestBuilder {
+    withPromptSpy(promptNames: string[]): GraphTestBuilder<TGraphState> {
         this.capturePrompts = promptNames;
         return this;
     }
@@ -165,7 +165,7 @@ export class GraphTestBuilder {
     /**
      * Capture outputs from specified service classes
      */
-    withServiceSpy(serviceNames: string[]): GraphTestBuilder {
+    withServiceSpy(serviceNames: string[]): GraphTestBuilder<TGraphState> {
         this.captureServices = serviceNames;
         return this;
     }
@@ -173,7 +173,7 @@ export class GraphTestBuilder {
     /**
      * Execute the graph up to the target node and return the result
      */
-    async execute(): Promise<NodeTestResult> {
+    async execute(): Promise<NodeTestResult<TGraphState>> {
         if (!this.prompt) {
             throw new Error("Prompt is required. Use .withPrompt() to set it.");
         }
@@ -214,11 +214,11 @@ export class GraphTestBuilder {
         const initialStateMessages = this.initialState.messages || [];
         // Prepare initial state with the user message
         const userMessage = new HumanMessage(this.prompt);
-        const initialState: GraphState = {
+        const initialState: TGraphState = {
             ...this.initialState,
             consoleErrors,
             messages: [...initialStateMessages, userMessage],
-        } as GraphState;
+        } as TGraphState;
 
         try {
             const testGraph = this.graph; 
@@ -456,22 +456,22 @@ export class GraphTestBuilder {
 /**
  * Factory function to create a new GraphTestBuilder
  */
-export function testGraph(): GraphTestBuilder {
-    return new GraphTestBuilder();
+export function testGraph<TGraphState extends CoreGraphState>(): GraphTestBuilder<TGraphState> {
+    return new GraphTestBuilder<TGraphState>();
 }
 
 /**
  * Helper to quickly test a node with minimal setup
  */
-export async function testNode(
+export async function testNode<TGraphState extends CoreGraphState>(
     graph: any,
     nodeName: string, 
     prompt: string,
     options?: {
-        state?: Partial<GraphState>;
+        state?: Partial<TGraphState>;
     }
-): Promise<NodeTestResult> {
-    const builder = new GraphTestBuilder()
+): Promise<NodeTestResult<TGraphState>> {
+    const builder = new GraphTestBuilder<TGraphState>()
         .withGraph(graph)
         .withPrompt(prompt)
         .stopAfter(nodeName);

@@ -1,4 +1,4 @@
-import { type GraphState } from "@state";
+import { type WebsiteBuilderGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { projectsApi } from "@services";
 import { BaseNode } from "@core";

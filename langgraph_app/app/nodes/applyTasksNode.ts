@@ -1,4 +1,4 @@
-import { type GraphState } from "@state";
+import { type WebsiteBuilderGraphState } from "@state";
 import { SaveTaskHistoryService } from "@services";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { BaseNode } from "@core";
@@ -6,11 +6,11 @@ import { BaseNode } from "@core";
 /**
  * Node that generates a project name based on the user's request
  */
-class SaveTaskHistoryNode extends BaseNode<GraphState> {
+class SaveTaskHistoryNode extends BaseNode<WebsiteBuilderGraphState> {
     async execute(
-        state: GraphState, 
+        state: WebsiteBuilderGraphState, 
         config?: LangGraphRunnableConfig
-    ): Promise<Partial<GraphState>> {
+    ): Promise<Partial<WebsiteBuilderGraphState>> {
         if (!state.completedTasks) {
             throw new Error("completedTasks are required");
         }

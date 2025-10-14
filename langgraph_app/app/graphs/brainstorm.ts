@@ -1,14 +1,14 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
-import { GraphAnnotation } from "@annotation";
-import { type GraphState } from "@state";
+import { BrainstormAnnotation } from "@annotation";
+import { type BrainstormGraphState } from "@state";
 import { graphParams } from "@core";
 import { askQuestionNode } from "@nodes";
 
-const router = async(state: GraphState): Promise<string> => {
+const router = async(state: BrainstormGraphState): Promise<string> => {
   return "askQuestion"
 }
 
-export const brainstormGraph = new StateGraph(GraphAnnotation)
+export const brainstormGraph = new StateGraph(BrainstormAnnotation)
     .addNode("askQuestion", askQuestionNode)
     // .addNode("update", updateGraph)
 
