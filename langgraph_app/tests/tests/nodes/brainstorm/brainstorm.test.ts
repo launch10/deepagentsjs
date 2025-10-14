@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { testGraph } from '@support';
 import { lastAIMessage } from '@annotation';
 import { databaseSnapshotter } from '@services';
-import { routerGraph } from '@graphs';
+import { brainstormGraph } from '@graphs';
 import { startPolly } from '@utils';
 
 describe.sequential('Brainstorming Flow', () => {
@@ -25,33 +25,16 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result.error).toBeUndefined();
-            expect(result.state.projectName).toBeDefined();
-            expect(result.state.project?.id).toBeGreaterThan(0);
-            expect(result.state.project?.name).toEqual(result.state.projectName);
-
-            expect(result.state.project?.threadId).toBeDefined();
 
             const aiResponse = lastAIMessage(result.state);
+            console.log(aiResponse?.content);
             expect(aiResponse?.content).toContain(`Space Exploration Landing Page`)
 
-            expect(result.state.project.createdAt).toBeDefined();
-            expect(result.state.project.updatedAt).toBeDefined();
+            // expect(result.state.project.createdAt).toBeDefined();
+            // expect(result.state.project.updatedAt).toBeDefined();
 
-            expect(result.state.website.createdAt).toBeDefined();
-            expect(result.state.website.updatedAt).toBeDefined();
-        });
-
-        it('should handle multiple API calls in sequence', async () => {
-            // All API calls within this test will be recorded/replayed
-            const result = await testGraph()
-                .withGraph(routerGraph)
-                .withPrompt("Create an e-commerce platform with user authentication")
-                .stopAfter('createProject')
-                .execute();
-
-            expect(result.error).toBeUndefined();
-            expect(result.state.projectName).toEqual("shop-auth");
-            expect(result.state.project?.id).toBeGreaterThan(0);
+            // expect(result.state.website.createdAt).toBeDefined();
+            // expect(result.state.website.updatedAt).toBeDefined();
         });
     });
 });

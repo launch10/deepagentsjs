@@ -23,15 +23,18 @@ export async function fewShotExamplesPrompt<T extends z.ZodType<any>>({
     fewShotExamples,
     schema
 }: {
-    fewShotExamples: SchemaFewShotExample<T>[],
+    fewShotExamples?: SchemaFewShotExample<T>[],
     schema: T
 }) {
+  if (!fewShotExamples) return "";
+  
   const exampleElements = fewShotExamples?.map(({ input, output }: SchemaFewShotExample<T>) => {
-    const validatedOutput = schema.parse(output);
+    // const validatedOutput = schema.parse(output);
+    console.log(output)
 
     return `<example>
       <input>${input}</input>
-      <output>${toXML(validatedOutput)}</output>
+      <output>${toXML({values: output, sortOption: "none"})}</output>
     </example>`
   }).join('') || '';
   

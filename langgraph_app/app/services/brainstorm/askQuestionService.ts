@@ -5,6 +5,7 @@ import { type NotificationOptions } from "@core";
 import { withStructuredResponse } from "@utils";
 import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
 import { type SchemaFewShotExample } from "@types";
+import { AIMessage } from "@langchain/core/messages";
 
 export const askQuestionInputSchema = z.object({
     messages: z.array(z.object({ role: z.string(), content: z.string() })).describe("The user's request/description for the project"),
@@ -35,7 +36,8 @@ export type AskQuestionOutput =
   | { question: string }
   | { question: SemiStructuredQuestionType };
 
-const basePrompt = ({
+
+const basePrompt = async ({
   messages, 
   question, 
   schema,
@@ -44,6 +46,12 @@ const basePrompt = ({
   question: QuestionType, 
   schema: z.ZodType<any>,
 }) => {
+  const [fewShotExamples, chatHistory, formatInstructions] = await Promise.all([
+    fewShotExamplesPrompt({ fewShotExamples: question.fewShotExamples, schema }),
+    chatHistoryPrompt({ messages }),
+    structuredOutputPrompt({ schema })
+  ]);
+
   return renderPrompt(`
     <background>
       The user wants to create a website for their business. 
@@ -64,18 +72,15 @@ const basePrompt = ({
       answers BASED ON what they've already told you about their business.
     </task>
 
-    ${question.fewShotExamples ? fewShotExamplesPrompt<typeof semiStructuredQuestionSchema>({ 
-        fewShotExamples: question.fewShotExamples, 
-        schema: semiStructuredQuestionSchema 
-      }) : ""}
+    ${fewShotExamples}
 
-    ${chatHistoryPrompt({messages})}
+    ${chatHistory}
 
     <question>
       ${question.question}
     </question>
 
-    ${structuredOutputPrompt({ schema })}
+    ${formatInstructions}
 `);
 }
 
@@ -95,10 +100,10 @@ const QUESTIONS: QuestionType[] = [
     question: "Tell us about your business. More info -> better outcomes.",
     style: "Verbatim"
   },
-  {
-    question: "Who are your customers, and what are they trying to achieve?",
-    style: "Rephrased"
-  },
+  // {
+  //   question: "Who are your customers, and what are they trying to achieve?",
+  //   style: "Verbatim"
+  // },
   {
     question: "How does [BUSINESS NAME] solve the customer's problem? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
     style: "Rephrased",
@@ -130,9 +135,18 @@ const QUESTIONS: QuestionType[] = [
 
 export class AskQuestionService {
   async execute(input: AskQuestionInput, config?: LangGraphRunnableConfig): Promise<AskQuestionOutput> {
-      const { messages, questionIndex } = input;
+      let { messages, questionIndex } = input;
       if (!messages) {
           throw new Error('User request is required');
+      }
+      questionIndex = questionIndex || 0;
+
+      if (questionIndex === 0) {
+        messages = [
+          new AIMessage(QUESTIONS[questionIndex]!.question),
+          ...messages,
+        ]
+        questionIndex++;
       }
 
       const nextQuestion = QUESTIONS[questionIndex];
@@ -151,7 +165,11 @@ export class AskQuestionService {
       
       const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
       const prompt = await basePrompt({ messages, question: nextQuestion, schema: outputSchema });
+      console.log(prompt);
       const structuredLlm = llm.withStructuredOutput(outputSchema);
-      return await structuredLlm.invoke(prompt) as AskQuestionOutput;
+      const result = await structuredLlm.invoke(prompt) as AskQuestionOutput;
+      console.log(`about to ask this bad boiiiii`);
+      console.log(result);
+      return result;
   }
 }
