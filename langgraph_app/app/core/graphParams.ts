@@ -6,7 +6,7 @@ import { env } from "./env";
 let checkpointer: PostgresSaver | null = null;
 
 // We only setup checkpointer if we're not running inside Langgraph server
-if (env.LANGGRAPH_SERVER !== true) {
+if (env.LANGGRAPH_SERVER !== 'true') {
     checkpointer = new PostgresSaver(pool);
     await checkpointer.setup(); // Run migrations only once
 }

@@ -165,11 +165,15 @@ export class AskQuestionService {
       
       const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
       const prompt = await basePrompt({ messages, question: nextQuestion, schema: outputSchema });
-      console.log(prompt);
+      // console.log(prompt);
+      // const result = await llm.invoke("Hello Mr. Antrhopic!")
+      // console.log(result);
       const structuredLlm = llm.withStructuredOutput(outputSchema);
       const result = await structuredLlm.invoke(prompt) as AskQuestionOutput;
-      console.log(`about to ask this bad boiiiii`);
-      console.log(result);
-      return result;
+
+      return [
+        ...messages,
+        new AIMessage(result.question),
+      ]
   }
 }

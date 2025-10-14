@@ -14,16 +14,13 @@ class AskQuestionNode extends BaseNode<BrainstormGraphState> {
   ): Promise<Partial<BrainstormGraphState>> {
     const service = new AskQuestionService();
 
-    const result: AskQuestionOutput = await service.execute({
+    const messages: AskQuestionOutput = await service.execute({
       messages: state.messages,
       questionIndex: state.questionIndex,
     }, config)
 
     return {
-      messages: [
-        ...state.messages,
-        new AIMessage(result.question),
-      ],
+      messages: messages
     };
   }
 }

@@ -26,9 +26,16 @@ describe.sequential('Brainstorming Flow', () => {
 
             expect(result.error).toBeUndefined();
 
+            console.log(result.state)
             const aiResponse = lastAIMessage(result.state);
-            console.log(aiResponse?.content);
-            expect(aiResponse?.content).toContain(`Space Exploration Landing Page`)
+            const question = aiResponse?.question
+
+            expect(question.intro).toContain(`Let's explore how Friend of the Pod makes podcast discovery easier`)
+            expect(question.question).toContain(`How does Friend of the Pod solve the podcast discovery problem for listeners and creators?`)
+            expect(question.sampleResponses[0]).toContain(`Friend of the Pod uses AI-powered matching algorithms`);
+            expect(question.sampleResponses[1]).toContain(`saves listeners hours of trial-and-error by providing personalized podcast recommendations`)
+            expect(question.sampleResponses[2]).toContain(`find their ideal audience`)
+            expect(question.conclusion).toContain(`What unique solution does Friend of the Pod offer to make podcast discovery easier and more effective?`)
 
             // expect(result.state.project.createdAt).toBeDefined();
             // expect(result.state.project.updatedAt).toBeDefined();
