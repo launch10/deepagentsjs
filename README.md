@@ -1,9 +1,10 @@
 # Launch10
 
-Launch10 consists of two main components that work together:
+NicheFinder consists of three main components that work together:
 
 1. The Rails repo (built off Jumpstart Pro + inertia rails frontend)
 2. The Langgraph repo (builds the landing pages, SEO plans, and deployments)
+3. The Atlas repo (user-deployed landing pages built on Cloudflare Workers)
 
 ## Running Frontend
 
