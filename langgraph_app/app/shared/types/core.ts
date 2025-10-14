@@ -36,3 +36,12 @@ export const baseModelSchema = z.object({
 export type BaseModelType = z.infer<typeof baseModelSchema>;
 
 export type DataType<T extends BaseModelType> = Omit<T, keyof BaseModelType>;
+
+export interface SchemaFewShotExample<T extends z.ZodType<any>> {
+    input: string;
+    output: z.infer<T>;
+}
+export interface FewShotExampleType {
+    input: string;
+    output: string;
+}

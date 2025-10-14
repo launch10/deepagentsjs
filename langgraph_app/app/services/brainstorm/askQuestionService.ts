@@ -2,9 +2,9 @@ import { z } from "zod";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLlm, LLMSkill, LLMSpeed } from "@core";
 import { type NotificationOptions } from "@core";
-import { chatHistoryPrompt, fewShotExamplesPrompt, formatInstructionsPrompt, structuredOutputPrompt } from "@prompts";
 import { withStructuredResponse } from "@utils";
-import { renderPrompt } from "@prompts";
+import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
+import { type SchemaFewShotExample } from "@types";
 
 export const askQuestionInputSchema = z.object({
     messages: z.array(z.object({ role: z.string(), content: z.string() })).describe("The user's request/description for the project"),
@@ -17,7 +17,17 @@ const askQuestionOutputSchema = z.object({
     askQuestion: z.string().describe("The unique-name-of-the-project using kebab-case"),
 });
 
-const basePrompt = (messages: string, question: string, schema: string) => {
+// Define a schema that matches the desired output structure
+const semiStructuredQuestionSchema = z.object({
+  intro: z.string().describe("A brief, engaging introductory sentence or two, personalized to the user's business."),
+  question: z.string().describe("The core question being asked, adapted for the user's context."),
+  sampleResponses: z.array(z.string()).describe("A list of 3 high-quality, diverse sample responses relevant to the user's business."),
+  conclusion: z.string().describe("A concluding sentence to re-engage the user, potentially repeating the core question."),
+});
+
+export type SemiStructuredQuestionType = z.infer<typeof semiStructuredQuestionSchema>;
+
+const basePrompt = (messages: { role: string; content: string }[], question: QuestionType, schema: z.ZodType<any>) => {
   return renderPrompt(`
     <background>
       The user wants to create a website for their business. 
@@ -38,15 +48,18 @@ const basePrompt = (messages: string, question: string, schema: string) => {
       answers BASED ON what they've already told you about their business.
     </task>
 
-    ${fewShotExamplesPrompt(question)}
+    ${fewShotExamplesPrompt<typeof semiStructuredQuestionSchema>({ 
+        fewShotExamples: question.fewShotExamples, 
+        schema: semiStructuredQuestionSchema 
+      })}
 
-    ${chatHistoryPrompt(messages)}
+    ${chatHistoryPrompt({messages})}
 
     <question>
       ${question}
     </question>
 
-    ${formatInstructionsPrompt(schema)}
+    ${structuredOutputPrompt(schema)}
 `);
 }
 
@@ -55,13 +68,24 @@ export const notificationContext: NotificationOptions = {
 };
 
 type QuestionStyle = "Verbatim" | "Rephrased";
-
-interface Question {
+interface QuestionType {
     question: string;
     style: QuestionStyle;
+    fewShotExamples?: SchemaFewShotExample<typeof semiStructuredQuestionSchema>[];
 }
 
-const QUESTIONS: Question[] = [
+const exampleData = {
+  intro: "Great! Let's dig into what makes ImpactZone special.",
+  question: "How does ImpactZone solve the customer's problem?",
+  sampleResponses: [
+    "ImpactZone offers a wide range of high-intensity workouts, including HIIT, Tabata, and circuit training.",
+    "ImpactZone is proven to increase caloric burn by 20%.",
+    "ImpactZone builds accountability through group training and community."
+  ],
+  conclusion: "So what do you think? How does ImpactZone solve the customer's problem?"
+};
+
+const QUESTIONS: QuestionType[] = [
   {
     question: "Tell us about your business. More info -> better outcomes.",
     style: "Verbatim"
@@ -75,11 +99,17 @@ const QUESTIONS: Question[] = [
     style: "Rephrased",
     fewShotExamples: [
       { 
-        context: "The user is a gym owner, whose gym is focused on high-impact cardio.",
-        sampleResponses: [
-          "The gym offers a wide range of high-intensity workouts, including HIIT, Tabata, and circuit training."
-        ]
-
+        input: "The user is a gym owner, whose gym (ImpactZone) is focused on high-impact cardio.",
+        output: {
+          intro: "Great! Let's dig into what makes ImpactZone special.",
+          question: "How does ImpactZone solve the customer's problem?",
+          sampleResponses: [
+            "ImpactZone offers a wide range of high-intensity workouts, including HIIT, Tabata, and circuit training.",
+            "ImpactZone is proven to increase caloric burn by 20%.",
+            "ImpactZone builds accountability through group training and community."
+          ],
+          conclusion: "So what do you think? How does ImpactZone solve the customer's problem?"
+        }
       }
     ]
   },

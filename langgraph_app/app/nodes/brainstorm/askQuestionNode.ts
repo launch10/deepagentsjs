@@ -4,7 +4,7 @@ import { BaseNode } from "@core";
 import { AskQuestionService } from "@services";
 
 /**
- * Node that asks a question to the user during brainstorming modej
+ * Node that asks a question to the user during brainstorming mode
  */
 class AskQuestionNode extends BaseNode<BrainstormGraphState> {
   async execute(
