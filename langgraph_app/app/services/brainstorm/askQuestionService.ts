@@ -150,7 +150,8 @@ export class AskQuestionService {
       }
       questionIndex = questionIndex || 0;
 
-      const nextQuestion = QUESTIONS[questionIndex];
+      const actualQuestionIndex = questionIndex === 0 ? 1 : questionIndex;
+      const nextQuestion = QUESTIONS[actualQuestionIndex];
 
       if (!nextQuestion) {
           throw new Error('Invalid question index');
