@@ -12,7 +12,7 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Full brainstorming conversation flow", () => {
-        it("provides additional support if the first question isn't properly answered", async () => {
+        it.only("provides additional support if the first question isn't properly answered", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Sorry, what's going on?`)
@@ -73,7 +73,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.messages).toHaveLength(3);
         });
 
-        it.only("should ask the 2nd question again if the user fails the guardrail", async () => {
+        it("should ask the 2nd question again if the user fails the guardrail", async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -95,7 +95,7 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result2.error).toBeUndefined();
-            console.log(result2.state.messages)
+            console.log(result2.state.nextQuestion)
             expect(result2.state.questionIndex).toBe(1);
             expect(result2.state.userNeedsHelp).toBe(true);
             expect(result2.state.nextQuestion.key).toBe('customers');
@@ -107,8 +107,8 @@ describe.sequential('Brainstorming Flow', () => {
                 .withGraph(brainstormGraph)
                 .withPrompt(`Pasta is so good it makes me want to die.`)
                 .withState({
-                    messages: result1.state.messages,
-                    questionIndex: result1.state.questionIndex
+                    messages: result2.state.messages,
+                    questionIndex: result2.state.questionIndex
                 })
                 .stopAfter('askQuestion')
                 .execute();
@@ -128,7 +128,7 @@ describe.sequential('Brainstorming Flow', () => {
             // AI guides back...
             // user is still excited about pasta...
             // AI guides back... -> 7 messages
-            console.log(result3.state.messages)
+            console.log(result3.state.nextQuestion.question)
             expect(result3.state.messages).toHaveLength(7);
             expect(result3.state.messages?.filter((msg) => isHumanMessage(msg))).toHaveLength(3);
             expect(result3.state.messages?.filter((msg) => isAIMessage(msg))).toHaveLength(4);

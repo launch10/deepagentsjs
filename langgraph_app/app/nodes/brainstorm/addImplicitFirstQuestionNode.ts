@@ -32,7 +32,6 @@ class AddImplicitFirstQuestionNode extends BaseNode<BrainstormGraphState> {
       new AIMessage(questionText),
       ...state.messages,
     ];
-    console.log(newMessages);
     return {
         messages: newMessages
     }

@@ -1,6 +1,7 @@
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
-import { BaseMessage, type BaseMessageLike } from "@langchain/core/messages";
-import type { BrainstormNextStepType, QuestionType } from "@types";
+import { AIMessage, BaseMessage, type BaseMessageLike } from "@langchain/core/messages";
+import type { BrainstormNextStepType, QuestionType, Message } from "@types";
+import { getFirstQuestion, isHumanMessage } from "@types";
 
 export const BrainstormAnnotation = Annotation.Root({
     error: Annotation<string | undefined>({
@@ -18,9 +19,22 @@ export const BrainstormAnnotation = Annotation.Root({
         reducer: (current, next) => next
     }),
 
-    messages: Annotation<BaseMessage[], BaseMessageLike[]>({ 
+    messages: Annotation<Message[], Message[]>({ 
         default: () => [],
-        reducer: messagesStateReducer
+        reducer: (existing, incoming) => {
+            if (Array.isArray(incoming) && incoming.length > 0 && incoming.length > existing.length) {
+                const firstQuestion: AIMessage = getFirstQuestion();
+                const incomingQuestion = incoming[0];
+                if (!incomingQuestion || !isHumanMessage(incomingQuestion)) {
+                    return incoming;
+                }
+                const hasFirstQuestion = incomingQuestion.content === firstQuestion.content;
+                if (hasFirstQuestion && existing.length > 0 && existing[0]?.content !== firstQuestion.content) {
+                    return incoming;
+                }
+            }
+            return messagesStateReducer(existing, incoming) as unknown as Message[];
+        }
     }),
 
     nextQuestion: Annotation<QuestionType | undefined>({

@@ -94,6 +94,10 @@ const basePrompt = async ({
     </question>
 
     ${formatInstructions}
+
+    <important>
+      Be extremely concise. Sacrifice grammar for the sake of concision.
+    </important>
 `);
 }
 
@@ -119,17 +123,12 @@ export class AskQuestionService {
 
       let questionVariant: QuestionVariantType;
       
-      console.log(`does user needs help? ${userNeedsHelp}`)
       if (userNeedsHelp) {
         questionVariant = nextQuestion.variants.helpful;
       } else {
         questionVariant = (nextQuestion.default === "simple" ? nextQuestion.variants.simple : nextQuestion.variants.helpful)!;
       }
 
-      console.log(nextQuestion.default)
-      console.log(nextQuestionIndex)
-      console.log(nextQuestion.variants)
-      console.log(questionVariant)
       if (questionVariant.style === "Verbatim") {
         return { 
           question: {

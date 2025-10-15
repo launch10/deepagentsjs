@@ -1,5 +1,6 @@
 import z from "zod";
 import { type SchemaFewShotExample } from "@types";
+import { AIMessage } from "@langchain/core/messages";
 
 export const QUESTION_KEYS = ["introduction", "customers", "valueProp", "socialProof", "lookAndFeel"] as const;
 
@@ -187,3 +188,7 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
   },
 
 ]
+
+export const getFirstQuestion = () => {
+  return new AIMessage(BRAINSTORMING_QUESTIONS[0]!.variants["simple"]!.question);
+}
