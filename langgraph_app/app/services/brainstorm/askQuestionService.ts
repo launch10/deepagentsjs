@@ -1,9 +1,9 @@
 import { z } from "zod";
-import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { StateGraph, type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLlm, LLMSkill, LLMSpeed } from "@core";
 import { type NotificationOptions } from "@core";
 import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
-import { type QuestionType, type QuestionVariantType, type StructuredQuestionType, BRAINSTORMING_QUESTIONS } from "@types";
+import { type QuestionType, type QuestionVariantType, BRAINSTORMING_QUESTIONS, createBrainstormingMessage } from "@types";
 import { messageSchema, type Message } from "@types";
 
 export const askQuestionInputSchema = z.object({
@@ -14,7 +14,7 @@ export const askQuestionInputSchema = z.object({
 
 export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
 
-export type AskQuestionOutput = { question: QuestionType, questionIndex: number };
+export type AskQuestionOutput = { question: QuestionType, questionIndex: number, messages: Message[] };
 
 const structuredQuestionSchema = z.object({
   intro: z.string().describe("A brief, engaging introductory sentence or two, personalized to the user's business."),
@@ -153,12 +153,17 @@ export class AskQuestionService {
       const structuredLlm = llm.withStructuredOutput(outputSchema);
       const result = await structuredLlm.invoke(prompt);
 
+      let updatedMessages = messages;
+      let question: QuestionType = {
+        key: nextQuestion.name,
+        type: outputType,
+        question: result.question
+      }
+      updatedMessages.push(createBrainstormingMessage(question)); 
+
       return { 
-        question: {
-          key: nextQuestion.name,
-          type: outputType,
-          question: result.question
-        },
+        messages: updatedMessages,
+        question: question,
         questionIndex: nextQuestionIndex
       };
   }

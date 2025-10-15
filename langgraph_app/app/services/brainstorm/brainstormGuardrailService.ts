@@ -60,7 +60,7 @@ export class BrainstormGuardrailService {
                 provided a response. Determine if the user's response adequately answers the question.
                 
                 CRITICAL: Return ONLY the two required fields: isOnTopic (boolean) and reasoning (string).
-                Do NOT include any other fields such as "message" or any user content.
+                Do NOT include any other fields.
             </task>
             
             <classification_criteria>
@@ -78,10 +78,6 @@ export class BrainstormGuardrailService {
                 3. **Completely unrelated responses:**
                 - Answers that have no connection to the question asked
                 - Random topic changes that don't address the question
-                
-                4. **Non-answers:**
-                - Empty or meaningless responses ("...", "um", "idk")
-                - Acknowledgments without content ("ok", "sure", "yes")
                 
                 Mark as ON-TOPIC if the user's response shows ANY of these:
                 
@@ -109,6 +105,11 @@ export class BrainstormGuardrailService {
                 address the question.
             </decision_framework>
 
+            <important>
+                Be GENEROUS with the user's response. If they made a reasonable attempt to answer,
+                even if minimal, mark as ON-TOPIC.
+            </important>
+
             <question>
                 ${lastAIMessage?.content}
             </question>
@@ -120,10 +121,6 @@ export class BrainstormGuardrailService {
             ${chatHistory}
 
             ${formatInstructions}
-
-            <important>
-                Be extremely concise. Sacrifice grammar for the sake of concision.
-            </important>
         `);
 
         const llm = getLlm(LLMSkill.Planning, LLMSpeed.Slow);

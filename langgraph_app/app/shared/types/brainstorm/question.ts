@@ -192,3 +192,22 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
 export const getFirstQuestion = () => {
   return new AIMessage(BRAINSTORMING_QUESTIONS[0]!.variants["simple"]!.question);
 }
+
+export const createBrainstormingMessage = (question: QuestionType) => {
+  if (question.type === "structured") {
+    const text = `
+    ${question.question.intro}
+    
+    ${question.question.question}
+
+    ${question.question.sampleResponses.map((response) => `* ${response}`).join("\n")}
+    
+    ${question.question.conclusion}
+    `
+   const message = new AIMessage(text);
+    message.response_metadata.question = question;
+   return message;
+  } else {
+    return new AIMessage(question.question);
+  }
+}

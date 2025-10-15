@@ -12,7 +12,7 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Full brainstorming conversation flow", () => {
-        it.only("provides additional support if the first question isn't properly answered", async () => {
+        it("provides additional support if the first question isn't properly answered", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Sorry, what's going on?`)
@@ -95,7 +95,6 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result2.error).toBeUndefined();
-            console.log(result2.state.nextQuestion)
             expect(result2.state.questionIndex).toBe(1);
             expect(result2.state.userNeedsHelp).toBe(true);
             expect(result2.state.nextQuestion.key).toBe('customers');
@@ -128,13 +127,12 @@ describe.sequential('Brainstorming Flow', () => {
             // AI guides back...
             // user is still excited about pasta...
             // AI guides back... -> 7 messages
-            console.log(result3.state.nextQuestion.question)
             expect(result3.state.messages).toHaveLength(7);
             expect(result3.state.messages?.filter((msg) => isHumanMessage(msg))).toHaveLength(3);
             expect(result3.state.messages?.filter((msg) => isAIMessage(msg))).toHaveLength(4);
         });
 
-        it('should ask third question (structured) after second response', async () => {
+        it.only('should ask third question (structured) after second response', async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -143,7 +141,7 @@ describe.sequential('Brainstorming Flow', () => {
 
             const result2 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
-                .withPrompt(`Podcast listeners looking to discover new shows, and creators seeking their audience.`)
+                .withPrompt(`Podcasts guests looking to promote their book or service`)
                 .withState({
                     messages: result1.state.messages,
                     questionIndex: result1.state.questionIndex
@@ -174,6 +172,7 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(questionContent.conclusion).toBeTruthy();
             }
             
+            console.log(result2.state.messages)
             expect(result2.state.messages).toHaveLength(5);
             expect(result2.state.messages?.filter((msg) => isHumanMessage(msg))).toHaveLength(2);
             expect(result2.state.messages?.filter((msg) => isAIMessage(msg))).toHaveLength(3);

@@ -6,7 +6,6 @@ export function withLogging() {
         const originalMethod = descriptor.value;
         
         descriptor.value = async function(...args: any[]) {
-            console.log("Executing node: ", this.constructor.name);
             return await originalMethod.apply(this, args);
         };
         

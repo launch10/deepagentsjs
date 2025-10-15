@@ -20,17 +20,10 @@ class AskQuestionNode extends BaseNode<BrainstormGraphState> {
       userNeedsHelp: state.userNeedsHelp,
     }, config)
 
-    const messageContent = typeof result.question === 'string' 
-      ? result.question 
-      : result.question.question;
-
-    const messages = [...state.messages];
-    messages.push(new AIMessage(messageContent));
-
     return {
       nextQuestion: result.question,
       questionIndex: result.questionIndex,
-      messages
+      messages: result.messages
     };
   }
 }
