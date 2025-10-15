@@ -14,7 +14,7 @@ export const askQuestionInputSchema = z.object({
 
 export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
 
-export type AskQuestionOutput = { question: QuestionType };
+export type AskQuestionOutput = { question: QuestionType, questionIndex: number };
 
 const structuredQuestionSchema = z.object({
   intro: z.string().describe("A brief, engaging introductory sentence or two, personalized to the user's business."),
@@ -123,13 +123,18 @@ export class AskQuestionService {
         questionVariant = (nextQuestion.default === "simple" ? nextQuestion.variants.simple : nextQuestion.variants.helpful)!;
       }
 
+      console.log(nextQuestion.default)
+      console.log(nextQuestionIndex)
+      console.log(nextQuestion.variants)
+      console.log(questionVariant)
       if (questionVariant.style === "Verbatim") {
         return { 
           question: {
             key: nextQuestion.name,
             type: "simple",
             question: questionVariant.question 
-          }
+          },
+          questionIndex: nextQuestionIndex
         }
       }
 
@@ -151,7 +156,8 @@ export class AskQuestionService {
           key: nextQuestion.name,
           type: outputType,
           question: result.question
-        } 
+        },
+        questionIndex: nextQuestionIndex
       };
   }
 }

@@ -27,16 +27,9 @@ class AskQuestionNode extends BaseNode<BrainstormGraphState> {
     const messages = [...state.messages];
     messages.push(new AIMessage(messageContent));
 
-    let nextQuestionIndex: number;
-    if (state.userNeedsHelp) {
-      nextQuestionIndex = state.questionIndex === 0 ? 1 : state.questionIndex;
-    } else {
-      nextQuestionIndex = state.questionIndex === 0 ? 2 : state.questionIndex + 1;
-    }
-
     return {
       nextQuestion: result.question,
-      questionIndex: nextQuestionIndex,
+      questionIndex: result.questionIndex,
       messages
     };
   }

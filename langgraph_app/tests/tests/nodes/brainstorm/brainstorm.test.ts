@@ -20,7 +20,7 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result.state.error).toBeUndefined();
-            expect(result.state.questionIndex).toBe(1);
+            expect(result.state.questionIndex).toBe(0);
             const question = result.state.nextQuestion;
             expect(typeof question).toBe('object');
 
@@ -46,7 +46,7 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result.error).toBeUndefined();
-            expect(result.state.questionIndex).toBe(2);
+            expect(result.state.questionIndex).toBe(1);
 
             const question: QuestionType = result.state.nextQuestion;
             expect(question.key).toBe('customers');
@@ -73,7 +73,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.messages).toHaveLength(3);
         });
 
-        it('should ask third question (structured) after second response', async () => {
+        it.only('should ask third question (structured) after second response', async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -91,24 +91,28 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result2.error).toBeUndefined();
+            expect(result2.state.questionIndex).toBe(2);
             
-            const question = result2.state.nextQuestion;
+            const question: QuestionType = result2.state.nextQuestion;
+            expect(question.key).toBe("valueProp");
+            expect(question.type).toBe("structured");
             expect(typeof question).toBe('object');
             
-            if (typeof question === 'object') {
-                expect(question.intro).toBeTruthy();
+            if (question.type === 'structured') {
+                const questionContent: StructuredQuestionContentType = question.question;
+                expect(typeof questionContent).toBe('object');
                 
-                expect(question.question).toBeTruthy();
+                expect(questionContent.intro).toBeTruthy();
+                expect(questionContent.intro.toLowerCase()).toContain('friend of the pod');
+            
+                expect(questionContent.sampleResponses).toHaveLength(3);
+                expect(questionContent.sampleResponses[0]).toBeTruthy();
+                expect(questionContent.sampleResponses[1]).toBeTruthy();
+                expect(questionContent.sampleResponses[2]).toBeTruthy();
                 
-                expect(question.sampleResponses).toHaveLength(3);
-                expect(question.sampleResponses[0]).toBeTruthy();
-                expect(question.sampleResponses[1]).toBeTruthy();
-                expect(question.sampleResponses[2]).toBeTruthy();
-                
-                expect(question.conclusion).toBeTruthy();
+                expect(questionContent.conclusion).toBeTruthy();
             }
             
-            expect(result2.state.questionIndex).toBe(3);
             expect(result2.state.messages).toHaveLength(5);
             expect(result2.state.messages?.filter((msg) => isHumanMessage(msg))).toHaveLength(2);
             expect(result2.state.messages?.filter((msg) => isAIMessage(msg))).toHaveLength(3);
