@@ -37,6 +37,7 @@
 /config/master.key
 /config/credentials/*.key
 !/config/credentials/test.key
+!/config/credentials/development.key
 
 # Ignore other files
 .byebug_history
@@ -55,7 +56,6 @@ node_modules
 *.local
 
 
-/config/credentials/development.key
 
 # Added by Claude Task Master
 # Logs
