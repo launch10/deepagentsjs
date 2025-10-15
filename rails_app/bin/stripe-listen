@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+require_relative "../config/environment"
+
+key = Rails.application.credentials.dig(:stripe, :private_key)
+
+if key.nil? || key.empty?
+  puts "Error: Stripe secret key not found in Rails credentials"
+  exit 1
+end
+
+exec("stripe", "listen", "--api-key", key, "--forward-to", "localhost:3000/webhooks/stripe")
