@@ -1,5 +1,5 @@
 import { renderPrompt } from '@prompts';
-import { BaseMessage } from "@langchain/core/messages";
+import { type Message } from "@types";
 
 /**
  * The chatHistory function renders a <chat-history> tag,
@@ -17,12 +17,9 @@ import { BaseMessage } from "@langchain/core/messages";
  * chatHistory({ messages })
  * ```
  */
-export async function chatHistoryPrompt({ messages }: { messages: BaseMessage[] }): Promise<string> {
+export async function chatHistoryPrompt({ messages }: { messages: Message[] }): Promise<string> {
   const messageElements = messages?.map((message) => {
-    const role = (message.constructor.name === "AIMessage") ? "assistant" : "user";
-    const content = message.content;
-
-    return `<message>${role}: ${JSON.stringify(content, null, 4)}</message>`;
+    return `<message>${message.type}: ${JSON.stringify(message.content, null, 4)}</message>`;
   }).join('') || '';
   
   return renderPrompt(`<chat-history>${messageElements}</chat-history>`);

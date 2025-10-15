@@ -7,6 +7,7 @@ AI-powered A/B tests for solo founders and marketers.
 ```bash
 nvm use && pnpm install
 cp .env.example .env
+cp .env.test.example .env.test
 pnpm test
 ```
 

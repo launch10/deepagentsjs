@@ -4,7 +4,7 @@ import { type BrainstormGraphState } from '@state';
 import { databaseSnapshotter } from '@services';
 import { brainstormGraph } from '@graphs';
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
-import { isHumanMessage, isAIMessage } from '@types';
+import { isHumanMessage, isAIMessage, type StructuredQuestionContentType, type QuestionType } from '@types';
 
 describe.sequential('Brainstorming Flow', () => {
     beforeAll(async () => {
@@ -12,7 +12,7 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Full brainstorming conversation flow", () => {
-        it.only("provides additional support if the first question isn't properly answered", async () => {
+        it("provides additional support if the first question isn't properly answered", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Sorry, what's going on?`)
@@ -20,18 +20,22 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result.state.error).toBeUndefined();
-            console.log(result.state)
             expect(result.state.questionIndex).toBe(1);
             const question = result.state.nextQuestion;
             expect(typeof question).toBe('object');
-            
-            if (typeof question === 'object') {
-                expect(question.intro).toBeTruthy();
-                expect(question.question).toBeTruthy();
-                expect(question.sampleResponses).toHaveLength(3);
-                expect(question.conclusion).toBeTruthy();
+
+            expect(question.key).toBe('introduction');
+            expect(question.type).toBe('structured'); // We now give the user more information...
+
+            if (question.type === 'structured') {
+                const questionContent: StructuredQuestionContentType = question.question;
+                expect(typeof questionContent).toBe('object');
+                
+                expect(questionContent.intro).toBeTruthy();
+                expect(questionContent.question).toBeTruthy();
+                expect(questionContent.sampleResponses).toHaveLength(3);
+                expect(questionContent.conclusion).toBeTruthy();
             }
-            console.log(question)
         });
 
         it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
@@ -42,25 +46,26 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result.error).toBeUndefined();
-
-            const question = result.state.nextQuestion;
-            expect(typeof question).toBe('object');
-            
-            if (typeof question === 'object') {
-                expect(question.intro).toBeTruthy();
-                expect(question.intro.toLowerCase()).toContain('friend of the pod');
-                
-                expect(question.question).toBeTruthy();
-                
-                expect(question.sampleResponses).toHaveLength(3);
-                expect(question.sampleResponses[0]).toBeTruthy();
-                expect(question.sampleResponses[1]).toBeTruthy();
-                expect(question.sampleResponses[2]).toBeTruthy();
-                
-                expect(question.conclusion).toBeTruthy();
-            }
-            
             expect(result.state.questionIndex).toBe(2);
+
+            const question: QuestionType = result.state.nextQuestion;
+            expect(question.key).toBe('customers');
+            expect(question.type).toBe('structured');
+
+            if (question.type === 'structured') {
+                const questionContent: StructuredQuestionContentType = question.question;
+                expect(typeof questionContent).toBe('object');
+                
+                expect(questionContent.intro).toBeTruthy();
+                expect(questionContent.intro.toLowerCase()).toContain('friend of the pod');
+            
+                expect(questionContent.sampleResponses).toHaveLength(3);
+                expect(questionContent.sampleResponses[0]).toBeTruthy();
+                expect(questionContent.sampleResponses[1]).toBeTruthy();
+                expect(questionContent.sampleResponses[2]).toBeTruthy();
+                
+                expect(questionContent.conclusion).toBeTruthy();
+            }
 
             // 1 tacit AI message ("What is your business?") + 
             // 1 human ("Friend of the Pod is a podcast matchmaking service.") + 
