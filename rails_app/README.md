@@ -14,10 +14,6 @@ You'll need the following installed to run the template successfully:
 
 Optionally, the [Stripe CLI](https://docs.stripe.com/stripe-cli) to sync webhooks in development.
 
-## CI
-
-Tests run on CircleCI and are configured in .circleci/config.yml
-
 ## Getting Started
 
 1. Clone the repository
@@ -28,11 +24,23 @@ Tests run on CircleCI and are configured in .circleci/config.yml
 After pulling main, you should always run:
 
 ```bash
+cp .env.example .env
 nvm use && pnpm install
 bundle install # sync gems
 bundle exec rake db:migrate # sync database
 bundle exec rake seeds:template # sync templates
 ```
+
+## Running The Server
+
+```bash
+bin/dev
+rails s
+```
+
+## CI
+
+Tests run on CircleCI and are configured in .circleci/config.yml
 
 ## Templates Are The Source of Truth For Websites
 
