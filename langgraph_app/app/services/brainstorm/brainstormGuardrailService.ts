@@ -38,7 +38,6 @@ export class BrainstormGuardrailService {
         const AIMessages = messages.filter(isAIMessage)
         const lastAIMessage = AIMessages[AIMessages.length - 1];
 
-        console.log(`last ai message is: ${lastAIMessage.content}`)
         if (!lastAIMessage) {
             if (questionIndex !== 0) {
                 return { userNeedsHelp: false };

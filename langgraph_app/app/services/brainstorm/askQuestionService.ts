@@ -254,6 +254,7 @@ export const notificationContext: NotificationOptions = {
 
 export class AskQuestionService {
   async execute(input: AskQuestionInput, config?: LangGraphRunnableConfig): Promise<AskQuestionOutput> {
+    console.log(input)
       let { messages, questionIndex, userNeedsHelp } = input;
       if (!messages) {
           throw new Error('Messages are required');
@@ -263,8 +264,8 @@ export class AskQuestionService {
 
       const actualQuestionIndex = questionIndex === 0 ? 1 : questionIndex;
       const nextQuestion = QUESTIONS[actualQuestionIndex - 1];
-      console.log(`next question:`, nextQuestion)
 
+      console.log(`user needs help??? ${userNeedsHelp}`)
       if (!nextQuestion) {
           throw new Error('Invalid question index');
       }
@@ -295,6 +296,7 @@ export class AskQuestionService {
       const structuredLlm = llm.withStructuredOutput(outputSchema);
       const result = await structuredLlm.invoke(prompt);
 
+      console.log(input)
       return { question: result.question };
   }
 }

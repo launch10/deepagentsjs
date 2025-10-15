@@ -19,6 +19,8 @@ describe.sequential('Brainstorming Flow', () => {
                 .stopAfter('askQuestion')
                 .execute();
 
+            expect(result.state.error).toBeUndefined();
+            console.log(result.state)
             expect(result.state.questionIndex).toBe(1);
             const question = result.state.nextQuestion;
             expect(typeof question).toBe('object');

@@ -17,7 +17,7 @@ class AskQuestionNode extends BaseNode<BrainstormGraphState> {
     const result: AskQuestionOutput = await service.execute({
       messages: state.messages,
       questionIndex: state.questionIndex,
-      useHelpfulVariant: state.useHelpfulVariant,
+      userNeedsHelp: state.userNeedsHelp,
     }, config)
 
     const messageContent = typeof result.question === 'string' 
@@ -28,7 +28,7 @@ class AskQuestionNode extends BaseNode<BrainstormGraphState> {
     messages.push(new AIMessage(messageContent));
 
     let nextQuestionIndex: number;
-    if (state.useHelpfulVariant) {
+    if (state.userNeedsHelp) {
       nextQuestionIndex = state.questionIndex === 0 ? 1 : state.questionIndex;
     } else {
       nextQuestionIndex = state.questionIndex === 0 ? 2 : state.questionIndex + 1;
