@@ -95,14 +95,43 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result2.error).toBeUndefined();
+            console.log(result2.state.messages)
             expect(result2.state.questionIndex).toBe(1);
             expect(result2.state.userNeedsHelp).toBe(true);
             expect(result2.state.nextQuestion.key).toBe('customers');
 
             // We should address the pasta response somewhere
             expect(JSON.stringify(result2.state.nextQuestion.question)).toContain('pasta');
-            
-            console.log(result2.state)
+
+            const result3 = await testGraph<BrainstormGraphState>()
+                .withGraph(brainstormGraph)
+                .withPrompt(`Pasta is so good it makes me want to die.`)
+                .withState({
+                    messages: result1.state.messages,
+                    questionIndex: result1.state.questionIndex
+                })
+                .stopAfter('askQuestion')
+                .execute();
+
+            expect(result3.error).toBeUndefined();
+            expect(result3.state.questionIndex).toBe(1);
+            expect(result3.state.userNeedsHelp).toBe(true);
+            expect(result3.state.nextQuestion.key).toBe('customers');
+
+            // We should address the pasta response somewhere
+            expect(JSON.stringify(result3.state.nextQuestion.question)).toContain('pasta');
+
+            // initial AI question ("Tell us about your business")
+            // user response (good)
+            // AI asks about customers
+            // pasta response (bad)
+            // AI guides back...
+            // user is still excited about pasta...
+            // AI guides back... -> 7 messages
+            console.log(result3.state.messages)
+            expect(result3.state.messages).toHaveLength(7);
+            expect(result3.state.messages?.filter((msg) => isHumanMessage(msg))).toHaveLength(3);
+            expect(result3.state.messages?.filter((msg) => isAIMessage(msg))).toHaveLength(4);
         });
 
         it('should ask third question (structured) after second response', async () => {
