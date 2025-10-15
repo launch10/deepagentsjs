@@ -2,52 +2,52 @@ import { z } from "zod";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLlm, LLMSkill, LLMSpeed } from "@core";
 import { renderPrompt, chatHistoryPrompt, structuredOutputPrompt } from "@prompts";
-import { BaseMessage } from "@langchain/core/messages";
+import { isHumanMessage, isAIMessage } from "@types";
 
-export const checkResponseInputSchema = z.object({
+export const brainstormGuardrailInputSchema = z.object({
     messages: z.array(z.any()).describe("The conversation messages"),
     questionIndex: z.number().describe("The current question index"),
 });
 
-export type CheckResponseInput = z.infer<typeof checkResponseInputSchema>;
+export type BrainstormGuardrailInput = z.infer<typeof brainstormGuardrailInputSchema>;
 
-const responseCheckSchema = z.object({
+const brainstormGuardrailPromptOutputSchema = z.object({
     isOnTopic: z.boolean().describe("Whether the user's response adequately answers the previous question"),
     reasoning: z.string().describe("Brief explanation of why the response is on-topic or off-topic")
 });
 
-export type CheckResponseOutput = { 
-    isOnTopic: boolean;
-    useHelpfulVariant: boolean;
+export type BrainstormGuardrailOutput = { 
+    userNeedsHelp: boolean; // If not on topic, the user needs help
 };
 
-export class CheckResponseService {
-    async execute(input: CheckResponseInput, config?: LangGraphRunnableConfig): Promise<CheckResponseOutput> {
+export class BrainstormGuardrailService {
+    async execute(input: BrainstormGuardrailInput, config?: LangGraphRunnableConfig): Promise<BrainstormGuardrailOutput> {
         const { messages, questionIndex } = input;
         
         if (!messages || messages.length === 0) {
-            return { isOnTopic: true, useHelpfulVariant: false };
+            return { userNeedsHelp: false };
         }
 
-        const lastUserMessage = messages[messages.length - 1];
+        const humanMessages = messages.filter(isHumanMessage)
+        const lastHumanMessage = humanMessages[humanMessages.length - 1];
 
-        if (!lastUserMessage || lastUserMessage.getType?.() !== 'human') {
-            return { isOnTopic: true, useHelpfulVariant: false };
+        if (!lastHumanMessage) {
+            return { userNeedsHelp: false };
         }
 
-        const previousAIMessage = messages.length >= 2 ? messages[messages.length - 2] : null;
+        const AIMessages = messages.filter(isAIMessage)
+        const lastAIMessage = AIMessages[AIMessages.length - 1];
 
-        if (!previousAIMessage || previousAIMessage.getType?.() !== 'ai') {
+        console.log(`last ai message is: ${lastAIMessage.content}`)
+        if (!lastAIMessage) {
             if (questionIndex !== 0) {
-                return { isOnTopic: true, useHelpfulVariant: false };
+                return { userNeedsHelp: false };
             }
         }
 
-        const baseMessages = messages.filter((msg): msg is BaseMessage => msg instanceof BaseMessage || (msg.getType && typeof msg.getType === 'function'));
-        
         const [chatHistory, formatInstructions] = await Promise.all([
-            chatHistoryPrompt({ messages: baseMessages }),
-            structuredOutputPrompt({ schema: responseCheckSchema })
+            chatHistoryPrompt({ messages: messages }),
+            structuredOutputPrompt({ schema: brainstormGuardrailPromptOutputSchema })
         ]);
 
         const promptText = await renderPrompt(`
@@ -81,13 +81,11 @@ export class CheckResponseService {
         `);
 
         const llm = getLlm(LLMSkill.Planning, LLMSpeed.Fast);
-        const structuredLlm = llm.withStructuredOutput(responseCheckSchema);
+        const structuredLlm = llm.withStructuredOutput(brainstormGuardrailPromptOutputSchema);
         const result = await structuredLlm.invoke(promptText);
 
-
         return { 
-            isOnTopic: result.isOnTopic,
-            useHelpfulVariant: !result.isOnTopic 
+            userNeedsHelp: !result.isOnTopic,
         };
     }
 }

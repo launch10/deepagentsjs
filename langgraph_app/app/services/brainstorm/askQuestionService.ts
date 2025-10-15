@@ -2,15 +2,14 @@ import { z } from "zod";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLlm, LLMSkill, LLMSpeed } from "@core";
 import { type NotificationOptions } from "@core";
-import { withStructuredResponse } from "@utils";
 import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
 import { type SchemaFewShotExample, type QuestionType as OutputQuestionType } from "@types";
-import { type BaseMessage } from "@langchain/core/messages";
+import { BaseMessage } from "@langchain/core/messages";
 
 export const askQuestionInputSchema = z.object({
-    messages: z.array(z.object({ role: z.string(), content: z.string() })).describe("The user's request/description for the project"),
+    messages: z.array(z.instanceof(BaseMessage)).describe("The user's request/description for the project"),
     questionIndex: z.number().describe("The index of the question to ask"),
-    useHelpfulVariant: z.boolean().optional().describe("Whether to use the helpful variant of the question"),
+    userNeedsHelp: z.boolean().optional().describe("Whether the user needs help"),
 });
 
 export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
@@ -255,15 +254,16 @@ export const notificationContext: NotificationOptions = {
 
 export class AskQuestionService {
   async execute(input: AskQuestionInput, config?: LangGraphRunnableConfig): Promise<AskQuestionOutput> {
-      let { messages, questionIndex, useHelpfulVariant } = input;
+      let { messages, questionIndex, userNeedsHelp } = input;
       if (!messages) {
           throw new Error('Messages are required');
       }
       questionIndex = questionIndex || 0;
-      useHelpfulVariant = useHelpfulVariant || false;
+      userNeedsHelp = userNeedsHelp || false;
 
       const actualQuestionIndex = questionIndex === 0 ? 1 : questionIndex;
       const nextQuestion = QUESTIONS[actualQuestionIndex - 1];
+      console.log(`next question:`, nextQuestion)
 
       if (!nextQuestion) {
           throw new Error('Invalid question index');
@@ -271,7 +271,7 @@ export class AskQuestionService {
 
       let questionVariant: QuestionVariant;
       
-      if (useHelpfulVariant) {
+      if (userNeedsHelp) {
         questionVariant = nextQuestion.variants.helpful;
       } else {
         questionVariant = (nextQuestion.default === "simple" ? nextQuestion.variants.simple : nextQuestion.variants.helpful)!;
@@ -290,7 +290,7 @@ export class AskQuestionService {
         messages, 
         question: questionVariant, 
         schema: outputSchema,
-        isRetry: useHelpfulVariant 
+        isRetry: userNeedsHelp 
       });
       const structuredLlm = llm.withStructuredOutput(outputSchema);
       const result = await structuredLlm.invoke(prompt);

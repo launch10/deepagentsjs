@@ -12,7 +12,7 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Full brainstorming conversation flow", () => {
-        it("provides additional support if the first question isn't properly answered", async () => {
+        it.only("provides additional support if the first question isn't properly answered", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Sorry, what's going on?`)
@@ -29,6 +29,7 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(question.sampleResponses).toHaveLength(3);
                 expect(question.conclusion).toBeTruthy();
             }
+            console.log(question)
         });
 
         it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {

@@ -2,19 +2,17 @@ import { StateGraph, END, START } from "@langchain/langgraph";
 import { BrainstormAnnotation } from "@annotation";
 import { type BrainstormGraphState } from "@state";
 import { graphParams } from "@core";
-import { askQuestionNode, checkResponseNode } from "@nodes";
+import { askQuestionNode, brainstormGuardrailNode } from "@nodes";
 
 const router = async(state: BrainstormGraphState): Promise<string> => {
-  return "checkResponse"
+  return "brainstormGuardrail"
 }
 
 export const brainstormGraph = new StateGraph(BrainstormAnnotation)
-    .addNode("checkResponse", checkResponseNode)
+    .addNode("brainstormGuardrail", brainstormGuardrailNode)
     .addNode("askQuestion", askQuestionNode)
 
-    .addConditionalEdges(START, router, {
-        "checkResponse": "checkResponse",
-    })
-    .addEdge("checkResponse", "askQuestion")
+    .addEdge(START, "brainstormGuardrail")
+    .addEdge("brainstormGuardrail", "askQuestion")
     .addEdge("askQuestion", END)
     .compile(graphParams)

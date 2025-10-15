@@ -1,10 +1,10 @@
 import { type BrainstormGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { BaseNode } from "@core";
-import { CheckResponseService, type CheckResponseOutput } from "@services";
+import { BrainstormGuardrailService, type BrainstormGuardrailOutput } from "@services";
 import { AIMessage } from "@langchain/core/messages";
 
-class CheckResponseNode extends BaseNode<BrainstormGraphState> {
+class BrainstormGuardrailNode extends BaseNode<BrainstormGraphState> {
   async execute(
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
@@ -15,18 +15,18 @@ class CheckResponseNode extends BaseNode<BrainstormGraphState> {
       messages.unshift(new AIMessage("Tell us about your business. More info -> better outcomes."));
     }
 
-    const service = new CheckResponseService();
+    const service = new BrainstormGuardrailService();
 
-    const result: CheckResponseOutput = await service.execute({
+    const result: BrainstormGuardrailOutput = await service.execute({
       messages,
       questionIndex: state.questionIndex,
     }, config);
 
     return {
-      useHelpfulVariant: result.useHelpfulVariant,
+      userNeedsHelp: result.userNeedsHelp,
       messages
     };
   }
 }
 
-export const checkResponseNode = new CheckResponseNode().toNodeFunction();
+export const brainstormGuardrailNode = new BrainstormGuardrailNode().toNodeFunction();
