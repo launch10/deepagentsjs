@@ -12,7 +12,7 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Full brainstorming conversation flow", () => {
-        it.only("provides additional support if the first question isn't properly answered", async () => {
+        it("provides additional support if the first question isn't properly answered", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Sorry, what's going on?`)
@@ -21,10 +21,17 @@ describe.sequential('Brainstorming Flow', () => {
 
             expect(result.state.questionIndex).toBe(1);
             const question = result.state.nextQuestion;
-            expect(typeof question).toBe('string');
+            expect(typeof question).toBe('object');
+            
+            if (typeof question === 'object') {
+                expect(question.intro).toBeTruthy();
+                expect(question.question).toBeTruthy();
+                expect(question.sampleResponses).toHaveLength(3);
+                expect(question.conclusion).toBeTruthy();
+            }
         });
 
-        it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
+        it.only('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -34,6 +41,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.error).toBeUndefined();
 
             const question = result.state.nextQuestion;
+            console.log(question)
             expect(typeof question).toBe('object');
             
             if (typeof question === 'object') {

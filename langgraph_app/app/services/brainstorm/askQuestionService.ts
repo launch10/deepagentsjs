@@ -10,6 +10,7 @@ import { type BaseMessage } from "@langchain/core/messages";
 export const askQuestionInputSchema = z.object({
     messages: z.array(z.object({ role: z.string(), content: z.string() })).describe("The user's request/description for the project"),
     questionIndex: z.number().describe("The index of the question to ask"),
+    useHelpfulVariant: z.boolean().optional().describe("Whether to use the helpful variant of the question"),
 });
 
 export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
@@ -188,10 +189,12 @@ const basePrompt = async ({
   messages, 
   question, 
   schema,
+  isRetry = false,
 }: {
   messages: BaseMessage[], 
   question: QuestionVariant, 
   schema: z.ZodType<any>,
+  isRetry?: boolean,
 }) => {
   const fewShots = question.style === "Rephrased" ? question.fewShotExamples : [];
 
@@ -200,6 +203,13 @@ const basePrompt = async ({
     chatHistoryPrompt({ messages }),
     structuredOutputPrompt({ schema })
   ]);
+
+  const retryContext = isRetry ? `
+    <context>
+      The user has already been asked this question but their response was off-topic 
+      or they were seeking help/clarification. Please read their response, and provide a supportive, helpful response that re-engages them with the question.
+    </context>
+  ` : '';
 
   return renderPrompt(`
     <background>
@@ -219,7 +229,13 @@ const basePrompt = async ({
       making sure the question is clear and concise. If the template requests you
       to provide the user with sample answers, you should provide good sample
       answers BASED ON what they've already told you about their business.
+
+      If the user hasn't told you anything yet, please create new examples, so the user
+      can respond to your question. They have already seen a few examples, so 
+      don't repeat them, because they clearly didn't see an example that resonated.
     </task>
+
+    ${retryContext}
 
     ${fewShotExamples}
 
@@ -239,36 +255,43 @@ export const notificationContext: NotificationOptions = {
 
 export class AskQuestionService {
   async execute(input: AskQuestionInput, config?: LangGraphRunnableConfig): Promise<AskQuestionOutput> {
-      let { messages, questionIndex } = input;
+      let { messages, questionIndex, useHelpfulVariant } = input;
       if (!messages) {
           throw new Error('Messages are required');
       }
       questionIndex = questionIndex || 0;
+      useHelpfulVariant = useHelpfulVariant || false;
 
       const actualQuestionIndex = questionIndex === 0 ? 1 : questionIndex;
-      const nextQuestion = QUESTIONS[actualQuestionIndex];
+      const nextQuestion = QUESTIONS[actualQuestionIndex - 1];
 
       if (!nextQuestion) {
           throw new Error('Invalid question index');
       }
 
-      // if (questionHasBeenAsked) {
-
-      // } else {
-
-      // }
-      const questionVariant = (nextQuestion.default === "simple" ? nextQuestion.variants.simple : nextQuestion.variants.helpful)!;
+      let questionVariant: QuestionVariant;
+      
+      if (useHelpfulVariant) {
+        questionVariant = nextQuestion.variants.helpful;
+      } else {
+        questionVariant = (nextQuestion.default === "simple" ? nextQuestion.variants.simple : nextQuestion.variants.helpful)!;
+      }
 
       if (questionVariant.style === "Verbatim") {
         return { question: questionVariant.question }
       }
 
-      const outputSchema = questionVariant.fewShotExamples 
+      const outputSchema = questionVariant.fewShotExamples && questionVariant.fewShotExamples.length > 0
         ? structuredQuestionOutputSchema 
         : stringQuestionOutputSchema;
       
       const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
-      const prompt = await basePrompt({ messages, question: questionVariant, schema: outputSchema });
+      const prompt = await basePrompt({ 
+        messages, 
+        question: questionVariant, 
+        schema: outputSchema,
+        isRetry: useHelpfulVariant 
+      });
       const structuredLlm = llm.withStructuredOutput(outputSchema);
       const result = await structuredLlm.invoke(prompt);
 

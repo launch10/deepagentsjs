@@ -37,4 +37,9 @@ export const BrainstormAnnotation = Annotation.Root({
         default: () => 0,
         reducer: (current, next) => next
     }),
+
+    useHelpfulVariant: Annotation<boolean | undefined>({
+        default: () => false,
+        reducer: (current, next) => next
+    }),
 });

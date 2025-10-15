@@ -4,4 +4,5 @@ export interface BrainstormGraphState extends CoreGraphState {
     nextQuestion: QuestionType;
     nextStep?: BrainstormNextStepType;
     questionIndex: number;
+    useHelpfulVariant?: boolean;
 }
