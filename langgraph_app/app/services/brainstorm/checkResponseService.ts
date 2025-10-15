@@ -60,15 +60,19 @@ export class CheckResponseService {
                 provided a response. Determine if the user's response adequately answers the 
                 question that was asked.
                 
-                A response is OFF-TOPIC if:
-                - The user is asking for help or clarification ("what?", "I don't understand", "what do you mean?")
+                A response is OFF-TOPIC **ONLY** if:
+                - The user is asking for help or clarification ("what?", "I don't understand", "what do you mean?", "sorry, what's going on?")
                 - The user is confused about what to do
                 - The user's response is completely unrelated to the question
-                - The user provides a vague or non-answer response
+                - The user provides a clearly confused or non-answer response
                 
                 A response is ON-TOPIC if:
-                - The user attempts to answer the question, even if brief
-                - The user provides relevant information about their business
+                - The user attempts to answer the question, even if brief or incomplete
+                - The user provides ANY relevant information about their business (even just a name and description is sufficient)
+                - The user makes a genuine effort to respond to the question
+                
+                IMPORTANT: Err on the side of marking responses as ON-TOPIC. Only mark as OFF-TOPIC 
+                if the user is genuinely confused or asking for help.
             </task>
 
             ${chatHistory}
