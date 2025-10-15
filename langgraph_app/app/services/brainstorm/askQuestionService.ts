@@ -5,7 +5,7 @@ import { type NotificationOptions } from "@core";
 import { withStructuredResponse } from "@utils";
 import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
 import { type SchemaFewShotExample, type QuestionType as OutputQuestionType } from "@types";
-import { AIMessage } from "@langchain/core/messages";
+import { type BaseMessage } from "@langchain/core/messages";
 
 export const askQuestionInputSchema = z.object({
     messages: z.array(z.object({ role: z.string(), content: z.string() })).describe("The user's request/description for the project"),
@@ -16,7 +16,7 @@ export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
 
 export type AskQuestionOutput = { question: OutputQuestionType };
 
-const semiStructuredQuestionSchema = z.object({
+const structuredQuestionSchema = z.object({
   intro: z.string().describe("A brief, engaging introductory sentence or two, personalized to the user's business."),
   question: z.string().describe("The core question being asked, adapted for the user's context."),
   sampleResponses: z.array(z.string()).describe("A list of 3 high-quality, diverse sample responses relevant to the user's business."),
@@ -28,20 +28,175 @@ const stringQuestionOutputSchema = z.object({
 });
 
 const structuredQuestionOutputSchema = z.object({
-  question: semiStructuredQuestionSchema.describe("The structured question to ask the user")
+  question: structuredQuestionSchema.describe("The structured question to ask the user")
 });
+interface SimpleQuestionTemplate {
+    question: string;
+    style: "Verbatim";
+}
+interface HelpfulQuestionTemplate {
+    question: string;
+    style: "Rephrased";
+    fewShotExamples: SchemaFewShotExample<typeof structuredQuestionSchema>[];
+}
+interface Question {
+  name: string;
+  order: number;
+  variants: QuestionVariants;
+  default: "simple" | "helpful";
+}
+interface QuestionVariants {
+  simple?: SimpleQuestionTemplate;
+  helpful: HelpfulQuestionTemplate;
+}
+
+type QuestionVariant = SimpleQuestionTemplate | HelpfulQuestionTemplate;
+
+const QUESTIONS: Question[] = [
+  {
+    name: "Introduction",
+    order: 1,
+    default: "simple",
+    variants: {
+      simple: {
+        question: "Tell us about your business. More info -> better outcomes.",
+        style: "Verbatim"
+      },
+      helpful: {
+        question: "I help people develop high-converting landing pages for their businesses. To start, can you tell me about your business?",
+        style: "Rephrased",
+        fewShotExamples: [
+          {
+            input: "<none provided>",
+            output: {
+              intro: "Sorry, let's try again. I help people develop high-converting landing pages for their businesses.",
+              question: "To start, can you tell me about your business?",
+              sampleResponses: [
+                "I'm a gym owner, whose gym (ImpactZone) is focused on high-impact cardio.",
+                "EagleEye helps software companies identify product-market fit.",
+                "IceBreaker is a social media platform for introverts.",
+              ],
+              conclusion: "So how would you describe your business?"
+            }
+          }
+        ]
+      }
+    }
+  },
+
+  {
+    name: "Customers",
+    order: 2,
+    default: "helpful",
+    variants: {
+      helpful: {
+        question: "Who are your customers, and what are they trying to achieve?",
+        style: "Rephrased",
+        fewShotExamples: [
+          { 
+            input: "The user is a gym owner, whose gym (ImpactZone) is focused on high-impact cardio.",
+            output: {
+              intro: "Great! Let's talk about your customers.",
+              question: "Who are your customers, and what are they trying to achieve?",
+              sampleResponses: [
+                "Our customers are fitness enthusiasts looking for high-intensity workouts.",
+                "Our customers are newbies, looking for a friendly and approachable workout experience.",
+                "Our customers community-oriented, looking for a way to build accountability through group training and community.",
+              ],
+              conclusion: "So what do you think? Who are your customers, and what are they trying to achieve?"
+            }
+          }
+        ]
+      }
+    }
+  },
+
+  {
+    name: "Value Proposition",
+    order: 3,
+    default: "helpful",
+    variants: {
+      helpful: {
+        question: "How does [BUSINESS NAME] solve the customer's problem? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
+        style: "Rephrased",
+        fewShotExamples: [
+          { 
+            input: "The user is a gym owner, whose gym (ImpactZone) is focused on high-impact cardio.",
+            output: {
+              intro: "Great! Let's dig into what makes ImpactZone special.",
+              question: "How does ImpactZone solve the customer's problem?",
+              sampleResponses: [
+                "ImpactZone offers a wide range of high-intensity workouts, including HIIT, Tabata, and circuit training.",
+                "ImpactZone is proven to increase caloric burn by 20%.",
+                "ImpactZone builds accountability through group training and community."
+              ],
+              conclusion: "So what do you think? How does ImpactZone solve the customer's problem?"
+            }
+          }
+        ]
+      }
+    }
+  },
+
+  {
+    name: "Social Proof",
+    order: 4,
+    default: "simple",
+    variants: {
+      helpful: {
+        question: "Do you have testimonials, reviews, high-profile customers, or other social proof? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
+        style: "Rephrased",
+        fewShotExamples: [
+          {
+            input: "The user is a gym owner, whose gym (ImpactZone) is focused on high-impact cardio. Their customers are fitness enthusiasts, and their value proposition is that they offer a wide range of high-intensity workouts, including HIIT, Tabata, and circuit training.",
+            output: {
+              intro: "Great! Let's talk about your social proof.",
+              question: "Do you have testimonials, reviews, high-profile customers, or other social proof?",
+              sampleResponses: [
+                "ImpactZone has received rave reviews from its customers.",
+                "ImpactZone has been featured in Forbes and Inc. Magazine.",
+                "Our founder has over 20 years of experience in the fitness industry.",
+              ],
+              conclusion: "Don't worry if you don't have a great answer yet, we can chat more to uncover unique social proof based on your background!"
+            }
+          }
+        ]
+      }
+    }
+  },
+
+  {
+    name: "Look & Feel",
+    order: 5,
+    default: "simple",
+    variants: {
+      simple: {
+        question: "Before we build, do you have a logo, color palette, or images you want to include?",
+        style: "Verbatim"
+      },
+      helpful: {
+        question: "Perhaps that was unclear. You can provide logo, color palette, or images in the right-hand nav bar, or you can click below to build your site!",
+        style: "Rephrased",
+        fewShotExamples: []
+      }
+    }
+  },
+
+]
 
 const basePrompt = async ({
   messages, 
   question, 
   schema,
 }: {
-  messages: { role: string; content: string }[], 
-  question: QuestionTemplate, 
+  messages: BaseMessage[], 
+  question: QuestionVariant, 
   schema: z.ZodType<any>,
 }) => {
+  const fewShots = question.style === "Rephrased" ? question.fewShotExamples : [];
+
   const [fewShotExamples, chatHistory, formatInstructions] = await Promise.all([
-    fewShotExamplesPrompt({ fewShotExamples: question.fewShotExamples, schema }),
+    fewShotExamplesPrompt({ fewShotExamples: fewShots, schema }),
     chatHistoryPrompt({ messages }),
     structuredOutputPrompt({ schema })
   ]);
@@ -82,71 +237,11 @@ export const notificationContext: NotificationOptions = {
     taskName: "Generating project name",
 };
 
-type QuestionStyle = "Verbatim" | "Rephrased";
-interface QuestionTemplate {
-    question: string;
-    style: QuestionStyle;
-    fewShotExamples?: SchemaFewShotExample<typeof semiStructuredQuestionSchema>[];
-}
-
-const QUESTIONS: QuestionTemplate[] = [
-  {
-    question: "Tell us about your business. More info -> better outcomes.",
-    style: "Verbatim"
-  },
-  {
-    question: "Who are your customers, and what are they trying to achieve?",
-    style: "Rephrased",
-    fewShotExamples: [
-      { 
-        input: "The user is a gym owner, whose gym (ImpactZone) is focused on high-impact cardio.",
-        output: {
-          intro: "Great! Let's talk about your customers.",
-          question: "Who are your customers, and what are they trying to achieve?",
-          sampleResponses: [
-            "Our customers are fitness enthusiasts looking for high-intensity workouts.",
-            "Our customers are newbies, looking for a friendly and approachable workout experience.",
-            "Our customers community-oriented, looking for a way to build accountability through group training and community.",
-          ],
-          conclusion: "So what do you think? Who are your customers, and what are they trying to achieve?"
-        }
-      }
-    ]
-  },
-  {
-    question: "How does [BUSINESS NAME] solve the customer's problem? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
-    style: "Rephrased",
-    fewShotExamples: [
-      { 
-        input: "The user is a gym owner, whose gym (ImpactZone) is focused on high-impact cardio.",
-        output: {
-          intro: "Great! Let's dig into what makes ImpactZone special.",
-          question: "How does ImpactZone solve the customer's problem?",
-          sampleResponses: [
-            "ImpactZone offers a wide range of high-intensity workouts, including HIIT, Tabata, and circuit training.",
-            "ImpactZone is proven to increase caloric burn by 20%.",
-            "ImpactZone builds accountability through group training and community."
-          ],
-          conclusion: "So what do you think? How does ImpactZone solve the customer's problem?"
-        }
-      }
-    ]
-  },
-  {
-    question: "Do you have testimonials, reviews, high-profile customers, or other social proof?",
-    style: "Verbatim"
-  },
-  {
-    question: "Before we build, do you have a logo, color palette, or images you want to include?",
-    style: "Verbatim"
-  },
-]
-
 export class AskQuestionService {
   async execute(input: AskQuestionInput, config?: LangGraphRunnableConfig): Promise<AskQuestionOutput> {
       let { messages, questionIndex } = input;
       if (!messages) {
-          throw new Error('User request is required');
+          throw new Error('Messages are required');
       }
       questionIndex = questionIndex || 0;
 
@@ -157,16 +252,23 @@ export class AskQuestionService {
           throw new Error('Invalid question index');
       }
 
-      if (nextQuestion.style === "Verbatim") {
-        return { question: nextQuestion.question }
+      // if (questionHasBeenAsked) {
+
+      // } else {
+
+      // }
+      const questionVariant = (nextQuestion.default === "simple" ? nextQuestion.variants.simple : nextQuestion.variants.helpful)!;
+
+      if (questionVariant.style === "Verbatim") {
+        return { question: questionVariant.question }
       }
 
-      const outputSchema = nextQuestion.fewShotExamples 
+      const outputSchema = questionVariant.fewShotExamples 
         ? structuredQuestionOutputSchema 
         : stringQuestionOutputSchema;
       
       const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
-      const prompt = await basePrompt({ messages, question: nextQuestion, schema: outputSchema });
+      const prompt = await basePrompt({ messages, question: questionVariant, schema: outputSchema });
       const structuredLlm = llm.withStructuredOutput(outputSchema);
       const result = await structuredLlm.invoke(prompt);
 
