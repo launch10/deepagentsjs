@@ -53,6 +53,9 @@ const basePrompt = async ({
     <context>
       The user has already been asked this question but their response was off-topic 
       or they were seeking help/clarification. Please read their response, and provide a supportive, helpful response that re-engages them with the question.
+
+      If their response is off-topic, don't TOTALLY ignore what they said. Respond to what they said, but then guide them
+      back to the question at hand.
     </context>
   ` : '';
 

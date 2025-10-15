@@ -73,7 +73,39 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.messages).toHaveLength(3);
         });
 
-        it.only('should ask third question (structured) after second response', async () => {
+        it.only("should ask the 2nd question again if the user fails the guardrail", async () => {
+            const result1 = await testGraph<BrainstormGraphState>()
+                .withGraph(brainstormGraph)
+                .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                .stopAfter('askQuestion')
+                .execute();
+
+            expect(result1.state.questionIndex).toBe(1);
+            expect(result1.state.nextQuestion.key).toBe('customers');
+            expect(result1.state.userNeedsHelp).toBe(false);
+
+            const result2 = await testGraph<BrainstormGraphState>()
+                .withGraph(brainstormGraph)
+                .withPrompt(`I like pasta.`)
+                .withState({
+                    messages: result1.state.messages,
+                    questionIndex: result1.state.questionIndex
+                })
+                .stopAfter('askQuestion')
+                .execute();
+
+            expect(result2.error).toBeUndefined();
+            expect(result2.state.questionIndex).toBe(1);
+            expect(result2.state.userNeedsHelp).toBe(true);
+            expect(result2.state.nextQuestion.key).toBe('customers');
+
+            // We should address the pasta response somewhere
+            expect(JSON.stringify(result2.state.nextQuestion.question)).toContain('pasta');
+            
+            console.log(result2.state)
+        });
+
+        it('should ask third question (structured) after second response', async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
