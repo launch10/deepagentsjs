@@ -172,7 +172,6 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(questionContent.conclusion).toBeTruthy();
             }
             
-            console.log(result2.state.messages)
             expect(result2.state.messages).toHaveLength(5);
             expect(result2.state.messages?.filter((msg) => isHumanMessage(msg))).toHaveLength(2);
             expect(result2.state.messages?.filter((msg) => isAIMessage(msg))).toHaveLength(3);
