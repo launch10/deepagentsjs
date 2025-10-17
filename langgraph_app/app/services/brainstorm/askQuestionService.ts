@@ -120,7 +120,7 @@ export class AskQuestionService {
       userNeedsHelp = userNeedsHelp || false;
 
       const nextQuestionIndex = userNeedsHelp ? questionIndex : questionIndex + 1;
-      const nextQuestion = BRAINSTORMING_QUESTIONS[nextQuestionIndex];
+      const nextQuestion = Brainstorm.Questions[nextQuestionIndex];
 
       if (!nextQuestion) {
           throw new Error('Invalid question index');

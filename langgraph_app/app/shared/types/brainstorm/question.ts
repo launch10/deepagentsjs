@@ -61,7 +61,7 @@ export interface QuestionVariantsType {
 
 export type QuestionVariantType = SimpleQuestionTemplate | HelpfulQuestionTemplate;
 
-export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
+export const Questions: QuestionTemplateType[] = [
   {
     name: "introduction",
     index: 0,
