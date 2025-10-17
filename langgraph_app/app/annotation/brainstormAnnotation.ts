@@ -4,7 +4,7 @@ import { Brainstorm, isHumanMessage, type Message } from "@types";
 
 const getFirstQuestion = Brainstorm.getFirstQuestion
 type QuestionType = Brainstorm.QuestionType;
-type BrainstormNextStepType = Brainstorm.BrainstormNextStepType;
+type NextStepType = Brainstorm.NextStepType;
 
 export const BrainstormAnnotation = Annotation.Root({
     error: Annotation<string | undefined>({
@@ -45,13 +45,18 @@ export const BrainstormAnnotation = Annotation.Root({
         reducer: (current, next) => next
     }),
 
-    nextStep: Annotation<BrainstormNextStepType | undefined>({
+    nextStep: Annotation<NextStepType | undefined>({
         default: () => undefined,
         reducer: (current, next) => next
     }),
 
     questionIndex: Annotation<number>({
         default: () => 0,
+        reducer: (current, next) => next
+    }),
+
+    isValidAnswer: Annotation<boolean | undefined>({
+        default: () => true,
         reducer: (current, next) => next
     }),
 

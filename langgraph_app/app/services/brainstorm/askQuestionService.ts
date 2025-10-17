@@ -157,9 +157,7 @@ export class AskQuestionService {
       });
       // const structuredLlm = llm.withStructuredOutput(outputSchema);
       // const result = await structuredLlm.invoke(prompt);
-      console.log(prompt)
       const response = await llm.invoke(prompt);
-      console.log(response)
 
       const responseContent = response.content as string;
       const jsonPieces = responseContent.split("```json")
@@ -174,7 +172,6 @@ export class AskQuestionService {
       }
       updatedMessages.push(createBrainstormingMessage(question)); 
 
-      console.log(`and the next question index is.... ${nextQuestionIndex}`)
       return { 
         messages: updatedMessages,
         question: question,

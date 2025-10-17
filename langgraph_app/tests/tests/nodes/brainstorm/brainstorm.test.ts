@@ -249,7 +249,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result2.state.questionIndex).toBe(4);
         });
 
-        it('should complete brainstorming after fifth response', async () => {
+        it.only('guides the user to use the Advanced features before proceeding on question 5', async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -258,10 +258,13 @@ describe.sequential('Brainstorming Flow', () => {
 
             const messages2 = [
                 ...result1.state.messages,
-                new HumanMessage(`Podcast listeners and creators.`),
-                new HumanMessage(`We use AI matching.`),
-                new HumanMessage(`We provide recommendations.`),
-                new HumanMessage(`Yes, testimonials from 50+ podcasters.`)
+                getSimpleQuestion(1), // Audience
+                new HumanMessage(`Podcasts guests looking to promote their book or service`),
+                getSimpleQuestion(2), // What's your value prop?
+                new HumanMessage(`We match podcast hosts and guests to find the perfect audience to promote your product!`),
+                getSimpleQuestion(3), // Social proof
+                new HumanMessage(`Yes, we have testimonials from over 50 podcasters with 5-star ratings.`),
+                getSimpleQuestion(4),
             ];
 
             const result2 = await testGraph<BrainstormGraphState>()
@@ -269,7 +272,7 @@ describe.sequential('Brainstorming Flow', () => {
                 .withPrompt(`Yes, I have a logo and brand colors - blue and purple.`)
                 .withState({
                     messages: messages2,
-                    questionIndex: 5
+                    questionIndex: 4
                 })
                 .stopAfter('askQuestion')
                 .execute();

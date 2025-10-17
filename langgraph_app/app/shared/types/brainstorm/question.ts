@@ -45,11 +45,14 @@ interface HelpfulQuestionTemplate {
     style: "Rephrased";
     fewShotExamples: SchemaFewShotExample<typeof structuredQuestionContentSchema>[];
 }
+
+export type QuestionGuardrail = "validAnswer" | "router";
 export interface QuestionTemplateType {
   name: QuestionKey;
   index: number;
   variants: QuestionVariantsType;
   default: "simple" | "helpful";
+  guardrails: QuestionGuardrail[];
 }
 export interface QuestionVariantsType {
   simple: SimpleQuestionTemplate;
@@ -63,6 +66,7 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
     name: "introduction",
     index: 0,
     default: "simple",
+    guardrails: ["validAnswer"],
     variants: {
       simple: {
         question: "Tell us about your business. More info -> better outcomes.",
@@ -94,6 +98,7 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
     name: "customers",
     index: 1,
     default: "helpful",
+    guardrails: ["validAnswer"],
     variants: {
       simple: { 
         question: "Who are your customers, and what are they trying to achieve?",
@@ -125,6 +130,7 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
     name: "valueProp",
     index: 2,
     default: "helpful",
+    guardrails: ["validAnswer"],
     variants: {
       simple: { 
         question: "How does [BUSINESS NAME] solve the customer's problem? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
@@ -156,6 +162,7 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
     name: "socialProof",
     index: 3,
     default: "helpful",
+    guardrails: ["validAnswer"],
     variants: {
       simple: { 
         question: "Do you have testimonials, reviews, high-profile customers, or other social proof? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
@@ -187,6 +194,7 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
     name: "lookAndFeel",
     index: 4,
     default: "simple",
+    guardrails: ["router"],
     variants: {
       simple: {
         question: "Before we build, do you have a logo, color palette, or images you want to include?",
