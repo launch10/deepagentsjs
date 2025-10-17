@@ -8,7 +8,6 @@ import { messageSchema, type Message } from "@types";
 
 type QuestionType = Brainstorm.QuestionType;
 type QuestionVariantType = Brainstorm.QuestionVariantType;
-const BRAINSTORMING_QUESTIONS = Brainstorm.BRAINSTORMING_QUESTIONS;
 const createBrainstormingMessage = Brainstorm.createBrainstormingMessage;
 
 export const askQuestionInputSchema = z.object({

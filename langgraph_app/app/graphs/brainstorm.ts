@@ -4,6 +4,9 @@ import { type BrainstormGraphState } from "@state";
 import { graphParams } from "@core";
 import { askQuestionNode, brainstormGuardrailNode, addImplicitFirstQuestionNode } from "@nodes";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { AIMessage } from "@langchain/core/messages";
+import { getLlm, LLMSkill, LLMSpeed } from "@core";
+import { isHumanMessage, isAIMessage } from "@types";
 
 const router = (state: BrainstormGraphState, config: LangGraphRunnableConfig): string => {
     console.log(`Router received state.route: ${state.route}, isValidAnswer: ${state.isValidAnswer}`);
@@ -31,9 +34,41 @@ const keepBrainstorming = (state: BrainstormGraphState, config: LangGraphRunnabl
     return {};
 }
 
-const uiHelp = (state: BrainstormGraphState, config: LangGraphRunnableConfig): Partial<BrainstormGraphState> => {
-    console.log(`hello from ui help node!`)
-    return {};
+const uiHelp = async (state: BrainstormGraphState, config: LangGraphRunnableConfig): Partial<BrainstormGraphState> => {
+    const lastHumanMessage = state.messages?.filter(isHumanMessage).slice(-1);
+    const lastAIMessage = state.messages?.filter(isAIMessage).slice(-1);
+
+    const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
+    const response = await llm.invoke(`
+        <background>
+            You and the user have been having a conversation about a landing page they want to build.
+
+            The user has finished all Q&A steps, and has now indicated that they want to do something UI related (uploading a logo, color palette, or image)
+        </background>
+
+        <role>
+            You are the UI explainer agent.
+        </role>
+        
+        <task>
+            Analyze what the user wants to do and explain to them that they can find what they're looking for in the Advanced sidebar. Also explain that they could simply proceed with building the landing page.
+        </task>
+        
+        <question>
+            ${lastAIMessage.content}
+        </question>
+
+        <answer>
+            ${lastHumanMessage.content}
+        </answer>
+    `);
+
+    return {
+        messages: [
+            ...state.messages,
+            new AIMessage(response)
+        ]
+    }
 }
 
 export const brainstormGraph = new StateGraph(BrainstormAnnotation)

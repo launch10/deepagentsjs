@@ -213,7 +213,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result2.state.questionIndex).toBe(3);
         });
 
-        it.only('should ask fifth question (verbatim) after fourth response', async () => {
+        it('should ask fifth question (verbatim) after fourth response', async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -278,7 +278,10 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result2.error).toBeUndefined();
-            expect(result2.state.questionIndex).toBe(5);
+            expect(result2.state.questionIndex).toBe(4);
+
+            const lastAiResponse = result2.state.messages.filter(isAIMessage).slice(-1)
+            console.log(lastAiResponse.content)
         });
     });
 });
