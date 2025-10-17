@@ -17,7 +17,8 @@ class BrainstormGuardrailNode extends BaseNode<BrainstormGraphState> {
     }, config);
 
     return {
-      userNeedsHelp: result.userNeedsHelp,
+      isValidAnswer: result.isValidAnswer,
+      route: result.route,
       messages: state.messages
     };
   }

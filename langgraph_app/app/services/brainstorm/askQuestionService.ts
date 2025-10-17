@@ -14,7 +14,7 @@ const createBrainstormingMessage = Brainstorm.createBrainstormingMessage;
 export const askQuestionInputSchema = z.object({
     messages: z.array(messageSchema).describe("The user's request/description for the project"),
     questionIndex: z.number().describe("The index of the question to ask"),
-    userNeedsHelp: z.boolean().optional().describe("Whether the user needs help"),
+    isValidAnswer: z.boolean().optional().describe("Whether the user answered the question correctly"),
 });
 
 export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
@@ -112,12 +112,12 @@ export const notificationContext: NotificationOptions = {
 
 export class AskQuestionService {
   async execute(input: AskQuestionInput, config?: LangGraphRunnableConfig): Promise<AskQuestionOutput> {
-      let { messages, questionIndex, userNeedsHelp } = input;
+      let { messages, questionIndex, isValidAnswer } = input;
       if (!messages) {
           throw new Error('Messages are required');
       }
       questionIndex = questionIndex || 0;
-      userNeedsHelp = userNeedsHelp || false;
+      const userNeedsHelp = !isValidAnswer || false;
 
       const nextQuestionIndex = userNeedsHelp ? questionIndex : questionIndex + 1;
       const nextQuestion = Brainstorm.Questions[nextQuestionIndex];

@@ -5,5 +5,5 @@ export interface BrainstormGraphState extends CoreGraphState {
     questionIndex: number;
     nextStep?: Brainstorm.NextStepType;
     isValidAnswer?: boolean;
-    userNeedsHelp?: boolean;
+    route?: string;
 }

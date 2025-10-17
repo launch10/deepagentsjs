@@ -60,8 +60,8 @@ export const BrainstormAnnotation = Annotation.Root({
         reducer: (current, next) => next
     }),
 
-    userNeedsHelp: Annotation<boolean | undefined>({
-        default: () => false,
+    route: Annotation<string | undefined>({
+        default: () => undefined,
         reducer: (current, next) => next
     }),
 });

@@ -6,7 +6,12 @@ import { askQuestionNode, brainstormGuardrailNode, addImplicitFirstQuestionNode 
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 
 const router = (state: BrainstormGraphState, config: LangGraphRunnableConfig): string => {
+    console.log(`Router received state.route: ${state.route}, isValidAnswer: ${state.isValidAnswer}`);
+    
     if (!state.route) {
+        if (state.isValidAnswer === false) {
+            return "askQuestion";
+        }
         return "askQuestion";
     }
 
