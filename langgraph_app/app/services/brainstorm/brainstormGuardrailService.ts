@@ -15,20 +15,20 @@ export const brainstormGuardrailInputSchema = z.object({
 export type BrainstormGuardrailInput = z.infer<typeof brainstormGuardrailInputSchema>;
 
 export type GuardrailPrompt<Schema extends z.ZodObject<any>> = (
-  lastAiMessage: AIMessage,
+  lastAIMessage: AIMessage,
   lastHumanMessage: HumanMessage,
   messages: Message[],
   schema: Schema
 ) => Promise<string>;
 
 const guardrailPromptFactory = <S extends z.ZodObject<any>>(prompt: string): GuardrailPrompt<S> => {
-    return async (lastAiMessage: AIMessage, lastHumanMessage: HumanMessage, messages: Message[], schema: S): Promise<string> => {
+    return async (lastAIMessage: AIMessage, lastHumanMessage: HumanMessage, messages: Message[], schema: S): Promise<string> => {
         const [chatHistory, formatInstructions] = await Promise.all([
             chatHistoryPrompt({ messages: messages }),
             structuredOutputPrompt({ schema: schema })
         ]);
         return PromptTemplate.fromTemplate(prompt).format({
-            lastAiMessage: lastAiMessage.content,
+            lastAIMessage: lastAIMessage.content,
             lastHumanMessage: lastHumanMessage.content,
             chatHistory: chatHistory,
             formatInstructions: formatInstructions
@@ -36,25 +36,26 @@ const guardrailPromptFactory = <S extends z.ZodObject<any>>(prompt: string): Gua
     }
 }
 
-const makeGuardrail = async <Schema extends z.ZodObject<any>>(
-    makePrompt: GuardrailPrompt<Schema>, 
+const makeGuardrail = async <S extends z.ZodObject<any>>(
+    makePrompt: GuardrailPrompt<S>, 
     lastAIMessage: AIMessage,
     lastHumanMessage: HumanMessage,
     messages: Message[],
-    schema: Schema,
-): Promise<Schema> => {
+    schema: S,
+): Promise<z.infer<S>> => {
     const promptText = await makePrompt(lastAIMessage, lastHumanMessage, messages, schema)
     const llm = getLlm(LLMSkill.Planning, LLMSpeed.Slow);
     const response = await llm.invoke(promptText)
 
-    // For plane, remove this... annoying
-    // const structuredLlm = llm.withStructuredOutput(brainstormGuardrailPromptOutputSchema);
-    // const result = await structuredLlm.invoke(promptText);
-    const jsonPieces = response.content.split("```json")
+    const content = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+    const jsonPieces = content.split("```json");
+    if (!jsonPieces[1]) {
+        throw new Error("Failed to parse JSON response from LLM");
+    }
     const jsonString = jsonPieces[1].replace(/```/, '');
-    const result: Schema = JSON.parse(jsonString);
+    const result = JSON.parse(jsonString);
 
-    return result as Schema;
+    return result as z.infer<S>;
 }
 
 const isValidAnswerPromptOutputSchema = z.object({
@@ -219,10 +220,15 @@ const guardrailPrompts: Record<Brainstorm.QuestionGuardrail, GuardrailPrompt<any
     router: routerPrompt
 }
 
-const guardrailSchemas: Record<Brainstorm.QuestionGuardrail, z.ZodObject<any>> = {
+const guardrailSchemas = {
     validAnswer: isValidAnswerPromptOutputSchema,
     router: routerPromptOutputSchema
-}
+} as const;
+
+type GuardrailSchemaMap = typeof guardrailSchemas;
+type GuardrailOutputMap = {
+    [K in keyof GuardrailSchemaMap]: z.infer<GuardrailSchemaMap[K]>;
+};
 export class BrainstormGuardrailService {
     async execute(input: BrainstormGuardrailInput, config?: LangGraphRunnableConfig): Promise<BrainstormGuardrailOutput> {
         const { messages, questionIndex } = input;
@@ -242,45 +248,40 @@ export class BrainstormGuardrailService {
         const lastAIMessage = AIMessages[AIMessages.length - 1];
 
         if (!lastAIMessage) {
-            if (questionIndex !== 0) {
-                return { isValidAnswer: true, reasoningIsValidAnswer: "No AI messages provided" };
-            }
+            return { isValidAnswer: true, reasoningIsValidAnswer: "No AI messages provided" };
         }
 
-        const nextQuestion = Brainstorm.Questions[questionIndex + 1];
+        const currentQuestion = Brainstorm.Questions[questionIndex];
 
-        if (!nextQuestion) {
-            throw new Error("No question found")
+        if (!currentQuestion) {
+            throw new Error("Question not found")
         }
-        const guardrailTypes: Brainstorm.QuestionGuardrail[] = nextQuestion.guardrails
-        const guardrails = Promise.all(
+
+        const guardrailTypes: Brainstorm.QuestionGuardrail[] = currentQuestion.guardrails
+        const guardrailResults = await Promise.all(
             guardrailTypes.map(async (guardrail: Brainstorm.QuestionGuardrail) => {
                 const prompt = guardrailPrompts[guardrail];
                 const schema = guardrailSchemas[guardrail];
-                return await makeGuardrail(prompt, lastAIMessage, lastHumanMessage, messages, schema)
+                const result = await makeGuardrail(prompt, lastAIMessage, lastHumanMessage, messages, schema);
+                return { guardrail, result } as const;
             })
-        )
+        );
 
-        // const [chatHistory, formatInstructions] = await Promise.all([
-        //     chatHistoryPrompt({ messages: messages }),
-        //     structuredOutputPrompt({ schema: brainstormGuardrailPromptOutputSchema })
-        // ]);
+        const output: BrainstormGuardrailOutput = {};
 
-        // const llm = getLlm(LLMSkill.Planning, LLMSpeed.Slow);
-        // const response = await llm.invoke(promptText)
-        // console.log(promptText)
-
-        // // For plane, remove this... annoying
-        // // const structuredLlm = llm.withStructuredOutput(brainstormGuardrailPromptOutputSchema);
-        // // const result = await structuredLlm.invoke(promptText);
-        // const jsonPieces = response.content.split("```json")
-        // const jsonString = jsonPieces[1].replace(/```/, '');
-        // const result = JSON.parse(jsonString);
-        // console.log(result)
-
-        return {
-            userNeedsHelp: !result.isOnTopic,
-            reasoning: result.reasoning
+        for (const { guardrail, result } of guardrailResults) {
+            if (guardrail === 'validAnswer') {
+                const typed = result as GuardrailOutputMap['validAnswer'];
+                output.isValidAnswer = typed.isValidAnswer;
+                output.reasoningIsValidAnswer = typed.reasoning;
+            } else if (guardrail === 'router') {
+                const typed = result as GuardrailOutputMap['router'];
+                output.route = typed.route;
+                output.reasoningRoute = typed.reasoning;
+            }
         }
+        console.log(output)
+
+        return output;
     }
 }

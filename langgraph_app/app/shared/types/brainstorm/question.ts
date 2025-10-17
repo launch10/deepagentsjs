@@ -211,7 +211,7 @@ export const Questions: QuestionTemplateType[] = [
 ]
 
 export const getSimpleQuestion = (index: number): AIMessage => {
-  const question = BRAINSTORMING_QUESTIONS[index];
+  const question = Questions[index];
   if (!question) {
     throw new Error(`Question at index ${index} not defined`);
   }
@@ -219,7 +219,7 @@ export const getSimpleQuestion = (index: number): AIMessage => {
 }
 
 export const getFirstQuestion = () => {
-  return new AIMessage(BRAINSTORMING_QUESTIONS[0]!.variants["simple"]!.question);
+  return new AIMessage(Questions[0]!.variants["simple"]!.question);
 }
 
 export const createBrainstormingMessage = (question: QuestionType) => {
