@@ -1,5 +1,5 @@
 import { renderPrompt } from '@prompts';
-import { type Message } from "@types";
+import { type Message, isHumanMessage, isAIMessage } from "@types";
 
 /**
  * The chatHistory function renders a <chat-history> tag,
@@ -19,7 +19,9 @@ import { type Message } from "@types";
  */
 export async function chatHistoryPrompt({ messages }: { messages: Message[] }): Promise<string> {
   const messageElements = messages?.map((message) => {
-    return `<message>${message.type}: ${JSON.stringify(message.content, null, 4)}</message>`;
+    const type = isHumanMessage(message) ? "human" : "assistant";
+
+    return `<message>${type}: ${JSON.stringify(message.content, null, 4)}</message>`;
   }).join('') || '';
   
   return renderPrompt(`<chat-history>${messageElements}</chat-history>`);

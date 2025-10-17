@@ -1,7 +1,10 @@
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
 import { AIMessage, BaseMessage, type BaseMessageLike } from "@langchain/core/messages";
-import type { BrainstormNextStepType, QuestionType, Message } from "@types";
-import { getFirstQuestion, isHumanMessage } from "@types";
+import { Brainstorm, isHumanMessage, type Message } from "@types";
+
+const getFirstQuestion = Brainstorm.getFirstQuestion
+type QuestionType = Brainstorm.QuestionType;
+type BrainstormNextStepType = Brainstorm.BrainstormNextStepType;
 
 export const BrainstormAnnotation = Annotation.Root({
     error: Annotation<string | undefined>({

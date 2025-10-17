@@ -107,5 +107,5 @@ export {
 
 export * from "./guards";
 
-export * from "./brainstorm";
+export * as Brainstorm from "./brainstorm";
 export * from "./langgraph";

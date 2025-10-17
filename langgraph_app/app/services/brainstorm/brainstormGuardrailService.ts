@@ -124,8 +124,16 @@ export class BrainstormGuardrailService {
         `);
 
         const llm = getLlm(LLMSkill.Planning, LLMSpeed.Slow);
-        const structuredLlm = llm.withStructuredOutput(brainstormGuardrailPromptOutputSchema);
-        const result = await structuredLlm.invoke(promptText);
+        const response = await llm.invoke(promptText)
+        console.log(promptText)
+
+        // For plane, remove this... annoying
+        // const structuredLlm = llm.withStructuredOutput(brainstormGuardrailPromptOutputSchema);
+        // const result = await structuredLlm.invoke(promptText);
+        const jsonPieces = response.content.split("```json")
+        const jsonString = jsonPieces[1].replace(/```/, '');
+        const result = JSON.parse(jsonString);
+        console.log(result)
 
         return {
             userNeedsHelp: !result.isOnTopic,

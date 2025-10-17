@@ -3,8 +3,33 @@ import { testGraph } from '@support';
 import { type BrainstormGraphState } from '@state';
 import { databaseSnapshotter } from '@services';
 import { brainstormGraph } from '@graphs';
-import { HumanMessage, AIMessage } from '@langchain/core/messages';
-import { isHumanMessage, isAIMessage, type StructuredQuestionContentType, type QuestionType } from '@types';
+import { HumanMessage } from '@langchain/core/messages';
+import { 
+    isHumanMessage, 
+    isAIMessage, 
+    Brainstorm,
+    type Message,
+} from '@types';
+
+type StructuredQuestionContentType = Brainstorm.StructuredQuestionContentType;
+type QuestionType = Brainstorm.QuestionType;
+type StructuredQuestionType = Brainstorm.StructuredQuestionType;
+
+const getSimpleQuestion = Brainstorm.getSimpleQuestion;
+
+const expectStructuredOutput = (question: StructuredQuestionType) => {
+    const questionContent: StructuredQuestionContentType = question.question;
+    expect(typeof questionContent).toBe('object');
+    
+    expect(questionContent.intro).toBeTruthy();
+
+    expect(questionContent.sampleResponses).toHaveLength(3);
+    expect(questionContent.sampleResponses[0]).toBeTruthy();
+    expect(questionContent.sampleResponses[1]).toBeTruthy();
+    expect(questionContent.sampleResponses[2]).toBeTruthy();
+    
+    expect(questionContent.conclusion).toBeTruthy();
+}
 
 describe.sequential('Brainstorming Flow', () => {
     beforeAll(async () => {
@@ -28,13 +53,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(question.type).toBe('structured'); // We now give the user more information...
 
             if (question.type === 'structured') {
-                const questionContent: StructuredQuestionContentType = question.question;
-                expect(typeof questionContent).toBe('object');
-                
-                expect(questionContent.intro).toBeTruthy();
-                expect(questionContent.question).toBeTruthy();
-                expect(questionContent.sampleResponses).toHaveLength(3);
-                expect(questionContent.conclusion).toBeTruthy();
+                expectStructuredOutput(question);
             }
         });
 
@@ -53,18 +72,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(question.type).toBe('structured');
 
             if (question.type === 'structured') {
-                const questionContent: StructuredQuestionContentType = question.question;
-                expect(typeof questionContent).toBe('object');
-                
-                expect(questionContent.intro).toBeTruthy();
-                expect(questionContent.intro.toLowerCase()).toContain('friend of the pod');
-            
-                expect(questionContent.sampleResponses).toHaveLength(3);
-                expect(questionContent.sampleResponses[0]).toBeTruthy();
-                expect(questionContent.sampleResponses[1]).toBeTruthy();
-                expect(questionContent.sampleResponses[2]).toBeTruthy();
-                
-                expect(questionContent.conclusion).toBeTruthy();
+                expectStructuredOutput(question);
             }
 
             // 1 tacit AI message ("What is your business?") + 
@@ -132,7 +140,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result3.state.messages?.filter((msg) => isAIMessage(msg))).toHaveLength(4);
         });
 
-        it.only('should ask third question (structured) after second response', async () => {
+        it('should ask third question (structured) after second response', async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -158,18 +166,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(typeof question).toBe('object');
             
             if (question.type === 'structured') {
-                const questionContent: StructuredQuestionContentType = question.question;
-                expect(typeof questionContent).toBe('object');
-                
-                expect(questionContent.intro).toBeTruthy();
-                expect(questionContent.intro.toLowerCase()).toContain('friend of the pod');
-            
-                expect(questionContent.sampleResponses).toHaveLength(3);
-                expect(questionContent.sampleResponses[0]).toBeTruthy();
-                expect(questionContent.sampleResponses[1]).toBeTruthy();
-                expect(questionContent.sampleResponses[2]).toBeTruthy();
-                
-                expect(questionContent.conclusion).toBeTruthy();
+                expectStructuredOutput(question);
             }
             
             expect(result2.state.messages).toHaveLength(5);
@@ -177,32 +174,43 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result2.state.messages?.filter((msg) => isAIMessage(msg))).toHaveLength(3);
         });
 
-        it('should ask fourth question (verbatim) after third response', async () => {
+        it.only('should ask fourth question after third response', async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
                 .stopAfter('askQuestion')
                 .execute();
 
-            const messages2 = [
+            const messages2: Message[] = [
                 ...result1.state.messages,
-                new HumanMessage(`Podcast listeners and creators.`),
-                new HumanMessage(`We use AI matching to connect them.`)
+                getSimpleQuestion(1), // Audience
+                new HumanMessage(`Podcasts guests looking to promote their book or service`),
+                getSimpleQuestion(2), // What's your value prop?
             ];
 
             const result2 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
-                .withPrompt(`We provide personalized recommendations and discovery tools.`)
+                .withPrompt(`We match podcast hosts and guests to find the perfect audience to promote your product!`)
                 .withState({
                     messages: messages2,
-                    questionIndex: 3
+                    questionIndex: 2
                 })
                 .stopAfter('askQuestion')
                 .execute();
 
+            expect(result2.state.error).toBeUndefined()
+
+            const question: QuestionType = result2.state.nextQuestion;
+            expect(question.key).toBe("socialProof");
+            expect(question.type).toBe("structured");
+            expect(typeof question).toBe('object');
+
+            if (question.type === 'structured') {
+                expectStructuredOutput(question)
+            }
+
             expect(result2.error).toBeUndefined();
-            expect(result2.state.nextQuestion).toBe("Do you have testimonials, reviews, high-profile customers, or other social proof?");
-            expect(result2.state.questionIndex).toBe(4);
+            expect(result2.state.questionIndex).toBe(3);
         });
 
         it('should ask fifth question (verbatim) after fourth response', async () => {

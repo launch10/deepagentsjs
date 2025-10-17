@@ -3,8 +3,13 @@ import { StateGraph, type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLlm, LLMSkill, LLMSpeed } from "@core";
 import { type NotificationOptions } from "@core";
 import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
-import { type QuestionType, type QuestionVariantType, BRAINSTORMING_QUESTIONS, createBrainstormingMessage } from "@types";
+import { Brainstorm } from "@types";
 import { messageSchema, type Message } from "@types";
+
+type QuestionType = Brainstorm.QuestionType;
+type QuestionVariantType = Brainstorm.QuestionVariantType;
+const BRAINSTORMING_QUESTIONS = Brainstorm.BRAINSTORMING_QUESTIONS;
+const createBrainstormingMessage = Brainstorm.createBrainstormingMessage;
 
 export const askQuestionInputSchema = z.object({
     messages: z.array(messageSchema).describe("The user's request/description for the project"),
@@ -130,6 +135,7 @@ export class AskQuestionService {
       }
 
       if (questionVariant.style === "Verbatim") {
+        console.log(`sorry big dawg, this one is verbatim!!`)
         return { 
           question: {
             key: nextQuestion.name,
@@ -150,8 +156,16 @@ export class AskQuestionService {
         schema: outputSchema,
         isRetry: userNeedsHelp 
       });
-      const structuredLlm = llm.withStructuredOutput(outputSchema);
-      const result = await structuredLlm.invoke(prompt);
+      // const structuredLlm = llm.withStructuredOutput(outputSchema);
+      // const result = await structuredLlm.invoke(prompt);
+      console.log(prompt)
+      const response = await llm.invoke(prompt);
+      console.log(response)
+
+      const responseContent = response.content as string;
+      const jsonPieces = responseContent.split("```json")
+      const jsonString = jsonPieces[1]!.replace(/```/, '');
+      const result = JSON.parse(jsonString);
 
       let updatedMessages = messages;
       let question: QuestionType = {
@@ -161,6 +175,7 @@ export class AskQuestionService {
       }
       updatedMessages.push(createBrainstormingMessage(question)); 
 
+      console.log(`and the next question index is.... ${nextQuestionIndex}`)
       return { 
         messages: updatedMessages,
         question: question,

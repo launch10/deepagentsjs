@@ -28,10 +28,12 @@ export const enum LLMFree {
 
 export const enum LLM {
   // 200k context, 8k completion, ~66tps, $1.00/1M in, $5.00/1M out
-  Haiku = "claude-3-5-haiku-latest",
+  // Best balance of speed, cost, and intelligence for execution
+  Haiku = "claude-4-5-haiku-latest",
 
   // 200k context, 8k completion, ~100tps, $5.00/1M in, $15.00/1M out
-  Sonnet = "claude-3-5-sonnet-latest",
+  // Costly but great intelligence for planning
+  Sonnet = "claude-4-5-sonnet-latest",
 
   // 128k context, 8k completion, ~750tps, $0.05/1M in, $0.08/1M out
   GptOss = "gpt-oss:20b",
@@ -156,8 +158,6 @@ export const enum LLMSkill {
   Reasoning = 'reasoning',
 }
 
-const freeModel = LLM.GptOss;
-
 const freeSlowConfig: LLMsConfig = {
   planning: GptOssConfig,
   writing: {
@@ -210,7 +210,6 @@ export const llmConfig: LLMAppConfig = {
 };
 
 const llmPaid= env.LLM_PAID || LLMFree.Free;
-const appLLMConfig = llmConfig[llmPaid as keyof LLMAppConfig];
 
 const llmInstances: Partial<Record<string, BaseChatModel>> = {}; // Key format: "skill-speed"
 

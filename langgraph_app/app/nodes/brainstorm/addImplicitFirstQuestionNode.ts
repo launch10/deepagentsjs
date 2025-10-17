@@ -1,7 +1,7 @@
 import { type BrainstormGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { BaseNode } from "@core";
-import { BRAINSTORMING_QUESTIONS, isAIMessage, type QuestionTemplateType, type Message } from "@types";
+import { Brainstorm, isAIMessage, type Message } from "@types";
 import { AIMessage } from "@langchain/core/messages";
 
 /**
@@ -16,20 +16,12 @@ class AddImplicitFirstQuestionNode extends BaseNode<BrainstormGraphState> {
     if (anyAIMessage) {
       return {};
     }
-    const questionTemplate: QuestionTemplateType = BRAINSTORMING_QUESTIONS[0]!;
-    if (!questionTemplate) {
-      throw new Error("Question template is required");
-    }
-    const question = questionTemplate.variants.simple;
-    const questionText = question?.question;
-    if (!questionText) {
-      throw new Error("Question text is required");
-    }
     if (!state.messages) {
       state.messages = [];
     }
+    const question: AIMessage = Brainstorm.getFirstQuestion();
     const newMessages: Message[] = [
-      new AIMessage(questionText),
+      question,
       ...state.messages,
     ];
     return {

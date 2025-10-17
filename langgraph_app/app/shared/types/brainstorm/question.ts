@@ -34,7 +34,8 @@ export const questionSchema = z.discriminatedUnion("type", [
 ]);
 
 export type QuestionType = z.infer<typeof questionSchema>;
-
+export type SimpleQuestionType = Extract<QuestionType, { type: "simple" }>;
+export type StructuredQuestionType = Extract<QuestionType, { type: "structured" }>;
 interface SimpleQuestionTemplate {
     question: string;
     style: "Verbatim";
@@ -46,12 +47,12 @@ interface HelpfulQuestionTemplate {
 }
 export interface QuestionTemplateType {
   name: QuestionKey;
-  order: number;
+  index: number;
   variants: QuestionVariantsType;
   default: "simple" | "helpful";
 }
 export interface QuestionVariantsType {
-  simple?: SimpleQuestionTemplate;
+  simple: SimpleQuestionTemplate;
   helpful: HelpfulQuestionTemplate;
 }
 
@@ -60,7 +61,7 @@ export type QuestionVariantType = SimpleQuestionTemplate | HelpfulQuestionTempla
 export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
   {
     name: "introduction",
-    order: 1,
+    index: 0,
     default: "simple",
     variants: {
       simple: {
@@ -91,9 +92,13 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
 
   {
     name: "customers",
-    order: 2,
+    index: 1,
     default: "helpful",
     variants: {
+      simple: { 
+        question: "Who are your customers, and what are they trying to achieve?",
+        style: "Verbatim"
+      },
       helpful: {
         question: "Who are your customers, and what are they trying to achieve?",
         style: "Rephrased",
@@ -118,9 +123,13 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
 
   {
     name: "valueProp",
-    order: 3,
+    index: 2,
     default: "helpful",
     variants: {
+      simple: { 
+        question: "How does [BUSINESS NAME] solve the customer's problem? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
+        style: "Verbatim"
+      },
       helpful: {
         question: "How does [BUSINESS NAME] solve the customer's problem? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
         style: "Rephrased",
@@ -145,9 +154,13 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
 
   {
     name: "socialProof",
-    order: 4,
-    default: "simple",
+    index: 3,
+    default: "helpful",
     variants: {
+      simple: { 
+        question: "Do you have testimonials, reviews, high-profile customers, or other social proof? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
+        style: "Verbatim"
+      },
       helpful: {
         question: "Do you have testimonials, reviews, high-profile customers, or other social proof? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
         style: "Rephrased",
@@ -172,7 +185,7 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
 
   {
     name: "lookAndFeel",
-    order: 5,
+    index: 4,
     default: "simple",
     variants: {
       simple: {
@@ -188,6 +201,14 @@ export const BRAINSTORMING_QUESTIONS: QuestionTemplateType[] = [
   },
 
 ]
+
+export const getSimpleQuestion = (index: number): AIMessage => {
+  const question = BRAINSTORMING_QUESTIONS[index];
+  if (!question) {
+    throw new Error(`Question at index ${index} not defined`);
+  }
+  return new AIMessage(question.variants["simple"].question);
+}
 
 export const getFirstQuestion = () => {
   return new AIMessage(BRAINSTORMING_QUESTIONS[0]!.variants["simple"]!.question);
