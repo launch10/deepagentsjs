@@ -174,7 +174,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result2.state.messages?.filter((msg) => isAIMessage(msg))).toHaveLength(3);
         });
 
-        it.only('should ask fourth question after third response', async () => {
+        it('should ask fourth question after third response', async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -213,18 +213,20 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result2.state.questionIndex).toBe(3);
         });
 
-        it('should ask fifth question (verbatim) after fourth response', async () => {
+        it.only('should ask fifth question (verbatim) after fourth response', async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
                 .stopAfter('askQuestion')
                 .execute();
 
-            const messages2 = [
+            const messages2: Message[] = [
                 ...result1.state.messages,
-                new HumanMessage(`Podcast listeners and creators.`),
-                new HumanMessage(`We use AI matching.`),
-                new HumanMessage(`We provide personalized recommendations.`)
+                getSimpleQuestion(1), // Audience
+                new HumanMessage(`Podcasts guests looking to promote their book or service`),
+                getSimpleQuestion(2), // What's your value prop?
+                new HumanMessage(`We match podcast hosts and guests to find the perfect audience to promote your product!`),
+                getSimpleQuestion(3), // Social proof
             ];
 
             const result2 = await testGraph<BrainstormGraphState>()
@@ -232,14 +234,19 @@ describe.sequential('Brainstorming Flow', () => {
                 .withPrompt(`Yes, we have testimonials from over 50 podcasters with 5-star ratings.`)
                 .withState({
                     messages: messages2,
-                    questionIndex: 4
+                    questionIndex: 3
                 })
                 .stopAfter('askQuestion')
                 .execute();
 
             expect(result2.error).toBeUndefined();
-            expect(result2.state.nextQuestion).toBe("Before we build, do you have a logo, color palette, or images you want to include?");
-            expect(result2.state.questionIndex).toBe(5);
+
+            const question = result2.state.nextQuestion;
+            expect(question.key).toBe("lookAndFeel");
+            expect(question.type).toBe("simple");
+            expect(typeof question).toBe('object');
+            expect(result2.state.nextQuestion.question).toBe("Before we build, do you have a logo, color palette, or images you want to include?");
+            expect(result2.state.questionIndex).toBe(4);
         });
 
         it('should complete brainstorming after fifth response', async () => {

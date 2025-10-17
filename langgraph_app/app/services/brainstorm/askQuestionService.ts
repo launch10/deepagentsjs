@@ -135,7 +135,6 @@ export class AskQuestionService {
       }
 
       if (questionVariant.style === "Verbatim") {
-        console.log(`sorry big dawg, this one is verbatim!!`)
         return { 
           question: {
             key: nextQuestion.name,
