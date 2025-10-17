@@ -280,8 +280,8 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result2.error).toBeUndefined();
             expect(result2.state.questionIndex).toBe(4);
 
-            const lastAiResponse = result2.state.messages.filter(isAIMessage).slice(-1)
-            console.log(lastAiResponse.content)
+            const lastAiResponse = result2.state.messages.filter(isAIMessage).slice(-1)[0]
+            expect(lastAiResponse.content).toMatch(/Advanced Sidebar/)
         });
     });
 });
