@@ -401,30 +401,6 @@ export const templateFiles = pgTable("template_files", {
 	uniqueIndex("index_template_files_on_template_id_and_path").using("btree", table.templateId.asc().nullsLast().op("text_ops"), table.path.asc().nullsLast().op("text_ops")),
 ]);
 
-export const contentStrategies = pgTable("content_strategies", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	tone: varchar().notNull(),
-	coreEmotionalDriver: varchar("core_emotional_driver"),
-	attentionGrabber: varchar("attention_grabber"),
-	problemStatement: varchar("problem_statement"),
-	emotionalBridge: varchar("emotional_bridge"),
-	productReveal: varchar("product_reveal"),
-	socialProof: varchar("social_proof"),
-	urgencyHook: varchar("urgency_hook"),
-	callToAction: varchar("call_to_action"),
-	pageMood: varchar("page_mood"),
-	visualEvocation: varchar("visual_evocation"),
-	landingPageCopy: text("landing_page_copy"),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	websiteId: integer("website_id"),
-	summary: text(),
-}, (table) => [
-	index("index_content_strategies_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_content_strategies_on_updated_at").using("btree", table.updatedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_content_strategies_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int4_ops")),
-]);
-
 export const deployFiles = pgTable("deploy_files", {
 	id: bigserial({ mode: "number" }).primaryKey().notNull(),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
@@ -516,6 +492,31 @@ export const iconEmbeddings = pgTable("icon_embeddings", {
 }, (table) => [
 	index("idx_icon_embeddings_text").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")),
 	uniqueIndex("index_icon_embeddings_on_key").using("btree", table.key.asc().nullsLast().op("text_ops")),
+]);
+
+export const contentStrategies = pgTable("content_strategies", {
+	id: bigserial({ mode: "number" }).primaryKey().notNull(),
+	tone: varchar().notNull(),
+	coreEmotionalDriver: varchar("core_emotional_driver"),
+	attentionGrabber: varchar("attention_grabber"),
+	problemStatement: varchar("problem_statement"),
+	emotionalBridge: varchar("emotional_bridge"),
+	productReveal: varchar("product_reveal"),
+	socialProof: varchar("social_proof"),
+	urgencyHook: varchar("urgency_hook"),
+	callToAction: varchar("call_to_action"),
+	pageMood: varchar("page_mood"),
+	visualEvocation: varchar("visual_evocation"),
+	landingPageCopy: text("landing_page_copy"),
+	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+	websiteId: integer("website_id"),
+	summary: text(),
+	audience: varchar(),
+}, (table) => [
+	index("index_content_strategies_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
+	index("index_content_strategies_on_updated_at").using("btree", table.updatedAt.asc().nullsLast().op("timestamp_ops")),
+	index("index_content_strategies_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int4_ops")),
 ]);
 
 export const iconQueryCaches = pgTable("icon_query_caches", {

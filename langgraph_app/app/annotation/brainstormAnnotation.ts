@@ -41,6 +41,11 @@ export const BrainstormAnnotation = Annotation.Root({
         reducer: (current, next) => next
     }),
 
+    availableActions: Annotation<Brainstorm.ActionType[]>({
+        default: () => [],
+        reducer: (current, next) => next
+    }),
+
     action: Annotation<Brainstorm.ActionType | undefined>({
         default: () => undefined,
         reducer: (current, next) => next

@@ -912,7 +912,8 @@ CREATE TABLE public.content_strategies (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     website_id integer,
-    summary text
+    summary text,
+    audience character varying
 );
 
 
@@ -5441,6 +5442,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251026083206'),
 ('20250928143302'),
 ('20250925210226'),
 ('20250925190459'),

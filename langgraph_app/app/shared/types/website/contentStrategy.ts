@@ -3,6 +3,7 @@ import { baseModelSchema, primaryKeySchema } from "../core";
 
 export const contentStrategySchema = baseModelSchema.extend({
   websiteId: primaryKeySchema.optional().describe("ID of the website this content strategy belongs to."),
+  audience: z.string().describe("The audience of our product"),
   summary: z.string().describe("Summary of the content strategy."),
   tone: z.string().describe("Overall tone of the landing page (e.g. Playful, Professional, Techy, Funny, etc.)"),
   coreEmotionalDriver: z.string().describe("Step 1: The primary emotional driver identified for the overall landing page (Identity, Belonging, Relief, Aspiration, Security)."),
