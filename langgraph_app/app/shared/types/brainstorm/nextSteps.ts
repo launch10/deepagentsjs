@@ -1,1 +1,0 @@
-export type NextStepType = "HELP_ME_ANSWER" | "SKIP" | "DO_THE_REST";

@@ -6,7 +6,7 @@ import { askQuestionNode, brainstormGuardrailNode, addImplicitFirstQuestionNode 
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { getLlm, LLMSkill, LLMSpeed } from "@core";
-import { isHumanMessage, isAIMessage } from "@types";
+import { isHumanMessage, isAIMessage, Brainstorm } from "@types";
 
 const router = (state: BrainstormGraphState, config: LangGraphRunnableConfig): string => {
     console.log(`Router received state.route: ${state.route}, isValidAnswer: ${state.isValidAnswer}`);
@@ -18,15 +18,11 @@ const router = (state: BrainstormGraphState, config: LangGraphRunnableConfig): s
         return "askQuestion";
     }
 
-    if (state.route === "ui_help") {
-        return "uiHelp"
-    } else if (state.route === "keep_brainstorming") {
-        return "keepBrainstorming"
-    } else if (state.route === "proceed_to_page_builder") {
-        return "proceedToPageBuilder"
-    } else {
-        return "askQuestion"
+    if (Brainstorm.isRoute(state.route)) {
+        return state.route;
     }
+
+    return "askQuestion"
 }
 
 const keepBrainstorming = (state: BrainstormGraphState, config: LangGraphRunnableConfig): Partial<BrainstormGraphState> => {

@@ -1,9 +1,12 @@
-import type { Brainstorm } from "@types";
+import type { Brainstorm, Graphs, PrimaryKeyType } from "@types";
 import type { CoreGraphState } from "./core";
 export interface BrainstormGraphState extends CoreGraphState {
     nextQuestion: Brainstorm.QuestionType;
     questionIndex: number;
-    nextStep?: Brainstorm.NextStepType;
     isValidAnswer?: boolean;
-    route?: string;
+    action?: Brainstorm.ActionType;
+    route?: Brainstorm.RouteType;
+    redirect?: Graphs.RouteType;
+    projectId: PrimaryKeyType;
+    websiteId: PrimaryKeyType;
 }

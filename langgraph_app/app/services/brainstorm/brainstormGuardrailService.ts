@@ -1,4 +1,4 @@
-import { Schema, string, z } from "zod";
+import { z } from "zod";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLlm, LLMSkill, LLMSpeed } from "@core";
 import { renderPrompt, chatHistoryPrompt, structuredOutputPrompt } from "@prompts";
@@ -146,9 +146,9 @@ const validAnswerPrompt = guardrailPromptFactory<typeof isValidAnswerPromptOutpu
 );
 
 export const AvailableRoutes = z.enum([
-  "ui_help",
-  "proceed_to_page_builder",
-  "keep_brainstorming",
+  "uiHelp",
+  "proceedToPageBuilder",
+  "keepBrainstorming",
 ] as const);
 export type AvailableRoute = z.infer<typeof AvailableRoutes>;
 
@@ -179,7 +179,7 @@ const routerPrompt = guardrailPromptFactory<typeof routerPromptOutputSchema>(
         </task>
         
         <classification_criteria>
-            Mark as ui_help if:
+            Mark as uiHelp if:
             
             1. **The user is asking you to upload images, color palettes, or logos**
             
@@ -187,7 +187,7 @@ const routerPrompt = guardrailPromptFactory<typeof routerPromptOutputSchema>(
             
             3. **The user is asking what to do:**
             
-            Mark as proceed_to_page_builder if:
+            Mark as proceedToPageBuilder if:
             
             1. **User has stated they're finished, or ready to move on:**
             
@@ -195,7 +195,7 @@ const routerPrompt = guardrailPromptFactory<typeof routerPromptOutputSchema>(
             
             3. **User seems aggravated or unclear what's happening:**
 
-            Mark as keep_brainstorming if:
+            Mark as keepBrainstorming if:
 
             1. The user appears to be continuing the previous conversation about their landing page
             2. The user doesn't seem to be engaging in conversation about logos, images, or color palettes.

@@ -10,6 +10,7 @@ import {
     Brainstorm,
     type Message,
 } from '@types';
+import { ContentStrategyModel } from '@models';
 
 type StructuredQuestionContentType = Brainstorm.StructuredQuestionContentType;
 type QuestionType = Brainstorm.QuestionType;
@@ -249,7 +250,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result2.state.questionIndex).toBe(4);
         });
 
-        it.only('guides the user to use the Advanced features before proceeding on question 5', async () => {
+        it('guides the user to use the Advanced features before proceeding on question 5', async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -283,6 +284,112 @@ describe.sequential('Brainstorming Flow', () => {
             const lastAiResponse = result2.state.messages.filter(isAIMessage).slice(-1)[0]
             expect(lastAiResponse.content).toMatch(/Advanced Sidebar/)
         });
+
+        describe("Brainstorming Finished", () => {
+            it("jumps to the next graph when user verbally expresses that they want to move on", async () => {
+                const result1 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                    .stopAfter('askQuestion')
+                    .execute();
+
+                const messages2 = [
+                    ...result1.state.messages,
+                    getSimpleQuestion(1), // Audience
+                    new HumanMessage(`Podcasts guests looking to promote their book or service`),
+                    getSimpleQuestion(2), // What's your value prop?
+                    new HumanMessage(`We match podcast hosts and guests to find the perfect audience to promote your product!`),
+                    getSimpleQuestion(3), // Social proof
+                    new HumanMessage(`Yes, we have testimonials from over 50 podcasters with 5-star ratings.`),
+                    getSimpleQuestion(4),
+                ];
+
+                const result2 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withPrompt(`I don't want to do that, what do we do next?`)
+                    .withState({
+                        messages: messages2,
+                        questionIndex: 4
+                    })
+                    .stopAfter('askQuestion')
+                    .execute();
+
+                expect(result2.error).toBeUndefined();
+                expect(result2.state.questionIndex).toBe(4);
+
+                expect(result2.state.redirect).toEqual("website_builder");
+            });
+
+            it("jumps to the next graph when user clicks 'Finished'", async () => {
+                const result1 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                    .stopAfter('askQuestion')
+                    .execute();
+
+                const messages2 = [
+                    ...result1.state.messages,
+                    getSimpleQuestion(1), // Audience
+                    new HumanMessage(`Podcasts guests looking to promote their book or service`),
+                    getSimpleQuestion(2), // What's your value prop?
+                    new HumanMessage(`We match podcast hosts and guests to find the perfect audience to promote your product!`),
+                    getSimpleQuestion(3), // Social proof
+                    new HumanMessage(`Yes, we have testimonials from over 50 podcasters with 5-star ratings.`),
+                    getSimpleQuestion(4),
+                ];
+
+                const result2 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withState({
+                        messages: messages2,
+                        questionIndex: 4,
+                        action: "FINISHED"
+                    })
+                    .stopAfter('askQuestion')
+                    .execute();
+
+                expect(result2.error).toBeUndefined();
+                expect(result2.state.questionIndex).toBe(4);
+
+                expect(result2.state.redirect).toEqual("website_builder");
+            });
+
+            it("completes the brainstorming and jumps to the next graph when user clicks 'DO_THE_REST'", async () => {
+                const result1 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                    .stopAfter('askQuestion')
+                    .execute();
+
+                const result2 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withState({
+                        ...result1.state,
+                        action: "DO_THE_REST"
+                    })
+                    .stopAfter('askQuestion')
+                    .execute();
+
+                const state = result2.state;
+
+                expect(result2.error).toBeUndefined();
+                expect(state.questionIndex).toBe(4);
+
+                // It seeks approval
+                expect(state.route).toEqual("seekApproval");
+
+                // It creates contents strategy
+                const contentStrategy = await ContentStrategyModel.findBy({websiteId: state.websiteId});
+                expect(contentStrategy).toBeDefined();
+                expect(contentStrategy.problemStatement).toBeDefined();
+                expect(contentStrategy.socialProof).toBeDefined();
+                expect(contentStrategy.callToAction).toBeDefined();
+
+                // It spells out its intentions in message form...
+                const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
+                expect(lastAiResponse.content).toMatch(/audience/) // Brainstorms a section we didn't previously
+            });
+        })
     });
 });
 

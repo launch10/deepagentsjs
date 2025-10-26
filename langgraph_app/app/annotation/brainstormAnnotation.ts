@@ -1,10 +1,6 @@
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
-import { AIMessage, BaseMessage, type BaseMessageLike } from "@langchain/core/messages";
-import { Brainstorm, isHumanMessage, type Message } from "@types";
-
-const getFirstQuestion = Brainstorm.getFirstQuestion
-type QuestionType = Brainstorm.QuestionType;
-type NextStepType = Brainstorm.NextStepType;
+import { AIMessage } from "@langchain/core/messages";
+import { Brainstorm, Graphs, isHumanMessage, type Message, type PrimaryKeyType } from "@types";
 
 export const BrainstormAnnotation = Annotation.Root({
     error: Annotation<string | undefined>({
@@ -22,11 +18,11 @@ export const BrainstormAnnotation = Annotation.Root({
         reducer: (current, next) => next
     }),
 
-    messages: Annotation<Message[], Message[]>({ 
+    messages: Annotation<Message[], Message[]>({
         default: () => [],
         reducer: (existing, incoming) => {
             if (Array.isArray(incoming) && incoming.length > 0 && incoming.length > existing.length) {
-                const firstQuestion: AIMessage = getFirstQuestion();
+                const firstQuestion: AIMessage = Brainstorm.getFirstQuestion();
                 const incomingQuestion = incoming[0];
                 if (!incomingQuestion || !isHumanMessage(incomingQuestion)) {
                     return incoming;
@@ -40,12 +36,12 @@ export const BrainstormAnnotation = Annotation.Root({
         }
     }),
 
-    nextQuestion: Annotation<QuestionType | undefined>({
+    nextQuestion: Annotation<Brainstorm.QuestionType | undefined>({
         default: () => undefined,
         reducer: (current, next) => next
     }),
 
-    nextStep: Annotation<NextStepType | undefined>({
+    action: Annotation<Brainstorm.ActionType | undefined>({
         default: () => undefined,
         reducer: (current, next) => next
     }),
@@ -60,8 +56,23 @@ export const BrainstormAnnotation = Annotation.Root({
         reducer: (current, next) => next
     }),
 
-    route: Annotation<string | undefined>({
+    route: Annotation<Brainstorm.RouteType | undefined>({
         default: () => undefined,
         reducer: (current, next) => next
     }),
+
+    redirect: Annotation<Graphs.RouteType | undefined>({
+        default: () => undefined,
+        reducer: (current, next) => next
+    }),
+    
+    projectId: Annotation<PrimaryKeyType | undefined>({
+        default: () => undefined,
+        reducer: (current, next) => next
+    }),
+
+    websiteId: Annotation<PrimaryKeyType | undefined>({
+        default: () => undefined,
+        reducer: (current, next) => next
+    })
 });
