@@ -17,7 +17,7 @@ class AskQuestionNode extends BaseNode<BrainstormGraphState> {
     const result: AskQuestionOutput = await service.execute({
       messages: state.messages,
       questionIndex: state.questionIndex,
-      userNeedsHelp: state.userNeedsHelp,
+      isValidAnswer: state.isValidAnswer,
     }, config)
 
     return {

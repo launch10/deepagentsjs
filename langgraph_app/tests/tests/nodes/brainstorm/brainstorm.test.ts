@@ -90,7 +90,7 @@ describe.sequential('Brainstorming Flow', () => {
 
             expect(result1.state.questionIndex).toBe(1);
             expect(result1.state.nextQuestion.key).toBe('customers');
-            expect(result1.state.userNeedsHelp).toBe(false);
+            expect(result1.state.isValidAnswer).toBe(true);
 
             const result2 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
@@ -104,7 +104,7 @@ describe.sequential('Brainstorming Flow', () => {
 
             expect(result2.error).toBeUndefined();
             expect(result2.state.questionIndex).toBe(1);
-            expect(result2.state.userNeedsHelp).toBe(true);
+            expect(result2.state.isValidAnswer).toBe(false);
             expect(result2.state.nextQuestion.key).toBe('customers');
 
             // We should address the pasta response somewhere
@@ -122,7 +122,7 @@ describe.sequential('Brainstorming Flow', () => {
 
             expect(result3.error).toBeUndefined();
             expect(result3.state.questionIndex).toBe(1);
-            expect(result3.state.userNeedsHelp).toBe(true);
+            expect(result3.state.isValidAnswer).toBe(false);
             expect(result3.state.nextQuestion.key).toBe('customers');
 
             // We should address the pasta response somewhere
@@ -285,3 +285,10 @@ describe.sequential('Brainstorming Flow', () => {
         });
     });
 });
+
+// TODO:
+// Create project when first question is submitted
+// Name project when first question is submitted
+// Test next steps (Help me answer, skip, do the rest)
+// Summarize / create full content strategy on complete
+// Direct to next workflow ("redirect")

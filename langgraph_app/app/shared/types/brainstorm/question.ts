@@ -37,13 +37,13 @@ export type QuestionType = z.infer<typeof questionSchema>;
 export type SimpleQuestionType = Extract<QuestionType, { type: "simple" }>;
 export type StructuredQuestionType = Extract<QuestionType, { type: "structured" }>;
 interface SimpleQuestionTemplate {
-    question: string;
-    style: "Verbatim";
+  type: "simple",
+  question: string;
 }
 interface HelpfulQuestionTemplate {
-    question: string;
-    style: "Rephrased";
-    fewShotExamples: SchemaFewShotExample<typeof structuredQuestionContentSchema>[];
+  type: "helpful",
+  question: string;
+  fewShotExamples: SchemaFewShotExample<typeof structuredQuestionContentSchema>[];
 }
 
 export type QuestionGuardrail = "validAnswer" | "router";
@@ -69,12 +69,12 @@ export const Questions: QuestionTemplateType[] = [
     guardrails: ["validAnswer"],
     variants: {
       simple: {
+        type: "simple",
         question: "Tell us about your business. More info -> better outcomes.",
-        style: "Verbatim"
       },
       helpful: {
+        type: "helpful",
         question: "I help people develop high-converting landing pages for their businesses. To start, can you tell me about your business?",
-        style: "Rephrased",
         fewShotExamples: [
           {
             input: "<none provided>",
@@ -101,12 +101,12 @@ export const Questions: QuestionTemplateType[] = [
     guardrails: ["validAnswer"],
     variants: {
       simple: { 
+        type: "simple",
         question: "Who are your customers, and what are they trying to achieve?",
-        style: "Verbatim"
       },
       helpful: {
+        type: "helpful",
         question: "Who are your customers, and what are they trying to achieve?",
-        style: "Rephrased",
         fewShotExamples: [
           { 
             input: "The user is a gym owner, whose gym (ImpactZone) is focused on high-impact cardio.",
@@ -133,12 +133,12 @@ export const Questions: QuestionTemplateType[] = [
     guardrails: ["validAnswer"],
     variants: {
       simple: { 
+        type: "simple",
         question: "How does [BUSINESS NAME] solve the customer's problem? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
-        style: "Verbatim"
       },
       helpful: {
+        type: "helpful",
         question: "How does [BUSINESS NAME] solve the customer's problem? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
-        style: "Rephrased",
         fewShotExamples: [
           { 
             input: "The user is a gym owner, whose gym (ImpactZone) is focused on high-impact cardio.",
@@ -165,12 +165,12 @@ export const Questions: QuestionTemplateType[] = [
     guardrails: ["validAnswer"],
     variants: {
       simple: { 
+        type: "simple",
         question: "Do you have testimonials, reviews, high-profile customers, or other social proof? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
-        style: "Verbatim"
       },
       helpful: {
+        type: "helpful",
         question: "Do you have testimonials, reviews, high-profile customers, or other social proof? [ 3 SAMPLE RESPONSES ]. Rephrase the answer.",
-        style: "Rephrased",
         fewShotExamples: [
           {
             input: "The user is a gym owner, whose gym (ImpactZone) is focused on high-impact cardio. Their customers are fitness enthusiasts, and their value proposition is that they offer a wide range of high-intensity workouts, including HIIT, Tabata, and circuit training.",
@@ -197,12 +197,12 @@ export const Questions: QuestionTemplateType[] = [
     guardrails: ["router"],
     variants: {
       simple: {
+        type: "simple",
         question: "Before we build, do you have a logo, color palette, or images you want to include?",
-        style: "Verbatim"
       },
       helpful: {
+        type: "helpful",
         question: "Perhaps that was unclear. You can provide logo, color palette, or images in the right-hand nav bar, or you can click below to build your site!",
-        style: "Rephrased",
         fewShotExamples: []
       }
     }
@@ -222,7 +222,7 @@ export const getFirstQuestion = () => {
   return new AIMessage(Questions[0]!.variants["simple"]!.question);
 }
 
-export const createBrainstormingMessage = (question: QuestionType) => {
+export const createBrainstormingMessage = (question: QuestionType): AIMessage => {
   if (question.type === "structured") {
     const text = `
     ${question.question.intro}
@@ -234,7 +234,7 @@ export const createBrainstormingMessage = (question: QuestionType) => {
     ${question.question.conclusion}
     `
    const message = new AIMessage(text);
-    message.response_metadata.question = question;
+   message.response_metadata.question = question;
    return message;
   } else {
     return new AIMessage(question.question);

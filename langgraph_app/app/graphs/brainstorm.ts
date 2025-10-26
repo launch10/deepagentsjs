@@ -4,7 +4,7 @@ import { type BrainstormGraphState } from "@state";
 import { graphParams } from "@core";
 import { askQuestionNode, brainstormGuardrailNode, addImplicitFirstQuestionNode } from "@nodes";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { AIMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { getLlm, LLMSkill, LLMSpeed } from "@core";
 import { isHumanMessage, isAIMessage } from "@types";
 
@@ -19,7 +19,6 @@ const router = (state: BrainstormGraphState, config: LangGraphRunnableConfig): s
     }
 
     if (state.route === "ui_help") {
-        console.log(`hello i am routing to UI help!!!`)
         return "uiHelp"
     } else if (state.route === "keep_brainstorming") {
         return "keepBrainstorming"
@@ -34,9 +33,9 @@ const keepBrainstorming = (state: BrainstormGraphState, config: LangGraphRunnabl
     return {};
 }
 
-const uiHelp = async (state: BrainstormGraphState, config: LangGraphRunnableConfig): Partial<BrainstormGraphState> => {
-    const lastHumanMessage = state.messages?.filter(isHumanMessage).slice(-1);
-    const lastAIMessage = state.messages?.filter(isAIMessage).slice(-1);
+const uiHelp = async (state: BrainstormGraphState, config: LangGraphRunnableConfig): Promise<Partial<BrainstormGraphState>> => {
+    const lastHumanMessage: HumanMessage = state.messages?.filter(isHumanMessage).slice(-1);
+    const lastAIMessage: AIMessage = state.messages?.filter(isAIMessage).slice(-1);
 
     const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
     const response = await llm.invoke(`

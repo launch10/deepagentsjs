@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StateGraph, type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLlm, LLMSkill, LLMSpeed } from "@core";
 import { type NotificationOptions } from "@core";
 import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
@@ -45,7 +45,7 @@ const basePrompt = async ({
   schema: z.ZodType<any>,
   isRetry?: boolean,
 }) => {
-  const fewShots = question.style === "Rephrased" ? question.fewShotExamples : [];
+  const fewShots = question.type === "helpful" ? question.fewShotExamples : [];
 
   const [fewShotExamples, chatHistory, formatInstructions] = await Promise.all([
     fewShotExamplesPrompt({ fewShotExamples: fewShots, schema }),
@@ -133,19 +133,20 @@ export class AskQuestionService {
         questionVariant = (nextQuestion.default === "simple" ? nextQuestion.variants.simple : nextQuestion.variants.helpful)!;
       }
 
-      if (questionVariant.style === "Verbatim") {
+      if (questionVariant.type === "simple") {
         return { 
           question: {
             key: nextQuestion.name,
             type: "simple",
             question: questionVariant.question 
           },
-          questionIndex: nextQuestionIndex
+          questionIndex: nextQuestionIndex,
+          messages: input.messages,
         }
       }
 
-      const outputType = questionVariant.style === "Rephrased" ? "structured" : "simple";
-      const outputSchema = outputType === "structured" ? structuredQuestionOutputSchema : stringQuestionOutputSchema;
+      const outputType = questionVariant.type;
+      const outputSchema = outputType === "helpful" ? structuredQuestionOutputSchema : stringQuestionOutputSchema;
       
       const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
       const prompt = await basePrompt({ 
