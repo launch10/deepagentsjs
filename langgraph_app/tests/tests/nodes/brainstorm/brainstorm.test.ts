@@ -352,6 +352,7 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(result2.state.questionIndex).toBe(4);
 
                 // It creates contents strategy
+                // This should actually go in the WebsiteBuilder! To save time for the user... 
                 const contentStrategy = await ContentStrategyModel.findBy({websiteId: result2.state.websiteId});
                 expect(contentStrategy).toBeDefined();
                 expect(contentStrategy.problemStatement).toBeDefined();
@@ -412,12 +413,14 @@ describe.sequential('Brainstorming Flow', () => {
                         .stopAfter('askQuestion')
                         .execute();
 
-                    const contentStrategy = await ContentStrategyModel.findBy({websiteId: result2.state.websiteId});
-                    expect(contentStrategy).toBeDefined();
-                    expect(contentStrategy.audience).toBeDefined(); // Even though we skipped this question, the AI brainstorms using the data available to it.
-
-                    // Make an eval or something?
-                    // expect(contentStrategy.audience).toBeAnInformedDecision()
+                    // This should actually go in the WebsiteBuilder! Find another way to test this...
+                    // We should put this in MESSAGES...
+                    // const contentStrategy = await ContentStrategyModel.findBy({websiteId: result2.state.websiteId});
+                    // expect(contentStrategy).toBeDefined();
+                    // expect(contentStrategy.audience).toBeDefined(); // Even though we skipped this question, the AI brainstorms using the data available to it.
+                    const lastAiResponse = result3.state.messages.filter(isAIMessage).slice(-1);
+                    expect(lastAiResponse.content).toMatch(/based on everything you said.../) // we skipped this, so it answers at the end...
+                    expect(lastAiResponse.content).toMatch(/content creators/) // we skipped this, so it answers at the end...
                 });
 
                 it("allows user to make further adjustments", async () => {
@@ -607,5 +610,3 @@ describe.sequential('Brainstorming Flow', () => {
     // User can access next steps
 // Summarize / create full content strategy on complete
 // Direct to next workflow ("redirect")
-
-// ON FINISHED:::
