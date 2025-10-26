@@ -4,9 +4,7 @@ import { type BrainstormGraphState } from "@state";
 import { graphParams } from "@core";
 import { askQuestionNode, guardrailNode, setupNode, uiHelpNode, keepBrainstormingNode } from "@nodes";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import { getLlm, LLMSkill, LLMSpeed } from "@core";
-import { isHumanMessage, isAIMessage, Brainstorm } from "@types";
+import { Brainstorm } from "@types";
 
 const router = (state: BrainstormGraphState, config: LangGraphRunnableConfig): string => {
     console.log(`Router received state.route: ${state.route}, isValidAnswer: ${state.isValidAnswer}`);
@@ -31,12 +29,31 @@ const seekApproval = (state: BrainstormGraphState, config: LangGraphRunnableConf
     }
 }
 
+const proceedToPageBuilder = (state: BrainstormGraphState, config: LangGraphRunnableConfig): Partial<BrainstormGraphState> => {
+    return {
+        redirect: "website_builder"
+    }
+}
+
+const skip = (state: BrainstormGraphState, config: LangGraphRunnableConfig): Partial<BrainstormGraphState> => {
+    return {
+        questionIndex: state.questionIndex + 1
+    }
+}
+
+const helpMeAnswer = (state: BrainstormGraphState, config: LangGraphRunnableConfig): Partial<BrainstormGraphState> => {
+    return {
+        isValidAnswer: false
+    }
+}
+
 export const brainstormGraph = new StateGraph(BrainstormAnnotation)
     .addNode("setup", setupNode)
     .addNode("guardrails", guardrailNode)
     .addNode("uiHelp", uiHelpNode)
     .addNode("keepBrainstorming", keepBrainstormingNode)
     .addNode("seekApproval", seekApproval)
+    .addNode("proceedToPageBuilder", proceedToPageBuilder)
     .addNode("askQuestion", askQuestionNode)
 
     .addEdge(START, "setup")
@@ -46,4 +63,5 @@ export const brainstormGraph = new StateGraph(BrainstormAnnotation)
     .addEdge("keepBrainstorming", END)
     .addEdge("askQuestion", END)
     .addEdge("seekApproval", END)
+    .addEdge("proceedToPageBuilder", END)
     .compile(graphParams)
