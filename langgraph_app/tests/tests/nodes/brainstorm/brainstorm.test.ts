@@ -371,7 +371,6 @@ describe.sequential('Brainstorming Flow', () => {
                         .stopAfter('askQuestion')
                         .execute();
 
-
                     const question: QuestionType = result1.state.nextQuestion;
                     expect(question.key).toBe("customers");
                     expect(question.type).toBe("structured");
@@ -462,7 +461,66 @@ describe.sequential('Brainstorming Flow', () => {
                     expect(lastAiResponse.content).toMatch(/creators/) // It updates it understanding
                     expect(lastAiResponse.content).toMatch(/social proof is affected by this change..../)
                 });
-            })
+            });
+
+            describe("HELP_ME_ANSWER", () => {
+                it("helps the user answer the question", async () => {
+                    const result1 = await testGraph<BrainstormGraphState>()
+                        .withGraph(brainstormGraph)
+                        .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                        .stopAfter('askQuestion')
+                        .execute();
+
+                    const question: QuestionType = result1.state.nextQuestion;
+                    expect(question.key).toBe("customers");
+                    expect(question.type).toBe("structured");
+                    expect(typeof question).toBe('object');
+
+                    const result2 = await testGraph<BrainstormGraphState>()
+                        .withGraph(brainstormGraph)
+                        .withState({
+                            ...result1.state,
+                            action: "HELP_ME_ANSWER"
+                        })
+                        .stopAfter('askQuestion')
+                        .execute();
+
+                    const state = result2.state;
+
+                    expect(result2.error).toBeUndefined();
+                    expect(state.questionIndex).toBe(2);
+
+                    // It answers for the user as 2nd-to-last message
+                    const lastAiResponse = state.messages?.filter(isAIMessage).slice(-2);
+                    expect(lastAiResponse.content).toMatch(/content creators/) // The audience
+
+                    // Then it asks the next question...
+                    const question2: QuestionType = state.nextQuestion;
+                    expect(question2.key).toBe("valueProp"); // It prepares the next question
+                    expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
+
+                    const result3 = await testGraph<BrainstormGraphState>()
+                        .withGraph(brainstormGraph)
+                        .withPrompt(`Actually, it's for podcast listeners...`)
+                        .withState({
+                            ...result2.state,
+                        })
+                        .stopAfter('askQuestion')
+                        .execute();
+
+                    const question3: QuestionType = state.nextQuestion;
+                    // We're still on value prop
+                    expect(question2.key).toBe("valueProp"); // It prepares the next question
+                    expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
+
+                    const lastAiResponse2 = state.messages?.filter(isAIMessage).slice(-1);
+                    expect(lastAiResponse2.content).toMatch(/content creators/) // The audience
+
+                    expect(lastAiResponse2.content).toMatch(/got it! Podcast listeners/)
+                    expect(lastAiResponse2.content).toMatch(/Now about our value prop/)
+                });
+            });
+
             describe("DO_THE_REST", () => {
                 it("completes the brainstorming and provides only FINISHED action when user", async () => {
                     const result1 = await testGraph<BrainstormGraphState>()
@@ -535,7 +593,7 @@ describe.sequential('Brainstorming Flow', () => {
                     expect(lastAiResponse.content).toMatch(/creators/) // It updates it understanding
                     expect(lastAiResponse.content).toMatch(/social proof is affected by this change..../)
                 });
-            })
+            });
         });
     });
 });

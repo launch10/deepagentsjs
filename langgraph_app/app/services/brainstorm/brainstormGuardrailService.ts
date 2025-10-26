@@ -99,6 +99,9 @@ const validAnswerPrompt = guardrailPromptFactory<typeof isValidAnswerPromptOutpu
             3. **Completely unrelated responses:**
             - Answers that have no connection to the question asked
             - Random topic changes that don't address the question
+
+            4. **Response to previous topic:**
+            - Answer responds to previous topic of conversation
             
             Mark as VALID ANSWER if the user's response shows ANY of these:
             
@@ -129,6 +132,9 @@ const validAnswerPrompt = guardrailPromptFactory<typeof isValidAnswerPromptOutpu
         <important>
             Be GENEROUS with the user's response. If they made a reasonable attempt to answer,
             even if minimal, mark as VALID.
+
+            BUT if the user is discussing a PREVIOUS topic of conversation, we want to go back to it, so
+            you should mark it as INVALID if the user is circling back to an earlier point.
         </important>
 
         <question>

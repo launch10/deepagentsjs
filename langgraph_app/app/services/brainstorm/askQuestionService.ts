@@ -55,11 +55,21 @@ const basePrompt = async ({
 
   const retryContext = isRetry ? `
     <context>
-      The user has already been asked this question but their response was off-topic 
-      or they were seeking help/clarification. Please read their response, and provide a supportive, helpful response that re-engages them with the question.
+      The user has already been asked this question but:
+      
+      1) Their answer might've been about a previous conversation topic
+      2) Their answer might've been off-topic
+      3) They might be seeking help/clarification
+      
+      Please read their response, and:
 
-      If their response is off-topic, don't TOTALLY ignore what they said. Respond to what they said, but then guide them
-      back to the question at hand.
+      1) If their answer adds additional context to an earlier conversation topic:
+        A) Acknowledge this new insight
+        B) Guide them back to the question at hand
+
+      2) If they've gone off-topic, or need help: 
+        A) Provide a helpful, supportive response (Don't totally ignore what the user said)
+        B) Guide them back to the question at hand
     </context>
   ` : '';
 
