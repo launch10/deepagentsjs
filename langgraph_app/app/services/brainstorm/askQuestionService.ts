@@ -34,6 +34,7 @@ const stringQuestionOutputSchema = z.object({
 const structuredQuestionOutputSchema = z.object({
   question: structuredQuestionSchema.describe("The structured question to ask the user")
 });
+
 const basePrompt = async ({
   messages, 
   question, 
@@ -81,12 +82,12 @@ const basePrompt = async ({
     <role>
       You are the brainstorming agent. Your job is to help the user brainstorm 
       copy for a high-converting landing page for their business.
-
-      You will be shown the current conversation, as well as the next question
-      you are meant to ask the user. 
     </role>
 
     <task>
+      You will be shown the current conversation, as well as the next question
+      you are meant to ask the user. 
+
       Your task is to properly adapt the question template to the current conversation, 
       making sure the question is clear and concise. If the template requests you
       to provide the user with sample answers, you should provide good sample

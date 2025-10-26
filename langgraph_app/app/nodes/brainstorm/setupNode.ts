@@ -7,7 +7,7 @@ import { AIMessage } from "@langchain/core/messages";
 /**
  * Ensure implicit first question is in state
  */
-class AddImplicitFirstQuestionNode extends BaseNode<BrainstormGraphState> {
+class SetupNode extends BaseNode<BrainstormGraphState> {
   async execute(
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
@@ -31,4 +31,4 @@ class AddImplicitFirstQuestionNode extends BaseNode<BrainstormGraphState> {
 }
 
 // Export as a function for use in the graph
-export const addImplicitFirstQuestionNode = new AddImplicitFirstQuestionNode().toNodeFunction();
+export const setupNode = new SetupNode().toNodeFunction();

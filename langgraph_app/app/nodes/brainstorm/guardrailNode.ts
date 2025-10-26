@@ -1,17 +1,16 @@
 import { type BrainstormGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { BaseNode } from "@core";
-import { BrainstormGuardrailService, type BrainstormGuardrailOutput } from "@services";
-import { AIMessage } from "@langchain/core/messages";
+import { GuardrailService, type GuardrailOutput } from "@services";
 
-class BrainstormGuardrailNode extends BaseNode<BrainstormGraphState> {
+class GuardrailNode extends BaseNode<BrainstormGraphState> {
   async execute(
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> {
-    const service = new BrainstormGuardrailService();
+    const service = new GuardrailService();
 
-    const result: BrainstormGuardrailOutput = await service.execute({
+    const result: GuardrailOutput = await service.execute({
       messages: state.messages,
       questionIndex: state.questionIndex,
     }, config);
@@ -24,4 +23,4 @@ class BrainstormGuardrailNode extends BaseNode<BrainstormGraphState> {
   }
 }
 
-export const brainstormGuardrailNode = new BrainstormGuardrailNode().toNodeFunction();
+export const guardrailNode = new GuardrailNode().toNodeFunction();

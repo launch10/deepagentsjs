@@ -1,18 +1,17 @@
 import { z } from "zod";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLlm, LLMSkill, LLMSpeed } from "@core";
-import { renderPrompt, chatHistoryPrompt, structuredOutputPrompt } from "@prompts";
+import { chatHistoryPrompt, structuredOutputPrompt } from "@prompts";
 import { isHumanMessage, isAIMessage, messageSchema, Brainstorm, type Message } from "@types";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { lastAIMessage } from "@annotation";
 
 export const brainstormGuardrailInputSchema = z.object({
     messages: z.array(messageSchema).describe("The conversation messages"),
     questionIndex: z.number().describe("The current question index"),
 });
 
-export type BrainstormGuardrailInput = z.infer<typeof brainstormGuardrailInputSchema>;
+export type GuardrailInput = z.infer<typeof brainstormGuardrailInputSchema>;
 
 export type GuardrailPrompt<Schema extends z.ZodObject<any>> = (
   lastAIMessage: AIMessage,
@@ -63,8 +62,8 @@ const isValidAnswerPromptOutputSchema = z.object({
     reasoning: z.string().describe("Brief explanation of why the response is on-topic or off-topic")
 }).strict();
 
-export type BrainstormGuardrailOutput = { 
-    route?: string; // Does user need more explicit help?
+export type GuardrailOutput = { 
+    route?: Brainstorm.RouteType; // Does user need more explicit help?
     reasoningRoute?: string;
     isValidAnswer?: boolean; // Did user provide valid answer?
     reasoningIsValidAnswer?: string;
@@ -235,8 +234,8 @@ type GuardrailSchemaMap = typeof guardrailSchemas;
 type GuardrailOutputMap = {
     [K in keyof GuardrailSchemaMap]: z.infer<GuardrailSchemaMap[K]>;
 };
-export class BrainstormGuardrailService {
-    async execute(input: BrainstormGuardrailInput, config?: LangGraphRunnableConfig): Promise<BrainstormGuardrailOutput> {
+export class GuardrailService {
+    async execute(input: GuardrailInput, config?: LangGraphRunnableConfig): Promise<GuardrailOutput> {
         const { messages, questionIndex } = input;
         
         if (!messages || messages.length === 0) {
@@ -273,7 +272,7 @@ export class BrainstormGuardrailService {
             })
         );
 
-        const output: BrainstormGuardrailOutput = {};
+        const output: GuardrailOutput = {};
 
         for (const { guardrail, result } of guardrailResults) {
             if (guardrail === 'validAnswer') {

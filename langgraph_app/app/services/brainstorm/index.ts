@@ -1,2 +1,2 @@
 export * from "./askQuestionService";
-export * from "./brainstormGuardrailService";
+export * from "./guardrailService";
