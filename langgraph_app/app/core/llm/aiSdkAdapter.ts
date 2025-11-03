@@ -1,6 +1,9 @@
 import { z } from "zod";
+// import { v4 as uuidv4 } from "uuid";
 import { anthropic } from '@ai-sdk/anthropic';
+import { GenerateExamplesTool } from "./tools/generateExamples.ts";
 import { streamObject, streamText, parsePartialJson } from 'ai';
+import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { 
   type LanguageModelV2, 
   type LanguageModelV2Prompt, 
@@ -107,7 +110,6 @@ class LangGraphModel<TState extends { messages: BaseMessage[] }> implements Lang
   async doStream(
     options: Parameters<LanguageModelV2['doStream']>[0]
   ): Promise<Awaited<ReturnType<LanguageModelV2['doStream']>>> {
-    console.log(`about to stream...`)
     const stream = await this.graph.stream(
       {
         messages: this.toLanggraphMessages(options.prompt),
@@ -136,7 +138,8 @@ class LangGraphModel<TState extends { messages: BaseMessage[] }> implements Lang
 
         transform(chunk: StreamMessageOutput, controller) {
           // chunk is [AIMessage, metadata]
-          const [message, _metadata] = chunk;
+          const [message, metadata] = chunk;
+          if (!metadata.tags.includes("notify")) { return; }
 
           if (message?.content) {
             let textDelta = typeof message.content === 'string'
@@ -151,9 +154,9 @@ class LangGraphModel<TState extends { messages: BaseMessage[] }> implements Lang
               inCodeBlock = true;
               textDelta = buffer;
               buffer = '';
-            } else if (buffer.includes('```') && !inCodeBlock) {
+            } else if (buffer.includes('```') && inCodeBlock) {
               buffer = buffer.replace('```', '').trim();
-              inCodeBlock = true;
+              inCodeBlock = false;
               textDelta = buffer;
               buffer = '';
             }
@@ -215,6 +218,10 @@ const structuredResponseSchema = z.object({
 type StructuredResponseType = z.infer<typeof structuredResponseSchema>;
 
 const GraphAnnotation = Annotation.Root({
+    route: Annotation<BaseMessage | undefined, BaseMessageLike>({
+        default: () => undefined,
+        reducer: (curr, next) => next,
+    }),
     messages: Annotation<BaseMessage[], BaseMessageLike[]>({ 
         default: () => [],
         reducer: messagesStateReducer
@@ -228,19 +235,19 @@ const GraphAnnotation = Annotation.Root({
 interface StateType {
   messages: BaseMessage[];
   response: StructuredResponseType | undefined;
+  route?: BaseMessage;
 } 
 
-// const llm = new ChatOllama({
-//   model: 'gpt-oss:20b',
-//   temperature: 0,
-// });
-const llm = new ChatAnthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-  model: `claude-haiku-4-5`,
+const llm = new ChatOllama({
+  model: 'gpt-oss:20b',
   temperature: 0,
-  streaming: true,
 });
-
+// const llm = new ChatAnthropic({
+//   apiKey: process.env.ANTHROPIC_API_KEY,
+//   model: `claude-haiku-4-5`,
+//   temperature: 0,
+//   streaming: true,
+// });
 interface StructuredResponseParams {
   llm: any;
   prompt: string;
@@ -255,11 +262,15 @@ interface StructuredResponseParams {
 //   return result;
 // }
 
-const streamPrompt = async<TSchema extends z.ZodSchema<any>>(prompt: string, schema: TSchema): Promise<AIMessage> => {
+const streamPrompt = async<TSchema extends z.ZodSchema<any>>(prompt: string, schema: TSchema): Promise<
+  { 
+    message: AIMessage,
+    structuredOutput?: TSchema
+  }> => {
   const parser = StructuredOutputParser.fromZodSchema(schema);
   let promptWithInstructions = `${prompt} $${parser.getFormatInstructions()}`
 
-  return await llm.invoke(promptWithInstructions);
+  const output = await llm.withConfig({tags: ["notify"]}).invoke(promptWithInstructions);
   // let fullText = '';
   
   // for await (const chunk of stream) {
@@ -279,9 +290,8 @@ const streamPrompt = async<TSchema extends z.ZodSchema<any>>(prompt: string, sch
   // }
   // cleanedText = cleanedText.trim();
   
-  // const output: TSchema = await parser.parse(cleanedText);
-  // return { };
-  // return {fullText}
+  const structured: TSchema = await parser.parse(output.content as string);
+  return {message: output, structuredOutput: structured}
 }
 
 const structuredResponseNode = async (state: StateType, config: LangGraphRunnableConfig<StateType>) => {
@@ -302,24 +312,104 @@ const structuredResponseNode = async (state: StateType, config: LangGraphRunnabl
       ${userPrompt.content}
     </question>
   `
-  const message = await streamPrompt(prompt, structuredResponseSchema)
+   const { message, structuredOutput } = await streamPrompt(prompt, structuredResponseSchema)
   
-  return { messages: [message] };
+  return { messages: [message], response: structuredOutput };
+}
+
+// Mock the concept of another node updating state in another way (but streaming with llm.invoke under the hood)
+const routerNode = async(state: StateType, config: LangGraphRunnableConfig<StateType>) => {
+    const hello = await llm.invoke(`say hello`);
+
+    return {
+      route: hello
+    }
 }
 
 export const structuredResponseGraph = new StateGraph(GraphAnnotation)
+    .addNode("routerNode", routerNode)
     .addNode("responseNode", structuredResponseNode)
-    .addEdge(START, "responseNode")
+    .addEdge(START, "routerNode")
+    .addEdge("routerNode", "responseNode")
     .addEdge("responseNode", END)
     .compile()
 
-const langGraphModel = new LangGraphModel<StateType>(structuredResponseGraph);
+
+const agentNode = async (state: StateType, config: LangGraphRunnableConfig<StateType>) => {
+  const notifyLlm = llm.withConfig({tags: ["notify"]})
+  const agent = createReactAgent({
+      llm: notifyLlm,
+      tools: [new GenerateExamplesTool()],
+  });
+  const userPrompt = state.messages[state.messages.length - 1]
+  if (!userPrompt) {
+    throw new Error("Need user prompt")
+  }
+
+  const parser = StructuredOutputParser.fromZodSchema(structuredResponseSchema);
+
+  const prompt = `
+    <instructions>
+      Answer the user's question, using an intro, 3 examples, and a conclusion.
+      Output ONLY valid JSON matching the schema. Do not include any explanation or thinking.
+    </instructions>
+
+    <question>
+      ${userPrompt.content}
+    </question>
+
+    <tools>
+      You have acess to the following tools:
+      <tool>
+        <name>
+          Generate examples
+        </tool>
+        <description>
+          Generate examples
+        </description>
+      </tool>
+    </tools>
+
+    <format_instructions>
+      ${parser.getFormatInstructions}
+    </format_instructions>
+  `
+  
+  // Prepare agent state with messages
+  const agentState = {
+      messages: [
+          new SystemMessage(prompt),
+      ]
+  };
+  const agentConfig = {
+      ...config,
+      recursionLimit: 5, // Limit iterations
+  };
+  
+  return await agent.invoke(agentState, agentConfig); 
+}
+
+export const agentGraph = new StateGraph(GraphAnnotation)
+  .addNode("agentNode", agentNode)
+  .addEdge(START, "agentNode")
+  .addEdge("agentNode", END)
+  .compile()
+
+// Need to allow compiling with thread_id
+// const langGraphModel = new LangGraphModel<StateType>(structuredResponseGraph.withConfig({ configurable: {
+//   thread_id: uuidv4()
+// }}));
+// const langGraphModel = new LangGraphModel<StateType>(structuredResponseGraph);
+
+const langGraphModel = new LangGraphModel<StateType>(agentGraph);
 
 const stream = streamObject({
   model: langGraphModel,
   schema: structuredResponseSchema,
   prompt: `How do I define an audience for a YouTube channel? I specifically want to make a cooking channel`,
 });
+
+// Need to pull structured output from thread via langgraph-sdk
 
 for await (const chunk of stream.partialObjectStream) {
   console.clear();

@@ -32,9 +32,53 @@ const expectStructuredOutput = (question: StructuredQuestionType) => {
     expect(questionContent.conclusion).toBeTruthy();
 }
 
+// TODO: 
+// Don't forget about: https://js.langchain.com/docs/integrations/chat/fake/
+// We should update our decorators to use the fake chat pattern we used in langgraph-ai-sdk library
+//
 describe.sequential('Brainstorming Flow', () => {
     beforeAll(async () => {
         await databaseSnapshotter.restoreSnapshot("basic_account");
+    })
+
+    // TODO:
+    // Ensure we have a "suggested next question" data point in state. E.g. for placeholder text
+    describe("Suggested next question", () => {
+        it("should default to the first question", async () => {
+            const result = await testGraph<BrainstormGraphState>()
+                .withGraph(brainstormGraph)
+                .withPrompt(`Sorry, what's going on?`)
+                .stopAfter('askQuestion')
+                .execute();
+
+            expect(result.state.error).toBeUndefined();
+            expect(result.state.questionIndex).toBe(0);
+            expect(result.state.nextQuestion.placeholderText).toEqual('I want to acquire leads, sell my product...')
+        });
+
+        it("should stay consistent when the user answers the first question incorrectly", async () => {
+            const result = await testGraph<BrainstormGraphState>()
+                .withGraph(brainstormGraph)
+                .withPrompt(`I like pasta.`)
+                .stopAfter('askQuestion')
+                .execute();
+
+            expect(result.state.error).toBeUndefined();
+            expect(result.state.questionIndex).toBe(0);
+            expect(result.state.nextQuestion.placeholderText).toEqual('I want to acquire leads, sell my product...')
+        });
+
+        it("should update to the next question when we ask it", async () => {
+            const result = await testGraph<BrainstormGraphState>()
+                .withGraph(brainstormGraph)
+                .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                .stopAfter('askQuestion')
+                .execute();
+
+            expect(result.state.error).toBeUndefined();
+            expect(result.state.questionIndex).toBe(0);
+            expect(result.state.nextQuestion.placeholderText).toEqual('Who are your customers, and what are they trying to achieve?')
+        });
     })
 
     describe("Full brainstorming conversation flow", () => {

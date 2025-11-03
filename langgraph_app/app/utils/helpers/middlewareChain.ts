@@ -7,7 +7,6 @@ export type MethodDecorator = (
     descriptor: PropertyDescriptor
 ) => PropertyDescriptor;
 
-
 /**
  * A utility for composing multiple method decorators in a clear, declarative "middleware" or "onion" pattern.
  */

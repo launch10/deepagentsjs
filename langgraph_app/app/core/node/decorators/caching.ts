@@ -96,7 +96,6 @@ export function withCaching(options: CacheOptions = defaultCacheOptions) {
             if (env.USE_CACHE !== 'true') {
                 return await boundMethod(...args);
             }
-            console.log(`i am using cache because i ma not`)
             
             const cacheKey = finalOptions.keyFunc(args);
             const cachedResult = await loadCachedResults(finalOptions.prefix, cacheKey);

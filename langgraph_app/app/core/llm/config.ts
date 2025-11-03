@@ -29,11 +29,11 @@ export const enum LLMFree {
 export const enum LLM {
   // 200k context, 8k completion, ~66tps, $1.00/1M in, $5.00/1M out
   // Best balance of speed, cost, and intelligence for execution
-  Haiku = "claude-4-5-haiku-latest",
+  Haiku = "claude-haiku-4-5",
 
   // 200k context, 8k completion, ~100tps, $5.00/1M in, $15.00/1M out
   // Costly but great intelligence for planning
-  Sonnet = "claude-4-5-sonnet-latest",
+  Sonnet = "claude-sonnet-4-5",
 
   // 128k context, 8k completion, ~750tps, $0.05/1M in, $0.08/1M out
   GptOss = "gpt-oss:20b",

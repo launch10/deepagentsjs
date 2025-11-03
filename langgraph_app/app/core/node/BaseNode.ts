@@ -2,6 +2,7 @@ import { type CoreGraphState } from "@state";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { withInfrastructure, type InfrastructureOptions } from "./decorators";
 import { Send } from "@langchain/langgraph";
+import { config } from "node:process";
 
 /**
  * Base class for all nodes in the graph
@@ -65,7 +66,7 @@ export abstract class BaseNode<TState> {
         return {
             // Default options - can be overridden by child classes
             cache: {
-                prefix: this.constructor.name,
+                prefix: nodeName,
                 ttl: 60 * 60 * 24 * 7 // 7 days default
             },
             interrupt: {
