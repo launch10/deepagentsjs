@@ -1,8 +1,6 @@
 import { 
     type NotificationOptions,
-    getLlm, 
-    LLMSkill, 
-    defaultCachePolicy, 
+    getLLM, 
     withInfrastructure,
     fileSpecRegistry
 } from "@core";
@@ -26,12 +24,11 @@ export class AssemblePageService {
     @withInfrastructure({
         cache: {
             prefix: "assemblePage",
-            ...defaultCachePolicy
         },
         notifications: notificationContext,
     })
     async execute(input: AssemblePageProps, config?: LangGraphRunnableConfig): Promise<AssemblePageOutputType> {
-        const llm = getLlm(LLMSkill.Coding);
+        const llm = getLLM("coding");
         const coderLlm = llm.withStructuredOutput(CodeTask.resultSchema);
         const prompt = await assemblePagePrompt(input);
         console.log(prompt)

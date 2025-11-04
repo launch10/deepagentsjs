@@ -2,7 +2,7 @@ import { type BrainstormGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { BaseNode } from "@core";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import { getLlm, LLMSkill, LLMSpeed } from "@core";
+import { getLLM, LLMSkill, LLMSpeed } from "@core";
 import { isHumanMessage, isAIMessage, Brainstorm } from "@types";
 import { chatHistoryPrompt } from "@prompts";
 
@@ -18,7 +18,7 @@ class KeepBrainstormingNode extends BaseNode<BrainstormGraphState> {
         chatHistoryPrompt({ state.messages }),
     ]);
 
-    const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
+    const llm = getLLM("writing", "slow");
     const response = await llm.invoke(`
         <background>
             The user wants to create a website for their business. 

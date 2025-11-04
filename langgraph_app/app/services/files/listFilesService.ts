@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { CodeFileModel } from "@models";
 import { CodeFileSourceEnum } from "@types";
-import { withInfrastructure, defaultCachePolicy } from "@core";
+import { withInfrastructure } from "@core";
 
 // Input schema for the service
 export const listFilesInputSchema = z.object({
@@ -37,7 +37,6 @@ export class ListFilesService {
     @withInfrastructure({
         cache: {
             prefix: "list-files",
-            ...defaultCachePolicy,
             ttl: 300, // 5 minutes cache
         }
     })

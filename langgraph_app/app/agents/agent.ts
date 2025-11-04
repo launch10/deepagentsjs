@@ -1,8 +1,8 @@
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { projectNameGeneratorTool } from "@tools/generateProjectName";
-import { getLlm, LLMSkill, LLMSpeed } from "@core/llm";
+import { getLLM, LLMSkill, LLMSpeed } from "@core/llm";
 
 export const agent = createReactAgent({
-    llm: getLlm(LLMSkill.Writing, LLMSpeed.Slow),
+    llm: getLLM(writing, slow),
     tools: [projectNameGeneratorTool]
 });

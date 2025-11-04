@@ -61,7 +61,7 @@ console.log(`
 Available globals:
   • types         - All type definitions
   • prompts       - All prompt templates
-  • core          - Core utilities, such as core.getLlm
+  • core          - Core utilities, such as core.getLLM
   • services      - All services
   • nodes         - All Langgraph nodes
   • tools         - All tools
@@ -78,7 +78,7 @@ Example usage:
   > const service = new services.PlanComponentService()
   > await service.execute(mock)
   
-  > const llm = core.getLlm(core.LLMSkill.Planning)
+  > const llm = core.getLLM(core."planning")
   > await llm.invoke("Hello!")
 
 Type .exit to quit
@@ -97,7 +97,7 @@ Common Tasks:
    const result = await service.execute(mockInput)
 
 2. Test LLM:
-   const llm = getLlm(LLMSkill.Writing, LLMSpeed.Fast)
+   const llm = getLLM("writing", "fast")
    const response = await llm.invoke("Test prompt")
 
 3. Work with types:

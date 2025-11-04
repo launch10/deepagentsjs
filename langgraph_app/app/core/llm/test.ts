@@ -6,7 +6,6 @@ export interface MockResponses {
     [nodeName: string]: (string | object)[];
   };
 }
-
 class StructuredOutputAwareFakeModel extends FakeListChatModel {
   private useStructuredOutput = false;
 

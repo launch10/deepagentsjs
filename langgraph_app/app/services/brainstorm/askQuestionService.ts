@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLlm, LLMSkill, LLMSpeed } from "@core";
+import { getLLM, LLMSkill, LLMSpeed } from "@core";
 import { type NotificationOptions } from "@core";
 import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
 import { Brainstorm } from "@types";
@@ -159,7 +159,7 @@ export class AskQuestionService {
       const outputType = questionVariant.type;
       const outputSchema = outputType === "helpful" ? structuredQuestionOutputSchema : stringQuestionOutputSchema;
       
-      const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
+      const llm = getLLM("writing", "slow");
       const prompt = await basePrompt({ 
         messages, 
         question: questionVariant, 

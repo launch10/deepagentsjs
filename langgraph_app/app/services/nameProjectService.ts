@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { withCaching } from "@core";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLlm, LLMSkill, LLMSpeed, defaultCachePolicy } from "@core";
+import { getLLM } from "@core";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { type NotificationOptions } from "@core";
 import { structuredOutputPrompt } from "@prompts";
@@ -36,7 +36,6 @@ export const notificationContext: NotificationOptions = {
 export class NameProjectService {
     @withCaching({
         prefix: "projectNameGenerator",
-        ...defaultCachePolicy
     })
     async execute(input: ProjectNameInput, config?: LangGraphRunnableConfig): Promise<string> {
         const { userRequest } = input;
@@ -44,7 +43,7 @@ export class NameProjectService {
             throw new Error('User request is required');
         }
         
-        const rawResponse = await this.generateRawProjectName(userRequest, LLMSkill.Writing, LLMSpeed.Slow, config);
+        const rawResponse = await this.generateRawProjectName(userRequest, "writing", "slow", config);
         const validatedName = this.validateProjectName(rawResponse.projectName);
         const uniqueName = await this.ensureUniqueness(validatedName);
         
@@ -53,11 +52,11 @@ export class NameProjectService {
 
     async generateRawProjectName(
         userRequest: string, 
-        llmSkill = LLMSkill.Writing, 
-        llmSpeed = LLMSpeed.Slow,
+        llmSkill = "writing", 
+        llmSpeed = "slow",
         config?: LangGraphRunnableConfig
     ): Promise<{ projectName: string }> {
-        const llm = getLlm(llmSkill, llmSpeed);
+        const llm = getLLM(llmSkill, llmSpeed);
         const schemaPrompt = await structuredOutputPrompt({ schema: projectNameOutputSchema });
         const prompt = await basePrompt.format({ userRequest, schema: schemaPrompt });
         // const structuredLlm = llm.withStructuredOutput(projectNameOutputSchema);

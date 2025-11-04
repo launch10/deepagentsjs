@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLlm, LLMSkill, defaultCachePolicy, withCaching } from "@core";
+import { getLLM, withCaching } from "@core";
 import { pickThemePrompt, type PickThemePromptProps, pickThemePromptOutputSchema, toolsPrompt } from "@prompts";
 import { initTools, createStructuredOutputTool, isStructuredOutputTool } from "@tools";
 import { StructuredTool } from "@langchain/core/tools";
@@ -22,7 +22,6 @@ export type PickThemeProps = PickThemePromptProps & {
 export class PickThemeService {
     @withCaching({
       prefix: "pickTheme",
-      ...defaultCachePolicy
     })
     async execute(input: PickThemeProps, config?: LangGraphRunnableConfig): Promise<PickThemeOutputType> {
         const userRequest = input.userRequest;
@@ -36,7 +35,7 @@ export class PickThemeService {
             throw new Error('Website is required');
         }
         
-        const llm = getLlm(LLMSkill.Planning);
+        const llm = getLLM("planning");
         
         const themePrompt = await pickThemePrompt(input);
         

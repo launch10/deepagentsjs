@@ -1,7 +1,5 @@
 import { 
-    getLlm, 
-    LLMSkill, 
-    defaultCachePolicy, 
+    getLLM, 
     withInfrastructure,
 } from "@core";
 import { 
@@ -32,14 +30,13 @@ export class BuildTasksService {
     @withInfrastructure({
         cache: {
             prefix: "buildTasks",
-            ...defaultCachePolicy
         },
     })
     async execute(input: BuildTasksProps, config?: LangGraphRunnableConfig): Promise<BuildTasksOutputType> {
         const { messages, consoleError } = input;
         
         // Get the LLM for planning tasks
-        const llm = getLlm(LLMSkill.Planning);
+        const llm = getLLM("planning");
         
         // Initialize all available tools
         const toolsMap = await initTools(input);

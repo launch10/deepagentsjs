@@ -1,8 +1,6 @@
 import { 
     type NotificationOptions,
-    getLlm, 
-    LLMSkill, 
-    defaultCachePolicy, 
+    getLLM, 
     withInfrastructure,
 } from "@core";
 import { summarizeTaskHistoryPrompt } from "@prompts";
@@ -44,7 +42,6 @@ export class SaveTaskHistoryService {
   @withInfrastructure({
       cache: {
           prefix: "saveTaskHistory",
-          ...defaultCachePolicy
       },
       notifications: notificationContext,
   })
@@ -148,7 +145,7 @@ export class SaveTaskHistoryService {
   }
 
   private async summarizeBatches(histories: TaskHistoryType[], batchSize: number = SUMMARIZE_BATCH_SIZE): Promise<TaskHistoryType[]> {
-    const llm = getLlm(LLMSkill.Writing);
+    const llm = getLLM("writing");
     
     // Create batches for parallel processing
     const batches: TaskHistoryType[][] = [];

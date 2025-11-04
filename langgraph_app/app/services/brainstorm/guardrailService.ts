@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLlm, LLMSkill, LLMSpeed } from "@core";
+import { getLLM, LLMSkill, LLMSpeed } from "@core";
 import { chatHistoryPrompt, structuredOutputPrompt } from "@prompts";
 import { isHumanMessage, isAIMessage, messageSchema, Brainstorm, type Message } from "@types";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
@@ -43,7 +43,7 @@ const makeGuardrail = async <S extends z.ZodObject<any>>(
     schema: S,
 ): Promise<z.infer<S>> => {
     const promptText = await makePrompt(lastAIMessage, lastHumanMessage, messages, schema)
-    const llm = getLlm(LLMSkill.Planning, LLMSpeed.Slow);
+    const llm = getLLM("planning", "slow");
     const response = await llm.invoke(promptText)
 
     const content = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);

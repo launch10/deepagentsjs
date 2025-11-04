@@ -2,7 +2,7 @@ import { AIMessage } from "@langchain/core/messages";
 import { StructuredOutputParser } from "@langchain/core/output_parsers";
 import type { BaseMessage } from '@langchain/core/messages';
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLlm, LLMSkill, defaultCachePolicy, withInfrastructure, type NotificationOptions } from "@core";
+import { getLLM, withInfrastructure, type NotificationOptions } from "@core";
 import { 
     type CodeTaskType, 
     type PrimaryKeyType, 
@@ -68,7 +68,6 @@ export class PlanPageService {
     @withInfrastructure({
         cache: {
             prefix: "planPage",
-            ...defaultCachePolicy
         },
         notifications: notificationContext,
     })
@@ -97,7 +96,7 @@ export class PlanPageService {
         }
 
         const schema = Website.Page.pagePlanPromptSchema;
-        const llm = getLlm(LLMSkill.Planning);
+        const llm = getLLM("planning");
         const prompt = await planPagePrompt(promptInput);
         const output = await llm.invoke(prompt) as AIMessage;
         const parser = StructuredOutputParser.fromZodSchema(schemaWithoutForeignKeys(schema));

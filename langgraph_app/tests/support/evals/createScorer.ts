@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getLlm, LLMSkill } from "@core";
+import { getLLM, LLMSkill } from "@core";
 import { AIMessage } from "@langchain/core/messages";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { StructuredOutputParser } from "@langchain/core/output_parsers";
@@ -35,7 +35,7 @@ const getChoiceScore = (choice: string, choiceScores: Record<string, number>): n
 
 export const createScorer = ({prompt, choiceScores, additionalPromptParams = {}}: BuildScorerParams) => {
   return async ({input, output, useCoT = false}: ScorerParams): Promise<number> => {
-    const llm = getLlm(LLMSkill.Reasoning)
+    const llm = getLLM("reasoning")
     const outputSchema = useCoT ? COT_RESPONSE_SCHEMA : PLAIN_RESPONSE_SCHEMA;
     additionalPromptParams["options"] = choiceScores;
 

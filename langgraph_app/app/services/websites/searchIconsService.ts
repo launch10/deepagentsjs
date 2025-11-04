@@ -5,7 +5,7 @@ import * as path from 'path';
 import { openai } from '@ai-sdk/openai';
 import { PostgresEmbeddingsService, type Embedding, type PgCacheTable } from '@services';
 import { db } from 'app/db';
-import { getLlm, LLMSkill } from '@core';
+import { getLLM, LLMSkill } from '@core';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { iconEmbeddings, iconQueryCaches } from 'app/db';
 export interface IconMetadata {
@@ -145,7 +145,7 @@ export class SearchIconsService {
 
         const batchItems = await Promise.all(batch.map(async ([name, metadata]) => {
           const normalizedName = this.normalizeIconName(name);
-          const llm = getLlm(LLMSkill.Writing);
+          const llm = getLLM("writing");
           const prompt = PromptTemplate.fromTemplate(`
             Purpose: Take a lucide-icon name and generate a detailed description for it, which will support semantic querying of the icon.
             Try to imagine words that _could_ be used to describe the icon and words that could be used to query for the icon.

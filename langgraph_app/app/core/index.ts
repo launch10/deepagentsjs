@@ -3,7 +3,7 @@ export * from "./errors";
 export * from "./assert";
 export * from "./cache";
 export * from "./node";
-export * from "./llm/config";
+export * from "./llm";
 export * from "./postgres";
 export * from "./graphParams";
 export * from "./fileSpecRegistry";

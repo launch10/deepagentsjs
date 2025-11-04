@@ -1,8 +1,6 @@
 import { 
     type NotificationOptions,
-    getLlm, 
-    LLMSkill, 
-    defaultCachePolicy, 
+    getLLM, 
     withInfrastructure,
 } from "@core";
 import { 
@@ -56,7 +54,6 @@ export class CreateComponentService {
     @withInfrastructure({
         cache: {
             prefix: "createComponent",
-            ...defaultCachePolicy
         },
         notifications: notificationContext,
     })
@@ -96,7 +93,7 @@ export class CreateComponentService {
             throw new Error('themeVariant is required');
         } 
 
-        const llm = getLlm(LLMSkill.Coding);
+        const llm = getLLM("coding");
         const coderLlm = llm.withStructuredOutput(CodeTask.resultSchema);
         const prompt = await createComponentPrompt({
             task: input.task,

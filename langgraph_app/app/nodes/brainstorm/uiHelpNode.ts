@@ -2,7 +2,7 @@ import { type BrainstormGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { BaseNode } from "@core";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import { getLlm, LLMSkill, LLMSpeed } from "@core";
+import { getLLM, LLMSkill, LLMSpeed } from "@core";
 import { isHumanMessage, isAIMessage, Brainstorm } from "@types";
 
 class UIHelpNode extends BaseNode<BrainstormGraphState> {
@@ -13,7 +13,7 @@ class UIHelpNode extends BaseNode<BrainstormGraphState> {
     const lastHumanMessage: HumanMessage = state.messages?.filter(isHumanMessage).slice(-1);
     const lastAIMessage: AIMessage = state.messages?.filter(isAIMessage).slice(-1);
 
-    const llm = getLlm(LLMSkill.Writing, LLMSpeed.Slow);
+    const llm = getLLM("writing", "slow");
     const response = await llm.invoke(`
         <background>
             You and the user have been having a conversation about a landing page they want to build.
