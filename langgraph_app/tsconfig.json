@@ -38,6 +38,7 @@
       "@annotation": ["./app/annotation/index.ts"],
       "@prompts": ["./app/prompts/index.ts"],
       "@nodes": ["./app/nodes/index.ts"],
+      "@middleware": ["./app/core/middleware/index.ts"],
       "@graphs": ["./app/graphs/index.ts"],
       "@langgraph": ["./app/lib/server/langgraph/index.ts"],
       "@rails_api": ["./app/lib/server/langgraph/rails_api/index.ts"],

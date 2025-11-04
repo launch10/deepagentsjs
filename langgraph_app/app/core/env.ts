@@ -2,6 +2,9 @@ import { z } from "zod";
 import { config } from "dotenv";
 import { expand } from "dotenv-expand";
 
+export const Environments = ["development", "test", "production"] as const
+export type EnvironmentType = typeof Environments[number];
+
 export const envSchema = z.object({
     POSTGRES_URI: z.string().min(1).url(),
     REDIS_URI: z.string().min(1).url(),
@@ -19,7 +22,7 @@ export const envSchema = z.object({
     JWT_SECRET: z.string().min(1),
     USE_CACHE: z.coerce.boolean().default(false),
     LANGGRAPH_SERVER: z.coerce.boolean().default(false),
-    NODE_ENV: z.string().default("development"),
+    NODE_ENV: z.enum(Environments).default("development"),
 });
 
 export const testEnvSchema = envSchema.extend({

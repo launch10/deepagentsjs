@@ -93,7 +93,7 @@ export function withCaching(options: CacheOptions = defaultCacheOptions) {
         descriptor.value = async function (this: any, ...args: any[]): Promise<any> {
             const boundMethod = originalMethod.bind(this);
 
-            if (env.USE_CACHE !== 'true') {
+            if (env.USE_CACHE !== true) {
                 return await boundMethod(...args);
             }
             
