@@ -78,6 +78,7 @@ export function withInfrastructure(options: InfrastructureOptions = {}) {
             })
         ];
 
-        return MiddlewareChain.decorate(middlewareChain, target, propertyKey, descriptor);
+        return target;
+        // return MiddlewareChain.decorate(middlewareChain, target, propertyKey, descriptor);
     };
 }

@@ -1,7 +1,10 @@
-import { NodeFunction, type NodeMiddlewareType } from "./types";
+import { type NodeFunction, type NodeMiddlewareType } from "./types";
 
-type InferMiddlewareConfig<T> = T extends (...args: any[]) => any
-  ? Parameters<T>[1]
+type InferMiddlewareConfig<T> = T extends (
+  node: any,
+  config: infer Config
+) => any
+  ? Config
   : never;
 
 type MiddlewareConfigMap<TRegistered extends string, TMiddlewares> = {
@@ -15,9 +18,10 @@ type MiddlewareConfig<TRegistered extends string, TMiddlewares> = MiddlewareConf
   except?: TRegistered[];
 };
 
+type MiddlewareFn = (node: any, config: any) => any;
 export class NodeMiddlewareFactory<
   TRegistered extends string = never,
-  TMiddlewares extends Record<string, (...args: any[]) => any> = {}
+  TMiddlewares extends Record<string, MiddlewareFn> = {}
 > {
   private middlewares: TMiddlewares;
 
@@ -27,7 +31,7 @@ export class NodeMiddlewareFactory<
 
   addMiddleware<
     TName extends string, 
-    TMiddleware extends (...args: any[]) => any
+    TMiddleware extends MiddlewareFn
   >(name: TName, middleware: TMiddleware) {
     (this.middlewares as any)[name] = middleware;
     return this as unknown as NodeMiddlewareFactory<TRegistered | TName, TMiddlewares & Record<TName, TMiddleware>>

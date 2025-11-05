@@ -1,36 +1,10 @@
 import type { NodeFunction } from "./types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { ErrorReporters } from "../errors";
 
-type ReportingFn = (error: Error) => void;
+// withError doesn't take any config
+type WithErrorHandlingConfig = Record<string, never>;
 
-const preconfiguredReporters: Record<string, ReportingFn> = {
-    console: (error) => console.error(error),
-}
-
-class Reporters {
-    reporters: ReportingFn[] = [];
-    addReporter(reporter: ReportingFn | string): this {
-        if (typeof reporter === "string") {
-            if (!preconfiguredReporters[reporter]) {
-                throw new Error(`Reporter ${reporter} not found`);
-            }
-            this.reporters.push(preconfiguredReporters[reporter]);
-        } else {
-            this.reporters.push(reporter);
-        }
-        return this;
-    }
-    list(): ReportingFn[] {
-        return this.reporters;
-    }
-    report(error: Error) {
-        this.reporters.forEach(reporter => reporter(error));
-    }
-}
-
-export const ErrorReporters = new Reporters();
-
-type WithErrorHandlingConfig = {}
 /**
  * Wraps a node function with error handling
  */
@@ -42,8 +16,7 @@ export const withErrorHandling = <TState extends Record<string, unknown>>(
         try {
             return await nodeFunction(state, config);
         } catch (error) {
-            console.log(`caught error`)
-            ErrorReporters.report(error as Error);
+            ErrorReporters.reportAll(error as Error);
             throw error;
         }
     }

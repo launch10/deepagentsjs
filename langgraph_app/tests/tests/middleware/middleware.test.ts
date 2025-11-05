@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { getNodeContext, ErrorReporters, NodeMiddleware, NodeMiddlewareFactory } from '@middleware';
+import { ErrorReporters } from '@core';
+import { getNodeContext, NodeMiddleware, NodeMiddlewareFactory } from '@middleware';
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { StateGraph } from "@langchain/langgraph";
 import { Annotation } from "@langchain/langgraph";
@@ -17,6 +18,60 @@ describe('Node Core', () => {
   })
 
   describe('Middlewares', () => {
+    it('applies middlewares in order of addMiddleware calls', async () => {
+      const executionOrder: string[] = [];
+
+      const middlewareA = (node: any) => {
+        return async (state: any, config: LangGraphRunnableConfig) => {
+          executionOrder.push('A-before');
+          const result = await node(state, config);
+          executionOrder.push('A-after');
+          return result;
+        };
+      };
+
+      const middlewareB = (node: any) => {
+        return async (state: any, config: LangGraphRunnableConfig) => {
+          executionOrder.push('B-before');
+          const result = await node(state, config);
+          executionOrder.push('B-after');
+          return result;
+        };
+      };
+
+      const middlewareC = (node: any) => {
+        return async (state: any, config: LangGraphRunnableConfig) => {
+          executionOrder.push('C-before');
+          const result = await node(state, config);
+          executionOrder.push('C-after');
+          return result;
+        };
+      };
+
+      const testMiddleware = new NodeMiddlewareFactory()
+        .addMiddleware('A', middlewareA)
+        .addMiddleware('C', middlewareC)
+        .addMiddleware('B', middlewareB)
+
+      const node = testMiddleware.use(
+        {},
+        async (state: any, config: LangGraphRunnableConfig) => {
+          executionOrder.push('node');
+          return {};
+        }
+      );
+
+      const graph = new StateGraph(Annotation.Root({}))
+        .addNode('testNode', node)
+        .addEdge('__start__', 'testNode')
+        .addEdge('testNode', '__end__')
+        .compile();
+
+      await graph.invoke({});
+
+      expect(executionOrder).toEqual(['A-before', 'C-before', 'B-before', 'node', 'B-after', 'C-after', 'A-after']);
+    });
+
     it('decorates context', async () => {
       let nodeName: string | undefined;
 
@@ -39,7 +94,7 @@ describe('Node Core', () => {
       expect(nodeName).toBe('fancyPantsNode');
     });
 
-    it.only('decorates notifications', async () => {
+    it('decorates notifications', async () => {
       let graphName = 'test-graph';
       let nodeName = 'notificationNode';      
 
@@ -104,12 +159,16 @@ describe('Node Core', () => {
 
     it('reports errors', async () => {
       let nodeName: string | undefined;
-      const spy = vi.spyOn(console, 'error');
-        
-      ErrorReporters.addReporter('console');
+      let Rollbar = { log: (error: Error) => console.log(error), error: (error: Error) => console.warn(error) }
 
+      const spy = vi.spyOn(console, 'error');
+      const rollbarSpy = vi.spyOn(Rollbar, 'error');
+
+      ErrorReporters.addReporter('console')
+                    .addReporter('rollbar', Rollbar.error);
+        
       const node = NodeMiddleware.use(
-        { },
+        {},
         async (state: any, config: LangGraphRunnableConfig) => {
             nodeName = getNodeName();
             throw new Error('Test error');
@@ -127,62 +186,14 @@ describe('Node Core', () => {
       expect(spy).toHaveBeenCalled();
       expect(spy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
 
+      expect(rollbarSpy).toHaveBeenCalled();
+      expect(rollbarSpy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
+
       expect(nodeName).toBe('errorNode');
     });
 
-    it('applies middlewares in order of addMiddleware calls', async () => {
-      const executionOrder: string[] = [];
+    it('caches node results', async() => {
 
-      const middlewareA = (node: any) => {
-        return async (state: any, config: LangGraphRunnableConfig) => {
-          executionOrder.push('A-before');
-          const result = await node(state, config);
-          executionOrder.push('A-after');
-          return result;
-        };
-      };
-
-      const middlewareB = (node: any) => {
-        return async (state: any, config: LangGraphRunnableConfig) => {
-          executionOrder.push('B-before');
-          const result = await node(state, config);
-          executionOrder.push('B-after');
-          return result;
-        };
-      };
-
-      const middlewareC = (node: any) => {
-        return async (state: any, config: LangGraphRunnableConfig) => {
-          executionOrder.push('C-before');
-          const result = await node(state, config);
-          executionOrder.push('C-after');
-          return result;
-        };
-      };
-
-      const testMiddleware = new NodeMiddlewareFactory()
-        .addMiddleware('A', middlewareA)
-        .addMiddleware('C', middlewareC)
-        .addMiddleware('B', middlewareB)
-
-      const node = testMiddleware.use(
-        {},
-        async (state: any, config: LangGraphRunnableConfig) => {
-          executionOrder.push('node');
-          return {};
-        }
-      );
-
-      const graph = new StateGraph(Annotation.Root({}))
-        .addNode('testNode', node)
-        .addEdge('__start__', 'testNode')
-        .addEdge('testNode', '__end__')
-        .compile();
-
-      await graph.invoke({});
-
-      expect(executionOrder).toEqual(['A-before', 'C-before', 'B-before', 'node', 'B-after', 'C-after', 'A-after']);
-    });
-
+    })
   });
 });
