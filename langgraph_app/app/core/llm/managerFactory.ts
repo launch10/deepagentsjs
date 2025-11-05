@@ -128,7 +128,19 @@ export class LLMManagerFactory {
     return this.mode === "test";
   }
 
+  configureTestResponses(...args: Parameters<typeof LLMTestResponder.configure>) {
+    this.testMode()
+    LLMTestResponder.configure(...args);
+  }
+
+  resetTestResponses() {
+    this.reset();
+    LLMTestResponder.reset();
+  }
+
   get(llmSkill: LLMSkill, llmSpeed: LLMSpeed, llmCost: LLMCost): BaseChatModel {
+    console.log(`use test???`)
+    console.log(this.useTest())
     if (this.useTest()) {
       return LLMTestResponder.get();
     }

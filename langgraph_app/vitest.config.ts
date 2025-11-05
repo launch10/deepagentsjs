@@ -3,6 +3,9 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
+  resolve: {
+    conditions: ['types', 'node', 'default'],
+  },
   test: {
     globals: true,
     testTimeout: 240_000,

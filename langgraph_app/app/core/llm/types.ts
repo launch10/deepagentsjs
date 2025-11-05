@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { env } from "@app";
-import { type ValueOf } from "type-fest";
+import type { ValueOf } from "type-fest";
 
 // LLM Providers
 export const LLMProviders = ["anthropic", "ollama", "openai", "groq", "google", "fake"] as const;
