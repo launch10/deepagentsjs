@@ -192,8 +192,52 @@ describe('Node Core', () => {
       expect(nodeName).toBe('errorNode');
     });
 
-    it('caches node results', async() => {
+    it('caches node results based on keyFunc', async() => {
+      let executionCount = 0;
+      
+      const StateAnnotation = Annotation.Root({
+        userId: Annotation<string>,
+        query: Annotation<string>,
+        result: Annotation<string | undefined>
+      });
 
+      const node = NodeMiddleware.use(
+        {
+          cache: {
+            keyFunc: (state: typeof StateAnnotation.State) => state.userId
+          }
+        },
+        async (state: typeof StateAnnotation.State, config: LangGraphRunnableConfig) => {
+          executionCount++;
+          return { result: `Result for ${state.query}` };
+        }
+      );
+
+      const graph = new StateGraph(StateAnnotation)
+        .addNode('cachedNode', node)
+        .addEdge("__start__", "cachedNode")
+        .addEdge("cachedNode", "__end__")
+        .compile();
+
+      // First call with userId "user1" and query "query1"
+      const result1 = await graph.invoke({ userId: "user1", query: "query1" });
+      expect(result1.result).toBe("Result for query1");
+      expect(executionCount).toBe(1);
+
+      // Second call with same userId but different query - should use cache
+      const result2 = await graph.invoke({ userId: "user1", query: "query2" });
+      expect(result2.result).toBe("Result for query1"); // Returns cached result
+      expect(executionCount).toBe(1); // Should not increment
+
+      // Third call with different userId - should execute again
+      const result3 = await graph.invoke({ userId: "user2", query: "query3" });
+      expect(result3.result).toBe("Result for query3");
+      expect(executionCount).toBe(2);
+
+      // Fourth call with first userId again - should use cache
+      const result4 = await graph.invoke({ userId: "user1", query: "query4" });
+      expect(result4.result).toBe("Result for query1"); // Returns original cached result
+      expect(executionCount).toBe(2); // Should not increment
     })
   });
 });
