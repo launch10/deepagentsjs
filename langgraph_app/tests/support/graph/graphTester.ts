@@ -4,6 +4,7 @@ import { type CoreGraphState } from "@state";
 import { generateUUID, type ConsoleError } from "@types";
 import { isGraphInterrupt } from "@langchain/langgraph";
 import { runScenario } from '@services';
+import { interruptContext } from "@middleware";
 import { vi } from 'vitest';
 export interface NodeTestResult<TState extends CoreGraphState> {
     state: TState;
@@ -194,13 +195,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
         // Load thread ID if website specified
         await this.loadThread();
 
-        // Set up environment for mocking
-        const originalEnv = process.env.NODE_ENV;
-        const originalInterruptNode = process.env.TEST_INTERRUPT_NODE;
-        
-        process.env.NODE_ENV = "test";
-        process.env.TEST_INTERRUPT_NODE = this.targetNode;
-        
         let consoleErrors: ConsoleError[] = [];
         if (this.scenario && this.websiteName) {
             const scenarioRunner = await runScenario({
@@ -223,53 +217,38 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
         try {
             const testGraph = this.graph; 
 
-            // Execute the graph - it may interrupt
-            const result = await testGraph.invoke(initialState, this.config);
+            const result = await interruptContext.run({ nodeName: this.targetNode }, async () => {
+                return await testGraph.invoke(initialState, this.config);
+            });
             
-            // Check if the result contains an interrupt (native LangGraph interrupt)
+            // Check if the result contains an interrupt
             if (result && result.__interrupt__) {
-                // Extract the interrupt data
-                const interrupts = result.__interrupt__;
-                if (Array.isArray(interrupts) && interrupts.length > 0) {
-                    const interruptData = interrupts[0].value;
-                    
-                    // If the interrupt contains our test state, use it
-                    if (interruptData && interruptData.state) {
-                        return {
-                            state: interruptData.state,
-                            output: interruptData.state,
-                            messages: interruptData.state.messages || [],
-                            error: undefined,
-                            promptSpy: this.capturedPromptOutputs,
-                            serviceSpy: this.capturedserviceSpy
-                        };
-                    }
-                }
-                
-                // Fallback: use the result itself (minus the __interrupt__ key)
-                const { __interrupt__, ...stateWithoutInterrupt } = result;
+                // The state at the time of interrupt is the result minus the __interrupt__ key
+                const { __interrupt__, ...stateAtInterrupt } = result;
                 return {
-                    state: stateWithoutInterrupt,
-                    output: stateWithoutInterrupt,
-                    messages: stateWithoutInterrupt.messages || [],
+                    state: stateAtInterrupt,
+                    output: stateAtInterrupt,
+                    messages: stateAtInterrupt.messages || [],
                     error: undefined,
                     promptSpy: this.capturedPromptOutputs,
                     serviceSpy: this.capturedserviceSpy
                 };
             }
-
-            // Normal completion - return the result
+            
             return {
                 state: result,
-                output: result,
                 messages: result.messages || [],
                 error: result.error,
+                output: result,
                 promptSpy: this.capturedPromptOutputs,
                 serviceSpy: this.capturedserviceSpy
-            };
+            }
         } catch (error) {
             // Check if this is a GraphInterrupt - this is expected for test interrupts
+            console.log(`error!!!`)
+            console.log(error)
             if (isGraphInterrupt(error)) {
+                console.log(`isGraphInterrupt`)
                 // Extract the interrupt value which should contain our state
                 const interruptValue = (error as any).interrupts?.[0]?.value || error.value;
                 if (interruptValue && interruptValue.state) {
@@ -303,13 +282,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
                 serviceSpy: this.capturedserviceSpy
             };
         } finally {
-            // Restore environment
-            process.env.NODE_ENV = originalEnv;
-            if (originalInterruptNode !== undefined) {
-                process.env.TEST_INTERRUPT_NODE = originalInterruptNode;
-            } else {
-                delete process.env.TEST_INTERRUPT_NODE;
-            }
             // Clean up prompt mocks if they were set up
             if (this.capturePrompts.length > 0) {
                 this.cleanupPromptCapturing();

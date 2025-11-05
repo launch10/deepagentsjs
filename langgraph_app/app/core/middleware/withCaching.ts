@@ -1,6 +1,7 @@
 import { cache } from "@core";
 import { env } from "@app";
 import { shasum } from "@ext";
+import { getNodeContext } from "./withContext";
 import { isHumanMessage } from "@types";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { NodeFunction } from "./types";
@@ -100,7 +101,10 @@ export const withCaching = <TState extends Record<string, unknown>>(
             return nodeFunction(state, config);
         }
 
-        const cacheKey = options.keyFunc?.(state) || defaultKeyFunc(state);
+        const nodeName = getNodeContext()?.name;
+        const cacheKeyBase = options.keyFunc?.(state) || defaultKeyFunc(state);
+        const cacheKey = `${nodeName}-${cacheKeyBase}`;
+        console.log(cacheKey)
         const cachedResult = await NodeCache.load(cacheKey);
 
         if (cachedResult !== undefined) {
