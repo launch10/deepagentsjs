@@ -22,7 +22,7 @@ export const planWebsiteNode = NodeMiddleware.use(
     if (!state.website?.id) {
       throw new Error("No website id found");
     }
-    await service.execute({ userRequest, websiteId: state.website.id });
+    const result = await service.execute({ userRequest, websiteId: state.website.id });
 
     return {};
   }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { StructuredOutputParser } from "@langchain/core/output_parsers";
 import { AIMessage } from "@langchain/core/messages";
+import { ja } from "@faker-js/faker";
 
 interface StructuredResponseParams {
   llm: any;
@@ -13,6 +14,10 @@ const keyIsPrimaryKey = (key: string) => key === "id";
 
 export const schemaWithoutForeignKeys = (schema: z.ZodSchema) => {
   return schema.omit({
+    ...{
+      createdAt: true,
+      updatedAt: true,
+    },
     ...Object.fromEntries(Object.entries(schema.shape).filter(([key]) => keyLooksLikeForeignKey(key))),
     ...Object.fromEntries(Object.entries(schema.shape).filter(([key]) => keyIsPrimaryKey(key))),
   });

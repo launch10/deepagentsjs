@@ -8,7 +8,6 @@ import { interruptContext } from "app/core/node/middleware";
 import { vi } from 'vitest';
 export interface NodeTestResult<TState extends CoreGraphState> {
     state: TState;
-    output: any;
     messages: BaseMessage[];
     error?: Error;
     promptSpy?: Map<string, string[]>;
@@ -228,7 +227,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
                 const { __interrupt__, ...stateAtInterrupt } = result;
                 return {
                     state: stateAtInterrupt,
-                    output: stateAtInterrupt,
                     messages: stateAtInterrupt.messages || [],
                     error: undefined,
                     promptSpy: this.capturedPromptOutputs,
@@ -240,14 +238,11 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
                 state: result,
                 messages: result.messages || [],
                 error: result.error,
-                output: result,
                 promptSpy: this.capturedPromptOutputs,
                 serviceSpy: this.capturedserviceSpy
             }
         } catch (error) {
             // Check if this is a GraphInterrupt - this is expected for test interrupts
-            console.log(`error!!!`)
-            console.log(error)
             if (isGraphInterrupt(error)) {
                 console.log(`isGraphInterrupt`)
                 // Extract the interrupt value which should contain our state
@@ -255,7 +250,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
                 if (interruptValue && interruptValue.state) {
                     return {
                         state: interruptValue.state,
-                        output: interruptValue.state,
                         messages: interruptValue.state.messages || [],
                         error: undefined,
                         promptSpy: this.capturedPromptOutputs,
@@ -265,7 +259,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
                 // Fallback: use the initial state with updates from the error
                 return {
                     state: { ...initialState, ...(interruptValue || {}) },
-                    output: interruptValue || null,
                     messages: initialState.messages || [],
                     error: undefined,
                     promptSpy: this.capturedPromptOutputs,
@@ -276,7 +269,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
             // Regular error - return as error
             return {
                 state: initialState,
-                output: null,
                 messages: initialState.messages || [],
                 error: error as Error,
                 promptSpy: this.capturedPromptOutputs,

@@ -26,7 +26,7 @@ export class PlanWebsiteService {
             throw new Error("Website not found")
         }
         const schema = Website.Plan.contentStrategySchema;
-        const llm = getLLM("writing");
+        const llm = getLLM("writing", "slow");
 
         const prompt = await planWebsitePrompt(input);
         const contentStrategy = await withStructuredResponse({ llm, prompt, schema });

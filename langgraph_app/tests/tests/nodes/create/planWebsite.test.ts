@@ -3,6 +3,7 @@ import { testGraph } from '@support';
 import { databaseSnapshotter } from '@services';
 import { ContentStrategyModel } from '@models';
 import { routerGraph } from '@graphs';
+import { WebsiteBuilderGraphState } from '@state';
 
 describe.sequential('PlanWebsite Node', async () => {
     beforeAll(async () => {
@@ -11,13 +12,14 @@ describe.sequential('PlanWebsite Node', async () => {
 
     describe("When Rails API responds successfully", async () => {
         it('should plan website with mocked API', async () => {
-            const result = await testGraph()
+            const result = await testGraph<WebsiteBuilderGraphState>()
                 .withGraph(routerGraph)
                 .withPrompt(`Create a website about space exploration`)
                 .stopAfter('planWebsite')
                 .execute();
 
             expect(result.error).toBeUndefined();
+            console.log(result)
             const websiteId = result.state.website.id;
             const contentStrategy = await ContentStrategyModel.findBy({websiteId});
             expect(contentStrategy).toBeDefined();

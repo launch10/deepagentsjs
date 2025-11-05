@@ -95,7 +95,6 @@ export class LLMManagerFactory {
         modelInstance = new ChatOpenAI({
           apiKey: config.apiKey,
           model: config.modelCard,
-          temperature: config.temperature,
         });
         break;
       case "ollama":

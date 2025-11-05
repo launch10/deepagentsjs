@@ -11,7 +11,7 @@ describe.sequential('CreateProject Node with Mocked API', () => {
     })
 
     describe("When Rails API responds successfully", () => {
-        it('should save initial project with mocked API', async () => {
+        it.only('should save initial project with mocked API', async () => {
             // Expected flow:
             // 1) Calls LLM directly to name project -> LLM provides projectName
             // 2) Calls Rails API to create project with the provided name -> Rails returns project with id

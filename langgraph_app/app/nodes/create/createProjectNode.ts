@@ -26,10 +26,12 @@ export const createProjectNode = NodeMiddleware.use(
 
     const service = new SaveProjectService();
 
-    return service.execute({
+    const result = await service.execute({
       projectName: state.projectName,
       jwt: state.jwt,
       accountId: state.accountId,
     }, config)
+
+    return result
   }
 );
