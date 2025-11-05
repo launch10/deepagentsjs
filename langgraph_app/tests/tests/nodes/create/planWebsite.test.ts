@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { testGraph } from '@support';
 import { databaseSnapshotter } from '@services';
 import { ContentStrategyModel } from '@models';
 import { routerGraph } from '@graphs';
-import { WebsiteBuilderGraphState } from '@state';
+import { type WebsiteBuilderGraphState } from '@state';
 
 describe.sequential('PlanWebsite Node', async () => {
     beforeAll(async () => {
@@ -19,8 +19,8 @@ describe.sequential('PlanWebsite Node', async () => {
                 .execute();
 
             expect(result.error).toBeUndefined();
-            console.log(result)
-            const websiteId = result.state.website.id;
+
+            const websiteId = result.state.website?.id;
             const contentStrategy = await ContentStrategyModel.findBy({websiteId});
             expect(contentStrategy).toBeDefined();
 

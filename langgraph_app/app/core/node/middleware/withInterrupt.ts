@@ -7,7 +7,6 @@ import { getNodeContext } from "./withContext";
 
 export interface InterruptContext {
     nodeName: string;
-    isInterrupted: boolean;
 }
 
 export const interruptContext = new AsyncLocalStorage<InterruptContext>();
@@ -43,36 +42,20 @@ export const withInterrupt = <TState extends MinimalGraphState>(
             throw new Error('Node name not found');
         }
 
-        // Check if we should interrupt BEFORE this node (because previous node set the flag)
-        if (isInterrupted()) {
-            const context = getInterruptContext();
-            if (!context) {
-                throw new Error('Interrupt context not found');
-            }
-            context.isInterrupted = false;
-            interrupt(context.nodeName);
-        }
-
         const result = await nodeFunction(state, config);
 
         if (shouldInterrupt(nodeName)) {
-            const context = getInterruptContext();
-            if (!context) {
-                throw new Error('Interrupt context not found');
-            }
-            context.isInterrupted = true;
+            const updatedState = { ...state, ...result };
+
+            interrupt({
+                node: nodeName,
+                state: updatedState,
+                when: 'after'
+            });
         }
 
         return result;
     }
-}
-
-const isInterrupted = () => {
-    const interruptContext = getInterruptContext();
-    if (!interruptContext) {
-        return false;
-    }
-    return interruptContext.isInterrupted;
 }
 
 const shouldInterrupt = (nodeName: string) => {

@@ -221,13 +221,13 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
                 })
                 : await testGraph.invoke(initialState, this.config);
             
-            // Check if the result contains an interrupt
             if (result && result.__interrupt__) {
                 // The state at the time of interrupt is the result minus the __interrupt__ key
                 const { __interrupt__, ...stateAtInterrupt } = result;
+                const state = __interrupt__[0].value.state;
                 return {
-                    state: stateAtInterrupt,
-                    messages: stateAtInterrupt.messages || [],
+                    state,
+                    messages: state.messages || [],
                     error: undefined,
                     promptSpy: this.capturedPromptOutputs,
                     serviceSpy: this.capturedserviceSpy
@@ -244,7 +244,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
         } catch (error) {
             // Check if this is a GraphInterrupt - this is expected for test interrupts
             if (isGraphInterrupt(error)) {
-                console.log(`isGraphInterrupt`)
                 // Extract the interrupt value which should contain our state
                 const interruptValue = (error as any).interrupts?.[0]?.value || error.value;
                 if (interruptValue && interruptValue.state) {
