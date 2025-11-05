@@ -1,7 +1,5 @@
 import { 
-    type NotificationOptions,
     getLLM, 
-    withInfrastructure,
 } from "@core";
 import { summarizeTaskHistoryPrompt } from "@prompts";
 import { type CodeTaskType, Task, type PageType, Website, type TaskHistoryType, type WebsiteFileType } from "@types";
@@ -21,10 +19,10 @@ export type SaveTaskHistoryOutputType = {
   taskHistory: TaskHistoryType[];
 }
 
-const notificationContext: NotificationOptions = {
-  taskName: `Remembering task history`,
-  taskType: Task.TypeEnum.CodeTask,
-};
+// const notificationContext: NotificationOptions = {
+//   taskName: `Remembering task history`,
+//   taskType: Task.TypeEnum.CodeTask,
+// };
 
 type AnnotatedTask = {
   task: CodeTaskType;
@@ -39,12 +37,6 @@ export function setMaxTokensBeforeSummary(value: number | null) {
   _maxTokensBeforeSummaryOverride = value;
 }
 export class SaveTaskHistoryService {
-  @withInfrastructure({
-      cache: {
-          prefix: "saveTaskHistory",
-      },
-      notifications: notificationContext,
-  })
   async execute(input: SaveTaskHistoryProps, config?: LangGraphRunnableConfig): Promise<SaveTaskHistoryOutputType> {
     const histories = await this.getHistories(input);
     const estimatedTokenCount = await this.estimateTokenCount(histories);

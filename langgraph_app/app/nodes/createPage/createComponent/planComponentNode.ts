@@ -1,6 +1,6 @@
 import { type WebsiteBuilderGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { BaseNode } from "@core";
+import { NodeMiddleware } from "@core";
 import { PlanComponentService, type PlanComponentOutputType, type PlanComponentProps } from "@services";
 import { ComponentOverviewModel } from "@models";
 
@@ -8,11 +8,11 @@ import { ComponentOverviewModel } from "@models";
  * Node that plans the component
  * Extends BaseNode for consistent infrastructure support
  */
-class PlanComponentNode extends BaseNode<GraphState> {
-  async execute(
-    state: GraphState,
+export const planComponentNode = NodeMiddleware.use(
+  async (
+    state: WebsiteBuilderGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<GraphState>> {
+  ): Promise<Partial<WebsiteBuilderGraphState>> => {
     const website = state.website;
 
     if (!website) {
@@ -43,7 +43,4 @@ class PlanComponentNode extends BaseNode<GraphState> {
 
     return {}
   }
-}
-
-// Export as a function for use in the graph
-export const planComponentNode = new PlanComponentNode().toNodeFunction();
+);

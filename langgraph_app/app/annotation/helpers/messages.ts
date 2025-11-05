@@ -8,7 +8,7 @@ export const lastHumanMessage = (record: RecordWithMessages): BaseMessage | unde
     return undefined;
   }
   const humanMessages = record.messages.filter(msg => msg.getType() === "human") as BaseMessage[];
-  return humanMessages[humanMessages.length - 1];
+  return humanMessages.at(-1);
 };
 
 export const lastAIMessage = (record: RecordWithMessages): BaseMessage | undefined => {
@@ -16,7 +16,7 @@ export const lastAIMessage = (record: RecordWithMessages): BaseMessage | undefin
     return undefined;
   }
   const aiMessages = record.messages.filter(msg => msg.getType() === "ai") as BaseMessage[];
-  return aiMessages[aiMessages.length - 1];
+  return aiMessages.at(-1)
 };
 
 export const countHumanMessages = (record: RecordWithMessages): number => {

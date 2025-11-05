@@ -1,4 +1,4 @@
-import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import type { LangGraphRunnableConfig, Send } from "@langchain/langgraph";
 import type { MinimalGraphState } from "@state";
 
 /**
@@ -8,7 +8,7 @@ import type { MinimalGraphState } from "@state";
 export type NodeFunction<TState extends MinimalGraphState> = (
     state: TState,
     config: LangGraphRunnableConfig
-) => Promise<Partial<TState>>;
+) => Promise<Partial<TState> | Send[]>;
 
 export type MiddlewareConfigType = Record<string, unknown>;
 export interface NodeMiddlewareType<TConfig extends MiddlewareConfigType> {

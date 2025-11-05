@@ -1,7 +1,5 @@
 import { 
-    type NotificationOptions,
     getLLM, 
-    withInfrastructure,
     fileSpecRegistry
 } from "@core";
 import { CodeTask, Task, type CodeTaskType, type TaskType } from "@types";
@@ -16,17 +14,11 @@ export type AssemblePageOutputType = {
     completedTasks: CodeTaskType[],
 }
 
-const notificationContext: NotificationOptions = {
-    taskName: `Putting it all together`,
-    taskType: Task.TypeEnum.CodeTask,
-};
+// const notificationContext: NotificationOptions = {
+//     taskName: `Putting it all together`,
+//     taskType: Task.TypeEnum.CodeTask,
+// };
 export class AssemblePageService {
-    @withInfrastructure({
-        cache: {
-            prefix: "assemblePage",
-        },
-        notifications: notificationContext,
-    })
     async execute(input: AssemblePageProps, config?: LangGraphRunnableConfig): Promise<AssemblePageOutputType> {
         const llm = getLLM("coding");
         const coderLlm = llm.withStructuredOutput(CodeTask.resultSchema);

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { CodeFileModel } from "@models";
 import { CodeFileSourceEnum } from "@types";
-import { withInfrastructure } from "@core";
 
 // Input schema for the service
 export const listFilesInputSchema = z.object({
@@ -34,12 +33,6 @@ export interface ListFilesOutput {
  * Provides filtering by path, extensions, and source (template vs user-modified)
  */
 export class ListFilesService {
-    @withInfrastructure({
-        cache: {
-            prefix: "list-files",
-            ttl: 300, // 5 minutes cache
-        }
-    })
     async execute(input: ListFilesInput): Promise<ListFilesOutput> {
         const validatedInput = listFilesInputSchema.parse(input);
         const { websiteId, path, extensions, source, limit } = validatedInput;

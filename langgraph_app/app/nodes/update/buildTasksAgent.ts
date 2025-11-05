@@ -1,18 +1,18 @@
 import { type WebsiteBuilderGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { BaseNode } from "@core";
+import { NodeMiddleware } from "@core";
 import { BuildTasksService } from "@services";
 
 /**
  * Node that builds tasks based on user requests using an agent with tools
  * Extends BaseNode for consistent infrastructure support
  */
-class BuildTasksAgent extends BaseNode<GraphState> {
-  async execute(
-    state: GraphState,
+export const buildTasksAgent = NodeMiddleware.use(
+  async (
+    state: WebsiteBuilderGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<GraphState>> {
-    const { messages, consoleError } = state;
+  ): Promise<Partial<WebsiteBuilderGraphState>> => {
+    const { messages, consoleErrors } = state;
 
     if (!messages || messages.length === 0) {
       throw new Error("No messages found in state");
@@ -22,14 +22,11 @@ class BuildTasksAgent extends BaseNode<GraphState> {
     const result = await service.execute({ 
       website: state.website!,
       messages,
-      consoleError 
+      consoleErrors 
     }, config);
 
     return {
       queue: result.queue
     };
   }
-}
-
-// Export as a function for use in the graph
-export const buildTasksAgent = new BuildTasksAgent().toNodeFunction();
+);

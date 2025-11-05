@@ -1,15 +1,15 @@
+import { NodeMiddleware } from "@core";
 import { type BrainstormGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { BaseNode } from "@core";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import { getLLM, LLMSkill, LLMSpeed } from "@core";
-import { isHumanMessage, isAIMessage, Brainstorm } from "@types";
+import { getLLM } from "@core";
+import { isHumanMessage, isAIMessage } from "@types";
 
-class UIHelpNode extends BaseNode<BrainstormGraphState> {
-  async execute(
+export const uiHelpNode = NodeMiddleware.use(
+  async (
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<BrainstormGraphState>> {
+  ): Promise<Partial<BrainstormGraphState>> => {
     const lastHumanMessage: HumanMessage = state.messages?.filter(isHumanMessage).slice(-1);
     const lastAIMessage: AIMessage = state.messages?.filter(isAIMessage).slice(-1);
 
@@ -45,6 +45,4 @@ class UIHelpNode extends BaseNode<BrainstormGraphState> {
         ]
     }
   }
-}
-
-export const uiHelpNode = new UIHelpNode().toNodeFunction();
+);

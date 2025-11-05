@@ -1,17 +1,17 @@
+import { NodeMiddleware } from "@core";
 import { type BrainstormGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { BaseNode } from "@core";
 import { Brainstorm, isAIMessage, type Message } from "@types";
 import { AIMessage } from "@langchain/core/messages";
 
 /**
  * Ensure implicit first question is in state
  */
-class SetupNode extends BaseNode<BrainstormGraphState> {
-  async execute(
+export const setupNode = NodeMiddleware.use(
+  async (
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<BrainstormGraphState>> {
+  ): Promise<Partial<BrainstormGraphState>> => {
     const anyAIMessage = state.messages?.some((msg) => isAIMessage(msg));
     if (anyAIMessage) {
       return {};
@@ -29,6 +29,3 @@ class SetupNode extends BaseNode<BrainstormGraphState> {
     }
   }
 }
-
-// Export as a function for use in the graph
-export const setupNode = new SetupNode().toNodeFunction();

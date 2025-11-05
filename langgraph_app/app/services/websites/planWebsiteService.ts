@@ -1,15 +1,15 @@
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM, withInfrastructure, type NotificationOptions } from "@core";
+import { getLLM } from "@core";
 import { Website, Task } from "@types";
 import { planWebsitePrompt, type PlanWebsitePromptProps } from "@prompts";
 import { ContentStrategyModel, WebsiteModel } from "@models";
 import { withStructuredResponse } from "@utils";
 import type { PrimaryKeyType } from "@types";
 
-const notificationContext: NotificationOptions = {
-    taskName: "Planning website",
-    taskType: Task.TypeEnum.CodeTask,
-};
+// const notificationContext: NotificationOptions = {
+//     taskName: "Planning website",
+//     taskType: Task.TypeEnum.CodeTask,
+// };
 
 export type PlanWebsiteProps = PlanWebsitePromptProps & {
     websiteId: PrimaryKeyType;
@@ -20,12 +20,6 @@ export type PlanWebsiteOutputType = {
 }
 
 export class PlanWebsiteService {
-    @withInfrastructure({
-        cache: {
-            prefix: "planWebsite",
-        },
-        notifications: notificationContext,
-    })
     async execute(input: PlanWebsiteProps, config?: LangGraphRunnableConfig): Promise<PlanWebsiteOutputType> {
         const website = await WebsiteModel.find(input.websiteId);
         if (!website) {

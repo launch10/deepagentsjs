@@ -1,7 +1,5 @@
 import { 
-    type NotificationOptions,
     getLLM, 
-    withInfrastructure,
 } from "@core";
 import { 
     type CodeTaskType, 
@@ -31,32 +29,26 @@ export type CreateComponentProps = {
     task: CodeTaskType;
 }
 
-const notificationContext: NotificationOptions = {
-    taskName: async (task: CodeTaskType) => {
-      if (!task.componentOverviewId) {
-        return "Planning next section";
-      }
-      try {
-        const overview = await ComponentOverviewModel.find(task.componentOverviewId);
-        if (!overview || !overview.name) {
-          return "Planning next section";
-        }
-        return `Writing content for ${overview.name}`;
-      } catch (error) {
-        console.error('Planning next section failed:', error);
-        return "Planning next section";
-      }
-    },
-    taskType: Task.TypeEnum.CodeTask,
-};
+// const notificationContext: NotificationOptions = {
+//     taskName: async (task: CodeTaskType) => {
+//       if (!task.componentOverviewId) {
+//         return "Planning next section";
+//       }
+//       try {
+//         const overview = await ComponentOverviewModel.find(task.componentOverviewId);
+//         if (!overview || !overview.name) {
+//           return "Planning next section";
+//         }
+//         return `Writing content for ${overview.name}`;
+//       } catch (error) {
+//         console.error('Planning next section failed:', error);
+//         return "Planning next section";
+//       }
+//     },
+//     taskType: Task.TypeEnum.CodeTask,
+// };
 
 export class CreateComponentService {
-    @withInfrastructure({
-        cache: {
-            prefix: "createComponent",
-        },
-        notifications: notificationContext,
-    })
     async execute(input: CreateComponentProps, config?: LangGraphRunnableConfig): Promise<CreateComponentOutputType> {
         const contentPlan = await ComponentContentPlanModel.findBy({
             componentOverviewId: input.task.componentOverviewId,

@@ -2,7 +2,7 @@ import { AIMessage } from "@langchain/core/messages";
 import { StructuredOutputParser } from "@langchain/core/output_parsers";
 import type { BaseMessage } from '@langchain/core/messages';
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM, withInfrastructure, type NotificationOptions } from "@core";
+import { getLLM } from "@core";
 import { 
     type CodeTaskType, 
     type PrimaryKeyType, 
@@ -25,10 +25,10 @@ import { assert } from "@core";
 
 export { type PlanPagePromptProps }
 
-const notificationContext: NotificationOptions = {
-    taskName: `Planning overall landing page`,
-    taskType: Task.TypeEnum.CodeTask,
-};
+// const notificationContext: NotificationOptions = {
+//     taskName: `Planning overall landing page`,
+//     taskType: Task.TypeEnum.CodeTask,
+// };
 
 export type PlanPageProps = PlanPagePromptProps & {
     websiteId: PrimaryKeyType;
@@ -65,12 +65,6 @@ const addLayouts = async (pagePlan: PagePlanType) => {
     return pagePlan;
 }
 export class PlanPageService {
-    @withInfrastructure({
-        cache: {
-            prefix: "planPage",
-        },
-        notifications: notificationContext,
-    })
     async execute(input: PlanPageProps, config?: LangGraphRunnableConfig): Promise<PlanPageOutputType> {
         const website = await WebsiteModel.find(input.websiteId);
         if (!website) {

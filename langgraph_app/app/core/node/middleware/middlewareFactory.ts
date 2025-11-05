@@ -1,4 +1,5 @@
 import { type NodeFunction, type NodeMiddlewareType } from "../types";
+import type { MinimalGraphState } from "@state";
 
 type InferMiddlewareConfig<T, TState> = T extends (
   node: any,
@@ -39,10 +40,26 @@ export class NodeMiddlewareFactory<
     return this as unknown as NodeMiddlewareFactory<TRegistered | TName, TMiddlewares & Record<TName, TMiddleware>>
   }
 
-  use<TState extends Record<string, unknown>>(
-    config: MiddlewareConfig<TRegistered, TMiddlewares, TState> = {},
-    node: NodeFunction<TState>,
+  // Overload signatures
+  use<TState extends MinimalGraphState>(
+    node: NodeFunction<TState>
+  ): NodeFunction<TState>;
+
+  use<TState extends MinimalGraphState>(
+    config: MiddlewareConfig<TRegistered, TMiddlewares, TState>,
+    node: NodeFunction<TState>
+  ): NodeFunction<TState>;
+
+  // Implementation signature
+  use<TState extends MinimalGraphState>(
+    configOrNode: MiddlewareConfig<TRegistered, TMiddlewares, TState> |
+  NodeFunction<TState>,
+    node?: NodeFunction<TState>
   ): NodeFunction<TState> {
+    // Determine which overload was called
+    const config = typeof configOrNode === 'function' ? {} as MiddlewareConfig<TRegistered, TMiddlewares, TState> : configOrNode;
+    const actualNode = typeof configOrNode === 'function' ? configOrNode : node!;
+
     const middlewaresToApply = this.getMiddlewaresToApply(config);
 
     return middlewaresToApply.reduceRight(
@@ -50,7 +67,7 @@ export class NodeMiddlewareFactory<
         const middlewareConfig = config[name];
         return middleware(wrappedNode, middlewareConfig);
       },
-      node
+      actualNode
     );
   }
 

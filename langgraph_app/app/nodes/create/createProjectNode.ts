@@ -1,7 +1,7 @@
+import { NodeMiddleware } from "@core";
 import { type WebsiteBuilderGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { projectsApi } from "@services";
-import { BaseNode } from "@core";
 import { WebsiteModel } from "@models";
 import { SaveProjectService } from "@services";
 import { isString, isNumber } from "@utils";
@@ -10,11 +10,11 @@ import { isString, isNumber } from "@utils";
  * Node that saves the initial project to the backend
  * Extends BaseNode for consistent infrastructure support
  */
-class CreateProjectNode extends BaseNode<GraphState> {
-  async execute(
-    state: GraphState,
+export const createProjectNode = NodeMiddleware.use(
+  async (
+    state: WebsiteBuilderGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<GraphState>> {
+  ): Promise<Partial<WebsiteBuilderGraphState>> => {
     if (!isString(state.projectName)) {
       throw new Error("Project name is undefined");
     }
@@ -33,7 +33,4 @@ class CreateProjectNode extends BaseNode<GraphState> {
       accountId: state.accountId,
     }, config)
   }
-}
-
-// Export as a function for use in the graph
-export const createProjectNode = new CreateProjectNode().toNodeFunction();
+);

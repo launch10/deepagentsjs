@@ -10,13 +10,13 @@ import type { WebsiteType, FileType } from "@types";
 import { CodeFileModel, FileSpecificationModel } from "@models";
 
 export interface BuildTasksProps {
-    consoleError: string | undefined;
+    consoleErrors?: string[];
     messages: BaseMessage[];
     website: WebsiteType;
 }
 
 export const buildTasksPrompt = async ({ 
-    consoleError,
+    consoleErrors,
     messages,
     website
 }: BuildTasksProps): Promise<string> => {
@@ -112,10 +112,10 @@ export const buildTasksPrompt = async ({
         </when-to-choose-each-component>
 
         ${
-          consoleError && `
-          <console-error>
-            ${consoleError}
-          </console-error>
+          consoleErrors && `
+          <console-errors>
+            ${consoleErrors.join('\n')}
+          </console-errors>
           `
         }
 

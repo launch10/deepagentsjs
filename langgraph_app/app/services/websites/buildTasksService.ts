@@ -1,6 +1,5 @@
 import { 
     getLLM, 
-    withInfrastructure,
 } from "@core";
 import { 
     type TodoType,
@@ -20,20 +19,15 @@ import { db, tasks as tasksTable } from "@db";
 export type BuildTasksProps = {
     website: WebsiteType;
     messages: BaseMessage[];
-    consoleError?: string;
+    consoleErrors?: string[];
 }
 
 export type BuildTasksOutputType = {
     queue: CodeTaskType[];
 }
 export class BuildTasksService {
-    @withInfrastructure({
-        cache: {
-            prefix: "buildTasks",
-        },
-    })
     async execute(input: BuildTasksProps, config?: LangGraphRunnableConfig): Promise<BuildTasksOutputType> {
-        const { messages, consoleError } = input;
+        const { messages, consoleErrors } = input;
         
         // Get the LLM for planning tasks
         const llm = getLLM("planning");
@@ -57,7 +51,7 @@ export class BuildTasksService {
         const basePrompt = await buildTasksPrompt({ 
             website: input.website,
             messages,
-            consoleError 
+            consoleErrors 
         });
         const toolsPromptStr = await toolsPrompt({
             tools: selectedTools
