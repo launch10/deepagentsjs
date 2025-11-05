@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ErrorReporters } from '@core';
-import { getNodeContext, NodeMiddleware, NodeMiddlewareFactory } from '@middleware';
+import { getNodeContext, NodeMiddleware, NodeMiddlewareFactory, NodeCache } from '@middleware';
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { StateGraph } from "@langchain/langgraph";
 import { Annotation } from "@langchain/langgraph";
@@ -13,8 +13,9 @@ const getNodeName = () => {
 };
 
 describe('Node Core', () => {
-  afterEach(() => {
+  afterEach(async () => {
       LLMManager.resetTestResponses();
+      await NodeCache.clear()
   })
 
   describe('Middlewares', () => {
@@ -200,11 +201,11 @@ describe('Node Core', () => {
         query: Annotation<string>,
         result: Annotation<string | undefined>
       });
-
+      type StateType = typeof StateAnnotation.State;
       const node = NodeMiddleware.use(
         {
           cache: {
-            keyFunc: (state: typeof StateAnnotation.State) => state.userId
+            keyFunc: (state: StateType) => state.userId
           }
         },
         async (state: typeof StateAnnotation.State, config: LangGraphRunnableConfig) => {
@@ -220,24 +221,34 @@ describe('Node Core', () => {
         .compile();
 
       // First call with userId "user1" and query "query1"
-      const result1 = await graph.invoke({ userId: "user1", query: "query1" });
-      expect(result1.result).toBe("Result for query1");
+      const result1 = await graph.invoke({ userId: "user1", query: "user1" });
+      expect(result1.result).toBe("Result for user1");
       expect(executionCount).toBe(1);
 
       // Second call with same userId but different query - should use cache
-      const result2 = await graph.invoke({ userId: "user1", query: "query2" });
-      expect(result2.result).toBe("Result for query1"); // Returns cached result
+      const result2 = await graph.invoke({ userId: "user1", query: "user1" });
+      expect(result2.result).toBe("Result for user1"); // Returns cached result
       expect(executionCount).toBe(1); // Should not increment
 
       // Third call with different userId - should execute again
-      const result3 = await graph.invoke({ userId: "user2", query: "query3" });
-      expect(result3.result).toBe("Result for query3");
+      const result3 = await graph.invoke({ userId: "user2", query: "user2" });
+      expect(result3.result).toBe("Result for user2");
       expect(executionCount).toBe(2);
 
       // Fourth call with first userId again - should use cache
-      const result4 = await graph.invoke({ userId: "user1", query: "query4" });
-      expect(result4.result).toBe("Result for query1"); // Returns original cached result
+      const result4 = await graph.invoke({ userId: "user1", query: "user1" });
+      expect(result4.result).toBe("Result for user1"); // Returns original cached result
       expect(executionCount).toBe(2); // Should not increment
+
+      // Fifth call with different userId - should execute again
+      const result5 = await graph.invoke({ userId: "user2", query: "user2" });
+      expect(result5.result).toBe("Result for user2");
+      expect(executionCount).toBe(2);
+
+      // Sixth call with different userId - should execute again
+      const result6 = await graph.invoke({ userId: "user3", query: "user3" });
+      expect(result6.result).toBe("Result for user3");
+      expect(executionCount).toBe(3);
     })
   });
 });

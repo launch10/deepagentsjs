@@ -1,19 +1,21 @@
 import { type NodeFunction, type NodeMiddlewareType } from "./types";
 
-type InferMiddlewareConfig<T> = T extends (
+type InferMiddlewareConfig<T, TState> = T extends (
   node: any,
   config: infer Config
 ) => any
-  ? Config
+  ? Config extends { keyFunc?: (state: any) => any }
+    ? Omit<Config, 'keyFunc'> & { keyFunc?: (state: TState) => string }
+    : Config
   : never;
 
-type MiddlewareConfigMap<TRegistered extends string, TMiddlewares> = {
+type MiddlewareConfigMap<TRegistered extends string, TMiddlewares, TState> = {
   [K in TRegistered]?: K extends keyof TMiddlewares 
-    ? InferMiddlewareConfig<TMiddlewares[K]>
+    ? InferMiddlewareConfig<TMiddlewares[K], TState>
     : never;
 };
 
-type MiddlewareConfig<TRegistered extends string, TMiddlewares> = MiddlewareConfigMap<TRegistered, TMiddlewares> & {
+type MiddlewareConfig<TRegistered extends string, TMiddlewares, TState = any> = MiddlewareConfigMap<TRegistered, TMiddlewares, TState> & {
   only?: TRegistered[];
   except?: TRegistered[];
 };
@@ -38,7 +40,7 @@ export class NodeMiddlewareFactory<
   }
 
   use<TState extends Record<string, unknown>>(
-    config: MiddlewareConfig<TRegistered, TMiddlewares> = {},
+    config: MiddlewareConfig<TRegistered, TMiddlewares, TState> = {},
     node: NodeFunction<TState>,
   ): NodeFunction<TState> {
     const middlewaresToApply = this.getMiddlewaresToApply(config);
@@ -53,7 +55,7 @@ export class NodeMiddlewareFactory<
   }
 
   private getMiddlewaresToApply(
-    config: MiddlewareConfig<TRegistered, TMiddlewares>
+    config: MiddlewareConfig<TRegistered, TMiddlewares, any>
   ): [TRegistered, NodeMiddlewareType<any>][] {
     const allNames = Object.keys(this.middlewares) as TRegistered[];
     
