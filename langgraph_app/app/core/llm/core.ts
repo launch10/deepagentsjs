@@ -1,4 +1,4 @@
-import { LLMManagerFactory } from "./managerFactory";
+import { LLMManagerFactory } from "./factory";
 import {
   type LLMAppConfig,
   SonnetConfig,

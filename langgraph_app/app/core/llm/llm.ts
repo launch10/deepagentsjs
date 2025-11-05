@@ -1,6 +1,6 @@
 import { type BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { type LLMSkill, type LLMSpeed, type LLMCost } from "./types";
-import { LLMManager } from "./manager";
+import { LLMManager } from "./core";
 
 const LLM_SPEED_DEFAULT: LLMSpeed = (process.env.LLM_SPEED === 'fast') ? "fast" : "slow";
 const LLM_COST_DEFAULT: LLMCost = (process.env.LLM_COST === 'paid') ? "paid" : "free";
