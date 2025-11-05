@@ -6,7 +6,6 @@ import { PlanPageService, type PlanPageOutputType, type PlanPageProps } from "@s
 
 /**
  * Node that plans the page content
- * Extends BaseNode for consistent infrastructure support
  */
 export const planPageNode = NodeMiddleware.use(
   async (

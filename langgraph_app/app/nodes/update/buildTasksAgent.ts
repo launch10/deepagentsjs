@@ -5,7 +5,6 @@ import { BuildTasksService } from "@services";
 
 /**
  * Node that builds tasks based on user requests using an agent with tools
- * Extends BaseNode for consistent infrastructure support
  */
 export const buildTasksAgent = NodeMiddleware.use(
   async (

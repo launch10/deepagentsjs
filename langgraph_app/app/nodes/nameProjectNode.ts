@@ -2,16 +2,16 @@ import { type WebsiteBuilderGraphState } from "@state"
 import { NameProjectService } from "@services";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { lastHumanMessage } from "@annotation";
-import { BaseNode } from "@core";
+import { NodeMiddleware } from "@core";
 
 /**
  * Node that generates a project name based on the user's request
  */
-class NameProjectNode extends BaseNode<GraphState> {
-    async execute(
-        state: GraphState, 
+const nameProjectNode = NodeMiddleware.use(
+    async (
+        state: WebsiteBuilderGraphState, 
         config?: LangGraphRunnableConfig
-    ): Promise<Partial<GraphState>> {
+    ): Promise<Partial<WebsiteBuilderGraphState>> {
         if (!state.messages) {
             throw new Error("messages are required");
         }
@@ -30,7 +30,4 @@ class NameProjectNode extends BaseNode<GraphState> {
         const projectName = await projectNameGenerator.execute({ userRequest }, config);
         return { projectName };
     }
-}
-
-// Export as a function for use in the graph
-export const nameProjectNode = new NameProjectNode().toNodeFunction();
+)

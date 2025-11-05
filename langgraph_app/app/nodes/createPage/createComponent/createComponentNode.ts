@@ -6,7 +6,6 @@ import { ComponentContentPlanModel } from "@models";
 
 /**
  * Node that creates the component
- * Extends BaseNode for consistent infrastructure support
  */
 export const createComponentNode = NodeMiddleware.use(
   async (

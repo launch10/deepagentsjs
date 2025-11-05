@@ -7,7 +7,6 @@ import { PageTypeEnum } from "@types";
 
 /**
  * Node that assembles the page from the components
- * Extends BaseNode for consistent infrastructure support
  */
 export const assemblePageNode = NodeMiddleware.use(
   async (

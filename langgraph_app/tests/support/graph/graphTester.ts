@@ -27,11 +27,10 @@ export interface GraphTestConfig {
  * - Tests through the main router graph for full execution flow visibility
  * - Can interrupt at any node, including nodes within subgraphs
  * - Uses LangGraph's native interrupt mechanism
- * - Works seamlessly with nodes that extend BaseNode
  * 
  * How it works:
  * 1. Set TEST_INTERRUPT_NODE environment variable to the target node name
- * 2. Nodes extending BaseNode will check this and interrupt after execution
+ * 2. Nodes using NodeMiddleware will check this and interrupt after execution
  * 3. The interrupt includes the full state at that point
  * 4. The test captures and returns this state for assertions
  * 

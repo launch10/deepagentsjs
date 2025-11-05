@@ -7,7 +7,6 @@ import { type WebsiteType } from "@types";
 
 /**
  * Node that selects a theme for the website
- * Extends BaseNode for consistent infrastructure support
  */
 export const pickThemeNode = NodeMiddleware.use(
   async (

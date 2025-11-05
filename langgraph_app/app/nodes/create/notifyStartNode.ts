@@ -5,7 +5,6 @@ import { NotifyStartService } from "@services";
 
 /**
  * Node that notifies the user that the project has started building
- * Extends BaseNode for consistent infrastructure support
  */
 export const notifyStartNode = NodeMiddleware.use(
   async (

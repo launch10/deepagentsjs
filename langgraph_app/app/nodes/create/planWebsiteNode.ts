@@ -6,7 +6,6 @@ import { PlanWebsiteService } from "@services";
 
 /**
  * Node that plans the website content
- * Extends BaseNode for consistent infrastructure support
  */
 export const planWebsiteNode = NodeMiddleware.use(
   async (

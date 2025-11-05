@@ -1,18 +1,15 @@
 import { type WebsiteBuilderGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { BaseNode } from "@core";
+import { NodeMiddleware } from "@core";
 
-class ResetStateNode extends BaseNode<GraphState> {
-  async execute(
-    state: GraphState,
+export const resetStateNode = NodeMiddleware.use(
+  async (
+    state: WebsiteBuilderGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<GraphState>> {
+  ): Promise<Partial<WebsiteBuilderGraphState>> {
     return {
       queue: [],
       completedTasks: []
-    } as any;
+    };
   }
-}
-
-// Export as a function for use in the graph
-export const resetStateNode = new ResetStateNode().toNodeFunction();
+);

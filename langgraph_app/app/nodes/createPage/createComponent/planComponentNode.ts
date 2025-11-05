@@ -6,7 +6,6 @@ import { ComponentOverviewModel } from "@models";
 
 /**
  * Node that plans the component
- * Extends BaseNode for consistent infrastructure support
  */
 export const planComponentNode = NodeMiddleware.use(
   async (

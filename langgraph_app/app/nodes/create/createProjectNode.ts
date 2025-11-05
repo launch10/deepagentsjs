@@ -8,7 +8,6 @@ import { isString, isNumber } from "@utils";
 
 /**
  * Node that saves the initial project to the backend
- * Extends BaseNode for consistent infrastructure support
  */
 export const createProjectNode = NodeMiddleware.use(
   async (

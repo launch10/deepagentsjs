@@ -6,7 +6,6 @@ import { ThemeModel } from "@models";
 
 /**
  * Node that plans the website content
- * Extends BaseNode for consistent infrastructure support
  */
 export const createStylesNode = NodeMiddleware.use(
   async (

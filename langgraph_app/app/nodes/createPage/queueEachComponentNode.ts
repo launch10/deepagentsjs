@@ -5,7 +5,6 @@ import { Send } from "@langchain/langgraph";
 
 /**
  * Node that queues each component to be created
- * Extends BaseNode for consistent infrastructure support
  */
 export const queueEachComponentNode = NodeMiddleware.use(
   async (
