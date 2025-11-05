@@ -1,10 +1,12 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { ErrorReporters } from '@core';
 import { getNodeContext, NodeMiddleware, NodeMiddlewareFactory, NodeCache } from '@middleware';
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { StateGraph } from "@langchain/langgraph";
 import { Annotation } from "@langchain/langgraph";
 import { getLLM, LLMManager } from "@core";
+import { startPolly, stopPolly } from '@utils';
+import type { Polly } from '@pollyjs/core';
 
 const getNodeName = () => {
     const context = getNodeContext();
@@ -99,7 +101,7 @@ describe('Node Core', () => {
       let graphName = 'test-graph';
       let nodeName = 'notificationNode';      
 
-      LLMManager.configureTestResponses({
+      LLMManager.configureFixtures({
         [graphName]: {
           [nodeName]: ["Hello, nice to meet you!"],
         },
@@ -109,7 +111,6 @@ describe('Node Core', () => {
         { notifications: { taskName: 'Any Task Name I Want' } },
         async (state: any, config: LangGraphRunnableConfig) => {
           const output = await getLLM().invoke("Hello")
-          console.log(output)
           return {}
         }
       )
@@ -253,7 +254,6 @@ describe('Node Core', () => {
 
           await expect(graph.invoke({})).rejects.toThrow('Test error');
 
-          console.log(calls)
           expect(calls).toEqual({
             errorNode: 1,
             downStreamNode: 0
@@ -267,6 +267,68 @@ describe('Node Core', () => {
 
           expect(nodeName).toBe('errorNode');
         });
+    });
+
+    describe('Polly HTTP Recording', () => {
+      it('records and replays HTTP requests', async () => {
+        let graphName = 'polly-test-graph';
+        let nodeName = 'pollyNode';
+
+        const node = NodeMiddleware.use(
+          { },
+          async (state: any, config: LangGraphRunnableConfig) => {
+            const output = await getLLM().invoke("Test prompt");
+            return { result: output.content };
+          }
+        );
+
+        const graph = new StateGraph(Annotation.Root({ result: Annotation<string | undefined>() }))
+          .addNode(nodeName, node)
+          .addEdge("__start__", nodeName)
+          .addEdge(nodeName, "__end__")
+          .compile({ name: graphName });
+
+        const result = await graph.invoke({}, {
+          context: {
+            graphName: graphName,
+          },
+        } as any);
+
+        expect(result.result).toMatch(/The user says "Test prompt". Likely they want a response./);
+      });
+
+      it('does not hit polly when LLM Manager has fixtures configured', async () => {
+        let graphName = 'no-polly-graph';
+        let nodeName = 'noPollyNode';
+
+        LLMManager.configureFixtures({
+          [graphName]: {
+            [nodeName]: ["Response without Polly"],
+          },
+        });
+
+        const node = NodeMiddleware.use(
+          { },
+          async (state: any, config: LangGraphRunnableConfig) => {
+            const output = await getLLM().invoke("Test prompt");
+            return { result: output.content };
+          }
+        );
+
+        const graph = new StateGraph(Annotation.Root({ result: Annotation<string | undefined>() }))
+          .addNode(nodeName, node)
+          .addEdge("__start__", nodeName)
+          .addEdge(nodeName, "__end__")
+          .compile({ name: graphName });
+
+        const result = await graph.invoke({}, {
+          context: {
+            graphName: graphName,
+          },
+        } as any);
+
+        expect(result.result).toBe("Response without Polly");
+      });
     });
 
     it('caches node results based on keyFunc', async() => {

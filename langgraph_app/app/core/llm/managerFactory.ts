@@ -128,7 +128,7 @@ export class LLMManagerFactory {
     return this.mode === "test";
   }
 
-  configureTestResponses(...args: Parameters<typeof LLMTestResponder.configure>) {
+  configureFixtures(...args: Parameters<typeof LLMTestResponder.configure>) {
     this.testMode()
     LLMTestResponder.configure(...args);
   }
