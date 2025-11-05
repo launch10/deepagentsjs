@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM, withCaching } from "@core";
+import { getLLM } from "@core";
 import { pickThemePrompt, type PickThemePromptProps, pickThemePromptOutputSchema, toolsPrompt } from "@prompts";
 import { initTools, createStructuredOutputTool, isStructuredOutputTool } from "@tools";
 import { StructuredTool } from "@langchain/core/tools";
@@ -20,9 +20,6 @@ export type PickThemeProps = PickThemePromptProps & {
     website: WebsiteType;
 }; 
 export class PickThemeService {
-    @withCaching({
-      prefix: "pickTheme",
-    })
     async execute(input: PickThemeProps, config?: LangGraphRunnableConfig): Promise<PickThemeOutputType> {
         const userRequest = input.userRequest;
 

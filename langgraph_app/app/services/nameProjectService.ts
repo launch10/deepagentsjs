@@ -1,9 +1,7 @@
 import { z } from "zod";
-import { withCaching } from "@core";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { type NotificationOptions } from "@core";
 import { structuredOutputPrompt } from "@prompts";
 import { withStructuredResponse } from "@utils";
 
@@ -27,16 +25,13 @@ const basePrompt = PromptTemplate.fromTemplate(`
     {schema}
 `);
 
-export const notificationContext: NotificationOptions = {
-    taskName: "Generating project name",
-};
+// export const notificationContext: NotificationOptions = {
+//     taskName: "Generating project name",
+// };
 /**
  * Approach 1: Decorated Class (becomes a Runnable automatically)
  */
 export class NameProjectService {
-    @withCaching({
-        prefix: "projectNameGenerator",
-    })
     async execute(input: ProjectNameInput, config?: LangGraphRunnableConfig): Promise<string> {
         const { userRequest } = input;
         if (!userRequest) {
