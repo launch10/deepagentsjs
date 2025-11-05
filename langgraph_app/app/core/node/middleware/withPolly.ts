@@ -2,6 +2,7 @@ import type { NodeFunction, MinimalGraphState } from "../types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { startPolly, persistRecordings } from '@utils';
 import { getNodeContext } from "./withContext";
+import { kebabCase } from 'change-case';
 import { env } from "@core";
 
 // withPolly doesn't take any config
@@ -20,7 +21,8 @@ export const withPolly = <TState extends MinimalGraphState>(
         }
 
         const nodeCtx = getNodeContext();
-        const recordingName = nodeCtx?.name || 'unknown-node-execution';
+        const nodeName = nodeCtx?.name || 'unknown-node-execution';
+        const recordingName = kebabCase(nodeName);
 
         await startPolly(recordingName);
 

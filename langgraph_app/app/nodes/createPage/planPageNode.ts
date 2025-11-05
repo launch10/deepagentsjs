@@ -11,7 +11,7 @@ export const planPageNode = NodeMiddleware.use(
   async (
     state: WebsiteBuilderGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<WebsiteBuilderGraphState>> {
+  ): Promise<Partial<WebsiteBuilderGraphState>> => {
     const userRequest = lastHumanMessage(state);
 
     if (!userRequest) {

@@ -28,4 +28,4 @@ export const setupNode = NodeMiddleware.use(
         messages: newMessages
     }
   }
-}
+)

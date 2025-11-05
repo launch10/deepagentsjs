@@ -1,11 +1,22 @@
 import { env } from "@app";
 import { cache } from "./redisCache";
-
 class NodeCacheFactory {
+    enabled: boolean = false;
     prefix: string;
 
     constructor() {
         this.prefix = `node:${env.NODE_ENV}`;
+        this.enable();
+    }
+
+    enable() {
+        this.enabled = (env.NODE_ENV !== 'production');
+    }
+
+    disable() {
+        if (env.NODE_ENV === 'test') {
+            this.enabled = false;
+        }
     }
 
     private getKey(cacheKey: string): string {
@@ -13,6 +24,7 @@ class NodeCacheFactory {
     }
 
     async save(cacheKey: string, result: any, ttl?: number) {
+        if (!this.enabled) return;
         if (!cache) return;
 
         await cache.set([{
@@ -23,6 +35,7 @@ class NodeCacheFactory {
     }
 
     async load(cacheKey: string) {
+        if (!this.enabled) return;
         if (!cache) return;
         
         const results = await cache.get([this.getKey(cacheKey)]);

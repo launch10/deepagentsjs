@@ -7,11 +7,11 @@ import { NodeMiddleware } from "@core";
 /**
  * Node that generates a project name based on the user's request
  */
-const nameProjectNode = NodeMiddleware.use(
+export const nameProjectNode = NodeMiddleware.use(
     async (
         state: WebsiteBuilderGraphState, 
         config?: LangGraphRunnableConfig
-    ): Promise<Partial<WebsiteBuilderGraphState>> {
+    ): Promise<Partial<WebsiteBuilderGraphState>> => {
         if (!state.messages) {
             throw new Error("messages are required");
         }

@@ -2,8 +2,13 @@
 // Import all custom matchers
 import "./matchers";
 import "./graph";
-import { afterAll } from 'vitest';
-import { cleanupPool } from '@core';
+import { beforeAll, afterAll } from 'vitest';
+import { cleanupPool, NodeCache } from '@core';
+
+// Disable NodeCache for all tests
+beforeAll(() => {
+    NodeCache.disable();
+});
 
 // Clean up database connections after all tests
 afterAll(async () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import { MemorySaver } from '@langchain/langgraph';
 import { ErrorReporters } from '@core';
 import { getNodeContext, NodeMiddleware, NodeMiddlewareFactory, NodeCache } from '@core';
@@ -18,6 +18,16 @@ const getNodeName = () => {
 };
 
 describe('Node Core', () => {
+  // These are the only tests in the application where we actually want
+  // to test the NodeCache middleware, otherwise we want to use Polly/fixtures
+  beforeAll(async () => {
+    NodeCache.enable();
+  });
+
+  afterAll(async () => {
+    NodeCache.disable();
+  });
+
   afterEach(async () => {
       LLMManager.resetTestResponses();
       await NodeCache.clear();

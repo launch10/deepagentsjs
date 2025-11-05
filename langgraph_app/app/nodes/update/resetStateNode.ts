@@ -6,7 +6,7 @@ export const resetStateNode = NodeMiddleware.use(
   async (
     state: WebsiteBuilderGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<WebsiteBuilderGraphState>> {
+  ): Promise<Partial<WebsiteBuilderGraphState>> => {
     return {
       queue: [],
       completedTasks: []
