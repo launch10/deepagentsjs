@@ -99,7 +99,6 @@ export const withCaching = <TState extends Record<string, unknown>>(
         if (env.USE_CACHE !== true) {
             return nodeFunction(state, config);
         }
-        const prefix = `node-${env.NODE_ENV}`;
 
         const cacheKey = options.keyFunc?.(state) || defaultKeyFunc(state);
         const cachedResult = await NodeCache.load(cacheKey);

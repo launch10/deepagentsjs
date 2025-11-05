@@ -158,39 +158,115 @@ describe('Node Core', () => {
       ]);
     });
 
-    it('reports errors', async () => {
-      let nodeName: string | undefined;
-      let Rollbar = { log: (error: Error) => console.log(error), error: (error: Error) => console.warn(error) }
+    describe("Error Handling", () => {
+        it('bubbles up errors by default', async () => {
+          let nodeName: string | undefined;
+          let Rollbar = { log: (error: Error) => console.log(error), error: (error: Error) => console.warn(error) }
+          let calls = {errorNode: 0, downStreamNode: 0};
 
-      const spy = vi.spyOn(console, 'error');
-      const rollbarSpy = vi.spyOn(Rollbar, 'error');
+          const spy = vi.spyOn(console, 'error');
+          const rollbarSpy = vi.spyOn(Rollbar, 'error');
 
-      ErrorReporters.addReporter('console')
-                    .addReporter('rollbar', Rollbar.error);
-        
-      const node = NodeMiddleware.use(
-        {},
-        async (state: any, config: LangGraphRunnableConfig) => {
-            nodeName = getNodeName();
-            throw new Error('Test error');
-        }
-      )
+          ErrorReporters.addReporter('console')
+                        .addReporter('rollbar', Rollbar.error);
+            
+          const errorNode = NodeMiddleware.use(
+            {},
+            async (state: any, config: LangGraphRunnableConfig) => {
+                calls['errorNode']++;
+                nodeName = getNodeName();
+                throw new Error('Test error');
+            }
+          )
 
-      const graph = new StateGraph(Annotation.Root({ }))
-        .addNode('errorNode', node)
-        .addEdge("__start__", "errorNode")
-        .addEdge("errorNode", "__end__")
-        .compile();
+          const downStreamNode = NodeMiddleware.use(
+            {},
+            async (state: any, config: LangGraphRunnableConfig) => {
+                calls['downStreamNode']++;
+                nodeName = getNodeName();
+                throw new Error('Test error');
+            }
+          )
 
-      await expect(graph.invoke({})).rejects.toThrow('Test error');
+          const graph = new StateGraph(Annotation.Root({ error: Annotation<{ message: string, node: string } | undefined>() }))
+            .addNode('errorNode', errorNode)
+            .addNode('downStreamNode', downStreamNode)
+            .addEdge("__start__", "errorNode")
+            .addEdge("errorNode", "downStreamNode")
+            .addEdge("downStreamNode", "__end__")
+            .compile();
 
-      expect(spy).toHaveBeenCalled();
-      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
+          const state = await graph.invoke({});
+          expect(state.error).toEqual({
+            message: 'Test error',
+            node: 'errorNode'
+          })
+          expect(calls).toEqual({
+            errorNode: 1,
+            downStreamNode: 0
+          })
 
-      expect(rollbarSpy).toHaveBeenCalled();
-      expect(rollbarSpy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
+          expect(spy).toHaveBeenCalled();
+          expect(spy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
 
-      expect(nodeName).toBe('errorNode');
+          expect(rollbarSpy).toHaveBeenCalled();
+          expect(rollbarSpy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
+
+          expect(nodeName).toBe('errorNode');
+        });
+
+        it('throws when behavior is throw', async () => {
+          let nodeName: string | undefined;
+          let Rollbar = { log: (error: Error) => console.log(error), error: (error: Error) => console.warn(error) }
+          let calls = {errorNode: 0, downStreamNode: 0};
+
+          const spy = vi.spyOn(console, 'error');
+          const rollbarSpy = vi.spyOn(Rollbar, 'error');
+
+          ErrorReporters.addReporter('console')
+                        .addReporter('rollbar', Rollbar.error);
+            
+          const errorNode = NodeMiddleware.use(
+            { error: { behavior: 'throw' } },
+            async (state: any, config: LangGraphRunnableConfig) => {
+                calls['errorNode']++;
+                nodeName = getNodeName();
+                throw new Error('Test error');
+            }
+          )
+
+          const downStreamNode = NodeMiddleware.use(
+            {},
+            async (state: any, config: LangGraphRunnableConfig) => {
+                calls['downStreamNode']++;
+                nodeName = getNodeName();
+            }
+          )
+
+          const graph = new StateGraph(Annotation.Root({ error: Annotation<{ message: string, node: string } | undefined>() }))
+            .addNode('errorNode', errorNode)
+            .addNode('downStreamNode', downStreamNode)
+            .addEdge("__start__", "errorNode")
+            .addEdge("errorNode", "downStreamNode")
+            .addEdge("downStreamNode", "__end__")
+            .compile();
+
+          await expect(graph.invoke({})).rejects.toThrow('Test error');
+
+          console.log(calls)
+          expect(calls).toEqual({
+            errorNode: 1,
+            downStreamNode: 0
+          })
+
+          expect(spy).toHaveBeenCalled();
+          expect(spy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
+
+          expect(rollbarSpy).toHaveBeenCalled();
+          expect(rollbarSpy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
+
+          expect(nodeName).toBe('errorNode');
+        });
     });
 
     it('caches node results based on keyFunc', async() => {

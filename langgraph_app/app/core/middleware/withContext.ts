@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { NodeFunction } from "./types";
+import type { NodeFunction, MinimalStateType } from "./types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 export interface NodeContext {
     name: string;
@@ -18,7 +18,7 @@ type WithContextConfig = {}
  * Wraps a node function with context that includes node name and graph name
  * The graph name is automatically extracted from config.configurable (thread_id or checkpoint_ns)
  */
-export const withContext = <TState extends Record<string, unknown>>(
+export const withContext = <TState extends MinimalStateType>(
     nodeFunction: NodeFunction<TState>,
     options: WithContextConfig
 ): NodeFunction<TState> => {
