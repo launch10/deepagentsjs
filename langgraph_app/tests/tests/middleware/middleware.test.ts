@@ -410,11 +410,10 @@ describe('Node Core', () => {
           .stopAfter('secondNode')
           .execute();
 
-        console.log(result.state)
         expect(result.state.completed).toEqual(['node1', 'node2']);
       });
 
-      it.only('interrupts correctly even when graph completes all nodes', async () => {
+      it('interrupts correctly even when graph completes all nodes', async () => {
         const StateAnnotation = Annotation.Root({
           steps: Annotation<string[]>({
             reducer: (state: string[] = [], update: string[]) => [...state, ...update]
@@ -454,7 +453,7 @@ describe('Node Core', () => {
       });
     });
 
-    it.only('caches node results based on keyFunc', async() => {
+    it('caches node results based on keyFunc', async() => {
       NodeCache.clear();
 
       let executionCount = 0;
@@ -485,7 +484,6 @@ describe('Node Core', () => {
 
       // First call with userId "user1" and query "query1"
       const result1 = await graph.invoke({ userId: "user1", query: "user1" }, { configurable: {thread_id: 'thread1'}});
-      console.log(result1)
       expect(executionCount).toBe(1);
 
       // Second call with same userId but different query - should use cache

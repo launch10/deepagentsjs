@@ -7,20 +7,13 @@ import { getNodeContext } from "./withContext";
 
 export interface InterruptContext {
     nodeName: string;
+    isInterrupted: boolean;
 }
 
 export const interruptContext = new AsyncLocalStorage<InterruptContext>();
 export const getInterruptContext = () => interruptContext.getStore();
 
 type WithInterruptConfig = Record<string, never>;
-
-// Track which node we should interrupt after
-let pendingInterruptAfterNode: string | null = null;
-
-// Export a function to reset the interrupt state (for tests)
-export function resetInterruptState() {
-    pendingInterruptAfterNode = null;
-}
 
 export class TestInterruptError extends Error {
     public readonly node: string;
@@ -51,27 +44,39 @@ export const withInterrupt = <TState extends MinimalStateType>(
         }
 
         // Check if we should interrupt BEFORE this node (because previous node set the flag)
-        if (pendingInterruptAfterNode) {
-            console.log('Interrupting', pendingInterruptAfterNode);
-            const previousNode = pendingInterruptAfterNode;
-            pendingInterruptAfterNode = null; // Clear the flag
-            interrupt(previousNode);
+        if (isInterrupted()) {
+            const context = getInterruptContext();
+            if (!context) {
+                throw new Error('Interrupt context not found');
+            }
+            context.isInterrupted = false;
+            interrupt(context.nodeName);
         }
 
         const result = await nodeFunction(state, config);
 
         if (shouldInterrupt(nodeName)) {
-            pendingInterruptAfterNode = nodeName;
+            const context = getInterruptContext();
+            if (!context) {
+                throw new Error('Interrupt context not found');
+            }
+            context.isInterrupted = true;
         }
 
         return result;
     }
 }
 
+const isInterrupted = () => {
+    const interruptContext = getInterruptContext();
+    if (!interruptContext) {
+        return false;
+    }
+    return interruptContext.isInterrupted;
+}
+
 const shouldInterrupt = (nodeName: string) => {
     const interruptContext = getInterruptContext();
-    console.log(`here is the interrupt context...`)
-    console.log(interruptContext)
     if (!interruptContext) {
         return false;
     }

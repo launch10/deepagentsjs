@@ -139,8 +139,6 @@ export class LLMManagerFactory {
   }
 
   get(llmSkill: LLMSkill, llmSpeed: LLMSpeed, llmCost: LLMCost): BaseChatModel {
-    console.log(`use test???`)
-    console.log(this.useTest())
     if (this.useTest()) {
       return LLMTestResponder.get();
     }

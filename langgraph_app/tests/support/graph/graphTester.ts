@@ -217,9 +217,11 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
         try {
             const testGraph = this.graph; 
 
-            const result = await interruptContext.run({ nodeName: this.targetNode }, async () => {
-                return await testGraph.invoke(initialState, this.config);
-            });
+            const result = this.targetNode 
+                ? await interruptContext.run({ nodeName: this.targetNode }, async () => {
+                    return await testGraph.invoke(initialState, this.config);
+                })
+                : await testGraph.invoke(initialState, this.config);
             
             // Check if the result contains an interrupt
             if (result && result.__interrupt__) {
