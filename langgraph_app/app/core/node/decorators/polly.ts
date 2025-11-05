@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { getNodeContext } from './nodeContext';
 import { startPolly, persistRecordings } from '@utils';
+import { kebabCase } from "change-case";
 
 // This context simply tracks if a Polly session is already active for a given node name.
 export interface PollyContext {
@@ -27,7 +28,7 @@ export function withPolly() {
 
             // Get the node name to use for the recording folder.
             const nodeCtx = getNodeContext();
-            const recordingName = nodeCtx?.name || 'unknown-node-execution';
+            const recordingName = kebabCase(nodeCtx?.name || 'unknown-node-execution');
             
             // If a Polly session for this exact recording name is already active,
             // we are in a nested call. Just execute the method without starting a new session.

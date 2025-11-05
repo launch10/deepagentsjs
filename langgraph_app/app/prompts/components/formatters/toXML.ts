@@ -1,5 +1,6 @@
 import stringify from 'fast-json-stable-stringify';
 import { stripTimestamps } from './utils';
+import { kebabCase } from "change-case";
 
 interface toXMLProps {
   values: Record<string, any> | any[];
@@ -7,13 +8,6 @@ interface toXMLProps {
   itemTag?: string; // Only used when values is an array
   sortOption?: 'alphabetical' | 'none'; // Control sorting behavior, defaults to 'alphabetical'
 }
-
-const toKebabCase = (str: string): string => {
-  return str
-    .replace(/([a-z])([A-Z])/g, '$1-$2')
-    .replace(/[\s_]+/g, '-')
-    .toLowerCase();
-};
 
 const renderArrayAsXML = (items: any[], itemTag: string, sortOption: 'alphabetical' | 'none' = 'alphabetical'): string => {
   // Sort array items for deterministic output if sortOption is 'alphabetical'
@@ -81,7 +75,7 @@ export const toXML = ({ values, tag, itemTag, sortOption = 'alphabetical' }: toX
     const value = cleanedValues[key];
     if (value === undefined || value === null) return null;
 
-    const kebabKey = toKebabCase(key);
+    const kebabKey = kebabCase(key);
     let content: string;
     
     if (Array.isArray(value)) {
