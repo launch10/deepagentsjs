@@ -1,4 +1,4 @@
-import { env } from "./env";
+import { env } from "../env";
 import { RedisCache } from "@ext";
 
 const redisUrl = env.REDIS_URI;

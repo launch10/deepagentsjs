@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MemorySaver } from '@langchain/langgraph';
 import { ErrorReporters } from '@core';
-import { getNodeContext, NodeMiddleware, NodeMiddlewareFactory, NodeCache } from '@middleware';
+import { getNodeContext, NodeMiddleware, NodeMiddlewareFactory, NodeCache } from 'app/core/node/middleware';
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { StateGraph } from "@langchain/langgraph";
 import { Annotation } from "@langchain/langgraph";

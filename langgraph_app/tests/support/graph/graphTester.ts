@@ -4,7 +4,7 @@ import { type CoreGraphState } from "@state";
 import { generateUUID, type ConsoleError } from "@types";
 import { isGraphInterrupt } from "@langchain/langgraph";
 import { runScenario } from '@services';
-import { interruptContext } from "@middleware";
+import { interruptContext } from "app/core/node/middleware";
 import { vi } from 'vitest';
 export interface NodeTestResult<TState extends CoreGraphState> {
     state: TState;

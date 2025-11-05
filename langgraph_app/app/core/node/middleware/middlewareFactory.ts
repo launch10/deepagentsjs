@@ -1,4 +1,4 @@
-import { type NodeFunction, type NodeMiddlewareType } from "./types";
+import { type NodeFunction, type NodeMiddlewareType } from "../types";
 
 type InferMiddlewareConfig<T, TState> = T extends (
   node: any,

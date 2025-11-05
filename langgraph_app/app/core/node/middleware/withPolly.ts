@@ -1,5 +1,4 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
-import type { NodeFunction, MinimalStateType } from "./types";
+import type { NodeFunction, MinimalGraphState } from "../types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { startPolly, persistRecordings } from '@utils';
 import { getNodeContext } from "./withContext";
@@ -11,7 +10,7 @@ type WithPollyConfig = Record<string, never>;
 /**
  * Wraps a node function with polly (for testing, when we don't want to use fixtures)
  */
-export const withPolly = <TState extends MinimalStateType>(
+export const withPolly = <TState extends MinimalGraphState>(
     nodeFunction: NodeFunction<TState>,
     options: WithPollyConfig
 ): NodeFunction<TState> => {

@@ -1,15 +1,15 @@
-import { cache } from "@core";
 import { env } from "@app";
 import { shasum } from "@ext";
 import { getNodeContext } from "./withContext";
 import { isHumanMessage } from "@types";
 import type { BaseMessage } from "@langchain/core/messages";
-import type { NodeFunction } from "./types";
+import type { NodeFunction, MinimalGraphState } from "../types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { NodeCache } from "@core";
 
 type KeyFunc<TState = any> = (state: TState) => string;
 
-const defaultKeyFunc: KeyFunc = (state: Record<string, unknown>): string => {
+const defaultKeyFunc: KeyFunc = (state: MinimalGraphState): string => {
     const params = state || {} as { messages: BaseMessage[] };
     const messages = params.messages as BaseMessage[] || [];
     const humanMessages = messages.filter(isHumanMessage);
@@ -39,60 +39,11 @@ type WithCachingConfig<TState = any> = {
     ttl?: number;
 }
 
-class NodeCacheFactory {
-    prefix: string;
-
-    constructor() {
-        this.prefix = `node:${env.NODE_ENV}`;
-    }
-
-    private getKey(cacheKey: string): string {
-        return `${this.prefix}:${cacheKey}`;
-    }
-
-    async save(cacheKey: string, result: any, ttl?: number) {
-        if (!cache) return;
-
-        await cache.set([{
-            key: this.getKey(cacheKey),
-            value: result,
-            ttl: ttl || 60 * 60 * 24
-        }]);
-    }
-
-    async load(cacheKey: string) {
-        if (!cache) return;
-        
-        const results = await cache.get([this.getKey(cacheKey)]);
-        if (results.length > 0 && results[0]) {
-            return results[0].value;
-        }
-        return undefined;
-    }
-
-    async list() {
-        if (!cache) return;
-        return await cache.query(`${this.prefix}:*`);
-    }
-
-    async clear() {
-        if (!cache) return;
-        await cache.clear(`${this.prefix}:*`);
-    }
-
-    async flushdb() {
-        if (!cache) return;
-        await cache.flushdb();
-    }
-}
-
-export const NodeCache = new NodeCacheFactory();
-
 /**
  * Wraps a node function with context that includes node name and graph name
  * The graph name is automatically extracted from config.configurable (thread_id or checkpoint_ns)
  */
-export const withCaching = <TState extends Record<string, unknown>>(
+export const withCaching = <TState extends MinimalGraphState>(
     nodeFunction: NodeFunction<TState>,
     options: WithCachingConfig<TState> = {}
 ): NodeFunction<TState> => {
