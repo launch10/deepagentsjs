@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { NodeFunction, RunnableConfig } from "./types";
-
+import type { NodeFunction } from "./types";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 export interface NodeContext {
     name: string;
     graphName?: string;
@@ -22,7 +22,7 @@ export const withContext = <TState extends Record<string, unknown>>(
     nodeFunction: NodeFunction<TState>,
     options: WithContextConfig
 ): NodeFunction<TState> => {
-    return (state: TState, config: RunnableConfig) => {
+    return (state: TState, config: LangGraphRunnableConfig) => {
         const nodeName = config?.metadata?.langgraph_node as string;
         const graphName = (config?.context?.graphName) as string | undefined;
 

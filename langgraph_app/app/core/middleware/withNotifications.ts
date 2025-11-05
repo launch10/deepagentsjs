@@ -1,4 +1,5 @@
-import type { NodeFunction, RunnableConfig } from "./types";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import type { NodeFunction } from "./types";
 import { v7 as uuidv7 } from "uuid";
 import { getNodeContext } from "./withContext";
 
@@ -9,7 +10,7 @@ const NotificationTypes = [
 ] as const;
 type NotificationType = typeof NotificationTypes[number];
 
-function notify(taskName: NotificationType, config?: RunnableConfig, task?: any) {
+function notify(taskName: NotificationType, config?: LangGraphRunnableConfig, task?: any) {
     if (!task || !config?.writer) return;
     
     if (!task.id) {
@@ -34,7 +35,7 @@ export const withNotifications = <TState extends Record<string, unknown>>(
     nodeFunction: NodeFunction<TState>,
     options: NotificationConfig
 ): NodeFunction<TState> => {
-    return async (state: TState, config: RunnableConfig) => {
+    return async (state: TState, config: LangGraphRunnableConfig) => {
         const defaultName = getNodeContext()?.name;
 
         const taskName = typeof options?.taskName === 'function' 

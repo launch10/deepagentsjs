@@ -1,4 +1,5 @@
-import type { NodeFunction, RunnableConfig } from "./types";
+import type { NodeFunction } from "./types";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
 type ReportingFn = (error: Error) => void;
 
@@ -37,7 +38,7 @@ export const withErrorHandling = <TState extends Record<string, unknown>>(
     nodeFunction: NodeFunction<TState>,
     options: WithErrorHandlingConfig
 ): NodeFunction<TState> => {
-    return async (state: TState, config: RunnableConfig) => {
+    return async (state: TState, config: LangGraphRunnableConfig) => {
         try {
             return await nodeFunction(state, config);
         } catch (error) {
