@@ -12,7 +12,16 @@ interface StructuredResponseParams {
 const keyLooksLikeForeignKey = (key: string) => key.endsWith("Id"); 
 const keyIsPrimaryKey = (key: string) => key === "id";
 
-export const schemaWithoutForeignKeys = (schema: z.ZodSchema) => {
+export const schemaWithoutForeignKeys = (schema: z.ZodSchema): z.ZodSchema => {
+  if (schema instanceof z.ZodUnion) {
+    const cleanedOptions = schema.options.map((option: z.ZodSchema) => schemaWithoutForeignKeys(option));
+    return z.union(cleanedOptions as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
+  }
+  
+  if (!(schema instanceof z.ZodObject)) {
+    return schema;
+  }
+  
   return schema.omit({
     ...{
       createdAt: true,

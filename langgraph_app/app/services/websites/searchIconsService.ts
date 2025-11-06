@@ -5,7 +5,7 @@ import * as path from 'path';
 import { openai } from '@ai-sdk/openai';
 import { PostgresEmbeddingsService, type Embedding, type PgCacheTable } from '@services';
 import { db } from 'app/db';
-import { getLLM, LLMSkill } from '@core';
+import { getLLM } from '@core';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { iconEmbeddings, iconQueryCaches } from 'app/db';
 export interface IconMetadata {

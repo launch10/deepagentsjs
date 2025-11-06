@@ -1,6 +1,6 @@
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { getLLM, LLMSkill } from "@core";
+import { getLLM } from "@core";
 import { lastHumanMessage } from "@annotation";
 import { BaseMessage } from "@langchain/core/messages";
 

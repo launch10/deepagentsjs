@@ -1,192 +1,191 @@
-import { z } from "zod";
-import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM, LLMSkill, LLMSpeed } from "@core";
-import { type NotificationOptions } from "@core";
-import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
-import { Brainstorm } from "@types";
-import { messageSchema, type Message } from "@types";
+// import { z } from "zod";
+// import { type LangGraphRunnableConfig } from "@langchain/langgraph";
+// import { getLLM } from "@core";
+// import { renderPrompt, fewShotExamplesPrompt, structuredOutputPrompt, chatHistoryPrompt } from "@prompts";
+// import { Brainstorm } from "@types";
+// import { type Message } from "@types";
 
-type QuestionType = Brainstorm.QuestionType;
-type QuestionVariantType = Brainstorm.QuestionVariantType;
-const createBrainstormingMessage = Brainstorm.createBrainstormingMessage;
+// type QuestionType = Brainstorm.QuestionType;
+// type QuestionVariantType = Brainstorm.QuestionVariantType;
+// const createBrainstormingMessage = Brainstorm.createBrainstormingMessage;
 
-export const askQuestionInputSchema = z.object({
-    messages: z.array(messageSchema).describe("The user's request/description for the project"),
-    questionIndex: z.number().describe("The index of the question to ask"),
-    isValidAnswer: z.boolean().optional().describe("Whether the user answered the question correctly"),
-});
+// export const askQuestionInputSchema = z.object({
+//     messages: z.array(messageSchema).describe("The user's request/description for the project"),
+//     questionIndex: z.number().describe("The index of the question to ask"),
+//     isValidAnswer: z.boolean().optional().describe("Whether the user answered the question correctly"),
+// });
 
-export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
+// export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
 
-export type AskQuestionOutput = { question: QuestionType, questionIndex: number, messages: Message[] };
+// export type AskQuestionOutput = { question: QuestionType, questionIndex: number, messages: Message[] };
 
-const structuredQuestionSchema = z.object({
-  intro: z.string().describe("A brief, engaging introductory sentence or two, personalized to the user's business."),
-  question: z.string().describe("The core question being asked, adapted for the user's context."),
-  sampleResponses: z.array(z.string()).describe("A list of 3 high-quality, diverse sample responses relevant to the user's business."),
-  conclusion: z.string().describe("A concluding sentence to re-engage the user, potentially repeating the core question."),
-});
+// const structuredQuestionSchema = z.object({
+//   intro: z.string().describe("A brief, engaging introductory sentence or two, personalized to the user's business."),
+//   question: z.string().describe("The core question being asked, adapted for the user's context."),
+//   sampleResponses: z.array(z.string()).describe("A list of 3 high-quality, diverse sample responses relevant to the user's business."),
+//   conclusion: z.string().describe("A concluding sentence to re-engage the user, potentially repeating the core question."),
+// });
 
-const stringQuestionOutputSchema = z.object({
-  question: z.string().describe("The question to ask the user")
-});
+// const stringQuestionOutputSchema = z.object({
+//   question: z.string().describe("The question to ask the user")
+// });
 
-const structuredQuestionOutputSchema = z.object({
-  question: structuredQuestionSchema.describe("The structured question to ask the user")
-});
+// const structuredQuestionOutputSchema = z.object({
+//   question: structuredQuestionSchema.describe("The structured question to ask the user")
+// });
 
-const basePrompt = async ({
-  messages, 
-  question, 
-  schema,
-  isRetry = false,
-}: {
-  messages: Message[], 
-  question: QuestionVariantType, 
-  schema: z.ZodType<any>,
-  isRetry?: boolean,
-}) => {
-  const fewShots = question.type === "helpful" ? question.fewShotExamples : [];
+// const basePrompt = async ({
+//   messages, 
+//   question, 
+//   schema,
+//   isRetry = false,
+// }: {
+//   messages: Message[], 
+//   question: QuestionVariantType, 
+//   schema: z.ZodType<any>,
+//   isRetry?: boolean,
+// }) => {
+//   const fewShots = question.type === "helpful" ? question.fewShotExamples : [];
 
-  const [fewShotExamples, chatHistory, formatInstructions] = await Promise.all([
-    fewShotExamplesPrompt({ fewShotExamples: fewShots, schema }),
-    chatHistoryPrompt({ messages }),
-    structuredOutputPrompt({ schema })
-  ]);
+//   const [fewShotExamples, chatHistory, formatInstructions] = await Promise.all([
+//     fewShotExamplesPrompt({ fewShotExamples: fewShots, schema }),
+//     chatHistoryPrompt({ messages }),
+//     structuredOutputPrompt({ schema })
+//   ]);
 
-  const retryContext = isRetry ? `
-    <context>
-      The user has already been asked this question but:
+//   const retryContext = isRetry ? `
+//     <context>
+//       The user has already been asked this question but:
       
-      1) Their answer might've been about a previous conversation topic
-      2) Their answer might've been off-topic
-      3) They might be seeking help/clarification
+//       1) Their answer might've been about a previous conversation topic
+//       2) Their answer might've been off-topic
+//       3) They might be seeking help/clarification
       
-      Please read their response, and:
+//       Please read their response, and:
 
-      1) If their answer adds additional context to an earlier conversation topic:
-        A) Acknowledge this new insight
-        B) Guide them back to the question at hand
+//       1) If their answer adds additional context to an earlier conversation topic:
+//         A) Acknowledge this new insight
+//         B) Guide them back to the question at hand
 
-      2) If they've gone off-topic, or need help: 
-        A) Provide a helpful, supportive response (Don't totally ignore what the user said)
-        B) Guide them back to the question at hand
-    </context>
-  ` : '';
+//       2) If they've gone off-topic, or need help: 
+//         A) Provide a helpful, supportive response (Don't totally ignore what the user said)
+//         B) Guide them back to the question at hand
+//     </context>
+//   ` : '';
 
-  return renderPrompt(`
-    <background>
-      The user wants to create a website for their business. 
-    </background>
+//   return renderPrompt(`
+//     <background>
+//       The user wants to create a website for their business. 
+//     </background>
 
-    <role>
-      You are the brainstorming agent. Your job is to help the user brainstorm 
-      copy for a high-converting landing page for their business.
-    </role>
+//     <role>
+//       You are the brainstorming agent. Your job is to help the user brainstorm 
+//       copy for a high-converting landing page for their business.
+//     </role>
 
-    <task>
-      You will be shown the current conversation, as well as the next question
-      you are meant to ask the user. 
+//     <task>
+//       You will be shown the current conversation, as well as the next question
+//       you are meant to ask the user. 
 
-      Your task is to properly adapt the question template to the current conversation, 
-      making sure the question is clear and concise. If the template requests you
-      to provide the user with sample answers, you should provide good sample
-      answers BASED ON what they've already told you about their business.
+//       Your task is to properly adapt the question template to the current conversation, 
+//       making sure the question is clear and concise. If the template requests you
+//       to provide the user with sample answers, you should provide good sample
+//       answers BASED ON what they've already told you about their business.
 
-      If the user hasn't told you anything yet, please create new examples, so the user
-      can respond to your question. They have already seen a few examples, so 
-      don't repeat them, because they clearly didn't see an example that resonated.
-    </task>
+//       If the user hasn't told you anything yet, please create new examples, so the user
+//       can respond to your question. They have already seen a few examples, so 
+//       don't repeat them, because they clearly didn't see an example that resonated.
+//     </task>
 
-    ${retryContext}
+//     ${retryContext}
 
-    ${fewShotExamples}
+//     ${fewShotExamples}
 
-    ${chatHistory}
+//     ${chatHistory}
 
-    <question>
-      ${question.question}
-    </question>
+//     <question>
+//       ${question.question}
+//     </question>
 
-    ${formatInstructions}
+//     ${formatInstructions}
 
-    <important>
-      Be extremely concise. Sacrifice grammar for the sake of concision.
-    </important>
-`);
-}
+//     <important>
+//       Be extremely concise. Sacrifice grammar for the sake of concision.
+//     </important>
+// `);
+// }
 
-export const notificationContext: NotificationOptions = {
-    taskName: "Generating project name",
-};
+// export const notificationContext: NotificationOptions = {
+//     taskName: "Generating project name",
+// };
 
-export class AskQuestionService {
-  async execute(input: AskQuestionInput, config?: LangGraphRunnableConfig): Promise<AskQuestionOutput> {
-      let { messages, questionIndex, isValidAnswer } = input;
-      if (!messages) {
-          throw new Error('Messages are required');
-      }
-      questionIndex = questionIndex || 0;
-      const userNeedsHelp = !isValidAnswer || false;
+// export class AskQuestionService {
+//   async execute(input: AskQuestionInput, config?: LangGraphRunnableConfig): Promise<AskQuestionOutput> {
+//       let { messages, questionIndex, isValidAnswer } = input;
+//       if (!messages) {
+//           throw new Error('Messages are required');
+//       }
+//       questionIndex = questionIndex || 0;
+//       const userNeedsHelp = !isValidAnswer || false;
 
-      const nextQuestionIndex = userNeedsHelp ? questionIndex : questionIndex + 1;
-      const nextQuestion = Brainstorm.Questions[nextQuestionIndex];
+//       const nextQuestionIndex = userNeedsHelp ? questionIndex : questionIndex + 1;
+//       const nextQuestion = Brainstorm.Questions[nextQuestionIndex];
 
-      if (!nextQuestion) {
-          throw new Error('Invalid question index');
-      }
+//       if (!nextQuestion) {
+//           throw new Error('Invalid question index');
+//       }
 
-      let questionVariant: QuestionVariantType;
+//       let questionVariant: QuestionVariantType;
       
-      if (userNeedsHelp) {
-        questionVariant = nextQuestion.variants.helpful;
-      } else {
-        questionVariant = (nextQuestion.default === "simple" ? nextQuestion.variants.simple : nextQuestion.variants.helpful)!;
-      }
+//       if (userNeedsHelp) {
+//         questionVariant = nextQuestion.variants.helpful;
+//       } else {
+//         questionVariant = (nextQuestion.default === "simple" ? nextQuestion.variants.simple : nextQuestion.variants.helpful)!;
+//       }
 
-      if (questionVariant.type === "simple") {
-        return { 
-          question: {
-            key: nextQuestion.name,
-            type: "simple",
-            question: questionVariant.question 
-          },
-          questionIndex: nextQuestionIndex,
-          messages: input.messages,
-        }
-      }
+//       if (questionVariant.type === "simple") {
+//         return { 
+//           question: {
+//             key: nextQuestion.name,
+//             type: "simple",
+//             question: questionVariant.question 
+//           },
+//           questionIndex: nextQuestionIndex,
+//           messages: input.messages,
+//         }
+//       }
 
-      const outputType = questionVariant.type;
-      const outputSchema = outputType === "helpful" ? structuredQuestionOutputSchema : stringQuestionOutputSchema;
+//       const outputType = questionVariant.type;
+//       const outputSchema = outputType === "helpful" ? structuredQuestionOutputSchema : stringQuestionOutputSchema;
       
-      const llm = getLLM("writing", "slow");
-      const prompt = await basePrompt({ 
-        messages, 
-        question: questionVariant, 
-        schema: outputSchema,
-        isRetry: userNeedsHelp 
-      });
-      // const structuredLlm = llm.withStructuredOutput(outputSchema);
-      // const result = await structuredLlm.invoke(prompt);
-      const response = await llm.invoke(prompt);
+//       const llm = getLLM("writing", "slow");
+//       const prompt = await basePrompt({ 
+//         messages, 
+//         question: questionVariant, 
+//         schema: outputSchema,
+//         isRetry: userNeedsHelp 
+//       });
+//       // const structuredLlm = llm.withStructuredOutput(outputSchema);
+//       // const result = await structuredLlm.invoke(prompt);
+//       const response = await llm.invoke(prompt);
 
-      const responseContent = response.content as string;
-      const jsonPieces = responseContent.split("```json")
-      const jsonString = jsonPieces[1]!.replace(/```/, '');
-      const result = JSON.parse(jsonString);
+//       const responseContent = response.content as string;
+//       const jsonPieces = responseContent.split("```json")
+//       const jsonString = jsonPieces[1]!.replace(/```/, '');
+//       const result = JSON.parse(jsonString);
 
-      let updatedMessages = messages;
-      let question: QuestionType = {
-        key: nextQuestion.name,
-        type: outputType,
-        question: result.question
-      }
-      updatedMessages.push(createBrainstormingMessage(question)); 
+//       let updatedMessages = messages;
+//       let question: QuestionType = {
+//         key: nextQuestion.name,
+//         type: outputType,
+//         question: result.question
+//       }
+//       updatedMessages.push(createBrainstormingMessage(question)); 
 
-      return { 
-        messages: updatedMessages,
-        question: question,
-        questionIndex: nextQuestionIndex
-      };
-  }
-}
+//       return { 
+//         messages: updatedMessages,
+//         question: question,
+//         questionIndex: nextQuestionIndex
+//       };
+//   }
+// }

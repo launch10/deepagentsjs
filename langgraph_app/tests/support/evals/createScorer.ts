@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getLLM, LLMSkill } from "@core";
+import { getLLM } from "@core";
 import { AIMessage } from "@langchain/core/messages";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { StructuredOutputParser } from "@langchain/core/output_parsers";

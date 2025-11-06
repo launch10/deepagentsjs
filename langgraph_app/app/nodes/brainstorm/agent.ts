@@ -3,12 +3,49 @@ import { createAgent } from "langchain";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { Message } from "@langchain/core/messages";
 import { checkpointer, getLLM } from "@core";
-import { renderPrompt, chatHistoryPrompt, toJSON } from "@prompts";
+import { renderPrompt, chatHistoryPrompt, toJSON, structuredOutputPrompt } from "@prompts";
 import { isHumanMessage } from "@types";
 import { tool, Tool } from "@langchain/core/tools";
 import { type WebsiteType } from "@types";
 import { db, brainstorms as brainstormsTable, websiteFiles } from "@db";
 import { config } from "process";
+
+/**
+ * Schema for structured messages with intro, examples, and conclusion
+ */
+export const structuredQuestionSchema = z.object({
+  intro: z.string().describe('A simple intro to the question'),
+  examples: z.array(z.string()).describe(`List of examples to help the user understand what we're asking`),
+  conclusion: z.string().optional().describe(`Conclusion of the question, restating exactly the information we want to the user to answer`),
+});
+
+export type StructuredQuestion = z.infer<typeof structuredQuestionSchema>;
+
+/**
+ * Schema for simple text messages
+ */
+export const simpleQuestionSchema = z.object({
+  content: z.string().describe('Simple question to ask the user'),
+});
+
+export type SimpleQuestion = z.infer<typeof simpleQuestionSchema>;
+
+export const finishBrainstormingSchema = z.object({
+  finishBrainstorming: z.literal(true).describe("Call to signal that the user has finished brainstorming"),
+});
+
+export type FinishBrainstorming = z.infer<typeof finishBrainstormingSchema>;
+
+/**
+ * Union schema allowing either simple or structured messages
+ */
+export const outputSchema = z.union([
+  simpleQuestionSchema,
+  structuredQuestionSchema,
+  finishBrainstormingSchema,
+]);
+
+export type OutputType = z.infer<typeof outputSchema>;
 
 const brainstormTopics = ["idea", "audience", "solution", "socialProof", "lookAndFeel"] as const;
 type BrainstormTopic = typeof brainstormTopics[number];
@@ -46,8 +83,9 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
         throw new Error("No human message found");
     }
 
-    const [chatHistory] = await Promise.all([
+    const [chatHistory, outputInstructions] = await Promise.all([
         chatHistoryPrompt({ messages: state.messages }),
+        structuredOutputPrompt({ schema: outputSchema })
     ])
 
     return renderPrompt(
@@ -74,10 +112,10 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
 
             <decide_next_action>
                 - If user's last message answered any of the remaining topics → call save_answers
-                - If answer is off-topic/confused → call clarification
-                - If user asks for help → call clarification
-                - If no remaining topics → call finish_brainstorming
-                - Otherwise → call ask_question for next topic
+                - If answer is off-topic/confused → provide clarification
+                - If user asks for help → provide clarification
+                - If no remaining topics → output finish_brainstorming
+                - Otherwise → ask the user the next question, using the output format specified below
             </decide_next_action>
 
             <users_last_message>
@@ -88,67 +126,67 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
                 1. Save any unsaved answers
                 2. Decide next action based on user's last message
             </workflow>
+
+            ${outputInstructions}
         `
     );
 }
 
-const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
-    export async function initSaveAnswers(state: BrainstormGraphState): Promise<Tool> {
-        const websiteId = state?.website?.id;
+const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphRunnableConfig): Promise<Tool> => {
+    const websiteId = state?.website?.id;
 
-        const description = `
-            Tool for saving answers to the brainstorming session.
+    const description = `
+        Tool for saving answers to the brainstorming session.
 
-            CAPABILITIES:
-            • Save multiple answers at once
-        `;
+        CAPABILITIES:
+        • Save multiple answers at once
+    `;
 
-        const saveAnswersInputSchema = z.array(z.object({
-            topic: z.enum(brainstormTopics),
-            answer: z.string()
-        }));
+    const saveAnswersInputSchema = z.array(z.object({
+        topic: z.enum(brainstormTopics),
+        answer: z.string()
+    }));
 
-        type SaveAnswersInput = z.infer<typeof saveAnswersInputSchema>;
+    type SaveAnswersInput = z.infer<typeof saveAnswersInputSchema>;
 
-        const SaveAnswersOutputSchema = z.object({
-            success: z.boolean(),
-        });
+    const SaveAnswersOutputSchema = z.object({
+        success: z.boolean(),
+    });
 
-        async function saveAnswers(args?: SaveAnswersInput): Promise<SaveAnswersOutput> {
-            const updates: Partial<Brainstorm> = args?.reduce((acc, { topic, answer }) => {
-                if (!topic || !answer) {
-                    return acc;
-                }
-                acc[topic] = answer;
+    type SaveAnswersOutput = z.infer<typeof SaveAnswersOutputSchema>;
+
+    async function saveAnswers(args?: SaveAnswersInput): Promise<SaveAnswersOutput> {
+        const updates: Partial<Brainstorm> = args?.reduce((acc, { topic, answer }) => {
+            if (!topic || !answer) {
                 return acc;
-            }, {} as Record<BrainstormTopic, string>)
+            }
+            acc[topic] = answer;
+            return acc;
+        }, {} as Record<BrainstormTopic, string>)
 
-            const result = await db.insert(brainstormsTable)
-                .values({
-                    websiteId,
-                    ...updates
-                })
-                .onConflictDoUpdate({
-                    target: websiteId,
-                    set: updates
-                })
-                .returning();
+        const result = await db.insert(brainstormsTable)
+            .values({
+                websiteId,
+                ...updates
+            })
+            .onConflictDoUpdate({
+                target: websiteId,
+                set: updates
+            })
+            .returning();
 
-            console.log(result);
-            
-            return {
-                success: true
-            };
-        }
+        console.log(result);
         
-        return tool(saveAnswers, {
-            name: "saveAnswers",
-            description,
-            schema: saveAnswersInputSchema,
-        });
+        return {
+            success: true
+        };
     }
-
-    return initSaveAnswers;
+    
+    return tool(saveAnswers, {
+        name: "saveAnswers",
+        description,
+        schema: saveAnswersInputSchema,
+    });
 }
 
 /**
@@ -158,19 +196,21 @@ export const brainstormAgent = async (
     state: BrainstormGraphState, 
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> => {
-
     const prompt = await getPrompt(state, config)
     const tools = await Promise.all([
         SaveAnswersTool
     ].map(tool => tool(state, config)));
 
-    const response = await createAgent({
+    console.log(prompt)
+    const agent = await createAgent({
         model: getLLM(),
         tools,
         systemPrompt: prompt,
         checkpointer,
     });
+    const response = await agent.invoke(state as any, config);
 
-    return response;
-  }
-);
+    console.log(response);
+
+    return {};
+}
