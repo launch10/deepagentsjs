@@ -1,10 +1,11 @@
 import { z } from "zod";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM, LLMSkill, LLMSpeed } from "@core";
+import { getLLM } from "@core";
 import { chatHistoryPrompt, structuredOutputPrompt } from "@prompts";
 import { isHumanMessage, isAIMessage, messageSchema, Brainstorm, type Message } from "@types";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { PromptTemplate } from "@langchain/core/prompts";
+import { withStructuredResponse } from "@utils";
 
 export const brainstormGuardrailInputSchema = z.object({
     messages: z.array(messageSchema).describe("The conversation messages"),
@@ -44,17 +45,13 @@ const makeGuardrail = async <S extends z.ZodObject<any>>(
 ): Promise<z.infer<S>> => {
     const promptText = await makePrompt(lastAIMessage, lastHumanMessage, messages, schema)
     const llm = getLLM("planning", "slow");
-    const response = await llm.invoke(promptText)
+    const response = await withStructuredResponse({
+        llm, 
+        prompt: promptText, 
+        schema
+    })
 
-    const content = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-    const jsonPieces = content.split("```json");
-    if (!jsonPieces[1]) {
-        throw new Error("Failed to parse JSON response from LLM");
-    }
-    const jsonString = jsonPieces[1].replace(/```/, '');
-    const result = JSON.parse(jsonString);
-
-    return result as z.infer<S>;
+    return response
 }
 
 const isValidAnswerPromptOutputSchema = z.object({
@@ -250,7 +247,7 @@ export class GuardrailService {
         }
 
         const AIMessages = messages.filter(isAIMessage)
-        const lastAIMessage = AIMessages[AIMessages.length - 1];
+        const lastAIMessage = AIMessages.at(-1);
 
         if (!lastAIMessage) {
             return { isValidAnswer: true, reasoningIsValidAnswer: "No AI messages provided" };
@@ -267,7 +264,14 @@ export class GuardrailService {
             guardrailTypes.map(async (guardrail: Brainstorm.QuestionGuardrail) => {
                 const prompt = guardrailPrompts[guardrail];
                 const schema = guardrailSchemas[guardrail];
-                const result = await makeGuardrail(prompt, lastAIMessage, lastHumanMessage, messages, schema);
+                const result = await makeGuardrail<typeof schema>(
+                    prompt, 
+                    lastAIMessage, 
+                    lastHumanMessage, 
+                    messages, 
+                    schema
+                );
+                console.log(result)
                 return { guardrail, result } as const;
             })
         );

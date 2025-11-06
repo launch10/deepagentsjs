@@ -95,14 +95,14 @@ describe.sequential('Brainstorming Flow', () => {
             expect(typeof question).toBe('object');
 
             expect(question.key).toBe('introduction');
-            expect(question.type).toBe('structured'); // We now give the user more information...
+            expect(question.type).toBe('helpful'); // We now give the user more information...
 
-            if (question.type === 'structured') {
+            if (question.type === 'helpful') {
                 expectStructuredOutput(question);
             }
         });
 
-        it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
+        it.only('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)

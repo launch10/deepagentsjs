@@ -26,13 +26,13 @@ export const coreLLMConfig: LLMAppConfig = {
   "paid": {
     "fast": {
       planning: SonnetConfig,
-      writing: Gpt5MiniConfig,
+      writing: HaikuConfig,
       coding: HaikuConfig,
       reasoning: HaikuConfig,
     },
     "slow": {
       planning: SonnetConfig,
-      writing: Gpt5Config,
+      writing: HaikuConfig,
       coding: SonnetConfig,
       reasoning: SonnetConfig,
     },

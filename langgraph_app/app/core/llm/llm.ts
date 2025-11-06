@@ -4,7 +4,6 @@ import { LLMManager } from "./core";
 
 const LLM_SPEED_DEFAULT: LLMSpeed = (process.env.LLM_SPEED === 'fast') ? "fast" : "slow";
 const LLM_COST_DEFAULT: LLMCost = (process.env.LLM_COST === 'paid') ? "paid" : "free";
-console.log(process.env.LLM_COST)
 const LLM_SKILL_DEFAULT: LLMSkill = 'writing';
 
 /**
