@@ -9,11 +9,14 @@ import { tool, Tool } from "@langchain/core/tools";
 import { type WebsiteType } from "@types";
 import { db, brainstorms as brainstormsTable, websiteFiles } from "@db";
 import { config } from "process";
+import { schemaWithoutKeys } from "app/utils/structuredResponse";
+import { StructuredOutputParser } from "@langchain/core/output_parsers";
 
 /**
  * Schema for structured messages with intro, examples, and conclusion
  */
 export const structuredQuestionSchema = z.object({
+  type: z.literal("structuredQuestion"),
   intro: z.string().describe('A simple intro to the question'),
   examples: z.array(z.string()).describe(`List of examples to help the user understand what we're asking`),
   conclusion: z.string().optional().describe(`Conclusion of the question, restating exactly the information we want to the user to answer`),
@@ -25,12 +28,14 @@ export type StructuredQuestion = z.infer<typeof structuredQuestionSchema>;
  * Schema for simple text messages
  */
 export const simpleQuestionSchema = z.object({
+  type: z.literal("simpleQuestion"),
   content: z.string().describe('Simple question to ask the user'),
 });
 
 export type SimpleQuestion = z.infer<typeof simpleQuestionSchema>;
 
 export const finishBrainstormingSchema = z.object({
+  type: z.literal("finishBrainstorming"),
   finishBrainstorming: z.literal(true).describe("Call to signal that the user has finished brainstorming"),
 });
 
@@ -39,7 +44,7 @@ export type FinishBrainstorming = z.infer<typeof finishBrainstormingSchema>;
 /**
  * Union schema allowing either simple or structured messages
  */
-export const outputSchema = z.union([
+export const outputSchema = z.discriminatedUnion("type", [
   simpleQuestionSchema,
   structuredQuestionSchema,
   finishBrainstormingSchema,
@@ -142,10 +147,12 @@ const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphRunnable
         • Save multiple answers at once
     `;
 
-    const saveAnswersInputSchema = z.array(z.object({
-        topic: z.enum(brainstormTopics),
-        answer: z.string()
-    }));
+    const saveAnswersInputSchema = z.object({
+        answers: z.array(z.object({
+            topic: z.enum(brainstormTopics),
+            answer: z.string()
+        }))
+    });
 
     type SaveAnswersInput = z.infer<typeof saveAnswersInputSchema>;
 
@@ -156,13 +163,13 @@ const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphRunnable
     type SaveAnswersOutput = z.infer<typeof SaveAnswersOutputSchema>;
 
     async function saveAnswers(args?: SaveAnswersInput): Promise<SaveAnswersOutput> {
-        const updates: Partial<Brainstorm> = args?.reduce((acc, { topic, answer }) => {
+        const updates: Partial<Brainstorm> = args?.answers?.reduce((acc, { topic, answer }) => {
             if (!topic || !answer) {
                 return acc;
             }
             acc[topic] = answer;
             return acc;
-        }, {} as Record<BrainstormTopic, string>)
+        }, {} as Record<BrainstormTopic, string>) || {}
 
         const result = await db.insert(brainstormsTable)
             .values({
@@ -201,16 +208,34 @@ export const brainstormAgent = async (
         SaveAnswersTool
     ].map(tool => tool(state, config)));
 
-    console.log(prompt)
     const agent = await createAgent({
         model: getLLM(),
         tools,
         systemPrompt: prompt,
         checkpointer,
     });
-    const response = await agent.invoke(state as any, config);
+    const updatedState = await agent.invoke(state as any, config);
+    let aiResponse = updatedState.messages.at(-1);
+    let content = aiResponse?.content[0];
 
-    console.log(response);
+    const schemaWithoutForeignKeys = schemaWithoutKeys(outputSchema);
+    const parser = StructuredOutputParser.fromZodSchema(schemaWithoutForeignKeys);
+    
+    let textContent = content?.text as string;
+    const jsonMatch = textContent.match(/```json\n([\s\S]*?)\n```/);
+    if (jsonMatch) {
+        textContent = jsonMatch[1];
+    }
+    
+    const result = await parser.parse(textContent);
 
-    return {};
+    console.log(result);
+    console.log(result);
+    console.log(result);
+    console.log(result);
+    console.log(result);
+
+    return {
+        messages: [...state.messages, result]
+    };
 }

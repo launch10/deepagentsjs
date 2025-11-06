@@ -23,7 +23,6 @@ export class AssemblePageService {
         const llm = getLLM("coding");
         const coderLlm = llm.withStructuredOutput(CodeTask.resultSchema);
         const prompt = await assemblePagePrompt(input);
-        console.log(prompt)
         const taskResults = await coderLlm.invoke(prompt);
         const fileSpec = fileSpecRegistry.get(PageTypeEnum.IndexPage);
 
