@@ -1028,6 +1028,24 @@ export const payCharges = pgTable("pay_charges", {
 			name: "fk_rails_b19d32f835"
 		}),
 ]);
+
+export const brainstorms = pgTable("brainstorms", {
+	id: bigserial({ mode: "number" }).primaryKey().notNull(),
+	idea: varchar(),
+	audience: varchar(),
+	solution: varchar(),
+	socialProof: varchar("social_proof"),
+	lookAndFeel: varchar("look_and_feel"),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	websiteId: bigint("website_id", { mode: "number" }),
+	completedAt: timestamp("completed_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+}, (table) => [
+	index("index_brainstorms_on_completed_at").using("btree", table.completedAt.asc().nullsLast().op("timestamp_ops")),
+	index("index_brainstorms_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
+	index("index_brainstorms_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
+]);
 export const codeFiles = pgView("code_files", {	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	websiteId: bigint("website_id", { mode: "number" }),
 	path: varchar(),

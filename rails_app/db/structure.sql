@@ -513,6 +513,43 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: brainstorms; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.brainstorms (
+    id bigint NOT NULL,
+    idea character varying,
+    audience character varying,
+    solution character varying,
+    social_proof character varying,
+    look_and_feel character varying,
+    website_id bigint,
+    completed_at timestamp without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: brainstorms_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.brainstorms_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: brainstorms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.brainstorms_id_seq OWNED BY public.brainstorms.id;
+
+
+--
 -- Name: checkpoint_blobs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2470,6 +2507,13 @@ ALTER TABLE ONLY public.api_tokens ALTER COLUMN id SET DEFAULT nextval('public.a
 
 
 --
+-- Name: brainstorms id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.brainstorms ALTER COLUMN id SET DEFAULT nextval('public.brainstorms_id_seq'::regclass);
+
+
+--
 -- Name: cloudflare_firewall_rules id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2897,6 +2941,14 @@ ALTER TABLE ONLY public.api_tokens
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: brainstorms brainstorms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.brainstorms
+    ADD CONSTRAINT brainstorms_pkey PRIMARY KEY (id);
 
 
 --
@@ -3694,6 +3746,27 @@ CREATE UNIQUE INDEX index_api_tokens_on_token ON public.api_tokens USING btree (
 --
 
 CREATE INDEX index_api_tokens_on_user_id ON public.api_tokens USING btree (user_id);
+
+
+--
+-- Name: index_brainstorms_on_completed_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_brainstorms_on_completed_at ON public.brainstorms USING btree (completed_at);
+
+
+--
+-- Name: index_brainstorms_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_brainstorms_on_created_at ON public.brainstorms USING btree (created_at);
+
+
+--
+-- Name: index_brainstorms_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_brainstorms_on_website_id ON public.brainstorms USING btree (website_id);
 
 
 --
@@ -5442,6 +5515,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251106161828'),
 ('20251026083206'),
 ('20250928143302'),
 ('20250925210226'),

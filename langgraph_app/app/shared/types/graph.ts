@@ -1,5 +1,4 @@
 import type { 
-    ConsoleError,
     Message
 } from "@types";
 

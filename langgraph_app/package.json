@@ -87,6 +87,7 @@
     "redis-connection-pool": "^4.0.1",
     "rollbar": "^2.26.4",
     "shiki": "^3.4.0",
+    "tsx": "^4.20.6",
     "type-fest": "^5.2.0",
     "uuid": "^11.1.0",
     "vite-plugin-node-polyfills": "^0.23.0",
