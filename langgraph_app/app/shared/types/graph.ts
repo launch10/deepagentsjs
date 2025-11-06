@@ -13,5 +13,4 @@ export interface CoreGraphState extends MinimalGraphState {
     accountId: number | undefined;
     projectId: number | undefined;
     projectName: string | undefined;
-    consoleErrors: ConsoleError[] | undefined;
 }

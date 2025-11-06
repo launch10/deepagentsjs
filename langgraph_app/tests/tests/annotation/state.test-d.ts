@@ -7,6 +7,6 @@ describe('Type Safety', () => {
   });
 
   test('BrainstormGraphState should have all CoreGraphState properties', () => {
-    expectTypeOf<BrainstormGraphState>().toExtend<CoreGraphState>({});
+    expectTypeOf<BrainstormGraphState>().toExtend<CoreGraphState>();
   });
 });

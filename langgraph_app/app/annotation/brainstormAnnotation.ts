@@ -1,9 +1,15 @@
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
-import { AIMessage } from "@langchain/core/messages";
-import { Brainstorm, Graphs, isHumanMessage, type Message, type PrimaryKeyType } from "@types";
+import { 
+    type Message, 
+    type AIMessage, 
+    type PrimaryKeyType,
+    type ErrorStateType,
+    Brainstorm, 
+    Graphs, 
+} from "@types";
 
 export const BrainstormAnnotation = Annotation.Root({
-    error: Annotation<string | undefined>({
+    error: Annotation<ErrorStateType | undefined>({
         default: () => undefined,
         reducer: (current, next) => next
     }),
@@ -13,27 +19,24 @@ export const BrainstormAnnotation = Annotation.Root({
         reducer: (current, next) => next
     }),
 
-    accountId: Annotation<string | undefined>({
+    accountId: Annotation<number | undefined>({
         default: () => undefined,
         reducer: (current, next) => next
     }),
 
-    messages: Annotation<Message[], Message[]>({
+    projectId: Annotation<number | undefined>({
+        default: () => undefined,
+        reducer: (current, next) => next
+    }),
+
+    projectName: Annotation<string | undefined>({
+        default: () => undefined,
+        reducer: (current, next) => next
+    }),
+
+    messages: Annotation<Message[]>({
         default: () => [],
-        reducer: (existing, incoming) => {
-            if (Array.isArray(incoming) && incoming.length > 0 && incoming.length > existing.length) {
-                const firstQuestion: AIMessage = Brainstorm.getFirstQuestion();
-                const incomingQuestion = incoming[0];
-                if (!incomingQuestion || !isHumanMessage(incomingQuestion)) {
-                    return incoming;
-                }
-                const hasFirstQuestion = incomingQuestion.content === firstQuestion.content;
-                if (hasFirstQuestion && existing.length > 0 && existing[0]?.content !== firstQuestion.content) {
-                    return incoming;
-                }
-            }
-            return messagesStateReducer(existing, incoming) as unknown as Message[];
-        }
+        reducer: messagesStateReducer as any
     }),
 
     nextQuestion: Annotation<Brainstorm.QuestionType | undefined>({
