@@ -240,6 +240,9 @@ importers:
       evalite:
         specifier: ^0.11.5
         version: 0.11.5
+      expect-type:
+        specifier: ^1.2.2
+        version: 1.2.2
       fast-glob:
         specifier: ^3.3.3
         version: 3.3.3
@@ -8087,7 +8090,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.2)
+      retry-axios: 2.6.0(axios@1.12.2(debug@4.4.1))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -9622,7 +9625,7 @@ snapshots:
 
   ret@0.5.0: {}
 
-  retry-axios@2.6.0(axios@1.12.2):
+  retry-axios@2.6.0(axios@1.12.2(debug@4.4.1)):
     dependencies:
       axios: 1.12.2(debug@4.4.1)
 

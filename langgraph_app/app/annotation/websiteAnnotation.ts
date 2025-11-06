@@ -1,5 +1,5 @@
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
-import { BaseMessage, type BaseMessageLike } from "@langchain/core/messages";
+
 import type { 
     CodeTaskType,
     ProjectType,
@@ -9,10 +9,12 @@ import type {
     ComponentContentPlanType, 
     ComponentOverviewType,
     ConsoleError,
+    ErrorStateType,
+    Message,
  } from "@types";
 
-export const GraphAnnotation = Annotation.Root({
-    error: Annotation<string | undefined>({
+export const WebsiteAnnotation = Annotation.Root({
+    error: Annotation<ErrorStateType | undefined>({
         default: () => undefined,
         reducer: (current, next) => next
     }),
@@ -22,7 +24,7 @@ export const GraphAnnotation = Annotation.Root({
         reducer: (current, next) => next
     }),
 
-    accountId: Annotation<string | undefined>({
+    accountId: Annotation<number | undefined>({
         default: () => undefined,
         reducer: (current, next) => next
     }),
@@ -32,9 +34,14 @@ export const GraphAnnotation = Annotation.Root({
         reducer: (current, next) => next
     }),
 
-    messages: Annotation<BaseMessage[], BaseMessageLike[]>({ 
+    projectId: Annotation<number | undefined>({
+        default: () => undefined,
+        reducer: (current, next) => next
+    }),
+
+    messages: Annotation<Message[]>({ 
         default: () => [],
-        reducer: messagesStateReducer
+        reducer: messagesStateReducer as any
     }),
 
     task: Annotation<CodeTaskType | undefined>({
