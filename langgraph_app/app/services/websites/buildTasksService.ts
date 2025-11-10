@@ -14,7 +14,7 @@ import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { createAgent } from "langchain";
 import { SystemMessage, BaseMessage } from "@langchain/core/messages";
 import { initWebsiteTools } from "app/tools/website";
-import { db, tasks as tasksTable } from "@db";
+import { db, tasks as tasksTable, withTimestamps } from "@db";
 
 export type BuildTasksProps = {
     website: WebsiteType;
@@ -91,7 +91,7 @@ export class BuildTasksService {
             } as CodeTaskType;
         });
 
-        const insertedTasks = await db.insert(tasksTable).values(codeTasks).returning();
+        const insertedTasks = await db.insert(tasksTable).values(withTimestamps(codeTasks)).returning();
 
         return {
             queue: insertedTasks

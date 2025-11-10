@@ -10,6 +10,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { loadScenarioConfig, type ScenarioConfig } from './scenarios';
 import { ScenarioRunner } from './scenarios';
+import { withTimestamps } from '@db';
 
 const execAsync = promisify(exec);
 
@@ -264,11 +265,11 @@ export class WebsiteEditor implements AsyncDisposable {
       } else {
         // Create new file
         await db.insert(websiteFiles)
-          .values({
+          .values(withTimestamps({
             websiteId: this.websiteId!,
             path: relativePath,
             content
-          });
+          }));
         console.log(`   ✅ Added to database`);
       }
     } catch (error) {

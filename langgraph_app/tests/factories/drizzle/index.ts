@@ -16,7 +16,9 @@ import {
   components,
   tasks,
   websiteFiles,
-  eq 
+  eq,
+  withTimestamps,
+  withUpdatedAt
 } from '@db';
 import { PageTypeEnum } from '@types';
 import { faker } from '@faker-js/faker';
@@ -36,11 +38,11 @@ type Override<T> = Partial<T>;
  * Project Factory
  */
 export const projectFactory = {
-  build: (overrides: Override<typeof projects.$inferInsert> = {}) => ({
+  build: (overrides: Override<typeof projects.$inferInsert> = {}) => (withTimestamps({
     name: faker.company.name(),
     threadId: faker.string.uuid(), // Projects need a thread ID
     ...overrides,
-  }),
+  })),
 
   async create(overrides: Override<typeof projects.$inferInsert> = {}) {
     // Auto-create account if not provided (projects require an account)
