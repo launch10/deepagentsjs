@@ -35,10 +35,10 @@
     "baseUrl": ".",
     "paths": {
       "@app": ["./app/index.ts"],
-      "@annotation": ["../shared/annotation/index.ts"],
+      "@annotation": ["./app/annotation/index.ts"],
       "@prompts": ["./app/prompts/index.ts"],
       "@nodes": ["./app/nodes/index.ts"],
-      "@middleware": ["app/core/node/middleware/index.ts"],
+      "@middleware": ["./app/core/node/middleware/index.ts"],
       "@graphs": ["./app/graphs/index.ts"],
       "@langgraph": ["./app/lib/server/langgraph/index.ts"],
       "@rails_api": ["./app/lib/server/langgraph/rails_api/index.ts"],

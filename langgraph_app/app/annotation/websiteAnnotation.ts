@@ -9,7 +9,7 @@ import type {
     ComponentContentPlanType,
     ComponentOverviewType,
     ConsoleError,
- } from "../types";
+ } from "@types";
 
 export const WebsiteAnnotation = Annotation.Root({
     ...BaseAnnotation.spec,

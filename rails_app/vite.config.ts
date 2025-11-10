@@ -11,9 +11,15 @@ export default defineConfig((config) => {
   return {
     build: {
       target: 'esnext',
+      rollupOptions: {
+        external: ['@langchain/langgraph', '@langchain/core'],
+      },
     },
     resolve: {
       conditions: ['browser', 'module', 'import', 'default'],
+    },
+    optimizeDeps: {
+      exclude: ['@langchain/langgraph', '@langchain/core'],
     },
     plugins: [
       nodePolyfills({

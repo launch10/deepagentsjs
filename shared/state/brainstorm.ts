@@ -1,9 +1,14 @@
-import { BrainstormAnnotation } from "../annotation";
 import { Brainstorm } from "../types";
+import { type CoreGraphState } from "./core";
 import { LanggraphData, type LanggraphUIMessage } from "langgraph-ai-sdk";
 import type { Simplify } from "type-fest";
 
-export type BrainstormGraphState = typeof BrainstormAnnotation.State;
+export type BrainstormGraphState = Simplify<CoreGraphState & {
+    memories: Brainstorm.Memories;
+    availableActions: Brainstorm.Action[];
+    selectedAction: Brainstorm.Action | undefined;
+    remainingTopics: Brainstorm.Topic[];
+}>
 
 export type BrainstormLanggraphData = LanggraphData<
     BrainstormGraphState,

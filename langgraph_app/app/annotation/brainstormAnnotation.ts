@@ -1,6 +1,6 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
-import { Brainstorm } from "../types";
+import { Brainstorm } from "@types";
 
 export const BrainstormAnnotation = Annotation.Root({
     ...BaseAnnotation.spec,
