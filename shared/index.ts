@@ -1,3 +1,3 @@
-export * from './annotation/index.js';
-export * from './types/index.js';
-export * from './state/index.js';
+export * from './annotation/index';
+export * from './types/index';
+export * from './state/index';

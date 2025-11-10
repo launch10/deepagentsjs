@@ -1,3 +1,4 @@
 packages:
-  - 'langgraph_app'
-  - 'shared'
+  - "langgraph_app"
+  - "rails_app"
+  - "shared"

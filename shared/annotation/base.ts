@@ -2,7 +2,7 @@ import { Annotation, messagesStateReducer } from "@langchain/langgraph";
 
 import type { 
     ErrorStateType,
-    Message,
+    BaseMessage,
     PrimaryKeyType,
  } from "@types";
 
@@ -17,7 +17,7 @@ export const BaseAnnotation = Annotation.Root({
         reducer: (current, next) => next
     }),
 
-    messages: Annotation<Message[]>({ 
+    messages: Annotation<BaseMessage[]>({ 
         default: () => [],
         reducer: messagesStateReducer as any
     }),
