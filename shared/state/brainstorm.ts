@@ -1,6 +1,6 @@
 import { Brainstorm } from "../types";
 import { type CoreGraphState } from "./core";
-import { LanggraphData, type LanggraphUIMessage } from "langgraph-ai-sdk";
+import { LanggraphData, type LanggraphUIMessage } from "langgraph-ai-sdk-types";
 import type { Simplify } from "type-fest";
 
 export type BrainstormGraphState = Simplify<CoreGraphState & {
