@@ -1035,6 +1035,7 @@ export const brainstorms = pgTable("brainstorms", {
 	audience: varchar(),
 	solution: varchar(),
 	socialProof: varchar("social_proof"),
+	lookAndFeel: varchar("look_and_feel"),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	websiteId: bigint("website_id", { mode: "number" }),
 	completedAt: timestamp("completed_at", { mode: 'string' }),

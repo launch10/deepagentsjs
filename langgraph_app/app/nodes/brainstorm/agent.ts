@@ -1,12 +1,9 @@
-import { StateGraph, END, START } from "@langchain/langgraph";
-import { AIMessage, type BaseMessage } from "@langchain/core/messages";
+import { AIMessage } from "@langchain/core/messages";
 import { createAgent } from "langchain";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
-import { tool, Tool } from "@langchain/core/tools";
 import { toJSON, renderPrompt, chatHistoryPrompt, structuredOutputPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
-import { BrainstormAnnotation } from "@annotation";
 import { SaveAnswersTool } from "@tools";
 import { pick } from "@utils";
 import {
@@ -123,7 +120,7 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
 /**
  * Node that asks a question to the user during brainstorming mode
  */
-export const brainstormAgent = async (
+export const brainstormAgent = NodeMiddleware.use({}, async (
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> => {
@@ -154,14 +151,14 @@ export const brainstormAgent = async (
           response_metadata: structuredResponse,
       });
 
-      // TODO: READ FROM DB
-      //   const answers = await readAnswersFromJSON<Brainstorm>();
-
-      const brainstorms = await db.select().from(brainstormsTable).where(
+      const brainstorms = (await db.select().from(brainstormsTable).where(
             eq(brainstormsTable.websiteId, state.websiteId)
-      ).orderBy(asc(brainstormsTable.id));
-      const answers: Brainstorm.Memories = pick(brainstorms, Brainstorm.BrainstormTopics);
-      const questionsAnswered = Object.keys(answers);
+      ).orderBy(asc(brainstormsTable.id)))[0];
+      let answers: Brainstorm.Memories = {}
+      if (brainstorms) {
+        answers = pick(brainstorms, [...Brainstorm.BrainstormTopics]);
+      }
+      const questionsAnswered = Object.keys(answers) as Brainstorm.Topic[];
       const remainingTopics = state.remainingTopics.filter(topic => !questionsAnswered.includes(topic));
 
       return {
@@ -178,16 +175,4 @@ export const brainstormAgent = async (
       console.error('==========================================');
       throw error; // Re-throw to ensure it propagates
     }
-}
-
-/**
- * Simple test graph for the new brainstorm agent
- * Usage: Load this in LangGraph Studio to test the agent
- */
-export function createSampleAgent(checkpointer?: any, graphName: string = 'sample') {
-  return new StateGraph(BrainstormAnnotation)
-      .addNode("agent", NodeMiddleware.use({}, brainstormAgent))
-      .addEdge(START, "agent")
-      .addEdge("agent", END)
-      .compile({ checkpointer, name: graphName });
-}
+});
