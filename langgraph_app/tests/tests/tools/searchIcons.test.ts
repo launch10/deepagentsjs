@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
-import { initTools } from '@tools';
+import { initWebsiteTools } from 'app/tools/website';
 import { SearchIconsService } from '@services';
 import { databaseSnapshotter } from '@services';
 import { startPolly, stopPolly } from '@utils';
@@ -25,7 +25,7 @@ describe('searchIcons Tool', () => {
         // Initialize the service - embeddings should already be in the database from snapshot
         searchIconsService = new SearchIconsService();
         
-        const tools = await initTools({});
+        const tools = await initWebsiteTools({});
         searchIconsTool = tools.searchIcons;
     });
 

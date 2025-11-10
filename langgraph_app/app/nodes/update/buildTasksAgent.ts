@@ -1,4 +1,4 @@
-import { type WebsiteBuilderGraphState } from "@state";
+import { type WebsiteGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@core";
 import { BuildTasksService } from "@services";
@@ -8,9 +8,9 @@ import { BuildTasksService } from "@services";
  */
 export const buildTasksAgent = NodeMiddleware.use(
   async (
-    state: WebsiteBuilderGraphState,
+    state: WebsiteGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<WebsiteBuilderGraphState>> => {
+  ): Promise<Partial<WebsiteGraphState>> => {
     const { messages, consoleErrors } = state;
 
     if (!messages || messages.length === 0) {

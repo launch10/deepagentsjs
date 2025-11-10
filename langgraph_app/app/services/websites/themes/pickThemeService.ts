@@ -1,14 +1,15 @@
 import { z } from "zod";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
-import { pickThemePrompt, type PickThemePromptProps, pickThemePromptOutputSchema, toolsPrompt } from "@prompts";
-import { initTools, createStructuredOutputTool, isStructuredOutputTool } from "@tools";
+import { pickThemePrompt, type PickThemePromptProps, toolsPrompt } from "@prompts";
+import { initWebsiteTools } from "app/tools/website";
 import { StructuredTool } from "@langchain/core/tools";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { createAgent } from "langchain";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { SearchThemesService } from "./searchThemesService";
 import { themeSchema, type WebsiteType } from "@types";
 import { WebsiteModel } from "@models";
+import { structuredOutputPrompt } from "@prompts";
 
 const pickThemeOutputSchema = z.object({
     theme: themeSchema
@@ -28,7 +29,7 @@ export class PickThemeService {
         }
 
         const website = input.website;
-        if (!website) {
+        if (!website || !website.id || (typeof website.id !== 'number')) {
             throw new Error('Website is required');
         }
         
@@ -36,20 +37,17 @@ export class PickThemeService {
         
         const themePrompt = await pickThemePrompt(input);
         
-        const { searchThemes } = await initTools(input);
-        const structuredOutputTool = createStructuredOutputTool({
-            name: "submitThemeSelection",
-            description: "Submit your final theme selection. Call this AFTER searching for themes and choosing the best one.",
-            schema: pickThemePromptOutputSchema.extend({
-                reason: z.string().optional().describe("Brief explanation of why you chose this theme")
-            })
-        });
+        const { searchThemes } = await initWebsiteTools(input as any); // TODO: Fix this
+        if (!searchThemes) {
+            throw new Error('Failed to initialize searchThemes tool');
+        }
         
-        const tools: StructuredTool[] = [structuredOutputTool, searchThemes];
+        const tools: StructuredTool[] = [searchThemes];
         
-        const agent = createReactAgent({
-            llm,
+        const agent = createAgent({
+            model: llm,
             tools,
+            responseFormat: pickThemeOutputSchema
         });
 
         // Add instruction to use both tools
@@ -59,9 +57,9 @@ export class PickThemeService {
             Process:
             1. Call searchThemes with relevant labels (2-3 labels max)
             2. Review the returned themes and their IDs
-            3. Call submitThemeSelection with the themeId of your chosen theme
+            3. Submit your final theme selection using the structure listed below:
             
-            You MUST call submitThemeSelection to complete the task.
+            ${await structuredOutputPrompt({ schema: pickThemeOutputSchema })}
         `);
         
         // Update agent state with tool instructions
@@ -75,10 +73,7 @@ export class PickThemeService {
         };
 
         const agentOutput = await agent.invoke(agentStateWithInstructions, config);
-        
-        // Get the result from the structured output tool using type guard
-        const outputTool = tools.find(isStructuredOutputTool);
-        const structuredResponse = outputTool?.structuredResponse;
+        const structuredResponse = agentOutput.structuredResponse;
         
         if (!structuredResponse || !('themeId' in structuredResponse)) {
             throw new Error('No theme selection found');

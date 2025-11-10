@@ -64,7 +64,8 @@
 
 import { z } from "zod";
 import { StructuredTool } from "@langchain/core/tools";
-import { SearchIconsService, type IconResult } from "../services/websites/searchIconsService";
+import type { WebsiteGraphState } from "@state";
+import { SearchIconsService, type IconResult } from "../../services/websites/searchIconsService";
 
 const examples = `EXAMPLES:
 Basic UI icons:
@@ -143,10 +144,8 @@ export class SearchIconsTool extends StructuredTool {
   }
 }
 
-export async function initializeSearchIcons(_state: Record<string, any>): Promise<{ searchIcons: StructuredTool }> {
-  return {
-    searchIcons: new SearchIconsTool()
-  };
+export async function initSearchIcons(state: WebsiteGraphState): Promise<{ searchIcons: StructuredTool }> {
+    return {
+        searchIcons: new SearchIconsTool()
+    };
 }
-
-export const initTools = initializeSearchIcons;

@@ -7,64 +7,15 @@ import { getLLM } from "@core";
 import { tool, Tool } from "@langchain/core/tools";
 import { toJSON, renderPrompt, chatHistoryPrompt, structuredOutputPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
+import { BrainstormAnnotation } from "@annotation";
 import {
   isHumanMessage,
-  brainstormTopics,
-  BrainstormStateAnnotation,
-  questionSchema,
-  agentOutputSchema,
-  type BrainstormTopic,
-  type Brainstorm,
-  type AgentStateType,
+  Brainstorm,
 } from '@types';
-
-async function wipeJSON(filePath: string = './brainstorm-answers.json'): Promise<void> {
-    try {
-        await writeFile(filePath, '{}', 'utf-8');
-    } catch (error) {
-        console.error('Error wiping JSON file:', error);
-        throw error;
-    }
-}
-
-async function readAnswersFromJSON<T extends Record<string, any>>(
-    filePath: string = './brainstorm-answers.json'
-): Promise<T> {
-    try {
-        const fileContent = await readFile(filePath, 'utf-8');
-        return JSON.parse(fileContent);
-    } catch (err) {
-        // File doesn't exist or is invalid, start with empty object
-        return {} as T;
-    }
-}
-/**
- * Helper function to write answers to a JSON file by key
- * Merges new data with existing data in the file
- * @param data - Object containing the answers keyed by topic
- * @param filePath - Path to the JSON file (defaults to ./brainstorm-answers.json)
- */
-async function writeAnswersToJSON<T extends Record<string, any>>(
-    data: T,
-    filePath: string = './brainstorm-answers.json'
-): Promise<void> {
-    try {
-        // Read existing data if file exists
-        let existingData: T = await readAnswersFromJSON(filePath);
-
-        // Merge new data with existing data
-        const mergedData = { ...existingData, ...data };
-
-        // Write to file with pretty formatting
-        await writeFile(filePath, JSON.stringify(mergedData, null, 2), 'utf-8');
-    } catch (error) {
-        console.error('Error writing answers to JSON:', error);
-        throw error;
-    }
-}
+import { type BrainstormGraphState } from "@state";
 
 // Topic descriptions for the brainstorm agent
-const TopicDescriptions: Record<BrainstormTopic, string> = {
+const TopicDescriptions: Record<Brainstorm.Topic, string> = {
     idea: `The core business idea. What does the business do? What makes them different?`,
     audience: `The target audience. What are their pain points? What are their goals?`,
     solution: `How does the user's business solve the audience's pain points, or help them reach their goals?`,
@@ -72,22 +23,16 @@ const TopicDescriptions: Record<BrainstormTopic, string> = {
     lookAndFeel: `The look and feel of the landing page.`,
 }
 
-type BrainstormGraphState = {
-    messages: BaseMessage[];
-    brainstorm: Brainstorm;
-    remainingTopics: BrainstormTopic[];
+const sortedTopics = (topics: Brainstorm.Topic[]) => {
+    return topics.sort((a, b) => Brainstorm.BrainstormTopics.indexOf(a) - Brainstorm.BrainstormTopics.indexOf(b));
 }
 
-const sortedTopics = (topics: BrainstormTopic[]) => {
-    return topics.sort((a, b) => brainstormTopics.indexOf(a) - brainstormTopics.indexOf(b));
-}
-
-const remainingTopics = (topics: BrainstormTopic[]) => {
+const remainingTopics = (topics: Brainstorm.Topic[]) => {
     return sortedTopics(topics).map(topic => `${topic}: ${TopicDescriptions[topic]}`).join("\n\n");
 }
 
-const collectedData = (state: BrainstormGraphState): Brainstorm => {
-    return Object.entries(state.brainstorm).filter(([_, value]) => value !== undefined && value !== "") as Brainstorm;
+const collectedData = (state: BrainstormGraphState): Brainstorm.Memories => {
+    return Object.entries(state.memories).filter(([_, value]) => value !== undefined && value !== "") as Brainstorm.Memories;
 }
 
 const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
@@ -101,8 +46,7 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
     return renderPrompt(
         `
             <role>
-                You are a highly paid marketing consultant and strategist who specializes in helping businesses develop
-                HIGHLY PERSUASIVE marketing copy for their landing pages to differentiate their business ideas.
+                You are a highly paid marketing consultant and strategist who specializes in helping businesses develop HIGHLY PERSUASIVE marketing copy for their landing pages to differentiate their business ideas.
             </role>
 
             <rules>
@@ -169,7 +113,7 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
                 You MUST output valid JSON in one of these formats. NO other text.
             </output_format_rules>
 
-            ${await structuredOutputPrompt({ schema: questionSchema })}
+            ${await structuredOutputPrompt({ schema: Brainstorm.messageSchema })}
         `
     );
 }
@@ -179,7 +123,7 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
 const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphRunnableConfig): Tool => {
     const saveAnswersInputSchema = z.object({
         answers: z.array(z.object({
-            topic: z.enum(brainstormTopics),
+            topic: z.enum(Brainstorm.BrainstormTopics),
             answer: z.string()
         }))
     });
@@ -187,15 +131,16 @@ const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphRunnable
     type SaveAnswersInput = z.infer<typeof saveAnswersInputSchema>;
 
     async function saveAnswers(args?: SaveAnswersInput): Promise<{ success: boolean }> {
-        const updates: Partial<Brainstorm> = args?.answers?.reduce((acc, { topic, answer }) => {
+        const updates: Partial<Brainstorm.Memories> = args?.answers?.reduce((acc, { topic, answer }) => {
             if (!topic || !answer) {
                 return acc;
             }
             acc[topic] = answer;
             return acc;
-        }, {} as Record<BrainstormTopic, string>) || {}
+        }, {} as Record<Brainstorm.Topic, string>) || {}
 
-        await writeAnswersToJSON(updates);
+        // TODO: Save to DB
+        // await writeAnswersToJSON(updates);
 
         return { success: true };
     }
@@ -232,7 +177,7 @@ export const brainstormAgent = async (
           model: llm,
           tools,
           systemPrompt: prompt,
-          responseFormat: questionSchema,
+          responseFormat: Brainstorm.messageSchema,
       });
 
       const updatedState = await agent.invoke(state as any, config);
@@ -242,7 +187,10 @@ export const brainstormAgent = async (
           content: JSON.stringify(structuredResponse, null, 2),
           response_metadata: structuredResponse,
       });
-      const answers = await readAnswersFromJSON<Brainstorm>();
+
+      // TODO: READ FROM DB
+      //   const answers = await readAnswersFromJSON<Brainstorm>();
+      const answers = {}
       const questionsAnswered = Object.keys(answers);
       const remainingTopics = state.remainingTopics.filter(topic => !questionsAnswered.includes(topic));
 
@@ -268,7 +216,7 @@ export const brainstormAgent = async (
  * Usage: Load this in LangGraph Studio to test the agent
  */
 export function createSampleAgent(checkpointer?: any, graphName: string = 'sample') {
-  return new StateGraph(BrainstormStateAnnotation)
+  return new StateGraph(BrainstormAnnotation)
       .addNode("agent", NodeMiddleware.use({}, brainstormAgent))
       .addEdge(START, "agent")
       .addEdge("agent", END)

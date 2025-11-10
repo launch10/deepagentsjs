@@ -1,13 +1,13 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { GraphAnnotation } from "@annotation";
-import { type WebsiteBuilderGraphState } from "@state";
+import { type WebsiteGraphState } from "@state";
 import { createGraph } from "./create";
 import { nameProjectNode } from "@nodes";
 import { updateGraph } from "./update";
 import { graphParams } from "@core";
 import { isFirstMessage } from "@annotation";
 
-const router = async(state: WebsiteBuilderGraphState): Promise<string> => {
+const router = async(state: WebsiteGraphState): Promise<string> => {
     if (isFirstMessage(state)) {
         return "nameProject";
     }

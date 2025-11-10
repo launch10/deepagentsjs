@@ -2,7 +2,7 @@ import {
     renderPrompt,
     type PromptMetadata
 } from "@prompts";
-import { allStructuredTools } from "@tools";
+import { allStructuredTools } from "app/tools/website";
 import { StructuredTool } from "@langchain/core/tools";
 
 type ToolMap = Record<string, StructuredTool>;

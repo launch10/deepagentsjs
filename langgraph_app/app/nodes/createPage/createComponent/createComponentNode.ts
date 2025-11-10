@@ -1,4 +1,4 @@
-import { type WebsiteBuilderGraphState } from "@state";
+import { type WebsiteGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@core";
 import { CreateComponentService, type CreateComponentOutputType, type CreateComponentProps } from "@services";
@@ -9,9 +9,9 @@ import { ComponentContentPlanModel } from "@models";
  */
 export const createComponentNode = NodeMiddleware.use(
   async (
-    state: WebsiteBuilderGraphState,
+    state: WebsiteGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<WebsiteBuilderGraphState>> => {
+  ): Promise<Partial<WebsiteGraphState>> => {
     const website = state.website;
 
     if (!website) {

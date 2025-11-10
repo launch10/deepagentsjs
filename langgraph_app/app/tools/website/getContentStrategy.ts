@@ -21,7 +21,7 @@
 
 import { z } from "zod";
 import { tool, Tool } from "@langchain/core/tools";
-import type { WebsiteBuilderGraphState} from "@shared/state/graph";
+import type { WebsiteGraphState} from "@shared/state/graph";
 import { type WebsiteContentStrategyType } from "@shared/types/website";
 
 const description = `

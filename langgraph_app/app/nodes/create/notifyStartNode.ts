@@ -1,5 +1,5 @@
 import { NodeMiddleware } from "@core";
-import { type WebsiteBuilderGraphState } from "@state";
+import { type WebsiteGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NotifyStartService } from "@services";
 
@@ -8,9 +8,9 @@ import { NotifyStartService } from "@services";
  */
 export const notifyStartNode = NodeMiddleware.use(
   async (
-    state: WebsiteBuilderGraphState,
+    state: WebsiteGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<WebsiteBuilderGraphState>> => {
+  ): Promise<Partial<WebsiteGraphState>> => {
     const service = new NotifyStartService();
 
     const result = await service.execute({ messages: state.messages }, config);

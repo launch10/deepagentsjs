@@ -1,61 +1,21 @@
 import { z } from "zod";
+import { StateGraph, END, START } from "@langchain/langgraph";
+import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import { createAgent } from "langchain";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import type { Message } from "@langchain/core/messages";
-import { checkpointer, getLLM } from "@core";
-import { renderPrompt, chatHistoryPrompt, toJSON, structuredOutputPrompt } from "@prompts";
-import { isHumanMessage } from "@types";
+import { getLLM } from "@core";
 import { tool, Tool } from "@langchain/core/tools";
-import { type WebsiteType } from "@types";
-import { db, brainstorms as brainstormsTable, websiteFiles } from "@db";
-import { config } from "process";
-import { schemaWithoutKeys } from "app/utils/structuredResponse";
-import { StructuredOutputParser } from "@langchain/core/output_parsers";
+import { toJSON, renderPrompt, chatHistoryPrompt, structuredOutputPrompt } from "@prompts";
+import { NodeMiddleware } from "@middleware";
+import { BrainstormAnnotation } from "@annotation";
+import {
+  isHumanMessage,
+  Brainstorm,
+} from '@types';
+import { type BrainstormGraphState } from "@state";
 
-/**
- * Schema for structured messages with intro, examples, and conclusion
- */
-export const structuredQuestionSchema = z.object({
-  type: z.literal("structuredQuestion"),
-  intro: z.string().describe('A simple intro to the question'),
-  examples: z.array(z.string()).describe(`List of examples to help the user understand what we're asking`),
-  conclusion: z.string().optional().describe(`Conclusion of the question, restating exactly the information we want to the user to answer`),
-});
-
-export type StructuredQuestion = z.infer<typeof structuredQuestionSchema>;
-
-/**
- * Schema for simple text messages
- */
-export const simpleQuestionSchema = z.object({
-  type: z.literal("simpleQuestion"),
-  content: z.string().describe('Simple question to ask the user'),
-});
-
-export type SimpleQuestion = z.infer<typeof simpleQuestionSchema>;
-
-export const finishBrainstormingSchema = z.object({
-  type: z.literal("finishBrainstorming"),
-  finishBrainstorming: z.literal(true).describe("Call to signal that the user has finished brainstorming"),
-});
-
-export type FinishBrainstorming = z.infer<typeof finishBrainstormingSchema>;
-
-/**
- * Union schema allowing either simple or structured messages
- */
-export const outputSchema = z.discriminatedUnion("type", [
-  simpleQuestionSchema,
-  structuredQuestionSchema,
-  finishBrainstormingSchema,
-]);
-
-export type OutputType = z.infer<typeof outputSchema>;
-
-const brainstormTopics = ["idea", "audience", "solution", "socialProof", "lookAndFeel"] as const;
-type BrainstormTopic = typeof brainstormTopics[number];
-type Brainstorm = Partial<Record<BrainstormTopic, string>>;
-const TopicDescriptions: Record<BrainstormTopic, string> = {
+// Topic descriptions for the brainstorm agent
+const TopicDescriptions: Record<Brainstorm.Topic, string> = {
     idea: `The core business idea. What does the business do? What makes them different?`,
     audience: `The target audience. What are their pain points? What are their goals?`,
     solution: `How does the user's business solve the audience's pain points, or help them reach their goals?`,
@@ -63,23 +23,16 @@ const TopicDescriptions: Record<BrainstormTopic, string> = {
     lookAndFeel: `The look and feel of the landing page.`,
 }
 
-interface BrainstormGraphState {
-    messages: Message[];
-    brainstorm: Brainstorm;
-    remainingTopics: BrainstormTopic[];
-    website: WebsiteType;
+const sortedTopics = (topics: Brainstorm.Topic[]) => {
+    return topics.sort((a, b) => Brainstorm.BrainstormTopics.indexOf(a) - Brainstorm.BrainstormTopics.indexOf(b));
 }
 
-const sortedTopics = (topics: BrainstormTopic[]) => {
-    return topics.sort((a, b) => brainstormTopics.indexOf(a) - brainstormTopics.indexOf(b));
-}
-
-const remainingTopics = (topics: BrainstormTopic[]) => {
+const remainingTopics = (topics: Brainstorm.Topic[]) => {
     return sortedTopics(topics).map(topic => `${topic}: ${TopicDescriptions[topic]}`).join("\n\n");
 }
 
-const collectedData = (state: BrainstormGraphState): Brainstorm => {
-    return Object.entries(state.brainstorm).filter(([_, value]) => value !== undefined && value !== "") as Brainstorm;
+const collectedData = (state: BrainstormGraphState): Brainstorm.Memories => {
+    return Object.entries(state.memories).filter(([_, value]) => value !== undefined && value !== "") as Brainstorm.Memories;
 }
 
 const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
@@ -88,17 +41,20 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
         throw new Error("No human message found");
     }
 
-    const [chatHistory, outputInstructions] = await Promise.all([
-        chatHistoryPrompt({ messages: state.messages }),
-        structuredOutputPrompt({ schema: outputSchema })
-    ])
+    const chatHistory = await chatHistoryPrompt({ messages: state.messages });
 
     return renderPrompt(
         `
             <role>
-                You are an expert marketer and strategist who specializes in helping businesses develop 
-                HIGHLY PERSUASIVE marketing copy for their landing pages to differentiate their business ideas.
+                You are a highly paid marketing consultant and strategist who specializes in helping businesses develop HIGHLY PERSUASIVE marketing copy for their landing pages to differentiate their business ideas.
             </role>
+
+            <rules>
+                1. You MUST understand the user's business idea and audience. You are good natured, but critical of bad ideas. You MUST help the user find a GREAT angle.
+                2. You have a reputation to uphold. You won't accept a bad business idea, but will help the user find a better angle.
+                3. If the user is struggling, you can find creative angles to answer a question.
+                4. You do not save an answer unless the user has given you a GREAT response. Continue refining UNTIL the user has given you a GREAT response in their own words.
+            </rules>
 
             <task>
                 Help the user brainstorm marketing copy for their landing page.
@@ -115,127 +71,116 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
                 ${remainingTopics(state.remainingTopics)}
             </remaining_topics>
 
-            <decide_next_action>
-                - If user's last message answered any of the remaining topics → call save_answers
-                - If answer is off-topic/confused → provide clarification
-                - If user asks for help → provide clarification
-                - If no remaining topics → output finish_brainstorming
-                - Otherwise → ask the user the next question, using the output format specified below
-            </decide_next_action>
-
             <users_last_message>
                 ${lastHumanMessage.content}
             </users_last_message>
 
             <workflow>
-                1. Save any unsaved answers
-                2. Decide next action based on user's last message
+                1. If the user has answered any topics with a GREAT response, call the save_answers tool
+                2. If they haven't, continue helping them refine their answer until they give you a GREAT response.
+                3. Then, if:
+                   - The user has answered all topics, output finishBrainstorming
+                   - OTHERWISE, ask the next question, following the output_format_rules
             </workflow>
 
-            ${outputInstructions}
+            <important>
+                Do not miss anything important the user said! Any important
+                business context they give you should be saved to the answers.
+            </important>
+
+            <ensure_understanding>
+                Ensure you actually understand the answer in the user's own words.
+                If unclear, use simpleQuestion to ask for clarification.
+            </ensure_understanding>
+
+            <output_format_rules>
+                IMPORTANT: Your response MUST be in one of these exact formats:
+
+                To ask a question:
+                {
+                  "type": "question",
+                  "text": "Brief intro to the question",
+                  "examples": ["Example 1", "Example 2", "Example 3"], // Optional
+                  "conclusion": "Restate what you're asking for" // Optional
+                }
+
+                When the user has finished brainstorming, output:
+                {
+                  "type": "finishBrainstorming",
+                  "finishBrainstorming": true
+                }
+
+                You MUST output valid JSON in one of these formats. NO other text.
+            </output_format_rules>
+
+            ${await structuredOutputPrompt({ schema: Brainstorm.messageSchema })}
         `
     );
-}
-
-const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphRunnableConfig): Promise<Tool> => {
-    const websiteId = state?.website?.id;
-
-    const description = `
-        Tool for saving answers to the brainstorming session.
-
-        CAPABILITIES:
-        • Save multiple answers at once
-    `;
-
-    const saveAnswersInputSchema = z.object({
-        answers: z.array(z.object({
-            topic: z.enum(brainstormTopics),
-            answer: z.string()
-        }))
-    });
-
-    type SaveAnswersInput = z.infer<typeof saveAnswersInputSchema>;
-
-    const SaveAnswersOutputSchema = z.object({
-        success: z.boolean(),
-    });
-
-    type SaveAnswersOutput = z.infer<typeof SaveAnswersOutputSchema>;
-
-    async function saveAnswers(args?: SaveAnswersInput): Promise<SaveAnswersOutput> {
-        const updates: Partial<Brainstorm> = args?.answers?.reduce((acc, { topic, answer }) => {
-            if (!topic || !answer) {
-                return acc;
-            }
-            acc[topic] = answer;
-            return acc;
-        }, {} as Record<BrainstormTopic, string>) || {}
-
-        const result = await db.insert(brainstormsTable)
-            .values({
-                websiteId,
-                ...updates
-            })
-            .onConflictDoUpdate({
-                target: websiteId,
-                set: updates
-            })
-            .returning();
-
-        console.log(result);
-        
-        return {
-            success: true
-        };
-    }
-    
-    return tool(saveAnswers, {
-        name: "saveAnswers",
-        description,
-        schema: saveAnswersInputSchema,
-    });
 }
 
 /**
  * Node that asks a question to the user during brainstorming mode
  */
 export const brainstormAgent = async (
-    state: BrainstormGraphState, 
+    state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> => {
-    const prompt = await getPrompt(state, config)
-    const tools = await Promise.all([
-        SaveAnswersTool
-    ].map(tool => tool(state, config)));
+    try {
+      const prompt = await getPrompt(state, config)
 
-    const agent = await createAgent({
-        model: getLLM(),
-        tools,
-        systemPrompt: prompt,
-        checkpointer,
-    });
-    const updatedState = await agent.invoke(state as any, config);
-    let aiResponse = updatedState.messages.at(-1);
-    let content = aiResponse?.content[0];
+      // Only use real tools that do something (save_answers)
+      const tools = [SaveAnswersTool(state, config)];
 
-    const schemaWithoutForeignKeys = schemaWithoutKeys(outputSchema);
-    const parser = StructuredOutputParser.fromZodSchema(schemaWithoutForeignKeys);
-    
-    let textContent = content?.text as string;
-    const jsonMatch = textContent.match(/```json\n([\s\S]*?)\n```/);
-    if (jsonMatch) {
-        textContent = jsonMatch[1];
+      // Use structured output for the response format
+      const llm = getLLM()
+        .withConfig({ tags: ['notify'] })
+
+      const agent = await createAgent({
+          model: llm,
+          tools,
+          systemPrompt: prompt,
+          responseFormat: Brainstorm.messageSchema,
+      });
+
+      const updatedState = await agent.invoke(state as any, config);
+      const structuredResponse = updatedState.structuredResponse
+
+      const aiMessage = new AIMessage({
+          content: JSON.stringify(structuredResponse, null, 2),
+          response_metadata: structuredResponse,
+      });
+
+      // TODO: READ FROM DB
+      //   const answers = await readAnswersFromJSON<Brainstorm>();
+      const answers = {}
+      const questionsAnswered = Object.keys(answers);
+      const remainingTopics = state.remainingTopics.filter(topic => !questionsAnswered.includes(topic));
+
+      return {
+          messages: [...(state.messages || []), aiMessage],
+          remainingTopics,
+      };
+    } catch (error) {
+      console.error('==========================================');
+      console.error('BRAINSTORM AGENT ERROR:');
+      console.error('==========================================');
+      console.error('Error details:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('State:', JSON.stringify(state, null, 2));
+      console.error('==========================================');
+      throw error; // Re-throw to ensure it propagates
     }
-    
-    const result = await parser.parse(textContent);
+}
 
-    console.log(result);
-    console.log(result);
-    console.log(result);
-    console.log(result);
-    console.log(result);
 
-    return {
-        messages: [...state.messages, result]
-    };
+/**
+ * Simple test graph for the new brainstorm agent
+ * Usage: Load this in LangGraph Studio to test the agent
+ */
+export function createSampleAgent(checkpointer?: any, graphName: string = 'sample') {
+  return new StateGraph(BrainstormAnnotation)
+      .addNode("agent", NodeMiddleware.use({}, brainstormAgent))
+      .addEdge(START, "agent")
+      .addEdge("agent", END)
+      .compile({ checkpointer, name: graphName });
 }

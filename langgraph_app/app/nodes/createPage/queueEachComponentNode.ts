@@ -1,4 +1,4 @@
-import { type WebsiteBuilderGraphState } from "@state";
+import { type WebsiteGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@core";
 import { Send } from "@langchain/langgraph";
@@ -8,7 +8,7 @@ import { Send } from "@langchain/langgraph";
  */
 export const queueEachComponentNode = NodeMiddleware.use(
   async (
-    state: WebsiteBuilderGraphState,
+    state: WebsiteGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Send[]> => {
     const queue = state.queue ?? [];

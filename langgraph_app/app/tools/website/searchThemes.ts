@@ -2,7 +2,7 @@ import { z } from "zod";
 import { StructuredTool } from "@langchain/core/tools";
 import { SearchThemesService } from "@services";
 import { type ThemeType } from "@types";
-import type { WebsiteBuilderGraphState} from "~/core/decorators/types";
+import type { WebsiteGraphState } from "@state";
 
 // --- Helper to format ThemeType for LLM ---
 // Format to clearly show the theme ID for selection
@@ -72,7 +72,7 @@ export class SearchThemesTool extends StructuredTool {
     }
 }
 
-export async function initializeSearchThemes(): Promise<{ searchThemes: StructuredTool }> {
+export async function initSearchThemes(state: WebsiteGraphState): Promise<{ searchThemes: StructuredTool }> {
     // Instantiate the service once to fetch labels
     const themeService = new SearchThemesService();
     const availableLabels = await themeService.getAllThemeLabels();
@@ -83,8 +83,4 @@ export async function initializeSearchThemes(): Promise<{ searchThemes: Structur
     return {
         searchThemes: searchThemesTool
     };
-}
-
-export const initTools = async (state: GraphState): Promise<{ searchThemes: StructuredTool }> => {
-    return initializeSearchThemes();
 }

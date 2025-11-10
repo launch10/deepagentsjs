@@ -1,5 +1,5 @@
 import { NodeMiddleware } from "@core";
-import { type WebsiteBuilderGraphState } from "@state";
+import { type WebsiteGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { projectsApi } from "@services";
 import { WebsiteModel } from "@models";
@@ -11,9 +11,9 @@ import { isString, isNumber } from "@utils";
  */
 export const createProjectNode = NodeMiddleware.use(
   async (
-    state: WebsiteBuilderGraphState,
+    state: WebsiteGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<WebsiteBuilderGraphState>> => {
+  ): Promise<Partial<WebsiteGraphState>> => {
     if (!isString(state.projectName)) {
       throw new Error("Project name is undefined");
     }

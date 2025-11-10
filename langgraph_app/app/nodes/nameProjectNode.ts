@@ -1,4 +1,4 @@
-import { type WebsiteBuilderGraphState } from "@state"
+import { type WebsiteGraphState } from "@state"
 import { NameProjectService } from "@services";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { lastHumanMessage } from "@annotation";
@@ -9,9 +9,9 @@ import { NodeMiddleware } from "@core";
  */
 export const nameProjectNode = NodeMiddleware.use(
     async (
-        state: WebsiteBuilderGraphState, 
+        state: WebsiteGraphState, 
         config?: LangGraphRunnableConfig
-    ): Promise<Partial<WebsiteBuilderGraphState>> => {
+    ): Promise<Partial<WebsiteGraphState>> => {
         if (!state.messages) {
             throw new Error("messages are required");
         }

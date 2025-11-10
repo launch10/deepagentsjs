@@ -1,4 +1,4 @@
-import type { WebsiteBuilderGraphState} from '@shared/state/graph';
+import type { WebsiteGraphState} from '@shared/state/graph';
 
 // TODO: MOVE TO PROMPTS!!!
 export const tailwindConfigPrompt = (state: GraphState) => {

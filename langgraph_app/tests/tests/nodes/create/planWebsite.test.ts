@@ -3,7 +3,7 @@ import { testGraph } from '@support';
 import { databaseSnapshotter } from '@services';
 import { ContentStrategyModel } from '@models';
 import { routerGraph } from '@graphs';
-import { type WebsiteBuilderGraphState } from '@state';
+import { type WebsiteGraphState } from '@state';
 
 describe.sequential('PlanWebsite Node', async () => {
     beforeAll(async () => {
@@ -12,7 +12,7 @@ describe.sequential('PlanWebsite Node', async () => {
 
     describe("When Rails API responds successfully", async () => {
         it('should plan website with mocked API', async () => {
-            const result = await testGraph<WebsiteBuilderGraphState>()
+            const result = await testGraph<WebsiteGraphState>()
                 .withGraph(routerGraph)
                 .withPrompt(`Create a website about space exploration`)
                 .stopAfter('planWebsite')

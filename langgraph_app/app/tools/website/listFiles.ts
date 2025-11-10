@@ -26,6 +26,7 @@
 import { z } from "zod";
 import { tool, Tool } from "@langchain/core/tools";
 import { CodeFileModel } from "@models";
+import type { WebsiteGraphState } from "@state";
 
 const description = `
     File listing tool with support for simple lists and tree views.
@@ -210,7 +211,7 @@ const outputters = {
     tree: outputTree
 }
 
-export async function initListFiles(state: GraphState): Promise<{ listFiles: Tool }> {
+export async function initListFiles(state: WebsiteGraphState): Promise<{ listFiles: Tool }> {
     const websiteId = state?.website?.id;
 
     async function listFiles(args?: ListFilesInput): Promise<ListFilesOutput> {
@@ -262,5 +263,3 @@ export async function initListFiles(state: GraphState): Promise<{ listFiles: Too
         listFiles: listFilesTool
     };
 }
-
-export const initTools = initListFiles;

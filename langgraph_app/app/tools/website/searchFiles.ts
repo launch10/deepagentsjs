@@ -36,7 +36,7 @@
 
 import { z } from "zod";
 import { tool, Tool } from "@langchain/core/tools";
-import type { WebsiteBuilderGraphState} from "@state";
+import type { WebsiteGraphState } from "@state";
 import { type FileType, fileSchema } from "@types";
 import { CodeFileModel } from "@models";
 import { compactObject } from "@utils";
@@ -139,7 +139,7 @@ const FileSearchOutputSchema = z.object({
 });
 type FileSearchOutput = z.infer<typeof FileSearchOutputSchema>;
 
-export async function initSearchFiles(state: GraphState): Promise<{ searchFiles: Tool }> {
+export async function initSearchFiles(state: WebsiteGraphState): Promise<{ searchFiles: Tool }> {
     const websiteId = state?.website?.id;
 
     async function executeSearch(search: SingleSearch): Promise<{
@@ -236,5 +236,3 @@ export async function initSearchFiles(state: GraphState): Promise<{ searchFiles:
         searchFiles: searchFilesTool
     };
 }
-
-export const initTools = initSearchFiles;

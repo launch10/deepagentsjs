@@ -1,4 +1,4 @@
-// import { type WebsiteBuilderGraphState } from "@shared/state/graph";
+// import { type WebsiteGraphState } from "@shared/state/graph";
 // import { codeTaskResultSchema, type CodeTaskResult } from "@models/codeTask";
 // import { formatFiles } from "@prompts/helpers";
 // import { Project } from "@langgraph/models/project";
