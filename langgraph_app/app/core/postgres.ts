@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import { env } from "./env";
+import { initializeLanggraph } from "langgraph-ai-sdk";
 
 export const pool: Pool = (() => {
     const postgresUri = env.POSTGRES_URI;
@@ -15,6 +16,9 @@ export const pool: Pool = (() => {
         connectionTimeoutMillis: 2000,
     });
 })()
+
+// This must be called as early as possible to attach the pool to langgraph-ai-sdk
+initializeLanggraph({ pool })
 
 export async function cleanupPool(): Promise<void> {
     if (!pool) {

@@ -10,7 +10,7 @@
     "node": ">= 24.1.0"
   },
   "scripts": {
-    "dev": "tsx ./server.mts",
+    "dev": "tsx watch ./server.ts",
     "dev:debug": "NODE_OPTIONS=--inspect-brk langgraph dev -n 1",
     "test": "vitest tests/prompts tests/nodes tests/tools --run --no-file-parallelism",
     "test:watch": "vitest",
@@ -31,6 +31,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "langgraph-ai-sdk": "^1.0.15",
     "@launch10/shared": "workspace:*",
     "@ai-sdk/openai": "^1.3.22",
     "@langchain/anthropic": "^0.3.33",
