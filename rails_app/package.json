@@ -6,6 +6,7 @@
     "node": ">= 24.1.0"
   },
   "dependencies": {
+    "@launch10/shared": "workspace:*",
     "@ai-sdk/openai": "^1.3.22",
     "@babel/runtime": "^7.27.1",
     "@cloudflare/workers-types": "^4.20250507.0",

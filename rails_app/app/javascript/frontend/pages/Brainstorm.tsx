@@ -4,6 +4,7 @@ import { usePage } from '@inertiajs/react';
 import { urlThreadId as getUrlThreadId } from '@hooks/useThreadId';
 import { useLanggraph } from 'langgraph-ai-sdk-react';
 import { Wrapper, ChatInput, Message, ThinkingIndicator } from '@components/brainstorm';
+import { type BrainstormLanggraphData } from '@shared';
 
 interface BrainstormProps {
     thread_id?: string;
@@ -31,7 +32,7 @@ export default function Brainstorm(props: BrainstormProps) {
     }, []); // Only run once on page mount
 
     const { messages, sendMessage, status, state, threadId, tools, error, events, isLoadingHistory } =
-        useLanggraph<AllGraphData>({
+        useLanggraph<BrainstormLanggraphData>({
             api: "/api/brainstorm",
             headers: {
                 'Content-Type': 'application/json',
@@ -65,7 +66,7 @@ export default function Brainstorm(props: BrainstormProps) {
         scrollToBottom();
     }, [messages]);
 
-    const [input, setInput] = useState(EndpointConfig[endpoint].suggestedText);
+    const [input, setInput] = useState(`Tell me about your business...`);
     const inputRef = useRef<HTMLInputElement>(null);
 
     if (isLoadingHistory) {
