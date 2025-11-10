@@ -1,3 +1,3 @@
-import { WebsiteAnnotation } from "@annotation";
+import { WebsiteAnnotation } from "../annotation";
 
 export type WebsiteGraphState = typeof WebsiteAnnotation.State;

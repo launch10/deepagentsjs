@@ -1,15 +1,15 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
-import type { 
+import type {
     CodeTaskType,
     ProjectType,
     FileMap,
     WebsiteType,
     TaskHistoryType,
-    ComponentContentPlanType, 
+    ComponentContentPlanType,
     ComponentOverviewType,
     ConsoleError,
- } from "@types";
+ } from "../types";
 
 export const WebsiteAnnotation = Annotation.Root({
     ...BaseAnnotation.spec,

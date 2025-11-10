@@ -1,4 +1,4 @@
-import type { WebsiteGraphState } from '@state';
+import type { WebsiteGraphState } from '../../../../../state';
 import stringify from "fast-json-stable-stringify";
 
 // TODO: MOVE TO PROMPTS!!!

@@ -4,7 +4,7 @@ import { usePage } from '@inertiajs/react';
 import { urlThreadId as getUrlThreadId } from '@hooks/useThreadId';
 import { useLanggraph } from 'langgraph-ai-sdk-react';
 import { Wrapper, ChatInput, Message, ThinkingIndicator } from '@components/brainstorm';
-import { type BrainstormLanggraphData } from '@shared';
+import { type BrainstormLanggraphData, type BrainstormMessage } from '@shared';
 interface BrainstormProps {
     thread_id?: string;
 }

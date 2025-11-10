@@ -10,23 +10,14 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "declarationMap": true,
-    "outDir": "./dist",
-    "rootDir": ".",
+    "noEmit": true,
     "types": ["node"],
-    "baseUrl": ".",
-    "paths": {
-      "@annotation": ["./annotation/index.ts"],
-      "@state": ["./state/index.ts"],
-      "@types": ["./types/index.ts"]
-    }
+    "baseUrl": "."
   },
   "include": [
     "**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "dist"
+    "node_modules"
   ]
 }

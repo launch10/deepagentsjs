@@ -1,4 +1,4 @@
-import type { WebsiteGraphState } from '@state';
+import type { WebsiteGraphState } from '../../../../../state';
 
 // TODO: MOVE TO PROMPTS!!!
 export const tailwindConfigPrompt = (state: WebsiteGraphState) => {

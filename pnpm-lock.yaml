@@ -466,14 +466,14 @@ importers:
         specifier: ^9.5.0
         version: 9.5.0
       langgraph-ai-sdk:
-        specifier: ^1.0.11
-        version: 1.0.11(@cloudflare/workers-types@4.20251109.0)(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint-postgres@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))))(@langchain/langgraph@1.0.1(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76))(@opentelemetry/api@1.9.0)(ai@5.0.90(zod@3.25.76))(better-sqlite3@11.10.0)(langchain@1.0.3(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76)))(pg@8.16.3)(postgres@3.4.7)(zod@3.25.76)
+        specifier: ^1.0.13
+        version: 1.0.13(@cloudflare/workers-types@4.20251109.0)(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint-postgres@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))))(@langchain/langgraph@1.0.1(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76))(@opentelemetry/api@1.9.0)(ai@5.0.90(zod@3.25.76))(better-sqlite3@11.10.0)(langchain@1.0.3(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76)))(pg@8.16.3)(postgres@3.4.7)(zod@3.25.76)
       langgraph-ai-sdk-react:
-        specifier: ^1.0.11
-        version: 1.0.11(@ai-sdk/react@2.0.90(react@19.2.0)(zod@3.25.76))(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(react@19.2.0)(zod@3.25.76)
+        specifier: ^1.0.13
+        version: 1.0.13(@ai-sdk/react@2.0.90(react@19.2.0)(zod@3.25.76))(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(react@19.2.0)(zod@3.25.76)
       langgraph-ai-sdk-types:
-        specifier: ^1.0.11
-        version: 1.0.11(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(zod@3.25.76)
+        specifier: ^1.0.13
+        version: 1.0.13(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(zod@3.25.76)
       langsmith:
         specifier: ^0.3.25
         version: 0.3.79(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))
@@ -596,8 +596,14 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0
       langgraph-ai-sdk:
-        specifier: ^1.0.10
-        version: 1.0.10(@cloudflare/workers-types@4.20251109.0)(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint-postgres@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))))(@langchain/langgraph@1.0.1(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76))(@opentelemetry/api@1.9.0)(ai@5.0.90(zod@3.25.76))(better-sqlite3@11.10.0)(langchain@1.0.3(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76)))(pg@8.16.3)(postgres@3.4.7)(zod@3.25.76)
+        specifier: ^1.0.13
+        version: 1.0.13(@cloudflare/workers-types@4.20251109.0)(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint-postgres@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))))(@langchain/langgraph@1.0.1(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76))(@opentelemetry/api@1.9.0)(ai@5.0.90(zod@3.25.76))(better-sqlite3@11.10.0)(langchain@1.0.3(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76)))(pg@8.16.3)(postgres@3.4.7)(zod@3.25.76)
+      langgraph-ai-sdk-react:
+        specifier: ^1.0.13
+        version: 1.0.13(@ai-sdk/react@2.0.90(react@19.2.0)(zod@3.25.76))(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(react@19.2.0)(zod@3.25.76)
+      langgraph-ai-sdk-types:
+        specifier: ^1.0.13
+        version: 1.0.13(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(zod@3.25.76)
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
@@ -611,6 +617,9 @@ importers:
       '@types/uuid':
         specifier: ^10.0.0
         version: 10.0.0
+      type-fest:
+        specifier: ^5.2.0
+        version: 5.2.0
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
@@ -5347,38 +5356,22 @@ packages:
     peerDependencies:
       '@langchain/core': ^1.0.3
 
-  langgraph-ai-sdk-react@1.0.11:
-    resolution: {integrity: sha512-n1zTYCXtT97OP3vauADStmehYy7TsQTLHcdomwf2imdvBl54IgfPKPvHh1rqy6UrlzInBmTD2yKIruEh+hu8cQ==}
+  langgraph-ai-sdk-react@1.0.13:
+    resolution: {integrity: sha512-9ilZoLE+NSk853yTJrlukZvXxgf/UU+/xmW+sUPR+C4U+4YDR1saymYcjyv9uZ05ggZmM5MBGkMuliSuT8cSaQ==}
     peerDependencies:
       '@ai-sdk/react': ^2.0.0
       ai: ^5.0.0
       react: ^18.0.0 || ^19.0.0
 
-  langgraph-ai-sdk-types@1.0.10:
-    resolution: {integrity: sha512-ZdfpPSbXk1/qQ6RIJjrwN9Om7ZX598j0GsXlFRXwKZnKuhL2XLz6fjchligwNngz2b8vMdMAJafzQiT3979ovg==}
+  langgraph-ai-sdk-types@1.0.13:
+    resolution: {integrity: sha512-vB9R8rEQ6r0sc9c4KTYslTee2Y2tzANUFAXgoMw24pfEAi0EAUsfmPj4OVE7a98scO2vvrDqifWu7q9047bnRA==}
     peerDependencies:
       '@langchain/core': ^1.0.0
       ai: ^5.0.0
       zod: ^3.0.0
 
-  langgraph-ai-sdk-types@1.0.11:
-    resolution: {integrity: sha512-6nY6sGsqVmYNqc6GEShmcwJxVHE33vkv2z372biWJMw62SIwTKDu+iv74EA/0Hy5pHtTixj6MW/kj6pqLDJAUQ==}
-    peerDependencies:
-      '@langchain/core': ^1.0.0
-      ai: ^5.0.0
-      zod: ^3.0.0
-
-  langgraph-ai-sdk@1.0.10:
-    resolution: {integrity: sha512-mN4bc0HlPUIzCn3tG7UQ+kqeaJm8ZxEZR78uFtNQUUjrSQd7Sie2kUchBifQKQk0KyUMZxEIvgtXPWMRnQ2ZOw==}
-    peerDependencies:
-      '@langchain/core': ^1.0.0
-      '@langchain/langgraph': ^1.0.0
-      '@langchain/langgraph-checkpoint-postgres': ^1.0.0
-      ai: ^5.0.0
-      langchain: ^1.0.0
-
-  langgraph-ai-sdk@1.0.11:
-    resolution: {integrity: sha512-q5X534q1nfG6okaJ+++Zm3dxG4HrxL9PP7wRVhbJS8qwStgRInIDg1HR1/1ZUibV95LydBaSekjwkRvkGPLQww==}
+  langgraph-ai-sdk@1.0.13:
+    resolution: {integrity: sha512-KX6j5YehljXskbrjJjzCEaIhkZFgiV9AXM8/ds/u21DoVFNY/NDO0nZTDAt+1hM2Em8AZMXhuHWlLsXBSB129g==}
     peerDependencies:
       '@langchain/core': ^1.0.0
       '@langchain/langgraph': ^1.0.0
@@ -11920,30 +11913,26 @@ snapshots:
       - react-dom
       - zod-to-json-schema
 
-  langgraph-ai-sdk-react@1.0.11(@ai-sdk/react@2.0.90(react@19.2.0)(zod@3.25.76))(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(react@19.2.0)(zod@3.25.76):
+  langgraph-ai-sdk-react@1.0.13(@ai-sdk/react@2.0.90(react@19.2.0)(zod@3.25.76))(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(react@19.2.0)(zod@3.25.76):
     dependencies:
       '@ai-sdk/react': 2.0.90(react@19.2.0)(zod@3.25.76)
       ai: 5.0.90(zod@3.25.76)
-      langgraph-ai-sdk-types: 1.0.11(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(zod@3.25.76)
+      langgraph-ai-sdk-types: 1.0.13(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(zod@3.25.76)
       react: 19.2.0
+      type-fest: 5.2.0
       uuid: 13.0.0
     transitivePeerDependencies:
       - '@langchain/core'
       - zod
 
-  langgraph-ai-sdk-types@1.0.10(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(zod@3.25.76):
+  langgraph-ai-sdk-types@1.0.13(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(zod@3.25.76):
     dependencies:
       '@langchain/core': 1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))
       ai: 5.0.90(zod@3.25.76)
+      type-fest: 5.2.0
       zod: 3.25.76
 
-  langgraph-ai-sdk-types@1.0.11(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(zod@3.25.76):
-    dependencies:
-      '@langchain/core': 1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))
-      ai: 5.0.90(zod@3.25.76)
-      zod: 3.25.76
-
-  langgraph-ai-sdk@1.0.10(@cloudflare/workers-types@4.20251109.0)(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint-postgres@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))))(@langchain/langgraph@1.0.1(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76))(@opentelemetry/api@1.9.0)(ai@5.0.90(zod@3.25.76))(better-sqlite3@11.10.0)(langchain@1.0.3(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76)))(pg@8.16.3)(postgres@3.4.7)(zod@3.25.76):
+  langgraph-ai-sdk@1.0.13(@cloudflare/workers-types@4.20251109.0)(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint-postgres@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))))(@langchain/langgraph@1.0.1(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76))(@opentelemetry/api@1.9.0)(ai@5.0.90(zod@3.25.76))(better-sqlite3@11.10.0)(langchain@1.0.3(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76)))(pg@8.16.3)(postgres@3.4.7)(zod@3.25.76):
     dependencies:
       '@langchain/core': 1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))
       '@langchain/langgraph': 1.0.1(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76)
@@ -11953,50 +11942,7 @@ snapshots:
       change-case: 5.4.4
       drizzle-orm: 0.44.7(@cloudflare/workers-types@4.20251109.0)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)(better-sqlite3@11.10.0)(pg@8.16.3)(postgres@3.4.7)
       langchain: 1.0.3(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76))
-      langgraph-ai-sdk-types: 1.0.10(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(zod@3.25.76)
-      uuid: 13.0.0
-    transitivePeerDependencies:
-      - '@aws-sdk/client-rds-data'
-      - '@cloudflare/workers-types'
-      - '@electric-sql/pglite'
-      - '@libsql/client'
-      - '@libsql/client-wasm'
-      - '@neondatabase/serverless'
-      - '@op-engineering/op-sqlite'
-      - '@opentelemetry/api'
-      - '@planetscale/database'
-      - '@prisma/client'
-      - '@tidbcloud/serverless'
-      - '@types/better-sqlite3'
-      - '@types/sql.js'
-      - '@upstash/redis'
-      - '@vercel/postgres'
-      - '@xata.io/client'
-      - better-sqlite3
-      - bun-types
-      - expo-sqlite
-      - gel
-      - knex
-      - kysely
-      - mysql2
-      - pg
-      - postgres
-      - prisma
-      - sql.js
-      - sqlite3
-      - zod
-
-  langgraph-ai-sdk@1.0.11(@cloudflare/workers-types@4.20251109.0)(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint-postgres@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))))(@langchain/langgraph@1.0.1(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76))(@opentelemetry/api@1.9.0)(ai@5.0.90(zod@3.25.76))(better-sqlite3@11.10.0)(langchain@1.0.3(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76)))(pg@8.16.3)(postgres@3.4.7)(zod@3.25.76):
-    dependencies:
-      '@langchain/core': 1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))
-      '@langchain/langgraph': 1.0.1(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76)
-      '@langchain/langgraph-checkpoint-postgres': 1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@langchain/langgraph-checkpoint@1.0.0(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))))
-      '@types/pg': 8.15.6
-      ai: 5.0.90(zod@3.25.76)
-      change-case: 5.4.4
-      drizzle-orm: 0.44.7(@cloudflare/workers-types@4.20251109.0)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)(better-sqlite3@11.10.0)(pg@8.16.3)(postgres@3.4.7)
-      langchain: 1.0.3(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod-to-json-schema@3.24.6(zod@3.25.76))
-      langgraph-ai-sdk-types: 1.0.11(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(zod@3.25.76)
+      langgraph-ai-sdk-types: 1.0.13(@langchain/core@1.0.3(@opentelemetry/api@1.9.0)(openai@6.8.1(ws@8.18.3)(zod@3.25.76)))(ai@5.0.90(zod@3.25.76))(zod@3.25.76)
       uuid: 13.0.0
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'

@@ -1,10 +1,10 @@
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
 
-import type { 
+import type {
     ErrorStateType,
     BaseMessage,
     PrimaryKeyType,
- } from "@types";
+ } from "../types";
 
 export const BaseAnnotation = Annotation.Root({
     error: Annotation<ErrorStateType | undefined>({

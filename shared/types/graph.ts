@@ -1,6 +1,6 @@
-import type { 
+import type {
     Message
-} from "@types";
+} from ".";
 
 export interface ErrorStateType { message: string; node: string }
 export interface MinimalGraphState {
