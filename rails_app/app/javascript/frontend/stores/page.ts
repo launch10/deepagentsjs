@@ -6,8 +6,6 @@ export interface PageState {
   accountId: number | null;
   rootPath: string | null;
   threadId: string | null;
-  pageId: string | null;
-  isNewThread: boolean;
 }
 
 // Create an atom that holds an object of this interface type
@@ -16,6 +14,4 @@ export const pageStore = map<PageState>({
   accountId: null,
   rootPath: null,
   threadId: null,
-  pageId: null,
-  isNewThread: false,
 });
