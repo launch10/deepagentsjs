@@ -1,8 +1,8 @@
-import type { WebsiteGraphState} from '@shared/state/graph';
+import type { WebsiteGraphState } from '@state';
 import stringify from "fast-json-stable-stringify";
 
 // TODO: MOVE TO PROMPTS!!!
-export const indexCssPrompt = async (state: GraphState) => {
+export const indexCssPrompt = async (state: WebsiteGraphState) => {
   const template = `
   Your task is to generate the content for an index.css file that defines the core theme using CSS variables based on the provided color theme. This file is the single source of truth for color values and contrast pairings, designed for use with Tailwind CSS and Shadcn UI conventions.
 

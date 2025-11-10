@@ -1,7 +1,7 @@
-import type { WebsiteGraphState} from '@shared/state/graph';
+import type { WebsiteGraphState } from '@state';
 
 // TODO: MOVE TO PROMPTS!!!
-export const tailwindConfigPrompt = (state: GraphState) => {
+export const tailwindConfigPrompt = (state: WebsiteGraphState) => {
   return `
 Your task is to create a tailwind.config.ts file that correctly integrates with an index.css file defining theme variables according to Shadcn UI conventions. The CSS file defines variables like --background, --foreground, --primary, --primary-foreground, etc., using HSL values.
 
