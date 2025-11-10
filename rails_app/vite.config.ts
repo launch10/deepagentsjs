@@ -17,6 +17,13 @@ export default defineConfig((config) => {
     },
     resolve: {
       conditions: ['browser', 'module', 'import', 'default'],
+      // TODO:
+      // THIS IS A BACKEND-ONLY PACKAGE, and a known
+      // issue with vercel: https://github.com/vercel/ai/issues/9219
+      // Remove this as soon as we can
+      alias: {
+        '@vercel/oidc': new URL('./app/javascript/stubs/vercel-oidc.ts', import.meta.url).pathname,
+      }, 
     },
     optimizeDeps: {
       exclude: ['@langchain/langgraph', '@langchain/core'],
