@@ -14,7 +14,13 @@
     "declarationMap": true,
     "outDir": "./dist",
     "rootDir": ".",
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@annotation": ["./annotation/index.ts"],
+      "@state": ["./state/index.ts"],
+      "@types": ["./types/index.ts"]
+    }
   },
   "include": [
     "**/*.ts"
@@ -22,10 +28,5 @@
   "exclude": [
     "node_modules",
     "dist"
-  ],
-  "paths": {
-    "@annotation": ["./annotation/index.ts"],
-    "@state": ["./state/index.ts"],
-    "@types": ["./types/index.ts"]
-  }
+  ]
 }
