@@ -1,5 +1,5 @@
-import { Annotation, messagesStateReducer } from "@langchain/langgraph";
-
+import { Annotation } from "@langchain/langgraph";
+import { BaseAnnotation } from "./base";
 import type { 
     CodeTaskType,
     ProjectType,
@@ -9,40 +9,10 @@ import type {
     ComponentContentPlanType, 
     ComponentOverviewType,
     ConsoleError,
-    ErrorStateType,
-    Message,
  } from "@types";
 
 export const WebsiteAnnotation = Annotation.Root({
-    error: Annotation<ErrorStateType | undefined>({
-        default: () => undefined,
-        reducer: (current, next) => next
-    }),
-
-    jwt: Annotation<string | undefined>({
-        default: () => undefined,
-        reducer: (current, next) => next
-    }),
-
-    accountId: Annotation<number | undefined>({
-        default: () => undefined,
-        reducer: (current, next) => next
-    }),
-
-    projectName: Annotation<string | undefined>({
-        default: () => undefined,
-        reducer: (current, next) => next
-    }),
-
-    projectId: Annotation<number | undefined>({
-        default: () => undefined,
-        reducer: (current, next) => next
-    }),
-
-    messages: Annotation<Message[]>({ 
-        default: () => [],
-        reducer: messagesStateReducer as any
-    }),
+    ...BaseAnnotation.spec,
 
     task: Annotation<CodeTaskType | undefined>({
         default: () => undefined,
