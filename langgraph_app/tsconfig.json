@@ -50,7 +50,7 @@
       "@db": ["app/db/index.ts"],
       "@core": ["./app/core/index.ts"],
       "@services": ["./app/services/index.ts"],
-      "@tools": ["app/tools/website/index.ts"],
+      "@tools": ["app/tools/index.ts"],
       "@tests/*": ["./tests/*"],
       "@registries": ["./app/models/registries/index.ts"],
       "@support": ["./tests/support/index.ts"],

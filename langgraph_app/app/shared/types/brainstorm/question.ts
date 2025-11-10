@@ -11,7 +11,7 @@ export const BrainstormTopics = [
   "lookAndFeel"
 ] as const;
 export type Topic = typeof BrainstormTopics[number];
-export type Memories = Partial<Record<Topic, string>>;
+export type Memories = Partial<Record<Topic, string | undefined>>;
 
 /**
  * Schema for structured questions with intro, examples, and conclusion

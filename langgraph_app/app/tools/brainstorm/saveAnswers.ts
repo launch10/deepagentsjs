@@ -3,6 +3,8 @@ import { type BrainstormGraphState } from "@state";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { tool, DynamicStructuredTool } from "@langchain/core/tools";
 import { Brainstorm } from "@types";
+import { db, brainstorms as brainstormsTable } from "@db";
+import { withTimestamps, withUpdatedAt } from "@db";
 
 export const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphRunnableConfig): DynamicStructuredTool => {
     const saveAnswersInputSchema = z.object({
@@ -22,11 +24,20 @@ export const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphR
             acc[topic] = answer;
             return acc;
         }, {} as Record<Brainstorm.Topic, string>) || {}
+        const insert = withTimestamps(updates);
+        const update = withUpdatedAt(updates);
 
-        // TODO: Save to DB
-        // await writeAnswersToJSON(updates);
+        const results = await db.insert(brainstormsTable).values({
+            ...insert,
+            websiteId: state.websiteId,
+        }).onConflictDoUpdate({
+          target: [brainstormsTable.websiteId],
+          set: {
+            ...update,
+          }
+        }).returning();
 
-        return { success: true };
+        return { success: !!results.length };
     }
 
     return tool(saveAnswers, {

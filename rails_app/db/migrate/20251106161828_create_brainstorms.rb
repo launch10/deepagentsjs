@@ -5,7 +5,6 @@ class CreateBrainstorms < ActiveRecord::Migration[8.0]
       t.string :audience
       t.string :solution
       t.string :social_proof
-      t.string :look_and_feel
       t.bigint :website_id
       t.timestamp :completed_at
 

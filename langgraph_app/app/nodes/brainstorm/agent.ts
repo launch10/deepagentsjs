@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import { createAgent } from "langchain";
@@ -8,11 +7,14 @@ import { tool, Tool } from "@langchain/core/tools";
 import { toJSON, renderPrompt, chatHistoryPrompt, structuredOutputPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { BrainstormAnnotation } from "@annotation";
+import { SaveAnswersTool } from "@tools";
+import { pick } from "@utils";
 import {
   isHumanMessage,
   Brainstorm,
 } from '@types';
 import { type BrainstormGraphState } from "@state";
+import { db, eq, asc, brainstorms as brainstormsTable } from "@db";
 
 // Topic descriptions for the brainstorm agent
 const TopicDescriptions: Record<Brainstorm.Topic, string> = {
@@ -125,15 +127,17 @@ export const brainstormAgent = async (
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> => {
+    if (!state.websiteId) {
+        throw new Error("websiteId is required");
+    }
+
     try {
       const prompt = await getPrompt(state, config)
 
-      // Only use real tools that do something (save_answers)
       const tools = [SaveAnswersTool(state, config)];
 
       // Use structured output for the response format
-      const llm = getLLM()
-        .withConfig({ tags: ['notify'] })
+      const llm = getLLM().withConfig({ tags: ['notify'] }) // Important so messages are sent to frontend
 
       const agent = await createAgent({
           model: llm,
@@ -152,7 +156,11 @@ export const brainstormAgent = async (
 
       // TODO: READ FROM DB
       //   const answers = await readAnswersFromJSON<Brainstorm>();
-      const answers = {}
+
+      const brainstorms = await db.select().from(brainstormsTable).where(
+            eq(brainstormsTable.websiteId, state.websiteId)
+      ).orderBy(asc(brainstormsTable.id));
+      const answers: Brainstorm.Memories = pick(brainstorms, Brainstorm.BrainstormTopics);
       const questionsAnswered = Object.keys(answers);
       const remainingTopics = state.remainingTopics.filter(topic => !questionsAnswered.includes(topic));
 
@@ -171,7 +179,6 @@ export const brainstormAgent = async (
       throw error; // Re-throw to ensure it propagates
     }
 }
-
 
 /**
  * Simple test graph for the new brainstorm agent

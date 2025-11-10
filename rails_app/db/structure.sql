@@ -522,7 +522,6 @@ CREATE TABLE public.brainstorms (
     audience character varying,
     solution character varying,
     social_proof character varying,
-    look_and_feel character varying,
     website_id bigint,
     completed_at timestamp without time zone,
     created_at timestamp(6) without time zone NOT NULL,
