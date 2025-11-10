@@ -1,13 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { pageStore } from '@stores/page';
 import { usePage } from '@inertiajs/react';
-import { urlThreadId as getUrlThreadId } from '@hooks/useThreadId';
 import { useLanggraph } from 'langgraph-ai-sdk-react';
 import { Wrapper, ChatInput, Message, ThinkingIndicator } from '@components/brainstorm';
-import { type BrainstormLanggraphData, type BrainstormMessage } from '@shared';
+import { type BrainstormLanggraphData } from '@shared';
 interface BrainstormProps {
     thread_id?: string;
 }
+
+export function getUrlThreadId() {
+    const path = window.location.href;
+    const match = path.match(/\/projects\/([^/]+)/);
+    if (match && match[1]) {
+        return match[1];
+    }
+    return undefined;
+};
 
 export default function Brainstorm(props: BrainstormProps) {
     const page = usePage();
@@ -22,12 +29,6 @@ export default function Brainstorm(props: BrainstormProps) {
         if (typeof jwt !== 'string' || typeof account_id !== 'number' || typeof rootPath !== 'string') {
             throw new Error(`Invalid page props: JWT: ${jwt}, Account ID: ${account_id}, Root Path: ${rootPath}`);
         }
-        pageStore.set({
-            ...pageStore.get(),
-            jwt,
-            accountId: account_id,
-            rootPath,
-        });
     }, []); // Only run once on page mount
 
     const { messages, sendMessage, status, state, threadId, tools, error, events, isLoadingHistory } =
@@ -42,11 +43,6 @@ export default function Brainstorm(props: BrainstormProps) {
 
     useEffect(() => {
         if (!urlThreadId || (urlThreadId === threadId)) return;
-
-        pageStore.set({
-            ...pageStore.get(),
-            threadId: urlThreadId,
-        })
 
         if (threadId && typeof window !== 'undefined') {
             const url = new URL(window.location.href);

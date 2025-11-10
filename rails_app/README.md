@@ -19,6 +19,18 @@ Optionally, the [Stripe CLI](https://docs.stripe.com/stripe-cli) to sync webhook
 1. Clone the repository
 2. Run `bin/setup`
 
+## Running The Dev Server
+
+```bash
+bin/dev # Runs workers, vite
+```
+
+Separately:
+
+```bash
+bundle exec rails s # Run the server, so you can hit breakpoints
+```
+
 ## On Every Merge
 
 After pulling main, you should always run:

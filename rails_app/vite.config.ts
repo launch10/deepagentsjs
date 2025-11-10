@@ -12,6 +12,9 @@ export default defineConfig((config) => {
     build: {
       target: 'esnext',
     },
+    resolve: {
+      conditions: ['browser', 'module', 'import', 'default'],
+    },
     plugins: [
       nodePolyfills({
         include: ['buffer']

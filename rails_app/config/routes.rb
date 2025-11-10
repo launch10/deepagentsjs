@@ -1,12 +1,12 @@
 require 'sidekiq/web'
 require "zhong/web"
 
-ADMIN_ONLY ||= lambda do |request|
+ADMIN_ONLY = lambda do |request|
   request.env["warden"].authenticate!(scope: :user)
   request.env["warden"].user(:user).admin?
 end
 
-LOCAL_ENV_ONLY ||= lambda do |request|
+LOCAL_ENV_ONLY = lambda do |request|
   Rails.env.local?  # Returns true for development and test environments
 end
 
@@ -60,7 +60,9 @@ Rails.application.routes.draw do
   match "/500", via: :all, to: "errors#internal_server_error"
 
   authenticated :user do
-    root to: "projects#index", as: :user_home
+    # When user first signs in, they are taken to the onboarding page
+    # For now, just mock this as the brainstorms index
+    root to: "brainstorms#new", as: :onboarding
   end
   get "up" => "rails/health#show", :as => :rails_health_check
   root to: "static#index"

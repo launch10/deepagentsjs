@@ -1,5 +1,4 @@
 # frozen_string_literal: true
-
 module Atlas
   def self.configure(&block)
     BaseService.configure(&block)
