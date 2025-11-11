@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
+import { serve } from '@hono/node-server';
 import { brainstormRoutes } from './app/server/routes/brainstorm';
 import { errorHandler } from './app/server/middleware/errorHandler';
 import { env } from './app/core/env';
@@ -35,4 +36,9 @@ export default {
   fetch: app.fetch,
 };
 
-console.log(`🚀 Hono server starting on http://localhost:${port}`);
+serve({
+  fetch: app.fetch,
+  port,
+});
+
+console.log(`🚀 Hono server running on http://localhost:${port}`);

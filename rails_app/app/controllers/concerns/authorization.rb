@@ -95,7 +95,6 @@ module Authorization
     end
   end
 
-
   # You can also customize the messages using the policy and action to generate the I18n key
   # https://github.com/varvet/pundit#creating-custom-error-messages
   def user_not_authorized

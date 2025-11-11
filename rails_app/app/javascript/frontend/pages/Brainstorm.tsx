@@ -1,11 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { type PageProps } from '@inertiajs/core';
 import { usePage } from '@inertiajs/react';
 import { useLanggraph } from 'langgraph-ai-sdk-react';
 import { Wrapper, ChatInput, Message, ThinkingIndicator } from '@components/brainstorm';
 import { type BrainstormLanggraphData } from '@shared';
-interface BrainstormProps {
-    thread_id?: string;
-}
+
+type BrainstormProps = {
+    thread_id: string;
+    root_path: string;
+    langgraph_path: string;
+    jwt: string;
+} & PageProps;
 
 export function getUrlThreadId() {
     const path = window.location.href;
@@ -17,23 +22,24 @@ export function getUrlThreadId() {
 };
 
 export default function Brainstorm(props: BrainstormProps) {
-    const page = usePage();
+    const pageProps = usePage<BrainstormProps>();
     // Access shared props from Inertia
-    const { jwt, account_id, root_path: rootPath } = page.props;
+    let { thread_id, jwt, root_path, langgraph_path } = pageProps.props;
     const urlThreadId = getUrlThreadId();
 
     useEffect(() => {
-        if (!jwt || !account_id || !rootPath) {
+        if (!jwt || !root_path || !langgraph_path) {
             return;
         }
-        if (typeof jwt !== 'string' || typeof account_id !== 'number' || typeof rootPath !== 'string') {
-            throw new Error(`Invalid page props: JWT: ${jwt}, Account ID: ${account_id}, Root Path: ${rootPath}`);
+        if (typeof jwt !== 'string' || typeof root_path !== 'string' || typeof langgraph_path !== 'string') {
+            throw new Error(`Invalid page props: JWT: ${jwt}, Root Path: ${root_path}, Langgraph Path: ${langgraph_path}`);
         }
     }, []); // Only run once on page mount
 
+    const url = (new URL("api/brainstorm/stream", langgraph_path)).toString();
     const { messages, sendMessage, status, state, threadId, tools, error, events, isLoadingHistory } =
         useLanggraph<BrainstormLanggraphData>({
-            api: "/api/brainstorm",
+            api: url,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${jwt}`,
