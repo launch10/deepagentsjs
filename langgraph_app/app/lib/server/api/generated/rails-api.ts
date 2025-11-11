@@ -56,11 +56,11 @@ export interface paths {
                             /** @description Unique identifier */
                             id: number;
                             /** @description Unique identifier */
-                            website_id?: number;
+                            website_id: number;
                             /** @description Unique identifier */
-                            project_id?: number;
+                            project_id: number;
                             /** @description Brainstorm name */
-                            name?: string;
+                            name: string;
                             /**
                              * Format: uuid
                              * @description UUID identifier
@@ -72,12 +72,12 @@ export interface paths {
                              * Format: date-time
                              * @description Timestamp
                              */
-                            created_at?: string;
+                            created_at: string;
                             /**
                              * Format: date-time
                              * @description Timestamp
                              */
-                            updated_at?: string;
+                            updated_at: string;
                         };
                     };
                 };
@@ -138,11 +138,11 @@ export interface paths {
                             /** @description Unique identifier */
                             id: number;
                             /** @description Unique identifier */
-                            website_id?: number;
+                            website_id: number;
                             /** @description Unique identifier */
-                            project_id?: number;
+                            project_id: number;
                             /** @description Brainstorm name */
-                            name?: string;
+                            name: string;
                             /**
                              * Format: uuid
                              * @description UUID identifier
@@ -154,12 +154,12 @@ export interface paths {
                              * Format: date-time
                              * @description Timestamp
                              */
-                            created_at?: string;
+                            created_at: string;
                             /**
                              * Format: date-time
                              * @description Timestamp
                              */
-                            updated_at?: string;
+                            updated_at: string;
                         };
                     };
                 };
@@ -230,11 +230,11 @@ export interface paths {
                             /** @description Unique identifier */
                             id: number;
                             /** @description Unique identifier */
-                            website_id?: number;
+                            website_id: number;
                             /** @description Unique identifier */
-                            project_id?: number;
+                            project_id: number;
                             /** @description Brainstorm name */
-                            name?: string;
+                            name: string;
                             /**
                              * Format: uuid
                              * @description UUID identifier
@@ -246,12 +246,12 @@ export interface paths {
                              * Format: date-time
                              * @description Timestamp
                              */
-                            created_at?: string;
+                            created_at: string;
                             /**
                              * Format: date-time
                              * @description Timestamp
                              */
-                            updated_at?: string;
+                            updated_at: string;
                         };
                     };
                 };

@@ -26,13 +26,13 @@ export type GetBrainstormResponse = NonNullable<
 
 export interface Brainstorm {
   id: number;
-  website_id?: number | undefined;
-  project_id?: number | undefined;
-  name?: string | undefined;
+  website_id: number;
+  project_id: number;
+  name: string;
   thread_id: string;
   account_id: number;
-  created_at?: string | undefined;
-  updated_at?: string | undefined;
+  created_at: string;
+  updated_at: string;
 };
 
 export interface BrainstormServiceOptions {
