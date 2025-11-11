@@ -127,10 +127,6 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> => {
-    console.log('=== BRAINSTORM AGENT INVOKED ===');
-    console.log('Website ID:', state.websiteId);
-    console.log('Message count:', state.messages?.length);
-
     if (!state.websiteId) {
         throw new Error("websiteId is required");
     }
@@ -138,9 +134,6 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
     try {
       const prompt = await getPrompt(state, config)
       const tools = [SaveAnswersTool(state, config)];
-
-      console.log('=== CREATING AGENT WITH TOOLS ===');
-      console.log('Tool count:', tools.length);
 
       // Use structured output for the response format
       const llm = getLLM().withConfig({ tags: ['notify'] }) // Important so messages are sent to frontend
@@ -152,9 +145,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
           responseFormat: Brainstorm.messageSchema,
       });
 
-      console.log('=== INVOKING AGENT ===');
       const updatedState = await agent.invoke(state as any, config);
-      console.log('=== AGENT INVOKE COMPLETE ===');
       const structuredResponse = updatedState.structuredResponse
 
       const aiMessage = new AIMessage({
