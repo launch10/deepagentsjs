@@ -24,6 +24,7 @@
 
 class Brainstorm < ApplicationRecord
   belongs_to :website
+  has_one :project, through: :website
   has_one :chat, as: :contextable
 
   include BrainstormConcerns::Creation

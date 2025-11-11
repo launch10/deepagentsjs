@@ -63,16 +63,15 @@ RSpec.describe "Brainstorms API", type: :request do
           expect(data["name"]).to match(%r{\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}})
 
           # Verify associated models were created
-          project = Project.find(data["id"])
-          expect(project).to be_present
-
-          website = Website.find_by(project_id: project.id)
-          expect(website).to be_present
-
-          brainstorm = Brainstorm.find_by(website_id: website.id)
+          brainstorm = Brainstorm.find(data["id"])
           expect(brainstorm).to be_present
 
+          website = brainstorm.website
+          expect(website).to be_present
+
           chat = brainstorm.chat
+          project = brainstorm.project
+
           expect(chat).to be_present
           expect(chat.contextable).to eq(brainstorm)
           expect(chat.project_id).to eq(project.id)
@@ -109,11 +108,10 @@ RSpec.describe "Brainstorms API", type: :request do
           expect(data["name"]).to eq("My Custom Brainstorm")
 
           # Verify name is propagated to website and chat
-          project = Project.find(data["id"])
+          brainstorm = Brainstorm.find(data.dig("id"))
+          project = brainstorm.project
           website = Website.find_by(project_id: project.id)
           expect(website.name).to eq("My Custom Brainstorm")
-
-          brainstorm = Brainstorm.find(data.dig("id"))
 
           chat = brainstorm.chat
           expect(chat.name).to eq("My Custom Brainstorm")
@@ -202,7 +200,7 @@ RSpec.describe "Brainstorms API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data["id"]).to eq(project.id)
+          expect(data["id"]).to eq(brainstorm.id)
           expect(data["thread_id"]).to match(/^[a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12}$/)
           expect(data["name"]).to be_present
           expect(data["website_id"]).to eq(website.id)
@@ -328,7 +326,7 @@ RSpec.describe "Brainstorms API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data["id"]).to eq(project.id)
+          expect(data["id"]).to eq(brainstorm.id)
 
           # Verify brainstorm fields were updated
           brainstorm.reload
