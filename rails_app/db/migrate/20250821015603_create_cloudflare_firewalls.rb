@@ -5,7 +5,7 @@ class CreateCloudflareFirewalls < ActiveRecord::Migration[8.0]
       t.string :status, default: 'inactive'
       t.datetime :blocked_at
       t.datetime :unblocked_at
-      
+
       t.timestamps
 
       t.index :created_at

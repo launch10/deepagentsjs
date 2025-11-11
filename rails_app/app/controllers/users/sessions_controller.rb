@@ -49,11 +49,10 @@ class Users::SessionsController < Devise::SessionsController
     session.delete(:otp_user_id)
   end
 
-private
+  private
+
   def after_sign_in_path_for(resource)
     refresh_jwt
-    super(resource)
+    super
   end
-
-
 end

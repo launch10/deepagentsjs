@@ -11,10 +11,10 @@ module FileConcerns
     end
 
     def ==(other)
-      if self.respond_to?(:generate_shasum) && other.respond_to?(:generate_shasum)
-        self.generate_shasum == other.generate_shasum
+      if respond_to?(:generate_shasum) && other.respond_to?(:generate_shasum)
+        generate_shasum == other.generate_shasum
       else
-        super(other)
+        super
       end
     end
 

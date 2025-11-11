@@ -1,17 +1,18 @@
 # frozen_string_literal: true
+
 class Cloudflare
   module Analytics
     module Queries
       class MonitorDomains < Cloudflare::Analytics::Core::GraphqlService
         def get_all_cloudflare_zones(&block)
           query = <<~GRAPHQL
-            query getAllZones {
-              viewer {
-                zones {
-                zoneTag
+              query getAllZones {
+                viewer {
+                  zones {
+                  zoneTag
+                }
               }
             }
-          }
           GRAPHQL
 
           parser = lambda do |response|
@@ -21,7 +22,7 @@ class Cloudflare
               response
             end
           end
-          
+
           if block_given?
             paginated_execute(query) do |response|
               yield parser.call(response)
@@ -65,11 +66,10 @@ class Cloudflare
             startTime: start_time.iso8601,
             endTime: end_time.iso8601
           }
-          
+
           results = execute(query, variables)
-          results.parsed_body.dig(:data, :viewer, :zones, 0, :httpRequestsAdaptiveGroups).reduce({}) do |acc, group|
+          results.parsed_body.dig(:data, :viewer, :zones, 0, :httpRequestsAdaptiveGroups).each_with_object({}) do |group, acc|
             acc[group[:dimensions][:host]] = group[:requests]
-            acc
           end
         end
       end

@@ -73,7 +73,7 @@ class User < ApplicationRecord
   # Whenever we manage user-visibility, we should add it here to projects
   has_many :projects, through: :accounts
   has_many :websites, through: :projects
-  
+
   def plan
     subscriptions.active.order(id: :desc).limit(1).first&.plan
   end
@@ -81,9 +81,8 @@ class User < ApplicationRecord
   def current_plan_id
     plan&.id
   end
-  
+
   def account
     owned_account
   end
-
 end

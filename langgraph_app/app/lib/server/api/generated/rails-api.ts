@@ -30,7 +30,17 @@ export interface paths {
                             /** @description Optional name for the brainstorm. Defaults to MM/DD/YYYY HH:MM:SS */
                             name?: string;
                             /** @description Required thread ID from Langgraph */
-                            thread_id: string;
+                            thread_id?: string;
+                            /** @description The core idea for the landing page */
+                            idea?: string;
+                            /** @description Target audience for the landing page */
+                            audience?: string;
+                            /** @description The solution being offered */
+                            solution?: string;
+                            /** @description Social proof elements */
+                            social_proof?: string;
+                            /** @description Design preferences */
+                            look_and_feel?: string;
                         };
                     };
                 };
@@ -43,12 +53,30 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            id?: number;
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
                             website_id?: number;
+                            /** @description Unique identifier */
+                            project_id?: number;
+                            /** @description Brainstorm name */
                             name?: string;
-                            thread_id?: string;
-                            account_id?: number;
+                            /**
+                             * Format: uuid
+                             * @description UUID identifier
+                             */
+                            thread_id: string;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
                             created_at?: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
                             updated_at?: string;
                         };
                     };
@@ -75,13 +103,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/brainstorms/{id}": {
+    "/brainstorms/{thread_id}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Brainstorm ID (Project ID) */
-                id: number;
+                /** @description Thread ID from Langgraph */
+                thread_id: string;
             };
             cookie?: never;
         };
@@ -93,8 +121,8 @@ export interface paths {
                     Authorization?: string;
                 };
                 path: {
-                    /** @description Brainstorm ID (Project ID) */
-                    id: number;
+                    /** @description Thread ID from Langgraph */
+                    thread_id: string;
                 };
                 cookie?: never;
             };
@@ -107,12 +135,30 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            id?: number;
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
                             website_id?: number;
+                            /** @description Unique identifier */
+                            project_id?: number;
+                            /** @description Brainstorm name */
                             name?: string;
-                            thread_id?: string;
-                            account_id?: number;
+                            /**
+                             * Format: uuid
+                             * @description UUID identifier
+                             */
+                            thread_id: string;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
                             created_at?: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
                             updated_at?: string;
                         };
                     };
@@ -146,8 +192,8 @@ export interface paths {
                     Authorization?: string;
                 };
                 path: {
-                    /** @description Brainstorm ID (Project ID) */
-                    id: number;
+                    /** @description Thread ID from Langgraph */
+                    thread_id: string;
                 };
                 cookie?: never;
             };
@@ -155,8 +201,10 @@ export interface paths {
                 content: {
                     "application/json": {
                         brainstorm: {
-                            /** @description Updates project, website, and chat names */
+                            /** @description Optional name for the brainstorm. Defaults to MM/DD/YYYY HH:MM:SS */
                             name?: string;
+                            /** @description Required thread ID from Langgraph */
+                            thread_id?: string;
                             /** @description The core idea for the landing page */
                             idea?: string;
                             /** @description Target audience for the landing page */
@@ -179,12 +227,30 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            id?: number;
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
                             website_id?: number;
+                            /** @description Unique identifier */
+                            project_id?: number;
+                            /** @description Brainstorm name */
                             name?: string;
-                            thread_id?: string;
-                            account_id?: number;
+                            /**
+                             * Format: uuid
+                             * @description UUID identifier
+                             */
+                            thread_id: string;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
                             created_at?: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
                             updated_at?: string;
                         };
                     };
@@ -207,103 +273,41 @@ export interface paths {
         };
         trace?: never;
     };
-    "/projects": {
+    "/test/database/truncate": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Lists all projects */
-        get: {
+        get?: never;
+        put?: never;
+        /**
+         * Truncates the database
+         * @description Truncates all tables in the database. Only available in development/test environments.
+         */
+        post: {
             parameters: {
                 query?: never;
-                header?: {
-                    Authorization?: string;
-                };
+                header?: never;
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description projects found */
+                /** @description database truncated successfully */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            projects?: {
-                                id?: number;
-                                name?: string;
-                                thread_id?: string;
-                                account_id?: number;
-                            }[];
+                            /** @example ok */
+                            status: string;
+                            /** @example Operation completed successfully */
+                            message: string;
                         };
                     };
-                };
-                /** @description unauthorized - invalid token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error?: string;
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Creates a project */
-        post: {
-            parameters: {
-                query?: never;
-                header?: {
-                    Authorization?: string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        project: {
-                            name: string;
-                            thread_id: string;
-                        };
-                    };
-                };
-            };
-            responses: {
-                /** @description project created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            id?: number;
-                            name?: string;
-                            thread_id?: string;
-                            account_id?: number;
-                        };
-                    };
-                };
-                /** @description unauthorized - missing token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description invalid request */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
                 };
             };
         };
@@ -313,187 +317,170 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{thread_id}": {
+    "/test/database/snapshots": {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @description Thread ID */
-                thread_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        /** Retrieves a project */
+        /**
+         * Lists available database snapshots
+         * @description Returns a list of all available database snapshot names. Only available in development/test environments.
+         */
         get: {
             parameters: {
                 query?: never;
-                header?: {
-                    Authorization?: string;
-                };
-                path: {
-                    /** @description Thread ID */
-                    thread_id: string;
-                };
+                header?: never;
+                path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description project found */
+                /** @description snapshots listed successfully */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            id?: number;
-                            name?: string;
-                            thread_id?: string;
-                            account_id?: number;
+                            /** @description Array of snapshot names (without .sql extension) */
+                            snapshots: string[];
                         };
                     };
-                };
-                /** @description unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
                 };
             };
         };
         put?: never;
-        post?: never;
-        /** Deletes a project */
-        delete: {
+        /**
+         * Creates a database snapshot
+         * @description Creates a new database snapshot with the specified name. Only available in development/test environments.
+         */
+        post: {
             parameters: {
                 query?: never;
-                header?: {
-                    Authorization?: string;
-                };
-                path: {
-                    /** @description Thread ID */
-                    thread_id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description project deleted */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Updates a project */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: {
-                    Authorization?: string;
-                };
-                path: {
-                    /** @description Thread ID */
-                    thread_id: string;
-                };
+                header?: never;
+                path?: never;
                 cookie?: never;
             };
             requestBody?: {
                 content: {
                     "application/json": {
-                        project: {
-                            name?: string;
+                        snapshot: {
+                            /** @description Name for the snapshot (without .sql extension) */
+                            name: string;
+                            /**
+                             * @description Whether to truncate the database before restoring
+                             * @default false
+                             */
+                            truncate_first?: boolean;
                         };
                     };
                 };
             };
             responses: {
-                /** @description project updated */
-                200: {
+                /** @description snapshot created successfully */
+                201: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            id?: number;
-                            name?: string;
-                            thread_id?: string;
-                            account_id?: number;
+                            /** @example ok */
+                            status: string;
+                            /** @example Operation completed successfully */
+                            message: string;
                         };
                     };
                 };
-                /** @description unauthorized */
-                401: {
+                /** @description missing required parameters */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            /** @example Failed to perform operation: error details */
+                            message: string;
+                        };
+                    };
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
-    "/projects/{thread_id}/files": {
+    "/test/database/restore_snapshot": {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @description Thread ID */
-                thread_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        /** Retrieves project files */
-        get: {
+        get?: never;
+        put?: never;
+        /**
+         * Restores a database snapshot
+         * @description Restores the database from a snapshot. Optionally truncates the database before restoring. Only available in development/test environments.
+         */
+        post: {
             parameters: {
                 query?: never;
-                header?: {
-                    Authorization?: string;
-                };
-                path: {
-                    /** @description Thread ID */
-                    thread_id: string;
-                };
+                header?: never;
+                path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        snapshot: {
+                            /** @description Name for the snapshot (without .sql extension) */
+                            name: string;
+                            /**
+                             * @description Whether to truncate the database before restoring
+                             * @default false
+                             */
+                            truncate_first?: boolean;
+                        };
+                    };
+                };
+            };
             responses: {
-                /** @description files found */
+                /** @description snapshot restored successfully */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            id?: number;
-                            path?: string;
-                            content?: string;
-                            file_type?: string;
-                        }[];
+                            /** @example ok */
+                            status: string;
+                            /** @example Operation completed successfully */
+                            message: string;
+                        };
                     };
                 };
-                /** @description unauthorized */
-                401: {
+                /** @description missing required parameters */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            /** @example Failed to perform operation: error details */
+                            message: string;
+                        };
+                    };
                 };
             };
         };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;

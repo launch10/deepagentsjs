@@ -7,6 +7,7 @@ module BrainstormConcerns
       {
         id: id,
         website_id: website_id,
+        project_id: project_id,
         name: name,
         thread_id: thread_id,
         account_id: project.account_id,

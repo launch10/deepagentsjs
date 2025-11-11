@@ -13,7 +13,7 @@ module User::Authenticatable
       :validatable,
       # :confirmable,
       :jwt_authenticatable,
-      (:omniauthable if defined? OmniAuth),
+      (:omniauthable if defined? OmniAuth)
     ].compact
 
     devise(*OPTIONS, jwt_revocation_strategy: self)

@@ -107,9 +107,10 @@ class Plan < ApplicationRecord
     processor_name = :braintree if processor_name.to_s == "paypal"
     send(:"#{processor_name}_id")
   end
+
   # Get the usage limit for requests per month
   def monthly_request_limit
-    limit = plan_limits.find_by(limit_type: 'requests_per_month')
+    limit = plan_limits.find_by(limit_type: "requests_per_month")
     limit&.limit || 0
   end
   alias_method :usage_limit, :monthly_request_limit

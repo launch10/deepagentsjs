@@ -29,10 +29,10 @@ class Cloudflare
     belongs_to :account, class_name: "Account", inverse_of: :firewall
 
     validates_presence_of :account_id, :status
-    validates :status, presence: true, inclusion: { in: Cloudflare::FirewallStatuses::STATUS }
+    validates :status, presence: true, inclusion: {in: Cloudflare::FirewallStatuses::STATUS}
 
-    scope :blocked, -> { where(status: 'blocked') }
-    scope :inactive, -> { where(status: 'inactive') }
+    scope :blocked, -> { where(status: "blocked") }
+    scope :inactive, -> { where(status: "inactive") }
 
     def already_blocked?
       blocked? && account.domains.all?(&:blocked?)
@@ -44,12 +44,12 @@ class Cloudflare
 
     def should_block?
       return false if already_blocked?
-      return account.over_monthly_request_limit?
+      account.over_monthly_request_limit?
     end
 
     def should_unblock?
       return false if already_unblocked?
-      return account.under_monthly_request_limit?
+      account.under_monthly_request_limit?
     end
 
     def self.block_account(account)
@@ -68,9 +68,9 @@ class Cloudflare
       firewall_rules_by_domain = existing_firewall_rules.index_by(&:domain_id)
       unblocked_domains = domains.select do |domain|
         firewall_rules_by_domain[domain.id].blank? ||
-        firewall_rules_by_domain[domain.id].status == Cloudflare::FirewallStatuses::INACTIVE
+          firewall_rules_by_domain[domain.id].status == Cloudflare::FirewallStatuses::INACTIVE
       end
-      
+
       firewall = account.firewall
       firewall_service = Cloudflare::FirewallService.new
       response = firewall_service.block_domains(unblocked_domains)
@@ -80,7 +80,7 @@ class Cloudflare
 
         to_insert = unblocked_domains.map do |domain|
           firewall_rule = Cloudflare::FirewallRule.find_or_initialize_by(
-            domain_id: domain.id,
+            domain_id: domain.id
           )
           firewall_rule.status = Cloudflare::FirewallStatuses::BLOCKED
           firewall_rule.account = account
@@ -91,21 +91,20 @@ class Cloudflare
           firewall_rule
         end
 
-        Cloudflare::FirewallRule.import(to_insert, 
-          on_duplicate_key_update: { 
-            conflict_target: [:domain_id], 
+        Cloudflare::FirewallRule.import(to_insert,
+          on_duplicate_key_update: {
+            conflict_target: [:domain_id],
             columns: [
               :status,
               :blocked_at,
               :unblocked_at,
               :cloudflare_rule_id,
               :firewall_id
-            ] 
-          }
-        )
+            ]
+          })
       else
         # We raise so that the worker retries, and eventually succeeds
-        raise "Failed to block domains for account #{account.id}: #{response.errors.join(', ')}"
+        raise "Failed to block domains for account #{account.id}: #{response.errors.join(", ")}"
       end
     end
 
@@ -133,8 +132,8 @@ class Cloudflare
           blocked_at: nil
         )
       else
-        raise "Failed to block domains for account #{account.id}: #{response.errors.join(', ')}"
+        raise "Failed to block domains for account #{account.id}: #{response.errors.join(", ")}"
       end
-    end 
+    end
   end
 end

@@ -12,14 +12,8 @@ import {
 } from '@types';
 import { ContentStrategyModel } from '@models';
 
-type StructuredQuestionContentType = Brainstorm.StructuredQuestionContentType;
-type QuestionType = Brainstorm.QuestionType;
-type StructuredQuestionType = Brainstorm.StructuredQuestionType;
-
-const getSimpleQuestion = Brainstorm.getSimpleQuestion;
-
-const expectStructuredOutput = (question: StructuredQuestionType) => {
-    const questionContent: StructuredQuestionContentType = question.question;
+const expectStructuredOutput = (question: Brainstorm.StructuredQuestionType) => {
+    const questionContent: Brainstorm.StructuredQuestionContentType = question.question;
     expect(typeof questionContent).toBe('object');
     
     expect(questionContent.intro).toBeTruthy();
@@ -32,17 +26,11 @@ const expectStructuredOutput = (question: StructuredQuestionType) => {
     expect(questionContent.conclusion).toBeTruthy();
 }
 
-// TODO: 
-// Don't forget about: https://js.langchain.com/docs/integrations/chat/fake/
-// We should update our decorators to use the fake chat pattern we used in langgraph-ai-sdk library
-//
 describe.sequential('Brainstorming Flow', () => {
     beforeAll(async () => {
         await databaseSnapshotter.restoreSnapshot("basic_account");
     })
 
-    // TODO:
-    // Ensure we have a "suggested next question" data point in state. E.g. for placeholder text
     describe("Suggested next question", () => {
         it("should default to the first question", async () => {
             const result = await testGraph<BrainstormGraphState>()

@@ -20,7 +20,7 @@ module PlanHelpers
       {
         name: 'pro',
         amount: 9900,
-        interval: 'month', 
+        interval: 'month',
         stripe_id: 'business',
         fake_processor_id: 'pro'
       },

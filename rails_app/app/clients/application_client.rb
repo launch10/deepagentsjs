@@ -321,7 +321,7 @@ class ApplicationClient
     end
 
     def success?
-      code.to_s.start_with?('2')
+      code.to_s.start_with?("2")
     end
   end
 end

@@ -60,7 +60,8 @@
 <div class="not-prose">
   <pre><code># From langgraph_app directory
 pnpm install
-langdev dev  # Custom binary for Postgres support</code></pre>
+pnpm run dev
+</code></pre>
 </div>
 
 <p>The service will be available at <code>http://localhost:2024</code> by default.</p>
@@ -80,7 +81,7 @@ OPENAI_API_KEY=sk-...</code></pre>
 
 <%= h2_with_anchor "Debugging" %>
 
-<p>Open <code>langgraph_app/.env</code> and set <code>NODE_OPTIONS</code> to <code>--inspect-brk</code>, re-run <code>langdev dev</code> and open the debugger in your browser or editor.</p>
+<p>Open <code>langgraph_app/.env</code> and set <code>NODE_OPTIONS</code> to <code>--inspect-brk</code>, re-run <code>pnpm run dev</code> and open the debugger in your browser or editor.</p>
 <p>Common `launch.json` configurations:</p>
 
 <pre><code>

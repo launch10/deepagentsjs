@@ -12,7 +12,7 @@ Rails.application.configure do
   config.active_support.deprecation = :stderr
   config.log_level = :debug
   config.active_record.verbose_query_logs = true
-  config.action_controller.logger = ActiveSupport::Logger.new(STDOUT)
+  config.action_controller.logger = ActiveSupport::Logger.new($stdout)
   config.active_record.query_log_tags_enabled = true
   config.i18n.raise_on_missing_translations = true
   config.action_controller.raise_on_missing_callback_actions = true

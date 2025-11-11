@@ -7,7 +7,7 @@ module Atlas
       Atlas.domains
     end
 
-  private
+    private
 
     def atlas_data_for_create
       {

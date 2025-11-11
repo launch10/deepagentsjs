@@ -3,15 +3,15 @@
 module Atlas
   class HealthService < BaseService
     def check
-      get('/api/internal/health')
+      get("/api/internal/health")
     rescue => e
-      { status: 'unhealthy', error: e.message }
+      {status: "unhealthy", error: e.message}
     end
 
     def root_check
-      get('/')
+      get("/")
     rescue => e
-      { status: 'unhealthy', error: e.message }
+      {status: "unhealthy", error: e.message}
     end
   end
 end

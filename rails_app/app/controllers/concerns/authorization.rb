@@ -24,11 +24,11 @@ module Authorization
       jti: current_user.jwt_payload["jti"],
       sub: current_user.id,
       exp: 24.hours.from_now.to_i,
-      iat: Time.current.to_i,
+      iat: Time.current.to_i
     }
-  
-    token = JWT.encode(payload, Rails.application.credentials.devise_jwt_secret_key!, 'HS256')
-  
+
+    token = JWT.encode(payload, Rails.application.credentials.devise_jwt_secret_key!, "HS256")
+
     cookies[:jwt] = {
       value: token,
       httponly: true,
@@ -44,8 +44,8 @@ module Authorization
   def authenticate_with_jwt!
     begin
       user = jwt_user(allow_headers: true)
-    rescue JWT::DecodeError, ActiveRecord::RecordNotFound => e
-      render json: { error: 'Not Authorized or invalid token' }, status: :unauthorized
+    rescue JWT::DecodeError, ActiveRecord::RecordNotFound
+      render json: {error: "Not Authorized or invalid token"}, status: :unauthorized
     end
 
     if user
@@ -53,15 +53,15 @@ module Authorization
       sign_in(user, store: false)
       set_request_details # sets account, etc.
     else
-      render json: { error: 'Missing token' }, status: :unauthorized and return
+      render json: {error: "Missing token"}, status: :unauthorized and return
     end
   end
 
   private
 
   def real_jwt_user(allow_headers: false)
-    jwt = cookies[:jwt] || (allow_headers ? request.headers['Authorization']&.split(' ')&.last : nil)
-    
+    jwt = cookies[:jwt] || (allow_headers ? request.headers["Authorization"]&.split(" ")&.last : nil)
+
     if jwt
       payload = jwt_payload(jwt)
       return nil if payload.blank? || payload.dig(0, "sub").blank?
@@ -74,23 +74,21 @@ module Authorization
     can_use_test_jwt = Rails.env.development? || Rails.env.test?
     return nil unless can_use_test_jwt
 
-    sent_test_proof = request.headers['X-Test-Proof'] && request.headers['X-Test-Mode'] == 'true'
+    sent_test_proof = request.headers["X-Test-Proof"] && request.headers["X-Test-Mode"] == "true"
     return nil unless sent_test_proof
-    
-    test_proof = request.headers['X-Test-Proof']
+
+    test_proof = request.headers["X-Test-Proof"]
     return nil unless test_proof
-    
+
     begin
-      payload = JWT.decode(test_proof, Rails.application.credentials.devise_jwt_secret_key!, 'HS256')[0]
-      timestamp = payload['timestamp'].to_i
+      payload = JWT.decode(test_proof, Rails.application.credentials.devise_jwt_secret_key!, "HS256")[0]
+      timestamp = payload["timestamp"].to_i
 
       # Check timestamp is recent (within last minute)
       if Time.at(timestamp / 1000) > 1.minute.ago
-        User.find_by(email: 'test_user@launch10.ai')
-      else
-        nil
+        User.find_by(email: "test_user@launch10.ai")
       end
-    rescue => e
+    rescue
       nil
     end
   end
@@ -108,7 +106,7 @@ module Authorization
   def jwt_payload(jwt = cookies[:jwt])
     begin
       secret = Rails.application.credentials.devise_jwt_secret_key
-      payload = JWT.decode(jwt, secret, true, { algorithm: 'HS256' })
+      payload = JWT.decode(jwt, secret, true, {algorithm: "HS256"})
     rescue JWT::DecodeError
       return nil
     end

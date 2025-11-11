@@ -9,18 +9,18 @@ module JwtHelpers
       jti: SecureRandom.uuid,
       sub: user.id,
       exp: expires_in.from_now.to_i,
-      iat: Time.current.to_i,
+      iat: Time.current.to_i
     }
     JWT.encode(payload, jwt_secret, 'HS256')
   end
 
   def auth_headers_for(user, expires_in: 24.hours)
     token = generate_jwt_for(user, expires_in: expires_in)
-    { 'Authorization' => "Bearer #{token}" }
+    {'Authorization' => "Bearer #{token}"}
   end
 
   def invalid_auth_headers
-    { 'Authorization' => "Bearer invalid_token" }
+    {'Authorization' => "Bearer invalid_token"}
   end
 
   def expired_jwt_for(user)
@@ -29,6 +29,6 @@ module JwtHelpers
 
   def expired_auth_headers_for(user)
     token = expired_jwt_for(user)
-    { 'Authorization' => "Bearer #{token}" }
+    {'Authorization' => "Bearer #{token}"}
   end
 end

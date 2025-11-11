@@ -40,7 +40,7 @@ require 'support/website_file_helpers'
 
 RSpec.describe Deploy, type: :model do
   include WebsiteFileHelpers
-  
+
   let(:user) { create(:user) }
   let(:account) { create(:account) }
   let(:project) { create(:project, account: account) }
@@ -80,7 +80,7 @@ RSpec.describe Deploy, type: :model do
 
   describe '#deploy!' do
     let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
-    
+
     before do
       website_with_files.snapshot
       allow(FileUtils).to receive(:mkdir_p)
@@ -95,12 +95,12 @@ RSpec.describe Deploy, type: :model do
 
       before do
         allow(deploy).to receive(:system).and_return(true)
-        
+
         # Mock file system operations for upload
         allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html', '/tmp/test/dist/style.css'])
         allow(File).to receive(:file?).and_return(true)
         allow(File).to receive(:open).and_yield(StringIO.new('test content'))
-        
+
         # Mock S3 operations
         allow(s3_client).to receive(:list_objects_v2).and_return(
           double(contents: [double(key: 'test/file.html', size: 100)])
@@ -209,7 +209,7 @@ RSpec.describe Deploy, type: :model do
 
   describe '#rollback!' do
     let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
-    
+
     before do
       website_with_files.snapshot
     end
@@ -220,7 +220,7 @@ RSpec.describe Deploy, type: :model do
         deploy.update!(status: 'completed', is_live: true, revertible: true, version_path: "#{website_with_files.id}/20240102000000")
         deploy
       end
-      
+
       let!(:rollback_target) do
         deploy = website_with_files.deploys.create!(environment: 'development')
         deploy.update!(status: 'completed', is_live: false, revertible: true, version_path: "#{website_with_files.id}/20240101000000")
@@ -310,7 +310,7 @@ RSpec.describe Deploy, type: :model do
   describe '#preview!' do
     let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
     let(:deploy) { website_with_files.deploys.create!(environment: 'development', is_preview: true) }
-    
+
     before do
       website_with_files.snapshot
       allow(FileUtils).to receive(:mkdir_p)
@@ -319,7 +319,7 @@ RSpec.describe Deploy, type: :model do
       allow(Dir).to receive(:chdir).and_yield
       allow(Dir).to receive(:exist?).and_return(true)
       allow(deploy).to receive(:system).and_return(true)
-      
+
       allow(s3_client).to receive(:list_objects_v2).and_return(
         double(contents: [double(key: 'test/file.html', size: 100)])
       )
@@ -354,7 +354,7 @@ RSpec.describe Deploy, type: :model do
 
   describe 'environment isolation via Cloudflare::R2' do
     let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
-    
+
     before do
       website_with_files.snapshot
       allow(FileUtils).to receive(:mkdir_p)
@@ -362,15 +362,15 @@ RSpec.describe Deploy, type: :model do
       allow(File).to receive(:write)
       allow(Dir).to receive(:chdir).and_yield
       allow(Dir).to receive(:exist?).and_return(true)
-      
+
       # Mock file system operations for upload
       allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
       allow(File).to receive(:file?).and_return(true)
       allow(File).to receive(:open).and_yield(StringIO.new('test content'))
-      
+
       # Set a default environment in config
       allow(Cloudflare.config).to receive(:deploy_env).and_return('development')
-      
+
       allow(s3_client).to receive(:list_objects_v2).and_return(
         double(contents: [double(key: 'test/file.html', size: 100)])
       )
@@ -398,32 +398,32 @@ RSpec.describe Deploy, type: :model do
     it 'properly prefixes all S3 operations with environment' do
       deploy = website_with_files.deploys.create!(environment: 'production')
       allow(deploy).to receive(:system).and_return(true)
-      
+
       # Track all S3 operations to verify prefixing
       put_keys = []
       list_prefixes = []
       copy_operations = []
       delete_operations = []
-      
+
       allow(s3_client).to receive(:put_object) do |args|
         put_keys << args[:key]
       end
-      
+
       allow(s3_client).to receive(:list_objects_v2) do |args|
         list_prefixes << args[:prefix]
         double(contents: [double(key: "production/#{website_with_files.id}/20240101120000/index.html", size: 100)])
       end
-      
+
       allow(s3_client).to receive(:copy_object) do |args|
-        copy_operations << { source: args[:copy_source], dest: args[:key] }
+        copy_operations << {source: args[:copy_source], dest: args[:key]}
       end
-      
+
       allow(s3_client).to receive(:delete_objects) do |args|
         delete_operations << args[:delete][:objects] if args[:delete]
       end
-      
+
       deploy.deploy!
-      
+
       # Verify all operations use production prefix
       expect(put_keys).to all(start_with('production/'))
       expect(list_prefixes.compact).to all(start_with('production/'))
@@ -438,14 +438,14 @@ RSpec.describe Deploy, type: :model do
       dev_deploy = website_with_files.deploys.create!(environment: 'development')
       staging_deploy = website_with_files.deploys.create!(environment: 'staging')
       prod_deploy = website_with_files.deploys.create!(environment: 'production')
-      
+
       [dev_deploy, staging_deploy, prod_deploy].each do |deploy|
         allow(deploy).to receive(:system).and_return(true)
       end
-      
+
       # Track which environment each operation belongs to
-      operations_by_env = { 'development' => [], 'staging' => [], 'production' => [] }
-      
+      operations_by_env = {'development' => [], 'staging' => [], 'production' => []}
+
       allow(s3_client).to receive(:put_object) do |args|
         key = args[:key]
         if key.start_with?('development/')
@@ -456,17 +456,17 @@ RSpec.describe Deploy, type: :model do
           operations_by_env['production'] << key
         end
       end
-      
+
       # Deploy to each environment
       dev_deploy.deploy!
       staging_deploy.deploy!
       prod_deploy.deploy!
-      
+
       # Verify each environment got its own operations
       expect(operations_by_env['development']).not_to be_empty
       expect(operations_by_env['staging']).not_to be_empty
       expect(operations_by_env['production']).not_to be_empty
-      
+
       # Verify no cross-contamination between environments
       operations_by_env['development'].each { |key| expect(key).to start_with('development/') }
       operations_by_env['staging'].each { |key| expect(key).to start_with('staging/') }
@@ -476,7 +476,7 @@ RSpec.describe Deploy, type: :model do
 
   describe 'cleanup of old deploys' do
     let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
-    
+
     before do
       website_with_files.snapshot
       allow(FileUtils).to receive(:mkdir_p)
@@ -484,7 +484,7 @@ RSpec.describe Deploy, type: :model do
       allow(File).to receive(:write)
       allow(Dir).to receive(:chdir).and_yield
       allow(Dir).to receive(:exist?).and_return(true)
-      
+
       allow(s3_client).to receive(:put_object)
       allow(s3_client).to receive(:copy_object)
     end
@@ -492,7 +492,7 @@ RSpec.describe Deploy, type: :model do
     it 'calls cleanup after successful deploy' do
       current_deploy = website_with_files.deploys.create!(environment: 'development')
       allow(current_deploy).to receive(:system).and_return(true)
-      
+
       # Mock file system operations for upload
       allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
       allow(File).to receive(:file?).and_return(true)
@@ -502,7 +502,7 @@ RSpec.describe Deploy, type: :model do
       allow(s3_client).to receive(:list_objects_v2).and_return(
         double(contents: [double(key: 'test/file.html', size: 100)])
       )
-      
+
       # Allow delete_objects to be called (or not) - cleanup might not delete anything
       allow(s3_client).to receive(:delete_objects)
 
@@ -514,7 +514,7 @@ RSpec.describe Deploy, type: :model do
 
   describe 'shasum functionality' do
     let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
-    
+
     before do
       website_with_files.snapshot
     end
@@ -525,26 +525,26 @@ RSpec.describe Deploy, type: :model do
         expect(deploy.shasum).to be_present
         expect(deploy.shasum).to eq(website_with_files.generate_shasum)
       end
-      
+
       it 'generates the same shasum for the same files' do
         deploy1 = website_with_files.deploys.create!(environment: 'development')
         deploy2 = website_with_files.deploys.create!(environment: 'development')
-        
+
         expect(deploy1.shasum).to eq(deploy2.shasum)
       end
-      
+
       it 'generates different shasums when files change' do
         deploy1 = website_with_files.deploys.create!(environment: 'development')
-        
+
         # Change a file
         website_with_files.website_files.first.update!(content: 'changed content')
-        
+
         deploy2 = website_with_files.deploys.create!(environment: 'development')
-        
+
         expect(deploy1.shasum).not_to eq(deploy2.shasum)
       end
     end
-    
+
     describe 'snapshot creation based on shasum' do
       context 'when files have not changed' do
         let!(:existing_deploy) do
@@ -552,93 +552,93 @@ RSpec.describe Deploy, type: :model do
           deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum)
           deploy
         end
-        
+
         it 'reuses existing snapshot when shasum matches' do
           # Expect snapshot to not be called since files haven't changed
           expect(website_with_files).not_to receive(:snapshot)
-          
+
           new_deploy = website_with_files.deploys.create!(environment: 'development')
           expect(new_deploy.snapshot_id).to eq(existing_deploy.snapshot_id)
         end
       end
-      
+
       context 'when files have changed' do
         let!(:existing_deploy) do
           deploy = website_with_files.deploys.create!(environment: 'development')
           deploy.update!(status: 'completed')
           deploy
         end
-        
+
         it 'creates new snapshot when shasum differs' do
           # Change a file to trigger new shasum
           website_with_files.website_files.first.update!(content: 'new content')
-          
+
           # Don't test the exact number of calls, just that a new snapshot is created
           initial_snapshot_count = website_with_files.snapshots.count
-          
+
           new_deploy = website_with_files.deploys.create!(environment: 'development')
-          
+
           expect(website_with_files.snapshots.count).to be > initial_snapshot_count
           expect(new_deploy.shasum).not_to eq(existing_deploy.shasum)
         end
       end
-      
+
       context 'when no previous snapshot exists' do
         it 'creates a new snapshot' do
           # Create a fresh website without any snapshots
           fresh_website = create_website_with_files(account: account, project: project, files: minimal_website_files)
-          
+
           # Verify a snapshot is created
           initial_snapshot_count = fresh_website.snapshots.count
-          
+
           deploy = fresh_website.deploys.create!(environment: 'development')
-          
+
           expect(fresh_website.snapshots.count).to be > initial_snapshot_count
           expect(deploy.snapshot_id).to be_present
         end
       end
     end
-    
+
     describe 'rebuild detection' do
       let!(:completed_deploy) do
         deploy = website_with_files.deploys.create!(environment: 'development')
         deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum)
         deploy
       end
-      
+
       it 'does not rebuild when shasum matches latest deploy' do
         expect(website_with_files.files_changed?).to be false
       end
-      
+
       it 'rebuilds when shasum differs from latest deploy' do
         website_with_files.website_files.first.update!(content: 'changed')
         expect(website_with_files.files_changed?).to be true
       end
-      
+
       it 'rebuilds when new files are added' do
         create(:website_file, website: website_with_files, path: '/new.html', content: 'new file')
         expect(website_with_files.files_changed?).to be true
       end
-      
+
       it 'rebuilds when files are removed' do
         website_with_files.website_files.first.destroy
         expect(website_with_files.files_changed?).to be true
       end
-      
+
       it 'considers only completed deploys for comparison' do
         # files_changed? should initially be false
         expect(website_with_files.files_changed?).to be false
-        
+
         # Change content
         website_with_files.website_files.first.update!(content: 'changed content')
-        
+
         # files_changed? should now be true
         expect(website_with_files.files_changed?).to be true
-        
+
         # Create a failed deploy with the changed content
         failed_deploy = website_with_files.deploys.create!(environment: 'development')
         failed_deploy.update!(status: 'failed')
-        
+
         # files_changed? should still be true - it should ignore the failed deploy
         expect(website_with_files.files_changed?).to be true
       end
@@ -668,7 +668,7 @@ RSpec.describe Deploy, type: :model do
       it 'skips the earlier deploy without making S3 calls' do
         expect(s3_client).not_to receive(:put_object)
         expect(s3_client).not_to receive(:copy_object)
-        
+
         early_deploy.deploy!
         expect(early_deploy.reload.status).to eq('skipped')
       end
@@ -684,12 +684,12 @@ RSpec.describe Deploy, type: :model do
         allow(Dir).to receive(:chdir).and_yield
         allow(Dir).to receive(:exist?).and_return(true)
         allow(deploy).to receive(:system).and_return(true)
-        
+
         # Mock file system operations for upload
         allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
         allow(File).to receive(:file?).and_return(true)
         allow(File).to receive(:open).and_yield(StringIO.new('test content'))
-        
+
         allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
         allow(s3_client).to receive(:put_object)
         allow(s3_client).to receive(:copy_object)
@@ -698,7 +698,7 @@ RSpec.describe Deploy, type: :model do
 
       it 'proceeds with the deploy' do
         expect(s3_client).to receive(:put_object).at_least(:once)
-        
+
         deploy.deploy!
         expect(deploy.reload.status).to eq('completed')
       end
@@ -724,12 +724,12 @@ RSpec.describe Deploy, type: :model do
         allow(Dir).to receive(:chdir).and_yield
         allow(Dir).to receive(:exist?).and_return(true)
         allow(early_deploy).to receive(:system).and_return(true)
-        
+
         # Mock file system operations for upload
         allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
         allow(File).to receive(:file?).and_return(true)
         allow(File).to receive(:open).and_yield(StringIO.new('test content'))
-        
+
         allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
         allow(s3_client).to receive(:put_object)
         allow(s3_client).to receive(:copy_object)
@@ -738,7 +738,7 @@ RSpec.describe Deploy, type: :model do
 
       it 'proceeds with the deploy' do
         expect(s3_client).to receive(:put_object).at_least(:once)
-        
+
         early_deploy.deploy!
         expect(early_deploy.reload.status).to eq('completed')
       end
@@ -764,12 +764,12 @@ RSpec.describe Deploy, type: :model do
         allow(Dir).to receive(:chdir).and_yield
         allow(Dir).to receive(:exist?).and_return(true)
         allow(early_deploy).to receive(:system).and_return(true)
-        
+
         # Mock file system operations for upload
         allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
         allow(File).to receive(:file?).and_return(true)
         allow(File).to receive(:open).and_yield(StringIO.new('test content'))
-        
+
         allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
         allow(s3_client).to receive(:put_object)
         allow(s3_client).to receive(:copy_object)
@@ -779,7 +779,7 @@ RSpec.describe Deploy, type: :model do
       it 'proceeds with the deploy (different environments are independent)' do
         # Later deploy with higher ID should skip earlier deploy
         expect(s3_client).not_to receive(:put_object)
-        
+
         early_deploy.deploy!
         expect(early_deploy.reload.status).to eq('skipped')
       end

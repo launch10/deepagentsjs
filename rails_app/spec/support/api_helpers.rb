@@ -8,7 +8,7 @@ module ApiHelpers
         "content-type" => "application/json"
       }.each
     )
-    
+
     # Return the Response object for FirewallService
     Cloudflare::FirewallService::Response.new(http_response)
   end

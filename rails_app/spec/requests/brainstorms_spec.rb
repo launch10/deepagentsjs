@@ -20,33 +20,10 @@ RSpec.describe "Brainstorms API", type: :request do
       security [bearer_auth: []]
       parameter name: :Authorization, in: :header, type: :string, required: false
 
-      parameter name: :brainstorm_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          brainstorm: {
-            type: :object,
-            properties: {
-              name: { type: :string, description: 'Optional name for the brainstorm. Defaults to MM/DD/YYYY HH:MM:SS' },
-              thread_id: { type: :string, description: 'Required thread ID from Langgraph' }
-            },
-            required: ['thread_id']
-          }
-        },
-        required: ['brainstorm']
-      }
+      parameter name: :brainstorm_params, in: :body, schema: ApiSchemas::Brainstorm.params_schema
 
       response '201', 'brainstorm created with default name' do
-        schema type: :object,
-          properties: {
-            id: { type: :integer },
-            website_id: { type: :integer },
-            name: { type: :string },
-            thread_id: { type: :string },
-            account_id: { type: :integer },
-            created_at: { type: :string },
-            updated_at: { type: :string }
-          }
-
+        schema ApiSchemas::Brainstorm.response
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
         let(:brainstorm_params) do
           {
@@ -82,16 +59,7 @@ RSpec.describe "Brainstorms API", type: :request do
       end
 
       response '201', 'brainstorm created with custom name' do
-        schema type: :object,
-          properties: {
-            id: { type: :integer },
-            website_id: { type: :integer },
-            name: { type: :string },
-            thread_id: { type: :string },
-            account_id: { type: :integer },
-            created_at: { type: :string },
-            updated_at: { type: :string }
-          }
+        schema ApiSchemas::Brainstorm.response
 
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
         let(:brainstorm_params) do
@@ -180,16 +148,7 @@ RSpec.describe "Brainstorms API", type: :request do
       parameter name: :Authorization, in: :header, type: :string, required: false
 
       response '200', 'brainstorm found' do
-        schema type: :object,
-          properties: {
-            id: { type: :integer },
-            website_id: { type: :integer },
-            name: { type: :string },
-            thread_id: { type: :string },
-            account_id: { type: :integer },
-            created_at: { type: :string },
-            updated_at: { type: :string }
-          }
+        schema ApiSchemas::Brainstorm.response
 
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
         let!(:project) { create(:project, account: account) }
@@ -239,35 +198,10 @@ RSpec.describe "Brainstorms API", type: :request do
       security [bearer_auth: []]
       parameter name: :Authorization, in: :header, type: :string, required: false
 
-      parameter name: :brainstorm_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          brainstorm: {
-            type: :object,
-            properties: {
-              name: { type: :string, description: 'Updates project, website, and chat names' },
-              idea: { type: :string, description: 'The core idea for the landing page' },
-              audience: { type: :string, description: 'Target audience for the landing page' },
-              solution: { type: :string, description: 'The solution being offered' },
-              social_proof: { type: :string, description: 'Social proof elements' },
-              look_and_feel: { type: :string, description: 'Design preferences' }
-            }
-          }
-        },
-        required: ['brainstorm']
-      }
+      parameter name: :brainstorm_params, in: :body, schema: ApiSchemas::Brainstorm.params_schema
 
       response '200', 'brainstorm name updated' do
-        schema type: :object,
-          properties: {
-            id: { type: :integer },
-            website_id: { type: :integer },
-            name: { type: :string },
-            thread_id: { type: :string },
-            account_id: { type: :integer },
-            created_at: { type: :string },
-            updated_at: { type: :string }
-          }
+        schema ApiSchemas::Brainstorm.response
 
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
         let!(:project) { create(:project, account: account, name: "Old Name") }
@@ -297,16 +231,7 @@ RSpec.describe "Brainstorms API", type: :request do
       end
 
       response '200', 'brainstorm fields updated' do
-        schema type: :object,
-          properties: {
-            id: { type: :integer },
-            website_id: { type: :integer },
-            name: { type: :string },
-            thread_id: { type: :string },
-            account_id: { type: :integer },
-            created_at: { type: :string },
-            updated_at: { type: :string }
-          }
+        schema ApiSchemas::Brainstorm.response
 
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
         let!(:project) { create(:project, account: account) }
@@ -343,7 +268,7 @@ RSpec.describe "Brainstorms API", type: :request do
         let!(:brainstorm) { create(:brainstorm, website_id: website.id, thread_id: website.thread_id) }
         let!(:chat) { create(:chat, thread_id: brainstorm.thread_id, project: project, account: account, contextable: brainstorm) }
         let(:thread_id) { brainstorm.thread_id }
-        let(:brainstorm_params) { { brainstorm: { name: "Updated" } } }
+        let(:brainstorm_params) { {brainstorm: {name: "Updated"}} }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -354,7 +279,7 @@ RSpec.describe "Brainstorms API", type: :request do
       response '404', 'brainstorm not found' do
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
         let(:thread_id) { "nonexistent-thread-id" }
-        let(:brainstorm_params) { { brainstorm: { name: "Updated" } } }
+        let(:brainstorm_params) { {brainstorm: {name: "Updated"}} }
 
         run_test! do |response|
           data = JSON.parse(response.body)

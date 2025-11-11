@@ -11,7 +11,7 @@ module BrainstormConcerns
 
           # Create project
           project = account.projects.create!(
-            name: name,
+            name: name
           )
 
           # Create website

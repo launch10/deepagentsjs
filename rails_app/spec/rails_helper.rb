@@ -9,7 +9,7 @@ require 'database_cleaner/active_record'
 
 Rails.root.glob('spec/support/**/*.rb').sort_by(&:to_s).each { |f| require f }
 
-$memory_cache = ActiveSupport::Cache::MemoryStore.new
+@memory_cache = ActiveSupport::Cache::MemoryStore.new
 
 begin
   ActiveRecord::Migration.maintain_test_schema!
@@ -23,7 +23,7 @@ RSpec.configure do |config|
   ]
   config.use_transactional_fixtures = false # Changed to false to use database_cleaner
   config.include FactoryBot::Syntax::Methods
-  
+
   # Include helper modules for request specs
   config.include JwtHelpers, type: :request
   config.include SubscriptionHelpers, type: :request
@@ -52,9 +52,9 @@ RSpec.configure do |config|
   end
 
   config.before(:each, :logsql) do
-    ActiveRecord::Base.logger = Logger.new(STDOUT)
+    ActiveRecord::Base.logger = Logger.new($stdout)
   end
-  
+
   config.after(:each) do
     Timecop.return
   end
@@ -65,7 +65,7 @@ RSpec.configure do |config|
 
   config.around(:each, :caching) do |example|
     default_store = Rails.cache
-    Rails.cache = $memory_cache
+    Rails.cache = @memory_cache
     caching = ActionController::Base.perform_caching
     ActionController::Base.perform_caching = example.metadata[:caching]
     example.run

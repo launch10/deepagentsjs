@@ -34,7 +34,7 @@ gem "typhoeus"
 gem "rollbar"
 gem "zhong"
 gem "sinatra", require: false # Required for Zhong web
-gem 'rswag'
+gem "rswag"
 
 group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
@@ -45,8 +45,8 @@ group :development, :test do
   gem "rspec", "~> 3.13"
   gem "rspec-rails", "~> 8.0"
   gem "guard"
-  gem 'guard-rails', require: false
-  gem 'guard-rspec', require: false
+  gem "guard-rails", require: false
+  gem "guard-rspec", require: false
   gem "factory_bot_rails"
 end
 

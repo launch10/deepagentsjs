@@ -28,9 +28,9 @@ class Chat < ApplicationRecord
   belongs_to :project
   belongs_to :contextable, polymorphic: true
 
-  CHAT_TYPES = %w(brainstorm website ads)
+  CHAT_TYPES = %w[brainstorm website ads]
 
-  validates :chat_type, presence: true, inclusion: { in: CHAT_TYPES }
+  validates :chat_type, presence: true, inclusion: {in: CHAT_TYPES}
   validates :thread_id, presence: true
   validates :project_id, presence: true
   validates :account_id, presence: true

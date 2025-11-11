@@ -33,17 +33,17 @@ namespace :seeds do
       }
     ]
 
-    Plan.import(plans, on_duplicate_key_update: { conflict_target: :name })
+    Plan.import(plans, on_duplicate_key_update: {conflict_target: :name})
     limits_to_import = plan_limits.map do |limit_type, limits|
-        limits.map do |plan_name, limit|
-          { 
-            plan_id: Plan.find_by(name: plan_name).id, 
-            limit_type: limit_type, 
-            limit: limit 
-          }
-        end
+      limits.map do |plan_name, limit|
+        {
+          plan_id: Plan.find_by(name: plan_name).id,
+          limit_type: limit_type,
+          limit: limit
+        }
       end
-    PlanLimit.import(limits_to_import.flatten, on_duplicate_key_update: { conflict_target: [:plan_id, :limit_type] })
+    end
+    PlanLimit.import(limits_to_import.flatten, on_duplicate_key_update: {conflict_target: [:plan_id, :limit_type]})
     Plan.all.each { |plan| plan.send(:sync_to_atlas_on_create) }
   end
 end

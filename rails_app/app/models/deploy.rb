@@ -44,15 +44,15 @@ class Deploy < ApplicationRecord
 
   belongs_to :website
 
-  scope :completed, -> { where(status: 'completed') }
-  scope :failed, -> { where(status: 'failed') }
-  scope :pending, -> { where(status: 'pending') }
+  scope :completed, -> { where(status: "completed") }
+  scope :failed, -> { where(status: "failed") }
+  scope :pending, -> { where(status: "pending") }
   scope :live, -> { where(is_live: true) }
   scope :preview, -> { where(is_preview: true) }
   scope :revertible, -> { where(revertible: true) }
-  
-  validates :status, inclusion: { in: STATUS }
-  validates :environment, inclusion: { in: ENVIRONMENTS }
+
+  validates :status, inclusion: {in: STATUS}
+  validates :environment, inclusion: {in: ENVIRONMENTS}
   validates :status, presence: true
   validates :website, presence: true
 end

@@ -94,20 +94,8 @@ pnpm run db:migrate
 bin/dev
 # This runs Rails server, Vite, Sidekiq, and Stripe CLI
 
-# We use a custom-built langgraph binary to enable Postgres in development mode, so you MUST properly link to the langgraph binary
-cd langgraph_app
-langdev dev # This will start the langgraph server in development mode with our Postgres database
-pnpm run dev  # In another terminal
-
-### Running Production Langgraph
-
-# Langgraph (Dockerized)
-# Use the REAL langgraph binary to run this:
-langgraph up --no-pull -p 2024 --postgres-uri postgres://host.docker.internal:5432/nichefinder_development -d docker-compose.yml
+# Langgraph (from langgraph_app/)
 pnpm run dev
-
-# Debug Prod Langgraph
-NODE_OPTIONS="--inspect-brk" npx @langchain/langgraph-cli dev -n 1
 ```
 
 ### Database Commands
@@ -215,7 +203,7 @@ JWT tokens are issued by Rails and validated by Langgraph:
 ### Debugging Issues
 
 1. **Rails logs**: `tail -f log/development.log`
-2. **Langgraph logs**: Check terminal running `langdev dev`
+2. **Langgraph logs**: Check terminal running `pnpm run dev`
 3. **Browser DevTools**: Network tab for API calls
 4. **Database**: Use Rails console or psql to inspect data
 

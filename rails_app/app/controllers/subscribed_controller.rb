@@ -15,18 +15,18 @@ class SubscribedController < ApplicationController
   inertia_share do
     flash_messages = []
 
-    flash_messages << { type: "success", message: flash[:notice] } if flash[:notice]
+    flash_messages << {type: "success", message: flash[:notice]} if flash[:notice]
 
-    flash_messages << { type: "error", message: flash[:error] } if flash[:error]
+    flash_messages << {type: "error", message: flash[:error]} if flash[:error]
 
-    flash_messages << { type: "info", message: flash[:info] } if flash[:info]
+    flash_messages << {type: "info", message: flash[:info]} if flash[:info]
 
     {
       root_path: root_path,
       langgraph_path: langgraph_path,
       jwt: cookies[:jwt],
       errors: session.delete(:errors) || {},
-      flash: flash_messages,
+      flash: flash_messages
     }
   end
 end

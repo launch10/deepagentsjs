@@ -3,7 +3,8 @@ module Atlas
     extend ActiveSupport::Concern
     include Atlas::Syncable
 
-private
+    private
+
     def atlas_service
       Atlas.accounts
     end

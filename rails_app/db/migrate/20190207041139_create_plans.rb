@@ -12,7 +12,7 @@ class CreatePlans < ActiveRecord::Migration[5.2]
 
       t.timestamps
     end
-    
+
     add_index :plans, :created_at
   end
 end

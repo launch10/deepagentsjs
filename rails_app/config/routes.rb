@@ -1,4 +1,4 @@
-require 'sidekiq/web'
+require "sidekiq/web"
 require "zhong/web"
 
 ADMIN_ONLY = lambda do |request|
@@ -11,8 +11,8 @@ LOCAL_ENV_ONLY = lambda do |request|
 end
 
 Rails.application.routes.draw do
-  mount Rswag::Ui::Engine => '/api-docs'
-  mount Rswag::Api::Engine => '/api-docs'
+  mount Rswag::Ui::Engine => "/api-docs"
+  mount Rswag::Api::Engine => "/api-docs"
 
   constraints ADMIN_ONLY do
     mount Sidekiq::Web => "/sidekiq"

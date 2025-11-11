@@ -8,7 +8,7 @@ class CreateCloudflareFirewallRules < ActiveRecord::Migration[8.0]
       t.string :cloudflare_rule_id, null: false
       t.datetime :blocked_at
       t.datetime :unblocked_at
-      
+
       t.timestamps
 
       t.index :created_at

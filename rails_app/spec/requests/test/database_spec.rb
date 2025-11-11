@@ -1,0 +1,154 @@
+require 'swagger_helper'
+
+RSpec.describe "Test Database API", type: :request do
+  before do
+    # Ensure we're in test environment for these specs
+    allow(Rails.env).to receive(:local?).and_return(true)
+  end
+
+  path '/test/database/truncate' do
+    post 'Truncates the database' do
+      tags 'Test Database'
+      produces 'application/json'
+      description 'Truncates all tables in the database. Only available in development/test environments.'
+
+      response '200', 'database truncated successfully' do
+        schema ApiSchemas::Database.operation_response
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['status']).to eq('ok')
+          expect(data['message']).to eq('Database truncated')
+        end
+      end
+    end
+  end
+
+  path '/test/database/snapshots' do
+    get 'Lists available database snapshots' do
+      tags 'Test Database'
+      produces 'application/json'
+      description 'Returns a list of all available database snapshot names. Only available in development/test environments.'
+
+      response '200', 'snapshots listed successfully' do
+        schema ApiSchemas::Database.snapshots_response
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data).to have_key('snapshots')
+          expect(data['snapshots']).to be_an(Array)
+        end
+      end
+    end
+
+    post 'Creates a database snapshot' do
+      tags 'Test Database'
+      consumes 'application/json'
+      produces 'application/json'
+      description 'Creates a new database snapshot with the specified name. Only available in development/test environments.'
+
+      parameter name: :snapshot_params, in: :body, schema: ApiSchemas::Database.snapshot_params
+
+      response '201', 'snapshot created successfully' do
+        schema ApiSchemas::Database.operation_response
+
+        let(:snapshot_params) do
+          {
+            snapshot: {
+              name: "test_snapshot_#{Time.now.to_i}"
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['status']).to eq('ok')
+          expect(data['message']).to include('created')
+        end
+      end
+
+      response '422', 'missing required parameters' do
+        schema ApiSchemas::Database.error_response
+
+        let(:snapshot_params) { {} }
+
+        run_test! do |response|
+          expect(response.status).to be >= 400
+        end
+      end
+    end
+  end
+
+  path '/test/database/restore_snapshot' do
+    post 'Restores a database snapshot' do
+      tags 'Test Database'
+      consumes 'application/json'
+      produces 'application/json'
+      description 'Restores the database from a snapshot. Optionally truncates the database before restoring. Only available in development/test environments.'
+
+      parameter name: :snapshot_params, in: :body, schema: ApiSchemas::Database.snapshot_params
+
+      response '200', 'snapshot restored successfully' do
+        schema ApiSchemas::Database.operation_response
+
+        let(:snapshot_name) { "restore_test_#{Time.now.to_i}" }
+        let(:snapshot_params) do
+          {
+            snapshot: {
+              name: snapshot_name,
+              truncate_first: false
+            }
+          }
+        end
+
+        before do
+          # Create a snapshot first so we can restore it
+          snapshotter = Database::Snapshotter.new
+          output_path = Test::DatabaseController::SNAPSHOT_DIR.join("#{snapshot_name}.sql")
+          Test::DatabaseController::SNAPSHOT_DIR.mkpath unless Test::DatabaseController::SNAPSHOT_DIR.exist?
+          snapshotter.dump(output_path)
+        end
+
+        after do
+          # Clean up the test snapshot
+          snapshot_file = Test::DatabaseController::SNAPSHOT_DIR.join("#{snapshot_name}.sql")
+          snapshot_file.delete if snapshot_file.exist?
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['status']).to eq('ok')
+          expect(data['message']).to include('restored')
+        end
+      end
+
+      response '422', 'snapshot restore failed - snapshot not found' do
+        schema ApiSchemas::Database.error_response
+
+        let(:snapshot_params) do
+          {
+            snapshot: {
+              name: "nonexistent_snapshot_#{SecureRandom.hex(8)}"
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['status']).to eq('error')
+          expect(data['message']).to include('Failed to restore snapshot')
+        end
+      end
+
+      response '422', 'missing required parameters' do
+        schema ApiSchemas::Database.error_response
+
+        let(:snapshot_params) { {} }
+
+        run_test! do |response|
+          expect(response.status).to be >= 400
+        end
+      end
+    end
+  end
+end

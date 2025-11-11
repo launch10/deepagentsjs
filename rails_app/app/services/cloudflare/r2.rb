@@ -14,11 +14,11 @@ class Cloudflare
       )
     end
 
-    def method_missing(method_name, *args, **kwargs, &block)
+    def method_missing(method_name, *, **kwargs, &)
       if @client.respond_to?(method_name)
         prefixed_kwargs = add_env_prefix_to_args(kwargs)
-        
-        @client.send(method_name, *args, **prefixed_kwargs, &block)
+
+        @client.send(method_name, *, **prefixed_kwargs, &)
       else
         super
       end
@@ -50,12 +50,12 @@ class Cloudflare
 
       if modified_kwargs.key?(:copy_source)
         source_string = modified_kwargs[:copy_source]
-        source_bucket, source_key = source_string.split('/', 2)
+        source_bucket, source_key = source_string.split("/", 2)
         if source_key
           modified_kwargs[:copy_source] = "#{source_bucket}/#{prefixed_path(source_key)}"
         end
       end
-      
+
       if modified_kwargs.key?(:delete) && modified_kwargs[:delete].is_a?(Hash)
         objects = modified_kwargs.dig(:delete, :objects)
         if objects.is_a?(Array)

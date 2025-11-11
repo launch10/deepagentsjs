@@ -58,7 +58,7 @@ class AddFullTextSearchToFiles < ActiveRecord::Migration[8.0]
       SQL
     end
   end
-  
+
   def down
     safety_assured do
       execute <<-SQL

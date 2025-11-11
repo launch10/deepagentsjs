@@ -68,7 +68,7 @@ class Account < ApplicationRecord
 
   def current_plan_id
     plan&.id
-  end 
+  end
 
   def plan_limits
     plan&.plan_limits || []

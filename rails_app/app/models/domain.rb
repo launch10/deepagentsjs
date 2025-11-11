@@ -23,7 +23,7 @@ class Domain < ApplicationRecord
   include Atlas::Domain
   include Cloudflare::Monitorable
   include DomainConcerns::NormalizeDomain
-  
+
   belongs_to :website, optional: true
   belongs_to :account
   has_many :domain_request_counts, dependent: :destroy
@@ -45,20 +45,20 @@ class Domain < ApplicationRecord
     return if domain.present?
     return unless website
 
-    base_url = ENV.fetch('DEPLOYMENT_BASE_URL', 'launch10.ai')
+    base_url = ENV.fetch("DEPLOYMENT_BASE_URL", "launch10.ai")
     base_domain = "#{website.name.parameterize}.#{base_url}"
-    
+
     if self.class.exists?(domain: base_domain)
       # Find all domains matching the pattern and extract numbers
       pattern = "#{website.name.parameterize}%.#{base_url}"
       existing_domains = Domain.where("domain LIKE ?", pattern).pluck(:domain)
-      
+
       # Extract numbers from domains like test-site1.launch10.ai
       numbers = existing_domains.map do |d|
         match = d.match(/#{Regexp.escape(website.name.parameterize)}(\d+)\.#{Regexp.escape(base_url)}/)
         match ? match[1].to_i : 0
       end
-      
+
       # Find the next available number
       counter = (numbers.max || 0) + 1
       self.domain = "#{website.name.parameterize}#{counter}.#{base_url}"
@@ -71,5 +71,4 @@ class Domain < ApplicationRecord
     return if domain.blank?
     write_attribute(:domain, normalize_domain(domain))
   end
-
 end

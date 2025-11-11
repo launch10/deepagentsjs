@@ -10,7 +10,7 @@ module BrainstormConcerns
 
           if update_params[:name].present?
             project.update!(name: update_params[:name])
-            chat.update!(name: update_params[:name]) if chat
+            chat&.update!(name: update_params[:name])
           end
 
           brainstorm_fields = update_params.except(:thread_id, :account_id, :name)

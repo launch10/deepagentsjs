@@ -18,9 +18,9 @@ class Deploy
     end
 
     sidekiq_retries_exhausted do |msg, ex|
-      deploy_id = msg['args'].first
-      Rails.logger.error "Failed to rollback deploy #{deploy_id} after #{msg['retry_count']} retries: #{ex.message}"
-      
+      deploy_id = msg["args"].first
+      Rails.logger.error "Failed to rollback deploy #{deploy_id} after #{msg["retry_count"]} retries: #{ex.message}"
+
       # Alert on rollback failures since they're critical
       deploy = Deploy.find_by(id: deploy_id)
       if deploy
@@ -31,18 +31,18 @@ class Deploy
 
     def perform(deploy_id)
       deploy = Deploy.find(deploy_id)
-      
+
       Rails.logger.info "Starting async rollback for deploy #{deploy_id}, website #{deploy.website_id}"
-      
+
       result = deploy.actually_rollback
-      
+
       if result
         Rails.logger.info "Successfully rolled back deploy #{deploy_id}"
       else
         Rails.logger.error "Failed to rollback deploy #{deploy_id}"
         raise StandardError, "Rollback failed for deploy #{deploy_id}"
       end
-      
+
       result
     rescue ActiveRecord::RecordNotFound => e
       Rails.logger.error "Deploy #{deploy_id} not found for rollback: #{e.message}"

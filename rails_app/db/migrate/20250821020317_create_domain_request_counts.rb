@@ -1,7 +1,7 @@
 class CreateDomainRequestCounts < ActiveRecord::Migration[8.0]
   def up
-    safety_assured do 
-      unless table_exists?(:domain_request_counts) 
+    safety_assured do
+      unless table_exists?(:domain_request_counts)
         execute <<-SQL
           CREATE TABLE domain_request_counts (
               id BIGSERIAL NOT NULL,
@@ -13,8 +13,8 @@ class CreateDomainRequestCounts < ActiveRecord::Migration[8.0]
               created_at TIMESTAMPTZ NOT NULL,
             PRIMARY KEY (id, hour)
         ) PARTITION BY RANGE (month);
-      SQL
-    end
+        SQL
+      end
 
       # Note: This index is created on the parent and automatically propagated to all partitions.
       execute <<-SQL

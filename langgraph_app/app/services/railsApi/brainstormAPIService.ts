@@ -13,26 +13,26 @@ export type CreateBrainstormResponse = NonNullable<
 >["application/json"];
 
 export type UpdateBrainstormRequest = NonNullable<
-  paths["/brainstorms/{id}"]["patch"]["requestBody"]
+  paths["/brainstorms/{thread_id}"]["patch"]["requestBody"]
 >["content"]["application/json"];
 
 export type UpdateBrainstormResponse = NonNullable<
-  paths["/brainstorms/{id}"]["patch"]["responses"][200]["content"]
+  paths["/brainstorms/{thread_id}"]["patch"]["responses"][200]["content"]
 >["application/json"];
 
 export type GetBrainstormResponse = NonNullable<
-  paths["/brainstorms/{id}"]["get"]["responses"][200]["content"]
+  paths["/brainstorms/{thread_id}"]["get"]["responses"][200]["content"]
 >["application/json"];
 
 export interface Brainstorm {
   id: number;
-  website_id: number;
-  project_id: number;
-  name: string;
+  website_id?: number | undefined;
+  project_id?: number | undefined;
+  name?: string | undefined;
   thread_id: string;
   account_id: number;
-  created_at: string;
-  updated_at: string;
+  created_at?: string | undefined;
+  updated_at?: string | undefined;
 };
 
 export interface BrainstormServiceOptions {
@@ -71,20 +71,24 @@ export class BrainstormAPIService {
       throw new Error(`Failed to create brainstorm: ${JSON.stringify(response.error)}`);
     }
 
-    return response.data as Brainstorm;
+    if (!response.data) {
+      throw new Error(`Failed to create brainstorm: ${JSON.stringify(response.error)}`);
+    }
+
+    return response.data satisfies Brainstorm;
   }
 
   /**
-   * Retrieves a brainstorm by ID
-   * @param id - The brainstorm ID
+   * Retrieves a brainstorm by thread ID
+   * @param threadId - The LangGraph thread ID
    * @returns The brainstorm
    */
-  async get(id: number): Promise<Brainstorm> {
+  async get(threadId: ThreadIDType): Promise<Brainstorm> {
     const client = createRailsApiClient({ jwtToken: this.jwtToken });
 
-    const response = await client.GET("/brainstorms/{id}", {
+    const response = await client.GET("/brainstorms/{thread_id}", {
       params: {
-        path: { id },
+        path: { thread_id: threadId },
       },
     });
 
@@ -92,24 +96,28 @@ export class BrainstormAPIService {
       throw new Error(`Failed to get brainstorm: ${JSON.stringify(response.error)}`);
     }
 
-    return response.data as Brainstorm;
+    if (!response.data) {
+      throw new Error(`Failed to get brainstorm: ${JSON.stringify(response.error)}`);
+    }
+
+    return response.data satisfies Brainstorm;
   }
 
   /**
    * Updates a brainstorm
-   * @param id - The brainstorm ID
+   * @param threadId - The LangGraph thread ID
    * @param updates - The fields to update
    * @returns The updated brainstorm
    */
   async update(
-    id: number,
+    threadId: ThreadIDType,
     updates: UpdateBrainstormRequest["brainstorm"]
   ): Promise<Brainstorm> {
     const client = createRailsApiClient({ jwtToken: this.jwtToken });
 
-    const response = await client.PATCH("/brainstorms/{id}", {
+    const response = await client.PATCH("/brainstorms/{thread_id}", {
       params: {
-        path: { id },
+        path: { thread_id: threadId },
       },
       body: {
         brainstorm: updates,
@@ -120,6 +128,10 @@ export class BrainstormAPIService {
       throw new Error(`Failed to update brainstorm: ${JSON.stringify(response.error)}`);
     }
 
-    return response.data as Brainstorm;
+    if (!response.data) {
+      throw new Error(`Failed to update brainstorm: ${JSON.stringify(response.error)}`);
+    }
+
+    return response.data satisfies Brainstorm;
   }
 }

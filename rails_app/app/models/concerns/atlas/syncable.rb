@@ -18,25 +18,25 @@ module Atlas
 
     def enqueue_sync_to_atlas_on_create
       return unless atlas_sync_enabled?
-      
-      Atlas::SyncWorker.perform_async(self.class.name, id, 'sync_to_atlas_on_create')
+
+      Atlas::SyncWorker.perform_async(self.class.name, id, "sync_to_atlas_on_create")
     end
 
     def enqueue_sync_to_atlas_on_update
       return unless atlas_sync_enabled?
-      
-      Atlas::SyncWorker.perform_async(self.class.name, id, 'sync_to_atlas_on_update')
+
+      Atlas::SyncWorker.perform_async(self.class.name, id, "sync_to_atlas_on_update")
     end
 
     def enqueue_sync_to_atlas_on_destroy
       return unless atlas_sync_enabled?
-      
-      Atlas::SyncWorker.perform_async(self.class.name, id, 'sync_to_atlas_on_destroy')
+
+      Atlas::SyncWorker.perform_async(self.class.name, id, "sync_to_atlas_on_destroy")
     end
 
     def sync_to_atlas_on_create
       return unless atlas_sync_enabled?
-      
+
       atlas_service.create(**atlas_data_for_create.merge!(id: atlas_identifier))
     rescue Atlas::BaseService::Error => e
       Rails.logger.error "[Atlas] Failed to sync #{self.class.name} ##{id} on create: #{e.message}"
@@ -44,7 +44,7 @@ module Atlas
 
     def sync_to_atlas_on_update
       return unless atlas_sync_enabled?
-      
+
       atlas_service.update(atlas_identifier, **atlas_data_for_update.merge!(id: atlas_identifier))
     rescue Atlas::BaseService::Error => e
       Rails.logger.error "[Atlas] Failed to sync #{self.class.name} ##{id} on update: #{e.message}"
@@ -52,7 +52,7 @@ module Atlas
 
     def sync_to_atlas_on_destroy
       return unless atlas_sync_enabled?
-      
+
       atlas_service.destroy(atlas_identifier)
     rescue Atlas::BaseService::NotFoundError => e
       Rails.logger.warn "[Atlas] #{self.class.name} ##{id} not found in Atlas, may have been already deleted: #{e.message}"
@@ -62,7 +62,7 @@ module Atlas
 
     def atlas_sync_enabled?
       Rails.application.credentials.dig(:atlas, :api_secret).present? ||
-        ENV['ATLAS_API_SECRET'].present?
+        ENV["ATLAS_API_SECRET"].present?
     end
 
     def sync_to_atlas_required?

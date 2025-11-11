@@ -15,9 +15,9 @@
 
 class ThemeToThemeLabel < ApplicationRecord
   self.table_name = "themes_to_theme_labels"
-  
+
   belongs_to :theme
   belongs_to :theme_label
-  
-  validates :theme_id, uniqueness: { scope: :theme_label_id }
+
+  validates :theme_id, uniqueness: {scope: :theme_label_id}
 end
