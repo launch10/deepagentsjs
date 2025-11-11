@@ -75,16 +75,8 @@ class ProjectsController < SubscribedController
   end
 
   def files
-    template_files = Template.find_by(name: "default").files
-    template_files_by_key = template_files.index_by(&:path)
-    project_files = current_project&.files || []
-    project_files_by_key = project_files.index_by(&:path)
-
-    files = (project_files_by_key.keys + template_files_by_key.keys).uniq.map do |path|
-      project_files_by_key[path] || template_files_by_key[path]
-    end
-
-    render json: files.map(&:to_mini_json)
+    files = current_project&.website&.code_files&.map(&:to_mini_json) || []
+    render json: files
   end
 
 private

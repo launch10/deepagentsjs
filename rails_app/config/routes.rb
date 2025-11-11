@@ -11,6 +11,9 @@ LOCAL_ENV_ONLY = lambda do |request|
 end
 
 Rails.application.routes.draw do
+  mount Rswag::Ui::Engine => '/api-docs'
+  mount Rswag::Api::Engine => '/api-docs'
+
   constraints ADMIN_ONLY do
     mount Sidekiq::Web => "/sidekiq"
     mount Zhong::Web => "/zhong"
@@ -69,5 +72,5 @@ Rails.application.routes.draw do
 
   resources :templates
   resources :themes, only: [:index]
-  resources :websites, only: [:create, :update]
+  resources :websites, only: [:show, :create, :update]
 end

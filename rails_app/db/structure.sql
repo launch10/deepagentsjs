@@ -550,6 +550,43 @@ ALTER SEQUENCE public.brainstorms_id_seq OWNED BY public.brainstorms.id;
 
 
 --
+-- Name: chats; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chats (
+    id bigint NOT NULL,
+    name character varying,
+    type character varying NOT NULL,
+    thread_id character varying NOT NULL,
+    project_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    contextable_type character varying,
+    contextable_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: chats_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.chats_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: chats_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.chats_id_seq OWNED BY public.chats.id;
+
+
+--
 -- Name: checkpoint_blobs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2514,6 +2551,13 @@ ALTER TABLE ONLY public.brainstorms ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: chats id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chats ALTER COLUMN id SET DEFAULT nextval('public.chats_id_seq'::regclass);
+
+
+--
 -- Name: cloudflare_firewall_rules id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2949,6 +2993,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 ALTER TABLE ONLY public.brainstorms
     ADD CONSTRAINT brainstorms_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chats chats_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chats
+    ADD CONSTRAINT chats_pkey PRIMARY KEY (id);
 
 
 --
@@ -3767,6 +3819,41 @@ CREATE INDEX index_brainstorms_on_created_at ON public.brainstorms USING btree (
 --
 
 CREATE INDEX index_brainstorms_on_website_id ON public.brainstorms USING btree (website_id);
+
+
+--
+-- Name: index_chats_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_chats_on_account_id ON public.chats USING btree (account_id);
+
+
+--
+-- Name: index_chats_on_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_chats_on_project_id ON public.chats USING btree (project_id);
+
+
+--
+-- Name: index_chats_on_thread_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_chats_on_thread_id ON public.chats USING btree (thread_id);
+
+
+--
+-- Name: index_chats_on_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_chats_on_type ON public.chats USING btree (type);
+
+
+--
+-- Name: index_chats_on_type_and_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_chats_on_type_and_project_id ON public.chats USING btree (type, project_id);
 
 
 --
@@ -5515,6 +5602,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251111174656'),
 ('20251106161828'),
 ('20251026083206'),
 ('20250928143302'),
