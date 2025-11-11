@@ -11,27 +11,21 @@ export const createBrainstorm = NodeMiddleware.use({}, async (
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> => {
     // No need to create a new brainstorm
-    console.log(`do we have a websiteID?`, state.websiteId)
     if (state.websiteId) {
       return state;
     }
 
-    console.log(`let's go ahead`)
     if (!state.threadId) {
       throw new Error("Thread ID is required");
     }
 
-    console.log(`let's go ahead`)
     if (!state.jwt) {
       throw new Error("JWT token is required for API authentication");
     }
 
-    console.log(`let's create a brainstorm!`)
     const apiService = new BrainstormAPIService({ jwtToken: state.jwt });
     const brainstorm = await apiService.create(state.threadId);
 
-    console.log(`i returned!`)
-    console.log(brainstorm)
     return { 
       brainstormId: brainstorm.id,
       websiteId: brainstorm.website_id,

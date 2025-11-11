@@ -66,7 +66,6 @@ export class BrainstormAPIService {
         },
       },
     });
-    console.log(response)
 
     if (response.error) {
       throw new Error(`Failed to create brainstorm: ${JSON.stringify(response.error)}`);

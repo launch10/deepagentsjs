@@ -17,27 +17,36 @@ export const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphR
     type SaveAnswersInput = z.infer<typeof saveAnswersInputSchema>;
 
     async function saveAnswers(args?: SaveAnswersInput): Promise<{ success: boolean }> {
-        const updates: Partial<Brainstorm.Memories> = args?.answers?.reduce((acc, { topic, answer }) => {
-            if (!topic || !answer) {
+        try {
+            const updates: Partial<Brainstorm.Memories> = args?.answers?.reduce((acc, { topic, answer }) => {
+                if (!topic || !answer) {
+                    return acc;
+                }
+                acc[topic] = answer;
                 return acc;
-            }
-            acc[topic] = answer;
-            return acc;
-        }, {} as Record<Brainstorm.Topic, string>) || {}
-        const insert = withTimestamps(updates);
-        const update = withUpdatedAt(updates);
+            }, {} as Record<Brainstorm.Topic, string>) || {}
 
-        const results = await db.insert(brainstormsTable).values({
-            ...insert,
-            websiteId: state.websiteId,
-        }).onConflictDoUpdate({
-          target: [brainstormsTable.websiteId],
-          set: {
-            ...update,
-          }
-        }).returning();
+            const insert = withTimestamps(updates);
+            const update = withUpdatedAt(updates);
 
-        return { success: !!results.length };
+            const results = await db.insert(brainstormsTable).values({
+                ...insert,
+                websiteId: state.websiteId,
+            }).onConflictDoUpdate({
+              target: [brainstormsTable.websiteId],
+              set: {
+                ...update,
+              }
+            }).returning();
+
+            return { success: !!results.length };
+        } catch (error) {
+            console.error('=== ERROR IN SAVE ANSWERS ===');
+            console.error('Error:', error);
+            console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+            console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+            throw error;
+        }
     }
 
     return tool(saveAnswers, {

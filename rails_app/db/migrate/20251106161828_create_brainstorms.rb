@@ -11,7 +11,7 @@ class CreateBrainstorms < ActiveRecord::Migration[8.0]
 
       t.timestamps
 
-      t.index :website_id
+      t.index :website_id, unique: true
       t.index :completed_at
       t.index :created_at
     end

@@ -17,7 +17,7 @@
 #
 #  index_brainstorms_on_completed_at  (completed_at)
 #  index_brainstorms_on_created_at    (created_at)
-#  index_brainstorms_on_website_id    (website_id)
+#  index_brainstorms_on_website_id    (website_id) UNIQUE
 #
 
 class Brainstorm < ApplicationRecord

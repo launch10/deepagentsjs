@@ -3818,7 +3818,7 @@ CREATE INDEX index_brainstorms_on_created_at ON public.brainstorms USING btree (
 -- Name: index_brainstorms_on_website_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_brainstorms_on_website_id ON public.brainstorms USING btree (website_id);
+CREATE UNIQUE INDEX index_brainstorms_on_website_id ON public.brainstorms USING btree (website_id);
 
 
 --
