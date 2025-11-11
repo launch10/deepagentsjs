@@ -12,6 +12,7 @@ export * from "./errors";
 export { 
   componentTypeSchema,
   componentSchema,
+  componentContentPlanSchema,
   componentOverviewSchema,
   componentOverviewPromptSchema,
   themeVariantSchema,

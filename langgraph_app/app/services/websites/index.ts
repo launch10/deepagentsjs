@@ -6,7 +6,6 @@ export * from "./searchIconsService";
 export * from "./createComponentService";
 export * from "./createStylesService";
 export * from "./createFilesAndTasksService";
-export * from "./saveTaskHistoryService";
 export * from "./assemblePageService";
 export * from "./buildTasksService";
 export * from "./notifyStartService";

@@ -83,6 +83,7 @@ export type CompletedCodeTask = import("./task").CodeTaskType & {
 export { 
   getComponentPlanSchema,
   getComponentTheme,
+  componentContentPlanSchema,
   componentSchema,
   projectSchema,
   themeSchema,
