@@ -6,5 +6,5 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo "🔄 Generating TypeScript types for Rails API..."
-cd rails_app
+cd langgraph_app
 pnpm run api:generate
