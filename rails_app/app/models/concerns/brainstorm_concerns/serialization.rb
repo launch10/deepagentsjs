@@ -5,7 +5,7 @@ module BrainstormConcerns
     def to_mini_json
       project = website.project
       {
-        id: project.id,
+        id: id,
         website_id: website_id,
         name: name,
         thread_id: thread_id,
