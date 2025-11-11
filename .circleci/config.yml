@@ -19,6 +19,7 @@ commands:
             cd ~/project/rails_app
             RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rake db:create db:schema:load
           environment:
+            LANGGRAPH_API_URL: http://localhost:8080
             RAILS_ENV: test
             DATABASE_URL: postgres://postgres:postgres@localhost:5432/nichefinder_test
 
@@ -147,6 +148,7 @@ jobs:
           name: Run RSpec tests
           command: RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rspec
           environment:
+            LANGGRAPH_API_URL: http://localhost:8080
             DATABASE_URL: postgres://postgres:postgres@localhost:5432/nichefinder_test
             RAILS_ENV: test
             CI: true
