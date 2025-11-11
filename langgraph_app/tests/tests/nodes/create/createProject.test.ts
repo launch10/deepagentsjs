@@ -1,14 +1,14 @@
 // import { describe, it, expect, beforeAll } from 'vitest';
 // import { testGraph } from '@support';
 // import { lastAIMessage } from '@annotation';
-// import { databaseSnapshotter } from '@services';
+// import { DatabaseSnapshotter } from '@services';
 // import { routerGraph } from '@graphs';
 // import { startPolly } from '@utils';
 
 // // TODO: Switch to brainstorming flow!!!
 // describe.sequential('CreateProject Node with Mocked API', () => {
 //     beforeAll(async () => {
-//         await databaseSnapshotter.restoreSnapshot("basic_account");
+//         await DatabaseSnapshotter.restoreSnapshot("basic_account");
 //     })
 
 //     describe("When Rails API responds successfully", () => {

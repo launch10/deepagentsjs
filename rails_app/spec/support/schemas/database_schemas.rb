@@ -60,9 +60,9 @@ module ApiSchemas
         type: :object,
         properties: {
           status: {type: :string, example: 'error'},
-          message: {type: :string, example: 'Failed to perform operation: error details'}
+          errors: {type: :array, items: {type: :string, example: 'Failed to perform operation: error details'}}
         },
-        required: ['status', 'message']
+        required: ['status', 'errors']
       }
     end
   end

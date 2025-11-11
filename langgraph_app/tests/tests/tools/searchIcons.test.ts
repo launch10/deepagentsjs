@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
 import { initWebsiteTools } from 'app/tools/website';
 import { SearchIconsService } from '@services';
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { startPolly, stopPolly } from '@utils';
 import { db } from 'app/db';
 import { iconEmbeddings, iconQueryCaches } from '@db';
@@ -16,7 +16,7 @@ describe('searchIcons Tool', () => {
     beforeAll(async () => {
         // Try to restore snapshot, but continue if Rails API is not available
         try {
-            await databaseSnapshotter.restoreSnapshot('basic_account', true);
+            await DatabaseSnapshotter.restoreSnapshot('basic_account', true);
         } catch (error) {
             console.warn('Could not restore database snapshot (Rails API may not be running):', error.message);
         }

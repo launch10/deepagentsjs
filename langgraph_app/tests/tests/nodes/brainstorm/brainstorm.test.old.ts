@@ -1,7 +1,7 @@
 // import { describe, it, expect, beforeAll } from 'vitest';
 // import { testGraph } from '@support';
 // import { type BrainstormGraphState } from '@state';
-// import { databaseSnapshotter } from '@services';
+// import { DatabaseSnapshotter } from '@services';
 // import { brainstormGraph } from '@graphs';
 // import { HumanMessage } from '@langchain/core/messages';
 // import { 
@@ -38,7 +38,7 @@
 // //
 // describe.sequential('Brainstorming Flow', () => {
 //     beforeAll(async () => {
-//         await databaseSnapshotter.restoreSnapshot("basic_account");
+//         await DatabaseSnapshotter.restoreSnapshot("basic_account");
 //     })
 
 //     // TODO:

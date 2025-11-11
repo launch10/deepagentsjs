@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { testGraph } from '@support';
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { ContentStrategyModel } from '@models';
 import { routerGraph } from '@graphs';
 import { type WebsiteGraphState } from '@state';
 
 describe.sequential('PlanWebsite Node', async () => {
     beforeAll(async () => {
-        await databaseSnapshotter.restoreSnapshot("basic_account");
+        await DatabaseSnapshotter.restoreSnapshot("basic_account");
     });
 
     describe("When Rails API responds successfully", async () => {

@@ -25,6 +25,20 @@ RSpec.describe "Test Database API", type: :request do
           expect(data['message']).to eq('Database truncated')
         end
       end
+
+      response '500', 'internal server error' do
+        schema ApiSchemas::Database.error_response
+
+        before do
+          allow_any_instance_of(Database::Snapshotter).to receive(:truncate).and_raise(StandardError.new("Something went wrong"))
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['status']).to eq('error')
+          expect(data['errors'].first).to include('Failed to truncate database')
+        end
+      end
     end
   end
 
@@ -140,7 +154,7 @@ RSpec.describe "Test Database API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['status']).to eq('error')
-          expect(data['message']).to include('Failed to restore snapshot')
+          expect(data['errors'].first).to include('Failed to restore snapshot')
         end
       end
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { testGraph } from '@support';
 import { routerGraph } from '@graphs';
 import { isString } from '@types';
@@ -9,7 +9,7 @@ import { xmlTest } from '@tests/support/matchers/xml';
 describe.sequential('createComponentPrompt', async () => {
   beforeEach(async () => {
     vi.resetModules();
-    await databaseSnapshotter.restoreSnapshot('basic_account');
+    await DatabaseSnapshotter.restoreSnapshot('basic_account');
   })
   
   afterEach(() => {

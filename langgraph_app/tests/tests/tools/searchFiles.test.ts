@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { initWebsiteTools } from 'app/tools/website';
 import type { WebsiteGraphState} from '@state';
 import type { WebsiteType } from '@types';
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { CodeFileModel } from '@models';
 
 describe('searchFiles Tool', () => {
@@ -11,7 +11,7 @@ describe('searchFiles Tool', () => {
     
     beforeAll(async () => {
         // Restore database snapshot with test data
-        await databaseSnapshotter.restoreSnapshot('space_exploration', true);
+        await DatabaseSnapshotter.restoreSnapshot('space_exploration', true);
         
         // For testing, we'll use website ID 1 (should exist in the snapshot)
         websiteId = 2;
@@ -30,7 +30,7 @@ describe('searchFiles Tool', () => {
 
     afterAll(async () => {
         // Clean up database after tests
-        await databaseSnapshotter.truncate();
+        await DatabaseSnapshotter.truncate();
     });
 
     describe('Single Search Queries', () => {

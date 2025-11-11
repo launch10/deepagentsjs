@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { ErrorExporter } from "@services";
 import { existsSync, readFileSync, writeFileSync, statSync, readdirSync, unlinkSync } from "fs";
 import { join } from "path";
@@ -80,7 +80,7 @@ export class ScenarioRunner {
     }
 
     if (this.snapshot) {
-      await databaseSnapshotter.restoreSnapshot(this.snapshot);
+      await DatabaseSnapshotter.restoreSnapshot(this.snapshot);
     }
 
     this.log(`restoring snapshot: ${this.snapshot}`);

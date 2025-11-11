@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { testGraph } from '@support';
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { routerGraph } from '@graphs';
 import { WebsiteModel } from '@models';
 
 describe.sequential('PickTheme Node', () => {
     beforeAll(async () => {
         vi.resetModules();
-        await databaseSnapshotter.restoreSnapshot("basic_account");
+        await DatabaseSnapshotter.restoreSnapshot("basic_account");
     });
 
     it('should pick a theme', async () => {

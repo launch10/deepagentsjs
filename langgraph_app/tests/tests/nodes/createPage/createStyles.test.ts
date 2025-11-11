@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { testGraph } from '@support';
 import { CodeTaskModel, FileSpecificationModel, WebsiteFileModel }  from '@models';
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { routerGraph } from '@graphs';
 
 describe.sequential('CreateStyles Node', () => {
     beforeAll(async () => { 
-        await databaseSnapshotter.restoreSnapshot("basic_account");
+        await DatabaseSnapshotter.restoreSnapshot("basic_account");
     });
 
     it('should create style files', async () => {

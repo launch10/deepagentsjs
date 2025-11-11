@@ -2,14 +2,14 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { initWebsiteTools } from 'app/tools/website';
 import type { WebsiteGraphState} from '@state';
 import type { WebsiteType } from '@types';
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 
 describe('listFiles Tool', () => {
     let listFilesTool: any;
     let websiteId: number;
     
     beforeAll(async () => {
-        await databaseSnapshotter.restoreSnapshot('space_exploration', true);
+        await DatabaseSnapshotter.restoreSnapshot('space_exploration', true);
 
         // For testing, we'll use website ID 1
         websiteId = 2;
@@ -27,7 +27,7 @@ describe('listFiles Tool', () => {
     });
 
     afterAll(async () => {
-        await databaseSnapshotter.truncate();
+        await DatabaseSnapshotter.truncate();
     });
 
     describe('Basic Pattern Matching', () => {

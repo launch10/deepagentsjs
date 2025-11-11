@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { testGraph, xmlTest } from '@support';
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { routerGraph } from '@graphs';
 import { detect } from "@utils"
 import { schemaRegistry, isString } from '@types';
@@ -9,7 +9,7 @@ import { StructuredOutputParser } from "@langchain/core/output_parsers";
 describe.sequential('planComponentPrompt', () => {
   beforeEach(async () => {
     vi.resetModules();
-    await databaseSnapshotter.restoreSnapshot('basic_account');
+    await DatabaseSnapshotter.restoreSnapshot('basic_account');
   })
   
   afterEach(() => {

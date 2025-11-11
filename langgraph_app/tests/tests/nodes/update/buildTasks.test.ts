@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { testGraph } from '@support';
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { routerGraph } from '@graphs';
 import { env } from '@core';
 
@@ -8,17 +8,17 @@ describe('BuildTasksNode', () => {
   beforeAll(async () => { 
     if (env.REBUILD_SNAPSHOTS === 'true') {
       console.log("Rebuilding snapshots");
-      await databaseSnapshotter.restoreSnapshot("basic_account");
+      await DatabaseSnapshotter.restoreSnapshot("basic_account");
 
       const result = await testGraph()
           .withGraph(routerGraph)
           .withPrompt(`Create a website about space exploration`)
           .execute();
 
-      await databaseSnapshotter.createSnapshot("space_exploration");
+      await DatabaseSnapshotter.createSnapshot("space_exploration");
     } else {
       console.log(`Not rebuilding snapshots`)
-      await databaseSnapshotter.restoreSnapshot("space_exploration")
+      await DatabaseSnapshotter.restoreSnapshot("space_exploration")
     }
   });
 

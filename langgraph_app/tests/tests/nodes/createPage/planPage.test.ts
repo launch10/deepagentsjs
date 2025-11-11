@@ -2,12 +2,12 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { testGraph } from '@support';
 import { PageTypeEnum } from '@types';
 import { PageModel, CodeTaskModel, ComponentOverviewModel } from '@models';
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { routerGraph } from '@graphs';
 
 describe.sequential('PlanPageNode', () => {
     beforeAll(async () => { 
-        await databaseSnapshotter.restoreSnapshot("basic_account");
+        await DatabaseSnapshotter.restoreSnapshot("basic_account");
     });
 
     it('should plan page', async () => {

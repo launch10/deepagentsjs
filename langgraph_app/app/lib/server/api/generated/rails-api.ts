@@ -309,6 +309,19 @@ export interface paths {
                         };
                     };
                 };
+                /** @description internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            errors: string[];
+                        };
+                    };
+                };
             };
         };
         delete?: never;
@@ -402,8 +415,7 @@ export interface paths {
                         "application/json": {
                             /** @example error */
                             status: string;
-                            /** @example Failed to perform operation: error details */
-                            message: string;
+                            errors: string[];
                         };
                     };
                 };
@@ -474,8 +486,7 @@ export interface paths {
                         "application/json": {
                             /** @example error */
                             status: string;
-                            /** @example Failed to perform operation: error details */
-                            message: string;
+                            errors: string[];
                         };
                     };
                 };

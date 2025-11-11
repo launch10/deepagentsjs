@@ -2,7 +2,7 @@ import { evalite } from 'evalite';
 import { HumanMessage } from '@langchain/core/messages';
 import { testGraph } from '@support';
 import { routerGraph } from '@graphs';
-import { databaseSnapshotter, SearchThemesService, type PickThemeOutputType, type PickThemeProps } from '@services'
+import { DatabaseSnapshotter, SearchThemesService, type PickThemeOutputType, type PickThemeProps } from '@services'
 import { vi } from 'vitest';
 
 evalite('PickThemeService', {
@@ -16,7 +16,7 @@ evalite('PickThemeService', {
   task: async (input: PickThemeProps) => {
     vi.resetModules();
 
-    await databaseSnapshotter.restoreSnapshot('basic_account');
+    await DatabaseSnapshotter.restoreSnapshot('basic_account');
     
     const result = await testGraph()
         .withGraph(routerGraph)

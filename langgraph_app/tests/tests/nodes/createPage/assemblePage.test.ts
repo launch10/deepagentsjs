@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { testGraph } from '@support';
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { routerGraph } from '@graphs';
 import { FileSpecificationModel, CodeTaskModel, WebsiteFileModel } from '@models';
 import { expectCodeMatch } from '@support';
 
 describe.sequential('PlanPageNode', () => {
     beforeAll(async () => { 
-      await databaseSnapshotter.restoreSnapshot("basic_account");
+      await DatabaseSnapshotter.restoreSnapshot("basic_account");
     });
 
     it('should assemble completed page', async () => {

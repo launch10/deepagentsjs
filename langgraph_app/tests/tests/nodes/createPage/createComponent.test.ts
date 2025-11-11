@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { testGraph } from '@support';
-import { databaseSnapshotter } from '@utils';
+import { DatabaseSnapshotter } from '@utils';
 import { CodeTaskModel, ComponentModel, ComponentContentPlanModel, ComponentOverviewModel, WebsiteFileModel } from '@models';
 
 describe.sequential('CreateComponentNode', () => {
     beforeAll(async () => { 
-        await databaseSnapshotter.restoreSnapshot("basic_account");
+        await DatabaseSnapshotter.restoreSnapshot("basic_account");
     });
 
     it('creates planned component', async () => {
