@@ -6,6 +6,10 @@ RSpec.describe "Test Database API", type: :request do
     allow(Rails.env).to receive(:local?).and_return(true)
   end
 
+  after(:all) do
+    Database::Snapshotter.new.delete_test_snapshots
+  end
+
   path '/test/database/truncate' do
     post 'Truncates the database' do
       tags 'Test Database'

@@ -15,7 +15,16 @@ module ApiSchemas
           account_id: ApiSchemas.id_field,
           **ApiSchemas.timestamps
         },
-        required: ['id', 'thread_id', 'account_id']
+        required: [
+          'id', 
+          'thread_id', 
+          'account_id',
+          'website_id',
+          'project_id',
+          'name',
+          'created_at',
+          'updated_at'
+        ]
       }
     end
 

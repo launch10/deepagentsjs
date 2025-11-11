@@ -34,4 +34,8 @@ class Brainstorm < ApplicationRecord
   def name
     chat.name
   end
+
+  def project_id
+    project.id
+  end
 end

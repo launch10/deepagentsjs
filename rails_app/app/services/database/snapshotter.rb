@@ -120,6 +120,12 @@ module Database
       DatabaseCleaner.clean_with(:truncation)
     end
 
+    def delete_test_snapshots
+      Test::DatabaseController::SNAPSHOT_DIR.glob("test_snapshot_*.sql").each do |file|
+        file.delete if file.exist?
+      end
+    end
+
     private
 
     def ensure_partitions_exist(snapshot_path)
