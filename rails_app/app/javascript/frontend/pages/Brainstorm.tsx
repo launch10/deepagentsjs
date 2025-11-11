@@ -14,7 +14,7 @@ type BrainstormProps = {
 
 export function getUrlThreadId() {
     const path = window.location.href;
-    const match = path.match(/\/projects\/([^/]+)/);
+    const match = path.match(/brainstorms\/(.*)/)
     if (match && match[1]) {
         return match[1];
     }
@@ -25,7 +25,7 @@ export default function Brainstorm(props: BrainstormProps) {
     const pageProps = usePage<BrainstormProps>();
     // Access shared props from Inertia
     let { thread_id, jwt, root_path, langgraph_path } = pageProps.props;
-    const urlThreadId = getUrlThreadId();
+    const urlThreadId = useRef(getUrlThreadId());
 
     useEffect(() => {
         if (!jwt || !root_path || !langgraph_path) {
@@ -44,15 +44,16 @@ export default function Brainstorm(props: BrainstormProps) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${jwt}`,
             },
-            getInitialThreadId: () => urlThreadId,
+            getInitialThreadId: () => urlThreadId.current,
         });
 
     useEffect(() => {
-        if (!urlThreadId || (urlThreadId === threadId)) return;
+        if (urlThreadId.current === threadId) return;
 
         if (threadId && typeof window !== 'undefined') {
             const url = new URL(window.location.href);
-            url.searchParams.set('threadId', threadId);
+            url.pathname = `/brainstorms/${threadId}`;
+            url.search = ''; // Clear any existing query params if you want
             window.history.pushState({}, '', url.toString());
         }
     }, [threadId, urlThreadId]);

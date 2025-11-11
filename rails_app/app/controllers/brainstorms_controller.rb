@@ -1,13 +1,25 @@
 class BrainstormsController < SubscribedController
   def show
-    project = current_account.projects.find_by(id: params[:id])
-    brainstorm = project&.website&.brainstorm
+    chat = Chat.find_by(thread_id: params[:thread_id])
+    unless chat.chat_type === "brainstorm"
+      render json: { errors: ["Not found"] }, status: :not_found and return
+    end
+    brainstorm = chat.contextable
 
     unless brainstorm
       render json: { errors: ["Brainstorm not found"] }, status: :not_found and return
     end
 
-    render json: brainstorm.to_mini_json
+    respond_to do |format|
+      format.html do
+        render inertia: 'Brainstorm', props: {
+          brainstorm: brainstorm,
+        }, layout: "layouts/webcontainer"
+      end
+      format.json do
+        render json: brainstorm.to_mini_json
+      end
+    end
   end
 
   def create

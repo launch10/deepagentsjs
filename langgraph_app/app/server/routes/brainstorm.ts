@@ -39,9 +39,9 @@ brainstormRoutes.post('/stream', authMiddleware, async (c) => {
   });
 });
 
-brainstormRoutes.get('/history/:threadId', authMiddleware, async (c) => {
+brainstormRoutes.get('/stream', authMiddleware, async (c) => {
   const auth = c.get('auth') as AuthContext;
-  const threadId = c.req.param('threadId');
+  const threadId = c.req.query('threadId');
 
   if (!threadId) {
     return c.json({ error: 'Missing threadId' }, 400);
