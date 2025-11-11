@@ -134,6 +134,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: nichefinder_test
+          LANGGRAPH_API_URL: http://localhost:8080
       - image: cimg/redis:7.2
     working_directory: ~/project/rails_app
     steps:
