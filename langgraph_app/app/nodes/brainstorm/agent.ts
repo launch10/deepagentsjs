@@ -130,6 +130,13 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
 
     try {
       const prompt = await getPrompt(state, config)
+      console.log(`i am about to storm this brain!!!`)
+      console.log(`i am about to storm this brain!!!`)
+      console.log(`i am about to storm this brain!!!`)
+      console.log(`i am about to storm this brain!!!`)
+      console.log(`i am about to storm this brain!!!`)
+      console.log(`i am about to storm this brain!!!`)
+      console.log(`i am about to storm this brain!!!`)
 
       const tools = [SaveAnswersTool(state, config)];
 

@@ -11,6 +11,8 @@ export const uuidSchema = z.string()
 // Helper to generate UUIDs with proper typing
 export const generateUUID = (): UUIDType => uuidv4() as UUIDType;
 
+export type ThreadIDType = string & { readonly __brand: 'ThreadID' };
+
 export const primaryKeySchema = z.number();
 export type PrimaryKeyType = number;
 

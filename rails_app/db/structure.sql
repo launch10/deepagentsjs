@@ -556,7 +556,7 @@ ALTER SEQUENCE public.brainstorms_id_seq OWNED BY public.brainstorms.id;
 CREATE TABLE public.chats (
     id bigint NOT NULL,
     name character varying,
-    type character varying NOT NULL,
+    chat_type character varying NOT NULL,
     thread_id character varying NOT NULL,
     project_id bigint NOT NULL,
     account_id bigint NOT NULL,
@@ -3829,6 +3829,20 @@ CREATE INDEX index_chats_on_account_id ON public.chats USING btree (account_id);
 
 
 --
+-- Name: index_chats_on_chat_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_chats_on_chat_type ON public.chats USING btree (chat_type);
+
+
+--
+-- Name: index_chats_on_chat_type_and_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_chats_on_chat_type_and_project_id ON public.chats USING btree (chat_type, project_id);
+
+
+--
 -- Name: index_chats_on_project_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3840,20 +3854,6 @@ CREATE INDEX index_chats_on_project_id ON public.chats USING btree (project_id);
 --
 
 CREATE INDEX index_chats_on_thread_id ON public.chats USING btree (thread_id);
-
-
---
--- Name: index_chats_on_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_chats_on_type ON public.chats USING btree (type);
-
-
---
--- Name: index_chats_on_type_and_project_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_chats_on_type_and_project_id ON public.chats USING btree (type, project_id);
 
 
 --

@@ -31,7 +31,7 @@ module BrainstormConcerns
           # Create chat with type 'brainstorm'
           chat = Chat.create!(
             name: project.name,
-            type: "brainstorm",
+            chat_type: "brainstorm",
             thread_id: project.thread_id,
             project_id: project.id,
             account_id: project.account_id,

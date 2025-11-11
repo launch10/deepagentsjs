@@ -25,12 +25,16 @@ brainstormRoutes.post('/stream', authMiddleware, async (c) => {
     return c.json({ error: 'Missing required fields: messages, threadId' }, 400);
   }
 
-  return streamLanggraph<BrainstormLanggraphData>({ 
+  return await streamLanggraph<BrainstormLanggraphData>({ 
     graph: graph as any, // TODO: Fix
     messageSchema: Brainstorm.messageSchema,
     messages,
     threadId,
-    state,
+    state: {
+      threadId,
+      jwt: auth.jwtToken,
+      ...state,
+    },
   });
 });
 

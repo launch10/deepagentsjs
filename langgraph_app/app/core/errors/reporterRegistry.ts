@@ -3,7 +3,6 @@ type ReportingFn = (error: Error) => void;
 const preconfiguredReporters: Record<string, ReportingFn> = {
     console: (error) => console.error(error),
 }
-
 export class ReporterRegistry<TRegistered extends string = never> {
     reporters: Record<TRegistered, ReportingFn> = {} as Record<TRegistered, ReportingFn>;
 

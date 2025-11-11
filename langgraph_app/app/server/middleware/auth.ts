@@ -26,7 +26,6 @@ export const authMiddleware = async (c: Context, next: Next) => {
   try {
     const decoded = jwt.verify(token, env.JWT_SECRET) as AuthPayload;
     
-    console.log(decoded)
     c.set('auth', {
       accountId: Number(decoded.sub),
       jwtToken: token,

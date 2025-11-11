@@ -4,7 +4,7 @@
 #
 #  id               :integer          not null, primary key
 #  name             :string
-#  type             :string           not null
+#  chat_type        :string           not null
 #  thread_id        :string           not null
 #  project_id       :integer          not null
 #  account_id       :integer          not null
@@ -15,11 +15,11 @@
 #
 # Indexes
 #
-#  index_chats_on_account_id           (account_id)
-#  index_chats_on_project_id           (project_id)
-#  index_chats_on_thread_id            (thread_id)
-#  index_chats_on_type                 (type)
-#  index_chats_on_type_and_project_id  (type,project_id) UNIQUE
+#  index_chats_on_account_id                (account_id)
+#  index_chats_on_chat_type                 (chat_type)
+#  index_chats_on_chat_type_and_project_id  (chat_type,project_id) UNIQUE
+#  index_chats_on_project_id                (project_id)
+#  index_chats_on_thread_id                 (thread_id)
 #
 
 class Chat < ApplicationRecord
@@ -28,9 +28,9 @@ class Chat < ApplicationRecord
   belongs_to :project
   belongs_to :contextable, polymorphic: true
 
-  TYPES = %w(brainstorm website ads)
+  CHAT_TYPES = %w(brainstorm website ads)
 
-  validates :type, presence: true, inclusion: { in: TYPES }
+  validates :chat_type, presence: true, inclusion: { in: CHAT_TYPES }
   validates :thread_id, presence: true
   validates :project_id, presence: true
   validates :account_id, presence: true
