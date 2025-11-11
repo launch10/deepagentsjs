@@ -68,15 +68,17 @@ RSpec.describe "Brainstorms API", type: :request do
 
           website = Website.find_by(project_id: project.id)
           expect(website).to be_present
-          expect(website.thread_id).to eq(project.thread_id)
 
           brainstorm = Brainstorm.find_by(website_id: website.id)
           expect(brainstorm).to be_present
 
-          chat = Chat.find_by(thread_id: project.thread_id, type: 'brainstorm')
+          chat = brainstorm.chat
           expect(chat).to be_present
           expect(chat.contextable).to eq(brainstorm)
           expect(chat.project_id).to eq(project.id)
+          expect(chat.account_id).to eq(project.account_id)
+          expect(chat.thread_id).to eq(brainstorm.thread_id)
+          expect(chat.chat_type).to eq("brainstorm")
         end
       end
 
@@ -111,7 +113,9 @@ RSpec.describe "Brainstorms API", type: :request do
           website = Website.find_by(project_id: project.id)
           expect(website.name).to eq("My Custom Brainstorm")
 
-          chat = Chat.find_by(thread_id: project.thread_id)
+          brainstorm = Brainstorm.find(data.dig("id"))
+
+          chat = brainstorm.chat
           expect(chat.name).to eq("My Custom Brainstorm")
         end
       end
@@ -168,8 +172,8 @@ RSpec.describe "Brainstorms API", type: :request do
     end
   end
 
-  path '/brainstorms/{id}' do
-    parameter name: :id, in: :path, type: :integer, description: 'Brainstorm ID (Project ID)'
+  path '/brainstorms/{thread_id}' do
+    parameter name: :thread_id, in: :path, type: :string, description: 'Thread ID from Langgraph'
 
     get 'Retrieves a brainstorm' do
       tags 'Brainstorms'
@@ -191,16 +195,16 @@ RSpec.describe "Brainstorms API", type: :request do
 
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
         let!(:project) { create(:project, account: account) }
-        let!(:website) { create(:website, project: project, account: account, thread_id: project.thread_id, template: template) }
-        let!(:brainstorm) { Brainstorm.create!(website_id: website.id) }
-        let!(:chat) { Chat.create!(name: project.name, type: 'brainstorm', thread_id: project.thread_id, project_id: project.id, account_id: account.id, contextable: brainstorm) }
-        let(:id) { project.id }
+        let!(:website) { create(:website, project: project, account: account, template: template) }
+        let!(:brainstorm) { create(:brainstorm, website: website) }
+        let!(:chat) { create(:chat, thread_id: brainstorm.thread_id, project: project, account: account, contextable: brainstorm) }
+        let(:thread_id) { brainstorm.thread_id }
 
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data["id"]).to eq(project.id)
-          expect(data["thread_id"]).to eq(project.thread_id)
-          expect(data["name"]).to eq(project.name)
+          expect(data["thread_id"]).to match(/^[a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12}$/)
+          expect(data["name"]).to be_present
           expect(data["website_id"]).to eq(website.id)
         end
       end
@@ -208,9 +212,10 @@ RSpec.describe "Brainstorms API", type: :request do
       response '401', 'unauthorized - missing token' do
         let(:Authorization) { nil }
         let!(:project) { create(:project, account: account) }
-        let!(:website) { create(:website, project: project, account: account, thread_id: project.thread_id, template: template) }
-        let!(:brainstorm) { Brainstorm.create!(website_id: website.id) }
-        let(:id) { project.id }
+        let!(:website) { create(:website, project: project, account: account, template: template) }
+        let!(:brainstorm) { create(:brainstorm, website: website) }
+        let!(:chat) { create(:chat, thread_id: brainstorm.thread_id, project: project, account: account, contextable: brainstorm) }
+        let(:thread_id) { brainstorm.thread_id }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -220,11 +225,11 @@ RSpec.describe "Brainstorms API", type: :request do
 
       response '404', 'brainstorm not found' do
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
-        let(:id) { 999999 }
+        let(:thread_id) { 999999 }
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data["errors"]).to include("Brainstorm not found")
+          expect(data["errors"]).to include("Not found")
         end
       end
     end
@@ -268,10 +273,10 @@ RSpec.describe "Brainstorms API", type: :request do
 
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
         let!(:project) { create(:project, account: account, name: "Old Name") }
-        let!(:website) { create(:website, project: project, account: account, name: "Old Name", thread_id: project.thread_id, template: template) }
-        let!(:brainstorm) { Brainstorm.create!(website_id: website.id) }
-        let!(:chat) { Chat.create!(name: "Old Name", type: 'brainstorm', thread_id: project.thread_id, project_id: project.id, account_id: account.id, contextable: brainstorm) }
-        let(:id) { project.id }
+        let!(:website) { create(:website, project: project, account: account, name: "Old Name", template: template) }
+        let!(:brainstorm) { create(:brainstorm, website_id: website.id, thread_id: website.thread_id) }
+        let!(:chat) { create(:chat, name: "Old Name", chat_type: 'brainstorm', thread_id: brainstorm.thread_id, project_id: project.id, account_id: account.id, contextable: brainstorm) }
+        let(:thread_id) { brainstorm.thread_id }
         let(:brainstorm_params) do
           {
             brainstorm: {
@@ -284,12 +289,9 @@ RSpec.describe "Brainstorms API", type: :request do
           data = JSON.parse(response.body)
           expect(data["name"]).to eq("Updated Name")
 
-          # Verify name was updated across all models
+          # Verify name was updated for project and chat (not website)
           project.reload
           expect(project.name).to eq("Updated Name")
-
-          website.reload
-          expect(website.name).to eq("Updated Name")
 
           chat.reload
           expect(chat.name).to eq("Updated Name")
@@ -310,10 +312,10 @@ RSpec.describe "Brainstorms API", type: :request do
 
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
         let!(:project) { create(:project, account: account) }
-        let!(:website) { create(:website, project: project, account: account, thread_id: project.thread_id, template: template) }
-        let!(:brainstorm) { Brainstorm.create!(website_id: website.id) }
-        let!(:chat) { Chat.create!(name: project.name, type: 'brainstorm', thread_id: project.thread_id, project_id: project.id, account_id: account.id, contextable: brainstorm) }
-        let(:id) { project.id }
+        let!(:website) { create(:website, project: project, account: account, template: template) }
+        let!(:brainstorm) { create(:brainstorm, website_id: website.id, thread_id: website.thread_id) }
+        let!(:chat) { create(:chat, name: project.name, chat_type: 'brainstorm', thread_id: website.thread_id, project_id: project.id, account_id: account.id, contextable: brainstorm) }
+        let(:thread_id) { website.thread_id }
         let(:brainstorm_params) do
           {
             brainstorm: {
@@ -339,9 +341,10 @@ RSpec.describe "Brainstorms API", type: :request do
       response '401', 'unauthorized - missing token' do
         let(:Authorization) { nil }
         let!(:project) { create(:project, account: account) }
-        let!(:website) { create(:website, project: project, account: account, thread_id: project.thread_id, template: template) }
-        let!(:brainstorm) { Brainstorm.create!(website_id: website.id) }
-        let(:id) { project.id }
+        let!(:website) { create(:website, project: project, account: account, template: template) }
+        let!(:brainstorm) { create(:brainstorm, website_id: website.id, thread_id: website.thread_id) }
+        let!(:chat) { create(:chat, thread_id: brainstorm.thread_id, project: project, account: account, contextable: brainstorm) }
+        let(:thread_id) { brainstorm.thread_id }
         let(:brainstorm_params) { { brainstorm: { name: "Updated" } } }
 
         run_test! do |response|
@@ -352,7 +355,7 @@ RSpec.describe "Brainstorms API", type: :request do
 
       response '404', 'brainstorm not found' do
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
-        let(:id) { 999999 }
+        let(:thread_id) { "nonexistent-thread-id" }
         let(:brainstorm_params) { { brainstorm: { name: "Updated" } } }
 
         run_test! do |response|

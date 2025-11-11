@@ -1,13 +1,13 @@
 class BrainstormsController < SubscribedController
   def show
-    chat = Chat.find_by(thread_id: params[:thread_id])
-    unless chat.chat_type === "brainstorm"
-      render json: { errors: ["Not found"] }, status: :not_found and return
-    end
-    brainstorm = chat.contextable
+    brainstorm = Brainstorm.find_by(thread_id: params[:thread_id])
 
     unless brainstorm
-      render json: { errors: ["Brainstorm not found"] }, status: :not_found and return
+      render json: { errors: ["Not found"] }, status: :not_found and return
+    end
+
+    unless brainstorm
+      render json: { errors: ["Not found"] }, status: :not_found and return
     end
 
     respond_to do |format|
@@ -32,15 +32,22 @@ class BrainstormsController < SubscribedController
       values = Brainstorm.create_brainstorm!(current_account, brainstorm_params)
       brainstorm = values[:brainstorm]
     rescue => e
-      render json: { errors: e.record&.errors&.full_messages || [e.message] }, status: :unprocessable_entity and return
+      if e.respond_to?(:record) && e.record.errors.any?
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity and return
+      end
+      render json: { errors: ["Something went wrong"] }, status: :unprocessable_entity and return
     end
 
     render json: brainstorm.to_mini_json, status: :created
   end
 
   def update
-    project = current_account.projects.find_by(id: params[:id])
-    brainstorm = project&.website&.brainstorm
+    chat = Chat.find_by(thread_id: params[:thread_id])
+
+    unless chat && chat.chat_type === "brainstorm"
+      render json: { errors: ["Brainstorm not found"] }, status: :not_found and return
+    end
+    brainstorm = chat.contextable
 
     unless brainstorm
       render json: { errors: ["Brainstorm not found"] }, status: :not_found and return

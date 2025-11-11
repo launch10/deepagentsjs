@@ -8,7 +8,6 @@ module ProjectConcerns
         website_id: website&.id,
         account_id: account_id,
         name: name,
-        thread_id: thread_id,
         created_at: created_at,
         updated_at: updated_at
       }

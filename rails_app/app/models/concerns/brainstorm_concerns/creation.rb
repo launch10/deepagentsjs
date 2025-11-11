@@ -12,27 +12,26 @@ module BrainstormConcerns
           # Create project
           project = account.projects.create!(
             name: name,
-            thread_id: brainstorm_params[:thread_id]
           )
 
           # Create website
           website = Website.create!(
             project_id: project.id,
             name: project.name,
-            thread_id: project.thread_id,
             account_id: project.account_id
           )
 
           # Create brainstorm
           brainstorm = create!(
-            website_id: website.id
+            website_id: website.id,
+            thread_id: brainstorm_params[:thread_id]
           )
 
           # Create chat with type 'brainstorm'
           chat = Chat.create!(
             name: project.name,
             chat_type: "brainstorm",
-            thread_id: project.thread_id,
+            thread_id: brainstorm_params[:thread_id],
             project_id: project.id,
             account_id: project.account_id,
             contextable: brainstorm

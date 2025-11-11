@@ -5,22 +5,19 @@ module BrainstormConcerns
     class_methods do
       def update_brainstorm!(brainstorm, update_params)
         transaction do
-          if update_params[:name].present?
-            project = brainstorm.website.project
-            website = brainstorm.website
-            chat = brainstorm.chat
+          project = brainstorm.website.project
+          chat = brainstorm.chat
 
+          if update_params[:name].present?
             project.update!(name: update_params[:name])
-            website.update!(name: update_params[:name])
             chat.update!(name: update_params[:name]) if chat
           end
 
-          brainstorm_fields = update_params.except(:thread_id, :account_id)
-          brainstorm.update!(update_params)
+          brainstorm_fields = update_params.except(:thread_id, :account_id, :name)
+          brainstorm.update!(brainstorm_fields)
 
           {
             project: project,
-            website: website,
             brainstorm: brainstorm,
             chat: chat
           }

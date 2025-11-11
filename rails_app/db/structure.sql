@@ -524,6 +524,7 @@ CREATE TABLE public.brainstorms (
     social_proof character varying,
     look_and_feel character varying,
     website_id bigint,
+    thread_id character varying,
     completed_at timestamp without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
@@ -1851,7 +1852,6 @@ CREATE TABLE public.projects (
     id bigint NOT NULL,
     name character varying NOT NULL,
     account_id bigint NOT NULL,
-    thread_id character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -3815,6 +3815,13 @@ CREATE INDEX index_brainstorms_on_created_at ON public.brainstorms USING btree (
 
 
 --
+-- Name: index_brainstorms_on_thread_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_brainstorms_on_thread_id ON public.brainstorms USING btree (thread_id);
+
+
+--
 -- Name: index_brainstorms_on_website_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4578,13 +4585,6 @@ CREATE UNIQUE INDEX index_projects_on_account_id_and_name ON public.projects USI
 
 
 --
--- Name: index_projects_on_account_id_and_thread_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_projects_on_account_id_and_thread_id ON public.projects USING btree (account_id, thread_id);
-
-
---
 -- Name: index_projects_on_account_id_and_updated_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4603,13 +4603,6 @@ CREATE INDEX index_projects_on_created_at ON public.projects USING btree (create
 --
 
 CREATE INDEX index_projects_on_name ON public.projects USING btree (name);
-
-
---
--- Name: index_projects_on_thread_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_projects_on_thread_id ON public.projects USING btree (thread_id);
 
 
 --
@@ -5602,6 +5595,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251111214423'),
 ('20251111174656'),
 ('20251106161828'),
 ('20251026083206'),
