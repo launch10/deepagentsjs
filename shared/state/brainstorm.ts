@@ -4,7 +4,7 @@ import { LanggraphData, type LanggraphUIMessage } from "langgraph-ai-sdk-types";
 import type { Simplify } from "type-fest";
 
 export type BrainstormGraphState = Simplify<CoreGraphState & {
-    brainstormId: PrimaryKeyType;
+    brainstormId: PrimaryKeyType | undefined;
     memories: Brainstorm.Memories;
     availableActions: Brainstorm.Action[];
     selectedAction: Brainstorm.Action | undefined;

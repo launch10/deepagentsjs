@@ -8,7 +8,7 @@ export class RedisCache<V = unknown> {
   constructor(redisUrl: string) {
     if (!redisUrl) {
       throw new Error(
-        "Redis connection URI not found. Please set the REDIS_URI_CUSTOM environment variable."
+        "Redis connection URI not found. Please set the REDIS_URL environment variable."
       );
     }
     this.client = new Redis(redisUrl);
