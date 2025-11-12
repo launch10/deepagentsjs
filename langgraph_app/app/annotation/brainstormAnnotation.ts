@@ -6,6 +6,7 @@ import type { BrainstormGraphState } from "@state";
 
 export const BrainstormAnnotation = Annotation.Root({
     ...BaseAnnotation.spec,
+    qa: Annotation<Brainstorm.QAResultType>(),
     currentTopic: Annotation<Brainstorm.TopicType | undefined>(),
     placeholderText: Annotation<string>(),
     brainstormId: Annotation<PrimaryKeyType | undefined>(),

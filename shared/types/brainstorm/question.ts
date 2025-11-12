@@ -24,6 +24,13 @@ export const TopicKindMap: Record<TopicType, TopicKind> = {
   lookAndFeel: "ui",
 }
 
+export const qaSchema = z.object({
+  success: z.boolean().describe("Was the question answered successfully? Does it include enough context to write great marketing copy for the business?"),
+  reasoning: z.string().describe("Explain using the criteria why the question was or was not answered successfully."),
+})
+
+export type QAResultType = z.infer<typeof qaSchema>;
+
 /**
  * Schema for structured questions with intro, examples, and conclusion
  */
