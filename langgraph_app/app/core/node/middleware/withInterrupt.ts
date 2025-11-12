@@ -38,13 +38,10 @@ export const withInterrupt = <TState extends MinimalGraphState>(
         }
 
         const nodeName = getNodeContext()?.name;
-        if (!nodeName) {
-            throw new Error('Node name not found');
-        }
 
         const result = await nodeFunction(state, config);
 
-        if (shouldInterrupt(nodeName)) {
+        if (nodeName && shouldInterrupt(nodeName)) {
             const updatedState = { ...state, ...result };
 
             interrupt({

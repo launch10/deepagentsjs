@@ -173,6 +173,8 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
                 business context they give you should be saved to the answers.
             </important>
 
+            ${chatHistory}
+
             <users_last_message important="this is what you should focus on. did they answer the current topic of ${currentTopic}? did they give you a great response?">
                 ${lastHumanMessage.content}
             </users_last_message>
@@ -219,6 +221,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
 
     try {
       const prompt = await getPrompt(state, config)
+      console.log(prompt)
       const tools = [SaveAnswersTool(state, config)];
 
       // Use structured output for the response format

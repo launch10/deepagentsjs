@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { testGraph } from '@support';
+import { testGraph, GraphTestBuilder } from '@support';
 import { type BrainstormGraphState } from '@state';
 import { DatabaseSnapshotter } from '@services';
 import { brainstormGraph as uncompiledGraph } from '@graphs';
-import { HumanMessage } from '@langchain/core/messages';
+import { HumanMessage, AIMessage, BaseMessage } from '@langchain/core/messages';
 import { lastHumanMessage, lastAIMessage } from '@annotation';
-import { BrainstormNextSteps } from '@nodes';
+import { createBrainstorm } from '@nodes';
+import { SaveAnswersTool } from '@tools';
+import { v7 as uuidv7 } from 'uuid';
 import { 
     isHumanMessage, 
     isAIMessage, 
@@ -32,6 +34,90 @@ const expectStructuredOutput = (question: Brainstorm.QuestionType) => {
 
 const brainstormGraph = uncompiledGraph.compile({ ...graphParams, name: "brainstorm" }); 
 
+const validAnswers: Record<Brainstorm.TopicType, string> = {
+    idea: `Friend of the Pod is a podcast matchmaking service.
+            We help both sides: hosts get great content, guests get exposure,
+            and we're the only platform that does this at scale.
+            We solve the "needle in a haystack" problem: hosts spend hours
+            finding guests. We do it in minutes with AI-powered filtering.`,
+    audience: `
+        My target audience is podcast hosts with large audiences.
+        They want to find guests that are a good fit for their show,
+        but they're bombarded with messages from low-quality, spammy guests
+        who don't add value to their shows.
+    `,
+    solution: `Friend of the Pod has over 100+ filters to find the perfect guest for your show.
+                We use AI to match hosts and guests based on their content, audience, and goals.
+                We also use AI to match hosts and guests based on their content, audience, and goals.`,
+    socialProof: `Over 10k creators use Friend of the Pod to find guests for their shows.`,
+    lookAndFeel: `The look and feel of the landing page.`,
+}
+
+const ideaChat = [
+    new HumanMessage(validAnswers.idea),
+    new AIMessage(`That's awesome! And what about your audience?`),
+]
+const audienceChat = [
+    ...ideaChat,
+    new HumanMessage(validAnswers.audience),
+    new AIMessage(`That's awesome! And what about your solution?`),
+]
+const solutionChat = [
+    ...audienceChat,
+    new HumanMessage(validAnswers.solution),
+    new AIMessage(`That's awesome! And what about your social proof?`),
+]
+const socialProofChat = [
+    ...solutionChat,
+    new HumanMessage(validAnswers.socialProof),
+    new AIMessage(`That's awesome! And what about your look and feel?`),
+]
+const lookAndFeelChat = [
+    ...socialProofChat,
+    new HumanMessage(validAnswers.lookAndFeel),
+]
+
+const validChatHistory: Record<Brainstorm.TopicType, BaseMessage[]> = {
+    idea: ideaChat,
+    audience: audienceChat,
+    solution: solutionChat,
+    socialProof: socialProofChat,
+    lookAndFeel: lookAndFeelChat,
+}
+
+const restartChatFrom = async (topic: Brainstorm.TopicType): Promise<GraphTestBuilder<BrainstormGraphState>> => {
+    const questionsAnswered = Brainstorm.BrainstormTopics.slice(0, Brainstorm.BrainstormTopics.indexOf(topic));
+    const answers = questionsAnswered.map((question) => ({
+        topic: question,
+        answer: validAnswers[question],
+    }));
+    const threadId = uuidv7();
+    const config = { configurable: { thread_id: threadId } };
+    const partialState = await createBrainstorm({
+        jwt: "test-jwt",
+        threadId,
+        messages: [],
+    } as any, config);
+    const saveBrainstormTool = SaveAnswersTool(partialState as any, config);
+
+    // create memories
+    const memories = await saveBrainstormTool.invoke({ answers });
+
+    // create chat history
+    const chatHistory = validChatHistory[topic];
+
+    // create state
+    const state = {
+        ...partialState,
+        memories,
+        messages: chatHistory,
+    }
+
+    return testGraph<BrainstormGraphState>()
+        .withGraph(brainstormGraph)
+        .withState(state)
+}
+
 describe.sequential('Brainstorming Flow', () => {
     beforeEach(async () => {
         await DatabaseSnapshotter.restoreSnapshot("basic_account");
@@ -56,7 +142,7 @@ describe.sequential('Brainstorming Flow', () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`I like pasta.`)
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             const aiResponse = lastAIMessage(result.state);
@@ -74,14 +160,8 @@ describe.sequential('Brainstorming Flow', () => {
         it("should update to the next question when we successfully give a business idea", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
-                .withPrompt(`
-                    Friend of the Pod is a podcast matchmaking service.
-                    We help both sides: hosts get great content, guests get exposure,
-                    and we're the only platform that does this at scale.
-                    We solve the "needle in a haystack" problem: hosts spend hours
-                    finding guests. We do it in minutes with AI-powered filtering.
-                `)
-                .stopAfter('askQuestion')
+                .withPrompt(validAnswers.idea)
+                .stopAfter('agent')
                 .execute();
 
             const aiResponse = lastAIMessage(result.state);
@@ -107,11 +187,11 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Full brainstorming conversation flow", () => {
-        it.only('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
+        it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             expect(result.error).toBeUndefined();
@@ -119,74 +199,81 @@ describe.sequential('Brainstorming Flow', () => {
             // 1 tacit AI message ("What is your business?") + 
             // 1 human ("Friend of the Pod is a podcast matchmaking service.") + 
             // 1 AI ("Who are your customers, and what are they trying to achieve? + 3 sample responses")
-            console.log(result.state.messages)
             expect(result.state.messages).toHaveLength(3);
         });
 
-        it("should ask the 2nd question again if the user fails the guardrail", async () => {
+        it("keeps pushing if the user doesn't have a good response", async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
-            expect(result1.state.questionIndex).toBe(1);
-            expect(result1.state.nextQuestion.key).toBe('customers');
-            expect(result1.state.isValidAnswer).toBe(true);
+            expect(result1.state.currentTopic).toBe('idea');
+            expect(result1.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
 
             const result2 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`I like pasta.`)
                 .withState({
-                    messages: result1.state.messages,
-                    questionIndex: result1.state.questionIndex
+                    ...result1.state,
                 })
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             expect(result2.error).toBeUndefined();
-            expect(result2.state.questionIndex).toBe(1);
-            expect(result2.state.isValidAnswer).toBe(false);
-            expect(result2.state.nextQuestion.key).toBe('customers');
+            expect(result2.state.currentTopic).toBe('idea');
+            expect(result2.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
 
-            // We should address the pasta response somewhere
-            expect(JSON.stringify(result2.state.nextQuestion.question)).toContain('pasta');
+            const lastAIResponse = lastAIMessage(result2.state);
+            expect(result2.state.messages).toHaveLength(5);
+
+            assertDefined(lastAIResponse, 'lastAIResponse is defined');
+            expect(lastAIResponse.content).toContain('podcast');
 
             const result3 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Pasta is so good it makes me want to die.`)
                 .withState({
-                    messages: result2.state.messages,
-                    questionIndex: result2.state.questionIndex
+                    ...result2.state,
                 })
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             expect(result3.error).toBeUndefined();
-            expect(result3.state.questionIndex).toBe(1);
-            expect(result3.state.isValidAnswer).toBe(false);
-            expect(result3.state.nextQuestion.key).toBe('customers');
+            expect(result3.state.currentTopic).toBe('idea');
+            expect(result3.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
 
-            // We should address the pasta response somewhere
-            expect(JSON.stringify(result3.state.nextQuestion.question)).toContain('pasta');
-
-            // initial AI question ("Tell us about your business")
-            // user response (good)
-            // AI asks about customers
-            // pasta response (bad)
-            // AI guides back...
-            // user is still excited about pasta...
-            // AI guides back... -> 7 messages
+            const lastAIResponse3 = lastAIMessage(result3.state);
+            assertDefined(lastAIResponse3, 'lastAIResponse is defined');
             expect(result3.state.messages).toHaveLength(7);
-            expect(result3.state.messages?.filter((msg) => isHumanMessage(msg))).toHaveLength(3);
-            expect(result3.state.messages?.filter((msg) => isAIMessage(msg))).toHaveLength(4);
+
+            expect(lastAIResponse3.content).toContain('podcast');
         });
+
+        it.only('should ask about solution after audience', async () => {
+            const graph = await restartChatFrom('audience');
+            const result = await graph
+                .withPrompt(validAnswers.audience)
+                .stopAfter('agent')
+                .execute();
+
+            const lastAIResponse = lastAIMessage(result.state);
+            assertDefined(lastAIResponse, 'lastAIResponse is defined');
+
+            expect(result.error).toBeUndefined();
+            expect(result.state.currentTopic).toBe('solution');
+            expect(result.state.placeholderText).toEqual(`How does the user's business solve the audience\'s pain points, or help them reach their goals?`)
+
+            console.log(lastAIResponse.content)
+            expect(lastAIResponse.content).toContain('solution');
+        })
 
         it('should ask third question (structured) after second response', async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             const result2 = await testGraph<BrainstormGraphState>()
@@ -196,7 +283,7 @@ describe.sequential('Brainstorming Flow', () => {
                     messages: result1.state.messages,
                     questionIndex: result1.state.questionIndex
                 })
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             expect(result2.error).toBeUndefined();
@@ -220,7 +307,7 @@ describe.sequential('Brainstorming Flow', () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             const messages2: Message[] = [
@@ -237,7 +324,7 @@ describe.sequential('Brainstorming Flow', () => {
                     messages: messages2,
                     questionIndex: 2
                 })
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             expect(result2.state.error).toBeUndefined()
@@ -259,7 +346,7 @@ describe.sequential('Brainstorming Flow', () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             const messages2: Message[] = [
@@ -278,7 +365,7 @@ describe.sequential('Brainstorming Flow', () => {
                     messages: messages2,
                     questionIndex: 3
                 })
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             expect(result2.error).toBeUndefined();
@@ -295,7 +382,7 @@ describe.sequential('Brainstorming Flow', () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             const messages2 = [
@@ -316,7 +403,7 @@ describe.sequential('Brainstorming Flow', () => {
                     messages: messages2,
                     questionIndex: 4
                 })
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             expect(result2.error).toBeUndefined();
@@ -331,7 +418,7 @@ describe.sequential('Brainstorming Flow', () => {
                 const result1 = await testGraph<BrainstormGraphState>()
                     .withGraph(brainstormGraph)
                     .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                    .stopAfter('askQuestion')
+                    .stopAfter('agent')
                     .execute();
 
                 const messages2 = [
@@ -352,7 +439,7 @@ describe.sequential('Brainstorming Flow', () => {
                         messages: messages2,
                         questionIndex: 4
                     })
-                    .stopAfter('askQuestion')
+                    .stopAfter('agent')
                     .execute();
 
                 expect(result2.error).toBeUndefined();
@@ -365,7 +452,7 @@ describe.sequential('Brainstorming Flow', () => {
                 const result1 = await testGraph<BrainstormGraphState>()
                     .withGraph(brainstormGraph)
                     .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                    .stopAfter('askQuestion')
+                    .stopAfter('agent')
                     .execute();
 
                 const messages2 = [
@@ -386,7 +473,7 @@ describe.sequential('Brainstorming Flow', () => {
                         questionIndex: 4,
                         action: "FINISHED"
                     })
-                    .stopAfter('askQuestion')
+                    .stopAfter('agent')
                     .execute();
 
                 expect(result2.error).toBeUndefined();
@@ -410,7 +497,7 @@ describe.sequential('Brainstorming Flow', () => {
                     const result1 = await testGraph<BrainstormGraphState>()
                         .withGraph(brainstormGraph)
                         .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     const question: QuestionType = result1.state.nextQuestion;
@@ -424,7 +511,7 @@ describe.sequential('Brainstorming Flow', () => {
                             ...result1.state,
                             action: "SKIP"
                         })
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     const state = result2.state;
@@ -451,7 +538,7 @@ describe.sequential('Brainstorming Flow', () => {
                             messages: messages3,
                             action: "FINISHED"
                         })
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     // This should actually go in the WebsiteBuilder! Find another way to test this...
@@ -468,7 +555,7 @@ describe.sequential('Brainstorming Flow', () => {
                     const result1 = await testGraph<BrainstormGraphState>()
                         .withGraph(brainstormGraph)
                         .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     const result2 = await testGraph<BrainstormGraphState>()
@@ -477,7 +564,7 @@ describe.sequential('Brainstorming Flow', () => {
                             ...result1.state,
                             action: "DO_THE_REST"
                         })
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     const state = result2.state;
@@ -495,7 +582,7 @@ describe.sequential('Brainstorming Flow', () => {
                         .withState({
                             ...result2.state,
                         })
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     expect(result3.error).toBeUndefined();
@@ -512,7 +599,7 @@ describe.sequential('Brainstorming Flow', () => {
                     const result1 = await testGraph<BrainstormGraphState>()
                         .withGraph(brainstormGraph)
                         .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     const question: QuestionType = result1.state.nextQuestion;
@@ -526,7 +613,7 @@ describe.sequential('Brainstorming Flow', () => {
                             ...result1.state,
                             action: "HELP_ME_ANSWER"
                         })
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     const state = result2.state;
@@ -549,7 +636,7 @@ describe.sequential('Brainstorming Flow', () => {
                         .withState({
                             ...result2.state,
                         })
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     const question3: QuestionType = state.nextQuestion;
@@ -570,7 +657,7 @@ describe.sequential('Brainstorming Flow', () => {
                     const result1 = await testGraph<BrainstormGraphState>()
                         .withGraph(brainstormGraph)
                         .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     const result2 = await testGraph<BrainstormGraphState>()
@@ -579,7 +666,7 @@ describe.sequential('Brainstorming Flow', () => {
                             ...result1.state,
                             action: "DO_THE_REST"
                         })
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     const state = result2.state;
@@ -600,7 +687,7 @@ describe.sequential('Brainstorming Flow', () => {
                     const result1 = await testGraph<BrainstormGraphState>()
                         .withGraph(brainstormGraph)
                         .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     const result2 = await testGraph<BrainstormGraphState>()
@@ -609,7 +696,7 @@ describe.sequential('Brainstorming Flow', () => {
                             ...result1.state,
                             action: "DO_THE_REST"
                         })
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     const state = result2.state;
@@ -627,7 +714,7 @@ describe.sequential('Brainstorming Flow', () => {
                         .withState({
                             ...result2.state,
                         })
-                        .stopAfter('askQuestion')
+                        .stopAfter('agent')
                         .execute();
 
                     expect(result3.error).toBeUndefined();
