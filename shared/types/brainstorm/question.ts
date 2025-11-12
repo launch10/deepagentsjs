@@ -13,12 +13,23 @@ export const BrainstormTopics = [
 export type TopicType = typeof BrainstormTopics[number];
 export type MemoriesType = Partial<Record<TopicType, string | null>>;
 
+export const TopicKinds = ["conversational", "ui"];
+export type TopicKind = typeof TopicKinds[number];
+
+export const TopicKindMap: Record<TopicType, TopicKind> = {
+  idea: "conversational",
+  audience: "conversational",
+  solution: "conversational",
+  socialProof: "conversational",
+  lookAndFeel: "ui",
+}
+
 /**
  * Schema for structured questions with intro, examples, and conclusion
  */
 export const questionSchema = z.object({
-  text: z.string().describe('A simple intro to the question'),
-  examples: z.array(z.string()).optional().describe(`OPTIONAL: List of examples to help the user understand what we're asking.`),
+  text: z.string().describe('A simple message or question'),
+  examples: z.array(z.string()).optional().describe(`OPTIONAL: List of examples to help the user understand`),
   conclusion: z.string().optional().describe(`OPTIONAL: Conclusion text to include after examples`),
 });
 
@@ -34,7 +45,7 @@ export const TopicDescriptions: Record<TopicType, string> = {
     audience: `The target audience. What are their pain points? What are their goals?`,
     solution: `How does the user's business solve the audience's pain points, or help them reach their goals?`,
     socialProof: `Social proof or testimonials to include on the landing page. Remember, anything can be social proof: the user's background, experience, beliefs, founder story, etc.`,
-    lookAndFeel: `The look and feel of the landing page.`,
+    lookAndFeel: "The look and feel of the landing page.",
 }
 
 export const PlaceholderText: Record<TopicType, string> = {
@@ -42,7 +53,7 @@ export const PlaceholderText: Record<TopicType, string> = {
   audience: "My target audience is...",
   solution: "My solution is...",
   socialProof: "My social proof is...",
-  lookAndFeel: "The look and feel of the landing page.",
+  lookAndFeel: `Use the Advanced sidebar or click "Build My Site"...`,
 }
 
 export const Actions = ["helpMe", "skip", "doTheRest", "finished"] as const;

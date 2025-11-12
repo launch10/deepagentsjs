@@ -49,32 +49,34 @@ const validAnswers: Record<Brainstorm.TopicType, string> = {
     solution: `Friend of the Pod has over 100+ filters to find the perfect guest for your show.
                 We use AI to match hosts and guests based on their content, audience, and goals.
                 We also use AI to match hosts and guests based on their content, audience, and goals.`,
-    socialProof: `Over 10k creators use Friend of the Pod to find guests for their shows.`,
+    socialProof: `Over 10k creators use Friend of the Pod to find guests for their shows. They are all notable names like LeBron James, Serena Williams, and Oprah Winfrey.`,
     lookAndFeel: `The look and feel of the landing page.`,
 }
 
 const ideaChat = [
+    new AIMessage(`What is your business?`),
+]
+
+const audienceChat = [
+    ...ideaChat,
     new HumanMessage(validAnswers.idea),
     new AIMessage(`That's awesome! And what about your audience?`),
 ]
-const audienceChat = [
-    ...ideaChat,
+
+const solutionChat = [
+    ...audienceChat,
     new HumanMessage(validAnswers.audience),
     new AIMessage(`That's awesome! And what about your solution?`),
 ]
-const solutionChat = [
-    ...audienceChat,
+const socialProofChat = [
+    ...solutionChat,
     new HumanMessage(validAnswers.solution),
     new AIMessage(`That's awesome! And what about your social proof?`),
 ]
-const socialProofChat = [
-    ...solutionChat,
-    new HumanMessage(validAnswers.socialProof),
-    new AIMessage(`That's awesome! And what about your look and feel?`),
-]
 const lookAndFeelChat = [
     ...socialProofChat,
-    new HumanMessage(validAnswers.lookAndFeel),
+    new HumanMessage(validAnswers.socialProof),
+    new AIMessage(`That's awesome! And what about your look and feel?`),
 ]
 
 const validChatHistory: Record<Brainstorm.TopicType, BaseMessage[]> = {
@@ -274,7 +276,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(lastAIResponse.content).toContain('solution');
         })
 
-        it.only('should ask about social proof after solution', async () => {
+        it('should ask about social proof after solution', async () => {
             const graph = await restartChatFrom('solution');
             const result = await graph
                 .withPrompt(validAnswers.solution)
@@ -297,43 +299,25 @@ describe.sequential('Brainstorming Flow', () => {
             expect(lastAIResponse.content).toContain('social proof');
         });
 
-        it('should ask fourth question after third response', async () => {
-            const result1 = await testGraph<BrainstormGraphState>()
-                .withGraph(brainstormGraph)
-                .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+        it.only('should tell the user about the UI when ready for lookAndFeel', async () => {
+            const graph = await restartChatFrom('socialProof');
+            const result = await graph
+                .withPrompt(validAnswers.socialProof)
                 .stopAfter('agent')
                 .execute();
 
-            const messages2: Message[] = [
-                ...result1.state.messages,
-                getSimpleQuestion(1), // Audience
-                new HumanMessage(`Podcasts guests looking to promote their book or service`),
-                getSimpleQuestion(2), // What's your value prop?
-            ];
+            const lastAIResponse = lastAIMessage(result.state);
+            assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
-            const result2 = await testGraph<BrainstormGraphState>()
-                .withGraph(brainstormGraph)
-                .withPrompt(`We match podcast hosts and guests to find the perfect audience to promote your product!`)
-                .withState({
-                    messages: messages2,
-                    questionIndex: 2
-                })
-                .stopAfter('agent')
-                .execute();
+            expect(result.error).toBeUndefined();
+            expect(result.state.currentTopic).toBe('lookAndFeel');
+            expect(result.state.placeholderText).toEqual(`Use the Advanced sidebar or click "Build My Site"...`)
 
-            expect(result2.state.error).toBeUndefined()
+            expect(result.state.availableActions).toHaveLength(1);
+            expect(result.state.availableActions[0]).toBe('finished');
 
-            const question: QuestionType = result2.state.nextQuestion;
-            expect(question.key).toBe("socialProof");
-            expect(question.type).toBe("structured");
-            expect(typeof question).toBe('object');
-
-            if (question.type === 'structured') {
-                expectStructuredOutput(question)
-            }
-
-            expect(result2.error).toBeUndefined();
-            expect(result2.state.questionIndex).toBe(3);
+            console.log(lastAIResponse.content)
+            expect(lastAIResponse.content).toContain(`What's the look and feel`);
         });
 
         it('should ask fifth question (verbatim) after fourth response', async () => {

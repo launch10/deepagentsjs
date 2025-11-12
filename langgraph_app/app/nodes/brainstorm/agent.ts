@@ -1,8 +1,8 @@
 import { AIMessage } from "@langchain/core/messages";
-import { createAgent } from "langchain";
+import { createAgent, createMiddleware, DynamicStructuredTool } from "langchain";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
-import { toJSON, renderPrompt, chatHistoryPrompt, structuredOutputPrompt } from "@prompts";
+import { toJSON, renderPrompt, chatHistoryPrompt, toolHistoryPrompt, structuredOutputPrompt, structuredOutputPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { SaveAnswersTool } from "@tools";
 import { pick, compactObject } from "@utils";
@@ -10,8 +10,10 @@ import {
   isHumanMessage,
   Brainstorm,
 } from '@types';
-import { type BrainstormGraphState } from "@state";
+import { type BrainstormGraphState, brainstormStateSchema } from "@state";
 import { db, eq, asc, brainstorms as brainstormsTable } from "@db";
+import { BrainstormAnnotation } from "@annotation";
+import z from "zod";
 export class BrainstormNextSteps {
     state: BrainstormGraphState;
     memories: Brainstorm.MemoriesType | undefined;
@@ -32,11 +34,11 @@ export class BrainstormNextSteps {
         const availableActions = await this.getAvailableActions();
 
         return {
-            memories,
-            placeholderText,
-            currentTopic,
-            remainingTopics,
-            availableActions,
+            memories: memories as Brainstorm.MemoriesType,
+            placeholderText: placeholderText as string,
+            currentTopic: currentTopic as Brainstorm.TopicType,
+            remainingTopics: remainingTopics as Brainstorm.TopicType[],
+            availableActions: availableActions as Brainstorm.ActionType[],
         }
     }
 
@@ -110,19 +112,51 @@ const remainingTopics = (topics: Brainstorm.TopicType[]) => {
     return sortedTopics(topics).map(topic => `${topic}: ${Brainstorm.TopicDescriptions[topic]}`).join("\n\n");
 }
 
-const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
+const uiGuidancePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
+    const [chatHistory, outputInstructions] = await Promise.all([
+        chatHistoryPrompt({ messages: state.messages }),
+        structuredOutputPrompt({ schema: Brainstorm.questionSchema }),
+    ]);
+    return `
+        The user has completed the brainstorming questions.
+
+        They now have access to a Brand Personalization panel they can use before we build their page.
+
+        Or they can use the "Build My Site" button to start building their page right away!
+
+        Great, now that we have your core idea, let's start personalizing the look and feel of your page.
+        On the left side of your screen, you'll see the Brand Personalization panel. This is where you can add visual elements to make the project uniquely yours. All of these steps are completely optional, so feel free to skip any you're not ready for.
+        Here’s a quick guide:
+        Logo: You can upload your brand's logo here. Just drag and drop a PNG, JPG, or SVG file into the box, or click on it to select a file from your computer. We'll use this as the main logo for your page.
+        Colors: Choose a color palette that fits your brand. You can click through the pre-defined schemes we've provided or select "+ Add Custom" to create your very own color palette.
+        Social Links: If you have social media pages like Twitter, Instagram, or YouTube, you can add the links here. We'll often use these to create icons in the footer of your page so visitors can easily find you.
+        Images: Have any specific photos or graphics you'd like us to use? You can upload them in the "Images" section. This helps us incorporate your preferred visuals directly into the design.
+        Take your time to fill out as much or as little as you'd like. When you're ready, we can move on to the next question.
+
+        These are the tools available to them. Continue the conversation, but be sure to mention the available next steps (Brand Personalization, Build My Site).
+
+        ${chatHistory}
+
+        ${outputInstructions}
+    `
+}
+
+const conversationalPrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
     if (!lastHumanMessage) {
         throw new Error("No human message found");
     }
 
-    const [chatHistory, nextSteps] = await Promise.all([
+    const [chatHistory, toolHistory, nextSteps, outputInstructions] = await Promise.all([
         chatHistoryPrompt({ messages: state.messages }),
+        toolHistoryPrompt({ messages: state.messages }),
         new BrainstormNextSteps(state).nextSteps(),
+        structuredOutputPrompt({ schema: Brainstorm.questionSchema }),
     ]);
 
     const memories = compactObject(nextSteps.memories);
     const currentTopic = nextSteps.currentTopic;
+    const remainingTopicKeys = nextSteps.remainingTopics;
 
     return renderPrompt(
         `
@@ -147,7 +181,7 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
             </collected_answers>
 
             <remaining_topics>
-                ${remainingTopics(state.remainingTopics)}
+                ${remainingTopics(remainingTopicKeys)}
             </remaining_topics>
 
             <current_topic>
@@ -174,6 +208,8 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
             </important>
 
             ${chatHistory}
+
+            ${toolHistory}
 
             <users_last_message important="this is what you should focus on. did they answer the current topic of ${currentTopic}? did they give you a great response?">
                 ${lastHumanMessage.content}
@@ -203,10 +239,60 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
                 You MUST output valid JSON in one of these formats. NO other text.
             </output_format_rules>
 
-            ${await structuredOutputPrompt({ schema: Brainstorm.questionSchema })}
+            ${outputInstructions}
         `
     );
+    
 }
+
+const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
+    // Get current topic to determine available tools
+    const nextSteps = await new BrainstormNextSteps(state).nextSteps();
+    const currentTopic = nextSteps.currentTopic;
+
+    if (Brainstorm.TopicKindMap[currentTopic] === "conversational") {
+        return conversationalPrompt(state, config);
+    }
+
+    return uiGuidancePrompt(state, config);
+}
+
+// This is going to help us dynamically allocate tools and switch the system
+// prompt based on the current topic
+const brainstormMiddleware = createMiddleware({
+    name: "BrainstormMiddleware",
+    stateSchema: brainstormStateSchema,
+    wrapModelCall: async (request, handler) => {
+        const state = request.state satisfies BrainstormGraphState;
+
+        // Get current topic to determine available tools
+        const nextSteps = await new BrainstormNextSteps(state).nextSteps();
+        const currentTopic = nextSteps.currentTopic;
+
+        // Regenerate system prompt with current state
+        const systemPrompt = await getPrompt(state, request.runtime);
+
+        console.log(`we have modified the system prompt for ${currentTopic}`)
+        console.log(systemPrompt);
+        // Return modified request
+        const result = await handler({
+            ...request,
+            systemPrompt,
+        });
+        console.log(result)
+        if (result instanceof AIMessage) {
+            return result
+        }
+        const structuredResponse = result.structuredResponse
+
+        const aiMessage = new AIMessage({
+            content: JSON.stringify(structuredResponse, null, 2),
+            response_metadata: structuredResponse,
+        });
+        return aiMessage
+    },
+});
+
 
 /**
  * Node that asks a question to the user during brainstorming mode
@@ -220,27 +306,17 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
     }
 
     try {
-      const prompt = await getPrompt(state, config)
-      console.log(prompt)
-      const tools = [SaveAnswersTool(state, config)];
-
-      // Use structured output for the response format
       const llm = getLLM().withConfig({ tags: ['notify'] }) // Important so messages are sent to frontend
+      const tools = [SaveAnswersTool(state, config)];
 
       const agent = await createAgent({
           model: llm,
           tools,
-          systemPrompt: prompt,
+          middleware: [brainstormMiddleware],
           responseFormat: Brainstorm.questionSchema,
       });
-
-      const updatedState = await agent.invoke(state as any, config);
-      const structuredResponse = updatedState.structuredResponse
-
-      const aiMessage = new AIMessage({
-          content: JSON.stringify(structuredResponse, null, 2),
-          response_metadata: structuredResponse,
-      });
+      const result = await agent.invoke(state, config);
+      const aiMessage = result.messages.at(-1);
 
       const { memories, remainingTopics, currentTopic, placeholderText, availableActions } = await new BrainstormNextSteps(state).nextSteps();
 
