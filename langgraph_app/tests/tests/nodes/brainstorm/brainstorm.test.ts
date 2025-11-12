@@ -4,6 +4,8 @@ import { type BrainstormGraphState } from '@state';
 import { DatabaseSnapshotter } from '@services';
 import { brainstormGraph as uncompiledGraph } from '@graphs';
 import { HumanMessage } from '@langchain/core/messages';
+import { lastHumanMessage, lastAIMessage } from '@annotation';
+import { BrainstormNextSteps } from '@nodes';
 import { 
     isHumanMessage, 
     isAIMessage, 
@@ -36,7 +38,7 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Suggested next question", () => {
-        it.only("should default to the first question", async () => {
+        it("should default to the first question", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Sorry, what's going on?`)
@@ -46,6 +48,8 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.error).toBeUndefined();
             expect(result.state.currentTopic).toBe('idea');
             expect(result.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
+            expect(result.state.availableActions).toHaveLength(1);
+            expect(result.state.availableActions[0]).toBe('helpMe');
         });
 
         it("should stay consistent when the user answers the first question incorrectly", async () => {
@@ -55,21 +59,50 @@ describe.sequential('Brainstorming Flow', () => {
                 .stopAfter('askQuestion')
                 .execute();
 
+            const aiResponse = lastAIMessage(result.state);
+
             expect(result.state.error).toBeUndefined();
-            expect(result.state.questionIndex).toBe(0);
-            expect(result.state.nextQuestion.placeholderText).toEqual('I want to acquire leads, sell my product...')
+            expect(result.state.currentTopic).toBe('idea');
+            expect(result.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
+
+            // AI suggests plausible business ideas...
+            expect(aiResponse?.content).toContain('restaurant');
+            expect(result.state.availableActions).toHaveLength(1);
+            expect(result.state.availableActions[0]).toBe('helpMe');
         });
 
-        it("should update to the next question when we ask it", async () => {
+        it.only("should update to the next question when we successfully give a business idea", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
-                .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                .withPrompt(`
+                    Friend of the Pod is a podcast matchmaking service.
+                    We help both sides: hosts get great content, guests get exposure,
+                    and we're the only platform that does this at scale.
+                    We solve the "needle in a haystack" problem: hosts spend hours
+                    finding guests. We do it in minutes with AI-powered filtering.
+                `)
                 .stopAfter('askQuestion')
                 .execute();
 
+            const aiResponse = lastAIMessage(result.state);
+            assertDefined(aiResponse, 'aiResponse is defined');
+
             expect(result.state.error).toBeUndefined();
-            expect(result.state.questionIndex).toBe(0);
-            expect(result.state.nextQuestion.placeholderText).toEqual('Who are your customers, and what are they trying to achieve?')
+            expect(result.state.currentTopic).toBe('audience');
+            expect(result.state.placeholderText).toEqual('My target audience is...')
+
+            // It saves the answer to the memories...
+            const memories = result.state.memories;
+            expect(memories.idea).toBeTruthy();
+
+            // AI asks about customers...
+            expect(aiResponse.content).toContain('audience');
+
+            expect(result.state.availableActions).toHaveLength(4);
+            expect(result.state.availableActions[0]).toBe('helpMe');
+            expect(result.state.availableActions[1]).toBe('skip');
+            expect(result.state.availableActions[2]).toBe('doTheRest');
+            expect(result.state.availableActions[3]).toBe('finished');
         });
     })
 

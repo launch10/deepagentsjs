@@ -3,10 +3,10 @@ import isNull from "lodash/isNull";
 import isUndefined from "lodash/isUndefined";
 import pick from "lodash/pick";
 import omit from "lodash/omit";
+import identity from "lodash/identity";
 
-export function compactObject<T>(obj: T): T {
-    const cleaned = pickBy(obj, (value: any) => !isNull(value) && !isUndefined(value));
-    return cleaned;
+export function compactObject<T extends Record<string, any>>(obj: T) {
+    return pickBy(obj, identity);
 }
 
 export { pick, omit, pickBy, isNull, isUndefined }

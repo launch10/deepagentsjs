@@ -24,25 +24,34 @@ export const questionSchema = z.object({
 
 export type QuestionType = z.infer<typeof questionSchema>;
 
+// Topic descriptions for the brainstorm agent
+export const TopicDescriptions: Record<TopicType, string> = {
+    idea: `The core business idea. What does the business do? What makes them different?`,
+    audience: `The target audience. What are their pain points? What are their goals?`,
+    solution: `How does the user's business solve the audience's pain points, or help them reach their goals?`,
+    socialProof: `Social proof or testimonials to include on the landing page. Remember, anything can be social proof: the user's background, experience, beliefs, founder story, etc.`,
+    lookAndFeel: `The look and feel of the landing page.`,
+}
+
 export const PlaceholderText: Record<TopicType, string> = {
   idea: "I want to acquire leads, sell my product...",
-  audience: "Who is the target audience? What are their pain points? What are their goals?",
+  audience: "My target audience is...",
   solution: "How does the user's business solve the audience's pain points, or help them reach their goals?",
   socialProof: "Social proof or testimonials to include on the landing page. Remember, anything can be social proof: the user's background, experience, beliefs, founder story, etc.",
   lookAndFeel: "The look and feel of the landing page.",
 }
 
-export const Actions = ["helpMeAnswer", "skip", "doTheRest", "finished"] as const;
+export const Actions = ["helpMe", "skip", "doTheRest", "finished"] as const;
 export type ActionType = typeof Actions[number];
 
 export const isBrainstormAction = (action: unknown): action is ActionType => {
     return (typeof action === 'string' && action in Actions);
 }
 
-export const availableActions: Record<TopicType, ActionType[]> = {
-    idea: ["helpMeAnswer"],
-    audience: ["helpMeAnswer", "skip", "doTheRest", "finished"],
-    solution: ["helpMeAnswer", "skip", "doTheRest", "finished"],
-    socialProof: ["helpMeAnswer", "skip", "doTheRest", "finished"],
+export const AvailableActions: Record<TopicType, ActionType[]> = {
+    idea: ["helpMe"],
+    audience: ["helpMe", "skip", "doTheRest", "finished"],
+    solution: ["helpMe", "skip", "doTheRest", "finished"],
+    socialProof: ["helpMe", "skip", "doTheRest", "finished"],
     lookAndFeel: ["finished"],
 }

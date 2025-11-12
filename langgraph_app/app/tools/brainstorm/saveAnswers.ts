@@ -29,6 +29,12 @@ export const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphR
             const insert = withTimestamps(updates);
             const update = withUpdatedAt(updates);
 
+            console.log(`saving answers!!!`)
+            console.log(`saving answers!!!`)
+            console.log(`saving answers!!!`)
+            console.log(`saving answers!!!`)
+            console.log(`saving answers!!!`)
+            console.log(`saving answers!!!`)
             const results = await db.insert(brainstormsTable).values({
                 ...insert,
                 websiteId: state.websiteId,
