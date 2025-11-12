@@ -40,8 +40,8 @@ export const TopicDescriptions: Record<TopicType, string> = {
 export const PlaceholderText: Record<TopicType, string> = {
   idea: "I want to acquire leads, sell my product...",
   audience: "My target audience is...",
-  solution: "How does the user's business solve the audience's pain points, or help them reach their goals?",
-  socialProof: "Social proof or testimonials to include on the landing page. Remember, anything can be social proof: the user's background, experience, beliefs, founder story, etc.",
+  solution: "My solution is...",
+  socialProof: "My social proof is...",
   lookAndFeel: "The look and feel of the landing page.",
 }
 
