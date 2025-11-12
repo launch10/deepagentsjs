@@ -24,6 +24,10 @@ export const questionSchema = z.object({
 
 export type QuestionType = z.infer<typeof questionSchema>;
 
+export const HardCodedQuestions: Partial<Record<TopicType, string>> = {
+    idea: "Tell us about your business. More info → better outcomes.",
+}
+
 // Topic descriptions for the brainstorm agent
 export const TopicDescriptions: Record<TopicType, string> = {
     idea: `The core business idea. What does the business do? What makes them different?`,

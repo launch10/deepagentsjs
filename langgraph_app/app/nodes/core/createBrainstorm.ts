@@ -2,6 +2,8 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { BrainstormAPIService } from "@services";
 import { type BrainstormGraphState } from "@state";
+import { AIMessage } from "@langchain/core/messages";
+import { Brainstorm } from "@types";
 
 /**
  * Node that creates a new brainstorm, project, or website
@@ -23,14 +25,24 @@ export const createBrainstorm = NodeMiddleware.use({}, async (
       throw new Error("JWT token is required for API authentication");
     }
 
-    console.log(`we are hitting brainstorm creation api`)
+    const hardcodedFirstQuestion = Brainstorm.HardCodedQuestions.idea;
+    if (!hardcodedFirstQuestion) {
+      throw new Error("Hardcoded first question is missing");
+    }
+
     const apiService = new BrainstormAPIService({ jwt: state.jwt });
     const brainstorm = await apiService.create(config.configurable.thread_id);
+
+    const messages = [
+      new AIMessage({ content: hardcodedFirstQuestion }),
+      ...state.messages,
+    ]
 
     return { 
       brainstormId: brainstorm.id,
       websiteId: brainstorm.website_id,
       projectId: brainstorm.project_id,
+      messages,
     };
   }
 );

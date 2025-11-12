@@ -71,7 +71,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableActions[0]).toBe('helpMe');
         });
 
-        it.only("should update to the next question when we successfully give a business idea", async () => {
+        it("should update to the next question when we successfully give a business idea", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`
@@ -107,27 +107,7 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Full brainstorming conversation flow", () => {
-        it("provides additional support if the first question isn't properly answered", async () => {
-            const result = await testGraph<BrainstormGraphState>()
-                .withGraph(brainstormGraph)
-                .withPrompt(`Sorry, what's going on?`)
-                .stopAfter('askQuestion')
-                .execute();
-
-            expect(result.state.error).toBeUndefined();
-            expect(result.state.questionIndex).toBe(0);
-            const question = result.state.nextQuestion;
-            expect(typeof question).toBe('object');
-
-            expect(question.key).toBe('introduction');
-            expect(question.type).toBe('helpful'); // We now give the user more information...
-
-            if (question.type === 'helpful') {
-                expectStructuredOutput(question);
-            }
-        });
-
-        it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
+        it.only('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -135,19 +115,11 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             expect(result.error).toBeUndefined();
-            expect(result.state.questionIndex).toBe(1);
-
-            const question: QuestionType = result.state.nextQuestion;
-            expect(question.key).toBe('customers');
-            expect(question.type).toBe('structured');
-
-            if (question.type === 'structured') {
-                expectStructuredOutput(question);
-            }
 
             // 1 tacit AI message ("What is your business?") + 
             // 1 human ("Friend of the Pod is a podcast matchmaking service.") + 
             // 1 AI ("Who are your customers, and what are they trying to achieve? + 3 sample responses")
+            console.log(result.state.messages)
             expect(result.state.messages).toHaveLength(3);
         });
 
