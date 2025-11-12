@@ -1,5 +1,6 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
+import { type WebsiteGraphState } from "@state";
 import type {
     CodeTaskType,
     ProjectType,
@@ -9,6 +10,8 @@ import type {
     ComponentContentPlanType,
     ComponentOverviewType,
     ConsoleError,
+    Expect,
+    Equal
  } from "@types";
 
 export const WebsiteAnnotation = Annotation.Root({
@@ -64,3 +67,6 @@ export const WebsiteAnnotation = Annotation.Root({
         reducer: (current, next) => next
     }),
 });
+
+// Just a convenience to ensure the annotation matches the state type
+type _Assertion = Expect<Equal<WebsiteGraphState, typeof WebsiteAnnotation.State>>;

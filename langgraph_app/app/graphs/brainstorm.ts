@@ -10,6 +10,7 @@ import { createBrainstorm } from "@nodes";
 export const brainstormGraph = new StateGraph(BrainstormAnnotation)
       .addNode("createBrainstorm", createBrainstorm)
       .addNode("agent", brainstormAgent)
+
       .addEdge(START, "createBrainstorm")
       .addEdge("createBrainstorm", "agent")
       .addEdge("agent", END)

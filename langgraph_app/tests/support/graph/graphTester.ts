@@ -5,6 +5,8 @@ import { generateUUID, type ConsoleError } from "@types";
 import { isGraphInterrupt } from "@langchain/langgraph";
 import { runScenario } from '@services';
 import { interruptContext } from "app/core/node/middleware";
+import { CompiledStateGraph } from "@langchain/langgraph";
+import { graphParams } from "@core";
 import { vi } from 'vitest';
 export interface NodeTestResult<TState extends CoreGraphState> {
     state: TState;
@@ -14,6 +16,7 @@ export interface NodeTestResult<TState extends CoreGraphState> {
     serviceSpy?: Map<string, any[]>;
 }
 
+type CompiledGraph = CompiledStateGraph<any, any, any, any, any, any, any, any, any>;
 export interface GraphTestConfig {
     usePolly?: boolean;
 }
@@ -42,22 +45,25 @@ export interface GraphTestConfig {
  */
 export class GraphTestBuilder<TGraphState extends CoreGraphState> {
     private prompt!: string;
+    private name?: string;
     private targetNode!: string;
     private initialState: Partial<TGraphState> = {};
     private config: Partial<LangGraphRunnableConfig> = {};
-    private graph: any;
+    private graph: CompiledGraph | undefined;
     private websiteName?: string; // Store project name for deferred loading
     private capturePrompts: string[] = [];
     private capturedPromptOutputs: Map<string, string[]> = new Map();
     private captureServices: string[] = [];
     private capturedserviceSpy: Map<string, any[]> = new Map();
     private scenario?: string;
+    private threadId?: string;
 
     constructor() {
         // Initialize with an in-memory checkpointer for tests
+        this.threadId = generateUUID();
         this.config = {
             configurable: {
-                thread_id: generateUUID(),
+                thread_id: this.threadId,
             }
         };
 
@@ -75,10 +81,15 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
         return this;
     }
 
+    withName(name: string): GraphTestBuilder<TGraphState> {
+        this.name = name;
+        return this;
+    }
+
     /**
      * Set the graph instance to test
      */
-    withGraph(graph: any): GraphTestBuilder<TGraphState> {
+    withGraph(graph: CompiledGraph): GraphTestBuilder<TGraphState> {
         this.graph = graph;
         return this;
     }
@@ -204,13 +215,17 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
         }
 
         const initialStateMessages = this.initialState.messages || [];
-        // Prepare initial state with the user message
         const userMessage = new HumanMessage(this.prompt);
-        const initialState: TGraphState = {
+        
+        const baseState = {
             ...this.initialState,
-            consoleErrors,
             messages: [...initialStateMessages, userMessage],
-        } as TGraphState;
+        };
+        
+        const initialState: TGraphState = (this.graph.channels?.consoleErrors 
+            ? { ...baseState, consoleErrors }
+            : baseState
+        ) as TGraphState;
 
         try {
             const testGraph = this.graph; 

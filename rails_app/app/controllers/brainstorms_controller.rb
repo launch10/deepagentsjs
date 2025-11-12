@@ -28,6 +28,7 @@ class BrainstormsController < SubscribedController
       render json: {errors: ["Thread ID is required"]}, status: :unprocessable_entity and return
     end
 
+    puts "Received create brainstorm for thread: #{brainstorm_params[:thread_id]}"
     begin
       values = Brainstorm.create_brainstorm!(current_account, brainstorm_params)
       brainstorm = values[:brainstorm]

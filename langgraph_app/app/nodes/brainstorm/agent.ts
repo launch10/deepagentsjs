@@ -14,7 +14,7 @@ import { type BrainstormGraphState } from "@state";
 import { db, eq, asc, brainstorms as brainstormsTable } from "@db";
 
 // Topic descriptions for the brainstorm agent
-const TopicDescriptions: Record<Brainstorm.Topic, string> = {
+const TopicDescriptions: Record<Brainstorm.TopicType, string> = {
     idea: `The core business idea. What does the business do? What makes them different?`,
     audience: `The target audience. What are their pain points? What are their goals?`,
     solution: `How does the user's business solve the audience's pain points, or help them reach their goals?`,
@@ -22,19 +22,19 @@ const TopicDescriptions: Record<Brainstorm.Topic, string> = {
     lookAndFeel: `The look and feel of the landing page.`,
 }
 
-const sortedTopics = (topics: Brainstorm.Topic[]) => {
+const sortedTopics = (topics: Brainstorm.TopicType[]) => {
     return topics.sort((a, b) => Brainstorm.BrainstormTopics.indexOf(a) - Brainstorm.BrainstormTopics.indexOf(b));
 }
 
-const remainingTopics = (topics: Brainstorm.Topic[]) => {
+const remainingTopics = (topics: Brainstorm.TopicType[]) => {
     return sortedTopics(topics).map(topic => `${topic}: ${TopicDescriptions[topic]}`).join("\n\n");
 }
 
-const collectedData = (state: BrainstormGraphState): Brainstorm.Memories => {
+const collectedData = (state: BrainstormGraphState): Brainstorm.MemoriesType => {
     if (state.memories === undefined) {
         return {};
     }
-    return Object.entries(state.memories).filter(([_, value]) => value !== undefined && value !== "") as Brainstorm.Memories;
+    return Object.entries(state.memories).filter(([_, value]) => value !== undefined && value !== "") as Brainstorm.MemoriesType;
 }
 
 const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
@@ -115,7 +115,7 @@ const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnable
                 You MUST output valid JSON in one of these formats. NO other text.
             </output_format_rules>
 
-            ${await structuredOutputPrompt({ schema: Brainstorm.messageSchema })}
+            ${await structuredOutputPrompt({ schema: Brainstorm.MessageTypeSchema })}
         `
     );
 }
@@ -142,7 +142,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
           model: llm,
           tools,
           systemPrompt: prompt,
-          responseFormat: Brainstorm.messageSchema,
+          responseFormat: Brainstorm.questionSchema,
       });
 
       const updatedState = await agent.invoke(state as any, config);
@@ -156,15 +156,20 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
       const brainstorms = (await db.select().from(brainstormsTable).where(
             eq(brainstormsTable.websiteId, state.websiteId)
       ).orderBy(asc(brainstormsTable.id)))[0];
-      let answers: Brainstorm.Memories = {}
+      let answers: Brainstorm.MemoriesType = {}
       if (brainstorms) {
         answers = pick(brainstorms, [...Brainstorm.BrainstormTopics]);
       }
-      const questionsAnswered = Object.keys(answers) as Brainstorm.Topic[];
-      const remainingTopics = state.remainingTopics.filter(topic => !questionsAnswered.includes(topic));
+      const questionsAnswered = Object.keys(answers).filter(key => answers[key as Brainstorm.TopicType] !== null && answers[key as Brainstorm.TopicType] !== "") as Brainstorm.TopicType[];
+      const topics = Brainstorm.BrainstormTopics;
+      const remainingTopics = topics.filter(topic => !questionsAnswered.includes(topic));
+      const currentTopic = remainingTopics.at(0);
+      const placeholderText = currentTopic ? Brainstorm.PlaceholderText[currentTopic] : "";
 
       return {
           messages: [...(state.messages || []), aiMessage],
+          currentTopic,
+          placeholderText,
           remainingTopics,
       };
     } catch (error) {

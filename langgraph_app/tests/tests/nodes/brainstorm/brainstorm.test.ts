@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { testGraph } from '@support';
 import { type BrainstormGraphState } from '@state';
 import { DatabaseSnapshotter } from '@services';
-import { brainstormGraph } from '@graphs';
+import { brainstormGraph as uncompiledGraph } from '@graphs';
 import { HumanMessage } from '@langchain/core/messages';
 import { 
     isHumanMessage, 
@@ -11,37 +11,41 @@ import {
     type Message,
 } from '@types';
 import { ContentStrategyModel } from '@models';
+import { graphParams } from '@core';
+import { assertDefined } from '@support';
 
-const expectStructuredOutput = (question: Brainstorm.StructuredQuestionType) => {
-    const questionContent: Brainstorm.StructuredQuestionContentType = question.question;
-    expect(typeof questionContent).toBe('object');
+const expectStructuredOutput = (question: Brainstorm.QuestionType) => {
+    expect(typeof question).toBe('object');
     
-    expect(questionContent.intro).toBeTruthy();
+    expect(question.text).toBeTruthy();
 
-    expect(questionContent.sampleResponses).toHaveLength(3);
-    expect(questionContent.sampleResponses[0]).toBeTruthy();
-    expect(questionContent.sampleResponses[1]).toBeTruthy();
-    expect(questionContent.sampleResponses[2]).toBeTruthy();
+    assertDefined(question.examples, 'examples');
+    expect(question.examples).toHaveLength(3);
+    expect(question.examples[0]).toBeTruthy();
+    expect(question.examples[1]).toBeTruthy();
+    expect(question.examples[2]).toBeTruthy();
     
-    expect(questionContent.conclusion).toBeTruthy();
+    expect(question.conclusion).toBeTruthy();
 }
 
+const brainstormGraph = uncompiledGraph.compile({ ...graphParams, name: "brainstorm" }); 
+
 describe.sequential('Brainstorming Flow', () => {
-    beforeAll(async () => {
+    beforeEach(async () => {
         await DatabaseSnapshotter.restoreSnapshot("basic_account");
     })
 
     describe("Suggested next question", () => {
-        it("should default to the first question", async () => {
+        it.only("should default to the first question", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Sorry, what's going on?`)
-                .stopAfter('askQuestion')
+                .stopAfter('agent')
                 .execute();
 
             expect(result.state.error).toBeUndefined();
-            expect(result.state.questionIndex).toBe(0);
-            expect(result.state.nextQuestion.placeholderText).toEqual('I want to acquire leads, sell my product...')
+            expect(result.state.currentTopic).toBe('idea');
+            expect(result.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
         });
 
         it("should stay consistent when the user answers the first question incorrectly", async () => {
@@ -90,7 +94,7 @@ describe.sequential('Brainstorming Flow', () => {
             }
         });
 
-        it.only('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
+        it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)

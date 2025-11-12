@@ -15,7 +15,7 @@ export const createBrainstorm = NodeMiddleware.use({}, async (
       return state;
     }
 
-    if (!state.threadId) {
+    if (!config?.configurable?.thread_id) {
       throw new Error("Thread ID is required");
     }
 
@@ -23,8 +23,9 @@ export const createBrainstorm = NodeMiddleware.use({}, async (
       throw new Error("JWT token is required for API authentication");
     }
 
-    const apiService = new BrainstormAPIService({ jwtToken: state.jwt });
-    const brainstorm = await apiService.create(state.threadId);
+    console.log(`we are hitting brainstorm creation api`)
+    const apiService = new BrainstormAPIService({ jwt: state.jwt });
+    const brainstorm = await apiService.create(config.configurable.thread_id);
 
     return { 
       brainstormId: brainstorm.id,

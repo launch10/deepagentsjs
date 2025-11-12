@@ -56,9 +56,7 @@ export const env = ((): RuntimeEnv => {
   const isCIEnv = isCI();
   const envFile = isCIEnv ? ".env.ci" : isTestEnv ? ".env.test" : ".env";
 
-  console.log(`🔍 Loading env file: ${envFile} (CI=${isCIEnv}, TEST=${isTestEnv}, CWD=${process.cwd()})`);
   const result = config({ path: envFile, override: true });
-  console.log(`📂 Dotenv loaded: ${result.parsed ? 'YES' : 'NO'}, Error: ${result.error || 'none'}`);
   expand(result);
 
   try {

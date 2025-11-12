@@ -36,17 +36,17 @@ export interface Brainstorm {
 };
 
 export interface BrainstormServiceOptions {
-  jwtToken?: string;
+  jwt: string;
 }
 
 /**
  * Service for interacting with the Rails Brainstorm API
  */
 export class BrainstormAPIService {
-  private jwtToken?: string;
+  private jwt: string;
 
-  constructor(options: BrainstormServiceOptions = {}) {
-    this.jwtToken = options.jwtToken;
+  constructor(options: BrainstormServiceOptions) {
+    this.jwt = options.jwt;
   }
 
   /**
@@ -56,7 +56,7 @@ export class BrainstormAPIService {
    * @returns The created brainstorm
    */
   async create(threadId: ThreadIDType, name?: string): Promise<Brainstorm> {
-    const client = createRailsApiClient({ jwtToken: this.jwtToken });
+    const client = createRailsApiClient({ jwt: this.jwt });
 
     const response = await client.POST("/brainstorms", {
       body: {
@@ -84,7 +84,7 @@ export class BrainstormAPIService {
    * @returns The brainstorm
    */
   async get(threadId: ThreadIDType): Promise<Brainstorm> {
-    const client = createRailsApiClient({ jwtToken: this.jwtToken });
+    const client = createRailsApiClient({ jwt: this.jwt });
 
     const response = await client.GET("/brainstorms/{thread_id}", {
       params: {
@@ -113,7 +113,7 @@ export class BrainstormAPIService {
     threadId: ThreadIDType,
     updates: UpdateBrainstormRequest["brainstorm"]
   ): Promise<Brainstorm> {
-    const client = createRailsApiClient({ jwtToken: this.jwtToken });
+    const client = createRailsApiClient({ jwt: this.jwt });
 
     const response = await client.PATCH("/brainstorms/{thread_id}", {
       params: {

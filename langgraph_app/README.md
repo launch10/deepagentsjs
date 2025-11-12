@@ -37,7 +37,7 @@ This ensures we have up-to-date types for the Rails API.
 ```typescript
 import { createRailsApiClient, type paths } from "@rails_api";
 
-const client = createRailsApiClient({ jwtToken: this.jwtToken });
+const client = createRailsApiClient({ jwt: this.jwt });
 
 // Response is properly typed, and will generate typescript errors if the API changes
 const response = await client.POST("/brainstorms", {

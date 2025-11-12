@@ -84,6 +84,8 @@ module Authorization
       payload = JWT.decode(test_proof, Rails.application.credentials.devise_jwt_secret_key!, "HS256")[0]
       timestamp = payload["timestamp"].to_i
 
+      puts "Payload: #{payload}"
+      puts "Timestamp: #{timestamp}"
       # Check timestamp is recent (within last minute)
       if Time.at(timestamp / 1000) > 1.minute.ago
         User.find_by(email: "test_user@launch10.ai")

@@ -5,15 +5,17 @@ import type { Simplify } from "type-fest";
 
 export type BrainstormGraphState = Simplify<CoreGraphState & {
     brainstormId: PrimaryKeyType | undefined;
-    memories: Brainstorm.Memories;
-    availableActions: Brainstorm.Action[];
-    selectedAction: Brainstorm.Action | undefined;
-    remainingTopics: Brainstorm.Topic[];
+    memories: Brainstorm.MemoriesType;
+    currentTopic: Brainstorm.TopicType | undefined;
+    placeholderText: string;
+    availableActions: Brainstorm.ActionType[];
+    selectedAction: Brainstorm.ActionType | undefined;
+    remainingTopics: Brainstorm.TopicType[];
 }>
 
 export type BrainstormLanggraphData = LanggraphData<
     BrainstormGraphState,
-    typeof Brainstorm.messageSchema
+    typeof Brainstorm.questionSchema
 >
 
 // Clean, flattened message type for consumer use

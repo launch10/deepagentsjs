@@ -11,7 +11,7 @@ export interface AuthPayload {
 
 export interface AuthContext {
   accountId: number;
-  jwtToken: string;
+  jwt: string;
 }
 
 export const authMiddleware = async (c: Context, next: Next) => {
@@ -28,7 +28,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
     
     c.set('auth', {
       accountId: Number(decoded.sub),
-      jwtToken: token,
+      jwt: token,
     } as AuthContext);
 
     // TODO: Ensure user has access to threadId

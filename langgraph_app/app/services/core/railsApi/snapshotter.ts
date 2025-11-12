@@ -32,18 +32,14 @@ export interface DatabaseOperationResult {
   message: string;
 }
 
-export interface TestDatabaseServiceOptions {
-  jwtToken?: string;
-}
-
 /**
  * Service for interacting with the Rails Test Database API
  */
 export class DatabaseSnapshotterAPI {
-  private jwtToken?: string;
+  private jwt: string;
 
-  constructor(options: TestDatabaseServiceOptions = {}) {
-    this.jwtToken = options.jwtToken;
+  constructor() {
+    this.jwt = 'test-jwt';
   }
 
   /**
@@ -51,7 +47,7 @@ export class DatabaseSnapshotterAPI {
    * @returns Operation result with status and message
    */
   async truncate(): Promise<DatabaseOperationResult> {
-    const client = createRailsApiClient({ jwtToken: this.jwtToken });
+    const client = createRailsApiClient({ jwt: this.jwt });
 
     const response = await client.POST("/test/database/truncate", {});
 
@@ -71,7 +67,7 @@ export class DatabaseSnapshotterAPI {
    * @returns Array of snapshot names
    */
   async listSnapshots(): Promise<string[]> {
-    const client = createRailsApiClient({ jwtToken: this.jwtToken });
+    const client = createRailsApiClient({ jwt: this.jwt });
 
     const response = await client.GET("/test/database/snapshots", {});
 
@@ -92,7 +88,7 @@ export class DatabaseSnapshotterAPI {
     name: string,
     truncateFirst: boolean = false
   ): Promise<DatabaseOperationResult> {
-    const client = createRailsApiClient({ jwtToken: this.jwtToken });
+    const client = createRailsApiClient({ jwt: this.jwt });
 
     const response = await client.POST("/test/database/snapshots", {
       body: {
@@ -122,9 +118,9 @@ export class DatabaseSnapshotterAPI {
    */
   async restoreSnapshot(
     name: string,
-    truncateFirst: boolean = false
+    truncateFirst: boolean = true
   ): Promise<DatabaseOperationResult> {
-    const client = createRailsApiClient({ jwtToken: this.jwtToken });
+    const client = createRailsApiClient({ jwt: this.jwt });
 
     const response = await client.POST("/test/database/restore_snapshot", {
       body: {

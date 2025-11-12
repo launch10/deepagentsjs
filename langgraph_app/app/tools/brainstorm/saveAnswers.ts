@@ -18,13 +18,13 @@ export const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphR
 
     async function saveAnswers(args?: SaveAnswersInput): Promise<{ success: boolean }> {
         try {
-            const updates: Partial<Brainstorm.Memories> = args?.answers?.reduce((acc, { topic, answer }) => {
+            const updates: Partial<Brainstorm.MemoriesType> = args?.answers?.reduce((acc, { topic, answer }) => {
                 if (!topic || !answer) {
                     return acc;
                 }
                 acc[topic] = answer;
                 return acc;
-            }, {} as Record<Brainstorm.Topic, string>) || {}
+            }, {} as Record<Brainstorm.TopicType, string>) || {}
 
             const insert = withTimestamps(updates);
             const update = withUpdatedAt(updates);

@@ -1,15 +1,21 @@
 # Launch10 Project Guide
 
-## NEVER
-
-Never commit or push code. You are not permitted to.
+FOR CLAUDE CODE: You have access to skills and hooks in the .claude folder at the project root. Subfolders (langgraph_app, rails_app) also have individual .claude folders and skills.
 
 ## Overview
 
-Launch10 is a full-stack application that helps users build landing pages. It consists of:
+Launch10 is a full-stack application that helps users test their business ideas. It consists of:
+
+A. A brainstorm agent to help users brainstorm great marketing copy
+B. A landing page generator to help create and deploy user pages
+C. An ads platform to help users drive traffic to their pages
+D. Analytics to help users understand their successes and failures
+
+From an engineering perspective, it is a full-stack application that consists of:
 
 1. **Rails Frontend** (Rails 8 + Jumpstart Pro + Inertia.js + React + Vite)
 2. **Langgraph Backend** (Node.js + TypeScript + AI agents for page generation)
+3. **Cloudflare Deployment (Atlas)** Deploys user pages
 
 The Rails app manages users, authentication, and project metadata. The Langgraph service handles AI-powered landing page generation and updates.
 
@@ -23,14 +29,15 @@ The Rails app manages users, authentication, and project metadata. The Langgraph
 - **Background Jobs**: Sidekiq
 - **Styling**: Tailwind CSS v4
 - **Authentication**: Devise with JWT support
+- **File System**: WebContainers API for in-browser code execution
 
 ### Backend (Langgraph)
 
 - **Framework**: Langgraph (LangChain's graph-based AI orchestration)
+- **Server**: Hono, manages auth and Langgraph requests
 - **Language**: TypeScript/Node.js
 - **Database**: PostgreSQL (shared with Rails) + Redis for caching
 - **AI Models**: Anthropic Claude, OpenAI GPT, Groq
-- **File System**: WebContainers API for in-browser code execution
 
 ### Authentication Flow
 
@@ -38,7 +45,7 @@ The Rails app manages users, authentication, and project metadata. The Langgraph
 2. Rails generates JWT token with 24-hour expiry
 3. JWT stored in httpOnly cookie
 4. Frontend sends JWT to Langgraph in Authorization header
-5. Langgraph validates JWT and extracts user identity
+5. Hono validates JWT and extracts user identity
 6. All Langgraph resources are scoped to authenticated user
 
 ## Project Structure
