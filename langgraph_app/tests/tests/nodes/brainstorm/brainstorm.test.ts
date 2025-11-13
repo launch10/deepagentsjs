@@ -226,7 +226,7 @@ describe.sequential('Brainstorming Flow', () => {
         await DatabaseSnapshotter.restoreSnapshot("basic_account");
     }, 30000)
 
-    describe("Suggested next question", () => {
+    describe("Chat flow", () => {
         it("should default to the first question", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
@@ -287,9 +287,113 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableActions[2]).toBe('doTheRest');
             expect(result.state.availableActions[3]).toBe('finished');
         });
+
+        it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
+            const result = await testGraph<BrainstormGraphState>()
+                .withGraph(brainstormGraph)
+                .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                .stopAfter('agent')
+                .execute();
+
+            expect(result.error).toBeUndefined();
+
+            // 1 tacit AI message ("What is your business?") + 
+            // 1 human ("Friend of the Pod is a podcast matchmaking service.") + 
+            // 1 AI ("Who are your customers, and what are they trying to achieve? + 3 sample responses")
+            expect(result.state.messages).toHaveLength(3);
+        });
+
+        it('should ask about solution after audience', async () => {
+            const graph = await restartChatFrom('audience', SimpleChatHistory);
+            const result = await graph
+                .withPrompt(validAnswers.audience)
+                .stopAfter('agent')
+                .execute();
+
+            const lastAIResponse = lastAIMessage(result.state);
+            assertDefined(lastAIResponse, 'lastAIResponse is defined');
+
+            expect(result.error).toBeUndefined();
+            expect(result.state.currentTopic).toBe('solution');
+            expect(result.state.placeholderText).toEqual(`My solution is...`)
+
+            expect(result.state.availableActions).toHaveLength(4);
+            expect(result.state.availableActions[0]).toBe('helpMe');
+            expect(result.state.availableActions[1]).toBe('skip');
+            expect(result.state.availableActions[2]).toBe('doTheRest');
+            expect(result.state.availableActions[3]).toBe('finished');
+
+            expect(lastAIResponse.content).toContain('solution');
+        })
+
+        it('should ask about social proof after solution', async () => {
+            const graph = await restartChatFrom('solution', SimpleChatHistory);
+            const result = await graph
+                .withPrompt(validAnswers.solution)
+                .stopAfter('agent')
+                .execute();
+
+            const lastAIResponse = lastAIMessage(result.state);
+            console.log(lastAIResponse?.content);
+            assertDefined(lastAIResponse, 'lastAIResponse is defined');
+
+            expect(result.error).toBeUndefined();
+            expect(result.state.currentTopic).toBe('socialProof');
+            expect(result.state.placeholderText).toEqual(`My social proof is...`)
+
+            expect(result.state.availableActions).toHaveLength(4);
+            expect(result.state.availableActions[0]).toBe('helpMe');
+            expect(result.state.availableActions[1]).toBe('skip');
+            expect(result.state.availableActions[2]).toBe('doTheRest');
+            expect(result.state.availableActions[3]).toBe('finished');
+
+            expect(lastAIResponse.content).toContain('social proof');
+        });
+
+        it('should tell the user about the UI when ready for lookAndFeel', async () => {
+            const graph = await restartChatFrom('socialProof', SimpleChatHistory);
+            const result = await graph
+                .withPrompt(validAnswers.socialProof)
+                .stopAfter('agent')
+                .execute();
+
+            const lastAIResponse = lastAIMessage(result.state);
+            assertDefined(lastAIResponse, 'lastAIResponse is defined');
+
+            expect(result.error).toBeUndefined();
+            expect(result.state.currentTopic).toBe('lookAndFeel');
+            expect(result.state.placeholderText).toEqual(`Use the Advanced sidebar or click "Build My Site"...`)
+
+            expect(result.state.availableActions).toHaveLength(1);
+            expect(result.state.availableActions[0]).toBe('finished');
+
+            expect(lastAIResponse.content).toContain(`Brand Personalization panel`);
+            expect(lastAIResponse.content).toContain(`Build My Site`);
+        });
     })
 
-    describe("Tagging parts of the conversation", () => {
+    describe("During lookAndFeel chat", () => {
+        it("returns redirect when user verbally expresses that they want to move on", async () => {
+            const graph = await restartChatFrom('lookAndFeel', SimpleChatHistory);
+            const result = await graph
+                .withPrompt(`That's alright, let's move on`)
+                .stopAfter('agent')
+                .execute();
+
+            const lastAIResponse = lastAIMessage(result.state);
+            assertDefined(lastAIResponse, 'lastAIResponse is defined');
+            console.log(lastAIResponse.content)
+
+            expect(result.error).toBeUndefined();
+            expect(result.state.redirect).toEqual("website_builder");
+        });
+
+        it("answers questions about UI", () => {})
+        it("answers questions about next steps", () => {})
+        it("answers questions about how things will be used", () => {})
+    });
+
+    describe("Tagging conversation topics", () => {
         it("tags a group of messages as belonging to the same topic", { timeout: 60000 }, async () => {
             const graph = await restartChatFrom('solution', MeanderingChatHistory);
             const nextMessage = MeanderingChatHistory.solution.at(0) as string;
@@ -342,22 +446,211 @@ describe.sequential('Brainstorming Flow', () => {
         });
     })
 
-    describe("Full brainstorming conversation flow", () => {
-        it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
-            const result = await testGraph<BrainstormGraphState>()
-                .withGraph(brainstormGraph)
-                .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                .stopAfter('agent')
-                .execute();
+    describe("Actions", () => {
+        describe("skip", () => {
+            it.only("skips a single question", async () => {
+                const graph = await restartChatFrom('idea', SimpleChatHistory);
+                const result = await graph
+                    .withPrompt("Skip")
+                    .stopAfter('agent')
+                    .execute();
 
-            expect(result.error).toBeUndefined();
+                const lastAIResponse = lastAIMessage(result.state);
+                assertDefined(lastAIResponse, 'lastAIResponse is defined');
+                console.log(lastAIResponse.content);
 
-            // 1 tacit AI message ("What is your business?") + 
-            // 1 human ("Friend of the Pod is a podcast matchmaking service.") + 
-            // 1 AI ("Who are your customers, and what are they trying to achieve? + 3 sample responses")
-            expect(result.state.messages).toHaveLength(3);
+                expect(result.error).toBeUndefined();
+
+                // Skips from audience to solution
+                expect(result.state.currentTopic).toBe('solution');
+                expect(result.state.placeholderText).toEqual(`My solution is...`)
+
+                expect(result.state.availableActions).toHaveLength(4);
+                expect(result.state.availableActions[0]).toBe('helpMe');
+                expect(result.state.availableActions[1]).toBe('skip');
+                expect(result.state.availableActions[2]).toBe('doTheRest');
+                expect(result.state.availableActions[3]).toBe('finished');
+
+                expect(lastAIResponse.content).toContain('solution');
+            });
+
+            it("allows user to make further adjustments", async () => {
+                const result1 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                    .stopAfter('agent')
+                    .execute();
+
+                const result2 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withState({
+                        ...result1.state,
+                        action: "DO_THE_REST"
+                    })
+                    .stopAfter('agent')
+                    .execute();
+
+                const state = result2.state;
+
+                expect(result2.error).toBeUndefined();
+                expect(state.questionIndex).toBe(4);
+
+                // It seeks approval
+                expect(state.route).toEqual("seekApproval");
+                expect(state.availableActions).toEqual(["FINISHED"]);
+
+                const result3 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withPrompt(`Actually, my customers are podcast creators, not podcast guests.`)
+                    .withState({
+                        ...result2.state,
+                    })
+                    .stopAfter('agent')
+                    .execute();
+
+                expect(result3.error).toBeUndefined();
+                expect(result3.state.questionIndex).toBe(4);
+
+                const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
+                expect(lastAiResponse.content).toMatch(/creators/) // It updates it understanding
+                expect(lastAiResponse.content).toMatch(/social proof is affected by this change..../)
+            });
         });
 
+        describe("HELP_ME_ANSWER", () => {
+            it("helps the user answer the question", async () => {
+                const result1 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                    .stopAfter('agent')
+                    .execute();
+
+                const question: QuestionType = result1.state.nextQuestion;
+                expect(question.key).toBe("customers");
+                expect(question.type).toBe("structured");
+                expect(typeof question).toBe('object');
+
+                const result2 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withState({
+                        ...result1.state,
+                        action: "HELP_ME_ANSWER"
+                    })
+                    .stopAfter('agent')
+                    .execute();
+
+                const state = result2.state;
+
+                expect(result2.error).toBeUndefined();
+                expect(state.questionIndex).toBe(2);
+
+                // It answers for the user as 2nd-to-last message
+                const lastAiResponse = state.messages?.filter(isAIMessage).slice(-2);
+                expect(lastAiResponse.content).toMatch(/content creators/) // The audience
+
+                // Then it asks the next question...
+                const question2: QuestionType = state.nextQuestion;
+                expect(question2.key).toBe("valueProp"); // It prepares the next question
+                expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
+
+                const result3 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withPrompt(`Actually, it's for podcast listeners...`)
+                    .withState({
+                        ...result2.state,
+                    })
+                    .stopAfter('agent')
+                    .execute();
+
+                const question3: QuestionType = state.nextQuestion;
+                // We're still on value prop
+                expect(question2.key).toBe("valueProp"); // It prepares the next question
+                expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
+
+                const lastAiResponse2 = state.messages?.filter(isAIMessage).slice(-1);
+                expect(lastAiResponse2.content).toMatch(/content creators/) // The audience
+
+                expect(lastAiResponse2.content).toMatch(/got it! Podcast listeners/)
+                expect(lastAiResponse2.content).toMatch(/Now about our value prop/)
+            });
+        });
+
+        describe("DO_THE_REST", () => {
+            it("completes the brainstorming and provides only FINISHED action when user", async () => {
+                const result1 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                    .stopAfter('agent')
+                    .execute();
+
+                const result2 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withState({
+                        ...result1.state,
+                        action: "DO_THE_REST"
+                    })
+                    .stopAfter('agent')
+                    .execute();
+
+                const state = result2.state;
+
+                expect(result2.error).toBeUndefined();
+                expect(state.questionIndex).toBe(4);
+
+                // It seeks approval
+                expect(state.route).toEqual("seekApproval");
+                expect(state.availableActions).toEqual(["FINISHED"]);
+
+                // It spells out its intentions in message form...
+                const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
+                expect(lastAiResponse.content).toMatch(/audience/) // Brainstorms a section we didn't previously
+            });
+
+            it("allows user to make further adjustments", async () => {
+                const result1 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                    .stopAfter('agent')
+                    .execute();
+
+                const result2 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withState({
+                        ...result1.state,
+                        action: "DO_THE_REST"
+                    })
+                    .stopAfter('agent')
+                    .execute();
+
+                const state = result2.state;
+
+                expect(result2.error).toBeUndefined();
+                expect(state.questionIndex).toBe(4);
+
+                // It seeks approval
+                expect(state.route).toEqual("seekApproval");
+                expect(state.availableActions).toEqual(["FINISHED"]);
+
+                const result3 = await testGraph<BrainstormGraphState>()
+                    .withGraph(brainstormGraph)
+                    .withPrompt(`Actually, my customers are podcast creators, not podcast guests.`)
+                    .withState({
+                        ...result2.state,
+                    })
+                    .stopAfter('agent')
+                    .execute();
+
+                expect(result3.error).toBeUndefined();
+                expect(result3.state.questionIndex).toBe(4);
+
+                const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
+                expect(lastAiResponse.content).toMatch(/creators/) // It updates it understanding
+                expect(lastAiResponse.content).toMatch(/social proof is affected by this change..../)
+            });
+        });
+    });
+
+    describe("Edge cases", () => {
         it("keeps pushing if the user doesn't have a good response", async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
@@ -406,369 +699,6 @@ describe.sequential('Brainstorming Flow', () => {
 
             console.log(lastAIResponse3.content);
             expect(lastAIResponse3.content).toContain('podcast');
-        });
-
-        it('should ask about solution after audience', async () => {
-            const graph = await restartChatFrom('audience', SimpleChatHistory);
-            const result = await graph
-                .withPrompt(validAnswers.audience)
-                .stopAfter('agent')
-                .execute();
-
-            const lastAIResponse = lastAIMessage(result.state);
-            assertDefined(lastAIResponse, 'lastAIResponse is defined');
-
-            expect(result.error).toBeUndefined();
-            expect(result.state.currentTopic).toBe('solution');
-            expect(result.state.placeholderText).toEqual(`My solution is...`)
-
-            expect(result.state.availableActions).toHaveLength(4);
-            expect(result.state.availableActions[0]).toBe('helpMe');
-            expect(result.state.availableActions[1]).toBe('skip');
-            expect(result.state.availableActions[2]).toBe('doTheRest');
-            expect(result.state.availableActions[3]).toBe('finished');
-
-            expect(lastAIResponse.content).toContain('solution');
-        })
-
-        it('should ask about social proof after solution', async () => {
-            const graph = await restartChatFrom('solution');
-            const result = await graph
-                .withPrompt(validAnswers.solution)
-                .stopAfter('agent')
-                .execute();
-
-            const lastAIResponse = lastAIMessage(result.state);
-            console.log(lastAIResponse?.content);
-            assertDefined(lastAIResponse, 'lastAIResponse is defined');
-
-            expect(result.error).toBeUndefined();
-            expect(result.state.currentTopic).toBe('socialProof');
-            expect(result.state.placeholderText).toEqual(`My social proof is...`)
-
-            expect(result.state.availableActions).toHaveLength(4);
-            expect(result.state.availableActions[0]).toBe('helpMe');
-            expect(result.state.availableActions[1]).toBe('skip');
-            expect(result.state.availableActions[2]).toBe('doTheRest');
-            expect(result.state.availableActions[3]).toBe('finished');
-
-            expect(lastAIResponse.content).toContain('social proof');
-        });
-
-        it('should tell the user about the UI when ready for lookAndFeel', async () => {
-            const graph = await restartChatFrom('socialProof');
-            const result = await graph
-                .withPrompt(validAnswers.socialProof)
-                .stopAfter('agent')
-                .execute();
-
-            const lastAIResponse = lastAIMessage(result.state);
-            assertDefined(lastAIResponse, 'lastAIResponse is defined');
-
-            expect(result.error).toBeUndefined();
-            expect(result.state.currentTopic).toBe('lookAndFeel');
-            expect(result.state.placeholderText).toEqual(`Use the Advanced sidebar or click "Build My Site"...`)
-
-            expect(result.state.availableActions).toHaveLength(1);
-            expect(result.state.availableActions[0]).toBe('finished');
-
-            expect(lastAIResponse.content).toContain(`Brand Personalization panel`);
-            expect(lastAIResponse.content).toContain(`Build My Site`);
-        });
-
-        describe("Brainstorming Finished", () => {
-            it("jumps to the next graph when user verbally expresses that they want to move on", async () => {
-                const graph = await restartChatFrom('lookAndFeel');
-                const result = await graph
-                    .withPrompt(`That's alright, let's move on`)
-                    .stopAfter('agent')
-                    .execute();
-
-                const lastAIResponse = lastAIMessage(result.state);
-                assertDefined(lastAIResponse, 'lastAIResponse is defined');
-                console.log(lastAIResponse.content)
-
-                expect(result.error).toBeUndefined();
-                expect(result.state.redirect).toEqual("website_builder");
-            });
-
-            it("jumps to the next graph when user clicks 'Finished'", async () => {
-                const result1 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                    .stopAfter('agent')
-                    .execute();
-
-                const messages2 = [
-                    ...result1.state.messages,
-                    getSimpleQuestion(1), // Audience
-                    new HumanMessage(`Podcasts guests looking to promote their book or service`),
-                    getSimpleQuestion(2), // What's your value prop?
-                    new HumanMessage(`We match podcast hosts and guests to find the perfect audience to promote your product!`),
-                    getSimpleQuestion(3), // Social proof
-                    new HumanMessage(`Yes, we have testimonials from over 50 podcasters with 5-star ratings.`),
-                    getSimpleQuestion(4),
-                ];
-
-                const result2 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withState({
-                        messages: messages2,
-                        questionIndex: 4,
-                        action: "FINISHED"
-                    })
-                    .stopAfter('agent')
-                    .execute();
-
-                expect(result2.error).toBeUndefined();
-                expect(result2.state.questionIndex).toBe(4);
-
-                // It creates contents strategy
-                // This should actually go in the WebsiteBuilder! To save time for the user... 
-                const contentStrategy = await ContentStrategyModel.findBy({websiteId: result2.state.websiteId});
-                expect(contentStrategy).toBeDefined();
-                expect(contentStrategy.problemStatement).toBeDefined();
-                expect(contentStrategy.socialProof).toBeDefined();
-                expect(contentStrategy.callToAction).toBeDefined();
-
-                expect(result2.state.redirect).toEqual("website_builder");
-            });
-        });
-
-        describe("Actions", () => {
-            describe("SKIP", () => {
-                it("skips a single question", async () => {
-                    const result1 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                        .stopAfter('agent')
-                        .execute();
-
-                    const question: QuestionType = result1.state.nextQuestion;
-                    expect(question.key).toBe("customers");
-                    expect(question.type).toBe("structured");
-                    expect(typeof question).toBe('object');
-
-                    const result2 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withState({
-                            ...result1.state,
-                            action: "SKIP"
-                        })
-                        .stopAfter('agent')
-                        .execute();
-
-                    const state = result2.state;
-
-                    expect(result2.error).toBeUndefined();
-                    expect(state.questionIndex).toBe(2);
-
-                    // It skips to the next question
-                    const question2: QuestionType = state.nextQuestion;
-                    expect(question2.key).toBe("valueProp");
-                    expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
-
-                    const messages3 = [
-                        ...result2.state.messages,
-                        new HumanMessage(`We match podcast hosts and guests to find the perfect audience to promote your product!`),
-                        getSimpleQuestion(3), // Social proof
-                        new HumanMessage(`Yes, we have testimonials from over 50 podcasters with 5-star ratings.`),
-                        getSimpleQuestion(4),
-                    ];
-                    const result3 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withState({
-                            ...result3.state,
-                            messages: messages3,
-                            action: "FINISHED"
-                        })
-                        .stopAfter('agent')
-                        .execute();
-
-                    // This should actually go in the WebsiteBuilder! Find another way to test this...
-                    // We should put this in MESSAGES...
-                    // const contentStrategy = await ContentStrategyModel.findBy({websiteId: result2.state.websiteId});
-                    // expect(contentStrategy).toBeDefined();
-                    // expect(contentStrategy.audience).toBeDefined(); // Even though we skipped this question, the AI brainstorms using the data available to it.
-                    const lastAiResponse = result3.state.messages.filter(isAIMessage).slice(-1);
-                    expect(lastAiResponse.content).toMatch(/based on everything you said.../) // we skipped this, so it answers at the end...
-                    expect(lastAiResponse.content).toMatch(/content creators/) // we skipped this, so it answers at the end...
-                });
-
-                it("allows user to make further adjustments", async () => {
-                    const result1 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                        .stopAfter('agent')
-                        .execute();
-
-                    const result2 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withState({
-                            ...result1.state,
-                            action: "DO_THE_REST"
-                        })
-                        .stopAfter('agent')
-                        .execute();
-
-                    const state = result2.state;
-
-                    expect(result2.error).toBeUndefined();
-                    expect(state.questionIndex).toBe(4);
-
-                    // It seeks approval
-                    expect(state.route).toEqual("seekApproval");
-                    expect(state.availableActions).toEqual(["FINISHED"]);
-
-                    const result3 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withPrompt(`Actually, my customers are podcast creators, not podcast guests.`)
-                        .withState({
-                            ...result2.state,
-                        })
-                        .stopAfter('agent')
-                        .execute();
-
-                    expect(result3.error).toBeUndefined();
-                    expect(result3.state.questionIndex).toBe(4);
-
-                    const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
-                    expect(lastAiResponse.content).toMatch(/creators/) // It updates it understanding
-                    expect(lastAiResponse.content).toMatch(/social proof is affected by this change..../)
-                });
-            });
-
-            describe("HELP_ME_ANSWER", () => {
-                it("helps the user answer the question", async () => {
-                    const result1 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                        .stopAfter('agent')
-                        .execute();
-
-                    const question: QuestionType = result1.state.nextQuestion;
-                    expect(question.key).toBe("customers");
-                    expect(question.type).toBe("structured");
-                    expect(typeof question).toBe('object');
-
-                    const result2 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withState({
-                            ...result1.state,
-                            action: "HELP_ME_ANSWER"
-                        })
-                        .stopAfter('agent')
-                        .execute();
-
-                    const state = result2.state;
-
-                    expect(result2.error).toBeUndefined();
-                    expect(state.questionIndex).toBe(2);
-
-                    // It answers for the user as 2nd-to-last message
-                    const lastAiResponse = state.messages?.filter(isAIMessage).slice(-2);
-                    expect(lastAiResponse.content).toMatch(/content creators/) // The audience
-
-                    // Then it asks the next question...
-                    const question2: QuestionType = state.nextQuestion;
-                    expect(question2.key).toBe("valueProp"); // It prepares the next question
-                    expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
-
-                    const result3 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withPrompt(`Actually, it's for podcast listeners...`)
-                        .withState({
-                            ...result2.state,
-                        })
-                        .stopAfter('agent')
-                        .execute();
-
-                    const question3: QuestionType = state.nextQuestion;
-                    // We're still on value prop
-                    expect(question2.key).toBe("valueProp"); // It prepares the next question
-                    expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
-
-                    const lastAiResponse2 = state.messages?.filter(isAIMessage).slice(-1);
-                    expect(lastAiResponse2.content).toMatch(/content creators/) // The audience
-
-                    expect(lastAiResponse2.content).toMatch(/got it! Podcast listeners/)
-                    expect(lastAiResponse2.content).toMatch(/Now about our value prop/)
-                });
-            });
-
-            describe("DO_THE_REST", () => {
-                it("completes the brainstorming and provides only FINISHED action when user", async () => {
-                    const result1 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                        .stopAfter('agent')
-                        .execute();
-
-                    const result2 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withState({
-                            ...result1.state,
-                            action: "DO_THE_REST"
-                        })
-                        .stopAfter('agent')
-                        .execute();
-
-                    const state = result2.state;
-
-                    expect(result2.error).toBeUndefined();
-                    expect(state.questionIndex).toBe(4);
-
-                    // It seeks approval
-                    expect(state.route).toEqual("seekApproval");
-                    expect(state.availableActions).toEqual(["FINISHED"]);
-
-                    // It spells out its intentions in message form...
-                    const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
-                    expect(lastAiResponse.content).toMatch(/audience/) // Brainstorms a section we didn't previously
-                });
-
-                it("allows user to make further adjustments", async () => {
-                    const result1 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                        .stopAfter('agent')
-                        .execute();
-
-                    const result2 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withState({
-                            ...result1.state,
-                            action: "DO_THE_REST"
-                        })
-                        .stopAfter('agent')
-                        .execute();
-
-                    const state = result2.state;
-
-                    expect(result2.error).toBeUndefined();
-                    expect(state.questionIndex).toBe(4);
-
-                    // It seeks approval
-                    expect(state.route).toEqual("seekApproval");
-                    expect(state.availableActions).toEqual(["FINISHED"]);
-
-                    const result3 = await testGraph<BrainstormGraphState>()
-                        .withGraph(brainstormGraph)
-                        .withPrompt(`Actually, my customers are podcast creators, not podcast guests.`)
-                        .withState({
-                            ...result2.state,
-                        })
-                        .stopAfter('agent')
-                        .execute();
-
-                    expect(result3.error).toBeUndefined();
-                    expect(result3.state.questionIndex).toBe(4);
-
-                    const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
-                    expect(lastAiResponse.content).toMatch(/creators/) // It updates it understanding
-                    expect(lastAiResponse.content).toMatch(/social proof is affected by this change..../)
-                });
-            });
         });
     });
 });
