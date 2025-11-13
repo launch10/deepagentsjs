@@ -18,13 +18,18 @@ import { type Message, isHumanMessage, isAIMessage } from "@types";
  * ```
  */
 export async function chatHistoryPrompt({ messages, limit }: { messages: Message[], limit?: number }): Promise<string> {
+  let countExtraMessages = messages.length - (limit || 0);
   let filteredMessages = limit ? messages.slice(-limit) : messages;
-  const messageElements = filteredMessages?.map((message) => {
+  let messageElements = filteredMessages?.map((message) => {
     const type = isHumanMessage(message) ? "human" : "assistant";
 
     return `\n  <message>${type}: ${JSON.stringify(message.content, null, 4)}</message>`;
-  }).join('') || '';
+  });
+
+  if (countExtraMessages > 0) {
+    messageElements.unshift(`\n  <message>... ${countExtraMessages} more messages...</message>` + messageElements);
+  }
   
   // Don't use renderPrompt here - xml-formatter can reorder elements
-  return `<chat-history>${messageElements}\n</chat-history>`;
+  return `<chat-history>${messageElements.join('')}\n</chat-history>`;
 }

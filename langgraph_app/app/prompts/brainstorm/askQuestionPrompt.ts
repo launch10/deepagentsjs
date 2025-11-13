@@ -2,11 +2,12 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { BrainstormGraphState } from "@state";
+import { chatHistoryPrompt } from "@prompts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export const askQuestionPrompt = (state: BrainstormGraphState) => {
+export const askQuestionPrompt = async (state: BrainstormGraphState) => {
   const brainstormCore = fs.readFileSync(path.join(__dirname, 'topics/core.md'), 'utf-8');
   const topicGuide = fs.readFileSync(path.join(__dirname, `topics/${state.currentTopic}.md`), 'utf-8');
 
@@ -43,7 +44,13 @@ export const askQuestionPrompt = (state: BrainstormGraphState) => {
 
     <important>
       Be extremely concise. Sacrifice grammar for conciseness.
+
+      Focus primarily on examples of WHAT GOOD LOOKS LIKE.
     </important>
+
+    <chat_history>
+      ${await chatHistoryPrompt({ messages: state.messages, limit: 20 })}
+    </chat_history>
 
   `;
 };

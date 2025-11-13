@@ -45,7 +45,7 @@ const intentRouter = (state: BrainstormGraphState): string => {
         case "do_the_rest":
           return "doTheRestNode";
         case "off_topic":
-          return "offTopicNode";
+          return "brainstormAgent";
         case "finished":
           return "nextStepsAgent";
         default:
@@ -73,7 +73,6 @@ export const brainstormGraph = new StateGraph(BrainstormAnnotation)
       .addNode("processQuestionNode", processQuestionNode)
       .addNode("skipNode", skipNode)
       .addNode("doTheRestNode", doTheRestNode)
-      .addNode("offTopicNode", offTopicNode)
 
       .addEdge(START, "reset")
       .addEdge("reset", "createBrainstorm")
@@ -86,8 +85,8 @@ export const brainstormGraph = new StateGraph(BrainstormAnnotation)
         skipNode: "skipNode",
         processQuestionNode: "processQuestionNode",
         doTheRestNode: "doTheRestNode",
-        offTopicNode: "offTopicNode",
-        nextStepsAgent: "nextStepsAgent"
+        nextStepsAgent: "nextStepsAgent",
+        brainstormAgent: "brainstormAgent"
       })
       
       // QA flow (only for attempted_answer intent)
@@ -95,12 +94,11 @@ export const brainstormGraph = new StateGraph(BrainstormAnnotation)
         saveAnswers: "saveAnswers",
         brainstormAgent: "brainstormAgent"
       })
-      .addEdge("saveAnswers", "loadNextSteps")
+      .addEdge("saveAnswers", "brainstormAgent")
       .addEdge("brainstormAgent", END)
       
       // Terminal nodes
       .addEdge("processQuestionNode", END)
       .addEdge("skipNode", END)
       .addEdge("doTheRestNode", END)
-      .addEdge("offTopicNode", END)
       .addEdge("nextStepsAgent", END)

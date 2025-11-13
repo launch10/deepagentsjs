@@ -8,13 +8,17 @@ import { BrainstormNextStepsService } from "@services";
 import { chatHistoryPrompt } from "@prompts";
 import { getLLM } from "@core";
 import { BaseMessage } from "@langchain/core/messages";
-class MessageTagger {
+export class MessageTagger {
   messages: BaseMessage[];
   tag: Brainstorm.TopicType;
 
   constructor(messages: BaseMessage[], tag: Brainstorm.TopicType) {
     this.messages = messages;
     this.tag = tag;
+  }
+
+  untaggedMessages() {
+    return this.messagesToSave();
   }
 
   messagesToSave() {

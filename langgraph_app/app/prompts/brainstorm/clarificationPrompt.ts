@@ -12,7 +12,7 @@ export const clarificationPrompt = async (state: BrainstormGraphState) => {
   const brainstormCore = fs.readFileSync(path.join(__dirname, 'topics/core.md'), 'utf-8');
   const topicGuide = fs.readFileSync(path.join(__dirname, `topics/${state.currentTopic}.md`), 'utf-8');
   const qaReasoning = state.qa!.reasoning; // From previous QA evaluation
-  const chatHistory = await chatHistoryPrompt({ messages: state.messages });
+  const chatHistory = await chatHistoryPrompt({ messages: state.messages, limit: 20 });
   
   return `
     ${brainstormCore}
@@ -35,10 +35,11 @@ export const clarificationPrompt = async (state: BrainstormGraphState) => {
     the weakness identified in the QA evaluation.
     
     Be constructive and encouraging:
-    1. Acknowledge what was good
-    2. Identify the specific gap
-    3. Ask targeted follow-up
-    4. Provide examples
+      1. Acknowledge what was good
+      2. Identify the specific gap
+      3. Ask targeted follow-up
+      4. Provide examples
+      5. Be EXTREMELY concise. Keep it to a very short intro. Focus primarily on examples of WHAT GOOD LOOKS LIKE.
     
     Output JSON: {
       "text": "Your clarifying question",

@@ -8,10 +8,15 @@ import { Brainstorm } from "@types";
 import { BrainstormNextStepsService } from "@services";
 
 export const brainstormAgent = NodeMiddleware.use(async (
-  state: BrainstormGraphState,
+  originalState: BrainstormGraphState,
   config?: LangGraphRunnableConfig
 ): Promise<Partial<BrainstormGraphState>> => {
-  console.log(`brainstormAgent called for ${state.currentTopic}`)
+  const nextSteps = await new BrainstormNextStepsService(originalState).nextSteps();
+  let state = {
+    ...originalState,
+    ...nextSteps,
+  }
+
   if (!state.currentTopic) {
     throw new Error("brainstormAgent called without currentTopic");
   }
@@ -24,6 +29,8 @@ export const brainstormAgent = NodeMiddleware.use(async (
   const prompt = isAskingQuestion 
     ? await askQuestionPrompt(state)
     : await clarificationPrompt(state);
+  
+  console.log(`${isAskingQuestion ? 'Asking question' : 'Clarifying'} for ${state.currentTopic}`)
 
   const response = await llm.invoke(prompt);
   console.log(response)
@@ -33,14 +40,12 @@ export const brainstormAgent = NodeMiddleware.use(async (
     response_metadata: response,
   });
 
-  const { memories, remainingTopics, currentTopic, placeholderText, availableActions } = await new BrainstormNextStepsService(state).nextSteps();
-
   return {
       messages: [...(state.messages || []), aiMessage],
-      memories,
-      currentTopic,
-      placeholderText,
-      remainingTopics,
-      availableActions,
+      memories: state.memories,
+      currentTopic: state.currentTopic,
+      placeholderText: state.placeholderText,
+      remainingTopics: state.remainingTopics,
+      availableActions: state.availableActions,
   };
 });
