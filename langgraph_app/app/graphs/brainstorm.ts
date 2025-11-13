@@ -37,11 +37,9 @@ const routerNode = (state: BrainstormGraphState, config?: LangGraphRunnableConfi
 
 const routeAfterQANode = async (state: BrainstormGraphState, config?: LangGraphRunnableConfig): Promise<string> => {
       if (state.qa!.success === true) {
-            console.log("calling saveAnswers")
             return "saveAnswers";
       }
 
-      console.log("calling brainstormAgent")
       return "brainstormAgent";
 }
 

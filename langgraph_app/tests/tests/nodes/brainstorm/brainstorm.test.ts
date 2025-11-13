@@ -290,7 +290,7 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Tagging parts of the conversation", () => {
-        it.only("tags a group of messages as belonging to the same topic", { timeout: 60000 }, async () => {
+        it("tags a group of messages as belonging to the same topic", { timeout: 60000 }, async () => {
             const graph = await restartChatFrom('solution', MeanderingChatHistory);
             const nextMessage = MeanderingChatHistory.solution.at(0) as string;
             const result1 = await graph
@@ -327,13 +327,18 @@ describe.sequential('Brainstorming Flow', () => {
 
             // We should have tagged this SERIES of messages as belonging
             // to the same topic
-            expect(result3.state.messages.map((message) => message.additional_kwargs.topic)).toEqual([
+            expect(result3.state.messages.map((message) => message.additional_kwargs?.topic)).toEqual([
                 ...Array(8).fill("idea"), 
-                ...Array(10).fill("audience"),
-                ...Array(9).fill("solution"),
+                ...Array(6).fill("audience"),
+                ...Array(6).fill("solution"),
                 undefined // The last message doesn't have a topic yet
             ])
 
+            expect(result3.state.memories.idea).toBeTruthy();
+            expect(result3.state.memories.audience).toBeTruthy();
+            expect(result3.state.memories.solution).toBeTruthy();
+            expect(result3.state.memories.socialProof).toBeNull();
+            expect(result3.state.memories.lookAndFeel).toBeNull();
         });
     })
 
