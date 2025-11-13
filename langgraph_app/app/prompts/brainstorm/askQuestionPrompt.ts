@@ -46,6 +46,8 @@ export const askQuestionPrompt = async (state: BrainstormGraphState) => {
       Be extremely concise. Sacrifice grammar for conciseness.
 
       Focus primarily on examples of WHAT GOOD LOOKS LIKE.
+
+      The user doesn't want to read a novel! Be a friend, not a novel!
     </important>
 
     <chat_history>

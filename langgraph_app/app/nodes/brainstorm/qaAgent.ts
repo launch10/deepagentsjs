@@ -18,6 +18,7 @@ export const qaAgent = NodeMiddleware.use(async (
     .withStructuredOutput(Brainstorm.qaSchema);
   
   const evaluation = await llm.invoke(prompt) as Brainstorm.QAResultType;
+  console.log(`qaAgent: ${JSON.stringify(evaluation)}`);
 
   return {
     qa: evaluation,

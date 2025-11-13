@@ -110,6 +110,7 @@ export class LLMManagerFactory {
         if (!this.apiConfigured(config)) {
           throw new Error("Groq API key (GROQ_API_KEY) is missing!");
         }
+        console.log("Using Groq model: ", config.modelCard);
         modelInstance = new ChatGroq({
           apiKey: config.apiKey,
           model: config.modelCard,

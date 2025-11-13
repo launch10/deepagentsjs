@@ -88,6 +88,8 @@ export const saveAnswersNode = NodeMiddleware.use(async (
       ${await chatHistoryPrompt({ messages: messagesToSave })}
     `;
     const summary = await getLLM().invoke(prompt);
+    console.log(`saveAnswersNode: ${JSON.stringify(summary)}`)
+    console.log(summary.content);
 
     const updates: Partial<Brainstorm.MemoriesType> = {
       [state.currentTopic]: summary.content,

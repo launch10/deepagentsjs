@@ -7,7 +7,7 @@ export const LLMProviders = ["anthropic", "ollama", "openai", "groq", "google", 
 export type LLMProvider = typeof LLMProviders[number];
 
 // LLM Speeds
-export const LLMSpeeds = ["fast", "slow"] as const;
+export const LLMSpeeds = ["fast", "slow", "blazing"] as const;
 export type LLMSpeed = typeof LLMSpeeds[number];
 
 // LLM Costs
@@ -32,6 +32,7 @@ export const LLMNames = {
     Gpt5Mini: "gpt-5-mini" as const,
     GptOss: "gpt-oss:20b" as const,
     GeminiFlash: "gemini-1.5-flash-latest" as const,
+    GroqGptOss120b: "openai/gpt-oss-120b" as const,
     Fake: "fake" as const, // For testing
 }
 
@@ -87,6 +88,14 @@ export const EstimatedLLMAttributes: Record<LLMName, LLMAttributes> = {
     costOut: 2.50,
     timeToFirstToken: 900,
   },
+  GroqGptOss120b: {
+    tokensPerSecond: 50,
+    contextTokens: 400_000,
+    completionTokens: 128_000,
+    costIn: 1.25,
+    costOut: 10.00,
+    timeToFirstToken: 1200,
+  },
   Fake: {
     tokensPerSecond: 10_000,
     contextTokens: 400_000,
@@ -138,10 +147,12 @@ export interface LLMsConfig {
 
 export interface LLMAppConfig {
   "free": {
+    "blazing": LLMsConfig;
     "fast": LLMsConfig;
     "slow": LLMsConfig;
   };
   "paid": {
+    "blazing": LLMsConfig;
     "fast": LLMsConfig;
     "slow": LLMsConfig;
   };
@@ -170,6 +181,16 @@ export const SonnetConfig: IAPIConfig = {
   temperature: 0,
   maxTokens: 180_000,
   apiKey: anthropicApiKey,
+}
+
+export const GroqGptOss120bConfig: IAPIConfig = {
+  type: "api",
+  provider: "groq",
+  model: "GroqGptOss120b",
+  modelCard: LLMNames.GroqGptOss120b,
+  temperature: 0,
+  maxTokens: 128_000,
+  apiKey: groqApiKey,
 }
 
 export const Gpt5Config: IAPIConfig = {
@@ -227,5 +248,6 @@ export const Models: Record<LLMName, LLMConfig> = {
   Gpt5Mini: Gpt5MiniConfig,
   GptOss: GptOssConfig,
   GeminiFlash: GeminiFlashConfig,
+  GroqGptOss120b: GroqGptOss120bConfig,
   Fake: FakeConfig,
 }

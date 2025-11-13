@@ -82,14 +82,10 @@ export const detectIntent = NodeMiddleware.use(async (
     </task>
 
     Output ONLY the intent name, nothing else.
-
-    {
-      "intent": "<your_answer_here>"
-    }
   `;
 
-  const llm = getLLM().withStructuredOutput(z.object({ intent: intentSchema }));
-  const intent = (await llm.invoke(prompt)).intent;
+  const llm = getLLM("reasoning", "blazing");
+  const intent = (await llm.invoke(prompt)).content;
 
   console.log(`[detectIntent] Classified intent: ${JSON.stringify(intent)} for message: "${lastHumanMessage.content}"`);
 

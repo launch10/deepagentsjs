@@ -6,10 +6,17 @@ import {
   GptOssConfig,
   Gpt5Config,
   Gpt5MiniConfig,
+  GroqGptOss120bConfig,
 } from "./types";
 
 export const coreLLMConfig: LLMAppConfig = {
   "free": {
+    "blazing": {
+      planning: GptOssConfig,
+      writing: GptOssConfig,
+      coding: GptOssConfig,
+      reasoning: GptOssConfig,
+    },
     "fast": {
       planning: GptOssConfig,
       writing: GptOssConfig,
@@ -24,6 +31,12 @@ export const coreLLMConfig: LLMAppConfig = {
     },
   },
   "paid": {
+    "blazing": {
+      planning: GroqGptOss120bConfig,
+      writing: GroqGptOss120bConfig,
+      coding: GroqGptOss120bConfig,
+      reasoning: GroqGptOss120bConfig,
+    },
     "fast": {
       planning: SonnetConfig,
       writing: HaikuConfig,

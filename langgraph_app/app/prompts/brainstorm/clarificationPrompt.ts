@@ -39,7 +39,7 @@ export const clarificationPrompt = async (state: BrainstormGraphState) => {
       2. Identify the specific gap
       3. Ask targeted follow-up
       4. Provide examples
-      5. Be EXTREMELY concise. Keep it to a very short intro. Focus primarily on examples of WHAT GOOD LOOKS LIKE.
+      5. Be EXTREMELY concise. Keep it very short. Very very short. Don't be verbose.
     
     Output JSON: {
       "text": "Your clarifying question",
@@ -49,7 +49,8 @@ export const clarificationPrompt = async (state: BrainstormGraphState) => {
     </task>
 
     <important>
-      Be extremely concise. Sacrifice grammar for the sake of concision.
+      Be EXTREMELY concise. Sacrifice grammar for the sake of concision.
+      The user doesn't want to read a novel! Be a friend, not a novel!
     </important>
   `;
 };
