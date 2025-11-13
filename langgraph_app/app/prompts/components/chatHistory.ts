@@ -21,8 +21,9 @@ export async function chatHistoryPrompt({ messages }: { messages: Message[] }): 
   const messageElements = messages?.map((message) => {
     const type = isHumanMessage(message) ? "human" : "assistant";
 
-    return `<message>${type}: ${JSON.stringify(message.content, null, 4)}</message>`;
+    return `\n  <message>${type}: ${JSON.stringify(message.content, null, 4)}</message>`;
   }).join('') || '';
   
-  return renderPrompt(`<chat-history>${messageElements}</chat-history>`);
+  // Don't use renderPrompt here - xml-formatter can reorder elements
+  return `<chat-history>${messageElements}\n</chat-history>`;
 }

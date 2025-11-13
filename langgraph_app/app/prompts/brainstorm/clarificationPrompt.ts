@@ -24,9 +24,7 @@ export const clarificationPrompt = async (state: BrainstormGraphState) => {
     Reasoning: ${qaReasoning}
     </qa_evaluation>
     
-    <chat_history>
-        ${chatHistory}
-    </chat_history>
+    ${chatHistory}
     
     <task>
     Their answer isn't GREAT yet. Ask a specific follow-up that addresses 
@@ -44,5 +42,9 @@ export const clarificationPrompt = async (state: BrainstormGraphState) => {
       "conclusion": "Encouraging restatement"
     }
     </task>
+
+    <important>
+      Be extremely concise. Sacrifice grammar for the sake of concision.
+    </important>
   `;
 };

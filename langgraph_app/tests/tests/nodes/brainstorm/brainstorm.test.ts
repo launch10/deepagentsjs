@@ -48,8 +48,13 @@ const validAnswers: Record<Brainstorm.TopicType, string> = {
     `,
     solution: `Friend of the Pod has over 100+ filters to find the perfect guest for your show.
                 We use AI to match hosts and guests based on their content, audience, and goals.
-                We also use AI to match hosts and guests based on their content, audience, and goals.`,
-    socialProof: `Over 10k creators use Friend of the Pod to find guests for their shows. They are all notable names like LeBron James, Serena Williams, and Oprah Winfrey.`,
+                We also use AI to match hosts and guests based on their content, audience, and goals.
+                But what sets us apart is that we've trained proprietary models on messages that 
+                successful podcast hosts receive. We use this data to filter out pitches that 
+                are predicted to not be a good fit for your show.
+            `,
+    socialProof: `Over 10k creators use Friend of the Pod to find guests for their shows.
+    Real case: Host found 3 guests in 10 minutes instead of 5 hours of manual outreach, leading to 2 viral episodes`,
     lookAndFeel: `The look and feel of the landing page.`,
 }
 
@@ -204,7 +209,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.messages).toHaveLength(3);
         });
 
-        it.only("keeps pushing if the user doesn't have a good response", async () => {
+        it("keeps pushing if the user doesn't have a good response", async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -250,6 +255,7 @@ describe.sequential('Brainstorming Flow', () => {
             assertDefined(lastAIResponse3, 'lastAIResponse is defined');
             expect(result3.state.messages).toHaveLength(7);
 
+            console.log(lastAIResponse3.content);
             expect(lastAIResponse3.content).toContain('podcast');
         });
 
@@ -284,6 +290,7 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             const lastAIResponse = lastAIMessage(result.state);
+            console.log(lastAIResponse?.content);
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
             expect(result.error).toBeUndefined();
@@ -299,14 +306,16 @@ describe.sequential('Brainstorming Flow', () => {
             expect(lastAIResponse.content).toContain('social proof');
         });
 
-        it('should tell the user about the UI when ready for lookAndFeel', async () => {
+        it.only('should tell the user about the UI when ready for lookAndFeel', async () => {
             const graph = await restartChatFrom('socialProof');
             const result = await graph
                 .withPrompt(validAnswers.socialProof)
                 .stopAfter('agent')
                 .execute();
 
+
             const lastAIResponse = lastAIMessage(result.state);
+            console.log(lastAIResponse.content)
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
             expect(result.error).toBeUndefined();
@@ -316,7 +325,6 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableActions).toHaveLength(1);
             expect(result.state.availableActions[0]).toBe('finished');
 
-            console.log(lastAIResponse.content)
             expect(lastAIResponse.content).toContain(`What's the look and feel`);
         });
 

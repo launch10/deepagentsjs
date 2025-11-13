@@ -72,8 +72,8 @@ export const isBrainstormAction = (action: unknown): action is ActionType => {
 
 export const AvailableActions: Record<TopicType, ActionType[]> = {
     idea: ["helpMe"],
-    audience: ["helpMe", "skip", "doTheRest", "finished"],
-    solution: ["helpMe", "skip", "doTheRest", "finished"],
-    socialProof: ["helpMe", "skip", "doTheRest", "finished"],
+    audience: ["helpMe", "skip", "doTheRest"],
+    solution: ["helpMe", "skip", "doTheRest"],
+    socialProof: ["helpMe", "skip", "doTheRest"],
     lookAndFeel: ["finished"],
 }

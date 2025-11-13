@@ -11,6 +11,7 @@ import { NodeMiddleware } from "@middleware";
 import { type BrainstormGraphState } from "@state";
 import { type LangGraphRunnableConfig, Brainstorm } from "@types";
 import { BrainstormNextStepsService } from "@services";
+import { isUndefined } from "@utils";
 
 // Every new response, reset the qa state
 const resetNode = NodeMiddleware.use(async (state: BrainstormGraphState, config?: LangGraphRunnableConfig): Promise<Partial<BrainstormGraphState>> => {
@@ -26,15 +27,20 @@ const loadNextSteps = NodeMiddleware.use(async (state: BrainstormGraphState, con
 
 const routerNode = (state: BrainstormGraphState, config?: LangGraphRunnableConfig): string => {
       if (!state.currentTopic) return "nextStepsAgent";
-      if (state.qa?.success) return "brainstormAgent";
-      if (Brainstorm.TopicKindMap[state.currentTopic] === "conversational") return "qaAgent";
+      if (isUndefined(state.qa)) return "qaAgent";
 
+      if (Brainstorm.TopicKindMap[state.currentTopic] === "conversational") {
+            return "brainstormAgent";
+      }
       return "nextStepsAgent";
 }
 
-const routeAfterQANode = (state: BrainstormGraphState, config?: LangGraphRunnableConfig): string => {
-      if (state.qa!.success) return "saveAnswers";
-      return "brainstormAgent";
+const routeAfterQANode = async (state: BrainstormGraphState, config?: LangGraphRunnableConfig): Promise<string> => {
+      if (state.qa!.success === true) {
+            return "saveAnswers";
+      }
+
+      return "nextStepsAgent";
 }
 
 export const brainstormGraph = new StateGraph(BrainstormAnnotation)

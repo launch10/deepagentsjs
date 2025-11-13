@@ -3,7 +3,7 @@ import { NodeMiddleware } from "@middleware";
 import { getLLM } from "@core";
 import type { BrainstormGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { questionAskerPrompt, clarificationPrompt } from "@prompts";
+import { askQuestionPrompt, clarificationPrompt } from "@prompts";
 import { Brainstorm } from "@types";
 import { BrainstormNextStepsService } from "@services";
 
@@ -22,7 +22,7 @@ export const brainstormAgent = NodeMiddleware.use(async (
   
   const isAskingQuestion = !state.qa || state.qa.success;
   const prompt = isAskingQuestion 
-    ? await questionAskerPrompt(state)
+    ? await askQuestionPrompt(state)
     : await clarificationPrompt(state);
 
   const response = await llm.invoke(prompt);
@@ -31,7 +31,6 @@ export const brainstormAgent = NodeMiddleware.use(async (
     content: JSON.stringify(response, null, 2),
     response_metadata: response,
   });
-
 
   const { memories, remainingTopics, currentTopic, placeholderText, availableActions } = await new BrainstormNextStepsService(state).nextSteps();
 

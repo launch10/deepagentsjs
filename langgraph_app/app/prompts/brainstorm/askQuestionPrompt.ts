@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import type { BrainstormGraphState } from "@state";
 
-export const questionAskerPrompt = (state: BrainstormGraphState) => {
+export const askQuestionPrompt = (state: BrainstormGraphState) => {
   const brainstormCore = fs.readFileSync(path.join(__dirname, 'topics/core.md'), 'utf-8');
   const topicGuide = fs.readFileSync(path.join(__dirname, `topics/${state.currentTopic}.md`), 'utf-8');
 
@@ -36,5 +36,10 @@ export const questionAskerPrompt = (state: BrainstormGraphState) => {
       "conclusion": "Encouraging wrap-up" // Optional
     }
     </task>
+
+    <important>
+      Be extremely concise. Sacrifice grammar for conciseness.
+    </important>
+
   `;
 };
