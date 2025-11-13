@@ -1,12 +1,18 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { BrainstormAnnotation } from "@annotation";
-import { brainstormAgent } from "@nodes";
-import { createBrainstorm } from "@nodes";
+import { 
+  brainstormAgent, 
+  qaAgent,
+  saveAnswersNode,
+  nextStepsAgent,
+  createBrainstorm 
+} from "@nodes";
 import { NodeMiddleware } from "@middleware";
 import { type BrainstormGraphState } from "@state";
 import { type LangGraphRunnableConfig, Brainstorm } from "@types";
 import { BrainstormNextStepsService } from "@services";
 
+// Every new response, reset the qa state
 const resetNode = NodeMiddleware.use(async (state: BrainstormGraphState, config?: LangGraphRunnableConfig): Promise<Partial<BrainstormGraphState>> => {
       return {
             qa: undefined,
@@ -31,38 +37,28 @@ const routeAfterQANode = (state: BrainstormGraphState, config?: LangGraphRunnabl
       return "brainstormAgent";
 }
 
-// Check if answer is good or not.
-const qaAgent = () => {
-      // Include criteria for success
-      // Lookup based on question type
-}
-
-// Continue talking with user until they give a good answer.
-const brainstormAgent = () => {
-      // Include ideas for next question
-}
-
-const saveAnswers = () => {
-
-}
-
-/**
- * Simple test graph for the new brainstorm agent
- * Usage: Load this in LangGraph Studio to test the agent
- */
 export const brainstormGraph = new StateGraph(BrainstormAnnotation)
       .addNode("reset", resetNode)
       .addNode("createBrainstorm", createBrainstorm)
       .addNode("loadNextSteps", loadNextSteps)
-      .addNode("qaAgent", qaAgent) // goes to save or ask question
-      .addNode("saveAnswers", saveAnswers)
+      .addNode("qaAgent", qaAgent)
+      .addNode("saveAnswers", saveAnswersNode)
       .addNode("brainstormAgent", brainstormAgent)
       .addNode("nextStepsAgent", nextStepsAgent)
 
-      .addEdge(START, "createBrainstorm")
+      .addEdge(START, "reset")
+      .addEdge("reset", "createBrainstorm")
       .addEdge("createBrainstorm", "loadNextSteps")
-      .addConditionalEdges("loadNextSteps", routerNode) // QA, continue brainstorming, or next steps
-      .addConditionalEdges("qaAgent", routeAfterQANode) // Save OR continue brainstorming (ask clarification)
-      .addEdge("saveAnswers", router) // Continue brainstorming OR next steps
+      .addConditionalEdges("loadNextSteps", routerNode, {
+        qaAgent: "qaAgent",
+        brainstormAgent: "brainstormAgent",
+        nextStepsAgent: "nextStepsAgent"
+      })
+      .addConditionalEdges("qaAgent", routeAfterQANode, {
+        saveAnswers: "saveAnswers",
+        brainstormAgent: "brainstormAgent"
+      })
+      .addEdge("saveAnswers", "loadNextSteps")
       .addEdge("brainstormAgent", END)
       .addEdge("nextStepsAgent", END)
+      .compile();
