@@ -25,6 +25,7 @@ class MessageTagger {
     return this.messages.map((message) => {
       if (this.messageNotTagged(message)) {
         const MessageClass = message.constructor as typeof BaseMessage;
+        // @ts-ignore - BaseMessage is abstract but runtime constructors are concrete
         return new MessageClass({
           ...message,
           additional_kwargs: {

@@ -22,7 +22,7 @@ export const BaseAnnotation = Annotation.Root({
 
     messages: Annotation<BaseMessage[]>({ 
         default: () => [],
-        reducer: (current, next) => next
+        reducer: messagesStateReducer
     }),
 
     accountId: Annotation<PrimaryKeyType | undefined>({

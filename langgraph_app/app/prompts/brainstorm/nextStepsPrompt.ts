@@ -1,7 +1,11 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import type { BrainstormGraphState } from "@state";
 import { chatHistoryPrompt } from "@prompts";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const nextStepsPrompt = async (state: BrainstormGraphState) => {
   const uiGuide = fs.readFileSync(path.join(__dirname, 'topics/lookAndFeel.md'), 'utf-8');

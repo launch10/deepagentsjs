@@ -1,8 +1,12 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import type { BrainstormGraphState } from "@state";
 import { isHumanMessage } from "@types";
 import { chatHistoryPrompt } from "@prompts";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const clarificationPrompt = async (state: BrainstormGraphState) => {
   const brainstormCore = fs.readFileSync(path.join(__dirname, 'topics/core.md'), 'utf-8');
