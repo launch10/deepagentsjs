@@ -24,13 +24,14 @@ class MessageTagger {
   tagMessages(): BaseMessage[] {
     return this.messages.map((message) => {
       if (this.messageNotTagged(message)) {
-        return {
+        const MessageClass = message.constructor as typeof BaseMessage;
+        return new MessageClass({
           ...message,
           additional_kwargs: {
             ...message.additional_kwargs,
-            topic: this.topic,
+            topic: this.tag,
           },
-        }
+        });
       }
       return message;
     })
@@ -56,18 +57,28 @@ export const saveAnswersNode = NodeMiddleware.use(async (
   const messageTagger = new MessageTagger(state.messages, state.currentTopic);
   const messagesToSave = messageTagger.messagesToSave();
   const taggedMessages = messageTagger.tagMessages();
+  console.log(taggedMessages.map((message) => message.additional_kwargs.topic));
+
+  // This should maybe be an error?
+  if (messagesToSave.length === 0) {
+    return {}
+  }
 
   try {
     const prompt = `
-      The user and agent have been brainstorming about their business idea.
+      <background>
+        The user and agent have been brainstorming about their business idea.
+      </background>
 
-      Specifically, they're working on ${state.currentTopic}.
+      <topic>
+        ${state.currentTopic}
+      </topic>
 
-      Previously, they've provided the following information:
-
-      Read the recent chat history, and summarize their answer to ${state.currentTopic},
-      preserving as much information as possible. This will be used to generate 
-      persuasive marketing copy, so be sure to capture all the details.
+      <task>
+        Read the recent chat history, and summarize their answer to: ${state.currentTopic},
+        preserving as much information as possible. This will be used to generate 
+        persuasive marketing copy, so be sure to capture all the details.
+      </task>
       
       ${await chatHistoryPrompt({ messages: messagesToSave })}
     `;
@@ -91,8 +102,6 @@ export const saveAnswersNode = NodeMiddleware.use(async (
     }).returning();
 
     const memories = await (new BrainstormNextStepsService(state)).getMemories();
-
-    console.log(memories)
 
     return {
       memories,

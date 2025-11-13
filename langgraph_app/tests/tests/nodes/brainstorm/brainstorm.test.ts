@@ -141,6 +141,7 @@ const MeanderingChatHistory = new ChatHistory({
     solution: [
         `My fitness program is specifically designed`,
         `To help men get started lifting, but using bodyweight exercises, and focusing on injury prevention`,
+        `I provide a 12-week progressive strength program with 3x/week 30-minute sessions focused on back and core-done via video coaching to accommodate busy schedules of men in their 50s`,
     ],
     socialProof: [`I've helped over 50 men in their 50s get fit`, `Many of them have never exercised before`, `One lost 50 pounds in 6 months`],
     lookAndFeel: [`I'm finished`],
@@ -168,34 +169,51 @@ const restartChatFrom = async (topic: Brainstorm.TopicType, useHistory: ChatHist
 
     // If we restart chat from "idea", then everything up to and including "idea"
     // has been answered
+    let allMessages: BaseMessage[] = [];
+    
     for (let i = 0; i < Brainstorm.BrainstormTopics.indexOf(topic); i++) {
         const currentTopic = Brainstorm.BrainstormTopics[i];
         const nextTopic = Brainstorm.BrainstormTopics[i + 1];
-        const chatHistoryToCurrentQuestion = i === 0 ? [] : chatMethodMap[currentTopic as Brainstorm.TopicType]();
-        const prevChatHistory = chatHistoryToCurrentQuestion.slice(0, -1);
-        const startIdx = prevChatHistory.length;
-
+        
+        // Get ALL messages up to next question from the raw chat history
         const chatHistoryToNextQuestion = chatMethodMap[nextTopic as Brainstorm.TopicType]();
-        const chatHistoryToSave = chatHistoryToNextQuestion.slice(startIdx, -1);
+        const fullChatUpToNextQuestion = chatHistoryToNextQuestion.slice(0, -1);
+        
+        // Get only the NEW messages since our last iteration (after already-tagged messages)
+        const newMessages = fullChatUpToNextQuestion.slice(allMessages.length);
+        
+        // Append new messages to our tagged history
+        allMessages = [...allMessages, ...newMessages];
 
         partialState = {
             ...partialState,
-            messages: chatHistoryToSave,
+            messages: allMessages,
             currentTopic,
         }
-        await saveAnswersNode(partialState as any, config);
+        
+        const result = await saveAnswersNode(partialState as any, config);
+        
+        // Capture the tagged messages for next iteration
+        allMessages = result.messages!;
+        partialState = {
+            ...partialState,
+            messages: allMessages,
+        };
     }
-
-    // Bump to next topic?
 
     // Get all the saved memories we have
     const memories = await (new BrainstormNextStepsService(partialState as any)).getMemories();
+
+    // Append any new messages from chatHistory that come after our tagged messages
+    const newMessages = chatHistory.slice(allMessages.length);
+    const finalMessages = [...allMessages, ...newMessages];
 
     // create state
     const state = {
         ...partialState,
         memories,
-        messages: chatHistory,
+        messages: finalMessages,
+        currentTopic: topic,
     }
 
     return testGraph<BrainstormGraphState>()
@@ -206,7 +224,7 @@ const restartChatFrom = async (topic: Brainstorm.TopicType, useHistory: ChatHist
 describe.sequential('Brainstorming Flow', () => {
     beforeEach(async () => {
         await DatabaseSnapshotter.restoreSnapshot("basic_account");
-    })
+    }, 30000)
 
     describe("Suggested next question", () => {
         it("should default to the first question", async () => {
@@ -272,18 +290,50 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Tagging parts of the conversation", () => {
-        it.only("tags a group of messages as belonging to the same topic", async () => {
+        it.only("tags a group of messages as belonging to the same topic", { timeout: 60000 }, async () => {
             const graph = await restartChatFrom('solution', MeanderingChatHistory);
-            const nextMessage = MeanderingChatHistory.solutionChat().at(0)!.content as string;
-            const result = await graph
+            const nextMessage = MeanderingChatHistory.solution.at(0) as string;
+            const result1 = await graph
                 .withPrompt(nextMessage)
                 .execute();
 
-            expect(result.state.error).toBeUndefined();
-            expect(result.state.currentTopic).toBe('idea');
-            expect(result.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
-            expect(result.state.availableActions).toHaveLength(1);
-            expect(result.state.availableActions[0]).toBe('helpMe');
+            // We haven't successfully answered the question yet
+            const currentTopic1 = result1.state.currentTopic;
+            expect(currentTopic1).toBe('solution');
+
+            const nextMessage2 = MeanderingChatHistory.solution.at(1) as string;
+            const result2 = await graph
+                .withPrompt(nextMessage2)
+                .withState({
+                    ...result1.state,
+                })
+                .execute();
+
+            // Still not successfully answered
+            const currentTopic2 = result2.state.currentTopic;
+            expect(currentTopic2).toBe('solution');
+
+            const nextMessage3 = MeanderingChatHistory.solution.at(2) as string;
+            const result3 = await graph
+                .withPrompt(nextMessage3)
+                .withState({
+                    ...result2.state,
+                })
+                .execute();
+
+            // Okay now we answered successfully!
+            const currentTopic3 = result3.state.currentTopic;
+            expect(currentTopic3).toBe('socialProof');
+
+            // We should have tagged this SERIES of messages as belonging
+            // to the same topic
+            expect(result3.state.messages.map((message) => message.additional_kwargs.topic)).toEqual([
+                ...Array(8).fill("idea"), 
+                ...Array(10).fill("audience"),
+                ...Array(9).fill("solution"),
+                undefined // The last message doesn't have a topic yet
+            ])
+
         });
     })
 

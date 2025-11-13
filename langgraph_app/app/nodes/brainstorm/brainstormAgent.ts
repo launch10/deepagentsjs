@@ -26,6 +26,7 @@ export const brainstormAgent = NodeMiddleware.use(async (
     : await clarificationPrompt(state);
 
   const response = await llm.invoke(prompt);
+  console.log(response)
 
   const aiMessage = new AIMessage({
     content: JSON.stringify(response, null, 2),

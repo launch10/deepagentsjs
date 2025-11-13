@@ -60,8 +60,6 @@ export class BrainstormNextStepsService {
         const topics = Brainstorm.BrainstormTopics;
         const remainingTopics = topics.filter(topic => !questionsAnswered.includes(topic));
         this.remainingTopics = remainingTopics;
-        console.log(`remaining topics`)
-        console.log(remainingTopics)
         return remainingTopics;
     }
 
