@@ -12,6 +12,7 @@ export type BrainstormGraphState = Simplify<CoreGraphState & {
     availableActions: Brainstorm.ActionType[];
     selectedAction: Brainstorm.ActionType | undefined;
     remainingTopics: Brainstorm.TopicType[];
+    redirect: Brainstorm.RedirectType | undefined;
 }>
 
 export type BrainstormLanggraphData = LanggraphData<

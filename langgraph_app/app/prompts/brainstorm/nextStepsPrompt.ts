@@ -1,16 +1,22 @@
 import fs from "fs";
 import path from "path";
 import type { BrainstormGraphState } from "@state";
+import { chatHistoryPrompt } from "@prompts";
 
-export const nextStepsPrompt = (state: BrainstormGraphState) => {
+export const nextStepsPrompt = async (state: BrainstormGraphState) => {
   const uiGuide = fs.readFileSync(path.join(__dirname, 'topics/lookAndFeel.md'), 'utf-8');
+  const chatHistory = await chatHistoryPrompt({ messages: state.messages, limit: 5 });
+
+  const isFirstMessageInGroup = false;
   
   return `
     ${uiGuide}
     
     <what_we_accomplished>
-    ${JSON.stringify(state.memories)}
+      ${JSON.stringify(state.memories)}
     </what_we_accomplished>
+
+    ${chatHistory}
     
     <task>
     Celebrate their completion (if we haven't yet) and guide them to next steps:

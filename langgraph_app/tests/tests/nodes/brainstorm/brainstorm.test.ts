@@ -1,36 +1,20 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { testGraph, GraphTestBuilder } from '@support';
 import { type BrainstormGraphState } from '@state';
-import { DatabaseSnapshotter } from '@services';
+import { DatabaseSnapshotter, BrainstormNextStepsService } from '@services';
 import { brainstormGraph as uncompiledGraph } from '@graphs';
-import { HumanMessage, AIMessage, BaseMessage } from '@langchain/core/messages';
+import { HumanMessage, AIMessage, BaseMessage, type Message } from '@langchain/core/messages';
 import { lastHumanMessage, lastAIMessage } from '@annotation';
-import { createBrainstorm } from '@nodes';
-import { SaveAnswersTool } from '@tools';
+import { createBrainstorm, saveAnswersNode } from '@nodes';
 import { v7 as uuidv7 } from 'uuid';
 import { 
     isHumanMessage, 
     isAIMessage, 
     Brainstorm,
-    type Message,
 } from '@types';
 import { ContentStrategyModel } from '@models';
 import { graphParams } from '@core';
 import { assertDefined } from '@support';
-
-const expectStructuredOutput = (question: Brainstorm.QuestionType) => {
-    expect(typeof question).toBe('object');
-    
-    expect(question.text).toBeTruthy();
-
-    assertDefined(question.examples, 'examples');
-    expect(question.examples).toHaveLength(3);
-    expect(question.examples[0]).toBeTruthy();
-    expect(question.examples[1]).toBeTruthy();
-    expect(question.examples[2]).toBeTruthy();
-    
-    expect(question.conclusion).toBeTruthy();
-}
 
 const brainstormGraph = uncompiledGraph.compile({ ...graphParams, name: "brainstorm" }); 
 
@@ -57,61 +41,151 @@ const validAnswers: Record<Brainstorm.TopicType, string> = {
     Real case: Host found 3 guests in 10 minutes instead of 5 hours of manual outreach, leading to 2 viral episodes`,
     lookAndFeel: `The look and feel of the landing page.`,
 }
-
-const ideaChat = [
-    new AIMessage(`What is your business?`),
-]
-
-const audienceChat = [
-    ...ideaChat,
-    new HumanMessage(validAnswers.idea),
-    new AIMessage(`That's awesome! And what about your audience?`),
-]
-
-const solutionChat = [
-    ...audienceChat,
-    new HumanMessage(validAnswers.audience),
-    new AIMessage(`That's awesome! And what about your solution?`),
-]
-const socialProofChat = [
-    ...solutionChat,
-    new HumanMessage(validAnswers.solution),
-    new AIMessage(`That's awesome! And what about your social proof?`),
-]
-const lookAndFeelChat = [
-    ...socialProofChat,
-    new HumanMessage(validAnswers.socialProof),
-    new AIMessage(`That's awesome! And what about your look and feel?`),
-]
-
-const validChatHistory: Record<Brainstorm.TopicType, BaseMessage[]> = {
-    idea: ideaChat,
-    audience: audienceChat,
-    solution: solutionChat,
-    socialProof: socialProofChat,
-    lookAndFeel: lookAndFeelChat,
+class ChatHistory {
+    idea: string[];
+    audience: string[];
+    solution: string[];
+    socialProof: string[];
+    lookAndFeel: string[];
+    
+    constructor({idea, audience, solution, socialProof, lookAndFeel}: Record<Brainstorm.TopicType, string[]>) {
+        this.idea = idea;
+        this.audience = audience;
+        this.solution = solution;
+        this.socialProof = socialProof;
+        this.lookAndFeel = lookAndFeel;
+    }
+    
+    ideaChat(): BaseMessage[] {
+        return [
+            new AIMessage("What is your business?"),
+        ];
+    }
+    
+    audienceChat(): BaseMessage[] {
+        return this.chatBuilder(
+            this.ideaChat(),
+            this.idea,
+            "That's awesome! And what about your audience?"
+        );
+    }
+    
+    solutionChat(): BaseMessage[] {
+        return this.chatBuilder(
+            this.audienceChat(),
+            this.audience,
+            "That's awesome! And what about your solution?"
+        );
+    }
+    
+    socialProofChat(): BaseMessage[] {
+        return this.chatBuilder(
+            this.solutionChat(),
+            this.solution,
+            "That's awesome! And what about your social proof?"
+        );
+    }
+    
+    lookAndFeelChat(): BaseMessage[] {
+        return this.chatBuilder(
+            this.socialProofChat(),
+            this.socialProof,
+            "That's awesome! Use the Advanced sidebar or click \"Build My Site\" to create your landing page."
+        );
+    }
+    
+    private chatBuilder(chatStart: BaseMessage[], messageList: string[], chatEnd: string): BaseMessage[] {
+        return [
+            ...chatStart,
+            ...this.mapWithIsLastItem<string, AIMessage | HumanMessage>(messageList, (message, isLast) => {
+                if (isLast) {
+                    return [new HumanMessage(message)];
+                }
+                return [
+                    new HumanMessage(message),
+                    new AIMessage("Interesting, I need some more information! Can you tell me more about that?")
+                ];
+            }),
+            new AIMessage(chatEnd),
+        ];
+    }
+    
+    private mapWithIsLastItem<T, R>(array: T[], callback: (item: T, isLast: boolean) => R[]): R[] {
+        const lastIndex = array.length - 1;
+        return array.flatMap((item, index) => {
+            return callback(item, index === lastIndex);
+        });
+    }
 }
 
-const restartChatFrom = async (topic: Brainstorm.TopicType): Promise<GraphTestBuilder<BrainstormGraphState>> => {
-    const questionsAnswered = Brainstorm.BrainstormTopics.slice(0, Brainstorm.BrainstormTopics.indexOf(topic));
-    const answers = questionsAnswered.map((question) => ({
-        topic: question,
-        answer: validAnswers[question],
-    }));
+const SimpleChatHistory = new ChatHistory({
+    idea: [validAnswers.idea],
+    audience: [validAnswers.audience],
+    solution: [validAnswers.solution],
+    socialProof: [validAnswers.socialProof],
+    lookAndFeel: [validAnswers.lookAndFeel],
+})
+
+const MeanderingChatHistory = new ChatHistory({
+    idea: [
+        `I have an idea for a business`,
+        `Basically, it will be for fitness`,
+        `I am a fitness trainer`,
+        `I'm a trainer for men in their 50s, nobody caters to them`,
+    ],
+    audience: [
+        `Men in their 50s`,
+        `They've been told they're too old to get fit`,
+        `Many of my clients have no experience with fitness, which is hard after a lifetime`,
+    ],
+    solution: [
+        `My fitness program is specifically designed`,
+        `To help men get started lifting, but using bodyweight exercises, and focusing on injury prevention`,
+    ],
+    socialProof: [`I've helped over 50 men in their 50s get fit`, `Many of them have never exercised before`, `One lost 50 pounds in 6 months`],
+    lookAndFeel: [`I'm finished`],
+})
+
+const restartChatFrom = async (topic: Brainstorm.TopicType, useHistory: ChatHistory): Promise<GraphTestBuilder<BrainstormGraphState>> => {
+    // create chat history
+    const chatMethodMap: Record<Brainstorm.TopicType, () => BaseMessage[]> = {
+        idea: () => useHistory.ideaChat(),
+        audience: () => useHistory.audienceChat(),
+        solution: () => useHistory.solutionChat(),
+        socialProof: () => useHistory.socialProofChat(),
+        lookAndFeel: () => useHistory.lookAndFeelChat(),
+    };
+    
+    const chatHistory = chatMethodMap[topic]();
+
     const threadId = uuidv7();
     const config = { configurable: { thread_id: threadId } };
-    const partialState = await createBrainstorm({
+    let partialState = await createBrainstorm({
         jwt: "test-jwt",
         threadId,
         messages: [],
     } as any, config);
-    const saveBrainstormTool = SaveAnswersTool(partialState as any, config);
 
-    // create memories
-    const memories = await saveBrainstormTool.invoke({ answers });
+    // If we restart chat from "idea", then everything up to and including "idea"
+    // has been answered
+    for (let i = 0; i < Brainstorm.BrainstormTopics.indexOf(topic); i++) {
+        const currentTopic = Brainstorm.BrainstormTopics[i];
+        const chatHistoryPlusNextQuestion = chatMethodMap[topic as Brainstorm.TopicType]();
+        const chatHistoryToSave = chatHistoryPlusNextQuestion.slice(0, -1);
+        partialState = {
+            ...partialState,
+            messages: chatHistoryToSave,
+            currentTopic,
+        }
+        console.log(`   saving messge length ${chatHistoryToSave.length}`)
+        debugger;
+        await saveAnswersNode(partialState as any, config);
+    }
 
-    // create chat history
-    const chatHistory = validChatHistory[topic];
+    // Bump to next topic?
+
+    // Get all the saved memories we have
+    const memories = await (new BrainstormNextStepsService(partialState)).getMemories();
 
     // create state
     const state = {
@@ -193,6 +267,22 @@ describe.sequential('Brainstorming Flow', () => {
         });
     })
 
+    describe("Tagging parts of the conversation", () => {
+        it.only("tags a group of messages as belonging to the same topic", async () => {
+            const graph = await restartChatFrom('audience', MeanderingChatHistory);
+            const nextMessage = MeanderingChatHistory.audienceChat().at(0)!.content as string;
+            const result = await graph
+                .withPrompt(nextMessage)
+                .execute();
+
+            expect(result.state.error).toBeUndefined();
+            expect(result.state.currentTopic).toBe('idea');
+            expect(result.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
+            expect(result.state.availableActions).toHaveLength(1);
+            expect(result.state.availableActions[0]).toBe('helpMe');
+        });
+    })
+
     describe("Full brainstorming conversation flow", () => {
         it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
             const result = await testGraph<BrainstormGraphState>()
@@ -260,7 +350,7 @@ describe.sequential('Brainstorming Flow', () => {
         });
 
         it('should ask about solution after audience', async () => {
-            const graph = await restartChatFrom('audience');
+            const graph = await restartChatFrom('audience', SimpleChatHistory);
             const result = await graph
                 .withPrompt(validAnswers.audience)
                 .stopAfter('agent')
@@ -306,16 +396,14 @@ describe.sequential('Brainstorming Flow', () => {
             expect(lastAIResponse.content).toContain('social proof');
         });
 
-        it.only('should tell the user about the UI when ready for lookAndFeel', async () => {
+        it('should tell the user about the UI when ready for lookAndFeel', async () => {
             const graph = await restartChatFrom('socialProof');
             const result = await graph
                 .withPrompt(validAnswers.socialProof)
                 .stopAfter('agent')
                 .execute();
 
-
             const lastAIResponse = lastAIMessage(result.state);
-            console.log(lastAIResponse.content)
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
             expect(result.error).toBeUndefined();
@@ -325,113 +413,24 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableActions).toHaveLength(1);
             expect(result.state.availableActions[0]).toBe('finished');
 
-            expect(lastAIResponse.content).toContain(`What's the look and feel`);
-        });
-
-        it('should ask fifth question (verbatim) after fourth response', async () => {
-            const result1 = await testGraph<BrainstormGraphState>()
-                .withGraph(brainstormGraph)
-                .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                .stopAfter('agent')
-                .execute();
-
-            const messages2: Message[] = [
-                ...result1.state.messages,
-                getSimpleQuestion(1), // Audience
-                new HumanMessage(`Podcasts guests looking to promote their book or service`),
-                getSimpleQuestion(2), // What's your value prop?
-                new HumanMessage(`We match podcast hosts and guests to find the perfect audience to promote your product!`),
-                getSimpleQuestion(3), // Social proof
-            ];
-
-            const result2 = await testGraph<BrainstormGraphState>()
-                .withGraph(brainstormGraph)
-                .withPrompt(`Yes, we have testimonials from over 50 podcasters with 5-star ratings.`)
-                .withState({
-                    messages: messages2,
-                    questionIndex: 3
-                })
-                .stopAfter('agent')
-                .execute();
-
-            expect(result2.error).toBeUndefined();
-
-            const question = result2.state.nextQuestion;
-            expect(question.key).toBe("lookAndFeel");
-            expect(question.type).toBe("simple");
-            expect(typeof question).toBe('object');
-            expect(result2.state.nextQuestion.question).toBe("Before we build, do you have a logo, color palette, or images you want to include?");
-            expect(result2.state.questionIndex).toBe(4);
-        });
-
-        it('guides the user to use the Advanced features before proceeding on question 5', async () => {
-            const result1 = await testGraph<BrainstormGraphState>()
-                .withGraph(brainstormGraph)
-                .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                .stopAfter('agent')
-                .execute();
-
-            const messages2 = [
-                ...result1.state.messages,
-                getSimpleQuestion(1), // Audience
-                new HumanMessage(`Podcasts guests looking to promote their book or service`),
-                getSimpleQuestion(2), // What's your value prop?
-                new HumanMessage(`We match podcast hosts and guests to find the perfect audience to promote your product!`),
-                getSimpleQuestion(3), // Social proof
-                new HumanMessage(`Yes, we have testimonials from over 50 podcasters with 5-star ratings.`),
-                getSimpleQuestion(4),
-            ];
-
-            const result2 = await testGraph<BrainstormGraphState>()
-                .withGraph(brainstormGraph)
-                .withPrompt(`Yes, I have a logo and brand colors - blue and purple.`)
-                .withState({
-                    messages: messages2,
-                    questionIndex: 4
-                })
-                .stopAfter('agent')
-                .execute();
-
-            expect(result2.error).toBeUndefined();
-            expect(result2.state.questionIndex).toBe(4);
-
-            const lastAiResponse = result2.state.messages.filter(isAIMessage).slice(-1)[0]
-            expect(lastAiResponse.content).toMatch(/Advanced Sidebar/)
+            expect(lastAIResponse.content).toContain(`Brand Personalization panel`);
+            expect(lastAIResponse.content).toContain(`Build My Site`);
         });
 
         describe("Brainstorming Finished", () => {
             it("jumps to the next graph when user verbally expresses that they want to move on", async () => {
-                const result1 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                const graph = await restartChatFrom('lookAndFeel');
+                const result = await graph
+                    .withPrompt(`That's alright, let's move on`)
                     .stopAfter('agent')
                     .execute();
 
-                const messages2 = [
-                    ...result1.state.messages,
-                    getSimpleQuestion(1), // Audience
-                    new HumanMessage(`Podcasts guests looking to promote their book or service`),
-                    getSimpleQuestion(2), // What's your value prop?
-                    new HumanMessage(`We match podcast hosts and guests to find the perfect audience to promote your product!`),
-                    getSimpleQuestion(3), // Social proof
-                    new HumanMessage(`Yes, we have testimonials from over 50 podcasters with 5-star ratings.`),
-                    getSimpleQuestion(4),
-                ];
+                const lastAIResponse = lastAIMessage(result.state);
+                assertDefined(lastAIResponse, 'lastAIResponse is defined');
+                console.log(lastAIResponse.content)
 
-                const result2 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withPrompt(`I don't want to do that, what do we do next?`)
-                    .withState({
-                        messages: messages2,
-                        questionIndex: 4
-                    })
-                    .stopAfter('agent')
-                    .execute();
-
-                expect(result2.error).toBeUndefined();
-                expect(result2.state.questionIndex).toBe(4);
-
-                expect(result2.state.redirect).toEqual("website_builder");
+                expect(result.error).toBeUndefined();
+                expect(result.state.redirect).toEqual("website_builder");
             });
 
             it("jumps to the next graph when user clicks 'Finished'", async () => {

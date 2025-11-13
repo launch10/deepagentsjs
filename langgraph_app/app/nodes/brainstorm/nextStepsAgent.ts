@@ -11,7 +11,7 @@ export const nextStepsAgent = NodeMiddleware.use(async (
   state: BrainstormGraphState,
   config?: LangGraphRunnableConfig
 ): Promise<Partial<BrainstormGraphState>> => {
-  const prompt = nextStepsPrompt(state);
+  const prompt = await nextStepsPrompt(state);
   const llm = getLLM()
     .withStructuredOutput(Brainstorm.questionSchema)
     .withConfig({ tags: ['notify'] });

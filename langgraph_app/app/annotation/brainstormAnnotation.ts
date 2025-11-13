@@ -13,6 +13,7 @@ export const BrainstormAnnotation = Annotation.Root({
     memories: Annotation<Brainstorm.MemoriesType>(),
     availableActions: Annotation<Brainstorm.ActionType[]>(),
     selectedAction: Annotation<Brainstorm.ActionType | undefined>(),
+    redirect: Annotation<Brainstorm.RedirectType | undefined>(),
     remainingTopics: Annotation<Brainstorm.TopicType[]>({
         default: () => [...Brainstorm.BrainstormTopics],
         reducer: (current, next) => next

@@ -4,6 +4,42 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { isHumanMessage, Brainstorm } from "@types";
 import { db, brainstorms as brainstormsTable } from "@db";
 import { withTimestamps, withUpdatedAt } from "@db";
+import { BrainstormNextStepsService } from "@services";
+import { chatHistoryPrompt } from "@prompts";
+import { getLLM } from "@core";
+import { BaseMessage } from "@langchain/core/messages";
+class MessageTagger {
+  messages: BaseMessage[];
+  tag: Brainstorm.TopicType;
+
+  constructor(messages: BaseMessage[], tag: Brainstorm.TopicType) {
+    this.messages = messages;
+    this.tag = tag;
+  }
+
+  messagesToSave() {
+    return this.messages.filter(this.messageNotTagged);
+  }
+
+  tagMessages(): BaseMessage[] {
+    return this.messages.map((message) => {
+      if (this.messageNotTagged(message)) {
+        return {
+          ...message,
+          additional_kwargs: {
+            ...message.additional_kwargs,
+            topic: this.topic,
+          },
+        }
+      }
+      return message;
+    })
+  }
+
+  private messageNotTagged = (message: BaseMessage): boolean => {
+    return !('topic' in (message.additional_kwargs || {}))
+  }
+}
 
 export const saveAnswersNode = NodeMiddleware.use(async (
   state: BrainstormGraphState,
@@ -17,14 +53,29 @@ export const saveAnswersNode = NodeMiddleware.use(async (
     throw new Error("saveAnswersNode called without websiteId");
   }
 
-  const lastUserMessage = state.messages.filter(isHumanMessage).at(-1);
-  if (!lastUserMessage) {
-    throw new Error("saveAnswersNode called without user message");
-  }
+  const messageTagger = new MessageTagger(state.messages, state.currentTopic);
+  const messagesToSave = messageTagger.messagesToSave();
+  const taggedMessages = messageTagger.tagMessages();
 
   try {
+    const prompt = `
+      The user and agent have been brainstorming about their business idea.
+
+      Specifically, they're working on ${state.currentTopic}.
+
+      Previously, they've provided the following information:
+
+      Read the recent chat history, and summarize their answer to ${state.currentTopic},
+      preserving as much information as possible. This will be used to generate 
+      persuasive marketing copy, so be sure to capture all the details.
+      
+      ${await chatHistoryPrompt({ messages: messagesToSave })}
+    `;
+    debugger;
+    const summary = await getLLM().invoke(prompt);
+
     const updates: Partial<Brainstorm.MemoriesType> = {
-      [state.currentTopic]: lastUserMessage.content as string,
+      [state.currentTopic]: summary.content,
     };
 
     const insert = withTimestamps(updates);
@@ -40,7 +91,14 @@ export const saveAnswersNode = NodeMiddleware.use(async (
       }
     }).returning();
 
-    return {};
+    const memories = await (new BrainstormNextStepsService(state)).getMemories();
+
+    console.log(memories)
+
+    return {
+      memories,
+      messages: taggedMessages,
+    };
   } catch (error) {
     console.error('=== ERROR IN SAVE ANSWERS NODE ===');
     console.error('Error:', error);

@@ -77,3 +77,6 @@ export const AvailableActions: Record<TopicType, ActionType[]> = {
     socialProof: ["helpMe", "skip", "doTheRest"],
     lookAndFeel: ["finished"],
 }
+
+export const Redirects = ["website_builder"] as const;
+export type RedirectType = typeof Redirects[number];

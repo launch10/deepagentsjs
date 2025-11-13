@@ -26,7 +26,7 @@ const loadNextSteps = NodeMiddleware.use(async (state: BrainstormGraphState, con
 })
 
 const routerNode = (state: BrainstormGraphState, config?: LangGraphRunnableConfig): string => {
-      if (!state.currentTopic) return "nextStepsAgent";
+      if (!state.currentTopic || state.currentTopic === "lookAndFeel") return "nextStepsAgent";
       if (isUndefined(state.qa)) return "qaAgent";
 
       if (Brainstorm.TopicKindMap[state.currentTopic] === "conversational") {

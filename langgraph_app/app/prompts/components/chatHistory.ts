@@ -17,8 +17,9 @@ import { type Message, isHumanMessage, isAIMessage } from "@types";
  * chatHistory({ messages })
  * ```
  */
-export async function chatHistoryPrompt({ messages }: { messages: Message[] }): Promise<string> {
-  const messageElements = messages?.map((message) => {
+export async function chatHistoryPrompt({ messages, limit }: { messages: Message[], limit?: number }): Promise<string> {
+  let filteredMessages = limit ? messages.slice(-limit) : messages;
+  const messageElements = filteredMessages?.map((message) => {
     const type = isHumanMessage(message) ? "human" : "assistant";
 
     return `\n  <message>${type}: ${JSON.stringify(message.content, null, 4)}</message>`;
