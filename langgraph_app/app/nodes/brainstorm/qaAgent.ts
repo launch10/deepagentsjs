@@ -17,8 +17,7 @@ export const qaAgent = NodeMiddleware.use(async (
   const llm = getLLM()
     .withStructuredOutput(Brainstorm.qaSchema);
   
-  const response = await llm.invoke(prompt);
-  const evaluation: Brainstorm.QAResultType = response.structuredResponse;
+  const evaluation = await llm.invoke(prompt);
 
   return {
     qa: evaluation,

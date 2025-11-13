@@ -130,7 +130,6 @@ describe.sequential('Brainstorming Flow', () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Sorry, what's going on?`)
-                .stopAfter('agent')
                 .execute();
 
             expect(result.state.error).toBeUndefined();
@@ -179,6 +178,7 @@ describe.sequential('Brainstorming Flow', () => {
 
             // AI asks about customers...
             expect(aiResponse.content).toContain('audience');
+            console.log(aiResponse.content)
 
             expect(result.state.availableActions).toHaveLength(4);
             expect(result.state.availableActions[0]).toBe('helpMe');
@@ -204,7 +204,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.messages).toHaveLength(3);
         });
 
-        it("keeps pushing if the user doesn't have a good response", async () => {
+        it.only("keeps pushing if the user doesn't have a good response", async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -299,7 +299,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(lastAIResponse.content).toContain('social proof');
         });
 
-        it.only('should tell the user about the UI when ready for lookAndFeel', async () => {
+        it('should tell the user about the UI when ready for lookAndFeel', async () => {
             const graph = await restartChatFrom('socialProof');
             const result = await graph
                 .withPrompt(validAnswers.socialProof)

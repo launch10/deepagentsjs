@@ -61,4 +61,3 @@ export const brainstormGraph = new StateGraph(BrainstormAnnotation)
       .addEdge("saveAnswers", "loadNextSteps")
       .addEdge("brainstormAgent", END)
       .addEdge("nextStepsAgent", END)
-      .compile();
