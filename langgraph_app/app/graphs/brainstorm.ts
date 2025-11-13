@@ -61,6 +61,20 @@ const routeAfterQANode = async (state: BrainstormGraphState, config?: LangGraphR
       return "brainstormAgent";
 }
 
+const routeAfterSaveNode = async (state: BrainstormGraphState, config?: LangGraphRunnableConfig): Promise<string> => {
+    console.log("Route after save node");
+    const updatedState = await new BrainstormNextStepsService(state).nextSteps();
+    const isConversational = Brainstorm.TopicKindMap[updatedState.currentTopic!] === "conversational";
+
+    console.log("Is conversational: ", isConversational);
+
+    if (isConversational) {
+        return "brainstormAgent";
+    }
+
+    return "nextStepsAgent";
+}
+
 export const brainstormGraph = new StateGraph(BrainstormAnnotation)
       .addNode("reset", resetNode)
       .addNode("createBrainstorm", createBrainstorm)
@@ -94,10 +108,13 @@ export const brainstormGraph = new StateGraph(BrainstormAnnotation)
         saveAnswers: "saveAnswers",
         brainstormAgent: "brainstormAgent"
       })
-      .addEdge("saveAnswers", "brainstormAgent")
-      .addEdge("brainstormAgent", END)
+      .addConditionalEdges("saveAnswers", routeAfterSaveNode, {
+        brainstormAgent: "brainstormAgent",
+        nextStepsAgent: "nextStepsAgent"
+      })
       
       // Terminal nodes
+      .addEdge("brainstormAgent", END)
       .addEdge("processQuestionNode", END)
       .addEdge("skipNode", END)
       .addEdge("doTheRestNode", END)
