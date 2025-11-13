@@ -71,7 +71,6 @@ export const saveAnswersNode = NodeMiddleware.use(async (
       
       ${await chatHistoryPrompt({ messages: messagesToSave })}
     `;
-    debugger;
     const summary = await getLLM().invoke(prompt);
 
     const updates: Partial<Brainstorm.MemoriesType> = {

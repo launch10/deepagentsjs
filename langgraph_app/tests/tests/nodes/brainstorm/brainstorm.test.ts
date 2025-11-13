@@ -170,22 +170,26 @@ const restartChatFrom = async (topic: Brainstorm.TopicType, useHistory: ChatHist
     // has been answered
     for (let i = 0; i < Brainstorm.BrainstormTopics.indexOf(topic); i++) {
         const currentTopic = Brainstorm.BrainstormTopics[i];
-        const chatHistoryPlusNextQuestion = chatMethodMap[topic as Brainstorm.TopicType]();
-        const chatHistoryToSave = chatHistoryPlusNextQuestion.slice(0, -1);
+        const nextTopic = Brainstorm.BrainstormTopics[i + 1];
+        const chatHistoryToCurrentQuestion = i === 0 ? [] : chatMethodMap[currentTopic as Brainstorm.TopicType]();
+        const prevChatHistory = chatHistoryToCurrentQuestion.slice(0, -1);
+        const startIdx = prevChatHistory.length;
+
+        const chatHistoryToNextQuestion = chatMethodMap[nextTopic as Brainstorm.TopicType]();
+        const chatHistoryToSave = chatHistoryToNextQuestion.slice(startIdx, -1);
+
         partialState = {
             ...partialState,
             messages: chatHistoryToSave,
             currentTopic,
         }
-        console.log(`   saving messge length ${chatHistoryToSave.length}`)
-        debugger;
         await saveAnswersNode(partialState as any, config);
     }
 
     // Bump to next topic?
 
     // Get all the saved memories we have
-    const memories = await (new BrainstormNextStepsService(partialState)).getMemories();
+    const memories = await (new BrainstormNextStepsService(partialState as any)).getMemories();
 
     // create state
     const state = {
@@ -269,8 +273,8 @@ describe.sequential('Brainstorming Flow', () => {
 
     describe("Tagging parts of the conversation", () => {
         it.only("tags a group of messages as belonging to the same topic", async () => {
-            const graph = await restartChatFrom('audience', MeanderingChatHistory);
-            const nextMessage = MeanderingChatHistory.audienceChat().at(0)!.content as string;
+            const graph = await restartChatFrom('solution', MeanderingChatHistory);
+            const nextMessage = MeanderingChatHistory.solutionChat().at(0)!.content as string;
             const result = await graph
                 .withPrompt(nextMessage)
                 .execute();
