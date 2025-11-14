@@ -32,8 +32,6 @@ app/.backups
 # LangGraph API
 .langgraph_api
 
-# Added by Claude Task Master
-# Logs
 dev-debug.log
 # Dependency directories
 node_modules/
