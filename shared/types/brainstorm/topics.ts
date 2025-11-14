@@ -10,6 +10,7 @@ export type TopicName = typeof TopicNames[number];
 
 export const BrainstormTopics = ["idea", "audience", "solution", "socialProof", "lookAndFeel"] as const;
 export const ConversationalTopics = ["idea", "audience", "solution", "socialProof"] as const;
+export type ConversationalTopicName = typeof ConversationalTopics[number];
 export const UITopics = ["lookAndFeel"] as const;
 
 export const topicSchema = z.object({
@@ -80,4 +81,4 @@ export const topicsAndDescriptions = (topics: TopicName[]): string => {
     return topics.map((topic) => Topics[topic].description).join("\n\n");
 }
 
-export type MemoriesType = Record<TopicName, string | undefined | null>;
+export type MemoriesType = Record<ConversationalTopicName, string | undefined | null>;

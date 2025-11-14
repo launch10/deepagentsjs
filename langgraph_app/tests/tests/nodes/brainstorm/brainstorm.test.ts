@@ -492,7 +492,6 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result2.state.memories.audience).toBeTruthy();
             expect(result2.state.memories.solution).toBeTruthy();
             expect(result2.state.memories.socialProof).toBeTruthy();
-            expect(result2.state.memories.lookAndFeel).toBeNull();
         });
     })
 
@@ -597,7 +596,7 @@ describe.sequential('Brainstorming Flow', () => {
         });
 
         describe("HELP_ME_ANSWER", () => {
-            it.only("provides structured guidance to the user", async () => {
+            it("provides structured guidance to the user", async () => {
                 const graph = await restartChatFrom('audience', SimpleChatHistory);
                 const result = await graph
                     .withPrompt("Help me answer this question")
@@ -627,42 +626,18 @@ describe.sequential('Brainstorming Flow', () => {
         });
 
         describe("DO_THE_REST", () => {
-            it("completes the brainstorming and provides only FINISHED action when user", async () => {
+            it("completes the brainstorming and provides only FINISHED action", async () => {
                 const graph = await restartChatFrom('audience', SimpleChatHistory);
-                const result1 = await graph
-                    .withPrompt("Skip")
+                const command = Brainstorm.commandToPrompt("doTheRest");
+                const result = await graph
+                    .withPrompt(command)
                     .stopAfter('agent')
                     .execute(); // audience -> solution
-
-                expect(result1.state.skippedTopics).toHaveLength(1);
-
-                const result2 = await graph
-                    .withPrompt("Skip")
-                    .stopAfter('agent')
-                    .withState({
-                        ...result1.state,
-                    })
-                    .execute(); // solution -> socialProof
-
-                expect(result2.state.skippedTopics).toHaveLength(2);
-                expect(result2.state.currentTopic).toBe('socialProof');
-
-                const result3 = await graph
-                    .withPrompt("Skip")
-                    .stopAfter('agent')
-                    .withState({
-                        ...result2.state,
-                    })
-                    .execute(); // socialProof -> do the rest before user is finished
-                expect(result3.state.skippedTopics).toHaveLength(0); // Would have been 2, but since we hit the end of the road, the AI answered the question
-
-                const result = result3;
 
                 const lastAIResponse = lastAIMessage(result.state);
                 assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
                 expect(result.error).toBeUndefined();
-                expect(result.state.skippedTopics).toHaveLength(0);
 
                 expect(result.state.currentTopic).toBe('lookAndFeel');
                 expect(result.state.placeholderText).toMatch(`Use the Advanced sidebar`)
@@ -676,10 +651,11 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(lastAIResponse.content).toContain('Build right away');
             });
 
-            it("does not skip unskippable topics", async () => {
+            it("does not do the rest when we haven't done anything yet", async () => {
                 const graph = await restartChatFrom('idea', SimpleChatHistory);
+                const command = Brainstorm.commandToPrompt("doTheRest");
                 const result = await graph
-                    .withPrompt("Skip")
+                    .withPrompt(command)
                     .stopAfter('agent')
                     .execute();
 
@@ -746,7 +722,6 @@ describe.sequential('Brainstorming Flow', () => {
             assertDefined(lastAIResponse3, 'lastAIResponse is defined');
             expect(result3.state.messages).toHaveLength(7);
 
-            console.log(lastAIResponse3.content);
             expect(lastAIResponse3.content).toContain('podcast');
         });
     });

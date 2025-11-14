@@ -43,7 +43,7 @@ export class BrainstormNextStepsService {
         ).orderBy(asc(brainstormsTable.id)))[0];
         let memories: Partial<Brainstorm.MemoriesType> = {}
         if (brainstorms) {
-            memories = pick(brainstorms, [...Brainstorm.TopicNames]);
+            memories = pick(brainstorms, [...Brainstorm.ConversationalTopics]); // Never show memories of UI topics so we'll always have at least 1 topic remaining...
         }
         this.memories = memories as Brainstorm.MemoriesType;
         return this.memories;
@@ -55,11 +55,11 @@ export class BrainstormNextStepsService {
             return this.remainingTopics;
         }
         const answers = await this.getMemories();
-        const questionsAnswered = Object.keys(answers).filter(key => answers[key as Brainstorm.TopicName] !== null && answers[key as Brainstorm.TopicName] !== "") as Brainstorm.TopicName[];
+        const questionsAnswered = Object.keys(answers).filter(key => answers[key as Brainstorm.ConversationalTopicName] !== null && answers[key as Brainstorm.ConversationalTopicName] !== "") as Brainstorm.ConversationalTopicName[];
         const topics = Brainstorm.BrainstormTopics;
         // Filter out answered topics, and also skipped topics (unless includeSkipped is true)
         const remainingTopics = topics.filter(topic =>
-            !questionsAnswered.includes(topic) &&
+            !questionsAnswered.includes(topic as any) &&
             (includeSkipped || !this.skippedTopics.includes(topic))
         );
         this.remainingTopics = remainingTopics;
