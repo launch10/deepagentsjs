@@ -148,10 +148,13 @@ jobs:
       - checkout:
           path: ~/project
       - run:
-          name: Install PostgreSQL client
+          name: Install PostgreSQL 16 client
           command: |
+            # Add PostgreSQL APT repository to get version 16
+            sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
             sudo apt-get update
-            sudo apt-get install -y postgresql-client
+            sudo apt-get install -y postgresql-client-16
       - ruby/install-deps:
           key: rails-gems-v1
       - setup-database

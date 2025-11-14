@@ -21,7 +21,7 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
     }
 
     const topicSpecificHelp = await Promise.all(
-        state.skippedTopics.map(topic => fs.promises.readFile(path.join(__dirname, `../help/${topic}.md`), 'utf-8'))
+        state.remainingTopics.map(topic => fs.promises.readFile(path.join(__dirname, `../help/${topic}.md`), 'utf-8'))
     ).then((helpText) => helpText.join("\n\n"))
 
     const [whereWeAre, collectedAnswers, background] = await Promise.all([
@@ -37,7 +37,7 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
             ${whereWeAre}
 
             <context>
-                The user skipped ${state.skippedTopics.length} questions during the brainstorm.
+                The user skipped ${state.remainingTopics.length} questions during the brainstorm.
                 You are now tasked with helping them finish the brainstorm, using the answers they have provided.
             </context>
 
@@ -54,7 +54,7 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
 
             ${collectedAnswers}
 
-            ${Brainstorm.topicsAndDescriptions(state.skippedTopics)}
+            ${Brainstorm.topicsAndDescriptions(state.remainingTopics)}
 
             ${topicSpecificHelp}
 
