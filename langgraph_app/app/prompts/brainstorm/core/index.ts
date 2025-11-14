@@ -49,10 +49,12 @@ export const remainingTopicsPrompt = async(state: BrainstormGraphState, config?:
     `;
 }
 
-const _sortedTopics = (topics: Brainstorm.TopicName[]) => {
-    return topics.sort((a, b) => Brainstorm.BrainstormTopics.indexOf(a) - Brainstorm.BrainstormTopics.indexOf(b));
+const _sortedTopics = (topics: Brainstorm.Topic[]) => {
+    return topics.sort((a, b) => Brainstorm.BrainstormTopics.indexOf(a.name) - Brainstorm.BrainstormTopics.indexOf(b.name));
 }
 
 const _remainingTopics = (topics: Brainstorm.TopicName[]) => {
-    return _sortedTopics(topics).map(topic => `${topic}: ${Brainstorm.TopicDescriptions[topic]}`).join("\n\n");
+    const allTopics = Brainstorm.getAllTopics()
+    const selectedTopics = allTopics.filter(topic => topics.includes(topic.name))
+    return _sortedTopics(selectedTopics).map(topic => `${topic.name}: ${topic.description}`).join("\n\n");
 }

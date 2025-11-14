@@ -29,10 +29,6 @@ const brainstormMiddleware = createMiddleware({
     wrapModelCall: async (request, handler) => {
         const state = request.state as BrainstormGraphState;
 
-        // Get current topic to determine available tools
-        const nextSteps = await new BrainstormNextStepsService(state).nextSteps();
-        const currentTopic = nextSteps.currentTopic;
-
         // Regenerate system prompt with current state
         const systemPrompt = await agentPrompt(state, request.runtime);
 
@@ -78,7 +74,6 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
             Brainstorm.helpMeSchema,
         ] as const,
     });
-    console.log(state)
     const result = await agent.invoke(state, config);
     const aiMessage = result.messages.at(-1);
 
@@ -86,7 +81,8 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
         throw new Error("No AI message found");
     }
 
-    const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } = await new BrainstormNextStepsService(state).nextSteps();
+    const { memories, remainingTopics, currentTopic } = await new BrainstormNextStepsService(state).nextSteps();
+    const topic = Brainstorm.getTopic(currentTopic)
 
     return {
         redirect: result.redirect as Brainstorm.RedirectType,
@@ -94,8 +90,8 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
         messages: [...(state.messages || []), aiMessage],
         memories,
         currentTopic,
-        placeholderText,
         remainingTopics,
-        availableCommands,
+        placeholderText: topic?.placeholderText,
+        availableCommands: topic?.availableCommands || [],
     };
 });

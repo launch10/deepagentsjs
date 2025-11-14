@@ -8,9 +8,10 @@ import { finishForMePrompt } from "./behaviors/finishForMePrompt";
 
 export const agentPrompt = async(inputState: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     const state = await beforeHook(inputState);
-    const currentTopic = state.currentTopic;
+    const currentTopicName = state.currentTopic;
+    const topic = Brainstorm.getTopic(currentTopicName);
 
-    if (Brainstorm.TopicKindMap[currentTopic] === "conversational") {
+    if (topic.kind === "conversational") {
         return await conversationalPrompt(state, config);
     }
     if (state.skippedTopics?.length > 0) {
