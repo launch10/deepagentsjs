@@ -9,7 +9,7 @@ export class BrainstormNextStepsService {
     currentTopic: Brainstorm.TopicType | undefined;
     placeholderText: string | undefined;
     remainingTopics: Brainstorm.TopicType[] | undefined;
-    availableActions: Brainstorm.ActionType[] | undefined;
+    availableCommands: Brainstorm.CommandType[] | undefined;
     skippedTopics: Brainstorm.TopicType[];
 
     constructor(state: BrainstormGraphState) {
@@ -22,14 +22,14 @@ export class BrainstormNextStepsService {
         const placeholderText = await this.getPlaceholderText(includeSkipped);
         const currentTopic = await this.getCurrentTopic(includeSkipped);
         const remainingTopics = await this.getRemainingTopics(includeSkipped);
-        const availableActions = await this.getAvailableActions(includeSkipped);
+        const availableCommands = await this.getAvailableCommands(includeSkipped);
 
         return {
             memories: memories as Brainstorm.MemoriesType,
             placeholderText: placeholderText as string,
             currentTopic: currentTopic as Brainstorm.TopicType,
             remainingTopics: remainingTopics as Brainstorm.TopicType[],
-            availableActions: availableActions as Brainstorm.ActionType[],
+            availableCommands: availableCommands as Brainstorm.CommandType[],
         }
     }
 
@@ -86,15 +86,15 @@ export class BrainstormNextStepsService {
         return this.placeholderText;
     }
 
-    private async getAvailableActions(includeSkipped: boolean = false): Promise<Brainstorm.ActionType[]> {
-        if (this.availableActions) {
-            return this.availableActions;
+    private async getAvailableCommands(includeSkipped: boolean = false): Promise<Brainstorm.CommandType[]> {
+        if (this.availableCommands) {
+            return this.availableCommands;
         }
         const currentTopic = await this.getCurrentTopic(includeSkipped);
         if (!currentTopic) {
             return ["finished"];
         }
-        this.availableActions = Brainstorm.AvailableActions[currentTopic];
-        return this.availableActions;
+        this.availableCommands = Brainstorm.AvailableCommands[currentTopic];
+        return this.availableCommands;
     }
 }

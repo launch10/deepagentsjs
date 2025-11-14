@@ -41,7 +41,7 @@ export const detectIntent = NodeMiddleware.use(async (
       - Current topic: ${state.currentTopic}
       - Topics answered: ${answeredTopics.join(', ') || 'None yet'}
       - Remaining topics: ${state.remainingTopics?.join(', ') || 'None'}
-      - Available actions: ${state.availableActions?.join(', ') || 'None'}
+      - Available actions: ${state.availableCommands?.join(', ') || 'None'}
     </current_context>
 
     <conversation_history>
@@ -75,8 +75,8 @@ export const detectIntent = NodeMiddleware.use(async (
 
       <important>
         - Be strict about "attempted_answer" - only use if they're ACTUALLY answering "${state.currentTopic}"
-        - "skip" is available: ${state.availableActions?.includes('skip') ? 'YES' : 'NO'}
-        - "do_the_rest" is available: ${state.availableActions?.includes('doTheRest') ? 'YES' : 'NO'}
+        - "skip" is available: ${state.availableCommands?.includes('skip') ? 'YES' : 'NO'}
+        - "do_the_rest" is available: ${state.availableCommands?.includes('doTheRest') ? 'YES' : 'NO'}
         - If action not available but user requests it, classify as "process_question"
       </important>
     </task>

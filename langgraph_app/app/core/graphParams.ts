@@ -2,6 +2,10 @@ import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { pool } from "./postgres";
 
 export const checkpointer = new PostgresSaver(pool);
-await checkpointer.setup();
+try {
+    await checkpointer.setup();
+} catch (e) {
+    console.error(e);
+}
 
 export const graphParams = { checkpointer };

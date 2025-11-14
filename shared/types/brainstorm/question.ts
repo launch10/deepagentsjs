@@ -24,23 +24,33 @@ export const TopicKindMap: Record<TopicType, TopicKind> = {
   lookAndFeel: "ui",
 }
 
-export const qaSchema = z.object({
-  success: z.boolean().describe("Was the question answered successfully? Does it include enough context to write great marketing copy for the business?"),
-  reasoning: z.string().describe("Explain using the criteria why the question was or was not answered successfully."),
-})
-
-export type QAResultType = z.infer<typeof qaSchema>;
-
 /**
  * Schema for structured questions with intro, examples, and conclusion
  */
-export const questionSchema = z.object({
+export const replySchema = z.object({
+  type: z.literal("reply"),
   text: z.string().describe('A simple message or question'),
   examples: z.array(z.string()).optional().describe(`OPTIONAL: List of examples to help the user understand`),
   conclusion: z.string().optional().describe(`OPTIONAL: Conclusion text to include after examples`),
 });
 
-export type QuestionType = z.infer<typeof questionSchema>;
+export type ReplyType = z.infer<typeof replySchema>;
+
+export const helpMeSchema = z.object({
+    type: z.literal("helpMe"),
+    text: z.string().describe('Acknowledge the user and explain that you will help them structure their answer'),
+    template: z.string().describe(`REQUIRED: A structured template or framework to help the user articulate their answer with specificity and clarity`),
+    examples: z.array(z.string()).describe(`OPTIONAL: A concrete, realistic example to help the user understand`)
+});
+
+export type HelpMeResponseType = z.infer<typeof helpMeSchema>;
+
+export const responseSchema = z.discriminatedUnion("type", [
+    replySchema,
+    helpMeSchema,
+]);
+
+export type ResponseType = z.infer<typeof responseSchema>;
 
 export const HardCodedQuestions: Partial<Record<TopicType, string>> = {
     idea: "Tell us about your business. More info → better outcomes.",
@@ -63,14 +73,17 @@ export const PlaceholderText: Record<TopicType, string> = {
   lookAndFeel: `Use the Advanced sidebar or click "Build My Site"...`,
 }
 
-export const Actions = ["helpMe", "skip", "doTheRest", "finished"] as const;
-export type ActionType = typeof Actions[number];
+export const Commands = ["helpMe", "skip", "doTheRest", "finished"] as const;
+export type CommandType = typeof Commands[number];
 
-export const isBrainstormAction = (action: unknown): action is ActionType => {
-    return (typeof action === 'string' && action in Actions);
+export const AgentBehavior = [...Commands, "default"] as const;
+export type AgentBehaviorType = typeof AgentBehavior[number];
+
+export const isBrainstormCommand = (command: unknown): command is CommandType => {
+    return (typeof command === 'string' && command in Commands);
 }
 
-export const AvailableActions: Record<TopicType, ActionType[]> = {
+export const AvailableCommands: Record<TopicType, CommandType[]> = {
     idea: ["helpMe"],
     audience: ["helpMe", "skip", "doTheRest"],
     solution: ["helpMe", "skip", "doTheRest"],
@@ -78,7 +91,7 @@ export const AvailableActions: Record<TopicType, ActionType[]> = {
     lookAndFeel: ["finished"],
 }
 
-export const SkippableTopics: TopicType[] = Object.entries(AvailableActions).filter(([_, actions]) => actions.includes("skip")).map(([topic]) => topic as TopicType);
+export const SkippableTopics: TopicType[] = Object.entries(AvailableCommands).filter(([_, actions]) => actions.includes("skip")).map(([topic]) => topic as TopicType);
 export const topicIsSkippable = (topic: TopicType) => SkippableTopics.includes(topic);
 
 export const Redirects = ["website_builder"] as const;

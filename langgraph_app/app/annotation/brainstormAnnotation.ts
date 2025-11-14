@@ -6,18 +6,16 @@ import type { BrainstormGraphState } from "@state";
 
 export const BrainstormAnnotation = Annotation.Root({
     ...BaseAnnotation.spec,
-    qa: Annotation<Brainstorm.QAResultType>(),
     currentTopic: Annotation<Brainstorm.TopicType | undefined>(),
     placeholderText: Annotation<string>(),
     brainstormId: Annotation<PrimaryKeyType | undefined>(),
     memories: Annotation<Brainstorm.MemoriesType>(),
-    availableActions: Annotation<Brainstorm.ActionType[]>({
+    availableCommands: Annotation<Brainstorm.CommandType[]>({
         default: () => [],
         reducer: (current, next) => [...next]
     }),
-    selectedAction: Annotation<Brainstorm.ActionType | undefined>(),
+    command: Annotation<Brainstorm.CommandType | undefined>(),
     redirect: Annotation<Brainstorm.RedirectType | undefined>(),
-    intent: Annotation<string | undefined>(),
     skippedTopics: Annotation<Brainstorm.TopicType[]>({
         default: () => [],
         reducer: (current, next) => [...current, ...next]

@@ -46,6 +46,6 @@ export const brainstormAgentNODEVERSION = NodeMiddleware.use(async (
       currentTopic: state.currentTopic,
       placeholderText: state.placeholderText,
       remainingTopics: state.remainingTopics,
-      availableActions: state.availableActions,
+      availableCommands: state.availableCommands,
   };
 });

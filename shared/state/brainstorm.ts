@@ -6,15 +6,13 @@ import type { Simplify } from "type-fest";
 export type BrainstormGraphState = Simplify<CoreGraphState & {
     brainstormId: PrimaryKeyType | undefined;
     memories: Brainstorm.MemoriesType;
-    qa: Brainstorm.QAResultType | undefined;
     currentTopic: Brainstorm.TopicType | undefined;
     skippedTopics: Brainstorm.TopicType[];
     placeholderText: string;
-    availableActions: Brainstorm.ActionType[];
-    selectedAction: Brainstorm.ActionType | undefined;
+    availableCommands: Brainstorm.CommandType[];
+    command: Brainstorm.CommandType | undefined;
     remainingTopics: Brainstorm.TopicType[];
     redirect: Brainstorm.RedirectType | undefined;
-    intent: string | undefined;
 }>
 
 export type BrainstormLanggraphData = LanggraphData<

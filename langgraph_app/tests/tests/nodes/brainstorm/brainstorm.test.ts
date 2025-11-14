@@ -238,8 +238,8 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.error).toBeUndefined();
             expect(result.state.currentTopic).toBe('idea');
             expect(result.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
-            expect(result.state.availableActions).toHaveLength(1);
-            expect(result.state.availableActions[0]).toBe('helpMe');
+            expect(result.state.availableCommands).toHaveLength(1);
+            expect(result.state.availableCommands[0]).toBe('helpMe');
         });
 
         it("should stay consistent when the user answers the first question incorrectly", async () => {
@@ -257,8 +257,8 @@ describe.sequential('Brainstorming Flow', () => {
 
             // AI suggests plausible business ideas...
             expect(aiResponse?.content).toContain('restaurant');
-            expect(result.state.availableActions).toHaveLength(1);
-            expect(result.state.availableActions[0]).toBe('helpMe');
+            expect(result.state.availableCommands).toHaveLength(1);
+            expect(result.state.availableCommands[0]).toBe('helpMe');
         });
 
         it("should update to the next question when we successfully give a business idea", async () => {
@@ -283,11 +283,11 @@ describe.sequential('Brainstorming Flow', () => {
             expect(aiResponse.content).toContain('audience');
             console.log(aiResponse.content)
 
-            expect(result.state.availableActions).toHaveLength(4);
-            expect(result.state.availableActions[0]).toBe('helpMe');
-            expect(result.state.availableActions[1]).toBe('skip');
-            expect(result.state.availableActions[2]).toBe('doTheRest');
-            expect(result.state.availableActions[3]).toBe('finished');
+            expect(result.state.availableCommands).toHaveLength(4);
+            expect(result.state.availableCommands[0]).toBe('helpMe');
+            expect(result.state.availableCommands[1]).toBe('skip');
+            expect(result.state.availableCommands[2]).toBe('doTheRest');
+            expect(result.state.availableCommands[3]).toBe('finished');
         });
 
         it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
@@ -319,11 +319,11 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.currentTopic).toBe('solution');
             expect(result.state.placeholderText).toEqual(`My solution is...`)
 
-            expect(result.state.availableActions).toHaveLength(4);
-            expect(result.state.availableActions[0]).toBe('helpMe');
-            expect(result.state.availableActions[1]).toBe('skip');
-            expect(result.state.availableActions[2]).toBe('doTheRest');
-            expect(result.state.availableActions[3]).toBe('finished');
+            expect(result.state.availableCommands).toHaveLength(4);
+            expect(result.state.availableCommands[0]).toBe('helpMe');
+            expect(result.state.availableCommands[1]).toBe('skip');
+            expect(result.state.availableCommands[2]).toBe('doTheRest');
+            expect(result.state.availableCommands[3]).toBe('finished');
 
             expect(lastAIResponse.content).toContain('solution');
         })
@@ -342,11 +342,11 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.currentTopic).toBe('socialProof');
             expect(result.state.placeholderText).toEqual(`My social proof is...`)
 
-            expect(result.state.availableActions).toHaveLength(4);
-            expect(result.state.availableActions[0]).toBe('helpMe');
-            expect(result.state.availableActions[1]).toBe('skip');
-            expect(result.state.availableActions[2]).toBe('doTheRest');
-            expect(result.state.availableActions[3]).toBe('finished');
+            expect(result.state.availableCommands).toHaveLength(4);
+            expect(result.state.availableCommands[0]).toBe('helpMe');
+            expect(result.state.availableCommands[1]).toBe('skip');
+            expect(result.state.availableCommands[2]).toBe('doTheRest');
+            expect(result.state.availableCommands[3]).toBe('finished');
 
             expect(lastAIResponse.content).toContain('social proof');
         });
@@ -365,8 +365,8 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.currentTopic).toBe('lookAndFeel');
             expect(result.state.placeholderText).toEqual(`Use the Advanced sidebar or click "Build My Site"...`)
 
-            expect(result.state.availableActions).toHaveLength(1);
-            expect(result.state.availableActions[0]).toBe('finished');
+            expect(result.state.availableCommands).toHaveLength(1);
+            expect(result.state.availableCommands[0]).toBe('finished');
 
             expect(lastAIResponse.content).toContain(`Brand Personalization panel`);
             expect(lastAIResponse.content).toContain(`Build My Site`);
@@ -458,7 +458,7 @@ describe.sequential('Brainstorming Flow', () => {
 
     describe("Actions", () => {
         describe("SKIP | skip", () => {
-            it.only("cannot skip unskippable questions", async () => {
+            it("cannot skip unskippable questions", async () => {
                 const graph = await restartChatFrom('idea', SimpleChatHistory);
                 const result = await graph
                     .withPrompt("Skip")
@@ -498,18 +498,18 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(result.state.currentTopic).toBe('solution');
                 expect(result.state.placeholderText).toEqual(`My solution is...`)
 
-                expect(result.state.availableActions).toHaveLength(3);
-                expect(result.state.availableActions[0]).toBe('helpMe');
-                expect(result.state.availableActions[1]).toBe('skip');
-                expect(result.state.availableActions[2]).toBe('doTheRest');
+                expect(result.state.availableCommands).toHaveLength(3);
+                expect(result.state.availableCommands[0]).toBe('helpMe');
+                expect(result.state.availableCommands[1]).toBe('skip');
+                expect(result.state.availableCommands[2]).toBe('doTheRest');
 
                 expect(lastAIResponse.content).toContain('solution');
             });
 
-            it("allows user to make further adjustments", async () => {
-                const result1 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+            it("returns to the question at the end / or solves it for you", async () => {
+                const graph = await restartChatFrom('audience', SimpleChatHistory);
+                const result = await graph
+                    .withPrompt("Skip")
                     .stopAfter('agent')
                     .execute();
 
@@ -529,7 +529,7 @@ describe.sequential('Brainstorming Flow', () => {
 
                 // It seeks approval
                 expect(state.route).toEqual("seekApproval");
-                expect(state.availableActions).toEqual(["FINISHED"]);
+                expect(state.availableCommands).toEqual(["FINISHED"]);
 
                 const result3 = await testGraph<BrainstormGraphState>()
                     .withGraph(brainstormGraph)
@@ -550,60 +550,31 @@ describe.sequential('Brainstorming Flow', () => {
         });
 
         describe("HELP_ME_ANSWER", () => {
-            it("helps the user answer the question", async () => {
-                const result1 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+            it.only("provides structured guidance to the user", async () => {
+                const graph = await restartChatFrom('audience', SimpleChatHistory);
+                const result = await graph
+                    .withPrompt("Help me answer this question")
                     .stopAfter('agent')
                     .execute();
 
-                const question: QuestionType = result1.state.nextQuestion;
-                expect(question.key).toBe("customers");
-                expect(question.type).toBe("structured");
-                expect(typeof question).toBe('object');
+                const lastAIResponse = lastAIMessage(result.state);
+                assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
-                const result2 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withState({
-                        ...result1.state,
-                        action: "HELP_ME_ANSWER"
-                    })
-                    .stopAfter('agent')
-                    .execute();
+                expect(result.error).toBeUndefined();
 
-                const state = result2.state;
+                // Skips from audience to solution
+                expect(result.state.skippedTopics).toHaveLength(1);
+                expect(result.state.skippedTopics[0]).toBe('audience');
 
-                expect(result2.error).toBeUndefined();
-                expect(state.questionIndex).toBe(2);
+                expect(result.state.currentTopic).toBe('solution');
+                expect(result.state.placeholderText).toEqual(`My solution is...`)
 
-                // It answers for the user as 2nd-to-last message
-                const lastAiResponse = state.messages?.filter(isAIMessage).slice(-2);
-                expect(lastAiResponse.content).toMatch(/content creators/) // The audience
+                expect(result.state.availableCommands).toHaveLength(3);
+                expect(result.state.availableCommands[0]).toBe('helpMe');
+                expect(result.state.availableCommands[1]).toBe('skip');
+                expect(result.state.availableCommands[2]).toBe('doTheRest');
 
-                // Then it asks the next question...
-                const question2: QuestionType = state.nextQuestion;
-                expect(question2.key).toBe("valueProp"); // It prepares the next question
-                expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
-
-                const result3 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withPrompt(`Actually, it's for podcast listeners...`)
-                    .withState({
-                        ...result2.state,
-                    })
-                    .stopAfter('agent')
-                    .execute();
-
-                const question3: QuestionType = state.nextQuestion;
-                // We're still on value prop
-                expect(question2.key).toBe("valueProp"); // It prepares the next question
-                expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
-
-                const lastAiResponse2 = state.messages?.filter(isAIMessage).slice(-1);
-                expect(lastAiResponse2.content).toMatch(/content creators/) // The audience
-
-                expect(lastAiResponse2.content).toMatch(/got it! Podcast listeners/)
-                expect(lastAiResponse2.content).toMatch(/Now about our value prop/)
+                expect(lastAIResponse.content).toContain('solution');
             });
         });
 
@@ -631,7 +602,7 @@ describe.sequential('Brainstorming Flow', () => {
 
                 // It seeks approval
                 expect(state.route).toEqual("seekApproval");
-                expect(state.availableActions).toEqual(["FINISHED"]);
+                expect(state.availableCommands).toEqual(["FINISHED"]);
 
                 // It spells out its intentions in message form...
                 const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
@@ -661,7 +632,7 @@ describe.sequential('Brainstorming Flow', () => {
 
                 // It seeks approval
                 expect(state.route).toEqual("seekApproval");
-                expect(state.availableActions).toEqual(["FINISHED"]);
+                expect(state.availableCommands).toEqual(["FINISHED"]);
 
                 const result3 = await testGraph<BrainstormGraphState>()
                     .withGraph(brainstormGraph)

@@ -438,7 +438,7 @@
 //                     // It skips to the next question
 //                     const question2: QuestionType = state.nextQuestion;
 //                     expect(question2.key).toBe("valueProp");
-//                     expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
+//                     expect(state.availableCommands).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
 
 //                     const messages3 = [
 //                         ...result2.state.messages,
@@ -490,7 +490,7 @@
 
 //                     // It seeks approval
 //                     expect(state.route).toEqual("seekApproval");
-//                     expect(state.availableActions).toEqual(["FINISHED"]);
+//                     expect(state.availableCommands).toEqual(["FINISHED"]);
 
 //                     const result3 = await testGraph<BrainstormGraphState>()
 //                         .withGraph(brainstormGraph)
@@ -544,7 +544,7 @@
 //                     // Then it asks the next question...
 //                     const question2: QuestionType = state.nextQuestion;
 //                     expect(question2.key).toBe("valueProp"); // It prepares the next question
-//                     expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
+//                     expect(state.availableCommands).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
 
 //                     const result3 = await testGraph<BrainstormGraphState>()
 //                         .withGraph(brainstormGraph)
@@ -558,7 +558,7 @@
 //                     const question3: QuestionType = state.nextQuestion;
 //                     // We're still on value prop
 //                     expect(question2.key).toBe("valueProp"); // It prepares the next question
-//                     expect(state.availableActions).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
+//                     expect(state.availableCommands).toEqual(["HELP_ME_ANSWER", "SKIP", "DO_THE_REST"]);
 
 //                     const lastAiResponse2 = state.messages?.filter(isAIMessage).slice(-1);
 //                     expect(lastAiResponse2.content).toMatch(/content creators/) // The audience
@@ -592,7 +592,7 @@
 
 //                     // It seeks approval
 //                     expect(state.route).toEqual("seekApproval");
-//                     expect(state.availableActions).toEqual(["FINISHED"]);
+//                     expect(state.availableCommands).toEqual(["FINISHED"]);
 
 //                     // It spells out its intentions in message form...
 //                     const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
@@ -622,7 +622,7 @@
 
 //                     // It seeks approval
 //                     expect(state.route).toEqual("seekApproval");
-//                     expect(state.availableActions).toEqual(["FINISHED"]);
+//                     expect(state.availableCommands).toEqual(["FINISHED"]);
 
 //                     const result3 = await testGraph<BrainstormGraphState>()
 //                         .withGraph(brainstormGraph)
