@@ -3,6 +3,7 @@ import type { BrainstormGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { isHumanMessage } from "@types";
 import { Brainstorm } from "@types";
+import { BrainstormNextStepsService } from "@services";
 
 const expectedTools = {
     "skip": "skipTool",
@@ -10,7 +11,7 @@ const expectedTools = {
     "finished": "finishedTool",
 }
 
-const getCommand = (state: BrainstormGraphState): Brainstorm.ActionType | undefined => {
+const getCommand = async (state: BrainstormGraphState): Promise<Brainstorm.ActionType | undefined> => {
     const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
     if (!lastHumanMessage) {
         throw new Error("No human message found")
@@ -24,6 +25,10 @@ const getCommand = (state: BrainstormGraphState): Brainstorm.ActionType | undefi
     const userCommand = (lastHumanMessage.content as string) in userCommands ? userCommands[lastHumanMessage.content as keyof typeof userCommands] : undefined;
 
     if (!userCommand) {
+        return undefined;
+    }
+
+    if (!state.availableActions.includes(userCommand)) {
         return undefined;
     }
 
@@ -53,9 +58,15 @@ export const handleCommand = NodeMiddleware.use({}, async (
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> => {
-    const command = getCommand(state);
-    if (command === "skip") {
-        return skip(state);
+    const updates = await new BrainstormNextStepsService(state).nextSteps();
+    const updatedState = {
+        ...state,
+        ...updates,
     }
-    return state;
+
+    const command = await getCommand(updatedState);
+    if (command === "skip") {
+        return skip(updatedState as BrainstormGraphState);
+    }
+    return updatedState;
   });

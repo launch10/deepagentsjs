@@ -393,7 +393,7 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("During lookAndFeel chat", () => {
-        it.only("(finished | done) returns redirect when user verbally expresses that they want to move on", async () => {
+        it("(finished | done) returns redirect when user verbally expresses that they want to move on", async () => {
             const graph = await restartChatFrom('lookAndFeel', SimpleChatHistory);
             const result = await graph
                 .withPrompt(`That's alright, let's move on`)
@@ -457,8 +457,8 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("Actions", () => {
-        describe("skip", () => {
-            it("skips a single question", async () => {
+        describe("SKIP | skip", () => {
+            it.only("cannot skip unskippable questions", async () => {
                 const graph = await restartChatFrom('idea', SimpleChatHistory);
                 const result = await graph
                     .withPrompt("Skip")
@@ -467,20 +467,43 @@ describe.sequential('Brainstorming Flow', () => {
 
                 const lastAIResponse = lastAIMessage(result.state);
                 assertDefined(lastAIResponse, 'lastAIResponse is defined');
-                console.log(lastAIResponse.content);
+
+                expect(result.error).toBeUndefined();
+
+                // Does not skip
+                expect(result.state.skippedTopics).toHaveLength(0);
+
+                expect(result.state.currentTopic).toBe('idea');
+                expect(result.state.placeholderText).toEqual(`I want to acquire leads, sell my product...`)
+
+                expect(lastAIResponse.content).toContain(`we can't skip this one`)
+            })
+
+            it("skips a single question", async () => {
+                const graph = await restartChatFrom('audience', SimpleChatHistory);
+                const result = await graph
+                    .withPrompt("Skip")
+                    .stopAfter('agent')
+                    .execute();
+
+                const lastAIResponse = lastAIMessage(result.state);
+                assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
                 expect(result.error).toBeUndefined();
 
                 // Skips from audience to solution
-                expect(result.state.currentTopic).toBe('audience');
-                expect(result.state.placeholderText).toEqual(`My target audience is...`)
+                expect(result.state.skippedTopics).toHaveLength(1);
+                expect(result.state.skippedTopics[0]).toBe('audience');
+
+                expect(result.state.currentTopic).toBe('solution');
+                expect(result.state.placeholderText).toEqual(`My solution is...`)
 
                 expect(result.state.availableActions).toHaveLength(3);
                 expect(result.state.availableActions[0]).toBe('helpMe');
                 expect(result.state.availableActions[1]).toBe('skip');
                 expect(result.state.availableActions[2]).toBe('doTheRest');
 
-                expect(lastAIResponse.content).toContain('audience');
+                expect(lastAIResponse.content).toContain('solution');
             });
 
             it("allows user to make further adjustments", async () => {

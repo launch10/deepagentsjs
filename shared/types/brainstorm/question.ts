@@ -78,5 +78,8 @@ export const AvailableActions: Record<TopicType, ActionType[]> = {
     lookAndFeel: ["finished"],
 }
 
+export const SkippableTopics: TopicType[] = Object.entries(AvailableActions).filter(([_, actions]) => actions.includes("skip")).map(([topic]) => topic as TopicType);
+export const topicIsSkippable = (topic: TopicType) => SkippableTopics.includes(topic);
+
 export const Redirects = ["website_builder"] as const;
 export type RedirectType = typeof Redirects[number];

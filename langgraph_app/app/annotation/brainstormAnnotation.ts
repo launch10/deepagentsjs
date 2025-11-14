@@ -11,7 +11,10 @@ export const BrainstormAnnotation = Annotation.Root({
     placeholderText: Annotation<string>(),
     brainstormId: Annotation<PrimaryKeyType | undefined>(),
     memories: Annotation<Brainstorm.MemoriesType>(),
-    availableActions: Annotation<Brainstorm.ActionType[]>(),
+    availableActions: Annotation<Brainstorm.ActionType[]>({
+        default: () => [],
+        reducer: (current, next) => [...next]
+    }),
     selectedAction: Annotation<Brainstorm.ActionType | undefined>(),
     redirect: Annotation<Brainstorm.RedirectType | undefined>(),
     intent: Annotation<string | undefined>(),

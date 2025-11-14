@@ -38,7 +38,6 @@ const backgroundPrompt = async() => {
 
 const finishedTool = tool(
   async (input, config) => {
-
     return new Command({
         update: {
             redirect: "website_builder" as const,
@@ -247,7 +246,6 @@ const conversationalPrompt = async(state: BrainstormGraphState, config?: LangGra
         new BrainstormNextStepsService(state).nextSteps(),
         structuredOutputPrompt({ schema: Brainstorm.questionSchema }),
     ]);
-    console.log(nextSteps.currentTopic)
 
     const memories = compactObject(nextSteps.memories);
     const currentTopic = nextSteps.currentTopic;
@@ -318,6 +316,10 @@ const conversationalPrompt = async(state: BrainstormGraphState, config?: LangGra
                 ${currentTopic}
             </current_topic>
 
+            <skippable>
+                ${Brainstorm.topicIsSkippable(currentTopic) ? "topic is skippable" : "topic is NOT skippable. encourage the user to think creatively, and give them examples of what good looks like"}
+            </skippable>
+
             <skipped_topics important="this is the list of topics that have been skipped, don't bother asking about them">
                 ${state.skippedTopics?.join(", ") || "none"}
             </skipped_topics>
@@ -362,6 +364,7 @@ const brainstormMiddleware = createMiddleware({
         currentTopic: z.string(),
         skippedTopics: z.array(z.string()).optional(),
         redirect: z.string().optional(),
+        availableActions: z.array(z.string()).default([])
     }),
     wrapModelCall: async (request, handler) => {
         const state = request.state satisfies BrainstormGraphState;
