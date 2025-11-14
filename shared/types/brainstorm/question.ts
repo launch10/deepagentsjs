@@ -19,9 +19,9 @@ export type TopicType = keyof typeof TopicKindMap;
 export type ConversationalTopicType = ConditionalKeys<typeof TopicKindMap, "conversational">;
 export type UITopicType = ConditionalKeys<typeof TopicKindMap, "ui">;
 
-export const BrainstormTopics = Object.keys(TopicKindMap) as TopicType[];
-export const ConversationalTopics = BrainstormTopics.filter((topic) => TopicKindMap[topic] === "conversational") as ConversationalTopicType[];
-export const UITopics = BrainstormTopics.filter((topic) => TopicKindMap[topic] === "ui") as UITopicType[];
+export const BrainstormTopics = ["idea", "audience", "solution", "socialProof", "lookAndFeel"] as const;
+export const ConversationalTopics = ["idea", "audience", "solution", "socialProof"] as const;
+export const UITopics = ["lookAndFeel"] as const;
 
 /**
  * Schema for structured questions with intro, examples, and conclusion

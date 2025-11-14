@@ -56,7 +56,7 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
 
             ${collectedAnswers}
 
-            ${remainingTopics}
+            ${state.skippedTopics.map(topic => Brainstorm.TopicDescriptions[topic]).join("\n\n")}
 
             ${topicSpecificHelp}
 

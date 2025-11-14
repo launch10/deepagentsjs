@@ -512,12 +512,13 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(lastAIResponse.content).toContain('solution');
             });
 
-            it.only("returns to the question at the end / or solves it for you", async () => {
+            it("returns to the question at the end / or solves it for you", async () => {
                 const graph = await restartChatFrom('audience', SimpleChatHistory);
                 const result1 = await graph
                     .withPrompt("Skip")
                     .stopAfter('agent')
                     .execute(); // audience -> solution
+                expect(result1.state.skippedTopics).toHaveLength(1);
 
                 const result2 = await graph
                     .withPrompt("Skip")
@@ -527,6 +528,11 @@ describe.sequential('Brainstorming Flow', () => {
                     })
                     .execute(); // solution -> socialProof
 
+                // Even though we skipped, AI still had enough context to answer the question
+                // on its own, so it saved + moved to the next question
+                expect(result2.state.skippedTopics).toHaveLength(1);
+                expect(result2.state.currentTopic).toBe('socialProof');
+
                 const result3 = await graph
                     .withPrompt("Skip")
                     .stopAfter('agent')
@@ -534,6 +540,7 @@ describe.sequential('Brainstorming Flow', () => {
                         ...result2.state,
                     })
                     .execute(); // socialProof -> do the rest before user is finished
+                expect(result3.state.skippedTopics).toHaveLength(0); // Would have been 2, but since we hit the end of the road, the AI answered the question
 
                 const result = result3;
 
@@ -541,8 +548,7 @@ describe.sequential('Brainstorming Flow', () => {
                 assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
                 expect(result.error).toBeUndefined();
-                console.log(result.state.skippedTopics)
-                expect(result.state.skippedTopics).toHaveLength(3);
+                expect(result.state.skippedTopics).toHaveLength(0);
 
                 expect(result.state.currentTopic).toBe('lookAndFeel');
                 expect(result.state.placeholderText).toMatch(`Use the Advanced sidebar`)
@@ -551,7 +557,9 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(result.state.memories.audience).toBeTruthy();
                 expect(result.state.memories.solution).toBeTruthy();
                 expect(result.state.memories.socialProof).toBeTruthy();
-                expect(result.state.memories.lookAndFeel).toBeTruthy();
+
+                expect(lastAIResponse.content).toContain('Personalize the design');
+                expect(lastAIResponse.content).toContain('Build right away');
             });
         });
 

@@ -16,7 +16,6 @@ export const agentPrompt = async(inputState: BrainstormGraphState, config?: Lang
     if (state.skippedTopics?.length > 0) {
         return await finishForMePrompt(state, config);
     }
-    debugger;
 
     return await uiGuidancePrompt(state, config);
 }

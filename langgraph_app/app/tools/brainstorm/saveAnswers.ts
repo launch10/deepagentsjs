@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { type BrainstormGraphState } from "@state";
-import { ToolMessage } from "@langchain/core/messages";
 import {
   getCurrentTaskInput,
   Command,
@@ -12,7 +11,8 @@ import { withTimestamps, withUpdatedAt } from "@db";
 import { BrainstormNextStepsService } from "@services";
 import { chatHistoryPrompt } from "@prompts";
 import { getLLM } from "@core";
-import { BaseMessage } from "@langchain/core/messages";
+import { BaseMessage, ToolMessage } from "@langchain/core/messages";
+import { compactObject } from "@utils";
 
 // Could work on tagging these in a separate model in order to not
 // have so much message history returned from the tool
@@ -125,6 +125,7 @@ export const summarizeMessages = async (messages: BaseMessage[]): Promise<Partia
 export const saveAnswers = async (
   memories: Record<Brainstorm.TopicType, string>,
   websiteId: number,
+  skippedTopics: string[],
 ): Promise<Partial<BrainstormGraphState>> => {
     const insert = withTimestamps(memories);
     const update = withUpdatedAt(memories);
@@ -140,46 +141,82 @@ export const saveAnswers = async (
     }).returning();
 
     const updatedMemories = await (new BrainstormNextStepsService({ websiteId })).getMemories();
+    const memoriesWithValues = compactObject(updatedMemories);
+    let updatedSkippedTopics = skippedTopics?.filter((topic) => !memoriesWithValues[topic as Brainstorm.TopicType]) as Brainstorm.TopicType[];
 
     return {
-      memories: updatedMemories as Record<Brainstorm.TopicType, string>,
+      memories: updatedMemories,
+      skippedTopics: updatedSkippedTopics,
     }
 }
 
 export const summarizeAndSaveAnswers = async (
   messages: BaseMessage[],
   websiteId: number,
+  skippedTopics: string[],
 ): Promise<Partial<BrainstormGraphState>> => {
   const { memories, messages: taggedMessages } = await summarizeMessages(messages);
-  const { memories: updatedMemories } = await saveAnswers(memories, websiteId);
+  const { memories: updatedMemories, skippedTopics: updatedSkippedTopics } = await saveAnswers(memories, websiteId, skippedTopics);
 
   return {
     memories: updatedMemories,
     messages: taggedMessages,
+    skippedTopics: updatedSkippedTopics,
   }
 }
 
 export const saveAnswersTool = tool(
   async (args: { answers?: Record<Brainstorm.TopicType, string> }, config) => {
     const websiteId = getCurrentTaskInput<BrainstormGraphState>(config).websiteId;
+    const skippedTopics = getCurrentTaskInput<BrainstormGraphState>(config).skippedTopics || [];
 
     if (!websiteId) {
         throw new Error("websiteId is required");
     }
 
+    const toolMessage = new ToolMessage({
+      content: "Saving answers...",
+      tool_call_id: config?.toolCall.id,
+      status: "pending",
+      name: "saveAnswersTool",
+    });
+
     // Model did not provide answers, so summarize the current thread
     if (!args.answers) {
       const currentMessages = getCurrentTaskInput<BrainstormGraphState>(config).messages;
-      return await summarizeAndSaveAnswers(currentMessages, websiteId);
+      const stateUpdates = await summarizeAndSaveAnswers(currentMessages, websiteId, skippedTopics);
+
+      return new Command({
+        update: {
+          ...stateUpdates,
+          messages: [...(stateUpdates.messages || []), toolMessage],
+        },
+      });
     }
 
-    debugger
-    return await saveAnswers(args.answers, websiteId);
+    const answers = args.answers.reduce((acc, item) => {
+      acc[item.topic] = item.answer;
+      return acc;
+    }, {} as Record<Brainstorm.TopicType, string>);
+
+    console.log(`saving answers!`)
+    console.log(`saving answers!`)
+    console.log(`saving answers!`)
+    console.log(`saving answers!`)
+    console.log(answers)
+    const stateUpdates = await saveAnswers(answers, websiteId, skippedTopics);
+
+    return new Command({
+      update: {
+        ...stateUpdates,
+        messages: [...(stateUpdates.messages || []), toolMessage],
+      },
+    });
   },
   {
     name: "save_answers",
     description: `
-        Save answers to the brainstorming session. 
+        Save answers to the brainstorming session.
         Call this when the user has answered one or more of the remaining topics.
 
         If the user answered the question themselves: Do not provide any arguments.
@@ -188,7 +225,7 @@ export const saveAnswersTool = tool(
     `,
     schema: z.object({
       answers: z.array(z.object({
-        topic: z.enum(Brainstorm.ConversationalTopics),
+        topic: z.enum(Brainstorm.BrainstormTopics),
         answer: z.string(),
       })).optional(),
     }),
