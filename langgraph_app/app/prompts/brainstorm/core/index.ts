@@ -4,7 +4,7 @@ import { Brainstorm, type LangGraphRunnableConfig } from "@types";
 import { compactObject } from "@utils";
 
 export const backgroundPrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
-    `
+    return `
     <background>
         You are a helpful marketing consultant who helps users test their business ideas.
         The process consists of 3 steps:
@@ -16,7 +16,7 @@ export const backgroundPrompt = async(state: BrainstormGraphState, config?: Lang
 }
 
 export const whereWeArePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
-    `
+    return `
     <where_we_are>
         Right now, we're in the brainstorming phase. After we fully flesh out the user's
         business idea, we can move on to the landing page design phase.

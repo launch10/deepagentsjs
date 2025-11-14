@@ -242,7 +242,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableCommands[0]).toBe('helpMe');
         });
 
-        it("should stay consistent when the user answers the first question incorrectly", async () => {
+        it.only("should stay consistent when the user answers the first question incorrectly", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`I like pasta.`)
@@ -259,6 +259,12 @@ describe.sequential('Brainstorming Flow', () => {
             expect(aiResponse?.content).toContain('restaurant');
             expect(result.state.availableCommands).toHaveLength(1);
             expect(result.state.availableCommands[0]).toBe('helpMe');
+
+            const response = aiResponse?.response_metadata as Brainstorm.ReplyType;
+            expect(response.type).toBe('reply');
+            expect(response.text).toBeDefined()
+            expect(response.examples).toBeDefined()
+            expect(response.conclusion).toBeDefined()
         });
 
         it("should update to the next question when we successfully give a business idea", async () => {
@@ -550,7 +556,7 @@ describe.sequential('Brainstorming Flow', () => {
         });
 
         describe("HELP_ME_ANSWER", () => {
-            it.only("provides structured guidance to the user", async () => {
+            it("provides structured guidance to the user", async () => {
                 const graph = await restartChatFrom('audience', SimpleChatHistory);
                 const result = await graph
                     .withPrompt("Help me answer this question")
@@ -562,12 +568,8 @@ describe.sequential('Brainstorming Flow', () => {
 
                 expect(result.error).toBeUndefined();
 
-                // Skips from audience to solution
-                expect(result.state.skippedTopics).toHaveLength(1);
-                expect(result.state.skippedTopics[0]).toBe('audience');
-
-                expect(result.state.currentTopic).toBe('solution');
-                expect(result.state.placeholderText).toEqual(`My solution is...`)
+                expect(result.state.currentTopic).toBe('audience');
+                expect(result.state.placeholderText).toEqual(`My target audience is...`)
 
                 expect(result.state.availableCommands).toHaveLength(3);
                 expect(result.state.availableCommands[0]).toBe('helpMe');
@@ -575,6 +577,11 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(result.state.availableCommands[2]).toBe('doTheRest');
 
                 expect(lastAIResponse.content).toContain('solution');
+                let responseMetadata = lastAIResponse.response_metadata as Brainstorm.HelpMeResponseType;
+                expect(responseMetadata.type).toBe('helpMe');
+                expect(responseMetadata.text).toBeDefined()
+                expect(responseMetadata.template).toBeDefined()
+                expect(responseMetadata.examples).toBeDefined()
             });
         });
 

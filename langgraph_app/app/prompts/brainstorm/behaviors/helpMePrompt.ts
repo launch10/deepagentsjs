@@ -21,7 +21,7 @@ export const helpMePrompt = async(state: BrainstormGraphState, config?: LangGrap
         throw new Error("No human message found");
     }
 
-    const topicSpecificHelp = fs.readFileSync(path.join(__dirname, `help/${state.currentTopic}.md`), 'utf-8');
+    const topicSpecificHelp = fs.readFileSync(path.join(__dirname, `../help/${state.currentTopic}.md`), 'utf-8');
     const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, background] = await Promise.all([
         structuredOutputPrompt({ schema: Brainstorm.helpMeSchema }),
         whereWeArePrompt(state, config),
@@ -93,7 +93,7 @@ export const helpMePrompt = async(state: BrainstormGraphState, config?: LangGrap
             Before providing your response, verify:
             ✓ Is there a clear template or framework they can fill in?
             ✓ Does my example show the template properly filled out?
-            ✓ Have I avoided doing their thinking for them?
+            ✓ Does my example use any information we've already collected to help think through the answer for THEIR business?
             ✓ Can someone with no business background follow this?
             ✓ Is this MORE helpful than just rephrasing the original question?
 
@@ -105,10 +105,15 @@ export const helpMePrompt = async(state: BrainstormGraphState, config?: LangGrap
 
             ${topicSpecificHelp}
 
+            <task>
+                Provide a clear, fill-in-the-blank template that helps them articulate their answer with specificity and clarity.
+            </task>
+
             <output_format_rules>
                 IMPORTANT: Your response MUST be in this exact format:
 
                 {
+                  "type": "helpMe",
                   "text": "Brief acknowledgement",
                   "template": "Structured template or framework",
                   "examples": ["Example 1", "Example 2", "Example 3"],
