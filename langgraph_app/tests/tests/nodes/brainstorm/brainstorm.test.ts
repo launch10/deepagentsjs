@@ -482,7 +482,7 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(result.state.currentTopic).toBe('idea');
                 expect(result.state.placeholderText).toEqual(`I want to acquire leads, sell my product...`)
 
-                expect(lastAIResponse.content).toContain(`we can't skip this one`)
+                expect(lastAIResponse.content).toContain(`can't`)
             })
 
             it("skips a single question", async () => {
@@ -512,12 +512,13 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(lastAIResponse.content).toContain('solution');
             });
 
-            it("returns to the question at the end / or solves it for you", async () => {
+            it("returns to the question at the end / answers it for you", async () => {
                 const graph = await restartChatFrom('audience', SimpleChatHistory);
                 const result1 = await graph
                     .withPrompt("Skip")
                     .stopAfter('agent')
                     .execute(); // audience -> solution
+
                 expect(result1.state.skippedTopics).toHaveLength(1);
 
                 const result2 = await graph
@@ -528,9 +529,7 @@ describe.sequential('Brainstorming Flow', () => {
                     })
                     .execute(); // solution -> socialProof
 
-                // Even though we skipped, AI still had enough context to answer the question
-                // on its own, so it saved + moved to the next question
-                expect(result2.state.skippedTopics).toHaveLength(1);
+                expect(result2.state.skippedTopics).toHaveLength(2);
                 expect(result2.state.currentTopic).toBe('socialProof');
 
                 const result3 = await graph

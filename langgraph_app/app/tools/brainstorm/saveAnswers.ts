@@ -199,11 +199,6 @@ export const saveAnswersTool = tool(
       return acc;
     }, {} as Record<Brainstorm.TopicType, string>);
 
-    console.log(`saving answers!`)
-    console.log(`saving answers!`)
-    console.log(`saving answers!`)
-    console.log(`saving answers!`)
-    console.log(answers)
     const stateUpdates = await saveAnswers(answers, websiteId, skippedTopics);
 
     return new Command({

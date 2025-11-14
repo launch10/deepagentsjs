@@ -64,7 +64,8 @@ export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGra
             <workflow>
                 1. If the user has answered any topics with a GREAT response, call the save_answers tool
                 2. If they haven't, continue helping them refine their answer until they give you a GREAT response.
-                3. Then, if:
+                3. If the user has SKIPPED a topic, do not call save_answers for the skipped topics
+                4. Then, if:
                    - The user has answered all topics, output finishBrainstorming
                    - OTHERWISE, ask the next question, following the output_format_rules
             </workflow>
