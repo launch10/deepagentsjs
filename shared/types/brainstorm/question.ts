@@ -1,28 +1,27 @@
 import z from "zod";
+import type { ConditionalKeys } from 'type-fest';
 
 /**
  * Brainstorm.TopicTypes
  */
-export const BrainstormTopics = [
-  "idea",
-  "audience",
-  "solution",
-  "socialProof",
-  "lookAndFeel"
-] as const;
-export type TopicType = typeof BrainstormTopics[number];
-export type MemoriesType = Partial<Record<TopicType, string | null>>;
-
-export const TopicKinds = ["conversational", "ui"];
-export type TopicKind = typeof TopicKinds[number];
-
-export const TopicKindMap: Record<TopicType, TopicKind> = {
+export const TopicKindMap = {
   idea: "conversational",
   audience: "conversational",
   solution: "conversational",
   socialProof: "conversational",
   lookAndFeel: "ui",
-}
+} as const;
+
+export const TopicKinds = ["conversational", "ui"] as const;
+export type TopicKind = typeof TopicKindMap[keyof typeof TopicKindMap];
+export type TopicType = keyof typeof TopicKindMap;
+
+export type ConversationalTopicType = ConditionalKeys<typeof TopicKindMap, "conversational">;
+export type UITopicType = ConditionalKeys<typeof TopicKindMap, "ui">;
+
+export const BrainstormTopics = Object.keys(TopicKindMap) as TopicType[];
+export const ConversationalTopics = BrainstormTopics.filter((topic) => TopicKindMap[topic] === "conversational") as ConversationalTopicType[];
+export const UITopics = BrainstormTopics.filter((topic) => TopicKindMap[topic] === "ui") as UITopicType[];
 
 /**
  * Schema for structured questions with intro, examples, and conclusion

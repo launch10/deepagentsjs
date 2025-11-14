@@ -12,9 +12,9 @@ export class BrainstormNextStepsService {
     availableCommands: Brainstorm.CommandType[] | undefined;
     skippedTopics: Brainstorm.TopicType[];
 
-    constructor(state: BrainstormGraphState) {
-        this.websiteId = state.websiteId;
-        this.skippedTopics = state.skippedTopics || [];
+    constructor({ websiteId, skippedTopics }: { websiteId: number; skippedTopics?: Brainstorm.TopicType[] }) {
+        this.websiteId = websiteId;
+        this.skippedTopics = skippedTopics || [];
     }
 
     async nextSteps(includeSkipped: boolean = false) {

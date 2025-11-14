@@ -6,7 +6,7 @@ import { brainstormGraph as uncompiledGraph } from '@graphs';
 import { HumanMessage, AIMessage, BaseMessage, type Message } from '@langchain/core/messages';
 import { lastHumanMessage, lastAIMessage } from '@annotation';
 import { createBrainstorm } from '@nodes';
-import { saveAnswers } from '@tools';
+import { summarizeAndSaveAnswers } from '@tools';
 import { v7 as uuidv7 } from 'uuid';
 import { 
     isHumanMessage, 
@@ -193,7 +193,7 @@ const restartChatFrom = async (topic: Brainstorm.TopicType, useHistory: ChatHist
             currentTopic,
         }
         
-        const result = await saveAnswers(allMessages, partialState.websiteId!);
+        const result = await summarizeAndSaveAnswers(allMessages, partialState.websiteId!);
         
         // Capture the tagged messages for next iteration
         allMessages = result.messages!;
@@ -242,7 +242,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableCommands[0]).toBe('helpMe');
         });
 
-        it.only("should stay consistent when the user answers the first question incorrectly", async () => {
+        it("should stay consistent when the user answers the first question incorrectly", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`I like pasta.`)
@@ -512,46 +512,46 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(lastAIResponse.content).toContain('solution');
             });
 
-            it("returns to the question at the end / or solves it for you", async () => {
+            it.only("returns to the question at the end / or solves it for you", async () => {
                 const graph = await restartChatFrom('audience', SimpleChatHistory);
-                const result = await graph
+                const result1 = await graph
                     .withPrompt("Skip")
                     .stopAfter('agent')
-                    .execute();
+                    .execute(); // audience -> solution
 
-                const result2 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
+                const result2 = await graph
+                    .withPrompt("Skip")
+                    .stopAfter('agent')
                     .withState({
                         ...result1.state,
-                        action: "DO_THE_REST"
                     })
+                    .execute(); // solution -> socialProof
+
+                const result3 = await graph
+                    .withPrompt("Skip")
                     .stopAfter('agent')
-                    .execute();
-
-                const state = result2.state;
-
-                expect(result2.error).toBeUndefined();
-                expect(state.questionIndex).toBe(4);
-
-                // It seeks approval
-                expect(state.route).toEqual("seekApproval");
-                expect(state.availableCommands).toEqual(["FINISHED"]);
-
-                const result3 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withPrompt(`Actually, my customers are podcast creators, not podcast guests.`)
                     .withState({
                         ...result2.state,
                     })
-                    .stopAfter('agent')
-                    .execute();
+                    .execute(); // socialProof -> do the rest before user is finished
 
-                expect(result3.error).toBeUndefined();
-                expect(result3.state.questionIndex).toBe(4);
+                const result = result3;
 
-                const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
-                expect(lastAiResponse.content).toMatch(/creators/) // It updates it understanding
-                expect(lastAiResponse.content).toMatch(/social proof is affected by this change..../)
+                const lastAIResponse = lastAIMessage(result.state);
+                assertDefined(lastAIResponse, 'lastAIResponse is defined');
+
+                expect(result.error).toBeUndefined();
+                console.log(result.state.skippedTopics)
+                expect(result.state.skippedTopics).toHaveLength(3);
+
+                expect(result.state.currentTopic).toBe('lookAndFeel');
+                expect(result.state.placeholderText).toMatch(`Use the Advanced sidebar`)
+
+                expect(result.state.memories.idea).toBeTruthy();
+                expect(result.state.memories.audience).toBeTruthy();
+                expect(result.state.memories.solution).toBeTruthy();
+                expect(result.state.memories.socialProof).toBeTruthy();
+                expect(result.state.memories.lookAndFeel).toBeTruthy();
             });
         });
 

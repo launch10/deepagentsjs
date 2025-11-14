@@ -3,6 +3,7 @@ import { BaseAnnotation } from "./base";
 import { Brainstorm, type PrimaryKeyType } from "@types";
 import type { Equal, Expect } from "@types";
 import type { BrainstormGraphState } from "@state";
+import { uniq } from "@utils";
 
 export const BrainstormAnnotation = Annotation.Root({
     ...BaseAnnotation.spec,
@@ -18,7 +19,7 @@ export const BrainstormAnnotation = Annotation.Root({
     redirect: Annotation<Brainstorm.RedirectType | undefined>(),
     skippedTopics: Annotation<Brainstorm.TopicType[]>({
         default: () => [],
-        reducer: (current, next) => [...current, ...next]
+        reducer: (current, next) => uniq(next),
     }),
     remainingTopics: Annotation<Brainstorm.TopicType[]>({
         default: () => [...Brainstorm.BrainstormTopics],
