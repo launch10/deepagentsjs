@@ -6,51 +6,21 @@ import { Brainstorm } from "@types";
 import { BrainstormNextStepsService } from "@services";
 import { BaseMessage } from "@langchain/core/messages";
 
-// TODO: Make it clean like this
-interface ICommand<TGraphState extends CoreGraphState> {
-    command: Brainstorm.CommandType;
-    humanMessage: string;
-    action: (state: TGraphState) => Partial<TGraphState>;
-}
-class Command<TGraphState extends CoreGraphState> implements ICommand<TGraphState> {
-    command: Brainstorm.CommandType;
-    humanMessage: string;
-    action: (state: TGraphState) => Partial<TGraphState>;
-
-    constructor(command: ICommand<TGraphState>) {
-        this.command = command.command;
-        this.humanMessage = command.humanMessage;
-        this.action = command.action;
-    }
-    
-    messageIsCommand(message: BaseMessage): boolean {
-        return message.content === this.humanMessage;
-    }
-}
-
-// Skip executes a tool, the rest 
-const getCommand = async (state: BrainstormGraphState): Promise<Brainstorm.CommandType | undefined> => {
+const getCommand = async (state: BrainstormGraphState): Promise<Brainstorm.Command | undefined> => {
     const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
-    if (!lastHumanMessage) {
+    if (!lastHumanMessage || !lastHumanMessage.content || typeof lastHumanMessage.content !== "string") {
         throw new Error("No human message found")
     }
-    const userCommands: Record<string, Brainstorm.CommandType> = {
-        "Skip": "skip",
-        "Please do the rest for me": "doTheRest",
-        "Help me answer this question": "helpMe",
-        "I'm finished": "finished",
-    }
-    const userCommand = (lastHumanMessage.content as string) in userCommands ? userCommands[lastHumanMessage.content as keyof typeof userCommands] : undefined;
 
-    if (!userCommand) {
+    if (!Brainstorm.promptIsCommand(lastHumanMessage.content)) return undefined;
+
+    const command = Brainstorm.promptToCommand(lastHumanMessage.content) as Brainstorm.Command;
+
+    if (!state.availableCommands.includes(command.name)) {
         return undefined;
     }
 
-    if (!state.availableCommands.includes(userCommand)) {
-        return undefined;
-    }
-
-    return userCommand
+    return command
 }
 
 const skip = (state: BrainstormGraphState): Partial<BrainstormGraphState> => {
@@ -78,11 +48,11 @@ export const handleCommand = NodeMiddleware.use({}, async (
     const command = await getCommand(updatedState);
     if (!command) return updatedState;
 
-    if (command === "skip") {
+    if (command.name === "skip") {
         return skip(updatedState as BrainstormGraphState);
     }
 
     return {
-        command,
+        command: command.name,
     }
 });

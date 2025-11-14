@@ -234,7 +234,7 @@ describe.sequential('Brainstorming Flow', () => {
     }, 30000)
 
     describe("Chat flow", () => {
-        it("should default to the first question", async () => {
+        it.only("should default to the first question", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Sorry, what's going on?`)
@@ -449,7 +449,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(lastAIResponse.content).toContain('Validate Your Idea');
         })
 
-        it.only("answers questions about how things will be used", async () => {
+        it("answers questions about how things will be used", async () => {
             const graph = await restartChatFrom('lookAndFeel', SimpleChatHistory);
             const result = await graph
                 .withPrompt(`Are you guys stealing my data? My business idea?`)
@@ -690,7 +690,7 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(lastAIResponse.content).toContain('Build right away');
             });
 
-            it.only("does not skip unskippable topics", async () => {
+            it("does not skip unskippable topics", async () => {
                 const graph = await restartChatFrom('idea', SimpleChatHistory);
                 const result = await graph
                     .withPrompt("Skip")

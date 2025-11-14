@@ -63,6 +63,8 @@ export const summarizeMessages = async (messages: BaseMessage[]): Promise<Partia
   const messageTagger = new MessageTagger(messages);
   const messagesToSave = messageTagger.messagesToSave();
 
+  const topics = Brainstorm.getAllTopics();
+
   // This should maybe be an error?
   if (messagesToSave.length === 0) {
     return {}
@@ -74,7 +76,7 @@ export const summarizeMessages = async (messages: BaseMessage[]): Promise<Partia
     </background>
 
     <available_topics>
-      ${Brainstorm.BrainstormTopics.map((topic) => `"${topic}: ${Brainstorm.TopicDescriptions[topic]}"`).join(", ")}
+      ${topics.map((topic) => `"${topic.name}: ${topic.description}"`).join(", ")}
     </available_topics>
 
     <task>

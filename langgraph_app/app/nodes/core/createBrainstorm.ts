@@ -25,7 +25,8 @@ export const createBrainstorm = NodeMiddleware.use({}, async (
       throw new Error("JWT token is required for API authentication");
     }
 
-    const hardcodedFirstQuestion = Brainstorm.HardCodedQuestions.idea;
+    const ideaTopic = Brainstorm.getTopic("idea");
+    const hardcodedFirstQuestion = ideaTopic?.hardcodedQuestion;
     if (!hardcodedFirstQuestion) {
       throw new Error("Hardcoded first question is missing");
     }

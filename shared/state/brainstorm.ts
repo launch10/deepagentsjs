@@ -9,15 +9,15 @@ export type BrainstormGraphState = Simplify<CoreGraphState & {
     currentTopic: Brainstorm.TopicName | undefined;
     skippedTopics: Brainstorm.TopicName[];
     placeholderText: string;
-    availableCommands: Brainstorm.CommandType[];
-    command: Brainstorm.CommandType | undefined;
+    availableCommands: Brainstorm.CommandName[];
+    command: Brainstorm.CommandName | undefined;
     remainingTopics: Brainstorm.TopicName[];
     redirect: Brainstorm.RedirectType | undefined;
 }>
 
 export type BrainstormLanggraphData = LanggraphData<
     BrainstormGraphState,
-    typeof Brainstorm.questionSchema
+    typeof Brainstorm.structuredMessageSchema
 >
 
 // Clean, flattened message type for consumer use

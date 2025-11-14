@@ -7,9 +7,7 @@ export class BrainstormNextStepsService {
     websiteId: number | undefined;
     memories: Brainstorm.MemoriesType | undefined;
     currentTopic: Brainstorm.TopicName | undefined;
-    placeholderText: string | undefined;
     remainingTopics: Brainstorm.TopicName[] | undefined;
-    availableCommands: Brainstorm.CommandType[] | undefined;
     skippedTopics: Brainstorm.TopicName[];
 
     constructor({ websiteId, skippedTopics }: Pick<BrainstormGraphState, "websiteId" | "skippedTopics">) {
@@ -19,17 +17,13 @@ export class BrainstormNextStepsService {
 
     async nextSteps(includeSkipped: boolean = false) {
         const memories = await this.getMemories();
-        const placeholderText = await this.getPlaceholderText(includeSkipped);
         const currentTopic = await this.getCurrentTopic(includeSkipped);
         const remainingTopics = await this.getRemainingTopics(includeSkipped);
-        const availableCommands = await this.getAvailableCommands(includeSkipped);
 
         return {
             memories: memories as Brainstorm.MemoriesType,
-            placeholderText: placeholderText as string,
             currentTopic: currentTopic as Brainstorm.TopicName,
             remainingTopics: remainingTopics as Brainstorm.TopicName[],
-            availableCommands: availableCommands as Brainstorm.CommandType[],
         }
     }
 
@@ -44,12 +38,12 @@ export class BrainstormNextStepsService {
         const brainstorms = (await db.select().from(brainstormsTable).where(
                 eq(brainstormsTable.websiteId, this.websiteId)
         ).orderBy(asc(brainstormsTable.id)))[0];
-        let memories: Brainstorm.MemoriesType = {}
+        let memories: Partial<Brainstorm.MemoriesType> = {}
         if (brainstorms) {
-            memories = pick(brainstorms, [...Brainstorm.BrainstormTopics]);
+            memories = pick(brainstorms, [...Brainstorm.TopicNames]);
         }
-        this.memories = memories;
-        return memories;
+        this.memories = memories as Brainstorm.MemoriesType;
+        return this.memories;
     }
 
 
@@ -73,28 +67,11 @@ export class BrainstormNextStepsService {
         if (this.currentTopic) {
             return this.currentTopic;
         }
-        this.currentTopic = (await this.getRemainingTopics(includeSkipped)).at(0);
+        let currentTopicName = (await this.getRemainingTopics(includeSkipped)).at(0)
+        if (!currentTopicName) {
+            throw new Error("No remaining topics found");
+        }
+        this.currentTopic = currentTopicName;
         return this.currentTopic;
-    }
-
-    private async getPlaceholderText(includeSkipped: boolean = false) {
-        if (this.placeholderText) {
-            return this.placeholderText;
-        }
-        const currentTopic = await this.getCurrentTopic(includeSkipped);
-        this.placeholderText = currentTopic ? Brainstorm.PlaceholderText[currentTopic] : "";
-        return this.placeholderText;
-    }
-
-    private async getAvailableCommands(includeSkipped: boolean = false): Promise<Brainstorm.CommandType[]> {
-        if (this.availableCommands) {
-            return this.availableCommands;
-        }
-        const currentTopic = await this.getCurrentTopic(includeSkipped);
-        if (!currentTopic) {
-            return ["finished"];
-        }
-        this.availableCommands = Brainstorm.AvailableCommands[currentTopic];
-        return this.availableCommands;
     }
 }

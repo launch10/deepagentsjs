@@ -1,6 +1,6 @@
 import z from "zod";
 import type { ConditionalKeys } from 'type-fest';
-import { CommandType } from "./commands";
+import { CommandName, CommandNames } from "./commands";
 
 export const TopicKinds = ["conversational", "ui"] as const;
 export type TopicKind = typeof TopicKinds[number];
@@ -12,15 +12,17 @@ export const BrainstormTopics = ["idea", "audience", "solution", "socialProof", 
 export const ConversationalTopics = ["idea", "audience", "solution", "socialProof"] as const;
 export const UITopics = ["lookAndFeel"] as const;
 
-export interface Topic {
-    name: TopicName;
-    kind: TopicKind;
-    description: string;
-    placeholderText: string;
-    availableCommands: CommandType[];
-    skippable: boolean;
-    hardcodedQuestion?: string;
-}
+export const topicSchema = z.object({
+    name: z.enum(TopicNames),
+    kind: z.enum(TopicKinds),
+    description: z.string(),
+    placeholderText: z.string(),
+    availableCommands: z.array(z.enum(CommandNames)),
+    skippable: z.boolean(),
+    hardcodedQuestion: z.string().optional(),
+})
+
+export type Topic = z.infer<typeof topicSchema>;
 
 export const Topics: Record<TopicName, Topic> = {
     idea: {
@@ -70,4 +72,8 @@ export const getTopic = (topicName: TopicName): Topic => {
     return Topics[topicName];
 }
 
-export type MemoriesType = Record<TopicName, string | undefined>;
+export const getAllTopics = (): Topic[] => {
+    return Object.values(Topics);
+}
+
+export type MemoriesType = Record<TopicName, string | undefined | null>;

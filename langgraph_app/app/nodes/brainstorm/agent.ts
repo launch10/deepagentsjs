@@ -20,7 +20,7 @@ const brainstormMiddleware = createMiddleware({
         brainstormId: z.number(),
         websiteId: z.number(),
         projectId: z.number(),
-        currentTopic: z.string(),
+        currentTopic: z.string().optional(),
         skippedTopics: z.array(z.string()).optional(),
         redirect: z.string().optional(),
         availableCommands: z.array(z.string()).default([]),
@@ -78,6 +78,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
             Brainstorm.helpMeSchema,
         ] as const,
     });
+    console.log(state)
     const result = await agent.invoke(state, config);
     const aiMessage = result.messages.at(-1);
 
