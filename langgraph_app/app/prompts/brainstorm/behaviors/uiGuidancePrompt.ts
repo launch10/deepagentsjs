@@ -45,6 +45,8 @@ export const uiGuidancePrompt = async(state: BrainstormGraphState, config?: Lang
 
             2. Answer any questions they may have about the process
                 - Use when: The user has questions about the process
+                - If they have process questions, you don't need to explain the UI options again
+                - Read the room.
 
             3. Call the finishedTool to automatically redirect to the website builder
                 - Use when: The user has indicated they are ready to move on.

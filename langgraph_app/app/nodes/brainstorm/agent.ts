@@ -36,6 +36,7 @@ const brainstormMiddleware = createMiddleware({
         // Regenerate system prompt with current state
         const systemPrompt = await agentPrompt(state, request.runtime);
 
+        console.log(`calling handler with system prompt: ${systemPrompt}`)
         // Return modified request
         const result = await handler({
             ...request,

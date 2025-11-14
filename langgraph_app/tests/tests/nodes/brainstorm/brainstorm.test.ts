@@ -19,6 +19,11 @@ import { assertDefined } from '@support';
 
 const brainstormGraph = uncompiledGraph.compile({ ...graphParams, name: "brainstorm" }); 
 
+// TODO:
+// Name project when first question is submitted
+// Test DO THE REST
+    // Seek approval
+    // User can access next steps
 const validAnswers: Record<Brainstorm.TopicType, string> = {
     idea: `Friend of the Pod is a podcast matchmaking service.
             We help both sides: hosts get great content, guests get exposure,
@@ -141,7 +146,8 @@ const MeanderingChatHistory = new ChatHistory({
     ],
     solution: [
         `My fitness program is specifically designed`,
-        `To help men get started lifting, but using bodyweight exercises, and focusing on injury prevention`,
+        `To help men`,
+        `get started lifting, but using bodyweight exercises, and focusing on injury prevention`,
         `I provide a 12-week progressive strength program with 3x/week 30-minute sessions focused on back and core-done via video coaching to accommodate busy schedules of men in their 50s.
         When a man in his 50s completes the program, he finally feels like himself again. He realizes he's not too old to get fit, and he's not too old to be healthy.`,
     ],
@@ -193,7 +199,7 @@ const restartChatFrom = async (topic: Brainstorm.TopicType, useHistory: ChatHist
             currentTopic,
         }
         
-        const result = await summarizeAndSaveAnswers(allMessages, partialState.websiteId!);
+        const result = await summarizeAndSaveAnswers(allMessages, partialState.websiteId!, []);
         
         // Capture the tagged messages for next iteration
         allMessages = result.messages!;
@@ -289,11 +295,10 @@ describe.sequential('Brainstorming Flow', () => {
             expect(aiResponse.content).toContain('audience');
             console.log(aiResponse.content)
 
-            expect(result.state.availableCommands).toHaveLength(4);
+            expect(result.state.availableCommands).toHaveLength(3);
             expect(result.state.availableCommands[0]).toBe('helpMe');
             expect(result.state.availableCommands[1]).toBe('skip');
             expect(result.state.availableCommands[2]).toBe('doTheRest');
-            expect(result.state.availableCommands[3]).toBe('finished');
         });
 
         it('the first message is asked (tacitly) by the existing UI. the 2nd message is the first question after that.', async () => {
@@ -325,11 +330,10 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.currentTopic).toBe('solution');
             expect(result.state.placeholderText).toEqual(`My solution is...`)
 
-            expect(result.state.availableCommands).toHaveLength(4);
+            expect(result.state.availableCommands).toHaveLength(3);
             expect(result.state.availableCommands[0]).toBe('helpMe');
             expect(result.state.availableCommands[1]).toBe('skip');
             expect(result.state.availableCommands[2]).toBe('doTheRest');
-            expect(result.state.availableCommands[3]).toBe('finished');
 
             expect(lastAIResponse.content).toContain('solution');
         })
@@ -348,11 +352,10 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.currentTopic).toBe('socialProof');
             expect(result.state.placeholderText).toEqual(`My social proof is...`)
 
-            expect(result.state.availableCommands).toHaveLength(4);
+            expect(result.state.availableCommands).toHaveLength(3);
             expect(result.state.availableCommands[0]).toBe('helpMe');
             expect(result.state.availableCommands[1]).toBe('skip');
             expect(result.state.availableCommands[2]).toBe('doTheRest');
-            expect(result.state.availableCommands[3]).toBe('finished');
 
             expect(lastAIResponse.content).toContain('social proof');
         });
@@ -413,9 +416,55 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.redirect).toEqual("website_builder");
         });
 
-        it("answers questions about UI", () => {})
-        it("answers questions about next steps", () => {})
-        it("answers questions about how things will be used", () => {})
+        it("answers questions about UI", async () => {
+            const graph = await restartChatFrom('lookAndFeel', SimpleChatHistory);
+            const result = await graph
+                .withPrompt(`Sorry, where do I add logos?`)
+                .stopAfter('agent')
+                .execute();
+
+            const lastAIResponse = lastAIMessage(result.state);
+            assertDefined(lastAIResponse, 'lastAIResponse is defined');
+
+            expect(result.error).toBeUndefined();
+            expect(result.state.redirect).toBeUndefined();
+
+            expect(lastAIResponse.content).toContain('Brand Personalization panel');
+        })
+
+        it("answers questions about next steps", async () => {
+            const graph = await restartChatFrom('lookAndFeel', SimpleChatHistory);
+            const result = await graph
+                .withPrompt(`And what happens after this?`)
+                .stopAfter('agent')
+                .execute();
+
+            const lastAIResponse = lastAIMessage(result.state);
+            assertDefined(lastAIResponse, 'lastAIResponse is defined');
+
+            expect(result.error).toBeUndefined();
+            expect(result.state.redirect).toBeUndefined();
+
+            expect(lastAIResponse.content).toContain('Landing Page');
+            expect(lastAIResponse.content).toContain('Ads Campaign');
+            expect(lastAIResponse.content).toContain('Validate Your Idea');
+        })
+
+        it.only("answers questions about how things will be used", async () => {
+            const graph = await restartChatFrom('lookAndFeel', SimpleChatHistory);
+            const result = await graph
+                .withPrompt(`Are you guys stealing my data? My business idea?`)
+                .stopAfter('agent')
+                .execute();
+
+            const lastAIResponse = lastAIMessage(result.state);
+            assertDefined(lastAIResponse, 'lastAIResponse is defined');
+
+            expect(result.error).toBeUndefined();
+            expect(result.state.redirect).toBeUndefined();
+
+            expect(lastAIResponse.content).toMatch(/absolutely not|no|not at all|definitely not/i);
+        })
     });
 
     describe("Tagging conversation topics", () => {
@@ -719,13 +768,3 @@ describe.sequential('Brainstorming Flow', () => {
         });
     });
 });
-
-// TODO:
-// Create project when first question is submitted
-// Name project when first question is submitted
-// Test next steps (Help me answer, skip, do the rest)
-// Test DO THE REST
-    // Seek approval
-    // User can access next steps
-// Summarize / create full content strategy on complete
-// Direct to next workflow ("redirect")
