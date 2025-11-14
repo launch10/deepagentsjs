@@ -4,15 +4,15 @@ import { db, eq, asc, brainstorms as brainstormsTable } from "@db";
 import { pick } from "@utils";
 
 export class BrainstormNextStepsService {
-    state: BrainstormGraphState;
+    websiteId: number;
     memories: Brainstorm.MemoriesType | undefined;
     currentTopic: Brainstorm.TopicType | undefined;
     placeholderText: string | undefined;
     remainingTopics: Brainstorm.TopicType[] | undefined;
     availableActions: Brainstorm.ActionType[] | undefined;
 
-    constructor(state: BrainstormGraphState) {
-        this.state = state;
+    constructor({ websiteId }: { websiteId: number }) {
+        this.websiteId = websiteId;
     }
 
     async nextSteps() {
@@ -36,11 +36,11 @@ export class BrainstormNextStepsService {
             return this.memories;
         }
 
-        if (!this.state.websiteId) {
+        if (!this.websiteId) {
             throw new Error("websiteId is required");
         }
         const brainstorms = (await db.select().from(brainstormsTable).where(
-                eq(brainstormsTable.websiteId, this.state.websiteId)
+                eq(brainstormsTable.websiteId, this.websiteId)
         ).orderBy(asc(brainstormsTable.id)))[0];
         let memories: Brainstorm.MemoriesType = {}
         if (brainstorms) {

@@ -1,61 +1,170 @@
 import { z } from "zod";
 import { type BrainstormGraphState } from "@state";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
+import {
+  Command,
+  getCurrentTaskInput,
+  MemorySaver,
+} from "@langchain/langgraph";
 import { tool, DynamicStructuredTool } from "@langchain/core/tools";
 import { Brainstorm } from "@types";
 import { db, brainstorms as brainstormsTable } from "@db";
 import { withTimestamps, withUpdatedAt } from "@db";
+import { BrainstormNextStepsService } from "@services";
+import { chatHistoryPrompt } from "@prompts";
+import { getLLM } from "@core";
+import { BaseMessage } from "@langchain/core/messages";
+export class MessageTagger {
+  messages: BaseMessage[];
 
-export const SaveAnswersTool = (state: BrainstormGraphState, config?: LangGraphRunnableConfig): DynamicStructuredTool => {
-    const saveAnswersInputSchema = z.object({
-        answers: z.array(z.object({
-            topic: z.enum(Brainstorm.BrainstormTopics),
-            answer: z.string()
-        }))
-    });
+  constructor(messages: BaseMessage[]) {
+    this.messages = messages;
+  }
 
-    type SaveAnswersInput = z.infer<typeof saveAnswersInputSchema>;
+  taggableMessages() {
+    return this.messages.filter((m) => typeof m.content === 'string')
+  }
 
-    async function saveAnswers(args?: SaveAnswersInput): Promise<{ success: boolean }> {
-        try {
-            const updates: Partial<Brainstorm.MemoriesType> = args?.answers?.reduce((acc, { topic, answer }) => {
-                if (!topic || !answer) {
-                    return acc;
-                }
-                acc[topic] = answer;
-                return acc;
-            }, {} as Record<Brainstorm.TopicType, string>) || {}
+  untaggedMessages() {
+    return this.messagesToSave();
+  }
 
-            const insert = withTimestamps(updates);
-            const update = withUpdatedAt(updates);
+  messagesToSave() {
+    return this.taggableMessages().filter(this.messageNotTagged);
+  }
 
-            const results = await db.insert(brainstormsTable).values({
-                ...insert,
-                websiteId: state.websiteId,
-            }).onConflictDoUpdate({
-              target: [brainstormsTable.websiteId],
-              set: {
-                ...update,
-              }
-            }).returning();
+  tagMessages(tags: Brainstorm.TopicType[]): BaseMessage[] {
+    return this.taggableMessages().map((message) => {
+      if (this.messageNotTagged(message)) {
+        return {
+          ...message,
+          additional_kwargs: {
+            ...message.additional_kwargs,
+            topics: tags,
+          },
+        };
+      }
+      return message;
+    })
+  }
 
-            return { success: !!results.length };
-        } catch (error) {
-            console.error('=== ERROR IN SAVE ANSWERS ===');
-            console.error('Error:', error);
-            console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
-            console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
-            throw error;
+  private messageNotTagged = (message: BaseMessage): boolean => {
+    return !('topics' in (message.additional_kwargs || {}))
+  }
+}
+
+export const saveAnswers = async (
+  messages: BaseMessage[],
+  websiteId: number,
+): Promise<Partial<BrainstormGraphState>> => {
+  const messageTagger = new MessageTagger(messages);
+  const messagesToSave = messageTagger.messagesToSave();
+
+  // This should maybe be an error?
+  if (messagesToSave.length === 0) {
+    return {}
+  }
+
+  try {
+    const prompt = `
+      <background>
+        The user and agent have been brainstorming about their business idea.
+      </background>
+
+      <available_topics>
+        ${Brainstorm.BrainstormTopics.map((topic) => `"${topic}: ${Brainstorm.TopicDescriptions[topic]}"`).join(", ")}
+      </available_topics>
+
+      <task>
+        Read the recent chat history, and summarize their answers,
+        preserving as much information as possible. This will be used to generate 
+        persuasive marketing copy, so be sure to capture all the details.
+
+        If the user has answered MULTIPLE topics well, return an array of objects with the following shape:
+        {
+            topic: string,
+            summary: string,
         }
+      </task>
+      
+      ${await chatHistoryPrompt({ messages: messagesToSave })}
+
+      <output>
+        Return an array of objects with the following shape:
+        {
+            topic: string,
+            summary: string,
+        }
+      </output>
+    `;
+    const structured = await getLLM().withStructuredOutput(
+    z.object({
+        output: z.array(z.object({
+        topic: z.string(),
+        summary: z.string(),
+        })),
+    })
+    ).invoke(prompt);
+
+    const output = structured.output;
+    const updates = output.reduce((acc, item) => {
+      acc[item.topic] = item.summary;
+      return acc;
+    }, {} as Record<string, string>);
+    const allTopicsCovered = Object.keys(updates);
+    const taggedMessages = messageTagger.tagMessages(allTopicsCovered);
+
+    const insert = withTimestamps(updates);
+    const update = withUpdatedAt(updates);
+
+    await db.insert(brainstormsTable).values({
+      ...insert,
+      websiteId,
+    }).onConflictDoUpdate({
+      target: [brainstormsTable.websiteId],
+      set: {
+        ...update,
+      }
+    }).returning();
+
+    const memories = await (new BrainstormNextStepsService({ websiteId })).getMemories();
+
+    return {
+      memories,
+      messages: taggedMessages,
+    };
+  } catch (error) {
+    console.error('=== ERROR IN SAVE ANSWERS NODE ===');
+    console.error('Error:', error);
+    console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+    throw error;
+  }
+};
+
+export const saveAnswersTool = tool(
+  async (_, config) => {
+    // Customize context received by sub-agent
+    // Access full thread messages from the config
+    const currentMessages = getCurrentTaskInput<BrainstormGraphState>(config).messages;
+    const websiteId = getCurrentTaskInput<BrainstormGraphState>(config).websiteId;
+
+    if (!websiteId) {
+        throw new Error("websiteId is required");
     }
 
-    return tool(saveAnswers, {
-        name: "save_answers",
-        description: `
-            Save answers to the brainstorming session. 
-            Call this when the user has answered one or more of the remaining topics.
-            IMPORTANT: When saving answers, save AS MUCH context as possible. We need a LOT of high quality content IN THE USER'S OWN WORDS to generate effective marketing copy.
-        `,
-        schema: saveAnswersInputSchema,
-    });
-}
+    return await saveAnswers(currentMessages, websiteId);
+  },
+  {
+    name: "save_answers",
+    description: `
+        Save answers to the brainstorming session. 
+        Call this when the user has answered one or more of the remaining topics.
+        IMPORTANT: You do not need to call this with any arguments,
+        it will automatically save the answers from the current thread.
+    `,
+    schema: z.object({
+        save: z.literal(true)
+    }),
+  }
+);

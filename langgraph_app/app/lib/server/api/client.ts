@@ -40,6 +40,9 @@ const headers = (jwt: string) => {
 export function createRailsApiClient(options: RailsApiClientOptions) {
   const { jwt, baseUrl = env.RAILS_API_URL || "http://localhost:3000" } = options;
 
+  console.log("Creating Rails API client with JWT:", jwt);
+  console.log("Creating Rails API client with baseUrl:", baseUrl);
+
   if (!jwt) {
     throw new Error("JWT is required for API authentication");
   }

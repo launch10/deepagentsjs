@@ -7,7 +7,7 @@ import { askQuestionPrompt, clarificationPrompt } from "@prompts";
 import { Brainstorm } from "@types";
 import { BrainstormNextStepsService } from "@services";
 
-export const brainstormAgent = NodeMiddleware.use(async (
+export const brainstormAgentNODEVERSION = NodeMiddleware.use(async (
   originalState: BrainstormGraphState,
   config?: LangGraphRunnableConfig
 ): Promise<Partial<BrainstormGraphState>> => {

@@ -5,7 +5,8 @@ import { DatabaseSnapshotter, BrainstormNextStepsService } from '@services';
 import { brainstormGraph as uncompiledGraph } from '@graphs';
 import { HumanMessage, AIMessage, BaseMessage, type Message } from '@langchain/core/messages';
 import { lastHumanMessage, lastAIMessage } from '@annotation';
-import { createBrainstorm, saveAnswersNode } from '@nodes';
+import { createBrainstorm } from '@nodes';
+import { saveAnswers } from '@tools';
 import { v7 as uuidv7 } from 'uuid';
 import { 
     isHumanMessage, 
@@ -38,7 +39,7 @@ const validAnswers: Record<Brainstorm.TopicType, string> = {
                 are predicted to not be a good fit for your show.
             `,
     socialProof: `Over 10k creators use Friend of the Pod to find guests for their shows.
-    Real case: Host found 3 guests in 10 minutes instead of 5 hours of manual outreach, leading to 2 viral episodes`,
+    Real case: Host found 3 guests in 10 minutes instead of 5 hours of manual outreach, leading to 2 viral episodes. As the founder of the company, I used to work at Spotify and Apple Podcasts, so I've seen first hand what makes a guest a good fit for a show, and I understand the industry.`,
     lookAndFeel: `The look and feel of the landing page.`,
 }
 class ChatHistory {
@@ -191,7 +192,7 @@ const restartChatFrom = async (topic: Brainstorm.TopicType, useHistory: ChatHist
             currentTopic,
         }
         
-        const result = await saveAnswersNode(partialState as any, config);
+        const result = await saveAnswers(allMessages, partialState.websiteId!);
         
         // Capture the tagged messages for next iteration
         allMessages = result.messages!;
@@ -350,7 +351,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(lastAIResponse.content).toContain('social proof');
         });
 
-        it('should tell the user about the UI when ready for lookAndFeel', async () => {
+        it.only('should tell the user about the UI when ready for lookAndFeel', async () => {
             const graph = await restartChatFrom('socialProof', SimpleChatHistory);
             const result = await graph
                 .withPrompt(validAnswers.socialProof)
@@ -359,6 +360,7 @@ describe.sequential('Brainstorming Flow', () => {
 
             const lastAIResponse = lastAIMessage(result.state);
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
+            console.log(lastAIResponse.content)
 
             expect(result.error).toBeUndefined();
             expect(result.state.currentTopic).toBe('lookAndFeel');
@@ -369,6 +371,11 @@ describe.sequential('Brainstorming Flow', () => {
 
             expect(lastAIResponse.content).toContain(`Brand Personalization panel`);
             expect(lastAIResponse.content).toContain(`Build My Site`);
+
+            expect(result.state.memories.idea).toBeTruthy();
+            expect(result.state.memories.audience).toBeTruthy();
+            expect(result.state.memories.solution).toBeTruthy();
+            expect(result.state.memories.socialProof).toBeTruthy();
         });
     })
 
@@ -448,7 +455,7 @@ describe.sequential('Brainstorming Flow', () => {
 
     describe("Actions", () => {
         describe("skip", () => {
-            it.only("skips a single question", async () => {
+            it("skips a single question", async () => {
                 const graph = await restartChatFrom('idea', SimpleChatHistory);
                 const result = await graph
                     .withPrompt("Skip")

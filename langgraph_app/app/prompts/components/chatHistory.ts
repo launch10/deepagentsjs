@@ -18,8 +18,9 @@ import { type Message, isHumanMessage, isAIMessage } from "@types";
  * ```
  */
 export async function chatHistoryPrompt({ messages, limit }: { messages: Message[], limit?: number }): Promise<string> {
-  let countExtraMessages = messages.length - (limit || 0);
-  let filteredMessages = limit ? messages.slice(-limit) : messages;
+  const allowedMessages = messages.filter((m) => typeof m.content === 'string')
+  let countExtraMessages = allowedMessages.length - (limit || 0);
+  let filteredMessages = limit ? allowedMessages.slice(-limit) : allowedMessages;
   let messageElements = filteredMessages?.map((message) => {
     const type = isHumanMessage(message) ? "human" : "assistant";
 
@@ -27,7 +28,7 @@ export async function chatHistoryPrompt({ messages, limit }: { messages: Message
   });
 
   if (countExtraMessages > 0) {
-    messageElements.unshift(`\n  <message>... ${countExtraMessages} more messages...</message>` + messageElements);
+    messageElements.unshift(`\n  <message>... ${countExtraMessages} more messages...</message>`);
   }
   
   // Don't use renderPrompt here - xml-formatter can reorder elements

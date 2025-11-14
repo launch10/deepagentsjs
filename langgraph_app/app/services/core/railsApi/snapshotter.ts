@@ -98,6 +98,7 @@ export class DatabaseSnapshotterAPI {
         },
       },
     });
+    console.log(response)
 
     if (response.error) {
       throw new Error(`Failed to create snapshot: ${JSON.stringify(response.error)}`);
