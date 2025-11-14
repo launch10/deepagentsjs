@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "tsx watch ./server.ts",
     "dev:debug": "NODE_OPTIONS=--inspect-brk langgraph dev -n 1",
-    "test": "vitest tests --run --no-file-parallelism",
+    "test": "vitest tests/tests --run --no-file-parallelism",
     "test:watch": "vitest",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:types": "vitest --typecheck.only",
