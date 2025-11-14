@@ -393,7 +393,7 @@ describe.sequential('Brainstorming Flow', () => {
     })
 
     describe("During lookAndFeel chat", () => {
-        it("returns redirect when user verbally expresses that they want to move on", async () => {
+        it.only("(finished | done) returns redirect when user verbally expresses that they want to move on", async () => {
             const graph = await restartChatFrom('lookAndFeel', SimpleChatHistory);
             const result = await graph
                 .withPrompt(`That's alright, let's move on`)
@@ -458,7 +458,7 @@ describe.sequential('Brainstorming Flow', () => {
 
     describe("Actions", () => {
         describe("skip", () => {
-            it.only("skips a single question", async () => {
+            it("skips a single question", async () => {
                 const graph = await restartChatFrom('idea', SimpleChatHistory);
                 const result = await graph
                     .withPrompt("Skip")

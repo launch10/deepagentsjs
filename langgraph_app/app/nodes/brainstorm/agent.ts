@@ -1,6 +1,6 @@
 import { AIMessage } from "@langchain/core/messages";
-import { createAgent, createMiddleware, DynamicStructuredTool, tool } from "langchain";
-import { getCurrentTaskInput, type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { createAgent, createMiddleware, DynamicStructuredTool, tool, ToolMessage } from "langchain";
+import { getCurrentTaskInput, type LangGraphRunnableConfig, Command } from "@langchain/langgraph";
 import { getLLM } from "@core";
 import { toJSON, renderPrompt, chatHistoryPrompt, toolHistoryPrompt, structuredOutputPrompt, toolsPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
@@ -36,17 +36,28 @@ const backgroundPrompt = async() => {
     `;
 }
 
-const finishedTool = new DynamicStructuredTool({
-  name: "finishedTool",
-  description: "Indicate that the user is finished and ready to build their landing page.",
-  schema: z.object({}), // Empty object = no arguments
-  func: async () => {
-    return {
-        redirect: "website_builder" as const,
-    }
-  },
-});
+const finishedTool = tool(
+  async (input, config) => {
 
+    return new Command({
+        update: {
+            redirect: "website_builder" as const,
+            messages: [new ToolMessage({
+                content: "Redirecting to website builder",
+                tool_call_id: config?.toolCall.id,
+                status: "success",
+                name: "finishedTool",
+            })]
+        }
+    });
+  },
+  {
+    name: "finishedTool",
+    description: "Indicate that the user is finished and ready to build their landing page.",
+    schema: z.object({}), // Empty object = no arguments
+    returnDirect: true,  // 🔥 Short-circuit the graph!
+  }
+);
 
 const uiGuidancePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     const [background, availableTools, chatHistory] = await Promise.all([
@@ -349,7 +360,8 @@ const brainstormMiddleware = createMiddleware({
         websiteId: z.number(),
         projectId: z.number(),
         currentTopic: z.string(),
-        skippedTopics: z.array(z.string()).optional()
+        skippedTopics: z.array(z.string()).optional(),
+        redirect: z.string().optional(),
     }),
     wrapModelCall: async (request, handler) => {
         const state = request.state satisfies BrainstormGraphState;
@@ -407,34 +419,18 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
     const aiMessage = result.messages.at(-1);
 
     if (!aiMessage) {
-    throw new Error("No AI message found");
-    }
-
-    // Check if finishedTool was called and extract redirect
-    let redirect: Brainstorm.RedirectType | undefined;
-    const toolMessages = result.messages.filter((m: any) => m._getType?.() === 'tool');
-    for (const toolMsg of toolMessages) {
-        if (toolMsg.name === 'finishedTool' && typeof toolMsg.content === 'string') {
-            try {
-            const toolResult = JSON.parse(toolMsg.content);
-            if (toolResult.redirect) {
-                redirect = toolResult.redirect;
-            }
-            } catch (e) {
-            // Ignore parse errors
-            }
-        }
+        throw new Error("No AI message found");
     }
 
     const { memories, remainingTopics, currentTopic, placeholderText, availableActions } = await new BrainstormNextStepsService(state).nextSteps();
 
     return {
+        redirect: result.redirect as Brainstorm.RedirectType,
         messages: [...(state.messages || []), aiMessage],
         memories,
         currentTopic,
         placeholderText,
         remainingTopics,
         availableActions,
-        ...(redirect && { redirect }),
     };
 });
