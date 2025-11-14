@@ -36,7 +36,6 @@ export const authMiddleware = async (c: Context, next: Next) => {
 
     await next();
   } catch (error) {
-    console.log(error)
     if (error instanceof jwt.TokenExpiredError) {
       return c.json({ error: 'Unauthorized: Token expired' }, 401);
     }

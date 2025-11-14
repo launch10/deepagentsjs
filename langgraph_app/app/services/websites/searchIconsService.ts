@@ -123,17 +123,13 @@ export class SearchIconsService {
 
       // Fetch existing icon keys from the database
       const existingKeys = await this.embeddingsService.getExistingDocIds(); 
-      console.log(`Found ${existingKeys.size} existing icons in the database.`);
 
       // Filter out icons that already have embeddings BEFORE batching
       const newIconsToProcess = allIconEntries.filter(([name, _metadata]) => !existingKeys.has(name));
 
       if (newIconsToProcess.length === 0) {
-        console.log('All icons are already processed. No new embeddings to generate.');
         return;
       }
-
-      console.log(`Found ${newIconsToProcess.length} new icons to process out of ${allIconEntries.length} total icons.`);
 
       const batchSize = 5;
       let newIconsProcessedCount = 0;
@@ -141,8 +137,6 @@ export class SearchIconsService {
       for (let i = 0; i < newIconsToProcess.length; i += batchSize) {
         const batch = newIconsToProcess.slice(i, i + batchSize);
         
-        console.log(`Processing batch from index ${i}: ${batch.length} new icons.`);
-
         const batchItems = await Promise.all(batch.map(async ([name, metadata]) => {
           const normalizedName = this.normalizeIconName(name);
           const llm = getLLM("writing");
@@ -169,10 +163,8 @@ export class SearchIconsService {
         if (batchItems.length > 0) {
           await this.embeddingsService.storeEmbeddings(batchItems);
           newIconsProcessedCount += batchItems.length;
-          console.log(`Stored embeddings for ${batchItems.length} new icons from batch starting at index ${i}.`);
         }
       }
-      console.log(`Finished generating embeddings. Total new icons processed: ${newIconsProcessedCount}`);
     } catch (error) {
       console.error('Error generating embeddings:', error);
       throw error;

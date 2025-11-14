@@ -71,7 +71,6 @@ evalite('PagePlanService', {
           output: output,
           useCoT: true
         })
-        console.log(response)
         return response;
       }
     },

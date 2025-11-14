@@ -144,7 +144,6 @@ export class PostgresEmbeddingsService {
         ids: items.map((item) => item.key),
       });
 
-      console.log(`Stored ${items.length} embeddings in ${this.tableName}`);
       return documents;
     } catch (error) {
       console.error(`Error storing embeddings in ${this.tableName}:`, error);
@@ -160,13 +159,8 @@ export class PostgresEmbeddingsService {
     requestedTopK: number
   ): Promise<EmbeddingResult[] | null> {
     if (!this.cacheTable) {
-      console.log("No cache table configured");
       return null;
     }
-
-    console.log(
-      `Checking cache for query: "${query.toLowerCase()}", topK: ${requestedTopK}`
-    );
 
     const cachedResults = await this.db
       .select()
@@ -179,8 +173,6 @@ export class PostgresEmbeddingsService {
       )
       .orderBy(desc(this.cacheTable.lastUsedAt))
       .limit(1);
-
-    console.log(`Found ${cachedResults.length} cached results`);
 
     if (cachedResults.length === 0) {
       return null;
@@ -224,7 +216,6 @@ export class PostgresEmbeddingsService {
     options?: CacheOptions
   ) {
     if (!this.cacheTable) {
-      console.log("No cache table configured for caching");
       return;
     }
 
@@ -260,7 +251,6 @@ export class PostgresEmbeddingsService {
             useCount: sql`${this.cacheTable.useCount} + 1`,
           })
           .where(eq(this.cacheTable.query, queryLower));
-        console.log(`✅ Updated cache for query: "${queryLower}"`);
       } else {
         // Insert new cache entry
         await this.db.insert(this.cacheTable).values({
@@ -274,10 +264,8 @@ export class PostgresEmbeddingsService {
           lastUsedAt: now,
           useCount: 1,
         });
-        console.log(`✅ Created new cache entry for query: "${queryLower}"`);
       }
     } else {
-      console.log(`❌ Not caching - results don't meet criteria`);
     }
   }
 
@@ -326,7 +314,6 @@ export class PostgresEmbeddingsService {
       if (options?.enableCache !== false && this.cacheTable) {
         const cachedResults = await this.checkCache(query, topK);
         if (cachedResults) {
-          console.log(`Cache hit for query: ${query}`);
           return cachedResults;
         }
       }
@@ -418,7 +405,6 @@ export class PostgresEmbeddingsService {
 
       return results;
     } catch (error) {
-      console.error(`Error searching in ${this.tableName}:`, error);
       throw error;
     }
   }

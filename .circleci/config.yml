@@ -62,6 +62,14 @@ jobs:
             rvm use 3.4.4 --default
             echo 'source ~/.rvm/scripts/rvm' >> $BASH_ENV
       - run:
+          name: Install PostgreSQL 16 client
+          command: |
+            # Add PostgreSQL APT repository to get version 16
+            sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client-16
+      - run:
           name: Install pnpm
           command: |
             curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=9.15.0 SHELL=/bin/bash sh -
