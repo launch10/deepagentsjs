@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { BrainstormGraphState } from "@state";
-import { chatHistoryPrompt } from "@prompts";
+import { chatHistoryPrompt, toJSON } from "@prompts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,8 +21,8 @@ export const askQuestionPrompt = async (state: BrainstormGraphState) => {
     ${topicGuide}
     
     <current_topic>${state.currentTopic}</current_topic>
-    
-    <what_we_know>${JSON.stringify(state.memories)}</what_we_know>
+
+    <what_we_know>${toJSON(state.memories)}</what_we_know>
     
     <optional_frameworks>
         ${godinRef}

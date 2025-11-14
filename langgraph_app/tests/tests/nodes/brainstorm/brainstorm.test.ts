@@ -335,7 +335,6 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             const lastAIResponse = lastAIMessage(result.state);
-            console.log(lastAIResponse?.content);
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
             expect(result.error).toBeUndefined();
@@ -351,7 +350,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(lastAIResponse.content).toContain('social proof');
         });
 
-        it.only('should tell the user about the UI when ready for lookAndFeel', async () => {
+        it('should tell the user about the UI when ready for lookAndFeel', async () => {
             const graph = await restartChatFrom('socialProof', SimpleChatHistory);
             const result = await graph
                 .withPrompt(validAnswers.socialProof)
@@ -360,7 +359,6 @@ describe.sequential('Brainstorming Flow', () => {
 
             const lastAIResponse = lastAIMessage(result.state);
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
-            console.log(lastAIResponse.content)
 
             expect(result.error).toBeUndefined();
             expect(result.state.currentTopic).toBe('lookAndFeel');
@@ -377,6 +375,20 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.memories.solution).toBeTruthy();
             expect(result.state.memories.socialProof).toBeTruthy();
         });
+
+        it.only('ends the chat when user says they are finished', async () => {
+            const graph = await restartChatFrom('lookAndFeel', SimpleChatHistory);
+            const result = await graph
+                .withPrompt(`Let's build my page!`)
+                .stopAfter('agent')
+                .execute();
+
+            const lastAIResponse = lastAIMessage(result.state);
+            assertDefined(lastAIResponse, 'lastAIResponse is defined');
+
+            expect(result.error).toBeUndefined();
+            expect(result.state.redirect).toBe('website_builder');
+        });
     })
 
     describe("During lookAndFeel chat", () => {
@@ -389,7 +401,6 @@ describe.sequential('Brainstorming Flow', () => {
 
             const lastAIResponse = lastAIMessage(result.state);
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
-            console.log(lastAIResponse.content)
 
             expect(result.error).toBeUndefined();
             expect(result.state.redirect).toEqual("website_builder");

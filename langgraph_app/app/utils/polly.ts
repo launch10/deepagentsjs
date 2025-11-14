@@ -190,7 +190,8 @@ class PollyManager {
                 order: false,
                 url: true
             },
-            recordFailedRequests: true
+            recordFailedRequests: true,
+            logLevel: "silent"
         });
         PollyManager.configureRails();
         PollyManager.configureLlms();

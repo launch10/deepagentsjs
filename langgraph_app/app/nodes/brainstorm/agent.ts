@@ -12,7 +12,7 @@ import {
 } from '@types';
 import { type BrainstormGraphState } from "@state";
 import { db, eq, asc, brainstorms as brainstormsTable } from "@db";
-import { BrainstormAnnotation } from "@annotation";
+import { BrainstormAnnotation, lastHumanMessage } from "@annotation";
 import z from "zod";
 export class BrainstormNextSteps {
     state: BrainstormGraphState;
@@ -141,9 +141,9 @@ const uiGuidancePrompt = async(state: BrainstormGraphState, config?: LangGraphRu
         toolsPrompt({ tools: [finishedTool] }),
         chatHistoryPrompt({ messages: state.messages, limit: 5 }),
     ]);
+    const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
 
     // TODO: Use tagged messages to determine if we've JUST finished brainstorming
-    
     return `
         ${background}
 
@@ -159,11 +159,22 @@ const uiGuidancePrompt = async(state: BrainstormGraphState, config?: LangGraphRu
         <role>
             You are the helpful UI navigator. You will help the user navigate the UI
             to either option 1 or option 2.
+
+            If the user has indicated they are finished brainstorming or ready to move on, 
+            just call the finishedTool.
         </role>
 
         <task>
-            Explain the user's options to them, or answer any questions they may have
-            about the process.
+            Complete 1 of 3 tasks:
+
+            1. Explain the user's options to them
+                - Use when: The user has just finished brainstorming
+
+            2. Answer any questions they may have about the process
+                - Use when: The user has questions about the process
+
+            3. Call the finishedTool to automatically redirect to the website builder
+                - Use when: The user has indicated they are ready to move on.
         </task>
 
         <available_options>
@@ -278,20 +289,27 @@ const uiGuidancePrompt = async(state: BrainstormGraphState, config?: LangGraphRu
         ${chatHistory}
         
         <task>
-            Explain the user's options to them, or answer any questions they may have
-            about the process.
+            Complete 1 of 3 tasks:
 
-            1. Brand Personalization (optional)
-            2. Build My Site button
-        
-            Make it clear both paths are valid.
-        
+            1. Explain the user's options to them
+                - Use when: The user has just finished brainstorming
+
+            2. Answer any questions they may have about the process
+                - Use when: The user has questions about the process
+
+            3. Call the finishedTool to automatically redirect to the website builder
+                - Use when: The user has indicated they are ready to move on.
+        </task>
+
+        <output>
+            If outputting a response, use the following JSON schema:
+
             Output JSON: {
                 "text": "Guide the user to the next step",
                 "examples": ["Option 1 explanation", "Option 2 explanation"], // Optional, only if necessary
                 "conclusion": "Clearly state the next step" // Optional, only if necessary
             }
-        </task>
+        </output>
     `
 }
 
@@ -430,14 +448,11 @@ const brainstormMiddleware = createMiddleware({
         // Regenerate system prompt with current state
         const systemPrompt = await getPrompt(state, request.runtime);
 
-        console.log(`we have modified the system prompt for ${currentTopic}`)
-        console.log(systemPrompt);
         // Return modified request
         const result = await handler({
             ...request,
             systemPrompt,
         });
-        console.log(result)
         if (result instanceof AIMessage) {
             return result
         }
@@ -465,7 +480,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
 
     try {
       const llm = getLLM().withConfig({ tags: ['notify'] }) // Important so messages are sent to frontend
-      const tools = [saveAnswersTool];
+      const tools = [saveAnswersTool, finishedTool];
 
       const agent = await createAgent({
           model: llm,
@@ -480,6 +495,22 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
         throw new Error("No AI message found");
       }
 
+      // Check if finishedTool was called and extract redirect
+      let redirect: Brainstorm.RedirectType | undefined;
+      const toolMessages = result.messages.filter((m: any) => m._getType?.() === 'tool');
+      for (const toolMsg of toolMessages) {
+        if (toolMsg.name === 'finishedTool' && typeof toolMsg.content === 'string') {
+          try {
+            const toolResult = JSON.parse(toolMsg.content);
+            if (toolResult.redirect) {
+              redirect = toolResult.redirect;
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      }
+
       const { memories, remainingTopics, currentTopic, placeholderText, availableActions } = await new BrainstormNextSteps(state).nextSteps();
 
       return {
@@ -489,6 +520,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
           placeholderText,
           remainingTopics,
           availableActions,
+          ...(redirect && { redirect }),
       };
     } catch (error) {
       console.error('==========================================');

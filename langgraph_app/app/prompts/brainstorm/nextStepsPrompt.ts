@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { BrainstormGraphState } from "@state";
-import { chatHistoryPrompt } from "@prompts";
+import { chatHistoryPrompt, toJSON } from "@prompts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,7 +17,7 @@ export const nextStepsPrompt = async (state: BrainstormGraphState) => {
     ${uiGuide}
     
     <what_we_accomplished>
-      ${JSON.stringify(state.memories)}
+      ${toJSON(state.memories)}
     </what_we_accomplished>
 
     ${chatHistory}
