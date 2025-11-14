@@ -6,13 +6,13 @@ import { pick } from "@utils";
 export class BrainstormNextStepsService {
     websiteId: number | undefined;
     memories: Brainstorm.MemoriesType | undefined;
-    currentTopic: Brainstorm.TopicType | undefined;
+    currentTopic: Brainstorm.TopicName | undefined;
     placeholderText: string | undefined;
-    remainingTopics: Brainstorm.TopicType[] | undefined;
+    remainingTopics: Brainstorm.TopicName[] | undefined;
     availableCommands: Brainstorm.CommandType[] | undefined;
-    skippedTopics: Brainstorm.TopicType[];
+    skippedTopics: Brainstorm.TopicName[];
 
-    constructor({ websiteId, skippedTopics }: { websiteId: number; skippedTopics?: Brainstorm.TopicType[] }) {
+    constructor({ websiteId, skippedTopics }: Pick<BrainstormGraphState, "websiteId" | "skippedTopics">) {
         this.websiteId = websiteId;
         this.skippedTopics = skippedTopics || [];
     }
@@ -27,8 +27,8 @@ export class BrainstormNextStepsService {
         return {
             memories: memories as Brainstorm.MemoriesType,
             placeholderText: placeholderText as string,
-            currentTopic: currentTopic as Brainstorm.TopicType,
-            remainingTopics: remainingTopics as Brainstorm.TopicType[],
+            currentTopic: currentTopic as Brainstorm.TopicName,
+            remainingTopics: remainingTopics as Brainstorm.TopicName[],
             availableCommands: availableCommands as Brainstorm.CommandType[],
         }
     }
@@ -58,7 +58,7 @@ export class BrainstormNextStepsService {
             return this.remainingTopics;
         }
         const answers = await this.getMemories();
-        const questionsAnswered = Object.keys(answers).filter(key => answers[key as Brainstorm.TopicType] !== null && answers[key as Brainstorm.TopicType] !== "") as Brainstorm.TopicType[];
+        const questionsAnswered = Object.keys(answers).filter(key => answers[key as Brainstorm.TopicName] !== null && answers[key as Brainstorm.TopicName] !== "") as Brainstorm.TopicName[];
         const topics = Brainstorm.BrainstormTopics;
         // Filter out answered topics, and also skipped topics (unless includeSkipped is true)
         const remainingTopics = topics.filter(topic =>

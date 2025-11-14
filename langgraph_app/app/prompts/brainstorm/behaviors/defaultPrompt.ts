@@ -14,6 +14,7 @@ export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGra
     if (!lastHumanMessage) {
         throw new Error("No human message found");
     }
+    const topic = Brainstorm.getTopic(state.currentTopic as Brainstorm.TopicName);
 
     const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, background] = await Promise.all([
         structuredOutputPrompt({ schema: Brainstorm.replySchema }),
@@ -82,7 +83,7 @@ export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGra
             ${currentTopic}
 
             <skippable>
-                ${Brainstorm.topicIsSkippable(state.currentTopic as Brainstorm.TopicType) ? "topic is skippable" : "topic is NOT skippable. encourage the user to think creatively, and give them examples of what good looks like"}
+                ${topic.skippable ? "topic is skippable" : "topic is NOT skippable. encourage the user to think creatively, and give them examples of what good looks like"}
             </skippable>
 
             <skipped_topics important="this is the list of topics that have been skipped, don't bother asking about them">

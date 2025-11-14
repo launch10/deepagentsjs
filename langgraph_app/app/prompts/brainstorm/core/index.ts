@@ -49,10 +49,10 @@ export const remainingTopicsPrompt = async(state: BrainstormGraphState, config?:
     `;
 }
 
-const _sortedTopics = (topics: Brainstorm.TopicType[]) => {
+const _sortedTopics = (topics: Brainstorm.TopicName[]) => {
     return topics.sort((a, b) => Brainstorm.BrainstormTopics.indexOf(a) - Brainstorm.BrainstormTopics.indexOf(b));
 }
 
-const _remainingTopics = (topics: Brainstorm.TopicType[]) => {
+const _remainingTopics = (topics: Brainstorm.TopicName[]) => {
     return _sortedTopics(topics).map(topic => `${topic}: ${Brainstorm.TopicDescriptions[topic]}`).join("\n\n");
 }

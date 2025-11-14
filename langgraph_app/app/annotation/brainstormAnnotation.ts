@@ -7,7 +7,7 @@ import { uniq } from "@utils";
 
 export const BrainstormAnnotation = Annotation.Root({
     ...BaseAnnotation.spec,
-    currentTopic: Annotation<Brainstorm.TopicType | undefined>(),
+    currentTopic: Annotation<Brainstorm.TopicName | undefined>(),
     placeholderText: Annotation<string>(),
     brainstormId: Annotation<PrimaryKeyType | undefined>(),
     memories: Annotation<Brainstorm.MemoriesType>(),
@@ -17,11 +17,11 @@ export const BrainstormAnnotation = Annotation.Root({
     }),
     command: Annotation<Brainstorm.CommandType | undefined>(),
     redirect: Annotation<Brainstorm.RedirectType | undefined>(),
-    skippedTopics: Annotation<Brainstorm.TopicType[]>({
+    skippedTopics: Annotation<Brainstorm.TopicName[]>({
         default: () => [],
         reducer: (current, next) => uniq(next),
     }),
-    remainingTopics: Annotation<Brainstorm.TopicType[]>({
+    remainingTopics: Annotation<Brainstorm.TopicName[]>({
         default: () => [...Brainstorm.BrainstormTopics],
         reducer: (current, next) => next
     }),

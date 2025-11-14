@@ -35,7 +35,7 @@ export class MessageTagger {
     return this.taggableMessages().filter(this.messageNotTagged);
   }
 
-  tagMessages(tags: Brainstorm.TopicType[]): BaseMessage[] {
+  tagMessages(tags: Brainstorm.TopicName[]): BaseMessage[] {
     return this.taggableMessages().map((message) => {
       if (this.messageNotTagged(message)) {
         return {
@@ -117,13 +117,13 @@ export const summarizeMessages = async (messages: BaseMessage[]): Promise<Partia
   const taggedMessages = messageTagger.tagMessages(allTopicsCovered);
 
   return {
-    memories: updates as Record<Brainstorm.TopicType, string>,
+    memories: updates as Record<Brainstorm.TopicName, string>,
     messages: taggedMessages,
   }
 }
 
 export const saveAnswers = async (
-  memories: Record<Brainstorm.TopicType, string>,
+  memories: Record<Brainstorm.TopicName, string>,
   websiteId: number,
   skippedTopics: string[],
 ): Promise<Partial<BrainstormGraphState>> => {
@@ -142,7 +142,7 @@ export const saveAnswers = async (
 
     const updatedMemories = await (new BrainstormNextStepsService({ websiteId })).getMemories();
     const memoriesWithValues = compactObject(updatedMemories);
-    let updatedSkippedTopics = skippedTopics?.filter((topic) => !memoriesWithValues[topic as Brainstorm.TopicType]) as Brainstorm.TopicType[];
+    let updatedSkippedTopics = skippedTopics?.filter((topic) => !memoriesWithValues[topic as Brainstorm.TopicName]) as Brainstorm.TopicName[];
 
     return {
       memories: updatedMemories,
@@ -166,7 +166,7 @@ export const summarizeAndSaveAnswers = async (
 }
 
 export const saveAnswersTool = tool(
-  async (args: { answers?: Record<Brainstorm.TopicType, string> }, config) => {
+  async (args: { answers?: Record<Brainstorm.TopicName, string> }, config) => {
     const websiteId = getCurrentTaskInput<BrainstormGraphState>(config).websiteId;
     const skippedTopics = getCurrentTaskInput<BrainstormGraphState>(config).skippedTopics || [];
 
@@ -197,7 +197,7 @@ export const saveAnswersTool = tool(
     const answers = args.answers.reduce((acc, item) => {
       acc[item.topic] = item.answer;
       return acc;
-    }, {} as Record<Brainstorm.TopicType, string>);
+    }, {} as Record<Brainstorm.TopicName, string>);
 
     const stateUpdates = await saveAnswers(answers, websiteId, skippedTopics);
 

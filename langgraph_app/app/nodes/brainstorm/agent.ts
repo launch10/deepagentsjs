@@ -36,7 +36,6 @@ const brainstormMiddleware = createMiddleware({
         // Regenerate system prompt with current state
         const systemPrompt = await agentPrompt(state, request.runtime);
 
-        console.log(`calling handler with system prompt: ${systemPrompt}`)
         // Return modified request
         const result = await handler({
             ...request,
@@ -90,7 +89,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
 
     return {
         redirect: result.redirect as Brainstorm.RedirectType,
-        skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicType[],
+        skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
         messages: [...(state.messages || []), aiMessage],
         memories,
         currentTopic,

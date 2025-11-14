@@ -31,6 +31,7 @@ export const toolsPrompt = async ({
             <tool>
               <name>${tool.name}</name>
               <description>${tool.description}</description>
+              <schema>${tool.schema}</schema>
             </tool>
         `;
     }).join('\n');

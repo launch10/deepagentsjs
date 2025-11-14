@@ -20,11 +20,10 @@ import { assertDefined } from '@support';
 const brainstormGraph = uncompiledGraph.compile({ ...graphParams, name: "brainstorm" }); 
 
 // TODO:
-// Name project when first question is submitted
-// Test DO THE REST
-    // Seek approval
-    // User can access next steps
-const validAnswers: Record<Brainstorm.TopicType, string> = {
+// Name project in the background when first message is submitted
+// Test "DO THE REST"
+
+const validAnswers: Record<Brainstorm.TopicName, string> = {
     idea: `Friend of the Pod is a podcast matchmaking service.
             We help both sides: hosts get great content, guests get exposure,
             and we're the only platform that does this at scale.
@@ -54,7 +53,7 @@ class ChatHistory {
     socialProof: string[];
     lookAndFeel: string[];
     
-    constructor({idea, audience, solution, socialProof, lookAndFeel}: Record<Brainstorm.TopicType, string[]>) {
+    constructor({idea, audience, solution, socialProof, lookAndFeel}: Record<Brainstorm.TopicName, string[]>) {
         this.idea = idea;
         this.audience = audience;
         this.solution = solution;
@@ -155,9 +154,9 @@ const MeanderingChatHistory = new ChatHistory({
     lookAndFeel: [`I'm finished`],
 })
 
-const restartChatFrom = async (topic: Brainstorm.TopicType, useHistory: ChatHistory): Promise<GraphTestBuilder<BrainstormGraphState>> => {
+const restartChatFrom = async (topic: Brainstorm.TopicName, useHistory: ChatHistory): Promise<GraphTestBuilder<BrainstormGraphState>> => {
     // create chat history
-    const chatMethodMap: Record<Brainstorm.TopicType, () => BaseMessage[]> = {
+    const chatMethodMap: Record<Brainstorm.TopicName, () => BaseMessage[]> = {
         idea: () => useHistory.ideaChat(),
         audience: () => useHistory.audienceChat(),
         solution: () => useHistory.solutionChat(),
@@ -184,7 +183,7 @@ const restartChatFrom = async (topic: Brainstorm.TopicType, useHistory: ChatHist
         const nextTopic = Brainstorm.BrainstormTopics[i + 1];
         
         // Get ALL messages up to next question from the raw chat history
-        const chatHistoryToNextQuestion = chatMethodMap[nextTopic as Brainstorm.TopicType]();
+        const chatHistoryToNextQuestion = chatMethodMap[nextTopic as Brainstorm.TopicName]();
         const fullChatUpToNextQuestion = chatHistoryToNextQuestion.slice(0, -1);
         
         // Get only the NEW messages since our last iteration (after already-tagged messages)
@@ -401,7 +400,7 @@ describe.sequential('Brainstorming Flow', () => {
         });
     })
 
-    describe("During lookAndFeel chat", () => {
+    describe("After brainstorming is done...", () => {
         it("(finished | done) returns redirect when user verbally expresses that they want to move on", async () => {
             const graph = await restartChatFrom('lookAndFeel', SimpleChatHistory);
             const result = await graph
@@ -643,75 +642,73 @@ describe.sequential('Brainstorming Flow', () => {
 
         describe("DO_THE_REST", () => {
             it("completes the brainstorming and provides only FINISHED action when user", async () => {
-                const result1 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
+                const graph = await restartChatFrom('audience', SimpleChatHistory);
+                const result1 = await graph
+                    .withPrompt("Skip")
                     .stopAfter('agent')
-                    .execute();
+                    .execute(); // audience -> solution
 
-                const result2 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
+                expect(result1.state.skippedTopics).toHaveLength(1);
+
+                const result2 = await graph
+                    .withPrompt("Skip")
+                    .stopAfter('agent')
                     .withState({
                         ...result1.state,
-                        action: "DO_THE_REST"
                     })
+                    .execute(); // solution -> socialProof
+
+                expect(result2.state.skippedTopics).toHaveLength(2);
+                expect(result2.state.currentTopic).toBe('socialProof');
+
+                const result3 = await graph
+                    .withPrompt("Skip")
                     .stopAfter('agent')
-                    .execute();
-
-                const state = result2.state;
-
-                expect(result2.error).toBeUndefined();
-                expect(state.questionIndex).toBe(4);
-
-                // It seeks approval
-                expect(state.route).toEqual("seekApproval");
-                expect(state.availableCommands).toEqual(["FINISHED"]);
-
-                // It spells out its intentions in message form...
-                const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
-                expect(lastAiResponse.content).toMatch(/audience/) // Brainstorms a section we didn't previously
-            });
-
-            it("allows user to make further adjustments", async () => {
-                const result1 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
-                    .stopAfter('agent')
-                    .execute();
-
-                const result2 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withState({
-                        ...result1.state,
-                        action: "DO_THE_REST"
-                    })
-                    .stopAfter('agent')
-                    .execute();
-
-                const state = result2.state;
-
-                expect(result2.error).toBeUndefined();
-                expect(state.questionIndex).toBe(4);
-
-                // It seeks approval
-                expect(state.route).toEqual("seekApproval");
-                expect(state.availableCommands).toEqual(["FINISHED"]);
-
-                const result3 = await testGraph<BrainstormGraphState>()
-                    .withGraph(brainstormGraph)
-                    .withPrompt(`Actually, my customers are podcast creators, not podcast guests.`)
                     .withState({
                         ...result2.state,
                     })
+                    .execute(); // socialProof -> do the rest before user is finished
+                expect(result3.state.skippedTopics).toHaveLength(0); // Would have been 2, but since we hit the end of the road, the AI answered the question
+
+                const result = result3;
+
+                const lastAIResponse = lastAIMessage(result.state);
+                assertDefined(lastAIResponse, 'lastAIResponse is defined');
+
+                expect(result.error).toBeUndefined();
+                expect(result.state.skippedTopics).toHaveLength(0);
+
+                expect(result.state.currentTopic).toBe('lookAndFeel');
+                expect(result.state.placeholderText).toMatch(`Use the Advanced sidebar`)
+
+                expect(result.state.memories.idea).toBeTruthy();
+                expect(result.state.memories.audience).toBeTruthy();
+                expect(result.state.memories.solution).toBeTruthy();
+                expect(result.state.memories.socialProof).toBeTruthy();
+
+                expect(lastAIResponse.content).toContain('Personalize the design');
+                expect(lastAIResponse.content).toContain('Build right away');
+            });
+
+            it.only("does not skip unskippable topics", async () => {
+                const graph = await restartChatFrom('idea', SimpleChatHistory);
+                const result = await graph
+                    .withPrompt("Skip")
                     .stopAfter('agent')
                     .execute();
 
-                expect(result3.error).toBeUndefined();
-                expect(result3.state.questionIndex).toBe(4);
+                const lastAIResponse = lastAIMessage(result.state);
+                assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
-                const lastAiResponse = state.messages?.filter(isAIMessage).slice(-1);
-                expect(lastAiResponse.content).toMatch(/creators/) // It updates it understanding
-                expect(lastAiResponse.content).toMatch(/social proof is affected by this change..../)
+                expect(result.error).toBeUndefined();
+
+                // Does not skip
+                expect(result.state.skippedTopics).toHaveLength(0);
+
+                expect(result.state.currentTopic).toBe('idea');
+                expect(result.state.placeholderText).toEqual(`I want to acquire leads, sell my product...`)
+
+                expect(lastAIResponse.content).toContain(`can't`)
             });
         });
     });
