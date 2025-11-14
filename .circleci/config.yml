@@ -147,6 +147,11 @@ jobs:
     steps:
       - checkout:
           path: ~/project
+      - run:
+          name: Install PostgreSQL client
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
       - ruby/install-deps:
           key: rails-gems-v1
       - setup-database
