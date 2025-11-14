@@ -28,6 +28,11 @@ const conversationalPrompt = async(state: BrainstormGraphState, config?: LangGra
         case "default":
             return await defaultPrompt(state, config);
         case "helpMe":
+            console.log(`runnign help me behavior!!!!`)
+            console.log(`runnign help me behavior!!!!`)
+            console.log(`runnign help me behavior!!!!`)
+            console.log(`runnign help me behavior!!!!`)
+            console.log(`runnign help me behavior!!!!`)
             return await helpMePrompt(state, config);
         default:
             return await defaultPrompt(state, config);

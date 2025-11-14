@@ -142,8 +142,9 @@ export const saveAnswers = async (
       }
     }).returning();
 
-    const updatedMemories = await (new BrainstormNextStepsService({ websiteId })).getMemories();
+    const updatedMemories = await (new BrainstormNextStepsService({ websiteId, skippedTopics: [] })).getMemories();
     const memoriesWithValues = compactObject(updatedMemories);
+    console.log(memoriesWithValues)
     let updatedSkippedTopics = skippedTopics?.filter((topic) => !memoriesWithValues[topic as Brainstorm.TopicName]) as Brainstorm.TopicName[];
 
     return {

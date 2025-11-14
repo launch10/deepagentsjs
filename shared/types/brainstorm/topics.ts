@@ -76,4 +76,8 @@ export const getAllTopics = (): Topic[] => {
     return Object.values(Topics);
 }
 
+export const topicsAndDescriptions = (topics: TopicName[]): string => {
+    return topics.map((topic) => Topics[topic].description).join("\n\n");
+}
+
 export type MemoriesType = Record<TopicName, string | undefined | null>;

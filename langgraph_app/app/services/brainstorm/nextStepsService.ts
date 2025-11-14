@@ -19,11 +19,14 @@ export class BrainstormNextStepsService {
         const memories = await this.getMemories();
         const currentTopic = await this.getCurrentTopic(includeSkipped);
         const remainingTopics = await this.getRemainingTopics(includeSkipped);
+        const topic = Brainstorm.getTopic(currentTopic);
 
         return {
             memories: memories as Brainstorm.MemoriesType,
             currentTopic: currentTopic as Brainstorm.TopicName,
             remainingTopics: remainingTopics as Brainstorm.TopicName[],
+            availableCommands: topic?.availableCommands || [],
+            placeholderText: topic?.placeholderText,
         }
     }
 

@@ -2,10 +2,9 @@ import fs from "fs";
 import path from "path";
 import { type BrainstormGraphState } from "@state";
 import { Brainstorm, type LangGraphRunnableConfig, isHumanMessage } from "@types";
-import { structuredOutputPrompt, renderPrompt } from "@prompts";
+import { renderPrompt } from "@prompts";
 import {
     whereWeArePrompt,
-    currentTopicPrompt,
     remainingTopicsPrompt,
     collectedAnswersPrompt,
     backgroundPrompt,
@@ -25,9 +24,8 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
         state.skippedTopics.map(topic => fs.promises.readFile(path.join(__dirname, `../help/${topic}.md`), 'utf-8'))
     ).then((helpText) => helpText.join("\n\n"))
 
-    const [whereWeAre, remainingTopics, collectedAnswers, background] = await Promise.all([
+    const [whereWeAre, collectedAnswers, background] = await Promise.all([
         whereWeArePrompt(state, config),
-        remainingTopicsPrompt(state, config),
         collectedAnswersPrompt(state, config),
         backgroundPrompt(state, config),
     ]);
@@ -56,7 +54,7 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
 
             ${collectedAnswers}
 
-            ${state.skippedTopics.map(topic => Brainstorm.TopicDescriptions[topic]).join("\n\n")}
+            ${Brainstorm.topicsAndDescriptions(state.skippedTopics)}
 
             ${topicSpecificHelp}
 

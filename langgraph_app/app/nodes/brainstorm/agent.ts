@@ -81,8 +81,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
         throw new Error("No AI message found");
     }
 
-    const { memories, remainingTopics, currentTopic } = await new BrainstormNextStepsService(state).nextSteps();
-    const topic = Brainstorm.getTopic(currentTopic)
+    const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } = await new BrainstormNextStepsService(state).nextSteps();
 
     return {
         redirect: result.redirect as Brainstorm.RedirectType,
@@ -91,7 +90,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
         memories,
         currentTopic,
         remainingTopics,
-        placeholderText: topic?.placeholderText,
-        availableCommands: topic?.availableCommands || [],
+        placeholderText,
+        availableCommands,
     };
 });
