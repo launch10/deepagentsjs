@@ -8,6 +8,7 @@ export type BrainstormGraphState = Simplify<CoreGraphState & {
     memories: Brainstorm.MemoriesType;
     qa: Brainstorm.QAResultType | undefined;
     currentTopic: Brainstorm.TopicType | undefined;
+    skippedTopics: Brainstorm.TopicType[];
     placeholderText: string;
     availableActions: Brainstorm.ActionType[];
     selectedAction: Brainstorm.ActionType | undefined;

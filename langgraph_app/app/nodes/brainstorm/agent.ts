@@ -1,6 +1,6 @@
 import { AIMessage } from "@langchain/core/messages";
-import { createAgent, createMiddleware, DynamicStructuredTool } from "langchain";
-import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { createAgent, createMiddleware, DynamicStructuredTool, tool } from "langchain";
+import { getCurrentTaskInput, type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
 import { toJSON, renderPrompt, chatHistoryPrompt, toolHistoryPrompt, structuredOutputPrompt, toolsPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
@@ -14,95 +14,7 @@ import { type BrainstormGraphState } from "@state";
 import { db, eq, asc, brainstorms as brainstormsTable } from "@db";
 import { BrainstormAnnotation, lastHumanMessage } from "@annotation";
 import z from "zod";
-export class BrainstormNextSteps {
-    state: BrainstormGraphState;
-    memories: Brainstorm.MemoriesType | undefined;
-    currentTopic: Brainstorm.TopicType | undefined;
-    placeholderText: string | undefined;
-    remainingTopics: Brainstorm.TopicType[] | undefined;
-    availableActions: Brainstorm.ActionType[] | undefined;
-
-    constructor(state: BrainstormGraphState) {
-        this.state = state;
-    }
-
-    async nextSteps() {
-        const memories = await this.getMemories();
-        const placeholderText = await this.getPlaceholderText();
-        const currentTopic = await this.getCurrentTopic();
-        const remainingTopics = await this.getRemainingTopics();
-        const availableActions = await this.getAvailableActions();
-
-        return {
-            memories: memories as Brainstorm.MemoriesType,
-            placeholderText: placeholderText as string,
-            currentTopic: currentTopic as Brainstorm.TopicType,
-            remainingTopics: remainingTopics as Brainstorm.TopicType[],
-            availableActions: availableActions as Brainstorm.ActionType[],
-        }
-    }
-
-    async getMemories(): Promise<Brainstorm.MemoriesType> {
-        if (this.memories) {
-            return this.memories;
-        }
-
-        if (!this.state.websiteId) {
-            throw new Error("websiteId is required");
-        }
-        const brainstorms = (await db.select().from(brainstormsTable).where(
-                eq(brainstormsTable.websiteId, this.state.websiteId)
-        ).orderBy(asc(brainstormsTable.id)))[0];
-        let memories: Brainstorm.MemoriesType = {}
-        if (brainstorms) {
-            memories = pick(brainstorms, [...Brainstorm.BrainstormTopics]);
-        }
-        this.memories = memories;
-        return memories;
-    }
-
-
-    private async getRemainingTopics() {
-        if (this.remainingTopics) {
-            return this.remainingTopics;
-        }
-        const answers = await this.getMemories();
-        const questionsAnswered = Object.keys(answers).filter(key => answers[key as Brainstorm.TopicType] !== null && answers[key as Brainstorm.TopicType] !== "") as Brainstorm.TopicType[];
-        const topics = Brainstorm.BrainstormTopics;
-        const remainingTopics = topics.filter(topic => !questionsAnswered.includes(topic));
-        this.remainingTopics = remainingTopics;
-        return remainingTopics;
-    }
-
-    private async getCurrentTopic() {
-        if (this.currentTopic) {
-            return this.currentTopic;
-        }
-        this.currentTopic = (await this.getRemainingTopics()).at(0);
-        return this.currentTopic;
-    }
-
-    private async getPlaceholderText() {
-        if (this.placeholderText) {
-            return this.placeholderText;
-        }
-        const currentTopic = await this.getCurrentTopic();
-        this.placeholderText = currentTopic ? Brainstorm.PlaceholderText[currentTopic] : "";
-        return this.placeholderText;
-    }
-
-    private async getAvailableActions(): Promise<Brainstorm.ActionType[]> {
-        if (this.availableActions) {
-            return this.availableActions;
-        }
-        const currentTopic = await this.getCurrentTopic();
-        if (!currentTopic) {
-            return ["finished"];
-        }
-        this.availableActions = Brainstorm.AvailableActions[currentTopic];
-        return this.availableActions;
-    }
-}
+import { BrainstormNextStepsService } from "@services";
 
 const sortedTopics = (topics: Brainstorm.TopicType[]) => {
     return topics.sort((a, b) => Brainstorm.BrainstormTopics.indexOf(a) - Brainstorm.BrainstormTopics.indexOf(b));
@@ -134,6 +46,7 @@ const finishedTool = new DynamicStructuredTool({
     }
   },
 });
+
 
 const uiGuidancePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     const [background, availableTools, chatHistory] = await Promise.all([
@@ -319,12 +232,11 @@ const conversationalPrompt = async(state: BrainstormGraphState, config?: LangGra
         throw new Error("No human message found");
     }
 
-    const [chatHistory, toolHistory, nextSteps, outputInstructions] = await Promise.all([
-        chatHistoryPrompt({ messages: state.messages }),
-        toolHistoryPrompt({ messages: state.messages }),
-        new BrainstormNextSteps(state).nextSteps(),
+    const [nextSteps, outputInstructions] = await Promise.all([
+        new BrainstormNextStepsService(state).nextSteps(),
         structuredOutputPrompt({ schema: Brainstorm.questionSchema }),
     ]);
+    console.log(nextSteps.currentTopic)
 
     const memories = compactObject(nextSteps.memories);
     const currentTopic = nextSteps.currentTopic;
@@ -344,12 +256,12 @@ const conversationalPrompt = async(state: BrainstormGraphState, config?: LangGra
                 You've been enlisted to lead this brainstorming session.
             </role>
 
-            <rules>
+            <rules_for_brainstorming>
                 1. You MUST understand the user's business idea and audience. You are good natured, but critical of bad ideas. You MUST help the user find a GREAT angle.
                 2. You have a reputation to uphold. You won't accept a bad business idea, but will help the user find a better angle.
                 3. If the user is struggling, you can find creative angles to answer a question.
                 4. You do not save an answer unless the user has given you a GREAT response. Continue refining UNTIL the user has given you a GREAT response in their own words.
-            </rules>
+           </rules_for_brainstorming>
 
             <task>
                 Help the user brainstorm marketing copy for their landing page.
@@ -387,10 +299,6 @@ const conversationalPrompt = async(state: BrainstormGraphState, config?: LangGra
                 business context they give you should be saved to the answers.
             </important>
 
-            ${chatHistory}
-
-            ${toolHistory}
-
             <users_last_message important="this is what you should focus on. did they answer the current topic of ${currentTopic}? did they give you a great response?">
                 ${lastHumanMessage.content}
             </users_last_message>
@@ -398,6 +306,10 @@ const conversationalPrompt = async(state: BrainstormGraphState, config?: LangGra
             <current_topic>
                 ${currentTopic}
             </current_topic>
+
+            <skipped_topics important="this is the list of topics that have been skipped, don't bother asking about them">
+                ${state.skippedTopics?.join(", ") || "none"}
+            </skipped_topics>
 
             <output_format_rules>
                 IMPORTANT: Your response MUST be in this exact format:
@@ -414,12 +326,11 @@ const conversationalPrompt = async(state: BrainstormGraphState, config?: LangGra
             ${outputInstructions}
         `
     );
-    
 }
 
 const getPrompt = async (state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     // Get current topic to determine available tools
-    const nextSteps = await new BrainstormNextSteps(state).nextSteps();
+    const nextSteps = await new BrainstormNextStepsService(state).nextSteps();
     const currentTopic = nextSteps.currentTopic;
 
     if (Brainstorm.TopicKindMap[currentTopic] === "conversational") {
@@ -437,16 +348,20 @@ const brainstormMiddleware = createMiddleware({
         brainstormId: z.number(),
         websiteId: z.number(),
         projectId: z.number(),
+        currentTopic: z.string(),
+        skippedTopics: z.array(z.string()).optional()
     }),
     wrapModelCall: async (request, handler) => {
         const state = request.state satisfies BrainstormGraphState;
 
         // Get current topic to determine available tools
-        const nextSteps = await new BrainstormNextSteps(state).nextSteps();
+        const nextSteps = await new BrainstormNextStepsService(state).nextSteps();
         const currentTopic = nextSteps.currentTopic;
 
         // Regenerate system prompt with current state
         const systemPrompt = await getPrompt(state, request.runtime);
+        console.log(`calling for system prompt...`)
+        console.log(systemPrompt)
 
         // Return modified request
         const result = await handler({
@@ -478,58 +393,48 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
         throw new Error("websiteId is required");
     }
 
-    try {
-      const llm = getLLM().withConfig({ tags: ['notify'] }) // Important so messages are sent to frontend
-      const tools = [saveAnswersTool, finishedTool];
+    // Now invoke agent with updated state
+    const llm = getLLM().withConfig({ tags: ['notify'] })
+    const tools = [saveAnswersTool, finishedTool];
 
-      const agent = await createAgent({
-          model: llm,
-          tools,
-          middleware: [brainstormMiddleware],
-          responseFormat: Brainstorm.questionSchema,
-      });
-      const result = await agent.invoke(state, config);
-      const aiMessage = result.messages.at(-1);
+    const agent = await createAgent({
+        model: llm,
+        tools,
+        middleware: [brainstormMiddleware],
+        responseFormat: Brainstorm.questionSchema,
+    });
+    const result = await agent.invoke(state, config);
+    const aiMessage = result.messages.at(-1);
 
-      if (!aiMessage) {
-        throw new Error("No AI message found");
-      }
+    if (!aiMessage) {
+    throw new Error("No AI message found");
+    }
 
-      // Check if finishedTool was called and extract redirect
-      let redirect: Brainstorm.RedirectType | undefined;
-      const toolMessages = result.messages.filter((m: any) => m._getType?.() === 'tool');
-      for (const toolMsg of toolMessages) {
+    // Check if finishedTool was called and extract redirect
+    let redirect: Brainstorm.RedirectType | undefined;
+    const toolMessages = result.messages.filter((m: any) => m._getType?.() === 'tool');
+    for (const toolMsg of toolMessages) {
         if (toolMsg.name === 'finishedTool' && typeof toolMsg.content === 'string') {
-          try {
+            try {
             const toolResult = JSON.parse(toolMsg.content);
             if (toolResult.redirect) {
-              redirect = toolResult.redirect;
+                redirect = toolResult.redirect;
             }
-          } catch (e) {
+            } catch (e) {
             // Ignore parse errors
-          }
+            }
         }
-      }
-
-      const { memories, remainingTopics, currentTopic, placeholderText, availableActions } = await new BrainstormNextSteps(state).nextSteps();
-
-      return {
-          messages: [...(state.messages || []), aiMessage],
-          memories,
-          currentTopic,
-          placeholderText,
-          remainingTopics,
-          availableActions,
-          ...(redirect && { redirect }),
-      };
-    } catch (error) {
-      console.error('==========================================');
-      console.error('BRAINSTORM AGENT ERROR:');
-      console.error('==========================================');
-      console.error('Error details:', error);
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-      console.error('State:', JSON.stringify(state, null, 2));
-      console.error('==========================================');
-      throw error; // Re-throw to ensure it propagates
     }
+
+    const { memories, remainingTopics, currentTopic, placeholderText, availableActions } = await new BrainstormNextStepsService(state).nextSteps();
+
+    return {
+        messages: [...(state.messages || []), aiMessage],
+        memories,
+        currentTopic,
+        placeholderText,
+        remainingTopics,
+        availableActions,
+        ...(redirect && { redirect }),
+    };
 });

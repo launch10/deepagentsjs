@@ -1,5 +1,5 @@
 export * from "./agent";
-
+export * from "./handleCommand";
 // export * from './qaAgent';
 // export * from './brainstormAgent';
 // export * from './saveAnswersNode';

@@ -2,6 +2,7 @@ import { StateGraph, END, START } from "@langchain/langgraph";
 import { BrainstormAnnotation } from "@annotation";
 import { brainstormAgent } from "@nodes";
 import { createBrainstorm } from "@nodes";
+import { handleCommand } from "@nodes";
 
 /**
  * Simple test graph for the new brainstorm agent
@@ -9,8 +10,10 @@ import { createBrainstorm } from "@nodes";
  */
 export const brainstormGraph = new StateGraph(BrainstormAnnotation)
       .addNode("createBrainstorm", createBrainstorm)
+      .addNode("handleCommand", handleCommand)
       .addNode("agent", brainstormAgent)
 
       .addEdge(START, "createBrainstorm")
-      .addEdge("createBrainstorm", "agent")
+      .addEdge("createBrainstorm", "handleCommand")
+      .addEdge("handleCommand", "agent")
       .addEdge("agent", END)

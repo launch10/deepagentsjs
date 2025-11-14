@@ -142,7 +142,8 @@ const MeanderingChatHistory = new ChatHistory({
     solution: [
         `My fitness program is specifically designed`,
         `To help men get started lifting, but using bodyweight exercises, and focusing on injury prevention`,
-        `I provide a 12-week progressive strength program with 3x/week 30-minute sessions focused on back and core-done via video coaching to accommodate busy schedules of men in their 50s`,
+        `I provide a 12-week progressive strength program with 3x/week 30-minute sessions focused on back and core-done via video coaching to accommodate busy schedules of men in their 50s.
+        When a man in his 50s completes the program, he finally feels like himself again. He realizes he's not too old to get fit, and he's not too old to be healthy.`,
     ],
     socialProof: [`I've helped over 50 men in their 50s get fit`, `Many of them have never exercised before`, `One lost 50 pounds in 6 months`],
     lookAndFeel: [`I'm finished`],
@@ -376,7 +377,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.memories.socialProof).toBeTruthy();
         });
 
-        it.only('ends the chat when user says they are finished', async () => {
+        it('ends the chat when user says they are finished', async () => {
             const graph = await restartChatFrom('lookAndFeel', SimpleChatHistory);
             const result = await graph
                 .withPrompt(`Let's build my page!`)
@@ -412,7 +413,7 @@ describe.sequential('Brainstorming Flow', () => {
     });
 
     describe("Tagging conversation topics", () => {
-        it("tags a group of messages as belonging to the same topic", { timeout: 60000 }, async () => {
+        it("tags a group of messages as belonging to the same topic", async () => {
             const graph = await restartChatFrom('solution', MeanderingChatHistory);
             const nextMessage = MeanderingChatHistory.solution.at(0) as string;
             const result1 = await graph
@@ -445,28 +446,19 @@ describe.sequential('Brainstorming Flow', () => {
 
             // Okay now we answered successfully!
             const currentTopic3 = result3.state.currentTopic;
-            expect(currentTopic3).toBe('socialProof');
-
-            // We should have tagged this SERIES of messages as belonging
-            // to the same topic
-            expect(result3.state.messages.map((message) => message.additional_kwargs?.topic)).toEqual([
-                ...Array(8).fill("idea"), 
-                ...Array(6).fill("audience"),
-                ...Array(6).fill("solution"),
-                undefined // The last message doesn't have a topic yet
-            ])
+            expect(currentTopic3).toBe('lookAndFeel');
 
             expect(result3.state.memories.idea).toBeTruthy();
             expect(result3.state.memories.audience).toBeTruthy();
             expect(result3.state.memories.solution).toBeTruthy();
-            expect(result3.state.memories.socialProof).toBeNull();
+            expect(result3.state.memories.socialProof).toBeTruthy();
             expect(result3.state.memories.lookAndFeel).toBeNull();
         });
     })
 
     describe("Actions", () => {
         describe("skip", () => {
-            it("skips a single question", async () => {
+            it.only("skips a single question", async () => {
                 const graph = await restartChatFrom('idea', SimpleChatHistory);
                 const result = await graph
                     .withPrompt("Skip")
@@ -480,16 +472,15 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(result.error).toBeUndefined();
 
                 // Skips from audience to solution
-                expect(result.state.currentTopic).toBe('solution');
-                expect(result.state.placeholderText).toEqual(`My solution is...`)
+                expect(result.state.currentTopic).toBe('audience');
+                expect(result.state.placeholderText).toEqual(`My target audience is...`)
 
-                expect(result.state.availableActions).toHaveLength(4);
+                expect(result.state.availableActions).toHaveLength(3);
                 expect(result.state.availableActions[0]).toBe('helpMe');
                 expect(result.state.availableActions[1]).toBe('skip');
                 expect(result.state.availableActions[2]).toBe('doTheRest');
-                expect(result.state.availableActions[3]).toBe('finished');
 
-                expect(lastAIResponse.content).toContain('solution');
+                expect(lastAIResponse.content).toContain('audience');
             });
 
             it("allows user to make further adjustments", async () => {

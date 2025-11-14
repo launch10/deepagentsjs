@@ -1,12 +1,11 @@
 import { z } from "zod";
 import { type BrainstormGraphState } from "@state";
-import { type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { ToolMessage } from "@langchain/core/messages";
 import {
-  Command,
   getCurrentTaskInput,
-  MemorySaver,
+  Command,
 } from "@langchain/langgraph";
-import { tool, DynamicStructuredTool } from "@langchain/core/tools";
+import { tool } from "@langchain/core/tools";
 import { Brainstorm } from "@types";
 import { db, brainstorms as brainstormsTable } from "@db";
 import { withTimestamps, withUpdatedAt } from "@db";
@@ -14,6 +13,9 @@ import { BrainstormNextStepsService } from "@services";
 import { chatHistoryPrompt } from "@prompts";
 import { getLLM } from "@core";
 import { BaseMessage } from "@langchain/core/messages";
+
+// Could work on tagging these in a separate model in order to not
+// have so much message history returned from the tool
 export class MessageTagger {
   messages: BaseMessage[];
 
@@ -132,7 +134,7 @@ export const saveAnswers = async (
     return {
       memories,
       messages: taggedMessages,
-    };
+    }
   } catch (error) {
     console.error('=== ERROR IN SAVE ANSWERS NODE ===');
     console.error('Error:', error);
@@ -153,7 +155,22 @@ export const saveAnswersTool = tool(
         throw new Error("websiteId is required");
     }
 
-    return await saveAnswers(currentMessages, websiteId);
+    const { memories, messages } = await saveAnswers(currentMessages, websiteId);
+
+    // Since we want to tag
+    // return new Command({
+    //   update: {
+    //     "memories": memories,
+    //     "messages": [
+    //       new ToolMessage({
+    //         content: `Successfully saved answers.`,
+    //         tool_call_id: config.toolCall.id,
+    //       })
+    //     ],
+    //   },
+    return {
+      messages
+    }
   },
   {
     name: "save_answers",

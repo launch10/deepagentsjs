@@ -15,6 +15,10 @@ export const BrainstormAnnotation = Annotation.Root({
     selectedAction: Annotation<Brainstorm.ActionType | undefined>(),
     redirect: Annotation<Brainstorm.RedirectType | undefined>(),
     intent: Annotation<string | undefined>(),
+    skippedTopics: Annotation<Brainstorm.TopicType[]>({
+        default: () => [],
+        reducer: (current, next) => [...current, ...next]
+    }),
     remainingTopics: Annotation<Brainstorm.TopicType[]>({
         default: () => [...Brainstorm.BrainstormTopics],
         reducer: (current, next) => next

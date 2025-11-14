@@ -4,23 +4,25 @@ import { db, eq, asc, brainstorms as brainstormsTable } from "@db";
 import { pick } from "@utils";
 
 export class BrainstormNextStepsService {
-    websiteId: number;
+    websiteId: number | undefined;
     memories: Brainstorm.MemoriesType | undefined;
     currentTopic: Brainstorm.TopicType | undefined;
     placeholderText: string | undefined;
     remainingTopics: Brainstorm.TopicType[] | undefined;
     availableActions: Brainstorm.ActionType[] | undefined;
+    skippedTopics: Brainstorm.TopicType[];
 
-    constructor({ websiteId }: { websiteId: number }) {
-        this.websiteId = websiteId;
+    constructor(state: BrainstormGraphState) {
+        this.websiteId = state.websiteId;
+        this.skippedTopics = state.skippedTopics || [];
     }
 
-    async nextSteps() {
+    async nextSteps(includeSkipped: boolean = false) {
         const memories = await this.getMemories();
-        const placeholderText = await this.getPlaceholderText();
-        const currentTopic = await this.getCurrentTopic();
-        const remainingTopics = await this.getRemainingTopics();
-        const availableActions = await this.getAvailableActions();
+        const placeholderText = await this.getPlaceholderText(includeSkipped);
+        const currentTopic = await this.getCurrentTopic(includeSkipped);
+        const remainingTopics = await this.getRemainingTopics(includeSkipped);
+        const availableActions = await this.getAvailableActions(includeSkipped);
 
         return {
             memories: memories as Brainstorm.MemoriesType,
@@ -51,40 +53,44 @@ export class BrainstormNextStepsService {
     }
 
 
-    private async getRemainingTopics() {
+    private async getRemainingTopics(includeSkipped: boolean = false) {
         if (this.remainingTopics) {
             return this.remainingTopics;
         }
         const answers = await this.getMemories();
         const questionsAnswered = Object.keys(answers).filter(key => answers[key as Brainstorm.TopicType] !== null && answers[key as Brainstorm.TopicType] !== "") as Brainstorm.TopicType[];
         const topics = Brainstorm.BrainstormTopics;
-        const remainingTopics = topics.filter(topic => !questionsAnswered.includes(topic));
+        // Filter out answered topics, and also skipped topics (unless includeSkipped is true)
+        const remainingTopics = topics.filter(topic =>
+            !questionsAnswered.includes(topic) &&
+            (includeSkipped || !this.skippedTopics.includes(topic))
+        );
         this.remainingTopics = remainingTopics;
         return remainingTopics;
     }
 
-    private async getCurrentTopic() {
+    private async getCurrentTopic(includeSkipped: boolean = false) {
         if (this.currentTopic) {
             return this.currentTopic;
         }
-        this.currentTopic = (await this.getRemainingTopics()).at(0);
+        this.currentTopic = (await this.getRemainingTopics(includeSkipped)).at(0);
         return this.currentTopic;
     }
 
-    private async getPlaceholderText() {
+    private async getPlaceholderText(includeSkipped: boolean = false) {
         if (this.placeholderText) {
             return this.placeholderText;
         }
-        const currentTopic = await this.getCurrentTopic();
+        const currentTopic = await this.getCurrentTopic(includeSkipped);
         this.placeholderText = currentTopic ? Brainstorm.PlaceholderText[currentTopic] : "";
         return this.placeholderText;
     }
 
-    private async getAvailableActions(): Promise<Brainstorm.ActionType[]> {
+    private async getAvailableActions(includeSkipped: boolean = false): Promise<Brainstorm.ActionType[]> {
         if (this.availableActions) {
             return this.availableActions;
         }
-        const currentTopic = await this.getCurrentTopic();
+        const currentTopic = await this.getCurrentTopic(includeSkipped);
         if (!currentTopic) {
             return ["finished"];
         }
