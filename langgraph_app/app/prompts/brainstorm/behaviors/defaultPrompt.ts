@@ -16,7 +16,7 @@ export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGra
     }
 
     const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, background] = await Promise.all([
-        structuredOutputPrompt({ schema: Brainstorm.questionSchema }),
+        structuredOutputPrompt({ schema: Brainstorm.replySchema }),
         whereWeArePrompt(state, config),
         currentTopicPrompt(state, config),
         remainingTopicsPrompt(state, config),
