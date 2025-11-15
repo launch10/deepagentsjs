@@ -5,8 +5,7 @@ import { createBrainstorm } from "@nodes";
 import { handleCommand } from "@nodes";
 
 /**
- * Simple test graph for the new brainstorm agent
- * Usage: Load this in LangGraph Studio to test the agent
+ * The main brainstorm graph
  */
 export const brainstormGraph = new StateGraph(BrainstormAnnotation)
       .addNode("createBrainstorm", createBrainstorm)

@@ -21,7 +21,6 @@ export const envSchema = z.object({
   LLM_SPEED: z.enum(["fast", "slow"]).default("slow"),
   JWT_SECRET: z.string().min(1),
   USE_CACHE: z.coerce.boolean().default(false),
-  LANGGRAPH_SERVER: z.coerce.boolean().default(false),
   NODE_ENV: z.enum(Environments).default("development"),
 });
 
