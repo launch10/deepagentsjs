@@ -28,5 +28,4 @@ export const BrainstormAnnotation = Annotation.Root({
 });
 
 // Just a convenience to ensure the annotation matches the state type
-// TODO: Re-enable once type shapes match exactly
-// type _Assertion = Expect<Equal<BrainstormGraphState, typeof BrainstormAnnotation.State>>;
+type _Assertion = Expect<Equal<BrainstormGraphState, typeof BrainstormAnnotation.State>>;
