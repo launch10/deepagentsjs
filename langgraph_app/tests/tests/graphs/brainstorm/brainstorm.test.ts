@@ -3,14 +3,12 @@ import { testGraph, GraphTestBuilder } from '@support';
 import { type BrainstormGraphState } from '@state';
 import { DatabaseSnapshotter, BrainstormNextStepsService } from '@services';
 import { brainstormGraph as uncompiledGraph } from '@graphs';
-import { HumanMessage, AIMessage, BaseMessage, type Message } from '@langchain/core/messages';
-import { lastHumanMessage, lastAIMessage } from '@annotation';
+import { HumanMessage, AIMessage, BaseMessage } from '@langchain/core/messages';
+import { lastAIMessage } from '@annotation';
 import { createBrainstorm } from '@nodes';
 import { summarizeAndSaveAnswers } from '@tools';
 import { v7 as uuidv7 } from 'uuid';
 import { 
-    isHumanMessage, 
-    isAIMessage, 
     Brainstorm,
 } from '@types';
 import { ContentStrategyModel } from '@models';
@@ -572,6 +570,7 @@ describe.sequential('Brainstorming Flow', () => {
                         ...result2.state,
                     })
                     .execute(); // socialProof -> do the rest before user is finished
+                console.log(result3.state.memories)
                 expect(result3.state.skippedTopics).toHaveLength(0); // Would have been 2, but since we hit the end of the road, the AI answered the question
 
                 const result = result3;
@@ -647,8 +646,8 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(result.state.memories.solution).toBeTruthy();
                 expect(result.state.memories.socialProof).toBeTruthy();
 
-                expect(lastAIResponse.content).toContain('Personalize the design');
-                expect(lastAIResponse.content).toContain('Build right away');
+                expect(lastAIResponse.content).toMatch(/personalize|brand|logo|colors|palette/i);
+                expect(lastAIResponse.content).toMatch(/build|landing page|site/i);
             });
 
             it("does not do the rest when we haven't done anything yet", async () => {

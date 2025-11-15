@@ -3,6 +3,7 @@ import path from "path";
 import { type BrainstormGraphState } from "@state";
 import { Brainstorm, type LangGraphRunnableConfig, isHumanMessage } from "@types";
 import { renderPrompt } from "@prompts";
+import { arrayDifference } from "@utils";
 import {
     whereWeArePrompt,
     remainingTopicsPrompt,
@@ -19,9 +20,13 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
     if (!lastHumanMessage) {
         throw new Error("No human message found");
     }
+    const topics = arrayDifference(
+        state.remainingTopics.concat(state.skippedTopics),
+        ['lookAndFeel']
+    )
 
     const topicSpecificHelp = await Promise.all(
-        state.remainingTopics.map(topic => fs.promises.readFile(path.join(__dirname, `../help/${topic}.md`), 'utf-8'))
+        topics.map(topic => fs.promises.readFile(path.join(__dirname, `../help/${topic}.md`), 'utf-8'))
     ).then((helpText) => helpText.join("\n\n"))
 
     const [whereWeAre, collectedAnswers, background] = await Promise.all([
@@ -37,7 +42,7 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
             ${whereWeAre}
 
             <context>
-                The user skipped ${state.remainingTopics.length} questions during the brainstorm.
+                The user skipped ${topics.length} questions during the brainstorm.
                 You are now tasked with helping them finish the brainstorm, using the answers they have provided.
             </context>
 
@@ -54,7 +59,7 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
 
             ${collectedAnswers}
 
-            ${Brainstorm.topicsAndDescriptions(state.remainingTopics)}
+            ${Brainstorm.topicsAndDescriptions(topics as Brainstorm.TopicName[])}
 
             ${topicSpecificHelp}
 

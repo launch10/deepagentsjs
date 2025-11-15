@@ -18,6 +18,7 @@ langgraph-env: &langgraph-env
   NODE_ENV: test
   USE_CACHE: false
   CI: true
+  LLM_COST: paid  # Use paid tier to avoid Ollama dependency in tests
 
 commands:
   setup-database:
