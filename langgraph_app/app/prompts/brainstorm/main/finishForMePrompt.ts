@@ -6,10 +6,10 @@ import { renderPrompt } from "@prompts";
 import { arrayDifference } from "@utils";
 import {
     whereWeArePrompt,
-    remainingTopicsPrompt,
     collectedAnswersPrompt,
     backgroundPrompt,
-} from "../core";
+    getHelpTemplates,
+} from "../shared";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -25,14 +25,11 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
         ['lookAndFeel']
     )
 
-    const topicSpecificHelp = await Promise.all(
-        topics.map(topic => fs.promises.readFile(path.join(__dirname, `../help/${topic}.md`), 'utf-8'))
-    ).then((helpText) => helpText.join("\n\n"))
-
-    const [whereWeAre, collectedAnswers, background] = await Promise.all([
+    const [whereWeAre, collectedAnswers, background, topicSpecificHelp] = await Promise.all([
         whereWeArePrompt(state, config),
         collectedAnswersPrompt(state, config),
         backgroundPrompt(state, config),
+        getHelpTemplates(topics),
     ]);
 
     return renderPrompt(

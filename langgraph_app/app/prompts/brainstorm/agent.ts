@@ -1,12 +1,12 @@
-import { beforeHook } from "./behaviors/beforeHook";
+import { beforeHook } from "./main/beforeHook";
 import { type BrainstormGraphState } from "@state";
 import { type LangGraphRunnableConfig, Brainstorm } from "@types";
-import { defaultPrompt } from "./behaviors/defaultPrompt";
-import { helpMePrompt } from "./behaviors/helpMePrompt";
-import { uiGuidancePrompt } from "./behaviors/uiGuidancePrompt";
-import { finishForMePrompt } from "./behaviors/finishForMePrompt";
+import { defaultPrompt } from "./main/defaultPrompt";
+import { helpMePrompt } from "./main/helpMePrompt";
+import { uiGuidancePrompt } from "./main/uiGuidancePrompt";
+import { finishForMePrompt } from "./main/finishForMePrompt";
 
-export const agentPrompt = async(inputState: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
+export const chooseAgentPrompt = async(inputState: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     const state = await beforeHook(inputState);
     const currentTopicName = state.currentTopic;
     const topic = Brainstorm.getTopic(currentTopicName);

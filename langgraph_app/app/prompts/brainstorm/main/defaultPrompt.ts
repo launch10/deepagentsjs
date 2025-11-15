@@ -7,7 +7,7 @@ import {
     remainingTopicsPrompt,
     collectedAnswersPrompt,
     backgroundPrompt,
-} from "../core";
+} from "../shared";
 
 export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);

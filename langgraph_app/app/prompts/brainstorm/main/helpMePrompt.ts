@@ -9,11 +9,8 @@ import {
     remainingTopicsPrompt,
     collectedAnswersPrompt,
     backgroundPrompt,
-} from "../core";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+    getHelpTemplates,
+} from "../shared";
 
 export const helpMePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
@@ -21,14 +18,18 @@ export const helpMePrompt = async(state: BrainstormGraphState, config?: LangGrap
         throw new Error("No human message found");
     }
 
-    const topicSpecificHelp = fs.readFileSync(path.join(__dirname, `../help/${state.currentTopic}.md`), 'utf-8');
-    const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, background] = await Promise.all([
+    if (!state.currentTopic) {
+        throw new Error("No current topic found");
+    }
+
+    const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, background, topicSpecificHelp] = await Promise.all([
         structuredOutputPrompt({ schema: Brainstorm.helpMeSchema }),
         whereWeArePrompt(state, config),
         currentTopicPrompt(state, config),
         remainingTopicsPrompt(state, config),
         collectedAnswersPrompt(state, config),
         backgroundPrompt(state, config),
+        getHelpTemplates([state.currentTopic]),
     ]);
 
     return renderPrompt(

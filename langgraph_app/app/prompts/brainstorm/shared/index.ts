@@ -2,6 +2,13 @@ import { toJSON } from "@prompts";
 import { type BrainstormGraphState } from "@state";
 import { Brainstorm, type LangGraphRunnableConfig } from "@types";
 import { compactObject } from "@utils";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import { readdirSync } from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const backgroundPrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     return `
@@ -47,6 +54,29 @@ export const remainingTopicsPrompt = async(state: BrainstormGraphState, config?:
         ${_remainingTopics(state.remainingTopics)}
     </remaining_topics>
     `;
+}
+
+export const getTopicDescriptions = async(topics: Brainstorm.TopicName[]): Promise<string> => {
+    return await Promise.all(
+        topics.map(topic => fs.promises.readFile(path.join(__dirname, `../topics/${topic}.md`), 'utf-8'))
+    ).then((topicText) => topicText.join("\n\n"))
+}
+
+export const getHelpTemplates = async(topics: Brainstorm.TopicName[]): Promise<string> => {
+    return await Promise.all(
+        topics.map(topic => fs.promises.readFile(path.join(__dirname, `../help/${topic}.md`), 'utf-8'))
+    ).then((helpText) => helpText.join("\n\n"))
+}
+
+export const getMarketingReferences = async (): Promise<string> => {
+    const referencesDir = path.join(__dirname, '../references');
+    const files = readdirSync(referencesDir)
+        .filter(file => file.endsWith('.md'))
+          .map(file => path.join(referencesDir, file));
+
+    return await Promise.all(
+        files.map(file => fs.promises.readFile(file, 'utf-8'))
+    ).then((helpText) => helpText.join("\n\n"))
 }
 
 const _sortedTopics = (topics: Brainstorm.Topic[]) => {

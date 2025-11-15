@@ -6,7 +6,7 @@ import { toolsPrompt } from "@prompts";
 import {
     collectedAnswersPrompt,
     backgroundPrompt,
-} from "../core";
+} from "../shared";
 
 export const uiGuidancePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     const [background, availableTools, collectedAnswers] = await Promise.all([
