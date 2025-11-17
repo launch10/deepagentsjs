@@ -19,8 +19,8 @@ RSpec.describe "Themes API", type: :request do
       response '200', 'themes retrieved' do
         schema ApiSchemas::Theme.collection_response
         let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
-        let!(:theme1) { create(:theme, name: 'Modern') }
-        let!(:theme2) { create(:theme, name: 'Classic') }
+        let!(:theme1) { create(:theme, name: 'Modern', colors: ['#000000', '#ffffff']) }
+        let!(:theme2) { create(:theme, name: 'Classic', colors: ['#333333', '#eeeeee']) }
         let!(:label) { create(:theme_label, name: 'Dark') }
 
         before do
@@ -36,8 +36,10 @@ RSpec.describe "Themes API", type: :request do
           expect(theme_names).to include('Modern', 'Classic')
 
           modern_theme = data.find { |t| t['name'] == 'Modern' }
+          expect(modern_theme['colors']).to eq(['#000000', '#ffffff'])
           expect(modern_theme['theme_labels']).to be_an(Array)
           expect(modern_theme['theme_labels'].first['name']).to eq('Dark')
+          expect(modern_theme.keys).to match_array(['id', 'name', 'colors', 'theme_labels'])
         end
       end
 

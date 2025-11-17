@@ -8,8 +8,7 @@ module ApiSchemas
         properties: {
           id: ApiSchemas.id_field,
           name: {type: :string, description: 'Theme name'},
-          colors: {type: :object, description: 'Theme color palette'},
-          theme: {type: :object, description: 'Theme configuration'},
+          colors: {type: :array, items: {type: :string}, description: 'Theme color palette'},
           theme_labels: {
             type: :array,
             items: {
@@ -17,13 +16,13 @@ module ApiSchemas
               properties: {
                 id: ApiSchemas.id_field,
                 name: {type: :string, description: 'Label name'}
-              }
+              },
+              required: ['id', 'name']
             },
             description: 'Associated theme labels'
-          },
-          **ApiSchemas.timestamps
+          }
         },
-        required: ['id', 'name', 'colors', 'theme', 'created_at', 'updated_at']
+        required: ['id', 'name', 'colors', 'theme_labels']
       }
     end
 
