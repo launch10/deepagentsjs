@@ -5,20 +5,20 @@ interface RecordWithMessages {
     messages: BaseMessage[];
 }
 
-export const lastHumanMessage = (record: RecordWithMessages): BaseMessage | undefined => {
+export const lastHumanMessage = (record: RecordWithMessages): HumanMessage | undefined => {
   if (!record.messages || record.messages.length === 0) {
     return undefined;
   }
   const humanMessages = record.messages.filter(msg => msg.getType() === "human") as BaseMessage[];
-  return humanMessages.at(-1);
+  return humanMessages.at(-1) as HumanMessage;
 };
 
-export const lastAIMessage = (record: RecordWithMessages): BaseMessage | undefined => {
+export const lastAIMessage = (record: RecordWithMessages): AIMessage | undefined => {
   if (!record.messages || record.messages.length === 0) {
     return undefined;
   }
   const aiMessages = record.messages.filter(msg => msg.getType() === "ai") as BaseMessage[];
-  return aiMessages.at(-1)
+  return aiMessages.at(-1) as AIMessage; 
 };
 
 export const countHumanMessages = (record: RecordWithMessages): number => {

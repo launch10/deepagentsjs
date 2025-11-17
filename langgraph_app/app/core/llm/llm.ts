@@ -3,7 +3,7 @@ import { type LLMSkill, type LLMSpeed, type LLMCost } from "./types";
 import { LLMManager } from "./core";
 
 const LLM_SPEED_DEFAULT: LLMSpeed = (process.env.LLM_SPEED === 'fast') ? "fast" : "slow";
-const LLM_COST_DEFAULT: LLMCost = (process.env.LLM_COST === 'paid') ? "paid" : "free";
+const LLM_COST_DEFAULT: LLMCost = (process.env.LLM_PAID === 'paid') ? "paid" : "free";
 const LLM_SKILL_DEFAULT: LLMSkill = 'writing';
 
 /**

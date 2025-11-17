@@ -40,9 +40,9 @@ const brainstormMiddleware = createMiddleware({
             systemPrompt,
         });
 
-        return toStructuredMessage(result as any) as any;
+        return await toStructuredMessage(result as any) as any;
     },
-});
+})
 
 /**
  * Node that asks a question to the user during brainstorming mode
@@ -65,14 +65,22 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
         middleware: [brainstormMiddleware],
     });
     const result = await agent.invoke(state as any, config) as BrainstormGraphState;
-    const agentResponse = lastAIMessage(result);
+    const lastMessage = lastAIMessage(result);
+    if (!lastMessage) {
+        throw new Error("Agent did not return an AI message");
+    }
+    const agentMessage = await toStructuredMessage(lastMessage);
+
+    if (!agentMessage) {
+        throw new Error("Agent did not return an AI message");
+    }
 
     const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } = await new BrainstormNextStepsService(state).nextSteps();
 
     return {
         redirect: result.redirect as Brainstorm.RedirectType,
         skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
-        messages: [agentResponse],
+        messages: [...state.messages, agentMessage],
         memories,
         currentTopic,
         remainingTopics,
