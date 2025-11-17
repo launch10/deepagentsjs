@@ -14,6 +14,8 @@ Rails.application.routes.draw do
   constraints ADMIN_ONLY do
     mount Sidekiq::Web => "/sidekiq"
     mount Zhong::Web => "/zhong"
+    mount Rswag::Ui::Engine => '/api-docs'
+    mount Rswag::Api::Engine => '/api-docs'
   end
 
   constraints LOCAL_ENV_ONLY do
