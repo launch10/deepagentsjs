@@ -1,0 +1,75 @@
+---
+openapi: 3.0.1
+info:
+  title: API V1
+  version: v1
+paths:
+  "/themes":
+    get:
+      summary: Lists all themes
+      tags:
+      - Themes
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: returns empty array when no themes exist
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Unique identifier
+                    name:
+                      type: string
+                      description: Theme name
+                    colors:
+                      type: object
+                      description: Theme color palette
+                    theme:
+                      type: object
+                      description: Theme configuration
+                    theme_labels:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            description: Unique identifier
+                          name:
+                            type: string
+                            description: Label name
+                      description: Associated theme labels
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Timestamp
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Timestamp
+                  required:
+                  - id
+                  - name
+                  - colors
+                  - theme
+                  - created_at
+                  - updated_at
+        '401':
+          description: unauthorized - invalid token
+servers:
+- url: https://{defaultHost}
+  variables:
+    defaultHost:
+      default: www.example.com
