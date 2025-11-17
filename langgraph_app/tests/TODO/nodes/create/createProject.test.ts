@@ -1,6 +1,6 @@
 // import { describe, it, expect, beforeAll } from 'vitest';
 // import { testGraph } from '@support';
-// import { lastAIMessage } from '@annotation';
+// import { lastAIMessage } from '@types';
 // import { DatabaseSnapshotter } from '@services';
 // import { routerGraph } from '@graphs';
 // import { startPolly } from '@utils';

@@ -1,8 +1,7 @@
-import fs from "fs";
-import path from "path";
 import { type BrainstormGraphState } from "@state";
 import { Brainstorm, type LangGraphRunnableConfig, isHumanMessage } from "@types";
 import { structuredOutputPrompt, renderPrompt } from "@prompts";
+import { lastHumanMessage } from "@types";
 import {
     whereWeArePrompt,
     currentTopicPrompt,
@@ -13,8 +12,8 @@ import {
 } from "../shared";
 
 export const helpMePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
-    const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
-    if (!lastHumanMessage) {
+    const message = lastHumanMessage(state);
+    if (!message) {
         throw new Error("No human message found");
     }
 

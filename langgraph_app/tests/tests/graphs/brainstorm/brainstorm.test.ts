@@ -4,7 +4,7 @@ import { type BrainstormGraphState } from '@state';
 import { DatabaseSnapshotter, BrainstormNextStepsService } from '@services';
 import { brainstormGraph as uncompiledGraph } from '@graphs';
 import { HumanMessage, AIMessage, BaseMessage } from '@langchain/core/messages';
-import { lastAIMessage } from '@annotation';
+import { lastAIMessage } from '@types';
 import { createBrainstorm } from '@nodes';
 import { summarizeAndSaveAnswers } from '@tools';
 import { v7 as uuidv7 } from 'uuid';

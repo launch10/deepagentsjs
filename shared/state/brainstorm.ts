@@ -17,7 +17,7 @@ export type BrainstormGraphState = Simplify<CoreGraphState & {
 
 export type BrainstormLanggraphData = LanggraphData<
     BrainstormGraphState,
-    typeof Brainstorm.structuredMessageSchema
+    typeof Brainstorm.structuredMessageSchemas
 >
 
 // Clean, flattened message type for consumer use

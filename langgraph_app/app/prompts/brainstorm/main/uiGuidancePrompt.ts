@@ -1,20 +1,20 @@
 import { type BrainstormGraphState } from "@state";
-import { type LangGraphRunnableConfig, isHumanMessage } from "@types";
-import { structuredOutputPrompt, renderPrompt } from "@prompts";
+import { type LangGraphRunnableConfig, Brainstorm } from "@types";
 import { finishedTool } from "@tools";
 import { toolsPrompt } from "@prompts";
+import { structuredOutputPrompt } from "@prompts";
 import {
     collectedAnswersPrompt,
     backgroundPrompt,
 } from "../shared";
 
 export const uiGuidancePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
-    const [background, availableTools, collectedAnswers] = await Promise.all([
+    const [background, availableTools, collectedAnswers, outputInstructions] = await Promise.all([
         backgroundPrompt(state, config),
         toolsPrompt({ tools: [finishedTool] }),
         collectedAnswersPrompt(state, config),
+        structuredOutputPrompt({ schema: Brainstorm.replySchema }),
     ]);
-    const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
 
     // TODO: Use tagged messages to determine if we've JUST finished brainstorming
     return `
@@ -181,5 +181,7 @@ export const uiGuidancePrompt = async(state: BrainstormGraphState, config?: Lang
                 "conclusion": "Clearly state the next step" // Optional, only if necessary
             }
         </output>
+
+        ${outputInstructions}
     `
 }

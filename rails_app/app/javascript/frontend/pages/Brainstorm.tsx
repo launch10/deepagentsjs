@@ -46,6 +46,7 @@ export default function Brainstorm(props: BrainstormProps) {
             },
             getInitialThreadId: () => urlThreadId.current,
         });
+    console.log(state.availableCommands)
 
     useEffect(() => {
         if (urlThreadId.current === threadId) return;
@@ -111,7 +112,7 @@ export default function Brainstorm(props: BrainstormProps) {
                 onChange={(e) => setInput(e.target.value)}
                 onSubmit={(e) => {
                 e.preventDefault();
-                sendMessage({ text: input });
+                sendMessage(input);
                 setInput('');
                 }}
             />

@@ -23,7 +23,7 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
     const topics = arrayDifference(
         state.remainingTopics.concat(state.skippedTopics),
         ['lookAndFeel']
-    )
+    ) satisfies Brainstorm.TopicName[];
 
     const [whereWeAre, collectedAnswers, background, topicSpecificHelp] = await Promise.all([
         whereWeArePrompt(state, config),

@@ -5,6 +5,7 @@ import { isHumanMessage } from "@types";
 import { Brainstorm } from "@types";
 import { BrainstormNextStepsService } from "@services";
 import { BaseMessage } from "@langchain/core/messages";
+import { is } from "drizzle-orm";
 
 const getCommand = async (state: BrainstormGraphState): Promise<Brainstorm.Command | undefined> => {
     const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);

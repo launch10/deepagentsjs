@@ -8,7 +8,7 @@ import {
     CodeTask,
     type ThemeVariantType,
 } from "@types";
-import { lastHumanMessage } from "@annotation";
+import { lastHumanMessage } from "@types";
 import { createComponentPrompt } from "@prompts";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { 

@@ -1,7 +1,7 @@
 import { type WebsiteGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@core";
-import { lastHumanMessage } from "@annotation";
+import { lastHumanMessage } from "@types";
 import { PlanPageService, type PlanPageOutputType, type PlanPageProps } from "@services";
 
 /**

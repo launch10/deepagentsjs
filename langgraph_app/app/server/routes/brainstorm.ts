@@ -27,8 +27,8 @@ brainstormRoutes.post('/stream', authMiddleware, async (c) => {
   let stateObj = state || {};
 
   return await streamLanggraph<BrainstormLanggraphData>({ 
-    graph: graph as any, // TODO: Fix
-    messageSchema: Brainstorm.questionSchema,
+    graph: graph as any,
+    messageSchema: Brainstorm.structuredMessageSchemas,
     messages,
     threadId,
     state: {
@@ -49,7 +49,7 @@ brainstormRoutes.get('/stream', authMiddleware, async (c) => {
 
   return fetchLanggraphHistory<BrainstormLanggraphData>({
     graph: graph as any,
-    messageSchema: Brainstorm.questionSchema,
+    messageSchema: Brainstorm.structuredMessageSchemas,
     threadId,
   });
 });

@@ -31,3 +31,5 @@ export const structuredMessageSchema = z.discriminatedUnion("type", [
 
 // Union of all possible response types
 export type StructuredMessageType = z.infer<typeof structuredMessageSchema>;
+
+export const structuredMessageSchemas = [replySchema, helpMeSchema] as const;

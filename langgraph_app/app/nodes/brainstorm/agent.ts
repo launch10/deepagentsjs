@@ -11,6 +11,8 @@ import {
 import { type BrainstormGraphState } from "@state";
 import z from "zod";
 import { BrainstormNextStepsService } from "@services";
+import { toStructuredMessage } from "langgraph-ai-sdk";
+import { lastAIMessage } from "@types";
 
 // This is going to help us dynamically allocate tools and switch the system
 // prompt based on the current topic
@@ -37,16 +39,8 @@ const brainstormMiddleware = createMiddleware({
             ...request,
             systemPrompt,
         });
-        if (result instanceof AIMessage) {
-            return result
-        }
-        const structuredResponse = result.structuredResponse
 
-        const aiMessage = new AIMessage({
-            content: JSON.stringify(structuredResponse, null, 2),
-            response_metadata: structuredResponse,
-        });
-        return aiMessage
+        return toStructuredMessage(result as any) as any;
     },
 });
 
@@ -69,24 +63,16 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
         model: llm,
         tools,
         middleware: [brainstormMiddleware],
-        responseFormat: [
-            Brainstorm.replySchema,
-            Brainstorm.helpMeSchema,
-        ] as const,
     });
-    const result = await agent.invoke(state, config);
-    const aiMessage = result.messages.at(-1);
-
-    if (!aiMessage) {
-        throw new Error("No AI message found");
-    }
+    const result = await agent.invoke(state as any, config) as BrainstormGraphState;
+    const agentResponse = lastAIMessage(result);
 
     const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } = await new BrainstormNextStepsService(state).nextSteps();
 
     return {
         redirect: result.redirect as Brainstorm.RedirectType,
         skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
-        messages: [...(state.messages || []), aiMessage],
+        messages: [agentResponse],
         memories,
         currentTopic,
         remainingTopics,

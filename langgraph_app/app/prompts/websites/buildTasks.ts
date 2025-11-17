@@ -5,7 +5,7 @@ import {
 
 import { todoListSchema, } from "@types";
 import { BaseMessage } from "@langchain/core/messages";
-import { lastHumanMessage } from "@annotation";
+import { lastHumanMessage } from "@types";
 import type { WebsiteType, FileType } from "@types";
 import { CodeFileModel, FileSpecificationModel } from "@models";
 

@@ -1,7 +1,7 @@
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { getLLM } from "@core";
-import { lastHumanMessage } from "@annotation";
+import { lastHumanMessage } from "@types";
 import { BaseMessage } from "@langchain/core/messages";
 
 export type NotifyStartOutputType = {
