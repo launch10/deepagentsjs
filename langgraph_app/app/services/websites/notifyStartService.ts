@@ -1,7 +1,7 @@
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { getLlm, LLMSkill } from "@core";
-import { lastHumanMessage } from "@annotation";
+import { getLLM } from "@core";
+import { lastHumanMessage } from "@types";
 import { BaseMessage } from "@langchain/core/messages";
 
 export type NotifyStartOutputType = {
@@ -49,7 +49,7 @@ export class NotifyStartService {
           throw new Error("No user request found");
       }
       
-      const llm = getLlm(LLMSkill.Writing).withConfig({tags: ["notify"]});
+      const llm = getLLM("writing").withConfig({tags: ["notify"]});
       const prompt = await firstMessageInstructions.format({userRequest: userRequest?.content as string});
       const response = await llm.invoke(prompt, config);
 

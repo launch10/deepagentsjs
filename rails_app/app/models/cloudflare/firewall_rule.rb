@@ -35,7 +35,7 @@ class Cloudflare
     include Cloudflare::FirewallStatuses
 
     validates_presence_of :account_id, :firewall_id, :status
-    validates :status, presence: true, inclusion: { in: Cloudflare::FirewallStatuses::STATUS }
+    validates :status, presence: true, inclusion: {in: Cloudflare::FirewallStatuses::STATUS}
 
     scope :inactive, -> { where(status: Cloudflare::FirewallStatuses::INACTIVE) }
     scope :blocked, -> { where(status: Cloudflare::FirewallStatuses::BLOCKED) }

@@ -1,0 +1,12 @@
+{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "brainstormTest": {
+      "path": "./app/graphs/brainstormTest.ts:brainstormTestGraph",
+      "input": "messages"
+    }
+  },
+  "env": ".env"
+}

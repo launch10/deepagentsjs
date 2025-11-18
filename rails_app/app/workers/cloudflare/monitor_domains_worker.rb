@@ -8,9 +8,9 @@ class Cloudflare
       Domain.monitor_cloudflare_zone(zone_id)
     end
 
-    class BatchWorker 
+    class BatchWorker
       include Sidekiq::Worker
-      
+
       def perform
         Domain.actually_monitor_cloudflare_domains
       end

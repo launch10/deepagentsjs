@@ -2,7 +2,7 @@
 
 module Atlas
   class DomainService < BaseService
-    BASE_PATH = '/api/internal/domains'
+    BASE_PATH = "/api/internal/domains"
 
     def list(limit: nil, website_id: nil)
       params = {}

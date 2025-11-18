@@ -7,7 +7,7 @@ RSpec.describe "Websites", type: :request do
   let(:project) { create(:project, account: account) }
   let(:headers) { auth_headers_for(user) }
   let!(:template) { create(:template) }
-  
+
   describe "POST /websites" do
     let(:valid_params) do
       {
@@ -22,9 +22,9 @@ RSpec.describe "Websites", type: :request do
 
     context "without authentication" do
       it "returns unauthorized" do
-        expect { 
+        expect {
           post "/websites", params: valid_params, as: :json
-      }.to_not change(Website, :count)
+        }.to_not change(Website, :count)
         expect(response).to have_http_status(:unauthorized)
         expect(JSON.parse(response.body)["error"]).to eq("Missing token")
       end
@@ -32,7 +32,7 @@ RSpec.describe "Websites", type: :request do
 
     context "with invalid JWT" do
       it "returns unauthorized" do
-        expect { 
+        expect {
           post "/websites", params: valid_params, headers: invalid_auth_headers, as: :json
         }.to_not change(Website, :count)
         expect(response).to have_http_status(:unauthorized)
@@ -64,7 +64,7 @@ RSpec.describe "Websites", type: :request do
           # Verify subscription is set up
           expect(account.payment_processor).to be_present
           expect(account.payment_processor.subscribed?).to be true
-          
+
           expect {
             post "/websites", params: valid_params, headers: headers, as: :json
             if response.status != 201
@@ -72,13 +72,13 @@ RSpec.describe "Websites", type: :request do
               puts "Response body: #{response.body}"
             end
           }.to change(Website, :count).by(1)
-          
+
           expect(response).to have_http_status(:created)
-          
+
           json = JSON.parse(response.body)
           expect(json["thread_id"]).to eq(valid_params[:website][:thread_id])
           expect(json["name"]).to eq("My Landing Page")
-          
+
           website = Website.last
           expect(website.thread_id).to eq(valid_params[:website][:thread_id])
           expect(website.account_id).to eq(account.id)
@@ -92,7 +92,7 @@ RSpec.describe "Websites", type: :request do
 
           website = Website.last
           files = website.website_files
-          
+
           expect(files.map(&:path)).to contain_exactly("index.html", "styles.css")
           expect(files.find_by(path: "index.html").content).to include("Hello World")
           expect(files.find_by(path: "styles.css").content).to include("background: #fff")
@@ -100,7 +100,7 @@ RSpec.describe "Websites", type: :request do
 
         it "returns website json with files" do
           post "/websites", params: valid_params, headers: headers, as: :json
-          
+
           json = JSON.parse(response.body)
           expect(json["id"]).to be_present
           expect(json["thread_id"]).to be_present
@@ -112,9 +112,9 @@ RSpec.describe "Websites", type: :request do
           it "creates website even when thread_id is missing" do
             invalid_params = valid_params.deep_dup
             invalid_params[:website].delete(:thread_id)
-            
+
             post "/websites", params: invalid_params, headers: headers, as: :json
-            
+
             expect(response).to have_http_status(:created)
             json = JSON.parse(response.body)
             expect(json["id"]).to be_present
@@ -123,9 +123,9 @@ RSpec.describe "Websites", type: :request do
           it "returns errors when name is missing" do
             invalid_params = valid_params.deep_dup
             invalid_params[:website].delete(:name)
-            
+
             post "/websites", params: invalid_params, headers: headers, as: :json
-            
+
             expect(response).to have_http_status(:unprocessable_entity)
             json = JSON.parse(response.body)
             expect(json["errors"]).to include("Name can't be blank")
@@ -151,10 +151,10 @@ RSpec.describe "Websites", type: :request do
               .and change(WebsiteFile, :count).by(valid_website_files.count)
 
             expect(response).to have_http_status(:created)
-            
+
             website = Website.last
             expect(website.files.count).to eq(valid_website_files.count)
-            
+
             # Verify some specific files were created
             expect(website.files.pluck(:path)).to include(
               "src/components/Hero.tsx",

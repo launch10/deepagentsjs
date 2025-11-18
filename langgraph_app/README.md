@@ -7,6 +7,7 @@ AI-powered A/B tests for solo founders and marketers.
 ```bash
 nvm use && pnpm install
 cp .env.example .env
+cp .env.test.example .env.test
 pnpm test
 ```
 
@@ -22,6 +23,32 @@ pnpm db:reflect # In this app
 
 We have to perform a handful of database normalizations in order to make the schema consistent. If you need to add new
 ones, you add them to `scripts/db/preserve-relations.ts`.
+
+### Generating Rails API Types
+
+Rails uses RSwag to document its API. We use `openapi-typescript` to generate types from the API documentation.
+
+```bash
+pnpm api:generate
+```
+
+This ensures we have up-to-date types for the Rails API.
+
+```typescript
+import { createRailsApiClient, type paths } from "@rails_api";
+
+const client = createRailsApiClient({ jwt: this.jwt });
+
+// Response is properly typed, and will generate typescript errors if the API changes
+const response = await client.POST("/brainstorms", {
+  body: {
+    brainstorm: {
+      thread_id: threadId,
+      ...(name ? { name } : {}),
+    },
+  },
+});
+```
 
 ### REPL
 

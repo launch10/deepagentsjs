@@ -18,7 +18,7 @@ module Accounts
     def require_subscription!
       unless subscribed?
         if request.format.json?
-          render json: { error: 'Subscription required' }, status: :unauthorized
+          render json: {error: "Subscription required"}, status: :unauthorized
         else
           redirect_to pricing_path
         end

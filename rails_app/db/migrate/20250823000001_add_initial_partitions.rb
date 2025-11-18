@@ -4,7 +4,7 @@ class AddInitialPartitions < ActiveRecord::Migration[8.0]
       # Create partitions for domain_request_counts (monthly partitions)
       # Create partitions for current month and next 3 months
       create_domain_request_count_partitions
-      
+
       # Create partitions for user_request_counts (monthly partitions)
       # Create partitions for current month and next 3 months
       create_user_request_count_partitions

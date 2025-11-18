@@ -2,7 +2,7 @@ namespace :seeds do
   desc "Create a basic account"
   task basic_account: :environment do
     user = User.find_or_initialize_by(
-      email: "test_user@launch10.ai",
+      email: "test_user@launch10.ai"
     )
     user.update(
       password: "password",
@@ -15,15 +15,15 @@ namespace :seeds do
 
     # Account is automatically created via after_create callback
     account = user.owned_account
-    
+
     # Set up payment processor for the account
     # Use fake_processor for development/testing
     # account.set_payment_processor :stripe, allow_fake: true
     account.set_payment_processor :fake_processor, allow_fake: true
-    
+
     # Subscribe to a plan
     plan = Plan.last
-    
+
     # Create subscription through the payment processor
     unless account.plan&.present?
       plan.update(fake_processor_id: "abcefg")
@@ -33,7 +33,7 @@ namespace :seeds do
       )
       puts "Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"
     end
-    
+
     puts "Created user: #{user.email}"
     puts "Account: #{account.name} (ID: #{account.id})"
   end

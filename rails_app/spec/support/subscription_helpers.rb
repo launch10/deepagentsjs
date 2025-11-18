@@ -3,16 +3,16 @@ module SubscriptionHelpers
   def create_subscribed_user(plan_name: 'pro')
     user = create(:user)
     account = user.owned_account || create(:account, owner: user)
-    
+
     # Subscribe the account using Pay gem's fake processor
     subscribe_account(account, plan_name: plan_name)
-    
+
     user
   end
 
   def create_unsubscribed_user
     user = create(:user)
-    account = user.owned_account || create(:account, owner: user)
+    user.owned_account || create(:account, owner: user)
     user
   end
 
@@ -30,19 +30,19 @@ module SubscriptionHelpers
 
     # Set up payment processor
     account.set_payment_processor processor, allow_fake: true
-    
+
     # Find or create the plan
     plan = Plan.find_by(name: plan_name) || create(:plan, name: plan_name.to_sym, currency: 'usd')
     if plan.send("#{processor}_id").blank?
-      plan.update!("#{processor}_id" => plan_name, currency: 'usd') # or stripe_id, etc.
+      plan.update!("#{processor}_id" => plan_name, :currency => 'usd') # or stripe_id, etc.
     end
-    
+
     # Subscribe to the plan
     account.payment_processor.subscribe(
       plan: plan.send("#{processor}_id"),
       ends_at: nil
     )
-    
+
     account
   end
 

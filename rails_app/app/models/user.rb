@@ -69,8 +69,11 @@ class User < ApplicationRecord
   has_one :owned_account, class_name: "Account", foreign_key: "owner_id", dependent: :destroy
   has_one :payment_processor, through: :owned_account
   has_many :subscriptions, through: :owned_account
+
+  # Whenever we manage user-visibility, we should add it here to projects
   has_many :projects, through: :accounts
-  
+  has_many :websites, through: :projects
+
   def plan
     subscriptions.active.order(id: :desc).limit(1).first&.plan
   end
@@ -78,9 +81,8 @@ class User < ApplicationRecord
   def current_plan_id
     plan&.id
   end
-  
+
   def account
     owned_account
   end
-
 end

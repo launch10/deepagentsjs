@@ -19,6 +19,7 @@
 #  updated_at            :datetime         not null
 #  website_id            :integer
 #  summary               :text
+#  audience              :string
 #
 # Indexes
 #

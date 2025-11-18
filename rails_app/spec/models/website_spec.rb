@@ -461,11 +461,11 @@ describe Website do
 
       it "passes the deploy ID to the worker" do
         website_with_files.deploy
-        
+
         job = Deploy::DeployWorker.jobs.last
         deploy_id = job['args'].first
         deploy = Deploy.find(deploy_id)
-        
+
         expect(deploy.website_id).to eq(website_with_files.id)
         expect(deploy.status).to eq('pending')
       end
@@ -489,11 +489,11 @@ describe Website do
 
         it "executes the deploy successfully" do
           website_with_files.deploy
-          
+
           expect {
             Deploy::DeployWorker.drain
           }.to change { website_with_files.deploys.reload.completed.count }.by(1)
-          
+
           deploy = website_with_files.deploys.last.reload
           expect(deploy.status).to eq('completed')
           expect(deploy.is_live).to be true
@@ -501,13 +501,13 @@ describe Website do
 
         it "handles deploy failures gracefully" do
           allow_any_instance_of(Deploy).to receive(:build!).and_raise(StandardError, "Test error")
-          
+
           website_with_files.deploy
-          
+
           expect {
             Deploy::DeployWorker.drain
           }.to raise_error(StandardError)
-          
+
           deploy = website_with_files.reload.deploys.last
           expect(deploy.status).to eq('failed')
         end
@@ -528,7 +528,7 @@ describe Website do
 
       it "executes deploy synchronously" do
         result = website_with_files.deploy(async: false)
-        
+
         deploy = website_with_files.reload.deploys.last
         expect(deploy.status).to eq('completed')
         expect(result).to be true
@@ -575,25 +575,25 @@ describe Website do
 
       it "passes the correct deploy ID to the worker" do
         website_with_files.rollback
-        
+
         job = Deploy::RollbackWorker.jobs.last
         deploy_id = job['args'].first
-        
+
         expect(deploy_id).to eq(deploy1.id)
       end
 
       it "can rollback to a specific deploy asynchronously" do
         website_with_files.rollback(deploy1.id)
-        
+
         job = Deploy::RollbackWorker.jobs.last
         deploy_id = job['args'].first
-        
+
         expect(deploy_id).to eq(deploy1.id)
       end
 
       it "uses the critical queue" do
         website_with_files.rollback
-        
+
         job = Deploy::RollbackWorker.jobs.last
         expect(job['queue']).to eq('critical')
       end
@@ -601,23 +601,23 @@ describe Website do
       context "when worker processes the job" do
         it "executes the rollback successfully" do
           website_with_files.rollback
-          
+
           expect {
             Deploy::RollbackWorker.drain
           }.not_to raise_error
-          
+
           deploy1.reload
           deploy2.reload
-          
+
           expect(deploy1.is_live).to be true
           expect(deploy2.is_live).to be false
         end
 
         it "handles rollback failures gracefully" do
           allow_any_instance_of(Deploy).to receive(:actually_rollback).and_raise(StandardError, "Rollback error")
-          
+
           website_with_files.rollback
-          
+
           expect {
             Deploy::RollbackWorker.drain
           }.to raise_error(StandardError, /Rollback error/)
@@ -634,10 +634,10 @@ describe Website do
 
       it "executes rollback synchronously" do
         result = website_with_files.rollback(nil, async: false)
-        
+
         deploy1.reload
         deploy2.reload
-        
+
         expect(deploy1.is_live).to be true
         expect(deploy2.is_live).to be false
         expect(result).to be true
@@ -676,7 +676,7 @@ describe Website do
 
     it "creates a deploy with the specified environment" do
       website_with_files.deploy(async: false, environment: 'staging')
-      
+
       deploy = website_with_files.reload.deploys.last
       expect(deploy.environment).to eq('staging')
       expect(deploy.is_preview).to be false
@@ -684,13 +684,13 @@ describe Website do
 
     it "passes environment to deploy uploader" do
       expect(DeployUploader).to receive(:new).with(environment: 'staging').and_call_original
-      
+
       website_with_files.deploy(async: false, environment: 'staging')
     end
 
     it "defaults to development for test environment" do
       website_with_files.deploy(async: false)
-      
+
       deploy = website_with_files.reload.deploys.last
       expect(deploy.environment).to eq('development')
     end
@@ -707,7 +707,7 @@ describe Website do
 
     it "creates a preview deploy" do
       website_with_files.preview!
-      
+
       deploy = website_with_files.reload.deploys.last
       expect(deploy.is_preview).to be true
       expect(deploy.is_live).to be false
@@ -716,7 +716,7 @@ describe Website do
 
     it "uploads to preview directory instead of live" do
       expect(deploy_uploader).to receive(:hotswap_to_target).with(anything, 'preview').and_return(true)
-      
+
       website_with_files.preview!(async: false)
     end
 
@@ -725,11 +725,11 @@ describe Website do
       website_with_files.deploy!(async: false)
       live_deploy = website_with_files.reload.deploys.last
       expect(live_deploy.is_live).to be true
-      
+
       # Create a preview deploy
       website_with_files.preview!
       preview_deploy = website_with_files.deploys.last
-      
+
       # Check that live deploy is still live
       live_deploy.reload
       expect(live_deploy.is_live).to be true
@@ -745,7 +745,7 @@ describe Website do
 
     it "supports different environments for preview" do
       website_with_files.preview(async: false, environment: 'staging')
-      
+
       deploy = website_with_files.reload.deploys.last
       expect(deploy.environment).to eq('staging')
       expect(deploy.is_preview).to be true
@@ -765,22 +765,22 @@ describe Website do
       # Create production deploy
       website_with_files.deploy(async: false, environment: 'production')
       prod_deploy1 = website_with_files.reload.deploys.last
-      
+
       website_with_files.deploy(async: false, environment: 'production')
       prod_deploy2 = website_with_files.reload.deploys.last
-      
+
       # Create staging deploy
       website_with_files.deploy(async: false, environment: 'staging')
       staging_deploy = website_with_files.reload.deploys.last
-      
+
       # Rollback should only affect production
       expect_any_instance_of(Deploy).to receive(:actually_rollback).and_call_original
       website_with_files.rollback!
-      
+
       prod_deploy1.reload
       prod_deploy2.reload
       staging_deploy.reload
-      
+
       expect(prod_deploy1.is_live).to be true
       expect(prod_deploy2.is_live).to be false
       expect(staging_deploy.is_live).to be true # Staging should remain unaffected
@@ -789,7 +789,7 @@ describe Website do
     it "cannot rollback preview deploys" do
       website_with_files.preview!(async: false)
       preview_deploy = website_with_files.reload.deploys.last
-      
+
       expect {
         preview_deploy.rollback!
       }.to raise_error(RuntimeError, "Cannot rollback preview deploys")

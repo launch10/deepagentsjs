@@ -1,11 +1,12 @@
 import { z } from "zod";
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { ErrorExporter } from "@services";
 import { existsSync, readFileSync, writeFileSync, statSync, readdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { db, websiteFiles, websites, eq, sql } from '@db';
 import type { WebsiteFileType, ConsoleError } from '@types';
 import { loadScenarioConfig, loadScenarioModifications } from './scenarioSaver';
+import { withTimestamps } from '@db';
 
 // File modification schema for inline modifications
 export const fileModificationSchema = z.object({
@@ -79,7 +80,7 @@ export class ScenarioRunner {
     }
 
     if (this.snapshot) {
-      await databaseSnapshotter.restoreSnapshot(this.snapshot);
+      await DatabaseSnapshotter.restoreSnapshot(this.snapshot);
     }
 
     this.log(`restoring snapshot: ${this.snapshot}`);
@@ -260,11 +261,11 @@ export class ScenarioRunner {
       
       if (!file) {
         const [newFile] = await db.insert(websiteFiles)
-          .values({
+          .values(withTimestamps({
             websiteId: this.websiteId!,
             path: mod.path,
             content: ''
-          })
+          }))
           .returning()
           .execute();
         file = newFile;

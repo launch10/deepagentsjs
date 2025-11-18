@@ -6,7 +6,8 @@ module Atlas
     def atlas_service
       Atlas.websites
     end
-  private
+
+    private
 
     def atlas_data_for_create
       {

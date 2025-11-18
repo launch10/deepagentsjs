@@ -2,11 +2,11 @@ class WebsitesController < SubscribedController
   def create
     website = current_account.websites.new(website_params)
     website.account_id = current_account.id
-    
+
     if website.save
       render json: website_json(website), status: :created
     else
-      render json: { errors: website.errors.full_messages }, status: :unprocessable_entity
+      render json: {errors: website.errors.full_messages}, status: :unprocessable_entity
     end
   end
 
@@ -20,10 +20,11 @@ class WebsitesController < SubscribedController
 
   def website_params
     params.require(:website).permit(
-      :name, 
-      :thread_id, 
-      :project_id, 
-      website_files_attributes: [:path, :content, :file_specification_id])
+      :name,
+      :thread_id,
+      :project_id,
+      website_files_attributes: [:path, :content, :file_specification_id]
+    )
   end
 
   def to_mini_json(website)

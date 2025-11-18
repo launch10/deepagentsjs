@@ -6,23 +6,23 @@ namespace :seeds do
     thread_id = SecureRandom.uuid
     project = Project.find_or_initialize_by(
       name: "My Great Site",
-      account: account,
+      account: account
     )
     project.update(
-      thread_id: thread_id,
+      thread_id: thread_id
     )
     website = Website.find_or_initialize_by(
       name: "My Great Site",
-      account: account,
+      account: account
     )
     website.update(
       thread_id: thread_id,
       project: project,
       template: Template.first
     )
-    
+
     domain = Domain.find_or_initialize_by(
-      domain: "example.launch10.ai",
+      domain: "example.launch10.ai"
     )
     domain.update(
       website: website,

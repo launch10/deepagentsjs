@@ -1,6 +1,6 @@
 MockTyphoeusResponse = Struct.new(:body, :timed_out, :code, :headers, :response) do
   def timed_out?
-    self.timed_out
+    timed_out
   end
 
   def run

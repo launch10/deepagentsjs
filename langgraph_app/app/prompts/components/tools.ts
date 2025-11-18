@@ -1,8 +1,6 @@
 import { 
     renderPrompt,
-    type PromptMetadata
 } from "@prompts";
-import { allStructuredTools } from "@tools";
 import { StructuredTool } from "@langchain/core/tools";
 
 type ToolMap = Record<string, StructuredTool>;
@@ -24,10 +22,6 @@ export const toolsPrompt = async ({
         toolsArray = tools;
     }
 
-    if (!allStructuredTools(toolsArray)) {
-        throw new Error('toolsPrompt requires tools to implement StructuredToolInterface');
-    }
-
     const toolInstructions = toolsArray.map(tool => {
         return `
             <important>
@@ -37,6 +31,7 @@ export const toolsPrompt = async ({
             <tool>
               <name>${tool.name}</name>
               <description>${tool.description}</description>
+              <schema>${tool.schema}</schema>
             </tool>
         `;
     }).join('\n');
@@ -47,10 +42,3 @@ export const toolsPrompt = async ({
         </tools>
     `);
 };
-
-toolsPrompt.promptMetadata = {
-    name: 'Tools Prompt',
-    category: 'Core',
-    description: 'Generates a prompt for a list of tools',
-    examples: []
-} as PromptMetadata;

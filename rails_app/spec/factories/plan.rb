@@ -6,7 +6,7 @@ FactoryBot.define do
     interval { 'month' }
     amount { 1900 }
     stripe_id { 'personal' }
-    details { { features: ['Unlimited access'] } }
+    details { {features: ['Unlimited access']} }
 
     trait :starter do
       name { 'starter' }

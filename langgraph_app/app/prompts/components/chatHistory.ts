@@ -1,4 +1,5 @@
 import { renderPrompt } from '@prompts';
+import { type Message, isHumanMessage, isAIMessage } from "@types";
 
 /**
  * The chatHistory function renders a <chat-history> tag,
@@ -16,10 +17,20 @@ import { renderPrompt } from '@prompts';
  * chatHistory({ messages })
  * ```
  */
-export async function chatHistoryPrompt({ messages }: { messages: { role: string; content: string }[] }): Promise<string> {
-  const messageElements = messages?.map(({ role, content }) => 
-    `<message>${role}: ${JSON.stringify(content, null, 4)}</message>`
-  ).join('') || '';
+export async function chatHistoryPrompt({ messages, limit }: { messages: Message[], limit?: number }): Promise<string> {
+  const allowedMessages = messages.filter((m) => typeof m.content === 'string')
+  let countExtraMessages = allowedMessages.length - (limit || 0);
+  let filteredMessages = limit ? allowedMessages.slice(-limit) : allowedMessages;
+  let messageElements = filteredMessages?.map((message) => {
+    const type = isHumanMessage(message) ? "human" : "assistant";
+
+    return `\n  <message>${type}: ${JSON.stringify(message.content, null, 4)}</message>`;
+  });
+
+  if (countExtraMessages > 0) {
+    messageElements.unshift(`\n  <message>... ${countExtraMessages} more messages...</message>`);
+  }
   
-  return renderPrompt(`<chat-history>${messageElements}</chat-history>`);
+  // Don't use renderPrompt here - xml-formatter can reorder elements
+  return `<chat-history>${messageElements.join('')}\n</chat-history>`;
 }

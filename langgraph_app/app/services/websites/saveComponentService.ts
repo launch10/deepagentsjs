@@ -10,9 +10,6 @@ import {
   ComponentContentPlanModel, 
   ComponentOverviewModel, 
   FileSpecificationModel, 
-  CodeTaskModel,
-  ComponentModel,
-  WebsiteFileModel,
 } from "@models";
 import { 
   db, eq,
@@ -23,8 +20,6 @@ import {
   componentContentPlans as componentContentPlansTable 
 } from "@db";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { Theme } from "app/shared/types/website";
-import { ThemeVariantModel } from "app/models/themeVariant";
 
 export type SaveComponentProps = {
     componentOverview?: ComponentOverviewType;

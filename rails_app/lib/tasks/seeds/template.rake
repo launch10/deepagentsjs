@@ -34,13 +34,16 @@ namespace :seeds do
     Template.where(name: templates_to_destroy.map(&:name)).destroy_all
 
     # Import templates and their files
-    Template.import(templates, on_duplicate_key_update: { conflict_target: :name, columns: :all })
-    TemplateFile.import(template_files, on_duplicate_key_update: { conflict_target: [:template_id, :path], columns: :all })
-    
+    Template.import(templates, on_duplicate_key_update: {conflict_target: :name, columns: :all})
+    TemplateFile.import(template_files, on_duplicate_key_update: {conflict_target: [:template_id, :path], columns: :all})
+
     templates.each do |template|
       # Destroy any template files that are no longer in the seed data
-      current_files = Dir.glob(Rails.root.join("templates", template.name, "**", "*")).map { |file| file.sub(
-        Regexp.new(Rails.root.join("templates", template.name).to_s), "").gsub(/^\//, "") }
+      current_files = Dir.glob(Rails.root.join("templates", template.name, "**", "*")).map { |file|
+        file.sub(
+          Regexp.new(Rails.root.join("templates", template.name).to_s), ""
+        ).gsub(/^\//, "")
+      }
       TemplateFile.where(template_id: template.id).where.not(path: current_files).destroy_all
     end
   end

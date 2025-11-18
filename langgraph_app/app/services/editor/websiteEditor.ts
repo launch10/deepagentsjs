@@ -1,4 +1,4 @@
-import { databaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from '@services';
 import { db, websites, websiteFiles, eq, and } from '@db';
 import { FileExporter } from './core/fileExporter';
 import { WebsiteRunner } from './core/websiteRunner';
@@ -10,6 +10,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { loadScenarioConfig, type ScenarioConfig } from './scenarios';
 import { ScenarioRunner } from './scenarios';
+import { withTimestamps } from '@db';
 
 const execAsync = promisify(exec);
 
@@ -127,7 +128,7 @@ export class WebsiteEditor implements AsyncDisposable {
    */
   private async restoreSnapshot(): Promise<void> {
     console.log(`\n📂 Restoring snapshot: ${this.snapshotName}...`);
-    await databaseSnapshotter.restoreSnapshot(this.snapshotName);
+    await DatabaseSnapshotter.restoreSnapshot(this.snapshotName);
     console.log(`✅ Snapshot restored`);
   }
 
@@ -264,11 +265,11 @@ export class WebsiteEditor implements AsyncDisposable {
       } else {
         // Create new file
         await db.insert(websiteFiles)
-          .values({
+          .values(withTimestamps({
             websiteId: this.websiteId!,
             path: relativePath,
             content
-          });
+          }));
         console.log(`   ✅ Added to database`);
       }
     } catch (error) {
@@ -373,7 +374,7 @@ export class WebsiteEditor implements AsyncDisposable {
       if (this.saveMode === 'snapshot') {
         // Save the current state as a snapshot
         console.log(`💾 Saving snapshot: ${this.snapshotName}...`);
-        await databaseSnapshotter.createSnapshot(this.snapshotName);
+        await DatabaseSnapshotter.createSnapshot(this.snapshotName);
         console.log(`✅ Snapshot saved`);
       } else if (this.saveMode === 'scenario' && this.scenarioSaver) {
         // Save scenario to filesystem

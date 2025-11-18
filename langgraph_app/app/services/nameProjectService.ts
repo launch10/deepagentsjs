@@ -1,9 +1,7 @@
 import { z } from "zod";
-import { withCaching } from "@core";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLlm, LLMSkill, LLMSpeed, defaultCachePolicy } from "@core";
+import { getLLM } from "@core";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { type NotificationOptions } from "@core";
 import { structuredOutputPrompt } from "@prompts";
 import { withStructuredResponse } from "@utils";
 
@@ -27,24 +25,20 @@ const basePrompt = PromptTemplate.fromTemplate(`
     {schema}
 `);
 
-export const notificationContext: NotificationOptions = {
-    taskName: "Generating project name",
-};
+// export const notificationContext: NotificationOptions = {
+//     taskName: "Generating project name",
+// };
 /**
  * Approach 1: Decorated Class (becomes a Runnable automatically)
  */
 export class NameProjectService {
-    @withCaching({
-        prefix: "projectNameGenerator",
-        ...defaultCachePolicy
-    })
     async execute(input: ProjectNameInput, config?: LangGraphRunnableConfig): Promise<string> {
         const { userRequest } = input;
         if (!userRequest) {
             throw new Error('User request is required');
         }
         
-        const rawResponse = await this.generateRawProjectName(userRequest, LLMSkill.Writing, LLMSpeed.Slow, config);
+        const rawResponse = await this.generateRawProjectName(userRequest, "writing", "fast", config);
         const validatedName = this.validateProjectName(rawResponse.projectName);
         const uniqueName = await this.ensureUniqueness(validatedName);
         
@@ -53,15 +47,14 @@ export class NameProjectService {
 
     async generateRawProjectName(
         userRequest: string, 
-        llmSkill = LLMSkill.Writing, 
-        llmSpeed = LLMSpeed.Slow,
+        llmSkill: "writing" | "planning" | "coding" | "reasoning" | undefined = "writing", 
+        llmSpeed: "slow" | "fast" | undefined = "fast",
         config?: LangGraphRunnableConfig
     ): Promise<{ projectName: string }> {
-        const llm = getLlm(llmSkill, llmSpeed);
+        const llm = getLLM(llmSkill, llmSpeed);
         const schemaPrompt = await structuredOutputPrompt({ schema: projectNameOutputSchema });
         const prompt = await basePrompt.format({ userRequest, schema: schemaPrompt });
-        // const structuredLlm = llm.withStructuredOutput(projectNameOutputSchema);
-        // return await structuredLlm.invoke(prompt) as { projectName: string };
+
         return withStructuredResponse({
             llm,
             prompt,

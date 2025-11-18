@@ -1,19 +1,22 @@
 import { HumanMessage, BaseMessage } from '@langchain/core/messages';
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { type GraphState } from "@state";
+import { type CoreGraphState } from "@state";
 import { generateUUID, type ConsoleError } from "@types";
 import { isGraphInterrupt } from "@langchain/langgraph";
 import { runScenario } from '@services';
+import { interruptContext } from "app/core/node/middleware";
+import { CompiledStateGraph } from "@langchain/langgraph";
+import { graphParams } from "@core";
 import { vi } from 'vitest';
-export interface NodeTestResult {
-    state: GraphState;
-    output: any;
+export interface NodeTestResult<TState extends CoreGraphState> {
+    state: TState;
     messages: BaseMessage[];
     error?: Error;
     promptSpy?: Map<string, string[]>;
     serviceSpy?: Map<string, any[]>;
 }
 
+type CompiledGraph = CompiledStateGraph<any, any, any, any, any, any, any, any, any>;
 export interface GraphTestConfig {
     usePolly?: boolean;
 }
@@ -26,11 +29,10 @@ export interface GraphTestConfig {
  * - Tests through the main router graph for full execution flow visibility
  * - Can interrupt at any node, including nodes within subgraphs
  * - Uses LangGraph's native interrupt mechanism
- * - Works seamlessly with nodes that extend BaseNode
  * 
  * How it works:
  * 1. Set TEST_INTERRUPT_NODE environment variable to the target node name
- * 2. Nodes extending BaseNode will check this and interrupt after execution
+ * 2. Nodes using NodeMiddleware will check this and interrupt after execution
  * 3. The interrupt includes the full state at that point
  * 4. The test captures and returns this state for assertions
  * 
@@ -41,24 +43,27 @@ export interface GraphTestConfig {
  *   .stopAfter("nameProject")  // Can be any node, even in subgraphs
  *   .execute();
  */
-export class GraphTestBuilder {
+export class GraphTestBuilder<TGraphState extends CoreGraphState> {
     private prompt!: string;
+    private name?: string;
     private targetNode!: string;
-    private initialState: Partial<GraphState> = {};
+    private initialState: Partial<TGraphState> = {};
     private config: Partial<LangGraphRunnableConfig> = {};
-    private graph: any;
+    private graph: CompiledGraph | undefined;
     private websiteName?: string; // Store project name for deferred loading
     private capturePrompts: string[] = [];
     private capturedPromptOutputs: Map<string, string[]> = new Map();
     private captureServices: string[] = [];
     private capturedserviceSpy: Map<string, any[]> = new Map();
     private scenario?: string;
+    private threadId?: string;
 
     constructor() {
         // Initialize with an in-memory checkpointer for tests
+        this.threadId = generateUUID();
         this.config = {
             configurable: {
-                thread_id: generateUUID(),
+                thread_id: this.threadId,
             }
         };
 
@@ -71,20 +76,25 @@ export class GraphTestBuilder {
     /**
      * Set the initial user prompt for the test
      */
-    withPrompt(prompt: string): GraphTestBuilder {
+    withPrompt(prompt: string): GraphTestBuilder<TGraphState> {
         this.prompt = prompt;
+        return this;
+    }
+
+    withName(name: string): GraphTestBuilder<TGraphState> {
+        this.name = name;
         return this;
     }
 
     /**
      * Set the graph instance to test
      */
-    withGraph(graph: any): GraphTestBuilder {
+    withGraph(graph: CompiledGraph): GraphTestBuilder<TGraphState> {
         this.graph = graph;
         return this;
     }
 
-    withScenario(scenario: string): GraphTestBuilder {
+    withScenario(scenario: string): GraphTestBuilder<TGraphState> {
         this.scenario = scenario;
         return this;
     }
@@ -92,7 +102,7 @@ export class GraphTestBuilder {
     /**
      * Set additional initial state
      */
-    withState(state: Partial<GraphState>): GraphTestBuilder {
+    withState(state: Partial<TGraphState>): GraphTestBuilder<TGraphState> {
         this.initialState = { ...this.initialState, ...state };
         return this;
     }
@@ -100,7 +110,7 @@ export class GraphTestBuilder {
     /**
      * Set additional config options
      */
-    withConfig(config: Partial<LangGraphRunnableConfig>): GraphTestBuilder {
+    withConfig(config: Partial<LangGraphRunnableConfig>): GraphTestBuilder<TGraphState> {
         this.config = { ...this.config, ...config };
         return this;
     }
@@ -109,7 +119,7 @@ export class GraphTestBuilder {
      * Resume from a project's saved thread state (deferred until execution)
      * @param websiteName The name of the website to resume from
      */
-    withWebsite(websiteName: string): GraphTestBuilder {
+    withWebsite(websiteName: string): GraphTestBuilder<TGraphState> {
         this.websiteName = websiteName;
         // Clear any existing thread_id as it will be loaded from the project
         delete this.config.configurable?.thread_id;
@@ -142,7 +152,7 @@ export class GraphTestBuilder {
     /**
      * Specify which node to stop after (alias for testNode)
      */
-    stopAfter(nodeName: string): GraphTestBuilder {
+    stopAfter(nodeName: string): GraphTestBuilder<TGraphState> {
         this.targetNode = nodeName;
         return this;
     }
@@ -150,14 +160,14 @@ export class GraphTestBuilder {
     /**
      * Specify which node to test (alias for stopAfter)
      */
-    testNode(nodeName: string): GraphTestBuilder {
+    testNode(nodeName: string): GraphTestBuilder<TGraphState> {
         return this.stopAfter(nodeName);
     }
 
     /**
      * Capture outputs from specified prompt functions
      */
-    withPromptSpy(promptNames: string[]): GraphTestBuilder {
+    withPromptSpy(promptNames: string[]): GraphTestBuilder<TGraphState> {
         this.capturePrompts = promptNames;
         return this;
     }
@@ -165,7 +175,7 @@ export class GraphTestBuilder {
     /**
      * Capture outputs from specified service classes
      */
-    withServiceSpy(serviceNames: string[]): GraphTestBuilder {
+    withServiceSpy(serviceNames: string[]): GraphTestBuilder<TGraphState> {
         this.captureServices = serviceNames;
         return this;
     }
@@ -173,7 +183,7 @@ export class GraphTestBuilder {
     /**
      * Execute the graph up to the target node and return the result
      */
-    async execute(): Promise<NodeTestResult> {
+    async execute(): Promise<NodeTestResult<TGraphState>> {
         if (!this.prompt) {
             throw new Error("Prompt is required. Use .withPrompt() to set it.");
         }
@@ -194,13 +204,6 @@ export class GraphTestBuilder {
         // Load thread ID if website specified
         await this.loadThread();
 
-        // Set up environment for mocking
-        const originalEnv = process.env.NODE_ENV;
-        const originalInterruptNode = process.env.TEST_INTERRUPT_NODE;
-        
-        process.env.NODE_ENV = "test";
-        process.env.TEST_INTERRUPT_NODE = this.targetNode;
-        
         let consoleErrors: ConsoleError[] = [];
         if (this.scenario && this.websiteName) {
             const scenarioRunner = await runScenario({
@@ -212,61 +215,47 @@ export class GraphTestBuilder {
         }
 
         const initialStateMessages = this.initialState.messages || [];
-        // Prepare initial state with the user message
         const userMessage = new HumanMessage(this.prompt);
-        const initialState: GraphState = {
+        
+        const baseState = {
             ...this.initialState,
-            consoleErrors,
             messages: [...initialStateMessages, userMessage],
-        } as GraphState;
+        };
+        
+        const initialState: TGraphState = (this.graph.channels?.consoleErrors 
+            ? { ...baseState, consoleErrors }
+            : baseState
+        ) as TGraphState;
 
         try {
             const testGraph = this.graph; 
 
-            // Execute the graph - it may interrupt
-            const result = await testGraph.invoke(initialState, this.config);
+            const result = this.targetNode 
+                ? await interruptContext.run({ nodeName: this.targetNode }, async () => {
+                    return await testGraph.invoke(initialState, this.config);
+                })
+                : await testGraph.invoke(initialState, this.config);
             
-            // Check if the result contains an interrupt (native LangGraph interrupt)
             if (result && result.__interrupt__) {
-                // Extract the interrupt data
-                const interrupts = result.__interrupt__;
-                if (Array.isArray(interrupts) && interrupts.length > 0) {
-                    const interruptData = interrupts[0].value;
-                    
-                    // If the interrupt contains our test state, use it
-                    if (interruptData && interruptData.state) {
-                        return {
-                            state: interruptData.state,
-                            output: interruptData.state,
-                            messages: interruptData.state.messages || [],
-                            error: undefined,
-                            promptSpy: this.capturedPromptOutputs,
-                            serviceSpy: this.capturedserviceSpy
-                        };
-                    }
-                }
-                
-                // Fallback: use the result itself (minus the __interrupt__ key)
-                const { __interrupt__, ...stateWithoutInterrupt } = result;
+                // The state at the time of interrupt is the result minus the __interrupt__ key
+                const { __interrupt__, ...stateAtInterrupt } = result;
+                const state = __interrupt__[0].value.state;
                 return {
-                    state: stateWithoutInterrupt,
-                    output: stateWithoutInterrupt,
-                    messages: stateWithoutInterrupt.messages || [],
+                    state,
+                    messages: state.messages || [],
                     error: undefined,
                     promptSpy: this.capturedPromptOutputs,
                     serviceSpy: this.capturedserviceSpy
                 };
             }
-
-            // Normal completion - return the result
+            
             return {
                 state: result,
-                output: result,
                 messages: result.messages || [],
                 error: result.error,
                 promptSpy: this.capturedPromptOutputs,
                 serviceSpy: this.capturedserviceSpy
-            };
+            }
         } catch (error) {
             // Check if this is a GraphInterrupt - this is expected for test interrupts
             if (isGraphInterrupt(error)) {
@@ -275,7 +264,6 @@ export class GraphTestBuilder {
                 if (interruptValue && interruptValue.state) {
                     return {
                         state: interruptValue.state,
-                        output: interruptValue.state,
                         messages: interruptValue.state.messages || [],
                         error: undefined,
                         promptSpy: this.capturedPromptOutputs,
@@ -285,7 +273,6 @@ export class GraphTestBuilder {
                 // Fallback: use the initial state with updates from the error
                 return {
                     state: { ...initialState, ...(interruptValue || {}) },
-                    output: interruptValue || null,
                     messages: initialState.messages || [],
                     error: undefined,
                     promptSpy: this.capturedPromptOutputs,
@@ -296,20 +283,12 @@ export class GraphTestBuilder {
             // Regular error - return as error
             return {
                 state: initialState,
-                output: null,
                 messages: initialState.messages || [],
                 error: error as Error,
                 promptSpy: this.capturedPromptOutputs,
                 serviceSpy: this.capturedserviceSpy
             };
         } finally {
-            // Restore environment
-            process.env.NODE_ENV = originalEnv;
-            if (originalInterruptNode !== undefined) {
-                process.env.TEST_INTERRUPT_NODE = originalInterruptNode;
-            } else {
-                delete process.env.TEST_INTERRUPT_NODE;
-            }
             // Clean up prompt mocks if they were set up
             if (this.capturePrompts.length > 0) {
                 this.cleanupPromptCapturing();
@@ -456,22 +435,22 @@ export class GraphTestBuilder {
 /**
  * Factory function to create a new GraphTestBuilder
  */
-export function testGraph(): GraphTestBuilder {
-    return new GraphTestBuilder();
+export function testGraph<TGraphState extends CoreGraphState>(): GraphTestBuilder<TGraphState> {
+    return new GraphTestBuilder<TGraphState>();
 }
 
 /**
  * Helper to quickly test a node with minimal setup
  */
-export async function testNode(
+export async function testNode<TGraphState extends CoreGraphState>(
     graph: any,
     nodeName: string, 
     prompt: string,
     options?: {
-        state?: Partial<GraphState>;
+        state?: Partial<TGraphState>;
     }
-): Promise<NodeTestResult> {
-    const builder = new GraphTestBuilder()
+): Promise<NodeTestResult<TGraphState>> {
+    const builder = new GraphTestBuilder<TGraphState>()
         .withGraph(graph)
         .withPrompt(prompt)
         .stopAfter(nodeName);

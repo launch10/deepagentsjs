@@ -1,6 +1,6 @@
 import readline from 'readline/promises';
 import { db, websites } from '@db';
-import { databaseSnapshotter, startWebsiteEditor, type WebsiteEditorOptions } from '@services';
+import { DatabaseSnapshotter, startWebsiteEditor, type WebsiteEditorOptions } from '@services';
 import { existsSync, readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 export abstract class ScenarioCore {
@@ -70,7 +70,7 @@ export abstract class ScenarioCore {
 
   public async selectSnapshot(): Promise<string> {
     // Get all available snapshots
-    const snapshots: string[] = await databaseSnapshotter.listSnapshots();
+    const snapshots: string[] = await DatabaseSnapshotter.listSnapshots();
     const snapsById: Record<number, string> = {}
     const snapsByName: Record<string, string> = {}
     
@@ -99,7 +99,7 @@ export abstract class ScenarioCore {
     }
 
     console.log(`\nRestoring snapshot: ${snapshot}`);
-    await databaseSnapshotter.restoreSnapshot(snapshot);
+    await DatabaseSnapshotter.restoreSnapshot(snapshot);
 
     return snapshot;
   }

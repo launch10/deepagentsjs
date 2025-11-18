@@ -25,7 +25,7 @@ FactoryBot.define do
     status { 'inactive' }
     cloudflare_zone_id { 'zone_123abc' }
     blocked_at { nil }
-    
+
     trait :blocked do
       status { 'blocked' }
       blocked_at { Time.current }

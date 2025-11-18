@@ -54,7 +54,6 @@ export class IndexCssService {
             let found = false;
             updatedRootContent = updatedRootContent.replace(variableRegex, (match, prefix, oldValue, suffix) => {
                 found = true;
-                // console.log(`Replacing ${variableName}: ${oldValue.trim()} with ${newValue}`); // Optional logging
                 return `${prefix} ${formattedHsl}${suffix || ';'}`;
             });
 
@@ -67,8 +66,6 @@ export class IndexCssService {
             }
         }
         
-        console.log(`CSS variable replacement completed. Found/Replaced: ${variablesFound}, Not Found in Template: ${variablesNotFound}`);
-
         const updatedBlock = `${layerPrefix}${rootPrefix}${updatedRootContent}}`;
         const indexCssFile: string = templateCss.replace(rootBlockRegex, updatedBlock);
 

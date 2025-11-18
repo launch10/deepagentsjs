@@ -1,9 +1,5 @@
 import { 
-    type NotificationOptions,
-    getLlm, 
-    LLMSkill, 
-    defaultCachePolicy, 
-    withInfrastructure,
+    getLLM, 
 } from "@core";
 import { 
     type CodeTaskType, 
@@ -12,7 +8,7 @@ import {
     CodeTask,
     type ThemeVariantType,
 } from "@types";
-import { lastHumanMessage } from "@annotation";
+import { lastHumanMessage } from "@types";
 import { createComponentPrompt } from "@prompts";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { 
@@ -33,33 +29,26 @@ export type CreateComponentProps = {
     task: CodeTaskType;
 }
 
-const notificationContext: NotificationOptions = {
-    taskName: async (task: CodeTaskType) => {
-      if (!task.componentOverviewId) {
-        return "Planning next section";
-      }
-      try {
-        const overview = await ComponentOverviewModel.find(task.componentOverviewId);
-        if (!overview || !overview.name) {
-          return "Planning next section";
-        }
-        return `Writing content for ${overview.name}`;
-      } catch (error) {
-        console.error('Planning next section failed:', error);
-        return "Planning next section";
-      }
-    },
-    taskType: Task.TypeEnum.CodeTask,
-};
+// const notificationContext: NotificationOptions = {
+//     taskName: async (task: CodeTaskType) => {
+//       if (!task.componentOverviewId) {
+//         return "Planning next section";
+//       }
+//       try {
+//         const overview = await ComponentOverviewModel.find(task.componentOverviewId);
+//         if (!overview || !overview.name) {
+//           return "Planning next section";
+//         }
+//         return `Writing content for ${overview.name}`;
+//       } catch (error) {
+//         console.error('Planning next section failed:', error);
+//         return "Planning next section";
+//       }
+//     },
+//     taskType: Task.TypeEnum.CodeTask,
+// };
 
 export class CreateComponentService {
-    @withInfrastructure({
-        cache: {
-            prefix: "createComponent",
-            ...defaultCachePolicy
-        },
-        notifications: notificationContext,
-    })
     async execute(input: CreateComponentProps, config?: LangGraphRunnableConfig): Promise<CreateComponentOutputType> {
         const contentPlan = await ComponentContentPlanModel.findBy({
             componentOverviewId: input.task.componentOverviewId,
@@ -96,7 +85,7 @@ export class CreateComponentService {
             throw new Error('themeVariant is required');
         } 
 
-        const llm = getLlm(LLMSkill.Coding);
+        const llm = getLLM("coding");
         const coderLlm = llm.withStructuredOutput(CodeTask.resultSchema);
         const prompt = await createComponentPrompt({
             task: input.task,

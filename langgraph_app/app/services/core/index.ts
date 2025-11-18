@@ -1,2 +1,2 @@
 export * from "./postgresEmbeddingsService";
-export * from "./rails";
+export * from "./railsApi";

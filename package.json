@@ -1,0 +1,28 @@
+{
+  "name": "launch10-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Launch10 monorepo with Rails frontend and Langgraph backend",
+  "scripts": {
+    "prepare": "husky",
+    "docs:generate": "cd rails_app && bundle exec rake rswag:specs:swaggerize",
+    "types:generate": "cd langgraph_app && pnpm run api:generate",
+    "types:sync": "pnpm run docs:generate && pnpm run types:generate && pnpm --filter @launch10/shared run build:types",
+    "precommit:rails": "cd rails_app && bundle exec rubocop --autocorrect-all --format simple",
+    "precommit:langgraph": "cd langgraph_app && pnpm run lint:fix && pnpm run typecheck",
+    "prepush": "pnpm run types:sync",
+    "test:rails": "cd rails_app && bundle exec rspec",
+    "test:langgraph": "cd langgraph_app && pnpm run test",
+    "test:all": "pnpm run test:rails && pnpm run test:langgraph",
+    "lint:rails": "cd rails_app && bundle exec rubocop",
+    "lint:langgraph": "cd langgraph_app && pnpm run lint",
+    "lint:all": "pnpm run lint:rails && pnpm run lint:langgraph"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

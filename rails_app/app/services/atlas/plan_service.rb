@@ -2,7 +2,7 @@
 
 module Atlas
   class PlanService < BaseService
-    BASE_PATH = '/api/internal/plans'
+    BASE_PATH = "/api/internal/plans"
 
     def list(limit: nil)
       params = {}

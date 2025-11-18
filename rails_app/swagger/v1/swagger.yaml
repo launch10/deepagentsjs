@@ -4,6 +4,450 @@ info:
   title: API V1
   version: v1
 paths:
+  "/brainstorms":
+    post:
+      summary: Creates a brainstorm
+      tags:
+      - Brainstorms
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '201':
+          description: brainstorm created with custom name
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Brainstorm name
+                  thread_id:
+                    type: string
+                    format: uuid
+                    description: UUID identifier
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - thread_id
+                - account_id
+                - website_id
+                - project_id
+                - name
+                - created_at
+                - updated_at
+        '401':
+          description: unauthorized - invalid token
+        '422':
+          description: invalid request - missing thread_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                brainstorm:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Optional name for the brainstorm. Defaults to MM/DD/YYYY
+                        HH:MM:SS
+                    thread_id:
+                      type: string
+                      description: Required thread ID from Langgraph
+                    idea:
+                      type: string
+                      description: The core idea for the landing page
+                    audience:
+                      type: string
+                      description: Target audience for the landing page
+                    solution:
+                      type: string
+                      description: The solution being offered
+                    social_proof:
+                      type: string
+                      description: Social proof elements
+                    look_and_feel:
+                      type: string
+                      description: Design preferences
+              required:
+              - brainstorm
+  "/brainstorms/{thread_id}":
+    parameters:
+    - name: thread_id
+      in: path
+      description: Thread ID from Langgraph
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Retrieves a brainstorm
+      tags:
+      - Brainstorms
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: brainstorm found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Brainstorm name
+                  thread_id:
+                    type: string
+                    format: uuid
+                    description: UUID identifier
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - thread_id
+                - account_id
+                - website_id
+                - project_id
+                - name
+                - created_at
+                - updated_at
+        '401':
+          description: unauthorized - missing token
+        '404':
+          description: brainstorm not found
+    patch:
+      summary: Updates a brainstorm
+      tags:
+      - Brainstorms
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: brainstorm fields updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Brainstorm name
+                  thread_id:
+                    type: string
+                    format: uuid
+                    description: UUID identifier
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - thread_id
+                - account_id
+                - website_id
+                - project_id
+                - name
+                - created_at
+                - updated_at
+        '401':
+          description: unauthorized - missing token
+        '404':
+          description: brainstorm not found
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                brainstorm:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Optional name for the brainstorm. Defaults to MM/DD/YYYY
+                        HH:MM:SS
+                    thread_id:
+                      type: string
+                      description: Required thread ID from Langgraph
+                    idea:
+                      type: string
+                      description: The core idea for the landing page
+                    audience:
+                      type: string
+                      description: Target audience for the landing page
+                    solution:
+                      type: string
+                      description: The solution being offered
+                    social_proof:
+                      type: string
+                      description: Social proof elements
+                    look_and_feel:
+                      type: string
+                      description: Design preferences
+              required:
+              - brainstorm
+  "/test/database/truncate":
+    post:
+      summary: Truncates the database
+      tags:
+      - Test Database
+      description: Truncates all tables in the database. Only available in development/test
+        environments.
+      responses:
+        '200':
+          description: database truncated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: Operation completed successfully
+                required:
+                - status
+                - message
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                      example: 'Failed to perform operation: error details'
+                required:
+                - status
+                - errors
+  "/test/database/snapshots":
+    get:
+      summary: Lists available database snapshots
+      tags:
+      - Test Database
+      description: Returns a list of all available database snapshot names. Only available
+        in development/test environments.
+      responses:
+        '200':
+          description: snapshots listed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  snapshots:
+                    type: array
+                    items:
+                      type: string
+                    description: Array of snapshot names (without .sql extension)
+                required:
+                - snapshots
+    post:
+      summary: Creates a database snapshot
+      tags:
+      - Test Database
+      description: Creates a new database snapshot with the specified name. Only available
+        in development/test environments.
+      parameters: []
+      responses:
+        '201':
+          description: snapshot created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: Operation completed successfully
+                required:
+                - status
+                - message
+        '422':
+          description: missing required parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                      example: 'Failed to perform operation: error details'
+                required:
+                - status
+                - errors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                snapshot:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Name for the snapshot (without .sql extension)
+                    truncate_first:
+                      type: boolean
+                      description: Whether to truncate the database before restoring
+                      default: false
+                  required:
+                  - name
+              required:
+              - snapshot
+  "/test/database/restore_snapshot":
+    post:
+      summary: Restores a database snapshot
+      tags:
+      - Test Database
+      description: Restores the database from a snapshot. Optionally truncates the
+        database before restoring. Only available in development/test environments.
+      parameters: []
+      responses:
+        '200':
+          description: snapshot restored successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: Operation completed successfully
+                required:
+                - status
+                - message
+        '422':
+          description: missing required parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                      example: 'Failed to perform operation: error details'
+                required:
+                - status
+                - errors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                snapshot:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Name for the snapshot (without .sql extension)
+                    truncate_first:
+                      type: boolean
+                      description: Whether to truncate the database before restoring
+                      default: false
+                  required:
+                  - name
+              required:
+              - snapshot
   "/themes":
     get:
       summary: Lists all themes
@@ -34,11 +478,10 @@ paths:
                       type: string
                       description: Theme name
                     colors:
-                      type: object
+                      type: array
+                      items:
+                        type: string
                       description: Theme color palette
-                    theme:
-                      type: object
-                      description: Theme configuration
                     theme_labels:
                       type: array
                       items:
@@ -50,22 +493,15 @@ paths:
                           name:
                             type: string
                             description: Label name
+                        required:
+                        - id
+                        - name
                       description: Associated theme labels
-                    created_at:
-                      type: string
-                      format: date-time
-                      description: Timestamp
-                    updated_at:
-                      type: string
-                      format: date-time
-                      description: Timestamp
                   required:
                   - id
                   - name
                   - colors
-                  - theme
-                  - created_at
-                  - updated_at
+                  - theme_labels
         '401':
           description: unauthorized - invalid token
 servers:

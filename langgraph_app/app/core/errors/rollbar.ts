@@ -1,46 +1,30 @@
 import Rollbar from 'rollbar';
 
+const ROLLBAR_ACCESS_TOKEN = process.env.ROLLBAR_ACCESS_TOKEN;
+const ENABLED = !!process.env.ROLLBAR_ACCESS_TOKEN;
+
 const logger = new Rollbar({
-    accessToken: process.env.ROLLBAR_ACCESS_TOKEN,
-    captureUncaught: !!process.env.ROLLBAR_ACCESS_TOKEN,
-    captureUnhandledRejections: !!process.env.ROLLBAR_ACCESS_TOKEN,
+    accessToken: ROLLBAR_ACCESS_TOKEN,
+    captureUncaught: ENABLED,
+    captureUnhandledRejections: ENABLED,
     environment: process.env.NODE_ENV || 'development',
-    enabled: !!process.env.ROLLBAR_ACCESS_TOKEN,
+    enabled: ENABLED,
     verbose: true
 });
 
 type LogContext = Record<string, string | number | boolean | null | undefined>;
 
 export const rollbar = {
-    error: async (error: Error | unknown, context?: LogContext) => {
-      console.log('Sending error to Rollbar:', error);
-      if (!logger.enabled) return;
-
-      try {
-        const result = await new Promise((resolve, reject) => {
-          const callback = (err: any, data: any) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve(data);
-            }
-          };
-          
-          if (error instanceof Error) {
-            logger.error(error, context, callback);
-          } else {
-            logger.error(String(error), context, callback);
-          }
-        });
-        console.log('Error sent to Rollbar successfully:', result);
-      } catch (rollbarError) {
-        console.error('Failed to send error to Rollbar:', rollbarError);
-      }
+    error: async (error: Error, context?: LogContext) => {
+      if (!ENABLED) return;
+      await logger.error(error, context);
     },
     warn: async (message: string, context?: LogContext) => {
-        await logger.warning(message, context);
+      if (!ENABLED) return;
+      await logger.warning(message, context);
     },
     info: async (message: string, context?: LogContext) => {
-        await logger.info(message, context);
+      if (!ENABLED) return;
+      await logger.info(message, context);
     }
 };

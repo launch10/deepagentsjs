@@ -6,13 +6,12 @@ import {
   structuredOutputPrompt,
   useKnownAssetsPrompt,
   renderPrompt,
-  type PromptMetadata, 
 } from "@prompts";
 import { planComponentInstructionsPrompt } from "./planComponent/instructions/planComponentInstructions";
 
 import { Website, CodeTask, ComponentTypeEnum, type ComponentOverviewType } from "@types";
 import type { BaseMessage } from '@langchain/core/messages';
-import { lastHumanMessage } from "@annotation";
+import { lastHumanMessage } from "@types";
 import { ContentStrategyModel, FileSpecificationModel } from "@models";
 import { schemaRegistry } from "@types";
 export interface PlanComponentProps {

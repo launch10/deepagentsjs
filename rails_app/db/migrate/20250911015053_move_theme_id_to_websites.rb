@@ -1,6 +1,6 @@
 class MoveThemeIdToWebsites < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
-  
+
   def change
     safety_assured do
       remove_column :projects, :theme_id

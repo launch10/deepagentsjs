@@ -1,0 +1,21 @@
+class CreateBrainstorms < ActiveRecord::Migration[8.0]
+  def change
+    create_table :brainstorms do |t|
+      t.string :idea
+      t.string :audience
+      t.string :solution
+      t.string :social_proof
+      t.string :look_and_feel
+      t.bigint :website_id
+      t.string :thread_id
+      t.timestamp :completed_at
+
+      t.timestamps
+
+      t.index :website_id, unique: true
+      t.index :completed_at
+      t.index :created_at
+      t.index :thread_id, unique: true
+    end
+  end
+end

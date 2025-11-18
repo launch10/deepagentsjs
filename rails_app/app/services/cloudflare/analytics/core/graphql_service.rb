@@ -5,31 +5,31 @@ class Cloudflare
     module Core
       class GraphqlService < ApplicationClient
         class GraphQLError < Error; end
-        
+
         # Override base_uri to use configured value
         def base_uri
           Cloudflare.config.analytics_endpoint
         end
-        
+
         def authorization_header
-          { 
-            "Authorization" => "Bearer #{Cloudflare.config.api_token}" ,
+          {
+            "Authorization" => "Bearer #{Cloudflare.config.api_token}",
             "X-Auth-Email" => Cloudflare.config.email
           }
         end
-        
+
         def content_type
           "application/json"
         end
-        
+
         def open_timeout
           Cloudflare.config.timeout
         end
-        
+
         def read_timeout
           Cloudflare.config.timeout
         end
-        
+
         # Execute a GraphQL query
         # @param query [String] The GraphQL query string
         # @param variables [Hash] Variables to pass to the query
@@ -40,31 +40,31 @@ class Cloudflare
             variables: variables
           })
         end
-        
+
         # Execute a GraphQL query with automatic pagination
-        # @param query [String] The GraphQL query string  
+        # @param query [String] The GraphQL query string
         # @param variables [Hash] Variables to pass to the query
         # @yield [data] Each page of results
         def paginated_execute(query, variables = {}, &block)
           cursor = nil
-          
+
           loop do
             paginated_variables = variables.merge(after: cursor).compact
             response = execute(query, paginated_variables)
-            
+
             yield response if block_given?
-            
+
             # Check for pagination info (adjust based on Cloudflare's GraphQL schema)
-            page_info = response.dig(:viewer, :zones, 0, :pageInfo) || 
-                      response.dig(:data, :viewer, :zones, 0, :pageInfo)
-            
+            page_info = response.dig(:viewer, :zones, 0, :pageInfo) ||
+              response.dig(:data, :viewer, :zones, 0, :pageInfo)
+
             break unless page_info&.fetch(:hasNextPage, false)
             cursor = page_info[:endCursor]
           end
         end
-        
+
         protected
-        
+
         def handle_response(response)
           # First check if it's a successful response
           case response.code
@@ -81,15 +81,15 @@ class Cloudflare
             super
           end
         end
-        
+
         # Helper method to build common query fragments
         def build_filter(options = {})
           filter = {}
-          
+
           filter[:zoneTag] = options[:zone_id] if options[:zone_id]
           filter[:datetime_geq] = options[:start_time].iso8601 if options[:start_time]
           filter[:datetime_lt] = options[:end_time].iso8601 if options[:end_time]
-          
+
           filter
         end
       end

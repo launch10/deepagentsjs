@@ -2,7 +2,7 @@
 
 module Atlas
   class WebsiteService < BaseService
-    BASE_PATH = '/api/internal/websites'
+    BASE_PATH = "/api/internal/websites"
 
     def list(limit: nil, account_id: nil)
       params = {}
@@ -19,8 +19,8 @@ module Atlas
 
     def find_by_url(url)
       path = "#{BASE_PATH}/by-url"
-      params = { url: url }
-      
+      params = {url: url}
+
       get(path, query: params)
     end
 

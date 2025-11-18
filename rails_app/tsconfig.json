@@ -29,12 +29,12 @@
       "@stores/*": ["./app/javascript/frontend/stores/*"],
       "@lib/*": ["./app/javascript/frontend/lib/*"],
       "@models/*": ["./app/javascript/frontend/shared/models/*"],
-      "@shared/*": ["./app/javascript/frontend/shared/*"],
       "@utils/*": ["./app/javascript/frontend/lib/utils/*"],
       "@runtime/*": ["./app/javascript/frontend/runtime/*"],
       "@types/*": ["./app/javascript/frontend/types/*"],
       "@styles/*": ["./app/javascript/frontend/styles/*"],
       "@webcontainer/*": ["./app/javascript/frontend/webcontainer/*"],
+      "@shared": ["../shared/index.ts"]
     },
     "noEmit": true,
     "incremental": true

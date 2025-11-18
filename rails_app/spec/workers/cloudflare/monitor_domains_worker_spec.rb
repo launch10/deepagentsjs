@@ -17,13 +17,13 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
   let(:apples_website) { create(:website, account: apples_account, name: "apples") }
   let(:bananas_website) { create(:website, account: bananas_account, name: "bananas") }
   let(:domain_monitor) { instance_double(Cloudflare::Analytics::Queries::MonitorDomains) }
-  
+
   # Time helpers
   let(:day1) { UTC.parse("2025-08-01 00:00:00") }
   let(:day2) { UTC.parse("2025-08-02 00:00:00") }
   let(:next_month_day1) { UTC.parse("2025-09-01 00:00:00") }
   let(:next_month_day2) { UTC.parse("2025-09-02 00:00:00") }
-  
+
   before(:all) do
     Timecop.freeze(UTC.parse("2025-08-01 00:00:00")) do
       DomainRequestCount.drop_all_partitions
@@ -39,13 +39,13 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
     allow(Cloudflare::Analytics::Queries::MonitorDomains).to receive(:new).and_return(domain_monitor)
     AccountUser.create(account: apples_account, user: apples_user, roles: [:admin])
     AccountUser.create(account: bananas_account, user: bananas_user, roles: [:admin])
-    
+
     # Set up domains
     www_domain
     apples_domain
     bananas_domain
   end
-  
+
   describe "#perform" do
     context "domain request count behavior" do
       # Comprehensive traffic report with data for different times
@@ -88,7 +88,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           }
         }
       end
-      
+
       before do
         # Mock the domain monitor to return traffic based on current frozen time
         allow(domain_monitor).to receive(:hourly_traffic_by_host) do |args|
@@ -109,10 +109,10 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           expect {
             subject.perform(zone_id)
           }.to change { DomainRequestCount.count }.by(3)
-          
+
           counts = DomainRequestCount.all
           report = counts.map { |c| [c.domain.domain, c.request_count] }.to_h
-          
+
           # www.example.com should combine example.com + www.example.com
           expect(report["www.example.com"]).to eq(70_000) # 50k + 20k
           expect(report["apples.example.com"]).to eq(30_000)
@@ -124,7 +124,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         # First report at 10:00am
         Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
           subject.perform(zone_id)
-          
+
           count = DomainRequestCount.find_by(
             domain: www_domain,
             account: apples_account,
@@ -136,7 +136,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         # Second report at 10:30am (same hour, but updated data)
         Timecop.freeze(UTC.parse("2025-08-01 10:30:00")) do
           subject.perform(zone_id)
-          
+
           count = DomainRequestCount.find_by(
             domain: www_domain,
             account: apples_account,
@@ -144,7 +144,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           )
           # Should be 95k (70k + 25k), not 70k + 95k
           expect(count.request_count).to eq(95_000)
-          
+
           # Total for account should be updated values
           total = DomainRequestCount.total_for_account(apples_account, day1, day1.end_of_day)
           expect(total).to eq(130_000) # 95k (www) + 35k (apples)
@@ -164,7 +164,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         # Check apples_account's total
         apples_total = DomainRequestCount.total_for_account(apples_account, day1.beginning_of_month, day1.end_of_month)
         apples_account_count = AccountRequestCount.find_by(account: apples_account, month: day1.beginning_of_month)
-        
+
         expect(apples_account_count).to be_present
         expect(apples_account_count.request_count).to eq(apples_total)
         expect(apples_account_count.request_count).to eq(134_200)
@@ -189,7 +189,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           subject.perform(zone_id)
           day2_total = DomainRequestCount.total_for_account(apples_account, day2, day2.end_of_day)
           expect(day2_total).to eq(1000) # 500 + 300 + 200
-          
+
           # Month total should include both days
           month_total = DomainRequestCount.total_for_account(apples_account, day1.beginning_of_month, day1.end_of_month)
           expect(month_total).to eq(101_000) # 100k + 1k
@@ -209,7 +209,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           subject.perform(zone_id)
           sept_total = DomainRequestCount.total_for_account(apples_account, next_month_day1.beginning_of_month, next_month_day1.end_of_month)
           expect(sept_total).to eq(1900) # 1000 + 600 + 300
-          
+
           # August should still have its total
           aug_total = DomainRequestCount.total_for_account(apples_account, day1.beginning_of_month, day1.end_of_month)
           expect(aug_total).to eq(100_000)
@@ -219,7 +219,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
 
     context "plan limit enforcement" do
       let!(:plan_limit) { create(:plan_limit, plan: plan, limit_type: "requests_per_month", limit: 50_000) }
-      
+
       let(:traffic_report) do
         {
           # Under limit
@@ -236,7 +236,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           }
         }
       end
-      
+
       before do
         allow(domain_monitor).to receive(:hourly_traffic_by_host) do |args|
           current_time = UTC.now.strftime("%Y-%m-%d %H:%M:%S")
@@ -248,9 +248,9 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
           # No blocking should occur
           expect_any_instance_of(Cloudflare::FirewallService).not_to receive(:block_account) if defined?(Cloudflare::FirewallService)
-          
+
           subject.perform(zone_id)
-          
+
           # Verify account's total is under limit
           account_total = DomainRequestCount.total_for_account(apples_account, day1.beginning_of_month, day1.end_of_month)
           expect(account_total).to eq(20_000) # 15k + 5k
@@ -261,12 +261,12 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
       it "blocks account when exceeding plan limit" do
         # Mock successful Cloudflare API response
         mock_response = {
-          result: { operation_id: "3234eb584eaa461abd7d4be7d070c32a" },
+          result: {operation_id: "3234eb584eaa461abd7d4be7d070c32a"},
           success: true,
           errors: [],
           messages: []
         }
-        
+
         # Mock the FirewallService to return success response
         firewall_service = instance_double(Cloudflare::FirewallService)
         allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
@@ -279,7 +279,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
             "apples.example.com" => "3b17fd8fdc6443c7b34844bdb53fb104"
           }
         )
-        
+
         # First get to just under the limit
         Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
           subject.perform(zone_id)
@@ -289,12 +289,12 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         Timecop.freeze(UTC.parse("2025-08-01 11:00:00")) do
           # This should trigger blocking
           subject.perform(zone_id)
-          
+
           # Verify account's total exceeds limit
           account_total = DomainRequestCount.total_for_account(apples_account, day1.beginning_of_month, day1.end_of_month)
           expect(account_total).to eq(80_000) # 20k from 10am + 60k from 11am
           expect(account_total).to be > plan_limit.limit
-          
+
           # Verify the account is marked as over limit
           account_count = AccountRequestCount.find_by(account: apples_account, month: day1.beginning_of_month)
           expect(account_count).to be_over_limit
@@ -328,17 +328,17 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         mock_error_response = {
           result: nil,
           success: false,
-          errors: [{ code: 1001, message: "Invalid zone identifier" }],
+          errors: [{code: 1001, message: "Invalid zone identifier"}],
           messages: []
         }
-        
+
         # Mock the FirewallService to return error response
         firewall_service = instance_double(Cloudflare::FirewallService)
         allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
         allow(firewall_service).to receive(:block_domains).and_return(
           mock_api_response(mock_error_response, code: 400)
         )
-        
+
         # First get to just under the limit
         Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
           subject.perform(zone_id)
@@ -347,7 +347,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         # Now exceed the limit - this should trigger blocking
         Timecop.freeze(UTC.parse("2025-08-01 11:00:00")) do
           subject.perform(zone_id)
-          
+
           # Verify account's total exceeds limit
           account_total = DomainRequestCount.total_for_account(apples_account, day1.beginning_of_month, day1.end_of_month)
           expect(account_total).to eq(80_000)
@@ -370,7 +370,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
 
   describe "Unblocking behavior" do
     let!(:plan_limit) { create(:plan_limit, plan: plan, limit_type: "requests_per_month", limit: 50_000) }
-    
+
     let(:traffic_report) do
       {
         # August - Over limit traffic
@@ -387,26 +387,26 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         }
       }
     end
-    
+
     before do
       allow(domain_monitor).to receive(:hourly_traffic_by_host) do |args|
         current_time = UTC.now.strftime("%Y-%m-%d %H:%M:%S")
         traffic_report.select { |time, _| time.start_with?(current_time[0..12]) }.values.first || {}
       end
     end
-    
+
     context "when account was blocked in previous month" do
       before do
         # First block the account by exceeding limit in August
         Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
           # Mock successful blocking response
           mock_block_response = {
-            result: { operation_id: "block_operation_123" },
+            result: {operation_id: "block_operation_123"},
             success: true,
             errors: [],
             messages: []
           }
-          
+
           firewall_service = instance_double(Cloudflare::FirewallService)
           allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
           allow(firewall_service).to receive(:block_domains).and_return(
@@ -418,10 +418,10 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
               "apples.example.com" => "rule_apples_123"
             }
           )
-          
+
           subject.perform(zone_id)
           Sidekiq::Worker.drain_all
-          
+
           # Verify account was blocked
           expect(apples_account.reload.firewall).to be_blocked
           expect(Cloudflare::FirewallRule.where(account: apples_account).blocked.count).to eq(2)
@@ -433,7 +433,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           # Account should remain blocked - same month
           subject.perform(zone_id)
           Sidekiq::Worker.drain_all
-          
+
           # Verify account is still blocked
           expect(apples_account.reload.firewall).to be_blocked
           expect(Cloudflare::FirewallRule.where(account: apples_account).blocked.count).to eq(2)
@@ -444,32 +444,32 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         Timecop.freeze(UTC.parse("2025-09-01 10:00:00")) do
           # Mock successful unblocking response
           mock_unblock_response = {
-            result: { operation_id: "unblock_operation_456" },
+            result: {operation_id: "unblock_operation_456"},
             success: true,
             errors: [],
             messages: []
           }
-          
+
           firewall_service = instance_double(Cloudflare::FirewallService)
           allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
           allow(firewall_service).to receive(:unblock_domains).with(["rule_www_123", "rule_apples_123"]).and_return(
             mock_api_response(mock_unblock_response)
           )
-          
+
           # Run the monitor worker in the new month
           subject.perform(zone_id)
           Sidekiq::Worker.drain_all
-          
+
           # Verify account was unblocked
           apples_account.firewall.reload
           expect(apples_account.firewall).to be_inactive
           expect(apples_account.firewall.unblocked_at).to be_present
-          
+
           # Verify firewall rules were updated
           firewall_rules = Cloudflare::FirewallRule.where(account: apples_account)
           expect(firewall_rules.blocked.count).to eq(0)
           expect(firewall_rules.inactive.count).to eq(2)
-          
+
           firewall_rules.each do |rule|
             expect(rule.unblocked_at).to be_present
             expect(rule.blocked_at).to be_nil
@@ -483,22 +483,22 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           mock_error_response = {
             result: nil,
             success: false,
-            errors: [{ code: 1002, message: "Failed to unblock" }],
+            errors: [{code: 1002, message: "Failed to unblock"}],
             messages: []
           }
-          
+
           firewall_service = instance_double(Cloudflare::FirewallService)
           allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
           allow(firewall_service).to receive(:unblock_domains).and_return(
             mock_api_response(mock_error_response, code: 500)
           )
-          
+
           # Should raise error for retry
           expect {
             subject.perform(zone_id)
             Sidekiq::Worker.drain_all
           }.to raise_error(StandardError, /Failed to block domains for account/)
-          
+
           # Verify account remains blocked
           apples_account.firewall.reload
           expect(apples_account.firewall).to be_blocked
@@ -510,7 +510,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
     context "when account upgrades plan after being blocked" do
       let!(:pro_plan) { create(:plan, name: "pro") }
       let!(:pro_plan_limit) { create(:plan_limit, plan: pro_plan, limit_type: "requests_per_month", limit: 150_000) }
-      
+
       let(:upgrade_traffic_report) do
         {
           # 10:00 - Over starter limit (90k total)
@@ -527,24 +527,24 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           }
         }
       end
-      
+
       before do
         # Override the mock for this context to use upgrade_traffic_report
         allow(domain_monitor).to receive(:hourly_traffic_by_host) do |args|
           current_time = UTC.now.strftime("%Y-%m-%d %H:%M:%S")
           upgrade_traffic_report.select { |time, _| time.start_with?(current_time[0..12]) }.values.first || {}
         end
-        
+
         # First block the account by exceeding starter plan limit in August
         Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
           # Mock successful blocking response
           mock_block_response = {
-            result: { operation_id: "block_operation_789" },
+            result: {operation_id: "block_operation_789"},
             success: true,
             errors: [],
             messages: []
           }
-          
+
           firewall_service = instance_double(Cloudflare::FirewallService)
           allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
           allow(firewall_service).to receive(:block_domains).and_return(
@@ -556,10 +556,10 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
               "apples.example.com" => "rule_apples_456"
             }
           )
-          
+
           subject.perform(zone_id)
           Sidekiq::Worker.drain_all
-          
+
           # Verify account was blocked (90k > 50k starter limit)
           expect(apples_account.reload.firewall).to be_blocked
           expect(Cloudflare::FirewallRule.where(account: apples_account).blocked.count).to eq(2)
@@ -570,22 +570,22 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         Timecop.freeze(UTC.parse("2025-08-01 11:00:00")) do
           # Upgrade account to pro plan
           subscribe_account(apples_account, plan_name: "pro")
-          
+
           # Mock both blocking and unblocking responses
           firewall_service = instance_double(Cloudflare::FirewallService)
           allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
-          
+
           # Mock block_domains being called with empty array (all domains already blocked)
           allow(firewall_service).to receive(:block_domains).with([]).and_return(
-            mock_api_response({ result: {}, success: true, errors: [], messages: [] })
+            mock_api_response({result: {}, success: true, errors: [], messages: []})
           )
-          
+
           # Mock search_blocked_domains being called with empty array
           allow(firewall_service).to receive(:search_blocked_domains).with([]).and_return({})
-          
+
           # Mock successful unblocking response
           mock_unblock_response = {
-            result: { operation_id: "unblock_operation_789" },
+            result: {operation_id: "unblock_operation_789"},
             success: true,
             errors: [],
             messages: []
@@ -593,21 +593,21 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           allow(firewall_service).to receive(:unblock_domains).with(["rule_www_456", "rule_apples_456"]).and_return(
             mock_api_response(mock_unblock_response)
           )
-          
+
           # Run monitor worker - should unblock because 90k < 150k pro limit
           subject.perform(zone_id)
           Sidekiq::Worker.drain_all
-          
+
           # Verify account was unblocked
           apples_account.firewall.reload
           expect(apples_account.firewall).to be_inactive
           expect(apples_account.firewall.unblocked_at).to be_present
-          
+
           # Verify firewall rules were updated
           firewall_rules = Cloudflare::FirewallRule.where(account: apples_account)
           expect(firewall_rules.blocked.count).to eq(0)
           expect(firewall_rules.inactive.count).to eq(2)
-          
+
           firewall_rules.each do |rule|
             expect(rule.unblocked_at).to be_present
             expect(rule.blocked_at).to be_nil
@@ -621,29 +621,29 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         Timecop.freeze(UTC.parse("2025-08-02 10:00:00")) do
           # No firewall records exist
           expect(apples_account.firewall).to be_nil
-          
+
           # Run monitor worker - should not attempt to unblock
           subject.perform(zone_id)
           Sidekiq::Worker.drain_all
-          
+
           # Still no firewall records
           expect(apples_account.firewall).to be_nil
         end
       end
     end
-    
+
     context "when blocked user adds new domain" do
       before do
         # First block the user by exceeding limit
         Timecop.freeze(UTC.parse("2025-08-01 10:00:00")) do
           # Mock successful blocking response
           mock_block_response = {
-            result: { operation_id: "initial_block_123" },
+            result: {operation_id: "initial_block_123"},
             success: true,
             errors: [],
             messages: []
           }
-          
+
           firewall_service = instance_double(Cloudflare::FirewallService)
           allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
           allow(firewall_service).to receive(:block_domains).and_return(
@@ -655,22 +655,22 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
               "apples.example.com" => "rule_apples_initial"
             }
           )
-          
+
           subject.perform(zone_id)
           Sidekiq::Worker.drain_all
-          
+
           # Verify account was blocked
           expect(apples_account.reload.firewall).to be_blocked
           expect(Cloudflare::FirewallRule.where(account: apples_account).blocked.count).to eq(2)
         end
       end
-      
+
       it "blocks the new domain when account is already over limit" do
         Timecop.freeze(UTC.parse("2025-08-02 10:00:00")) do
           # Create a new domain for the already blocked user
           new_website = create(:website, account: apples_account, name: "new-site")
           new_domain = create(:domain, account: apples_account, domain: "new.example.com", website: new_website)
-          
+
           # Update traffic report to include the new domain
           allow(domain_monitor).to receive(:hourly_traffic_by_host) do |args|
             {
@@ -680,43 +680,43 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
               "new.example.com" => 5_000  # New domain traffic
             }
           end
-          
+
           # Mock blocking only the new domain
           mock_block_response = {
-            result: { operation_id: "additional_block_456" },
+            result: {operation_id: "additional_block_456"},
             success: true,
             errors: [],
             messages: []
           }
-          
+
           firewall_service = instance_double(Cloudflare::FirewallService)
           allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
-          
+
           # Should only block the new domain (others already blocked)
           allow(firewall_service).to receive(:block_domains) do |domains|
             expect(domains.map(&:domain)).to eq(["new.example.com"])
             mock_api_response(mock_block_response)
           end
-          
+
           allow(firewall_service).to receive(:search_blocked_domains) do |domains|
             expect(domains.map(&:domain)).to eq(["new.example.com"])
-            { "new.example.com" => "rule_new_123" }
+            {"new.example.com" => "rule_new_123"}
           end
-          
+
           # Run monitor worker - should block only the new domain
           subject.perform(zone_id)
           Sidekiq::Worker.drain_all
-          
+
           # Verify all domains are now blocked (2 original + 1 new)
           firewall_rules = Cloudflare::FirewallRule.where(account: apples_account)
           expect(firewall_rules.blocked.count).to eq(3)
-          
+
           # Verify the new domain has a firewall rule
           new_rule = firewall_rules.find_by(domain_id: new_domain.id)
           expect(new_rule).to be_present
           expect(new_rule.status).to eq("blocked")
           expect(new_rule.cloudflare_rule_id).to eq("rule_new_123")
-          
+
           # Firewall should remain in blocked status
           apples_account.firewall.reload
           expect(apples_account.firewall).to be_blocked

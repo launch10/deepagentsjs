@@ -259,37 +259,6 @@ export const websiteFiles = pgTable("website_files", {
 	uniqueIndex("index_website_files_on_website_id_and_path_unique").using("btree", table.websiteId.asc().nullsLast().op("text_ops"), table.path.asc().nullsLast().op("text_ops")),
 ]);
 
-export const components = pgTable("components", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	pageId: bigint("page_id", { mode: "number" }).notNull(),
-	name: varchar().notNull(),
-	path: varchar(),
-	componentType: varchar("component_type"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	fileSpecificationId: bigint("file_specification_id", { mode: "number" }).notNull(),
-	themeVariantId: integer("theme_variant_id"),
-	componentOverviewId: integer("component_overview_id"),
-	componentContentPlanId: integer("component_content_plan_id"),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	websiteFileId: integer("website_file_id"),
-}, (table) => [
-	index("index_components_on_component_content_plan_id").using("btree", table.componentContentPlanId.asc().nullsLast().op("int4_ops")),
-	index("index_components_on_component_overview_id").using("btree", table.componentOverviewId.asc().nullsLast().op("int4_ops")),
-	index("index_components_on_component_type").using("btree", table.componentType.asc().nullsLast().op("text_ops")),
-	index("index_components_on_file_specification_id").using("btree", table.fileSpecificationId.asc().nullsLast().op("int8_ops")),
-	index("index_components_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-	index("index_components_on_page_id").using("btree", table.pageId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_components_on_page_id_and_name").using("btree", table.pageId.asc().nullsLast().op("text_ops"), table.name.asc().nullsLast().op("int8_ops")),
-	index("index_components_on_theme_variant_id").using("btree", table.themeVariantId.asc().nullsLast().op("int4_ops")),
-	index("index_components_on_website_file_id").using("btree", table.websiteFileId.asc().nullsLast().op("int4_ops")),
-	index("index_components_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_components_on_website_id_and_path").using("btree", table.websiteId.asc().nullsLast().op("int8_ops"), table.path.asc().nullsLast().op("int8_ops")),
-]);
-
 export const websites = pgTable("websites", {
 	id: bigserial({ mode: "number" }).primaryKey().notNull(),
 	name: varchar(),
@@ -311,6 +280,23 @@ export const websites = pgTable("websites", {
 	index("index_websites_on_template_id").using("btree", table.templateId.asc().nullsLast().op("int8_ops")),
 	index("index_websites_on_theme_id").using("btree", table.themeId.asc().nullsLast().op("int4_ops")),
 	uniqueIndex("index_websites_on_thread_id").using("btree", table.threadId.asc().nullsLast().op("text_ops")),
+]);
+
+export const componentContentPlans = pgTable("component_content_plans", {
+	id: bigserial({ mode: "number" }).primaryKey().notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	componentOverviewId: bigint("component_overview_id", { mode: "number" }).notNull(),
+	componentType: varchar("component_type"),
+	data: jsonb().default({}).notNull(),
+	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+	componentId: integer("component_id"),
+}, (table) => [
+	index("index_component_content_plans_on_component_id").using("btree", table.componentId.asc().nullsLast().op("int4_ops")),
+	index("index_component_content_plans_on_component_overview_id").using("btree", table.componentOverviewId.asc().nullsLast().op("int8_ops")),
+	index("index_component_content_plans_on_component_type").using("btree", table.componentType.asc().nullsLast().op("text_ops")),
+	index("index_component_content_plans_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
+	index("index_component_content_plans_on_data").using("gin", table.data.asc().nullsLast().op("jsonb_ops")),
 ]);
 
 export const componentOverviews = pgTable("component_overviews", {
@@ -345,21 +331,35 @@ export const componentOverviews = pgTable("component_overviews", {
 	index("index_component_overviews_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
 ]);
 
-export const componentContentPlans = pgTable("component_content_plans", {
+export const components = pgTable("components", {
 	id: bigserial({ mode: "number" }).primaryKey().notNull(),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	componentOverviewId: bigint("component_overview_id", { mode: "number" }).notNull(),
+	websiteId: bigint("website_id", { mode: "number" }).notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	pageId: bigint("page_id", { mode: "number" }).notNull(),
+	name: varchar().notNull(),
+	path: varchar(),
 	componentType: varchar("component_type"),
-	data: jsonb().default({}).notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	fileSpecificationId: bigint("file_specification_id", { mode: "number" }).notNull(),
+	themeVariantId: integer("theme_variant_id"),
+	componentOverviewId: integer("component_overview_id"),
+	componentContentPlanId: integer("component_content_plan_id"),
 	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	componentId: integer("component_id"),
+	websiteFileId: integer("website_file_id"),
 }, (table) => [
-	index("index_component_content_plans_on_component_id").using("btree", table.componentId.asc().nullsLast().op("int4_ops")),
-	index("index_component_content_plans_on_component_overview_id").using("btree", table.componentOverviewId.asc().nullsLast().op("int8_ops")),
-	index("index_component_content_plans_on_component_type").using("btree", table.componentType.asc().nullsLast().op("text_ops")),
-	index("index_component_content_plans_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_component_content_plans_on_data").using("gin", table.data.asc().nullsLast().op("jsonb_ops")),
+	index("index_components_on_component_content_plan_id").using("btree", table.componentContentPlanId.asc().nullsLast().op("int4_ops")),
+	index("index_components_on_component_overview_id").using("btree", table.componentOverviewId.asc().nullsLast().op("int4_ops")),
+	index("index_components_on_component_type").using("btree", table.componentType.asc().nullsLast().op("text_ops")),
+	index("index_components_on_file_specification_id").using("btree", table.fileSpecificationId.asc().nullsLast().op("int8_ops")),
+	index("index_components_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
+	index("index_components_on_page_id").using("btree", table.pageId.asc().nullsLast().op("int8_ops")),
+	uniqueIndex("index_components_on_page_id_and_name").using("btree", table.pageId.asc().nullsLast().op("text_ops"), table.name.asc().nullsLast().op("int8_ops")),
+	index("index_components_on_theme_variant_id").using("btree", table.themeVariantId.asc().nullsLast().op("int4_ops")),
+	index("index_components_on_website_file_id").using("btree", table.websiteFileId.asc().nullsLast().op("int4_ops")),
+	index("index_components_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
+	uniqueIndex("index_components_on_website_id_and_path").using("btree", table.websiteId.asc().nullsLast().op("int8_ops"), table.path.asc().nullsLast().op("int8_ops")),
 ]);
 
 export const connectedAccounts = pgTable("connected_accounts", {
@@ -399,30 +399,6 @@ export const templateFiles = pgTable("template_files", {
 	index("index_template_files_on_shasum").using("btree", table.shasum.asc().nullsLast().op("text_ops")),
 	index("index_template_files_on_template_id").using("btree", table.templateId.asc().nullsLast().op("int8_ops")),
 	uniqueIndex("index_template_files_on_template_id_and_path").using("btree", table.templateId.asc().nullsLast().op("text_ops"), table.path.asc().nullsLast().op("text_ops")),
-]);
-
-export const contentStrategies = pgTable("content_strategies", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	tone: varchar().notNull(),
-	coreEmotionalDriver: varchar("core_emotional_driver"),
-	attentionGrabber: varchar("attention_grabber"),
-	problemStatement: varchar("problem_statement"),
-	emotionalBridge: varchar("emotional_bridge"),
-	productReveal: varchar("product_reveal"),
-	socialProof: varchar("social_proof"),
-	urgencyHook: varchar("urgency_hook"),
-	callToAction: varchar("call_to_action"),
-	pageMood: varchar("page_mood"),
-	visualEvocation: varchar("visual_evocation"),
-	landingPageCopy: text("landing_page_copy"),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	websiteId: integer("website_id"),
-	summary: text(),
-}, (table) => [
-	index("index_content_strategies_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_content_strategies_on_updated_at").using("btree", table.updatedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_content_strategies_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int4_ops")),
 ]);
 
 export const deployFiles = pgTable("deploy_files", {
@@ -516,6 +492,31 @@ export const iconEmbeddings = pgTable("icon_embeddings", {
 }, (table) => [
 	index("idx_icon_embeddings_text").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")),
 	uniqueIndex("index_icon_embeddings_on_key").using("btree", table.key.asc().nullsLast().op("text_ops")),
+]);
+
+export const contentStrategies = pgTable("content_strategies", {
+	id: bigserial({ mode: "number" }).primaryKey().notNull(),
+	tone: varchar().notNull(),
+	coreEmotionalDriver: varchar("core_emotional_driver"),
+	attentionGrabber: varchar("attention_grabber"),
+	problemStatement: varchar("problem_statement"),
+	emotionalBridge: varchar("emotional_bridge"),
+	productReveal: varchar("product_reveal"),
+	socialProof: varchar("social_proof"),
+	urgencyHook: varchar("urgency_hook"),
+	callToAction: varchar("call_to_action"),
+	pageMood: varchar("page_mood"),
+	visualEvocation: varchar("visual_evocation"),
+	landingPageCopy: text("landing_page_copy"),
+	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+	websiteId: integer("website_id"),
+	summary: text(),
+	audience: varchar(),
+}, (table) => [
+	index("index_content_strategies_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
+	index("index_content_strategies_on_updated_at").using("btree", table.updatedAt.asc().nullsLast().op("timestamp_ops")),
+	index("index_content_strategies_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int4_ops")),
 ]);
 
 export const iconQueryCaches = pgTable("icon_query_caches", {
@@ -1026,6 +1027,24 @@ export const payCharges = pgTable("pay_charges", {
 			foreignColumns: [payCustomers.id],
 			name: "fk_rails_b19d32f835"
 		}),
+]);
+
+export const brainstorms = pgTable("brainstorms", {
+	id: bigserial({ mode: "number" }).primaryKey().notNull(),
+	idea: varchar(),
+	audience: varchar(),
+	solution: varchar(),
+	socialProof: varchar("social_proof"),
+	lookAndFeel: varchar("look_and_feel"),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	websiteId: bigint("website_id", { mode: "number" }),
+	completedAt: timestamp("completed_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+}, (table) => [
+	index("index_brainstorms_on_completed_at").using("btree", table.completedAt.asc().nullsLast().op("timestamp_ops")),
+	index("index_brainstorms_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
+	index("index_brainstorms_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
 ]);
 export const codeFiles = pgView("code_files", {	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	websiteId: bigint("website_id", { mode: "number" }),

@@ -27,11 +27,14 @@ RSpec.describe Domain, type: :model do
     let(:account) { create(:account) }
     let(:project) { create(:project, account: account) }
     let(:website) { create(:website, project: project, account: account) }
-    
+
     it 'validates presence of domain' do
       domain = Domain.new(website: website, account: account)
       # Skip callback to test validation directly
-      domain.instance_eval { def set_default_domain; end }
+      domain.instance_eval {
+        def set_default_domain
+        end
+      }
       expect(domain).not_to be_valid
       expect(domain.errors[:domain]).to include("can't be blank")
     end
@@ -157,11 +160,10 @@ RSpec.describe Domain, type: :model do
     let(:website) { create(:website, project: project, account: account) }
 
     it 'can store cloudflare zone id' do
-      domain = create(:domain, 
-        website: website, 
-        account: account, 
-        cloudflare_zone_id: 'cf_zone_123'
-      )
+      domain = create(:domain,
+        website: website,
+        account: account,
+        cloudflare_zone_id: 'cf_zone_123')
       expect(domain.cloudflare_zone_id).to eq('cf_zone_123')
     end
 

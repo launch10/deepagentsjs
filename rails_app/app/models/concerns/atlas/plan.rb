@@ -6,6 +6,7 @@ module Atlas
     def atlas_service
       Atlas.plans
     end
+
     private
 
     def atlas_data_for_create

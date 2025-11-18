@@ -2,7 +2,7 @@
 
 module Atlas
   class AccountService < BaseService
-    BASE_PATH = '/api/internal/accounts'
+    BASE_PATH = "/api/internal/accounts"
 
     def list(limit: nil)
       params = {}

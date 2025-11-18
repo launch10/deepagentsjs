@@ -4,7 +4,7 @@ require 'support/website_file_helpers'
 
 RSpec.describe Deploy::RollbackWorker, type: :worker do
   include WebsiteFileHelpers
-  
+
   let(:website) do
     site = FactoryBot.create(:website)
     site.website_files.create!(minimal_website_files)
@@ -122,7 +122,7 @@ RSpec.describe Deploy::RollbackWorker, type: :worker do
   describe 'retry behavior' do
     it 'retries with faster backoff for critical rollbacks' do
       retry_in = described_class.sidekiq_retry_in_block
-      
+
       expect(retry_in.call(0, StandardError.new)).to eq(30)      # 30 seconds
       expect(retry_in.call(1, StandardError.new)).to eq(120)     # 2 minutes
       expect(retry_in.call(2, StandardError.new)).to eq(600)     # 10 minutes
@@ -150,7 +150,7 @@ RSpec.describe Deploy::RollbackWorker, type: :worker do
       expect(Rails.logger).to receive(:error).with(
         "CRITICAL: Rollback failed for website #{deploy.website_id}, deploy #{deploy.id}"
       )
-      
+
       described_class.sidekiq_retries_exhausted_block.call(msg, exception)
     end
 
@@ -161,7 +161,7 @@ RSpec.describe Deploy::RollbackWorker, type: :worker do
       expect(Rails.logger).to receive(:error).ordered.with(
         "CRITICAL: Rollback failed for website #{deploy.website_id}, deploy #{deploy.id}"
       )
-      
+
       described_class.sidekiq_retries_exhausted_block.call(msg, exception)
     end
   end
@@ -175,7 +175,7 @@ RSpec.describe Deploy::RollbackWorker, type: :worker do
 
     it 'enqueues with correct arguments' do
       Deploy::RollbackWorker.perform_async(deploy.id)
-      
+
       job = Deploy::RollbackWorker.jobs.last
       expect(job['args']).to eq([deploy.id])
       expect(job['queue']).to eq('critical')

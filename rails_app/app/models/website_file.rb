@@ -49,8 +49,8 @@ class WebsiteFile < ApplicationRecord
   historiographer_mode :snapshot_only
 
   belongs_to :website, inverse_of: :website_files
-  
-  validates :path, presence: true, uniqueness: { scope: :website_id, message: "already exists for this website" }
+
+  validates :path, presence: true, uniqueness: {scope: :website_id, message: "already exists for this website"}
   validates :content, presence: true
 
   include FileConcerns::Setters

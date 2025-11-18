@@ -9,7 +9,7 @@ namespace :db do
       exit 1
     end
 
-    require 'database_cleaner-active_record'
+    require "database_cleaner-active_record"
     DatabaseCleaner.clean_with(:truncation)
     puts "Database truncated successfully"
   end
@@ -29,7 +29,7 @@ namespace :db do
     end
 
     ensure_snapshots_directory_exists
-    
+
     output_path = SNAPSHOT_DIR.join("#{args[:name]}.sql")
     result = Database::Snapshotter.new.dump(output_path)
 
@@ -57,12 +57,12 @@ namespace :db do
     end
 
     input_path = SNAPSHOT_DIR.join("#{args[:name]}.sql")
-    
+
     unless File.exist?(input_path)
       puts "ERROR: Snapshot '#{args[:name]}' does not exist at #{input_path}"
       puts "Available snapshots:"
       Dir.glob(SNAPSHOT_DIR.join("**/*.sql")).each do |file|
-        puts "  - #{File.basename(file, '.sql')}"
+        puts "  - #{File.basename(file, ".sql")}"
       end
       exit 1
     end
@@ -92,18 +92,18 @@ namespace :db do
     end
 
     ensure_snapshots_directory_exists
-    
+
     snapshots = Dir.glob(SNAPSHOT_DIR.join("*.sql"))
-    
+
     if snapshots.empty?
       puts "No snapshots found in #{SNAPSHOT_DIR}"
     else
       puts "Available snapshots:"
       snapshots.each do |file|
-        name = File.basename(file, '.sql')
+        name = File.basename(file, ".sql")
         size = File.size(file) / 1024.0 / 1024.0
         mtime = File.mtime(file)
-        puts "  - #{name} (#{size.round(2)} MB, created: #{mtime.strftime('%Y-%m-%d %H:%M:%S')})"
+        puts "  - #{name} (#{size.round(2)} MB, created: #{mtime.strftime("%Y-%m-%d %H:%M:%S")})"
       end
     end
   end

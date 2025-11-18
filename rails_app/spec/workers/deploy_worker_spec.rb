@@ -4,7 +4,7 @@ require 'support/website_file_helpers'
 
 RSpec.describe Deploy::DeployWorker, type: :worker do
   include WebsiteFileHelpers
-  
+
   let(:website) do
     site = FactoryBot.create(:website)
     site.website_files.create!(minimal_website_files)
@@ -136,7 +136,7 @@ RSpec.describe Deploy::DeployWorker, type: :worker do
       expect(Rails.logger).to receive(:error).with(
         "Failed to deploy #{deploy.id} after 3 retries: Test error"
       )
-      
+
       described_class.sidekiq_retries_exhausted_block.call(msg, exception)
     end
 
@@ -153,7 +153,7 @@ RSpec.describe Deploy::DeployWorker, type: :worker do
             stacktrace: /Sidekiq retries exhausted: Test error/
           )
         )
-        
+
         described_class.sidekiq_retries_exhausted_block.call(msg, exception)
       end
     end
@@ -168,7 +168,7 @@ RSpec.describe Deploy::DeployWorker, type: :worker do
 
     it 'enqueues with correct arguments' do
       Deploy::DeployWorker.perform_async(deploy.id)
-      
+
       job = Deploy::DeployWorker.jobs.last
       expect(job['args']).to eq([deploy.id])
       expect(job['queue']).to eq('critical')

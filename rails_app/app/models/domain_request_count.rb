@@ -18,22 +18,22 @@
 #
 
 class DomainRequestCount < ApplicationRecord
-  include Partitionable 
+  include Partitionable
 
   belongs_to :domain
   belongs_to :account
 
   validates :domain, presence: true
   validates :account, presence: true
-  validates :request_count, presence: true, numericality: { greater_than_or_equal_to: 0 }
-  validates :domain_id, uniqueness: { scope: [:account_id, :hour] }
+  validates :request_count, presence: true, numericality: {greater_than_or_equal_to: 0}
+  validates :domain_id, uniqueness: {scope: [:account_id, :hour]}
 
   # Scopes for querying
   scope :for_account, ->(account) { where(account: account) }
   scope :for_domain, ->(domain) { where(domain: domain) }
   scope :in_period, ->(start_time, end_time) { where(hour: start_time..end_time) }
-  scope :recent, ->(duration = 24.hours) { where('hour >= ?', duration.ago) }
-  scope :with_traffic, -> { where('request_count > 0') }
+  scope :recent, ->(duration = 24.hours) { where("hour >= ?", duration.ago) }
+  scope :with_traffic, -> { where("request_count > 0") }
 
   class << self
     include DomainConcerns::NormalizeDomain
@@ -47,31 +47,31 @@ class DomainRequestCount < ApplicationRecord
   def self.total_for_account(account, start_time, end_time = Time.current)
     for_account(account).in_period(start_time, end_time).sum(:request_count)
   end
-  
+
   # Get total requests for a domain in a given period
   def self.total_for_domain(domain, start_time, end_time = Time.current)
     for_domain(domain).in_period(start_time, end_time).sum(:request_count)
   end
-  
+
   # Get domains with traffic for a account in the last N hours
   def self.active_domains_for_account(account, hours_ago = 24)
     joins(:domain)
       .for_account(account)
       .recent(hours_ago.hours)
       .with_traffic
-      .group('domains.domain')
+      .group("domains.domain")
       .sum(:request_count)
   end
-  
+
   # Hourly aggregation for analytics
   def self.hourly_breakdown(account: nil, domain: nil, date: Date.current)
-    query = self.all
+    query = all
     query = query.for_account(account) if account
     query = query.for_domain(domain) if domain
-    
+
     start_time = date.beginning_of_day
     end_time = date.end_of_day
-    
+
     # Group by hour manually if group_by_hour is not available
     results = {}
     query.in_period(start_time, end_time).find_each do |record|
@@ -81,15 +81,15 @@ class DomainRequestCount < ApplicationRecord
     end
     results
   end
-  
+
   # Daily aggregation
   def self.daily_total(account: nil, domain: nil, date: Date.current)
-    query = self.all
+    query = all
     query = query.for_account(account) if account
     query = query.for_domain(domain) if domain
-    
+
     query.in_period(date.beginning_of_day, date.end_of_day)
-         .sum(:request_count)
+      .sum(:request_count)
   end
 
   # sample report: {"launch10.ai" => 16, "example.launch10.ai" => 50}
@@ -97,9 +97,9 @@ class DomainRequestCount < ApplicationRecord
     raise "Traffic report must be a hash" unless traffic_report.is_a?(Hash)
     raise "Start time must be a time object" unless start_time.is_a?(Time)
     raise "Zone ID must be a string" unless zone_id.is_a?(String)
-    
+
     return if traffic_report.blank?
-    
+
     domain_names = traffic_report.keys.map { |domain| normalize_domain(domain) }
     domains = Domain.where(domain: domain_names).includes(:account)
     domains_by_domain = domains.index_by(&:domain)
@@ -111,7 +111,7 @@ class DomainRequestCount < ApplicationRecord
         summarized_domains[normalize_domain(domain)] += request_count
       end
     end
-    
+
     to_insert = summarized_domains.map do |domain, request_count|
       # Upsert domain request count for this hour
       domain_record = domains_by_domain[domain]
@@ -119,13 +119,13 @@ class DomainRequestCount < ApplicationRecord
         Rollbar.error("Traffic report found for domain without a domain record", domain: domain)
         next
       end
-      
+
       domain_request_count = DomainRequestCount.find_or_initialize_by(
         domain_id: domain_record.id,
         account_id: domain_record.account_id,
         hour: start_time
       )
-      
+
       domain_request_count.request_count = request_count
       domain_request_count
     end.compact
@@ -140,7 +140,7 @@ class DomainRequestCount < ApplicationRecord
         ON CONFLICT (account_id, domain_id, hour)
         DO UPDATE SET request_count = EXCLUDED.request_count
       SQL
-      
+
       connection.execute(sql)
     end
 

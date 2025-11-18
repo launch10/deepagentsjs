@@ -43,7 +43,7 @@ class Website < ApplicationRecord
   has_many :deploys, dependent: :destroy
   has_one :content_strategy, class_name: "ContentStrategy"
   alias_method :strategy, :content_strategy
-  
+
   accepts_nested_attributes_for :website_files, allow_destroy: true
 
   validates_presence_of :name, :project_id, :account_id, :template
@@ -89,10 +89,9 @@ class Website < ApplicationRecord
 
   def default_deploy_to_rollback
     current_live = deploys.live.first
-    rollbackable = deploys.revertible.where("id < ?", current_live.id).order(id: :desc).limit(1).first
-    rollbackable
+    deploys.revertible.where("id < ?", current_live.id).order(id: :desc).limit(1).first
   end
-  
+
   # Get the primary domain for this website
   def domain
     domains.first&.domain || name
@@ -102,16 +101,16 @@ class Website < ApplicationRecord
   def make_fixture_files
     website_files.destroy_all
 
-    fixture_files = JSON.parse(File.read(Rails.root.join('spec/fixtures/valid_website_files.json')))
-    
+    fixture_files = JSON.parse(File.read(Rails.root.join("spec/fixtures/valid_website_files.json")))
+
     fixture_files.each do |file_data|
       website_files.create!(
-        path: file_data['path'],
-        content: file_data['content']
+        path: file_data["path"],
+        content: file_data["content"]
       )
     end
   end
-  
+
   def files_from_snapshot(snapshot_id = nil)
     snapshot = snapshot_id ? snapshots.find(snapshot_id) : latest_snapshot
     snapshot.files
@@ -121,11 +120,11 @@ class Website < ApplicationRecord
 
   def default_environment
     if Rails.env.production?
-      'production'
+      "production"
     elsif Rails.env.staging?
-      'staging'
+      "staging"
     else
-      'development'
+      "development"
     end
   end
 
@@ -136,5 +135,4 @@ class Website < ApplicationRecord
   def set_default_theme
     self.theme = Theme.first if theme.nil?
   end
-
 end

@@ -4,6 +4,22 @@ orbs:
   node: circleci/node@5.2.0
   ruby: circleci/ruby@2.1.0
 
+# Shared environment configuration
+rails-env: &rails-env
+  LANGGRAPH_API_URL: http://localhost:8080
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/nichefinder_test
+  REDIS_URL: redis://localhost:6379
+  RAILS_ENV: test
+  CI: true
+
+langgraph-env: &langgraph-env
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/nichefinder_test
+  REDIS_URL: redis://localhost:6379
+  NODE_ENV: test
+  USE_CACHE: false
+  CI: true
+  LLM_COST: paid  # Use paid tier to avoid Ollama dependency in tests
+
 commands:
   setup-database:
     steps:
@@ -19,8 +35,7 @@ commands:
             cd ~/project/rails_app
             RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rake db:create db:schema:load
           environment:
-            RAILS_ENV: test
-            DATABASE_URL: postgres://postgres:postgres@localhost:5432/nichefinder_test
+            <<: *rails-env
 
 jobs:
   langgraph-tests:
@@ -34,7 +49,7 @@ jobs:
       - image: cimg/redis:7.2
     working_directory: ~/project/langgraph_app
     environment:
-      NODE_ENV: test
+      <<: *langgraph-env
     steps:
       - checkout:
           path: ~/project
@@ -47,6 +62,14 @@ jobs:
             rvm install 3.4.4
             rvm use 3.4.4 --default
             echo 'source ~/.rvm/scripts/rvm' >> $BASH_ENV
+      - run:
+          name: Install PostgreSQL 16 client
+          command: |
+            # Add PostgreSQL APT repository to get version 16
+            sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client-16
       - run:
           name: Install pnpm
           command: |
@@ -91,8 +114,7 @@ jobs:
             cd ~/project/rails_app
             RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rake assets:precompile
           environment:
-            RAILS_ENV: test
-            DATABASE_URL: postgres://postgres:postgres@localhost:5432/nichefinder_test
+            <<: *rails-env
       - run:
           name: Start Rails test server
           command: |
@@ -100,10 +122,7 @@ jobs:
             RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rails server -e test -p 3000 2>&1 | tee ~/rails_server.log
           background: true
           environment:
-            RAILS_ENV: test
-            DATABASE_URL: postgres://postgres:postgres@localhost:5432/nichefinder_test
-            REDIS_URL: redis://localhost:6379
-            CI: true
+            <<: *rails-env
       - run:
           name: Wait for Rails server
           command: |
@@ -114,10 +133,7 @@ jobs:
           name: Run tests
           command: pnpm run test
           environment:
-            POSTGRES_URI: postgres://postgres:postgres@localhost:5432/nichefinder_test
-            REDIS_URI: redis://localhost:6379
-            USE_CACHE: false
-            NODE_ENV: test
+            <<: *langgraph-env
       # TODO: Add typecheck once these will pass!!
       # - run:
       #     name: Run typecheck
@@ -134,11 +150,20 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: nichefinder_test
+          LANGGRAPH_API_URL: http://localhost:8080
       - image: cimg/redis:7.2
     working_directory: ~/project/rails_app
     steps:
       - checkout:
           path: ~/project
+      - run:
+          name: Install PostgreSQL 16 client
+          command: |
+            # Add PostgreSQL APT repository to get version 16
+            sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client-16
       - ruby/install-deps:
           key: rails-gems-v1
       - setup-database
@@ -146,9 +171,7 @@ jobs:
           name: Run RSpec tests
           command: RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rspec
           environment:
-            DATABASE_URL: postgres://postgres:postgres@localhost:5432/nichefinder_test
-            RAILS_ENV: test
-            CI: true
+            <<: *rails-env
 
 workflows:
   version: 2

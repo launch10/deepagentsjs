@@ -31,7 +31,7 @@ module WebsiteFileHelpers
         content: "<html><body>Hello World</body></html>"
       },
       {
-        path: "styles.css", 
+        path: "styles.css",
         content: "body { background: #fff; }"
       }
     ]
@@ -50,7 +50,7 @@ module WebsiteFileHelpers
   def create_website_with_files(account:, project:, files: nil, template: nil)
     files ||= website_files_attributes
     template ||= FactoryBot.create(:template)
-    
+
     website = Website.create!(
       name: "Test Website",
       thread_id: "thread_#{SecureRandom.hex(8)}",
@@ -58,11 +58,11 @@ module WebsiteFileHelpers
       project: project,
       template: template
     )
-    
+
     files.each do |file_attrs|
       website.website_files.create!(file_attrs)
     end
-    
+
     website
   end
 end

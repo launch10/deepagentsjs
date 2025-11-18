@@ -14,14 +14,14 @@ class CreateAccountRequestCounts < ActiveRecord::Migration[8.0]
         SQL
       end
 
-      unless index_exists?(:account_request_counts, :index_account_request_counts_on_account_id_and_month) 
+      unless index_exists?(:account_request_counts, :index_account_request_counts_on_account_id_and_month)
         execute <<-SQL
           CREATE INDEX IF NOT EXISTS index_account_request_counts_on_account_id_and_month
           ON account_request_counts (account_id, month);
         SQL
       end
 
-      unless index_exists?(:account_request_counts, :index_account_request_counts_on_account_month) 
+      unless index_exists?(:account_request_counts, :index_account_request_counts_on_account_month)
         execute <<-SQL
           CREATE UNIQUE INDEX IF NOT EXISTS index_account_request_counts_on_account_month
           ON account_request_counts (account_id, month, request_count);

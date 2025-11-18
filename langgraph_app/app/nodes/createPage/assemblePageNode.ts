@@ -1,19 +1,18 @@
-import { type GraphState } from "@state";
+import { type WebsiteGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { BaseNode } from "@core";
+import { NodeMiddleware } from "@core";
 import { AssemblePageService, type AssemblePageOutputType } from "@services";
 import { PageModel } from "@models";
 import { PageTypeEnum } from "@types";
 
 /**
  * Node that assembles the page from the components
- * Extends BaseNode for consistent infrastructure support
  */
-class AssemblePageNode extends BaseNode<GraphState> {
-  async execute(
-    state: GraphState,
+export const assemblePageNode = NodeMiddleware.use(
+  async (
+    state: WebsiteGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<GraphState>> {
+  ): Promise<Partial<WebsiteGraphState>> => {
     const website = state.website;
     if (!website) {
       throw new Error("No website found");
@@ -39,7 +38,4 @@ class AssemblePageNode extends BaseNode<GraphState> {
       completedTasks: [...(state.completedTasks || []), ...completedTasks],
     };
   }
-}
-
-// Export as a function for use in the graph
-export const assemblePageNode = new AssemblePageNode().toNodeFunction();
+);

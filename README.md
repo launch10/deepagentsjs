@@ -46,7 +46,7 @@ bundle exec rails s
 ```bash
 cd langgraph_app
 nvm use && pnpm install
-bin/dev # or directly run langdev dev
+pnpm run dev
 ```
 
 ## Installation

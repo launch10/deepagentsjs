@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { StructuredOutputParser } from "@langchain/core/output_parsers";
 import { AIMessage } from "@langchain/core/messages";
+import { ja } from "@faker-js/faker";
 
 interface StructuredResponseParams {
   llm: any;
@@ -11,8 +12,21 @@ interface StructuredResponseParams {
 const keyLooksLikeForeignKey = (key: string) => key.endsWith("Id"); 
 const keyIsPrimaryKey = (key: string) => key === "id";
 
-export const schemaWithoutForeignKeys = (schema: z.ZodSchema) => {
+export const schemaWithoutForeignKeys = (schema: z.ZodSchema): z.ZodSchema => {
+  if (schema instanceof z.ZodUnion) {
+    const cleanedOptions = schema.options.map((option: z.ZodSchema) => schemaWithoutForeignKeys(option));
+    return z.union(cleanedOptions as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
+  }
+  
+  if (!(schema instanceof z.ZodObject)) {
+    return schema;
+  }
+  
   return schema.omit({
+    ...{
+      createdAt: true,
+      updatedAt: true,
+    },
     ...Object.fromEntries(Object.entries(schema.shape).filter(([key]) => keyLooksLikeForeignKey(key))),
     ...Object.fromEntries(Object.entries(schema.shape).filter(([key]) => keyIsPrimaryKey(key))),
   });

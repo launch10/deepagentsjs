@@ -67,7 +67,7 @@ RSpec.describe User, type: :model do
       account = create(:account)
       user.owned_account = account
       user.save!
-      
+
       # Create subscription after user exists
       pay_customer = account.set_payment_processor(:fake_processor, allow_fake: true)
       pay_customer.subscribe(
@@ -75,10 +75,10 @@ RSpec.describe User, type: :model do
         plan: 'test',
         processor_plan: 'test'
       )
-      
+
       # Mock the plan lookup
       allow_any_instance_of(Pay::Subscription).to receive(:plan).and_return(plan)
-      
+
       expect(user.plan).to eq(plan)
     end
 
@@ -101,13 +101,13 @@ RSpec.describe User, type: :model do
       plan = create(:plan, name: 'pro')
       user.save!
       subscribe_user(user, plan_name: "pro")
-      
+
       expect(user.plan).to eq(plan)
     end
 
     it 'returns nil when no active subscription' do
       user.save!
-      
+
       expect(user.plan).to be_nil
     end
   end
@@ -118,13 +118,13 @@ RSpec.describe User, type: :model do
       plan_limit = create(:plan_limit, plan: plan)
       user.save!
       subscribe_user(user, plan_name: "pro")
-      
+
       expect(user.owned_account.plan_limits).to include(plan_limit)
     end
 
     it 'returns empty array when no plan' do
       user.save!
-      
+
       expect(user.owned_account.plan_limits).to eq([])
     end
   end
@@ -156,7 +156,7 @@ RSpec.describe User, type: :model do
 
     it 'prevents creating a second active subscription for the same user' do
       # Create first active subscription
-      first_subscription = payment_processor.subscriptions.create!(
+      payment_processor.subscriptions.create!(
         processor_id: "sub_#{SecureRandom.hex(8)}",
         name: "default",
         processor_plan: "starter",
@@ -208,7 +208,7 @@ RSpec.describe User, type: :model do
 
     it 'allows different users to each have their own active subscription' do
       # First user's subscription
-      user1_subscription = payment_processor.subscriptions.create!(
+      payment_processor.subscriptions.create!(
         processor_id: "sub_#{SecureRandom.hex(8)}",
         name: "default",
         processor_plan: "starter",
@@ -233,7 +233,7 @@ RSpec.describe User, type: :model do
 
       expect(user2_subscription).to be_valid
       expect { user2_subscription.save! }.not_to raise_error
-      
+
       # Verify both users have their subscriptions
       expect(user.subscriptions.active.count).to eq(1)
       expect(user2.subscriptions.active.count).to eq(1)
@@ -254,7 +254,7 @@ RSpec.describe User, type: :model do
     context 'with non-active subscriptions' do
       it 'allows multiple non-active subscriptions' do
         # Create a canceled subscription
-        canceled_sub = payment_processor.subscriptions.create!(
+        payment_processor.subscriptions.create!(
           processor_id: "sub_#{SecureRandom.hex(8)}",
           name: "default",
           processor_plan: "starter",
@@ -265,7 +265,7 @@ RSpec.describe User, type: :model do
         )
 
         # Create a past_due subscription
-        past_due_sub = payment_processor.subscriptions.create!(
+        payment_processor.subscriptions.create!(
           processor_id: "sub_#{SecureRandom.hex(8)}",
           name: "default",
           processor_plan: "professional",

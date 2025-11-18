@@ -40,7 +40,8 @@ class Cloudflare
         )
       end
 
-    private
+      private
+
       # These methods are useful for testing, but should not be used in production
       def monitor_cloudflare_domains_sync
         Cloudflare::Analytics::Queries::MonitorDomains.new.get_all_cloudflare_zones do |zones|
@@ -70,7 +71,6 @@ class Cloudflare
           end_time: end_time
         )
       end
-
     end
   end
 end

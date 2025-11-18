@@ -1,8 +1,5 @@
 import xmlFormat from 'xml-formatter';
 
-// Re-export registry types
-export type { PromptMetadata } from './registry';
-
 export async function renderPrompt(input: string | Promise<string> | (() => string | Promise<string>)): Promise<string> {
   // Get the string content
   let content: string;

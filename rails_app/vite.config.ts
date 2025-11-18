@@ -12,6 +12,25 @@ export default defineConfig((config) => {
     build: {
       target: 'esnext',
     },
+    optimizeDeps: {
+      include: [
+        '@ai-sdk/react',
+        '@ai-sdk/react > swr',
+        '@ai-sdk/react > throttleit',
+        '@ai-sdk/react > use-sync-external-store',
+        'swr',
+        'throttleit',
+        'use-sync-external-store',
+      ],
+    },
+    resolve: {
+      conditions: ['browser', 'module', 'import', 'default'],
+      alias: {
+        '@vercel/oidc': new URL('./app/javascript/stubs/vercel-oidc.ts', import.meta.url).pathname,
+        'use-sync-external-store/shim/index.js': 'react',
+        'use-sync-external-store/shim': 'react',
+      }, 
+    },
     plugins: [
       nodePolyfills({
         include: ['buffer']

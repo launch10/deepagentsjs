@@ -1,6 +1,6 @@
 class MigrateOauthColumnToJson < ActiveRecord::Migration[8.0]
   def up
-    safety_assured do 
+    safety_assured do
       change_column :connected_accounts, :auth, :jsonb, using: "auth::jsonb"
     end
   end
