@@ -19,6 +19,8 @@ class Theme < ApplicationRecord
   has_many :theme_labels, through: :theme_to_theme_labels
   alias_method :labels, :theme_labels
 
+  validates :theme_type, presence: true, inclusion: { in: %w[community official] }
+
   scope :with_label, ->(label) do
     joins(theme_labels: :theme_to_theme_labels)
       .where("theme_labels.name = ?", label)
