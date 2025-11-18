@@ -2,6 +2,7 @@ class Api::BaseController < ActionController::API
   include AbstractController::Translation
   include ActionController::Caching
   include Turbo::Native::Navigation
+  include InternalApiVerification
 
   include Accounts::SubscriptionStatus
   include ActiveStorage::SetCurrent
@@ -21,10 +22,18 @@ class Api::BaseController < ActionController::API
   def require_api_authentication
     return if user_signed_in?
 
-    if (user = user_from_token)
+    if (user = get_user)
       sign_in user, store: false
     else
       head :unauthorized
+    end
+  end
+
+  def get_user
+    if api_token.present?
+      api_token.user
+    elsif internal_api_request? && jwt_user.present?
+      jwt_user
     end
   end
 

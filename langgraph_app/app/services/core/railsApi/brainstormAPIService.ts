@@ -5,23 +5,23 @@ import { type ThreadIDType } from "@types";
  * Type definitions for brainstorm operations
  */
 export type CreateBrainstormRequest = NonNullable<
-  paths["/brainstorms"]["post"]["requestBody"]
+  paths["/api/v1/brainstorms"]["post"]["requestBody"]
 >["content"]["application/json"];
 
 export type CreateBrainstormResponse = NonNullable<
-  paths["/brainstorms"]["post"]["responses"][201]["content"]
+  paths["/api/v1/brainstorms"]["post"]["responses"][201]["content"]
 >["application/json"];
 
 export type UpdateBrainstormRequest = NonNullable<
-  paths["/brainstorms/{thread_id}"]["patch"]["requestBody"]
+  paths["/api/v1/brainstorms/{thread_id}"]["patch"]["requestBody"]
 >["content"]["application/json"];
 
 export type UpdateBrainstormResponse = NonNullable<
-  paths["/brainstorms/{thread_id}"]["patch"]["responses"][200]["content"]
+  paths["/api/v1/brainstorms/{thread_id}"]["patch"]["responses"][200]["content"]
 >["application/json"];
 
 export type GetBrainstormResponse = NonNullable<
-  paths["/brainstorms/{thread_id}"]["get"]["responses"][200]["content"]
+  paths["/api/v1/brainstorms/{thread_id}"]["get"]["responses"][200]["content"]
 >["application/json"];
 
 export interface Brainstorm {
@@ -58,7 +58,7 @@ export class BrainstormAPIService {
   async create(threadId: ThreadIDType, name?: string): Promise<Brainstorm> {
     const client = createRailsApiClient({ jwt: this.jwt });
 
-    const response = await client.POST("/brainstorms", {
+    const response = await client.POST("/api/v1/brainstorms", {
       body: {
         brainstorm: {
           thread_id: threadId,
@@ -86,7 +86,7 @@ export class BrainstormAPIService {
   async get(threadId: ThreadIDType): Promise<Brainstorm> {
     const client = createRailsApiClient({ jwt: this.jwt });
 
-    const response = await client.GET("/brainstorms/{thread_id}", {
+    const response = await client.GET("/api/v1/brainstorms/{thread_id}", {
       params: {
         path: { thread_id: threadId },
       },
@@ -115,7 +115,7 @@ export class BrainstormAPIService {
   ): Promise<Brainstorm> {
     const client = createRailsApiClient({ jwt: this.jwt });
 
-    const response = await client.PATCH("/brainstorms/{thread_id}", {
+    const response = await client.PATCH("/api/v1/brainstorms/{thread_id}", {
       params: {
         path: { thread_id: threadId },
       },

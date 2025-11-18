@@ -1,10 +1,10 @@
 module JwtHelpers
-  def jwt_user(allow_headers: true)
-    test_jwt_user || real_jwt_user(allow_headers: allow_headers)
+  def jwt_user
+    test_jwt_user || real_jwt_user
   end
 
-  def account_from_jwt(allow_headers: true)
-    test_jwt_account || real_jwt_account(allow_headers: allow_headers)
+  def account_from_jwt
+    test_jwt_account || real_jwt_account
   end
 
   def refresh_jwt(account: nil)
@@ -31,25 +31,25 @@ module JwtHelpers
   end
 
 private
-  def real_jwt_user(allow_headers: false)
-    sub = real_jwt_field("sub", allow_headers: allow_headers)
+  def real_jwt_user
+    sub = real_jwt_field("sub")
     return nil if sub.blank?
 
     User.find(sub)
   end
 
-  def real_jwt_account(allow_headers: false)
-    account_id = real_jwt_field("account_id", allow_headers: allow_headers)
+  def real_jwt_account
+    account_id = real_jwt_field("account_id")
     return nil if account_id.blank?
 
     Account.find(account_id)
   end
 
-  def real_jwt_field(field, allow_headers: false)
-    jwt = cookies[:jwt] || (allow_headers ? request.headers["Authorization"]&.split(" ")&.last : nil)
+  def real_jwt_field(field)
+    jwt = get_jwt
 
     if jwt
-      payload = jwt_payload(jwt)
+      payload = jwt_payload
       return nil if payload.blank? || payload.dig(0, field).blank?
 
       payload.dig(0, field)
@@ -93,14 +93,17 @@ private
     jwt_payload.nil?
   end
 
-  def jwt_payload(jwt = cookies[:jwt])
+  def jwt_payload
     begin
       secret = Rails.application.credentials.devise_jwt_secret_key
-      payload = JWT.decode(jwt, secret, true, {algorithm: "HS256"})
+      payload = JWT.decode(get_jwt, secret, true, {algorithm: "HS256"})
     rescue JWT::DecodeError
       return nil
     end
     payload
   end
 
+  def get_jwt
+    internal_api_request? ? request.headers["Authorization"]&.split(" ")&.last : cookies[:jwt]
+  end
 end

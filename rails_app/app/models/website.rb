@@ -31,6 +31,7 @@ class Website < ApplicationRecord
   historiographer_mode :snapshot_only
 
   belongs_to :project
+  has_one :brainstorm
   belongs_to :account
   belongs_to :template
   belongs_to :theme, optional: true

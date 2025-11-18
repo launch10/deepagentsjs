@@ -1,27 +1,38 @@
 import createClient from "openapi-fetch";
 import type { paths } from "./generated/rails-api";
 import * as jwtLib from 'jsonwebtoken';
+import { createHmac } from 'crypto';
 import { env } from "@core";
 export interface RailsApiClientOptions {
   jwt: string;
   baseUrl?: string;
 }
 
-const headers = (jwt: string) => {
+function generateSignature(timestamp: number): string {
+  const secret = env.JWT_SECRET || 'test-secret-key';
+  return createHmac('sha256', secret).update(timestamp.toString()).digest('hex');
+}
+
+const headers = (jwt: string, body?: unknown) => {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signature = generateSignature(timestamp);
+
   let headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Accept": "application/json",
     "Authorization": `Bearer ${jwt}`,
+    "X-Signature": signature,
+    "X-Timestamp": timestamp.toString(),
   };
 
   if (env.NODE_ENV !== "test") {
     return headers;
   }
   const jwtSecret = env.JWT_SECRET || 'test-secret-key';
-  const timestamp = Date.now();
+  const testTimestamp = Date.now();
   
   const proof = jwtLib.sign(
-      { timestamp, mode: 'test' },
+      { timestamp: testTimestamp, mode: 'test' },
       jwtSecret,
       { expiresIn: '1m', algorithm: 'HS256' }
   );
@@ -46,7 +57,10 @@ export function createRailsApiClient(options: RailsApiClientOptions) {
 
   const client = createClient<paths>({
     baseUrl,
-    headers: headers(jwt),
+    headers: (init) => {
+      const body = init?.body;
+      return headers(jwt, body);
+    },
   });
 
   return client;

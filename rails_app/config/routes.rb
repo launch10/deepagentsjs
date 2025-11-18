@@ -64,11 +64,7 @@ Rails.application.routes.draw do
     # For now, just mock this as the brainstorms index
     root to: "brainstorms#new", as: :onboarding
   end
+
   get "up" => "rails/health#show", :as => :rails_health_check
   root to: "static#index"
-
-  resources :templates
-  resources :themes, only: [:index]
-  resources :websites, only: [:index, :show, :create, :update]
-  resources :brainstorms, param: :thread_id, only: [:show, :create, :update, :new]
 end

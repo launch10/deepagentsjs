@@ -20,7 +20,14 @@ module JwtHelpers
   def auth_headers_for(user, account: nil, expires_in: 24.hours)
     account ||= @current_test_account
     token = generate_jwt_for(user, account: account, expires_in: expires_in)
-    {'Authorization' => "Bearer #{token}"}
+    timestamp = Time.current.to_i
+    signature = generate_internal_api_signature(timestamp)
+    
+    {
+      'Authorization' => "Bearer #{token}",
+      'X-Signature' => signature,
+      'X-Timestamp' => timestamp.to_s
+    }
   end
 
   def invalid_auth_headers
@@ -34,5 +41,11 @@ module JwtHelpers
   def expired_auth_headers_for(user)
     token = expired_jwt_for(user)
     {'Authorization' => "Bearer #{token}"}
+  end
+
+  private
+
+  def generate_internal_api_signature(timestamp)
+    OpenSSL::HMAC.hexdigest('SHA256', jwt_secret, timestamp.to_s)
   end
 end
