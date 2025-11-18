@@ -1,4 +1,9 @@
 class WebsitesController < SubscribedController
+  def index
+    websites = current_account.websites
+    render json: websites.map { |w| to_mini_json(w) }
+  end
+
   def create
     website = current_account.websites.new(website_params)
     website.account_id = current_account.id

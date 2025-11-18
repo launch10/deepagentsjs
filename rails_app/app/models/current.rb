@@ -12,7 +12,6 @@ class Current < ActiveSupport::CurrentAttributes
 
   def user=(value)
     super
-    Current.account = value&.owned_account
     Time.zone = Time.find_zone(value&.time_zone)
   end
 

@@ -22,14 +22,14 @@ module SubscriptionHelpers
   end
 
   def subscribe_account(account, plan_name: 'pro', processor: :fake_processor)
-    user = account.users.first
-    if user.plan.present?
-      return if user.plan.name == plan_name
+    if account.plan.present?
+      return account.reload if account.plan.name == plan_name
       unsubscribe_account(account) # Unsubscribe from existing plan before subscribing to new plan
     end
 
     # Set up payment processor
     account.set_payment_processor processor, allow_fake: true
+    account.save!
 
     # Find or create the plan
     plan = Plan.find_by(name: plan_name) || create(:plan, name: plan_name.to_sym, currency: 'usd')
@@ -39,11 +39,12 @@ module SubscriptionHelpers
 
     # Subscribe to the plan
     account.payment_processor.subscribe(
+      name: Pay.default_product_name,
       plan: plan.send("#{processor}_id"),
       ends_at: nil
     )
 
-    account
+    account.reload
   end
 
   def unsubscribe_account(account)

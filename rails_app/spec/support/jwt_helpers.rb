@@ -4,18 +4,22 @@ module JwtHelpers
     Rails.application.credentials.devise_jwt_secret_key
   end
 
-  def generate_jwt_for(user, expires_in: 24.hours)
+  def generate_jwt_for(user, account: nil, expires_in: 24.hours)
+    account ||= @current_test_account || user.owned_account
+    
     payload = {
       jti: SecureRandom.uuid,
       sub: user.id,
+      account_id: account&.id,
       exp: expires_in.from_now.to_i,
       iat: Time.current.to_i
     }
     JWT.encode(payload, jwt_secret, 'HS256')
   end
 
-  def auth_headers_for(user, expires_in: 24.hours)
-    token = generate_jwt_for(user, expires_in: expires_in)
+  def auth_headers_for(user, account: nil, expires_in: 24.hours)
+    account ||= @current_test_account
+    token = generate_jwt_for(user, account: account, expires_in: expires_in)
     {'Authorization' => "Bearer #{token}"}
   end
 

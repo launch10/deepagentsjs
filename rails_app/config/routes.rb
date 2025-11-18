@@ -69,6 +69,6 @@ Rails.application.routes.draw do
 
   resources :templates
   resources :themes, only: [:index]
-  resources :websites, only: [:show, :create, :update]
+  resources :websites, only: [:index, :show, :create, :update]
   resources :brainstorms, param: :thread_id, only: [:show, :create, :update, :new]
 end

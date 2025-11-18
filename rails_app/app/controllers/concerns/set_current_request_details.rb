@@ -2,6 +2,8 @@ module SetCurrentRequestDetails
   extend ActiveSupport::Concern
 
   included do |base|
+    base.include JwtHelpers
+    
     if base < ActionController::Metal
       set_current_tenant_through_filter if defined? ActsAsTenant
       before_action :set_request_details
@@ -12,10 +14,10 @@ module SetCurrentRequestDetails
     Current.request_id = request.uuid
     Current.user_agent = request.user_agent
     Current.ip_address = request.ip
-    Current.user = current_user
+    Current.user = current_user || jwt_user
 
     # Account may already be set by the AccountMiddleware
-    Current.account ||= account_from_domain || account_from_subdomain || account_from_param || account_from_session || fallback_account
+    Current.account ||= account_from_domain || account_from_subdomain || account_from_param || account_from_jwt || account_from_session || fallback_account
 
     set_current_tenant(Current.account) if defined? ActsAsTenant
   end
@@ -38,6 +40,23 @@ module SetCurrentRequestDetails
   def account_from_param
     return unless user_signed_in? && (account_id = params[:account_id].presence)
     current_user.accounts.includes(:payment_processor, :users).find_by(id: account_id)
+  end
+
+  def account_from_jwt
+    return unless Current.user.present?
+    
+    jwt = cookies[:jwt] || request.headers["Authorization"]&.split(" ")&.last
+    return unless jwt
+    
+    begin
+      payload = JWT.decode(jwt, Rails.application.credentials.devise_jwt_secret_key, true, {algorithm: "HS256"})
+      account_id = payload.dig(0, "account_id")
+      return unless account_id
+      
+      Current.user.accounts.includes(:payment_processor, :users).find_by(id: account_id)
+    rescue JWT::DecodeError
+      nil
+    end
   end
 
   # Returns an account sorting by personal accounts and oldest account first
