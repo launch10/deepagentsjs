@@ -9,8 +9,37 @@ import type {
     ReasoningMessageBlock
 } from 'langgraph-ai-sdk-types';
 import type { BrainstormLanggraphData } from '@shared';
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import ReactMarkdown from 'react-markdown';
+
+// Context for handling example clicks and other chat interactions
+interface BrainstormContextType {
+  onExampleClick?: (text: string) => void;
+}
+
+const BrainstormContext = createContext<BrainstormContextType | undefined>(undefined);
+
+export const useBrainstormContext = () => {
+  const context = useContext(BrainstormContext);
+  if (!context) {
+    throw new Error('useBrainstormContext must be used within BrainstormProvider');
+  }
+  return context;
+};
+
+export const BrainstormProvider = ({ 
+  children, 
+  onExampleClick 
+}: { 
+  children: React.ReactNode;
+  onExampleClick?: (text: string) => void;
+}) => {
+  return (
+    <BrainstormContext.Provider value={{ onExampleClick }}>
+      {children}
+    </BrainstormContext.Provider>
+  );
+};
 
 export const Wrapper = (props: {
   children: React.ReactNode;
@@ -23,14 +52,14 @@ export const Wrapper = (props: {
 };
 
 const BlockRenderer = <T extends BrainstormLanggraphData>({ block }: { block: MessageBlock<T> }) => {
+  const { onExampleClick } = useBrainstormContext();
+  
   switch (block.type) {
     case 'text': {
       const textBlock = block as TextMessageBlock;
       if (!textBlock.text || textBlock.text.trim() === '') {
         return null;
       }
-      console.log(`the text blonk is`)
-      console.log(textBlock)
       return (
         <div className="prose prose-sm prose-invert max-w-none">
           <ReactMarkdown>{textBlock.text}</ReactMarkdown>
@@ -60,6 +89,7 @@ const BlockRenderer = <T extends BrainstormLanggraphData>({ block }: { block: Me
                 {data.examples.map((item: any, i: number) => (
                   <div
                     key={i}
+                    onClick={() => onExampleClick?.(String(item))}
                     className="w-full text-left p-3 bg-gray-700 rounded-lg border border-gray-500 text-sm cursor-pointer hover:bg-gray-600 transition-colors"
                   >
                     <div className="font-medium text-blue-300 text-xs mb-1">Example {i + 1}:</div>
@@ -91,7 +121,8 @@ const BlockRenderer = <T extends BrainstormLanggraphData>({ block }: { block: Me
                 {data.examples.map((item: any, i: number) => (
                   <div
                     key={i}
-                    className="w-full text-left p-3 bg-gray-700 rounded-lg border border-gray-500 text-sm"
+                    onClick={() => onExampleClick?.(String(item))}
+                    className="w-full text-left p-3 bg-gray-700 rounded-lg border border-gray-500 text-sm cursor-pointer hover:bg-gray-600 transition-colors"
                   >
                     <div className="font-medium text-blue-300 text-xs mb-1">Example {i + 1}:</div>
                     <div>{String(item)}</div>

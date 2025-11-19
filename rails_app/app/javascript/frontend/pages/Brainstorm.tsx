@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { type PageProps } from '@inertiajs/core';
 import { usePage } from '@inertiajs/react';
 import { useLanggraph } from 'langgraph-ai-sdk-react';
-import { Wrapper, ChatInput, Message } from '@components/brainstorm';
+import { Wrapper, ChatInput, Message, BrainstormProvider } from '@components/brainstorm';
 import { type BrainstormLanggraphData } from '@shared';
 
 type BrainstormProps = {
@@ -71,6 +71,14 @@ export default function Brainstorm(props: BrainstormProps) {
     const [input, setInput] = useState(`Tell me about your business...`);
     const inputRef = useRef<HTMLInputElement>(null);
 
+    const handleExampleClick = (text: string) => {
+        setInput(text);
+        setTimeout(() => {
+            inputRef.current?.focus();
+            inputRef.current?.setSelectionRange(text.length, text.length);
+        }, 0);
+    };
+
     if (isLoadingHistory) {
         return (
             <div className="flex items-center justify-center h-screen">
@@ -80,7 +88,8 @@ export default function Brainstorm(props: BrainstormProps) {
     }
 
     return (
-        <Wrapper>
+        <BrainstormProvider onExampleClick={handleExampleClick}>
+            <Wrapper>
             <div className="mb-4 p-4 bg-gray-800 rounded">
                 <div className="text-sm text-gray-400 mb-2">State:</div>
                 <pre className="text-xs text-green-400">{JSON.stringify(state, null, 2)}</pre>
@@ -105,6 +114,7 @@ export default function Brainstorm(props: BrainstormProps) {
                     setInput('');
                 }}
             />
-        </Wrapper>
+            </Wrapper>
+        </BrainstormProvider>
     );
 }
