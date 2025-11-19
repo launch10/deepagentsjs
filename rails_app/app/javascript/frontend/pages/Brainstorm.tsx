@@ -79,10 +79,6 @@ export default function Brainstorm(props: BrainstormProps) {
         );
     }
 
-    const lastMessage = messages.at(-1);
-    const isThinking = lastMessage?.state === 'thinking';
-    const visibleMessages = messages.filter(msg => msg.state !== 'thinking');
-
     return (
         <Wrapper>
             <div className="mb-4 p-4 bg-gray-800 rounded">
@@ -96,10 +92,6 @@ export default function Brainstorm(props: BrainstormProps) {
                 key={message.id}
                 message={message}
                 status={status}
-                onExampleClick={(text) => {
-                    setInput(text);
-                    setTimeout(() => inputRef.current?.focus(), 0);
-                }}
                 />
             ))}
             <div ref={messagesEndRef} />

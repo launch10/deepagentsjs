@@ -35,16 +35,15 @@ export const createBrainstorm = NodeMiddleware.use({}, async (
     const brainstorm = await apiService.create(config.configurable.thread_id);
 
     // Prepend the hardcoded first question before user's message
-    const messages = [
-      new AIMessage({ content: hardcodedFirstQuestion }),
-      ...state.messages,
-    ];
+    // const messages = [
+    //   new AIMessage({ content: hardcodedFirstQuestion }),
+    //   ...state.messages,
+    // ];
 
     return { 
       brainstormId: brainstorm.id,
       websiteId: brainstorm.website_id,
       projectId: brainstorm.project_id,
-      messages,
     };
   }
 );

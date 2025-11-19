@@ -29,6 +29,8 @@ const BlockRenderer = <T extends BrainstormLanggraphData>({ block }: { block: Me
       if (!textBlock.text || textBlock.text.trim() === '') {
         return null;
       }
+      console.log(`the text blonk is`)
+      console.log(textBlock)
       return (
         <div className="prose prose-sm prose-invert max-w-none">
           <ReactMarkdown>{textBlock.text}</ReactMarkdown>
@@ -58,7 +60,7 @@ const BlockRenderer = <T extends BrainstormLanggraphData>({ block }: { block: Me
                 {data.examples.map((item: any, i: number) => (
                   <div
                     key={i}
-                    className="w-full text-left p-3 bg-gray-700 rounded-lg border border-gray-500 text-sm"
+                    className="w-full text-left p-3 bg-gray-700 rounded-lg border border-gray-500 text-sm cursor-pointer hover:bg-gray-600 transition-colors"
                   >
                     <div className="font-medium text-blue-300 text-xs mb-1">Example {i + 1}:</div>
                     <div>{String(item)}</div>
@@ -124,17 +126,6 @@ const BlockRenderer = <T extends BrainstormLanggraphData>({ block }: { block: Me
             <span className="font-semibold">🔧 {toolBlock.toolName}</span>
             <span className="text-gray-400">({toolBlock.state})</span>
           </div>
-          {toolBlock.output && (
-            <div className="mt-2 text-xs">
-              <div className="text-gray-400">Result:</div>
-              <pre className="mt-1 text-green-400 overflow-x-auto">{JSON.stringify(toolBlock.output, null, 2)}</pre>
-            </div>
-          )}
-          {toolBlock.errorText && (
-            <div className="mt-2 text-red-400 text-xs">
-              Error: {toolBlock.errorText}
-            </div>
-          )}
         </div>
       );
     }
@@ -157,14 +148,11 @@ const BlockRenderer = <T extends BrainstormLanggraphData>({ block }: { block: Me
 export const Message = <T extends BrainstormLanggraphData>({
   message,
   status,
-  onExampleClick,
 }: {
   message: MessageWithBlocks<T>;
   status?: ChatStatus;
-  onExampleClick?: (text: string) => void;
 }) => {
   const isUser = message.role === 'user';
-  console.log(message)
   const hasNoBlocks = message.blocks.length === 0;
   const isLoading = (status === 'submitted' || status === 'streaming') && hasNoBlocks;
   
