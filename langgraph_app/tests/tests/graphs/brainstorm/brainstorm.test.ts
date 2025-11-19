@@ -613,12 +613,11 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(result.state.availableCommands[2]).toBe('doTheRest');
 
                 expect(lastAIResponse.content).toMatch(/audience|who|keeps them up at night/i)
-                let responseMetadata = lastAIResponse.response_metadata as Brainstorm.HelpMeResponseType;
-                console.log(lastAIResponse)
-                expect(responseMetadata.type).toBe('helpMe');
-                expect(responseMetadata.text).toBeDefined()
-                expect(responseMetadata.template).toBeDefined()
-                expect(responseMetadata.examples).toBeDefined()
+                let parsed = lastAIResponse.response_metadata.parsed_blocks![0].parsed as Brainstorm.HelpMeResponseType;
+                expect(parsed.type).toBe('helpMe');
+                expect(parsed.text).toBeDefined()
+                expect(parsed.template).toBeDefined()
+                expect(parsed.examples).toBeDefined()
             });
         });
 
@@ -697,7 +696,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result2.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
 
             const lastAIResponse = lastAIMessage(result2.state);
-            expect(result2.state.messages).toHaveLength(5);
+            expect(result2.state.messages).toHaveLength(4);
 
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
             expect(lastAIResponse.content).toContain('podcast');
