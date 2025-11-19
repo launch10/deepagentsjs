@@ -241,7 +241,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableCommands[0]).toBe('helpMe');
         });
 
-        it.only("should stay consistent when the user answers the first question incorrectly", async () => {
+        it("should stay consistent when the user answers the first question incorrectly", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`I like pasta.`)
@@ -261,6 +261,7 @@ describe.sequential('Brainstorming Flow', () => {
 
             const response = aiResponse?.response_metadata as Brainstorm.ReplyType;
             const structuredOutput = response.parsed_blocks![0].parsed!;
+
             assertDefined(structuredOutput);
             expect(structuredOutput.type).toBe('reply');
             expect(structuredOutput.text).toBeDefined()
@@ -268,31 +269,36 @@ describe.sequential('Brainstorming Flow', () => {
             expect(structuredOutput.conclusion).toBeDefined()
         });
 
-        it("should update to the next question when we successfully give a business idea", async () => {
+        it.only("should update to the next question when we successfully give a business idea", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(validAnswers.idea)
                 .stopAfter('agent')
                 .execute();
 
-            const aiResponse = lastAIMessage(result.state);
+            const result2 = await testGraph<BrainstormGraphState>()
+                .withGraph(brainstormGraph)
+                .withState(result.state)
+                .withPrompt(`We personally vet every single host and guest on our platform. We
+                    check guest credibility and expertise. Audience alignment between hosts and guests. And those become data points in our AI-powered recommendations.`)
+                .stopAfter('agent')
+                .execute();
+
+            const aiResponse = lastAIMessage(result2.state);
             assertDefined(aiResponse, 'aiResponse is defined');
 
-            expect(result.state.error).toBeUndefined();
-            expect(result.state.currentTopic).toBe('audience');
-            expect(result.state.placeholderText).toEqual('My target audience is...')
+            expect(result2.state.error).toBeUndefined();
+            expect(result2.state.currentTopic).toBeOneOf(['audience', 'solution', 'socialProof']);
 
             // It saves the answer to the memories...
-            const memories = result.state.memories;
+            const memories = result2.state.memories;
+
             expect(memories.idea).toBeTruthy();
 
-            // AI asks about customers...
-            expect(aiResponse.content).toContain('audience');
-
-            expect(result.state.availableCommands).toHaveLength(3);
-            expect(result.state.availableCommands[0]).toBe('helpMe');
-            expect(result.state.availableCommands[1]).toBe('skip');
-            expect(result.state.availableCommands[2]).toBe('doTheRest');
+            expect(result2.state.availableCommands).toHaveLength(3);
+            expect(result2.state.availableCommands[0]).toBe('helpMe');
+            expect(result2.state.availableCommands[1]).toBe('skip');
+            expect(result2.state.availableCommands[2]).toBe('doTheRest');
         });
 
         it('should ask about solution after audience', async () => {

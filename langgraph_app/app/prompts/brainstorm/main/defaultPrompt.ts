@@ -63,7 +63,7 @@ export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGra
             </be_generous>
 
             <workflow>
-                1. If the user has answered any topics with a GREAT response, call the save_answers tool
+                1. If the user has answered any topics with a GREAT response, call the save_answers tool - do NOT forget to save answers when we have them! 
                 2. If they haven't, continue helping them refine their answer until they give you a GREAT response.
                 3. If the user has SKIPPED a topic, do not call save_answers for the skipped topics
                 4. Then, if:
