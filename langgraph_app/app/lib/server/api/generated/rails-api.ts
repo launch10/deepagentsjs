@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/brainstorms": {
+    "/api/v1/brainstorms": {
         parameters: {
             query?: never;
             header?: never;
@@ -19,6 +19,8 @@ export interface paths {
                 query?: never;
                 header?: {
                     Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
                 };
                 path?: never;
                 cookie?: never;
@@ -46,7 +48,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description brainstorm created with custom name */
+                /** @description brainstorm created in team account after switching */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -81,7 +83,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description unauthorized - invalid token */
+                /** @description unauthorized - missing token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -103,7 +105,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/brainstorms/{thread_id}": {
+    "/api/v1/brainstorms/{thread_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -119,6 +121,8 @@ export interface paths {
                 query?: never;
                 header?: {
                     Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
                 };
                 path: {
                     /** @description Thread ID from Langgraph */
@@ -128,7 +132,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description brainstorm found */
+                /** @description brainstorm found in team account after switching */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -163,13 +167,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description unauthorized - missing token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
                 /** @description brainstorm not found */
                 404: {
                     headers: {
@@ -190,6 +187,8 @@ export interface paths {
                 query?: never;
                 header?: {
                     Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
                 };
                 path: {
                     /** @description Thread ID from Langgraph */
@@ -220,7 +219,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description brainstorm fields updated */
+                /** @description brainstorm updated in team account after switching */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -254,13 +253,6 @@ export interface paths {
                             updated_at: string;
                         };
                     };
-                };
-                /** @description unauthorized - missing token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
                 };
                 /** @description brainstorm not found */
                 404: {
@@ -492,6 +484,65 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists all themes */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns empty array when no themes exist */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Theme name */
+                            name: string;
+                            /** @description Theme color palette */
+                            colors: string[];
+                            /** @description Associated theme labels */
+                            theme_labels: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Label name */
+                                name: string;
+                            }[];
+                        }[];
+                    };
+                };
+                /** @description unauthorized - invalid token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

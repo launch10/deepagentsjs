@@ -2,10 +2,10 @@ class Api::BaseController < ActionController::API
   include AbstractController::Translation
   include ActionController::Caching
   include Turbo::Native::Navigation
-  include InternalApiVerification
 
   include Accounts::SubscriptionStatus
   include ActiveStorage::SetCurrent
+  include InternalApiVerification
   include Authentication
   include Authorization
   include Pagy::Backend
@@ -14,6 +14,7 @@ class Api::BaseController < ActionController::API
   include Sortable
 
   prepend_before_action :require_api_authentication
+  prepend_before_action :verify_internal_api_signature, if: :internal_api_request?
 
   helper :all
 

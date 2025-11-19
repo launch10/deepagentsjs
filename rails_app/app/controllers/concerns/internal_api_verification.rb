@@ -19,25 +19,25 @@ module InternalApiVerification
 
     unless signature.present? && timestamp.present?
       render json: {error: 'Missing signature or timestamp'}, status: :unauthorized
-      return false
+      return
     end
 
     timestamp_int = timestamp.to_i
     if Time.at(timestamp_int) < 5.minutes.ago
       render json: {error: 'Request timestamp too old'}, status: :unauthorized
-      return false
+      return
     end
 
     if Time.at(timestamp_int) > 1.minute.from_now
       render json: {error: 'Request timestamp in future'}, status: :unauthorized
-      return false
+      return
     end
 
     expected_signature = generate_internal_api_signature(timestamp)
 
     unless ActiveSupport::SecurityUtils.secure_compare(signature, expected_signature)
       render json: {error: 'Invalid signature'}, status: :unauthorized
-      return false
+      return
     end
 
     true
