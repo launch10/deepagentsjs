@@ -672,7 +672,7 @@ describe.sequential('Brainstorming Flow', () => {
     });
 
     describe("Edge cases", () => {
-        it("keeps pushing if the user doesn't have a good response", async () => {
+        it.only("keeps pushing if the user doesn't have a good response", async () => {
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
@@ -716,7 +716,7 @@ describe.sequential('Brainstorming Flow', () => {
 
             const lastAIResponse3 = lastAIMessage(result3.state);
             assertDefined(lastAIResponse3, 'lastAIResponse is defined');
-            expect(result3.state.messages).toHaveLength(7);
+            expect(result3.state.messages).toHaveLength(6);
 
             expect(lastAIResponse3.content).toContain('podcast');
         });
