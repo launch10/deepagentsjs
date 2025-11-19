@@ -70,6 +70,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
         throw new Error("Agent did not return an AI message");
     }
     const agentMessage = await toStructuredMessage(lastMessage);
+    console.log(agentMessage)
 
     if (!agentMessage) {
         throw new Error("Agent did not return an AI message");

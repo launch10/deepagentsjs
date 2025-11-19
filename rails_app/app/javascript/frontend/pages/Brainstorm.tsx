@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { type PageProps } from '@inertiajs/core';
 import { usePage } from '@inertiajs/react';
 import { useLanggraph } from 'langgraph-ai-sdk-react';
-import { Wrapper, ChatInput, Message, ThinkingIndicator } from '@components/brainstorm';
+import { Wrapper, ChatInput, Message } from '@components/brainstorm';
 import { type BrainstormLanggraphData } from '@shared';
 
 type BrainstormProps = {
@@ -46,7 +46,6 @@ export default function Brainstorm(props: BrainstormProps) {
             },
             getInitialThreadId: () => urlThreadId.current,
         });
-    console.log(state.availableCommands)
 
     useEffect(() => {
         if (urlThreadId.current === threadId) return;
@@ -74,9 +73,9 @@ export default function Brainstorm(props: BrainstormProps) {
 
     if (isLoadingHistory) {
         return (
-        <div className="flex items-center justify-center h-screen">
-            <div className="text-gray-500">Loading conversation...</div>
-        </div>
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-gray-500">Loading conversation...</div>
+            </div>
         );
     }
 
@@ -92,28 +91,26 @@ export default function Brainstorm(props: BrainstormProps) {
                 <div className="text-sm text-gray-400 mb-2">Events:</div>
                 <pre className="text-xs text-green-400">{JSON.stringify(events, null, 2)}</pre>
             </div>
-            {visibleMessages.map((message) => (
+            {messages.map((message) => (
                 <Message
                 key={message.id}
                 message={message}
+                status={status}
                 onExampleClick={(text) => {
                     setInput(text);
                     setTimeout(() => inputRef.current?.focus(), 0);
                 }}
                 />
             ))}
-            {isThinking && (
-                <ThinkingIndicator tools={tools} />
-            )}
             <div ref={messagesEndRef} />
             <ChatInput
                 inputRef={inputRef}
                 input={input}
                 onChange={(e) => setInput(e.target.value)}
                 onSubmit={(e) => {
-                e.preventDefault();
-                sendMessage(input);
-                setInput('');
+                    e.preventDefault();
+                    sendMessage(input);
+                    setInput('');
                 }}
             />
         </Wrapper>

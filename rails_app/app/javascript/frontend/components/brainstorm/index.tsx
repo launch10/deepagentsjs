@@ -1,4 +1,13 @@
 import type { LanggraphUIMessage } from 'langgraph-ai-sdk-react';
+import type { ChatStatus } from 'ai';
+import type { 
+    MessageBlock, 
+    MessageWithBlocks,
+    TextMessageBlock, 
+    StructuredMessageBlock, 
+    ToolCallMessageBlock,
+    ReasoningMessageBlock
+} from 'langgraph-ai-sdk-types';
 import type { BrainstormLanggraphData } from '@shared';
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -13,90 +22,174 @@ export const Wrapper = (props: {
   );
 };
 
-export const Message = ({
+const BlockRenderer = <T extends BrainstormLanggraphData>({ block }: { block: MessageBlock<T> }) => {
+  switch (block.type) {
+    case 'text': {
+      const textBlock = block as TextMessageBlock;
+      if (!textBlock.text || textBlock.text.trim() === '') {
+        return null;
+      }
+      return (
+        <div className="prose prose-sm prose-invert max-w-none">
+          <ReactMarkdown>{textBlock.text}</ReactMarkdown>
+        </div>
+      );
+    }
+    
+    case 'structured': {
+      const structuredBlock = block as StructuredMessageBlock<T>;
+      const data = structuredBlock.data;
+      
+      if (!data || Object.keys(data).length === 0) {
+        return null;
+      }
+
+      if (data.type === "reply") {
+        return (
+          <div className="space-y-3">
+            {'text' in data && (
+              <div className="prose prose-sm prose-invert max-w-none font-medium">
+                <ReactMarkdown>{String(data.text)}</ReactMarkdown>
+              </div>
+            )}
+            {'examples' in data && Array.isArray(data.examples) && (
+              <div className="space-y-2 mt-3">
+                <div className="text-xs font-semibold text-blue-300 mb-2">Sample Answers:</div>
+                {data.examples.map((item: any, i: number) => (
+                  <div
+                    key={i}
+                    className="w-full text-left p-3 bg-gray-700 rounded-lg border border-gray-500 text-sm"
+                  >
+                    <div className="font-medium text-blue-300 text-xs mb-1">Example {i + 1}:</div>
+                    <div>{String(item)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {'conclusion' in data && (
+              <div className="mt-3 pt-3 border-t border-gray-500">
+                <div className="prose prose-sm prose-invert max-w-none italic opacity-90">
+                  <ReactMarkdown>{String(data.conclusion)}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      } else if (data.type === "helpMe") {
+        return (
+          <div className="space-y-3">
+            {'text' in data && (
+              <div className="prose prose-sm prose-invert max-w-none font-medium">
+                <ReactMarkdown>{String(data.text)}</ReactMarkdown>
+              </div>
+            )}
+            {'examples' in data && Array.isArray(data.examples) && (
+              <div className="space-y-2 mt-3">
+                <div className="text-xs font-semibold text-blue-300 mb-2">Sample Answers:</div>
+                {data.examples.map((item: any, i: number) => (
+                  <div
+                    key={i}
+                    className="w-full text-left p-3 bg-gray-700 rounded-lg border border-gray-500 text-sm"
+                  >
+                    <div className="font-medium text-blue-300 text-xs mb-1">Example {i + 1}:</div>
+                    <div>{String(item)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {'template' in data && (
+              <div className="mt-3 pt-3 border-t border-gray-500">
+                <div className="prose prose-sm prose-invert max-w-none italic opacity-90">
+                  <ReactMarkdown>{String(data.template)}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+      
+      return null;
+    }
+    
+    case 'tool_call': {
+      const toolBlock = block as ToolCallMessageBlock;
+      return (
+        <div className="text-xs p-3 bg-gray-700 rounded border border-gray-600">
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-2 h-2 rounded-full ${
+              toolBlock.state === 'complete' ? 'bg-green-500' :
+              toolBlock.state === 'error' ? 'bg-red-500' :
+              'bg-yellow-500'
+            }`} />
+            <span className="font-semibold">🔧 {toolBlock.toolName}</span>
+            <span className="text-gray-400">({toolBlock.state})</span>
+          </div>
+          {toolBlock.output && (
+            <div className="mt-2 text-xs">
+              <div className="text-gray-400">Result:</div>
+              <pre className="mt-1 text-green-400 overflow-x-auto">{JSON.stringify(toolBlock.output, null, 2)}</pre>
+            </div>
+          )}
+          {toolBlock.errorText && (
+            <div className="mt-2 text-red-400 text-xs">
+              Error: {toolBlock.errorText}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    case 'reasoning': {
+      const reasoningBlock = block as ReasoningMessageBlock;
+      return (
+        <div className="text-xs p-3 bg-blue-900/30 rounded border border-blue-700 italic">
+          <div className="font-semibold mb-1">💭 Reasoning:</div>
+          <div className="opacity-90">{reasoningBlock.text}</div>
+        </div>
+      );
+    }
+    
+    default:
+      return null;
+  }
+};
+
+export const Message = <T extends BrainstormLanggraphData>({
   message,
+  status,
   onExampleClick,
 }: {
-  message: LanggraphUIMessage<BrainstormLanggraphData>;
+  message: MessageWithBlocks<T>;
+  status?: ChatStatus;
   onExampleClick?: (text: string) => void;
 }) => {
   const isUser = message.role === 'user';
-  const isText = message.type === "text";
+  console.log(message)
+  const hasNoBlocks = message.blocks.length === 0;
+  const isLoading = (status === 'submitted' || status === 'streaming') && hasNoBlocks;
   
-  const excludedKeys = ['id', 'role', 'type', 'state'];
-  const structuredParts = Object.fromEntries(
-    Object.entries(message).filter(([k]) => !excludedKeys.includes(k))
-  );
-  const hasStructuredData = Object.keys(structuredParts).length > 0;
-
   return (
     <div className={`flex w-full mb-4 ${
       isUser ? 'justify-end' : 'justify-start'
     }`}>
-      <div className={`max-w-[70%] rounded-lg p-4 ${
-        isUser 
-          ? 'bg-blue-800 text-white' 
+      <div className={`max-w-[75%] rounded-lg p-4 ${
+        isUser
+          ? 'bg-blue-800 text-white'
           : 'bg-gray-600 text-white'
       }`}>
-        {hasStructuredData && (
+        {isLoading ? (
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+            <span className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+            <span className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+          </div>
+        ) : (
           <div className="space-y-3">
-            {Object.entries(structuredParts).map(([key, value], idx) => (
-              <div key={idx}>
-                {key === 'examples' && Array.isArray(value) ? (
-                  <div className="space-y-2 mt-3">
-                    {value.map((item, i) => (
-                      <button
-                        key={i}
-                        onClick={() => onExampleClick?.(String(item))}
-                        className="w-full text-left p-3 bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-500 transition-colors cursor-pointer text-sm"
-                      >
-                        <div className="font-medium text-blue-300 text-xs mb-1">Sample Answer:</div>
-                        <div>{String(item)}</div>
-                      </button>
-                    ))}
-                  </div>
-                ) : Array.isArray(value) ? (
-                  <ul className="list-disc pl-5 text-sm">
-                    {value.map((item, i) => (
-                      <li key={i}>{String(item)}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="prose prose-sm prose-invert max-w-none">
-                    <ReactMarkdown>{String(value)}</ReactMarkdown>
-                  </div>
-                )}
-              </div>
+            {message.blocks.map((block) => (
+              <BlockRenderer<T> key={block.id} block={block} />
             ))}
           </div>
         )}
-      </div>
-    </div>
-  );
-};
-
-export const ThinkingIndicator = ({ tools }: { tools: any[] }) => {
-  if (!tools || tools.length === 0) return null;
-  
-  return (
-    <div className="flex w-full mb-4 justify-start">
-      <div className="max-w-[70%] rounded-lg p-4 bg-gray-700 text-white">
-        <div className="text-xs opacity-70 mb-2">AI is thinking...</div>
-        <div className="space-y-2">
-          {tools.map((tool, idx) => (
-            <div key={idx} className="text-sm">
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  tool.state === 'complete' ? 'bg-green-500' :
-                  tool.state === 'error' ? 'bg-red-500' :
-                  'bg-yellow-500 animate-pulse'
-                }`} />
-                <span className="font-medium">{tool.toolName}</span>
-                <span className="text-xs opacity-70">({tool.state})</span>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
