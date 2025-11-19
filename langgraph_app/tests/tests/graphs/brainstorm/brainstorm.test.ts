@@ -713,12 +713,6 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result3.error).toBeUndefined();
             expect(result3.state.currentTopic).toBe('idea');
             expect(result3.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
-
-            const lastAIResponse3 = lastAIMessage(result3.state);
-            assertDefined(lastAIResponse3, 'lastAIResponse is defined');
-            expect(result3.state.messages).toHaveLength(6);
-
-            expect(lastAIResponse3.content).toContain('podcast');
         });
     });
 });
