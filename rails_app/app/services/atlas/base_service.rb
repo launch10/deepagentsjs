@@ -47,6 +47,8 @@ module Atlas
     private
 
     def make_request(klass:, path:, headers: {}, body: nil, query: nil, form_data: nil, http_options: {})
+      return if Rails.env.development? || Rails.env.test?
+
       # Calculate signature based on the request body
       body_for_signature = if body.present? && klass != Net::HTTP::Get
         build_body(body)

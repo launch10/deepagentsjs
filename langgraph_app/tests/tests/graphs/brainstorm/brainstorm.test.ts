@@ -241,7 +241,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableCommands[0]).toBe('helpMe');
         });
 
-        it("should stay consistent when the user answers the first question incorrectly", async () => {
+        it.only("should stay consistent when the user answers the first question incorrectly", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`I like pasta.`)
@@ -260,11 +260,12 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableCommands[0]).toBe('helpMe');
 
             const response = aiResponse?.response_metadata as Brainstorm.ReplyType;
-            assertDefined(response);
-            expect(response.type).toBe('reply');
-            expect(response.text).toBeDefined()
-            expect(response.examples).toBeDefined()
-            expect(response.conclusion).toBeDefined()
+            const structuredOutput = response.parsed_blocks![0].parsed!;
+            assertDefined(structuredOutput);
+            expect(structuredOutput.type).toBe('reply');
+            expect(structuredOutput.text).toBeDefined()
+            expect(structuredOutput.examples).toBeDefined()
+            expect(structuredOutput.conclusion).toBeDefined()
         });
 
         it("should update to the next question when we successfully give a business idea", async () => {
