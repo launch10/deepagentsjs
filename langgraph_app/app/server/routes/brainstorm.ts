@@ -47,7 +47,7 @@ brainstormRoutes.get('/stream', authMiddleware, async (c) => {
     return c.json({ error: 'Missing threadId' }, 400);
   }
 
-  return fetchLanggraphHistory<BrainstormLanggraphData>({
+  return await fetchLanggraphHistory<BrainstormLanggraphData>({
     graph: graph as any,
     messageSchema: Brainstorm.structuredMessageSchemas,
     threadId,

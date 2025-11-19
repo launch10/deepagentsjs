@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Atlas
-  def self.configure(&)
-    BaseService.configure(&)
+  def self.configure(&block)
+    BaseService.configure(&block)
   end
 
   def self.accounts

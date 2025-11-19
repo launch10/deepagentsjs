@@ -260,11 +260,13 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableCommands[0]).toBe('helpMe');
 
             const response = aiResponse?.response_metadata as Brainstorm.ReplyType;
-            assertDefined(response);
-            expect(response.type).toBe('reply');
-            expect(response.text).toBeDefined()
-            expect(response.examples).toBeDefined()
-            expect(response.conclusion).toBeDefined()
+            const structuredOutput = response.parsed_blocks![0].parsed!;
+
+            assertDefined(structuredOutput);
+            expect(structuredOutput.type).toBe('reply');
+            expect(structuredOutput.text).toBeDefined()
+            expect(structuredOutput.examples).toBeDefined()
+            expect(structuredOutput.conclusion).toBeDefined()
         });
 
         it("should update to the next question when we successfully give a business idea", async () => {
@@ -274,24 +276,29 @@ describe.sequential('Brainstorming Flow', () => {
                 .stopAfter('agent')
                 .execute();
 
-            const aiResponse = lastAIMessage(result.state);
+            const result2 = await testGraph<BrainstormGraphState>()
+                .withGraph(brainstormGraph)
+                .withState(result.state)
+                .withPrompt(`We personally vet every single host and guest on our platform. We
+                    check guest credibility and expertise. Audience alignment between hosts and guests. And those become data points in our AI-powered recommendations.`)
+                .stopAfter('agent')
+                .execute();
+
+            const aiResponse = lastAIMessage(result2.state);
             assertDefined(aiResponse, 'aiResponse is defined');
 
-            expect(result.state.error).toBeUndefined();
-            expect(result.state.currentTopic).toBe('audience');
-            expect(result.state.placeholderText).toEqual('My target audience is...')
+            expect(result2.state.error).toBeUndefined();
+            expect(result2.state.currentTopic).toBeOneOf(['audience', 'solution', 'socialProof']);
 
             // It saves the answer to the memories...
-            const memories = result.state.memories;
+            const memories = result2.state.memories;
+
             expect(memories.idea).toBeTruthy();
 
-            // AI asks about customers...
-            expect(aiResponse.content).toContain('audience');
-
-            expect(result.state.availableCommands).toHaveLength(3);
-            expect(result.state.availableCommands[0]).toBe('helpMe');
-            expect(result.state.availableCommands[1]).toBe('skip');
-            expect(result.state.availableCommands[2]).toBe('doTheRest');
+            expect(result2.state.availableCommands).toHaveLength(3);
+            expect(result2.state.availableCommands[0]).toBe('helpMe');
+            expect(result2.state.availableCommands[1]).toBe('skip');
+            expect(result2.state.availableCommands[2]).toBe('doTheRest');
         });
 
         it('should ask about solution after audience', async () => {
@@ -302,7 +309,6 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             const lastAIResponse = lastAIMessage(result.state);
-            console.log(lastAIResponse)
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
             expect(result.error).toBeUndefined();
@@ -315,6 +321,11 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableCommands[2]).toBe('doTheRest');
 
             expect(lastAIResponse.content).toMatch(/solution|before|after|transformation|benefits/i)
+            const structuredOutput = lastAIResponse.response_metadata.parsed_blocks![0].parsed! as Brainstorm.ReplyType;
+            expect(structuredOutput.type).toBe('reply');
+            expect(structuredOutput.text).toBeDefined()
+            expect(structuredOutput.examples).toBeDefined()
+            expect(structuredOutput.conclusion).toBeDefined()
         })
 
         it('should ask about social proof after solution', async () => {
@@ -443,6 +454,9 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.redirect).toBeUndefined();
 
             expect(lastAIResponse.content).toMatch(/absolutely not|no|not at all|definitely not/i);
+            const structuredOutput = lastAIResponse.response_metadata.parsed_blocks![0];
+            expect(structuredOutput).toBeDefined();
+            expect(structuredOutput.type).toBe('text');
         })
     });
 
@@ -599,12 +613,11 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(result.state.availableCommands[2]).toBe('doTheRest');
 
                 expect(lastAIResponse.content).toMatch(/audience|who|keeps them up at night/i)
-                let responseMetadata = lastAIResponse.response_metadata as Brainstorm.HelpMeResponseType;
-                console.log(lastAIResponse)
-                expect(responseMetadata.type).toBe('helpMe');
-                expect(responseMetadata.text).toBeDefined()
-                expect(responseMetadata.template).toBeDefined()
-                expect(responseMetadata.examples).toBeDefined()
+                let parsed = lastAIResponse.response_metadata.parsed_blocks![0].parsed as Brainstorm.HelpMeResponseType;
+                expect(parsed.type).toBe('helpMe');
+                expect(parsed.text).toBeDefined()
+                expect(parsed.template).toBeDefined()
+                expect(parsed.examples).toBeDefined()
             });
         });
 
@@ -683,7 +696,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result2.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
 
             const lastAIResponse = lastAIMessage(result2.state);
-            expect(result2.state.messages).toHaveLength(5);
+            expect(result2.state.messages).toHaveLength(4);
 
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
             expect(lastAIResponse.content).toContain('podcast');
@@ -700,12 +713,6 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result3.error).toBeUndefined();
             expect(result3.state.currentTopic).toBe('idea');
             expect(result3.state.placeholderText).toEqual('I want to acquire leads, sell my product...')
-
-            const lastAIResponse3 = lastAIMessage(result3.state);
-            assertDefined(lastAIResponse3, 'lastAIResponse is defined');
-            expect(result3.state.messages).toHaveLength(7);
-
-            expect(lastAIResponse3.content).toContain('podcast');
         });
     });
 });

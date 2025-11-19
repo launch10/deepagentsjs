@@ -66,12 +66,9 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
     });
     const result = await agent.invoke(state as any, config) as BrainstormGraphState;
     const lastMessage = lastAIMessage(result);
-    if (!lastMessage) {
-        throw new Error("Agent did not return an AI message");
-    }
-    const agentMessage = await toStructuredMessage(lastMessage);
+    const structuredMessage = await toStructuredMessage(lastMessage as any);
 
-    if (!agentMessage) {
+    if (!lastMessage) {
         throw new Error("Agent did not return an AI message");
     }
 
@@ -80,7 +77,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
     return {
         redirect: result.redirect as Brainstorm.RedirectType,
         skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
-        messages: [...state.messages, agentMessage],
+        messages: [...state.messages, structuredMessage],
         memories,
         currentTopic,
         remainingTopics,
