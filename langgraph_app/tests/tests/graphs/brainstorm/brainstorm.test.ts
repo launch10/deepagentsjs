@@ -269,7 +269,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(structuredOutput.conclusion).toBeDefined()
         });
 
-        it.only("should update to the next question when we successfully give a business idea", async () => {
+        it("should update to the next question when we successfully give a business idea", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(validAnswers.idea)
@@ -309,7 +309,6 @@ describe.sequential('Brainstorming Flow', () => {
                 .execute();
 
             const lastAIResponse = lastAIMessage(result.state);
-            console.log(lastAIResponse)
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
             expect(result.error).toBeUndefined();
@@ -322,6 +321,11 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableCommands[2]).toBe('doTheRest');
 
             expect(lastAIResponse.content).toMatch(/solution|before|after|transformation|benefits/i)
+            const structuredOutput = lastAIResponse.response_metadata.parsed_blocks![0].parsed! as Brainstorm.ReplyType;
+            expect(structuredOutput.type).toBe('reply');
+            expect(structuredOutput.text).toBeDefined()
+            expect(structuredOutput.examples).toBeDefined()
+            expect(structuredOutput.conclusion).toBeDefined()
         })
 
         it('should ask about social proof after solution', async () => {
@@ -450,6 +454,9 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.redirect).toBeUndefined();
 
             expect(lastAIResponse.content).toMatch(/absolutely not|no|not at all|definitely not/i);
+            const structuredOutput = lastAIResponse.response_metadata.parsed_blocks![0];
+            expect(structuredOutput).toBeDefined();
+            expect(structuredOutput.type).toBe('text');
         })
     });
 
