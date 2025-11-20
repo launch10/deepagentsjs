@@ -29,7 +29,7 @@ const testHeaders = (baseHeaders: Record<string, string>) => {
   }
 }
 
-const headers = (jwt: string, body?: unknown) => {
+const headers = (jwt: string) => {
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = generateSignature(timestamp);
 
@@ -62,10 +62,7 @@ export function createRailsApiClient(options: RailsApiClientOptions) {
 
   const client = createClient<paths>({
     baseUrl,
-    headers: (init) => {
-      const body = init?.body;
-      return headers(jwt, body);
-    },
+    headers: headers(jwt),
   });
 
   return client;
