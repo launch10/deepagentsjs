@@ -13,6 +13,22 @@ function generateSignature(timestamp: number): string {
   return createHmac('sha256', secret).update(timestamp.toString()).digest('hex');
 }
 
+const testHeaders = (baseHeaders: Record<string, string>) => {
+  const jwtSecret = env.JWT_SECRET || 'test-secret-key';
+  const testTimestamp = Date.now();
+  
+  const proof = jwtLib.sign(
+      { timestamp: testTimestamp, mode: 'test' },
+      jwtSecret,
+      { expiresIn: '1m', algorithm: 'HS256' }
+  );
+  return {
+    ...baseHeaders,
+    "X-Test-Mode": "true",
+    "X-Test-Proof": proof,
+  }
+}
+
 const headers = (jwt: string, body?: unknown) => {
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = generateSignature(timestamp);
@@ -25,22 +41,11 @@ const headers = (jwt: string, body?: unknown) => {
     "X-Timestamp": timestamp.toString(),
   };
 
-  if (env.NODE_ENV !== "test") {
-    return headers;
+  if (env.NODE_ENV === "test") {
+    return testHeaders(headers);
   }
-  const jwtSecret = env.JWT_SECRET || 'test-secret-key';
-  const testTimestamp = Date.now();
-  
-  const proof = jwtLib.sign(
-      { timestamp: testTimestamp, mode: 'test' },
-      jwtSecret,
-      { expiresIn: '1m', algorithm: 'HS256' }
-  );
-  return {
-    ...headers,
-    "X-Test-Mode": "true",
-    "X-Test-Proof": proof,
-  }
+
+  return headers;
 }
 
 /**

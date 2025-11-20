@@ -499,7 +499,7 @@ paths:
           type: string
       responses:
         '200':
-          description: retrieves community themes in separate account
+          description: retrieves official + account themes
           content:
             application/json:
               schema:

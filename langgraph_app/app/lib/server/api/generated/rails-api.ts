@@ -490,26 +490,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/themes": {
+    "/api/v1/themes": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Lists all themes */
+        /** Lists official themes + themes in account */
         get: {
             parameters: {
                 query?: never;
                 header?: {
                     Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
                 };
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description returns empty array when no themes exist */
+                /** @description retrieves official + account themes */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -542,7 +544,68 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /** Creates theme */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Theme name */
+                        name: string;
+                        /** @description Theme color palette */
+                        colors: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description theme created */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Theme name */
+                            name: string;
+                            /** @description Theme color palette */
+                            colors: string[];
+                            /** @description Associated theme labels */
+                            theme_labels: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Label name */
+                                name: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Error message */
+                            error?: string;
+                            /** @description Array of error messages */
+                            errors?: string[];
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
