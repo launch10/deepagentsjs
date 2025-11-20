@@ -32,8 +32,12 @@ Rails.application.config.to_prepare do
       Rails.application.credentials.dig(:cloudflare, :r2_secret_access_key)
     end
 
-    config.r2_bucket_name = ENV.fetch("CLOUDFLARE_R2_BUCKET_NAME") do
-      Rails.application.credentials.dig(:cloudflare, :r2_bucket) || "deploys"
+    config.deploys_bucket = ENV.fetch("CLOUDFLARE_DEPLOYS_BUCKET") do
+      Rails.application.credentials.dig(:cloudflare, :deploys_bucket) || "deploys"
+    end
+
+    config.uploads_bucket = ENV.fetch("CLOUDFLARE_UPLOADS_BUCKET") do
+      Rails.application.credentials.dig(:cloudflare, :uploads_bucket) || "uploads"
     end
 
     config.r2_region = ENV.fetch("CLOUDFLARE_R2_REGION") do

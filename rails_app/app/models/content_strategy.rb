@@ -2,24 +2,24 @@
 #
 # Table name: content_strategies
 #
-#  id                    :integer          not null, primary key
-#  tone                  :string           not null
-#  core_emotional_driver :string
+#  id                    :bigint           not null, primary key
 #  attention_grabber     :string
-#  problem_statement     :string
+#  audience              :string
+#  call_to_action        :string
+#  core_emotional_driver :string
 #  emotional_bridge      :string
+#  landing_page_copy     :text
+#  page_mood             :string
+#  problem_statement     :string
 #  product_reveal        :string
 #  social_proof          :string
+#  summary               :text
+#  tone                  :string           not null
 #  urgency_hook          :string
-#  call_to_action        :string
-#  page_mood             :string
 #  visual_evocation      :string
-#  landing_page_copy     :text
 #  created_at            :datetime         not null
 #  updated_at            :datetime         not null
 #  website_id            :integer
-#  summary               :text
-#  audience              :string
 #
 # Indexes
 #

@@ -2055,7 +2055,9 @@ CREATE TABLE public.themes (
     colors jsonb DEFAULT '{}'::jsonb,
     theme jsonb DEFAULT '{}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    theme_type character varying NOT NULL,
+    author_id bigint
 );
 
 
@@ -4774,10 +4776,24 @@ CREATE INDEX index_theme_variants_on_created_at ON public.theme_variants USING b
 
 
 --
+-- Name: index_themes_on_author_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_themes_on_author_id ON public.themes USING btree (author_id);
+
+
+--
 -- Name: index_themes_on_name; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_themes_on_name ON public.themes USING btree (name);
+
+
+--
+-- Name: index_themes_on_theme_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_themes_on_theme_type ON public.themes USING btree (theme_type);
 
 
 --
@@ -5595,6 +5611,10 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251118140220'),
+('20251118140001'),
+('20251118135945'),
+('20251118135743'),
 ('20251111214423'),
 ('20251111174656'),
 ('20251106161828'),

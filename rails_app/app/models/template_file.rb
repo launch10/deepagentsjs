@@ -2,20 +2,20 @@
 #
 # Table name: template_files
 #
-#  id                    :integer          not null, primary key
-#  template_id           :integer
-#  path                  :string
+#  id                    :bigint           not null, primary key
 #  content               :text
+#  content_tsv           :tsvector
+#  path                  :string
+#  shasum                :string
 #  created_at            :datetime         not null
 #  updated_at            :datetime         not null
-#  shasum                :string
 #  file_specification_id :integer
-#  content_tsv           :tsvector
+#  template_id           :bigint
 #
 # Indexes
 #
-#  idx_template_files_content_tsv                 (content_tsv)
-#  idx_template_files_path_trgm                   (path)
+#  idx_template_files_content_tsv                 (content_tsv) USING gin
+#  idx_template_files_path_trgm                   (path) USING gin
 #  index_template_files_on_file_specification_id  (file_specification_id)
 #  index_template_files_on_path                   (path)
 #  index_template_files_on_shasum                 (shasum)

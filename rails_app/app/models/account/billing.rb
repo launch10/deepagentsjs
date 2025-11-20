@@ -2,7 +2,7 @@ module Account::Billing
   extend ActiveSupport::Concern
 
   included do
-    pay_customer
+    pay_customer default_payment_processor: (Rails.env.test? ? :fake_processor : :stripe)
 
     define_method :pay_should_sync_customer? do
       saved_change_to_owner_id? || saved_change_to_billing_email?

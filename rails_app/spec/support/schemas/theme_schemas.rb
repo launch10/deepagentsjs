@@ -2,6 +2,17 @@
 
 module ApiSchemas
   module Theme
+    def self.create_request
+      {
+        type: :object,
+        properties: {
+          name: {type: :string, description: 'Theme name'},
+          colors: {type: :array, items: {type: :string}, description: 'Theme color palette'},
+        },
+        required: ['name', 'colors']
+      }
+    end
+
     def self.response
       {
         type: :object,

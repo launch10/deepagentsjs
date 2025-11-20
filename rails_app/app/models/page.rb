@@ -2,15 +2,15 @@
 #
 # Table name: pages
 #
-#  id                    :integer          not null, primary key
+#  id                    :bigint           not null, primary key
 #  name                  :string
 #  page_type             :string           not null
+#  path                  :string
 #  created_at            :datetime         not null
 #  updated_at            :datetime         not null
-#  website_id            :integer
-#  website_file_id       :integer
-#  path                  :string
-#  file_specification_id :integer
+#  file_specification_id :bigint
+#  website_file_id       :bigint
+#  website_id            :bigint
 #
 # Indexes
 #

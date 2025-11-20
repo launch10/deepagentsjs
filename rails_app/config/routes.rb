@@ -11,11 +11,12 @@ LOCAL_ENV_ONLY = lambda do |request|
 end
 
 Rails.application.routes.draw do
+  mount Rswag::Ui::Engine => '/api-docs'
+  mount Rswag::Api::Engine => '/api-docs'
+
   constraints ADMIN_ONLY do
     mount Sidekiq::Web => "/sidekiq"
     mount Zhong::Web => "/zhong"
-    mount Rswag::Ui::Engine => '/api-docs'
-    mount Rswag::Api::Engine => '/api-docs'
   end
 
   constraints LOCAL_ENV_ONLY do
@@ -64,11 +65,7 @@ Rails.application.routes.draw do
     # For now, just mock this as the brainstorms index
     root to: "brainstorms#new", as: :onboarding
   end
+
   get "up" => "rails/health#show", :as => :rails_health_check
   root to: "static#index"
-
-  resources :templates
-  resources :themes, only: [:index]
-  resources :websites, only: [:show, :create, :update]
-  resources :brainstorms, param: :thread_id, only: [:show, :create, :update, :new]
 end

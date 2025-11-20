@@ -1,4 +1,4 @@
-class ApiTokensController < ApplicationController
+class APITokensController < ApplicationController
   before_action :authenticate_user!
   before_action :set_api_token, only: [:show, :edit, :update, :destroy]
 
@@ -7,7 +7,7 @@ class ApiTokensController < ApplicationController
   end
 
   def new
-    @api_token = ApiToken.new
+    @api_token = APIToken.new
   end
 
   def create

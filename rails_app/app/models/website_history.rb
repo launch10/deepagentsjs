@@ -2,20 +2,20 @@
 #
 # Table name: website_histories
 #
-#  id                 :integer          not null, primary key
-#  website_id         :integer          not null
+#  id                 :bigint           not null, primary key
+#  history_ended_at   :datetime
+#  history_started_at :datetime         not null
 #  name               :string
-#  project_id         :integer
-#  account_id         :integer
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
-#  history_started_at :datetime         not null
-#  history_ended_at   :datetime
+#  account_id         :integer
 #  history_user_id    :integer
+#  project_id         :integer
 #  snapshot_id        :string
-#  thread_id          :string
 #  template_id        :integer
 #  theme_id           :integer
+#  thread_id          :string
+#  website_id         :integer          not null
 #
 # Indexes
 #

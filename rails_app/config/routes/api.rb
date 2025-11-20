@@ -8,6 +8,9 @@ namespace :api, defaults: {format: :json} do
     resources :accounts
     resources :users
     resources :notification_tokens, param: :token, only: [:create, :destroy]
+    resources :templates
+    resources :themes, only: [:index, :create]
+    resources :brainstorms, param: :thread_id, only: [:show, :create, :update]
   end
 end
 

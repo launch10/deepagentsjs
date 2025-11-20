@@ -1,4 +1,4 @@
-class Api::V1::AuthsController < Api::BaseController
+class API::V1::AuthsController < API::BaseController
   skip_before_action :require_api_authentication
   before_action :authenticate, only: [:create]
 
@@ -8,7 +8,7 @@ class Api::V1::AuthsController < Api::BaseController
       sign_in user
       render json: {}
     else
-      render json: {token: user.api_tokens.find_or_create_by(name: ApiToken::DEFAULT_NAME).token}
+      render json: {token: user.api_tokens.find_or_create_by(name: APIToken::DEFAULT_NAME).token}
     end
   end
 

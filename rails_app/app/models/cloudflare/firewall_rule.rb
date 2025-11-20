@@ -2,16 +2,16 @@
 #
 # Table name: cloudflare_firewall_rules
 #
-#  id                 :integer          not null, primary key
-#  firewall_id        :integer          not null
-#  domain_id          :integer          not null
-#  account_id         :integer          not null
-#  status             :string           default("inactive"), not null
-#  cloudflare_rule_id :string           not null
+#  id                 :bigint           not null, primary key
 #  blocked_at         :datetime
+#  status             :string           default("inactive"), not null
 #  unblocked_at       :datetime
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
+#  account_id         :bigint           not null
+#  cloudflare_rule_id :string           not null
+#  domain_id          :bigint           not null
+#  firewall_id        :bigint           not null
 #
 # Indexes
 #

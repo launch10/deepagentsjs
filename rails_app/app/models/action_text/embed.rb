@@ -2,9 +2,9 @@
 #
 # Table name: action_text_embeds
 #
-#  id         :integer          not null, primary key
-#  url        :string
+#  id         :bigint           not null, primary key
 #  fields     :jsonb
+#  url        :string
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
 #

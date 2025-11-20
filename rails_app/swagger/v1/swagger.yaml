@@ -4,7 +4,7 @@ info:
   title: API V1
   version: v1
 paths:
-  "/brainstorms":
+  "/api/v1/brainstorms":
     post:
       summary: Creates a brainstorm
       tags:
@@ -17,9 +17,19 @@ paths:
         required: false
         schema:
           type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
         '201':
-          description: brainstorm created with custom name
+          description: brainstorm created in team account after switching
           content:
             application/json:
               schema:
@@ -62,7 +72,7 @@ paths:
                 - created_at
                 - updated_at
         '401':
-          description: unauthorized - invalid token
+          description: unauthorized - missing token
         '422':
           description: invalid request - missing thread_id
       requestBody:
@@ -98,7 +108,7 @@ paths:
                       description: Design preferences
               required:
               - brainstorm
-  "/brainstorms/{thread_id}":
+  "/api/v1/brainstorms/{thread_id}":
     parameters:
     - name: thread_id
       in: path
@@ -118,9 +128,19 @@ paths:
         required: false
         schema:
           type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
         '200':
-          description: brainstorm found
+          description: brainstorm found in team account after switching
           content:
             application/json:
               schema:
@@ -162,8 +182,6 @@ paths:
                 - name
                 - created_at
                 - updated_at
-        '401':
-          description: unauthorized - missing token
         '404':
           description: brainstorm not found
     patch:
@@ -178,9 +196,19 @@ paths:
         required: false
         schema:
           type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
         '200':
-          description: brainstorm fields updated
+          description: brainstorm updated in team account after switching
           content:
             application/json:
               schema:
@@ -222,8 +250,6 @@ paths:
                 - name
                 - created_at
                 - updated_at
-        '401':
-          description: unauthorized - missing token
         '404':
           description: brainstorm not found
       requestBody:
@@ -448,9 +474,9 @@ paths:
                   - name
               required:
               - snapshot
-  "/themes":
+  "/api/v1/themes":
     get:
-      summary: Lists all themes
+      summary: Lists official themes + themes in account
       tags:
       - Themes
       security:
@@ -461,9 +487,19 @@ paths:
         required: false
         schema:
           type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
         '200':
-          description: returns empty array when no themes exist
+          description: retrieves official + account themes
           content:
             application/json:
               schema:
@@ -504,6 +540,99 @@ paths:
                   - theme_labels
         '401':
           description: unauthorized - invalid token
+    post:
+      summary: Creates theme
+      tags:
+      - Themes
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: theme created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Theme name
+                  colors:
+                    type: array
+                    items:
+                      type: string
+                    description: Theme color palette
+                  theme_labels:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        name:
+                          type: string
+                          description: Label name
+                      required:
+                      - id
+                      - name
+                    description: Associated theme labels
+                required:
+                - id
+                - name
+                - colors
+                - theme_labels
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    description: Array of error messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Theme name
+                colors:
+                  type: array
+                  items:
+                    type: string
+                  description: Theme color palette
+              required:
+              - name
+              - colors
 servers:
 - url: https://{defaultHost}
   variables:

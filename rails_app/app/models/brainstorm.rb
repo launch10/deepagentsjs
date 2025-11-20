@@ -2,17 +2,17 @@
 #
 # Table name: brainstorms
 #
-#  id            :integer          not null, primary key
-#  idea          :string
+#  id            :bigint           not null, primary key
 #  audience      :string
-#  solution      :string
-#  social_proof  :string
-#  look_and_feel :string
-#  website_id    :integer
-#  thread_id     :string
 #  completed_at  :datetime
+#  idea          :string
+#  look_and_feel :string
+#  social_proof  :string
+#  solution      :string
 #  created_at    :datetime         not null
 #  updated_at    :datetime         not null
+#  thread_id     :string
+#  website_id    :bigint
 #
 # Indexes
 #

@@ -1,4 +1,4 @@
-class Api::V1::UsersController < Api::BaseController
+class API::V1::UsersController < API::BaseController
   skip_before_action :require_api_authentication, only: [:create]
   before_action :configure_permitted_parameters, only: [:create]
 
@@ -16,10 +16,10 @@ class Api::V1::UsersController < Api::BaseController
         user.remember_me = true
         sign_in user
         render json: {
-          token: user.api_tokens.first_or_create(name: ApiToken::APP_NAME).token
+          token: user.api_tokens.first_or_create(name: APIToken::APP_NAME).token
         }
       else
-        api_token = user.api_tokens.first_or_create(name: ApiToken::DEFAULT_NAME)
+        api_token = user.api_tokens.first_or_create(name: APIToken::DEFAULT_NAME)
         render json: {
           user: {
             id: user.id,

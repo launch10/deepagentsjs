@@ -2,20 +2,20 @@
 #
 # Table name: website_files
 #
-#  id                    :integer          not null, primary key
-#  website_id            :integer          not null
-#  file_specification_id :integer
-#  path                  :string           not null
+#  id                    :bigint           not null, primary key
 #  content               :string           not null
+#  content_tsv           :tsvector
+#  path                  :string           not null
+#  shasum                :string
 #  created_at            :datetime         not null
 #  updated_at            :datetime         not null
-#  shasum                :string
-#  content_tsv           :tsvector
+#  file_specification_id :bigint
+#  website_id            :bigint           not null
 #
 # Indexes
 #
-#  idx_website_files_content_tsv                      (content_tsv)
-#  idx_website_files_path_trgm                        (path)
+#  idx_website_files_content_tsv                      (content_tsv) USING gin
+#  idx_website_files_path_trgm                        (path) USING gin
 #  index_website_files_on_created_at                  (created_at)
 #  index_website_files_on_file_specification_id       (file_specification_id)
 #  index_website_files_on_shasum                      (shasum)

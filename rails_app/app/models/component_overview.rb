@@ -2,21 +2,21 @@
 #
 # Table name: component_overviews
 #
-#  id                    :integer          not null, primary key
-#  website_id            :integer          not null
-#  page_id               :integer
+#  id                    :bigint           not null, primary key
+#  background_color      :string
 #  component_type        :string
-#  name                  :string
-#  path                  :string
-#  component_id          :integer
-#  file_specification_id :integer
-#  purpose               :string
 #  context               :string
 #  copy                  :string
-#  background_color      :string
+#  name                  :string
+#  path                  :string
+#  purpose               :string
+#  sort_order            :integer
 #  created_at            :datetime         not null
 #  updated_at            :datetime         not null
-#  sort_order            :integer
+#  component_id          :bigint
+#  file_specification_id :bigint
+#  page_id               :bigint
+#  website_id            :bigint           not null
 #
 # Indexes
 #

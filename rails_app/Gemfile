@@ -37,10 +37,10 @@ gem "sinatra", require: false # Required for Zhong web
 gem "rswag"
 
 group :development, :test do
+  gem "annotaterb"
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
   gem "brakeman", require: false
   gem "rubocop-rails-omakase", require: false
-  gem "annotate"
   gem "pry"
   gem "rspec", "~> 3.13"
   gem "rspec-rails", "~> 8.0"

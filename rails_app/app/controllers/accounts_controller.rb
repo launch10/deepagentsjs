@@ -65,23 +65,18 @@ class AccountsController < Accounts::BaseController
   end
 
   # Current account will not change until the next request
+  #
+  # We don't support these options, but they are valid Jumpstart Pro options
+  #
+  # if Jumpstart::Multitenancy.subdomain? && @account.subdomain?
+  #   redirect_to root_url(subdomain: @account.subdomain), allow_other_host: true
+  # elsif Jumpstart::Multitenancy.path?
+  #   redirect_to root_url(script_name: "/#{@account.id}")
+  # else
   def switch
-    # Uncomment this if you would like to redirect to the custom domain when switching accounts.
-    # This is not enabled by default because we can't guarantee the domain is configured properly.
-    #
-    # if Jumpstart::Multitenancy.domain? && @account.domain?
-    #  redirect_to @account.domain, allow_other_host: true
-
-    if Jumpstart::Multitenancy.subdomain? && @account.subdomain?
-      redirect_to root_url(subdomain: @account.subdomain), allow_other_host: true
-
-    elsif Jumpstart::Multitenancy.path?
-      redirect_to root_url(script_name: "/#{@account.id}")
-
-    else
-      session[:account_id] = @account.id
-      redirect_to url_from(params[:return_to]) || root_path
-    end
+    session[:account_id] = @account.id
+    refresh_jwt(account: @account)
+    redirect_to url_from(params[:return_to]) || root_path
   end
 
   private

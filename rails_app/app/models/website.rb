@@ -2,15 +2,15 @@
 #
 # Table name: websites
 #
-#  id          :integer          not null, primary key
+#  id          :bigint           not null, primary key
 #  name        :string
-#  project_id  :integer
-#  account_id  :integer
 #  created_at  :datetime         not null
 #  updated_at  :datetime         not null
-#  thread_id   :string
-#  template_id :integer
+#  account_id  :bigint
+#  project_id  :bigint
+#  template_id :bigint
 #  theme_id    :integer
+#  thread_id   :string
 #
 # Indexes
 #
@@ -31,6 +31,7 @@ class Website < ApplicationRecord
   historiographer_mode :snapshot_only
 
   belongs_to :project
+  has_one :brainstorm
   belongs_to :account
   belongs_to :template
   belongs_to :theme, optional: true
@@ -135,4 +136,5 @@ class Website < ApplicationRecord
   def set_default_theme
     self.theme = Theme.first if theme.nil?
   end
+
 end

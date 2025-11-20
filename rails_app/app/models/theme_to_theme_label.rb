@@ -2,9 +2,9 @@
 #
 # Table name: themes_to_theme_labels
 #
-#  id             :integer          not null, primary key
-#  theme_id       :integer          not null
-#  theme_label_id :integer          not null
+#  id             :bigint           not null, primary key
+#  theme_id       :bigint           not null
+#  theme_label_id :bigint           not null
 #
 # Indexes
 #

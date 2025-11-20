@@ -2,21 +2,25 @@
 #
 # Table name: accounts
 #
-#  id                  :integer          not null, primary key
+#  id                  :bigint           not null, primary key
+#  account_users_count :integer          default(0)
+#  billing_email       :string
+#  domain              :string
+#  extra_billing_info  :text
 #  name                :string           not null
-#  owner_id            :integer
-#  personal            :boolean          default("false")
+#  personal            :boolean          default(FALSE)
+#  subdomain           :string
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
-#  extra_billing_info  :text
-#  domain              :string
-#  subdomain           :string
-#  billing_email       :string
-#  account_users_count :integer          default("0")
+#  owner_id            :bigint
 #
 # Indexes
 #
 #  index_accounts_on_owner_id  (owner_id)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (owner_id => users.id)
 #
 
 class Account < ApplicationRecord
@@ -36,9 +40,11 @@ class Account < ApplicationRecord
   has_many :users, through: :account_users
   has_many :projects, dependent: :destroy
   has_many :websites, through: :projects
+  has_many :brainstorms, through: :websites
   has_many :domains
   has_many :domain_request_counts
   has_many :account_request_counts
+  has_many :themes, as: :author
   has_one :firewall, class_name: "Cloudflare::Firewall"
 
   scope :personal, -> { where(personal: true) }

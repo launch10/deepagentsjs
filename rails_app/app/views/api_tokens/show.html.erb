@@ -17,7 +17,7 @@
       </div>
 
       <div class="mb-4">
-        <div class="mb-2 text-gray-600 text-xs uppercase font-bold"><%= ApiToken.human_attribute_name(:token) %></div>
+        <div class="mb-2 text-gray-600 text-xs uppercase font-bold"><%= APIToken.human_attribute_name(:token) %></div>
         <div class="flex items-center gap-1">
           <%= blur_secret @api_token.token %>
 
@@ -30,12 +30,12 @@
       </div>
 
       <div class="mb-4">
-        <div class="mb-2 text-gray-600 text-xs uppercase font-bold"><%= ApiToken.human_attribute_name(:created_at) %></div>
+        <div class="mb-2 text-gray-600 text-xs uppercase font-bold"><%= APIToken.human_attribute_name(:created_at) %></div>
         <%= @api_token.created_at.strftime("%b %e, %Y") %>
       </div>
 
       <div class="mb-4">
-        <div class="mb-2 text-gray-600 text-xs uppercase font-bold"><%= ApiToken.human_attribute_name(:last_used_at) %></div>
+        <div class="mb-2 text-gray-600 text-xs uppercase font-bold"><%= APIToken.human_attribute_name(:last_used_at) %></div>
         <%= @api_token.last_used_at? ? local_time_ago(@api_token.last_used_at) : "—" %>
       </div>
     </div>

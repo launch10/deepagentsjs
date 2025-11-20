@@ -2,24 +2,28 @@
 #
 # Table name: api_tokens
 #
-#  id           :integer          not null, primary key
-#  user_id      :integer          not null
-#  token        :string
-#  name         :string
-#  metadata     :jsonb
-#  transient    :boolean          default("false")
-#  last_used_at :datetime
+#  id           :bigint           not null, primary key
 #  expires_at   :datetime
+#  last_used_at :datetime
+#  metadata     :jsonb
+#  name         :string
+#  token        :string
+#  transient    :boolean          default(FALSE)
 #  created_at   :datetime         not null
 #  updated_at   :datetime         not null
+#  user_id      :bigint           not null
 #
 # Indexes
 #
 #  index_api_tokens_on_token    (token) UNIQUE
 #  index_api_tokens_on_user_id  (user_id)
 #
+# Foreign Keys
+#
+#  fk_rails_...  (user_id => users.id)
+#
 
-class ApiToken < ApplicationRecord
+class APIToken < ApplicationRecord
   DEFAULT_NAME = I18n.t("api_tokens.default")
   APP_NAME = I18n.t("api_tokens.app")
 
@@ -56,7 +60,7 @@ class ApiToken < ApplicationRecord
   def generate_token
     loop do
       self.token = SecureRandom.hex(16)
-      break unless ApiToken.where(token: token).exists?
+      break unless APIToken.where(token: token).exists?
     end
   end
 end

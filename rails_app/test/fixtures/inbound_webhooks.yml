@@ -2,9 +2,9 @@
 #
 # Table name: inbound_webhooks
 #
-#  id         :integer          not null, primary key
-#  status     :integer          default("0"), not null
+#  id         :bigint           not null, primary key
 #  body       :text
+#  status     :integer          default("pending"), not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
 #

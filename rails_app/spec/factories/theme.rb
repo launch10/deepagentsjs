@@ -3,6 +3,8 @@ FactoryBot.define do
     sequence(:name) { |n| "Theme #{n}" }
     colors { {primary: "#000000", secondary: "#ffffff"} }
     theme { {font: "Inter", spacing: "normal"} }
+    theme_type { "official" }
+    author { nil }
   end
 
   factory :theme_label do

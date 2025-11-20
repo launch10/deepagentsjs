@@ -12,7 +12,7 @@ bucket_name = "deploys"
 
 [[kv_namespaces]]
 binding = "DEPLOYS_KV"
-id = "4ad010a8f77d43478998f7e0117e3588"
+id = "bc5f59801b704f668f3acee75915fddb"
 
 [durable_objects]
 bindings = []

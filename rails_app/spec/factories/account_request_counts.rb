@@ -2,11 +2,11 @@
 #
 # Table name: account_request_counts
 #
-#  id            :integer          not null, primary key
-#  account_id    :integer          not null
-#  request_count :integer          not null
+#  id            :bigint           not null, primary key
 #  month         :timestamptz      not null, primary key
+#  request_count :bigint           not null
 #  created_at    :timestamptz      not null
+#  account_id    :bigint           not null
 #
 # Indexes
 #

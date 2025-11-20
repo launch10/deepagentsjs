@@ -1,5 +1,5 @@
 class Cloudflare::FirewallService < ApplicationClient
-  class ApiError < StandardError; end
+  class APIError < StandardError; end
 
   BASE_URI = "https://api.cloudflare.com/client/v4"
 
@@ -31,7 +31,7 @@ class Cloudflare::FirewallService < ApplicationClient
     begin
       post(endpoint, body: body)
     rescue ApplicationClient::Error => e
-      raise ApiError, e.message
+      raise APIError, e.message
     end
   end
 
@@ -49,7 +49,7 @@ class Cloudflare::FirewallService < ApplicationClient
     begin
       delete(endpoint, body: body)
     rescue ApplicationClient::Error => e
-      raise ApiError, e.message
+      raise APIError, e.message
     end
   end
 
@@ -66,7 +66,7 @@ class Cloudflare::FirewallService < ApplicationClient
         acc[body.dig(:result, 0, :hostname, :url_hostname)] = body.dig(:result, 0, :id)
       end
     rescue ApplicationClient::Error => e
-      raise ApiError, e.message
+      raise APIError, e.message
     end
   end
 

@@ -2,19 +2,19 @@
 #
 # Table name: components
 #
-#  id                        :integer          not null, primary key
-#  website_id                :integer          not null
-#  page_id                   :integer          not null
+#  id                        :bigint           not null, primary key
+#  component_type            :string
 #  name                      :string           not null
 #  path                      :string
-#  component_type            :string
-#  file_specification_id     :integer          not null
-#  theme_variant_id          :integer
-#  component_overview_id     :integer
-#  component_content_plan_id :integer
 #  created_at                :datetime         not null
 #  updated_at                :datetime         not null
+#  component_content_plan_id :integer
+#  component_overview_id     :integer
+#  file_specification_id     :bigint           not null
+#  page_id                   :bigint           not null
+#  theme_variant_id          :integer
 #  website_file_id           :integer
+#  website_id                :bigint           not null
 #
 # Indexes
 #
