@@ -2,6 +2,7 @@
 name = "landing-page-server-admin"
 main = "src/index-admin.tsx"
 compatibility_date = "2024-09-23"
+account_id = "e18bb4a0cdad8679a28c8bdfcfed3741"
 compatibility_flags = ["nodejs_compat"]
 observability = { enabled = true }
 

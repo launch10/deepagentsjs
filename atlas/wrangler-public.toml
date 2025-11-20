@@ -1,6 +1,7 @@
 # Public-facing worker configuration
 name = "landing-page-server"
 main = "src/index-public.tsx"
+account_id = "e18bb4a0cdad8679a28c8bdfcfed3741"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 observability = { enabled = true }
