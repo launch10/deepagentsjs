@@ -46,6 +46,18 @@ RSpec.describe Domain, type: :model do
       expect(duplicate.errors[:domain]).to include('has already been taken')
     end
 
+    it "validates not restricted" do
+      domain = Domain.new(domain: 'uploads.launch10.ai', website: website, account: account)
+      expect(domain).not_to be_valid
+      expect(domain.errors[:domain]).to include('is restricted')
+
+      domain = Domain.new(domain: 'launch10.ai', website: website, account: account)
+      expect(domain).not_to be_valid
+
+      domain = Domain.new(domain: 'www.launch10.ai', website: website, account: account)
+      expect(domain).not_to be_valid
+    end
+
     it 'allows website_id to be optional' do
       domain = Domain.new(domain: 'test.com', account: account)
       expect(domain).to be_valid

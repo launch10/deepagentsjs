@@ -45,6 +45,9 @@ class Website < ApplicationRecord
   has_one :content_strategy, class_name: "ContentStrategy"
   alias_method :strategy, :content_strategy
 
+  has_many :website_uploads
+  has_many :uploads, through: :website_uploads
+
   accepts_nested_attributes_for :website_files, allow_destroy: true
 
   validates_presence_of :name, :project_id, :account_id, :template

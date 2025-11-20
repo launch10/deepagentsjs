@@ -612,6 +612,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieves uploads */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Filter by website */
+                    website_id?: number;
+                };
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns team account uploads after switching */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description website not found when filtering */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Creates an upload */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": Record<string, never>;
+                };
+            };
+            responses: {
+                /** @description creating upload without website */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description rejects PDF upload */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {

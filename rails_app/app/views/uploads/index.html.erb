@@ -1,0 +1,154 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Uploads</h1>
+    <p class="mt-2 text-sm text-gray-700">Upload and manage your images and videos</p>
+  </div>
+
+  <div class="bg-white shadow sm:rounded-lg mb-8">
+    <div class="px-4 py-5 sm:p-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+        Upload New File
+      </h3>
+      <%= form_with url: api_v1_uploads_path, method: :post, multipart: true, local: false, id: "upload-form", class: "space-y-4" do |f| %>
+        <div>
+          <label for="file-input" class="block text-sm font-medium text-gray-700">
+            Choose Image or Video
+          </label>
+          <input
+            type="file"
+            name="upload[file]"
+            id="file-input"
+            accept="image/*,video/*"
+            class="mt-1 block w-full text-sm text-gray-500
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-md file:border-0
+              file:text-sm file:font-semibold
+              file:bg-blue-50 file:text-blue-700
+              hover:file:bg-blue-100"
+          />
+        </div>
+
+        <div class="flex items-center">
+          <input
+            type="checkbox"
+            name="upload[is_logo]"
+            id="is-logo-checkbox"
+            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <label for="is-logo-checkbox" class="ml-2 block text-sm text-gray-900">
+            This is a logo
+          </label>
+        </div>
+
+        <div>
+          <button
+            type="submit"
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Upload
+          </button>
+        </div>
+      <% end %>
+
+      <div id="upload-status" class="mt-4 hidden">
+        <div class="rounded-md bg-green-50 p-4">
+          <div class="flex">
+            <div class="ml-3">
+              <p class="text-sm font-medium text-green-800" id="status-message">
+                Upload successful!
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white shadow sm:rounded-lg">
+    <div class="px-4 py-5 sm:p-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+        Your Uploads
+      </h3>
+      
+      <div id="uploads-list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <% @uploads.each do |upload| %>
+          <div class="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex flex-col items-center space-y-3">
+            <% if upload.image? %>
+              <%= image_tag upload.file.url, class: "h-32 w-32 object-cover rounded" %>
+            <% elsif upload.video? %>
+              <video class="h-32 w-32 object-cover rounded" controls>
+                <source src="<%= upload.file.url %>" type="video/mp4">
+              </video>
+            <% end %>
+            
+            <div class="text-center">
+              <p class="text-sm font-medium text-gray-900">
+                <%= upload.media_type.capitalize %>
+              </p>
+              <% if upload.is_logo %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Logo
+                </span>
+              <% end %>
+              <p class="text-xs text-gray-500">
+                <%= upload.created_at.strftime("%b %d, %Y") %>
+              </p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('upload-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const formData = new FormData(e.target);
+  const statusDiv = document.getElementById('upload-status');
+  const statusMessage = document.getElementById('status-message');
+  
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const response = await fetch('<%= api_v1_uploads_path %>', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      credentials: 'same-origin'
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      statusDiv.classList.remove('hidden');
+      statusDiv.querySelector('.bg-green-50').classList.remove('bg-red-50');
+      statusDiv.querySelector('.bg-green-50').classList.add('bg-green-50');
+      statusDiv.querySelector('.text-green-800').classList.remove('text-red-800');
+      statusDiv.querySelector('.text-green-800').classList.add('text-green-800');
+      statusMessage.textContent = 'Upload successful!';
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } else {
+      statusDiv.classList.remove('hidden');
+      statusDiv.querySelector('.bg-green-50').classList.remove('bg-green-50');
+      statusDiv.querySelector('.bg-green-50').classList.add('bg-red-50');
+      statusDiv.querySelector('.text-green-800').classList.remove('text-green-800');
+      statusDiv.querySelector('.text-green-800').classList.add('text-red-800');
+      statusMessage.textContent = data.errors || 'Upload failed';
+    }
+  } catch (error) {
+    statusDiv.classList.remove('hidden');
+    statusDiv.querySelector('.bg-green-50').classList.remove('bg-green-50');
+    statusDiv.querySelector('.bg-green-50').classList.add('bg-red-50');
+    statusDiv.querySelector('.text-green-800').classList.remove('text-green-800');
+    statusDiv.querySelector('.text-green-800').classList.add('text-red-800');
+    statusMessage.textContent = 'Upload failed: ' + error.message;
+  }
+});
+</script>
