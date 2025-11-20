@@ -54,7 +54,7 @@ RSpec.configure do |config|
   end
 
   config.after(:suite) do
-    FileUtils.rm_rf(Dir.glob(Rails.root.join('public', 'test', 'uploads', '*')))
+    FileUtils.rm_rf(Dir.glob(Rails.root.join('public', 'uploads', '*')))
   end
 
   config.before(:each, :logsql) do

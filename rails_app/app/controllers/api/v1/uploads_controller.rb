@@ -18,7 +18,7 @@ class API::V1::UploadsController < API::BaseController
       upload = result[:upload]
       render json: upload.to_json, status: :created
     rescue => e
-      render json: { errors: e.message }, status: :unprocessable_entity
+      render json: { errors: "invalid upload"}, status: :unprocessable_entity
     end
   end
 
