@@ -5,6 +5,7 @@ class CreateUploads < ActiveRecord::Migration[8.0]
       t.string :file, null: false
       t.string :media_type, null: false
       t.uuid :uuid, null: false, default: -> { "gen_random_uuid()" }
+      t.boolean :is_logo, null: false, default: false
 
       t.timestamps
     end
@@ -13,5 +14,6 @@ class CreateUploads < ActiveRecord::Migration[8.0]
     add_index :uploads, :account_id
     add_index :uploads, :media_type
     add_index :uploads, :created_at
+    add_index :uploads, :is_logo
   end
 end

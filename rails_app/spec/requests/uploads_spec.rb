@@ -1,0 +1,260 @@
+require 'swagger_helper'
+
+RSpec.describe "Uploads API", type: :request do
+  let!(:template) { create(:template) }
+
+  let!(:user1) { create(:user, name: "User 1") }
+  let!(:user2) { create(:user, name: "User 2") }
+
+  let!(:user1_owned_account) { user1.owned_account }
+  let!(:user1_team_account) { create_account_with_user(user1, account_name: "User 1 Team Account") }
+  let!(:user2_owned_account) { user2.owned_account }
+
+  let!(:project1_owned) { create(:project, account: user1_owned_account, name: "Project in Owned Account") }
+  let!(:project1_team) { create(:project, account: user1_team_account, name: "Project in Team Account") }
+  let!(:website1_owned) { create(:website, account: user1_owned_account, project: project1_owned, template: template) }
+  let!(:website1_team) { create(:website, account: user1_team_account, project: project1_team, template: template) }
+
+  before do
+    ensure_plans_exist
+    subscribe_account(user1_owned_account, plan_name: 'pro')
+    subscribe_account(user1_team_account, plan_name: 'pro')
+    subscribe_account(user2_owned_account, plan_name: 'pro')
+  end
+
+  def valid_upload_params(is_logo: false, website_id: nil)
+    params = {
+      upload: {
+        file: fixture_file_upload(Rails.root.join('spec/fixtures/files/test_image.jpg'), 'image/jpeg'),
+        is_logo: is_logo
+      }
+    }
+    params[:upload][:website_id] = website_id if website_id
+    params
+  end
+
+  path '/api/v1/uploads' do
+    post 'Creates an upload' do
+      tags 'Uploads'
+      consumes 'multipart/form-data'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+
+      parameter name: 'upload[file]', in: :formData, type: :file, required: true
+      parameter name: 'upload[is_logo]', in: :formData, type: :boolean, required: false
+      parameter name: 'upload[website_id]', in: :formData, type: :integer, required: false
+
+      before do
+        switch_account_to(user1_owned_account)
+      end
+
+      response '201', 'upload created in owned account' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+        let(:'upload[file]') { fixture_file_upload(Rails.root.join('spec/fixtures/files/test_image.jpg'), 'image/jpeg') }
+        let(:'upload[is_logo]') { true }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          upload = Upload.find(data["id"])
+
+          expect(upload.account_id).to eq(user1_owned_account.id)
+          expect(upload.media_type).to eq("image")
+          expect(upload.is_logo).to eq(true)
+        end
+      end
+
+      response '201', 'upload created and associated with website' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+        let(:'upload[file]') { fixture_file_upload(Rails.root.join('spec/fixtures/files/test_image.jpg'), 'image/jpeg') }
+        let(:'upload[is_logo]') { false }
+        let(:'upload[website_id]') { website1_owned.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          upload = Upload.find(data["id"])
+
+          expect(upload.account_id).to eq(user1_owned_account.id)
+          expect(upload.websites).to include(website1_owned)
+        end
+      end
+
+      response '201', "uploads to team account" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+        let(:'upload[file]') { fixture_file_upload(Rails.root.join('spec/fixtures/files/test_image.jpg'), 'image/jpeg') }
+        let(:'upload[is_logo]') { false }
+        let(:'upload[website_id]') { website1_team.id }
+
+        before do
+          switch_account_to(user1_team_account)
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          upload = Upload.find(data["id"])
+
+          expect(upload.account_id).to eq(user1_team_account.id)
+          expect(upload.websites).to include(website1_team)
+        end
+      end
+
+      response '422', "errors if uploading to website you don't own" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+        let(:'upload[file]') { fixture_file_upload(Rails.root.join('spec/fixtures/files/test_image.jpg'), 'image/jpeg') }
+        let(:'upload[is_logo]') { false }
+        let(:'upload[website_id]') { website1_team.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("invalid upload")
+        end
+      end
+
+      response '422', "website not exist" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+        let(:'upload[file]') { fixture_file_upload(Rails.root.join('spec/fixtures/files/test_image.jpg'), 'image/jpeg') }
+        let(:'upload[website_id]') { 999999 }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("invalid upload")
+        end
+      end
+
+      response "201", "video upload created" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+        let(:'upload[file]') { fixture_file_upload(Rails.root.join('spec/fixtures/files/test_video.mp4'), 'video/mp4') }
+        let(:'upload[is_logo]') { false }
+        let(:'upload[website_id]') { website1_owned.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          upload = Upload.find(data["id"])
+
+          expect(upload.media_type).to eq("video")
+        end
+      end
+
+      response "201", "creating upload without website" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+        let(:'upload[file]') { fixture_file_upload(Rails.root.join('spec/fixtures/files/test_video.mp4'), 'video/mp4') }
+        let(:'upload[is_logo]') { false }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          upload = Upload.find(data["id"])
+
+          expect(upload.media_type).to eq("video")
+        end
+      end
+
+      response "422", "rejects PDF upload" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+        let(:'upload[file]') { fixture_file_upload(Rails.root.join('spec/fixtures/files/test_document.pdf'), 'application/pdf') }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to be_present
+        end
+      end
+
+      response "401", "unauthorized - missing token" do
+        let(:Authorization) { nil }
+        let(:'upload[file]') { fixture_file_upload(Rails.root.join('spec/fixtures/files/test_image.jpg'), 'image/jpeg') }
+
+        run_test! do |response|
+          expect(response.code).to eq("401")
+        end
+      end
+    end
+
+    get 'Retrieves uploads' do
+      tags 'Uploads'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+      parameter name: :website_id, in: :query, type: :integer, required: false, description: 'Filter by website'
+
+      let!(:upload1_owned) { create(:upload, account: user1_owned_account) }
+      let!(:upload2_owned) { create(:upload, account: user1_owned_account, is_logo: true) }
+      let!(:upload1_team) { create(:upload, account: user1_team_account) }
+
+      before do
+        website1_owned.uploads << upload1_owned
+      end
+
+      response "200", "returns all account uploads" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data.length).to eq(2)
+          expect(data.map { |u| u["id"] }).to contain_exactly(upload1_owned.id, upload2_owned.id)
+        end
+      end
+
+      response "200", "returns uploads filtered by website" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+        let(:website_id) { website1_owned.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data.length).to eq(1)
+          expect(data.first["id"]).to eq(upload1_owned.id)
+        end
+      end
+
+      response "200", "returns team account uploads after switching" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+
+        before do
+          switch_account_to(user1_team_account)
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data.length).to eq(1)
+          expect(data.first["id"]).to eq(upload1_team.id)
+        end
+      end
+
+      response "404", "website not found when filtering" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+        let(:website_id) { 999999 }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("Website not found")
+        end
+      end
+    end
+  end
+end

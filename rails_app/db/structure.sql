@@ -2120,6 +2120,7 @@ CREATE TABLE public.uploads (
     file character varying NOT NULL,
     media_type character varying NOT NULL,
     uuid uuid DEFAULT gen_random_uuid() NOT NULL,
+    is_logo boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -4923,6 +4924,13 @@ CREATE INDEX index_uploads_on_account_id ON public.uploads USING btree (account_
 --
 
 CREATE INDEX index_uploads_on_created_at ON public.uploads USING btree (created_at);
+
+
+--
+-- Name: index_uploads_on_is_logo; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_uploads_on_is_logo ON public.uploads USING btree (is_logo);
 
 
 --

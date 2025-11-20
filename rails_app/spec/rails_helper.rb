@@ -23,6 +23,7 @@ RSpec.configure do |config|
   ]
   config.use_transactional_fixtures = false # Changed to false to use database_cleaner
   config.include FactoryBot::Syntax::Methods
+  config.include ActionDispatch::TestProcess::FixtureFile
 
   # Include helper modules for request specs
   config.include JwtHelpers, type: :request
@@ -50,6 +51,10 @@ RSpec.configure do |config|
 
   config.after(:each) do
     DatabaseCleaner.clean
+  end
+
+  config.after(:suite) do
+    FileUtils.rm_rf(Dir.glob(Rails.root.join('public', 'test', 'uploads', '*')))
   end
 
   config.before(:each, :logsql) do

@@ -1,3 +1,5 @@
+require "carrierwave/orm/activerecord"
+
 CarrierWave.configure do |config|
   config.storage = :aws
   config.aws_bucket = Cloudflare.config.uploads_bucket

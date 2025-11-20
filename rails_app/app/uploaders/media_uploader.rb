@@ -1,5 +1,9 @@
 class MediaUploader < CarrierWave::Uploader::Base
-  storage :aws
+  if Rails.env.test?
+    storage :file
+  else
+    storage :aws
+  end
 
   def store_dir
     "#{Rails.env}/#{model.class.to_s.underscore.pluralize}/#{model.uuid}"
@@ -19,7 +23,7 @@ class MediaUploader < CarrierWave::Uploader::Base
   end
 
   protected
-  
+
   def secure_token
     var = :"@#{mounted_as}_secure_token"
     model.instance_variable_get(var) || model.instance_variable_set(var, SecureRandom.uuid)
