@@ -94,5 +94,42 @@ RSpec.describe "Themes API", type: :request do
         end
       end
     end
+
+    post 'Creates theme' do
+      tags 'Themes'
+      consumes 'application/json'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+      parameter name: :theme, in: :body, schema: ApiSchemas::Theme.create_request
+
+      response '200', 'theme created' do
+        schema ApiSchemas::Theme.response
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user)['X-Timestamp'] }
+        let(:theme) { { theme: { name: 'New Theme', colors: ['#000000', '#ffffff'] } } }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(response.code).to eq("200")
+          expect(data['name']).to eq('New Theme')
+          expect(data['colors']).to eq(['#000000', '#ffffff'])
+          expect(data.keys).to match_array(['id', 'name', 'colors', 'theme_labels'])
+        end
+      end
+
+      response '401', 'unauthorized' do
+        schema ApiSchemas.error_response
+        let(:Authorization) { 'bloop' }
+        let(:theme) { { theme: { name: 'New Theme', colors: ['#000000', '#ffffff'] } } }
+
+        run_test! do |response|
+          expect(response.code).to eq "401"
+        end
+      end
+    end
   end
 end

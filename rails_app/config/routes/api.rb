@@ -9,7 +9,7 @@ namespace :api, defaults: {format: :json} do
     resources :users
     resources :notification_tokens, param: :token, only: [:create, :destroy]
     resources :templates
-    resources :themes, only: [:index]
+    resources :themes, only: [:index, :create]
     resources :websites, only: [:index, :show, :create, :update]
     resources :brainstorms, param: :thread_id, only: [:show, :create, :update]
   end
