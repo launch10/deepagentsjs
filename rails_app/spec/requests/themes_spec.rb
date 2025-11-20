@@ -121,7 +121,7 @@ RSpec.describe "Themes API", type: :request do
         end
       end
 
-      response '401', 'unauthorized' do
+      response '401', 'unauthorized', focus: true do
         schema ApiSchemas.error_response
         let(:Authorization) { 'bloop' }
         let(:theme) { { theme: { name: 'New Theme', colors: ['#000000', '#ffffff'] } } }

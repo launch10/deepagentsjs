@@ -26,7 +26,7 @@ class API::BaseController < ActionController::API
     if (user = get_user)
       sign_in user, store: false
     else
-      head :unauthorized
+      render json: { error: 'Unauthorized' }, status: :unauthorized
     end
   end
 

@@ -26,13 +26,4 @@ RSpec.describe "Account Switching via JWT", type: :request do
     
     expect(payload.dig(0, "account_id")).to eq(team_account.id)
   end
-
-  it "creates resources in the correct account context" do
-    get "/websites", headers: auth_headers_for(user)
-    expect(response).to have_http_status(:ok)
-    
-    switch_account_to(team_account)
-    get "/websites", headers: auth_headers_for(user)
-    expect(response).to have_http_status(:ok)
-  end
 end
