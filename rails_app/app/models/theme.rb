@@ -28,9 +28,24 @@ class Theme < ApplicationRecord
   validates :theme_type, presence: true, inclusion: { in: %w[community official] }
   validate :community_theme_must_have_author
 
+  scope :official, -> { where(theme_type: "official") }
+  scope :community, -> { where(theme_type: "community") }
+  scope :author, ->(account_id) { where(author_id: account_id) }
+
   scope :with_label, ->(label) do
     joins(theme_labels: :theme_to_theme_labels)
       .where("theme_labels.name = ?", label)
+  end
+
+  def author=(account)
+    return if account.nil?
+
+    unless account.is_a?(Account)
+      raise ArgumentError, "Author must be an Account"
+    end
+    self.theme_type = "community"
+    
+    super
   end
 
   private

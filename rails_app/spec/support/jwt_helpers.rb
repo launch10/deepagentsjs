@@ -4,6 +4,10 @@ module JwtHelpers
     Rails.application.credentials.devise_jwt_secret_key
   end
 
+  def switch_account_to(account)
+    @current_test_account = account
+  end
+
   def generate_jwt_for(user, account: nil, expires_in: 24.hours)
     account ||= @current_test_account || user.owned_account
     
