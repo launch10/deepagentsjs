@@ -2,16 +2,21 @@
 #
 # Table name: account_users
 #
-#  id         :integer          not null, primary key
-#  account_id :integer
-#  user_id    :integer
-#  roles      :jsonb            default("{}"), not null
+#  id         :bigint           not null, primary key
+#  roles      :jsonb            not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
+#  account_id :bigint
+#  user_id    :bigint
 #
 # Indexes
 #
 #  index_account_users_on_account_id_and_user_id  (account_id,user_id) UNIQUE
+#
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id)
+#  fk_rails_...  (user_id => users.id)
 #
 
 require "test_helper"

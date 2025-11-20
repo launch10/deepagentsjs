@@ -2,13 +2,13 @@
 #
 # Table name: domains
 #
-#  id                 :integer          not null, primary key
+#  id                 :bigint           not null, primary key
 #  domain             :string
-#  website_id         :integer
-#  account_id         :integer
-#  cloudflare_zone_id :string
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
+#  account_id         :bigint
+#  cloudflare_zone_id :string
+#  website_id         :bigint
 #
 # Indexes
 #

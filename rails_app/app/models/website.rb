@@ -2,15 +2,15 @@
 #
 # Table name: websites
 #
-#  id          :integer          not null, primary key
+#  id          :bigint           not null, primary key
 #  name        :string
-#  project_id  :integer
-#  account_id  :integer
 #  created_at  :datetime         not null
 #  updated_at  :datetime         not null
-#  thread_id   :string
-#  template_id :integer
+#  account_id  :bigint
+#  project_id  :bigint
+#  template_id :bigint
 #  theme_id    :integer
+#  thread_id   :string
 #
 # Indexes
 #

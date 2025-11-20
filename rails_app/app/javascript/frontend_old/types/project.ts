@@ -1,4 +1,4 @@
-export interface ApiProject {
+export interface APIProject {
   id: number;
   thread_id: string;
   project_name: string;
@@ -13,33 +13,35 @@ export interface Project {
   updatedAt: Date;
 }
 
-export type UnknownProjectType = ApiProject | Project;
+export type UnknownProjectType = APIProject | Project;
 export type MaybeProjectArray = UnknownProjectType | UnknownProjectType[];
 
-export function isApiProject(project: UnknownProjectType): project is ApiProject {
-  return 'thread_id' in project;
+export function isAPIProject(
+  project: UnknownProjectType
+): project is APIProject {
+  return "thread_id" in project;
 }
 
 export function isProject(project: UnknownProjectType): project is Project {
-  return 'threadId' in project;
+  return "threadId" in project;
 }
 
 export function normalize(project: MaybeProjectArray): Project[] {
-    if (Array.isArray(project)) {
-      return project.map((p) => normalizeOneProject(p));
-    }
-    return [normalizeOneProject(project)];
+  if (Array.isArray(project)) {
+    return project.map((p) => normalizeOneProject(p));
+  }
+  return [normalizeOneProject(project)];
 }
 
 function normalizeOneProject(project: UnknownProjectType): Project {
-  if (isApiProject(project)) {
+  if (isAPIProject(project)) {
     return {
-        id: project.id,
-        threadId: project.thread_id,
-        projectName: project.project_name,
-        createdAt: new Date(project.created_at),
-        updatedAt: new Date(project.updated_at),
-      };
+      id: project.id,
+      threadId: project.thread_id,
+      projectName: project.project_name,
+      createdAt: new Date(project.created_at),
+      updatedAt: new Date(project.updated_at),
+    };
   }
   return {
     id: project.id,

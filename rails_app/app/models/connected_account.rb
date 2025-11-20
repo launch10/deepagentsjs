@@ -2,18 +2,18 @@
 #
 # Table name: connected_accounts
 #
-#  id                  :integer          not null, primary key
-#  owner_id            :integer
-#  provider            :string
-#  uid                 :string
-#  refresh_token       :string
-#  expires_at          :datetime
-#  auth                :jsonb
-#  created_at          :datetime         not null
-#  updated_at          :datetime         not null
+#  id                  :bigint           not null, primary key
 #  access_token        :string
 #  access_token_secret :string
+#  auth                :jsonb
+#  expires_at          :datetime
 #  owner_type          :string
+#  provider            :string
+#  refresh_token       :string
+#  uid                 :string
+#  created_at          :datetime         not null
+#  updated_at          :datetime         not null
+#  owner_id            :bigint
 #
 # Indexes
 #

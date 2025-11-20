@@ -2,13 +2,13 @@
 #
 # Table name: cloudflare_firewalls
 #
-#  id           :integer          not null, primary key
-#  account_id   :integer          not null
-#  status       :string           default("inactive")
+#  id           :bigint           not null, primary key
 #  blocked_at   :datetime
+#  status       :string           default("inactive")
 #  unblocked_at :datetime
 #  created_at   :datetime         not null
 #  updated_at   :datetime         not null
+#  account_id   :bigint           not null
 #
 # Indexes
 #

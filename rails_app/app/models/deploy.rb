@@ -2,21 +2,21 @@
 #
 # Table name: deploys
 #
-#  id                 :integer          not null, primary key
-#  website_id         :integer
-#  website_history_id :integer
+#  id                 :bigint           not null, primary key
+#  environment        :string           default("production"), not null
+#  is_live            :boolean          default(FALSE)
+#  is_preview         :boolean          default(FALSE), not null
+#  revertible         :boolean          default(FALSE)
+#  shasum             :string
+#  stacktrace         :text
 #  status             :string           not null
 #  trigger            :string           default("manual")
-#  stacktrace         :text
-#  snapshot_id        :string
+#  version_path       :string
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
-#  is_live            :boolean          default("false")
-#  revertible         :boolean          default("false")
-#  version_path       :string
-#  environment        :string           default("production"), not null
-#  is_preview         :boolean          default("false"), not null
-#  shasum             :string
+#  snapshot_id        :string
+#  website_history_id :bigint
+#  website_id         :bigint
 #
 # Indexes
 #

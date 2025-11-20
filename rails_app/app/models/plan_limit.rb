@@ -2,12 +2,12 @@
 #
 # Table name: plan_limits
 #
-#  id         :integer          not null, primary key
-#  plan_id    :integer
-#  limit_type :string
+#  id         :bigint           not null, primary key
 #  limit      :integer
+#  limit_type :string
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
+#  plan_id    :bigint
 #
 # Indexes
 #

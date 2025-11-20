@@ -2,27 +2,27 @@
 #
 # Table name: plans
 #
-#  id                :integer          not null, primary key
-#  name              :string           not null
-#  amount            :integer          default("0"), not null
-#  interval          :string           not null
+#  id                :bigint           not null, primary key
+#  amount            :integer          default(0), not null
+#  charge_per_unit   :boolean
+#  contact_url       :string
+#  currency          :string
+#  description       :string
 #  details           :jsonb
+#  hidden            :boolean
+#  interval          :string           not null
+#  interval_count    :integer          default(1)
+#  name              :string           not null
+#  trial_period_days :integer          default(0)
+#  unit_label        :string
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null
-#  trial_period_days :integer          default("0")
-#  hidden            :boolean
-#  currency          :string
-#  interval_count    :integer          default("1")
-#  description       :string
-#  unit_label        :string
-#  charge_per_unit   :boolean
-#  stripe_id         :string
 #  braintree_id      :string
+#  fake_processor_id :string
+#  lemon_squeezy_id  :string
 #  paddle_billing_id :string
 #  paddle_classic_id :string
-#  lemon_squeezy_id  :string
-#  fake_processor_id :string
-#  contact_url       :string
+#  stripe_id         :string
 #
 # Indexes
 #

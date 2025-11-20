@@ -2,16 +2,16 @@
 #
 # Table name: code_files
 #
-#  website_id            :integer
-#  path                  :string
 #  content               :string
 #  content_tsv           :tsvector
+#  path                  :string
 #  shasum                :string
-#  file_specification_id :integer
 #  source_type           :text
-#  source_id             :integer
 #  created_at            :datetime
 #  updated_at            :datetime
+#  file_specification_id :bigint
+#  source_id             :bigint
+#  website_id            :bigint
 #
 
 class CodeFile < ApplicationRecord

@@ -11,7 +11,7 @@
     <li>The JWT and account ID are passed to the frontend via <code>inertia_share</code> in the <code>SubscribedController</code></li>
     <li>The frontend receives the JWT and <code>account_id</code>, and proxies them along with requests to Langgraph via <code>useStream</code> React hook (inside <code>useLanggraphContext</code>)</li>
     <li>Frontend also stores these in the <code>pageStore</code> for further usage</li>
-    <li>Langgraph receives these JWT + <code>account_id</code> in state, and makes requests via the <code>RailsApi</code> service helper</li>
+    <li>Langgraph receives these JWT + <code>account_id</code> in state, and makes requests via the <code>RailsAPI</code> service helper</li>
     <li>Rails backend receives the <code>JWT</code> and <code>account_id</code> and authenticates the user, then authenticates the session as belonging to a particular account</li>
     <li>Request succeeds</li>
 </ol>
@@ -19,8 +19,8 @@
 <%= h2_with_anchor "Test Authentication" %>
 
 <ol>
-    <li>Langgraph makes a request to <code>RailsApi</code></li>
+    <li>Langgraph makes a request to <code>RailsAPI</code></li>
     <li>This is decorated with <code>X-Test-Mode: true</code> and <code>X-Test-Proof: &lt;proof&gt;</code>, which contains a timestamp and signature indicating that the request came from a valid server</li>
-    <li><code>RailsApi</code> allows any request properly decorated with <code>X-Test-Mode: true</code> and <code>X-Test-Proof: &lt;proof&gt;</code> to represent a valid user, AS LONG AS the Rails server is also in test mode</li>
+    <li><code>RailsAPI</code> allows any request properly decorated with <code>X-Test-Mode: true</code> and <code>X-Test-Proof: &lt;proof&gt;</code> to represent a valid user, AS LONG AS the Rails server is also in test mode</li>
     <li>Request succeeds</li>
 </ol>

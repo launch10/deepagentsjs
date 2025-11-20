@@ -2,11 +2,11 @@
 #
 # Table name: file_specifications
 #
-#  id             :integer          not null, primary key
+#  id             :bigint           not null, primary key
 #  canonical_path :string
+#  component_type :string
 #  description    :string
 #  filetype       :string
-#  component_type :string
 #  language       :string
 #  created_at     :datetime         not null
 #  updated_at     :datetime         not null

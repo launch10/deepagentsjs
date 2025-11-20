@@ -2,16 +2,16 @@
 #
 # Table name: chats
 #
-#  id               :integer          not null, primary key
-#  name             :string
+#  id               :bigint           not null, primary key
 #  chat_type        :string           not null
-#  thread_id        :string           not null
-#  project_id       :integer          not null
-#  account_id       :integer          not null
 #  contextable_type :string
-#  contextable_id   :integer
+#  name             :string
 #  created_at       :datetime         not null
 #  updated_at       :datetime         not null
+#  account_id       :bigint           not null
+#  contextable_id   :bigint
+#  project_id       :bigint           not null
+#  thread_id        :string           not null
 #
 # Indexes
 #

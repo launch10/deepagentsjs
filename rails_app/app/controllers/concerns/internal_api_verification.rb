@@ -1,4 +1,4 @@
-module InternalApiVerification
+module InternalAPIVerification
   extend ActiveSupport::Concern
 
   included do

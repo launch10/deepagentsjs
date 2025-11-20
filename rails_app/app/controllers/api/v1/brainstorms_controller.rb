@@ -1,4 +1,4 @@
-class Api::V1::BrainstormsController < Api::BaseController
+class API::V1::BrainstormsController < API::BaseController
   def show
     brainstorm = current_brainstorm
 

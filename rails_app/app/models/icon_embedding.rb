@@ -2,16 +2,16 @@
 #
 # Table name: icon_embeddings
 #
-#  id         :integer          not null, primary key
-#  key        :string           not null
-#  text       :text             not null
+#  id         :bigint           not null, primary key
 #  embedding  :vector(1536)     not null
-#  metadata   :jsonb            default("{}"), not null
+#  key        :string           not null
+#  metadata   :jsonb            not null
+#  text       :text             not null
 #  created_at :datetime
 #
 # Indexes
 #
-#  idx_icon_embeddings_text      (embedding)
+#  idx_icon_embeddings_text      (embedding) USING ivfflat
 #  index_icon_embeddings_on_key  (key) UNIQUE
 #
 

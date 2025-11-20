@@ -4,10 +4,10 @@ This directory is for API clients.
 
 Jumpstart Pro includes an API client for working with JSON APIs. It handles several things for you:
 
-* The Authorization header with API token
-* Content-Type JSON header
-* JSON response bodies parsed automatically
-* Raises errors on 4XX or 5XX responses
+- The Authorization header with API token
+- Content-Type JSON header
+- JSON response bodies parsed automatically
+- Raises errors on 4XX or 5XX responses
 
 Why would you need this?
 Often times Rubygems for APIs fall out of date or go unmaintained. Managing your own integration allows you to only implement the endpoints you need and easily maintain your integration.
@@ -99,7 +99,7 @@ To send a multipart form data request, you need to pass the `form_data` paramete
 For example, to upload a file:
 
 ```ruby
-class MyApiClient < ApplicationClient
+class MyAPIClient < ApplicationClient
   BASE_URI = "https://api.example.com"
 
   def upload_file(file)
@@ -116,7 +116,6 @@ end
 In this example, file should be a File or IO-like object.
 
 If you need to set additional options for the file upload, such as the filename or content type, you can include them in the form data like this:
-
 
 ```rb
 form_data = {

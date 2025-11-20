@@ -2,12 +2,12 @@
 #
 # Table name: notification_tokens
 #
-#  id         :integer          not null, primary key
-#  user_id    :integer
-#  token      :string           not null
+#  id         :bigint           not null, primary key
 #  platform   :string           not null
+#  token      :string           not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
+#  user_id    :bigint
 #
 # Indexes
 #

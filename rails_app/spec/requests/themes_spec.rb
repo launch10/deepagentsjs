@@ -9,16 +9,20 @@ RSpec.describe "Themes API", type: :request do
     subscribe_account(account, plan_name: 'pro')
   end
 
-  path '/themes' do
+  path '/api/v1/themes' do
     get 'Lists all themes' do
       tags 'Themes'
       produces 'application/json'
       security [bearer_auth: []]
       parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
-      response '200', 'themes retrieved' do
+      response '200', 'themes retrieved', focus: true do
         schema ApiSchemas::Theme.collection_response
-        let(:Authorization) { "Bearer #{generate_jwt_for(user)}" }
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user)['X-Timestamp'] }
         let!(:theme1) { create(:theme, name: 'Modern', colors: ['#000000', '#ffffff']) }
         let!(:theme2) { create(:theme, name: 'Classic', colors: ['#333333', '#eeeeee']) }
         let!(:label) { create(:theme_label, name: 'Dark') }

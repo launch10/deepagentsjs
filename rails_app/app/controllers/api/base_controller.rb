@@ -1,11 +1,11 @@
-class Api::BaseController < ActionController::API
+class API::BaseController < ActionController::API
   include AbstractController::Translation
   include ActionController::Caching
   include Turbo::Native::Navigation
 
   include Accounts::SubscriptionStatus
   include ActiveStorage::SetCurrent
-  include InternalApiVerification
+  include InternalAPIVerification
   include Authentication
   include Authorization
   include Pagy::Backend
@@ -43,7 +43,7 @@ class Api::BaseController < ActionController::API
   end
 
   def api_token
-    @_api_token ||= ApiToken.find_by(token: token_from_header)
+    @_api_token ||= APIToken.find_by(token: token_from_header)
   end
 
   # Only for use within authenticate_api_token! above

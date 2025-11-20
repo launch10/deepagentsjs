@@ -1,4 +1,4 @@
-class Api::V1::PasswordsController < Api::BaseController
+class API::V1::PasswordsController < API::BaseController
   def update
     if current_user.update_with_password(password_params)
       current_user.remember_me = true

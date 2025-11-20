@@ -2,12 +2,12 @@
 #
 # Table name: domain_request_counts
 #
-#  id            :integer          not null, primary key
-#  domain_id     :integer          not null
-#  account_id    :integer          not null
-#  request_count :integer          not null
+#  id            :bigint           not null, primary key
 #  hour          :timestamptz      not null, primary key
+#  request_count :bigint           not null
 #  created_at    :timestamptz      not null
+#  account_id    :bigint           not null
+#  domain_id     :bigint           not null
 #
 # Indexes
 #

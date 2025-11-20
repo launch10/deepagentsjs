@@ -6,48 +6,56 @@ import { type FileMap } from "@shared/models/file";
 import { createClient } from "@lib/utils/client";
 import { LIMIT_PARAM, OFFSET_PARAM } from "@lib/constants";
 import { redirectToThreadId } from "@hooks/useThreadId";
-import { useStream } from '@langchain/langgraph-sdk/react';
-import { type GraphState, type App as AppState, type CodeTasksState } from "@shared/state/graph";
-import { useQueryParams } from '@hooks/useQueryParams'
+import { useStream } from "@langchain/langgraph-sdk/react";
+import {
+  type GraphState,
+  type App as AppState,
+  type CodeTasksState,
+} from "@shared/state/graph";
+import { useQueryParams } from "@hooks/useQueryParams";
 import { pageStore } from "@stores/page";
-import axios from 'axios';
+import axios from "axios";
 import { projectStore } from "@stores/project";
-import { type ApiProject } from "@types/project";
+import { type APIProject } from "@types/project";
 import { type CodeTask } from "@shared/models/codeTask";
 
 type Config = Record<string, any>;
-type StreamableGraphState = GraphState & Config; 
+type StreamableGraphState = GraphState & Config;
 
 export type BackendEvent = {
   event: string;
   task: CodeTask;
   id: string;
-}
+};
 export interface TaggedMessage extends MessageFieldWithRole {
   tags?: string[];
 }
 
 type LanggraphContextType = {
-    isLoading: boolean;
-    isFetchingThreads: boolean;
-    hasMoreThreads: boolean;
-    projectName: string | undefined;
-    messages: TaggedMessage[];
-    files: FileMap,
-    codeTasks: CodeTasksState,
-    currentThreadId: string | undefined,
-    fetchThreads: () => Promise<void>, // Decorate with tenantId from encrypted cookies
-    submit: (message: string, checkpoint?: string) => void,
-    stop: () => void,
-    events: BackendEvent[],
-    getMessagesMetadata: (message: any) => any,
+  isLoading: boolean;
+  isFetchingThreads: boolean;
+  hasMoreThreads: boolean;
+  projectName: string | undefined;
+  messages: TaggedMessage[];
+  files: FileMap;
+  codeTasks: CodeTasksState;
+  currentThreadId: string | undefined;
+  fetchThreads: () => Promise<void>; // Decorate with tenantId from encrypted cookies
+  submit: (message: string, checkpoint?: string) => void;
+  stop: () => void;
+  events: BackendEvent[];
+  getMessagesMetadata: (message: any) => any;
 };
 
 const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
   undefined
 );
 
-export function LanggraphProvider({ children }: { children: React.ReactNode }): React.ReactElement {
+export function LanggraphProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
   const { jwt, accountId, rootPath, threadId, pageId } = useStore(pageStore);
   const [chatHasStarted, setChatHasStarted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -64,14 +72,14 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   >({});
 
   const handleLangChainEvent = React.useCallback((eventData: any) => {
-    if (eventData.event === 'on_chat_model_stream') {
+    if (eventData.event === "on_chat_model_stream") {
       const chunk = eventData.data?.chunk;
       const messageId = chunk?.id;
       const tags = eventData.tags || [];
 
-      setMessageIdToTags(prev => {
+      setMessageIdToTags((prev) => {
         const currentTagsForId = new Set(prev[messageId] || []);
-        tags.forEach(tag => currentTagsForId.add(tag));
+        tags.forEach((tag) => currentTagsForId.add(tag));
         return {
           ...prev,
           [messageId]: currentTagsForId,
@@ -81,26 +89,26 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
   }, []);
 
   const stream = useStream<StreamableGraphState>({
-      apiUrl: import.meta.env.VITE_LANGGRAPH_API_URL!,
-      assistantId: import.meta.env.VITE_LANGGRAPH_ASSISTANT_ID!,
-      defaultHeaders: {
-        Authorization: `Bearer ${jwt}`, // remove, use http-only encrypted cookie
-        'X-Account-Id': accountId ? accountId.toString() : '',
-      },
-      onThreadId: (threadId: string) => {
-        redirectToThreadId(threadId);
-      },
-      threadId: threadId,
-      onLangChainEvent: handleLangChainEvent,
-      onFinish: () => {
-        setIsLoading(false);
-        fetchThreads();
-      },
-      onCustomEvent: (event: any) => {
-        let backendEvent: BackendEvent = event as BackendEvent;
-        setEvents(prev => [...prev, backendEvent]);
-      },
-    });
+    apiUrl: import.meta.env.VITE_LANGGRAPH_API_URL!,
+    assistantId: import.meta.env.VITE_LANGGRAPH_ASSISTANT_ID!,
+    defaultHeaders: {
+      Authorization: `Bearer ${jwt}`, // remove, use http-only encrypted cookie
+      "X-Account-Id": accountId ? accountId.toString() : "",
+    },
+    onThreadId: (threadId: string) => {
+      redirectToThreadId(threadId);
+    },
+    threadId: threadId,
+    onLangChainEvent: handleLangChainEvent,
+    onFinish: () => {
+      setIsLoading(false);
+      fetchThreads();
+    },
+    onCustomEvent: (event: any) => {
+      let backendEvent: BackendEvent = event as BackendEvent;
+      setEvents((prev) => [...prev, backendEvent]);
+    },
+  });
 
   // Cleanup stream on unmount
   React.useEffect(() => {
@@ -123,7 +131,7 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     const config = {
       streamMode: ["events", "values", "custom"],
       ...checkpointConfig,
-    }
+    };
     stream.submit(input, config); // Values provides final state
   };
 
@@ -143,30 +151,28 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
 
   // Not shown, but the core of the security mechanism here is browser-based encrypted cookie,
   // the langgraph server confirms the JWT with the rails server
-  const fetchThreads = React.useCallback(
-    async () => {
-      setIsFetchingThreads(true);
-      try {
-        const response = await axios.get(`${rootPath}/projects`, {
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
-          params: {
-            offset: offsetParam,
-            limit: limitParam,
-          },
-        });
-        const data = (response.data?.projects || []) as ApiProject[];
-        projectStore.add(data);
-        setHasMoreThreads(data.length === limitParam);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsFetchingThreads(false);
-      }
-    }, [offsetParam, limitParam] 
-  )
+  const fetchThreads = React.useCallback(async () => {
+    setIsFetchingThreads(true);
+    try {
+      const response = await axios.get(`${rootPath}/projects`, {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        params: {
+          offset: offsetParam,
+          limit: limitParam,
+        },
+      });
+      const data = (response.data?.projects || []) as APIProject[];
+      projectStore.add(data);
+      setHasMoreThreads(data.length === limitParam);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsFetchingThreads(false);
+    }
+  }, [offsetParam, limitParam]);
 
   React.useEffect(() => {
     if (!chatHasStarted) {
@@ -194,15 +200,22 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       return { ...msg, tags: [] };
     });
     return augmented.filter(
-      (message) => 
+      (message) =>
         message.type === "human" ||
-        ((message.tags || []).length > 0 && (message.tags || []).includes('notify'))
+        ((message.tags || []).length > 0 &&
+          (message.tags || []).includes("notify"))
     );
   }, [stream.messages, messageIdToTags]);
 
-  const appState: AppState | undefined = stream.values?.app as AppState | undefined;
+  const appState: AppState | undefined = stream.values?.app as
+    | AppState
+    | undefined;
   // const codeTasks = (appState?.codeTasks || {notify: [], queue: [], completedTasks: []}) as CodeTasksState;
-  const codeTasks = (chatHasStarted ? (appState?.codeTasks || {notify: [], queue: [], completedTasks: []}) : {notify: [], queue: [], completedTasks: []}) as CodeTasksState;
+  const codeTasks = (
+    chatHasStarted
+      ? appState?.codeTasks || { notify: [], queue: [], completedTasks: [] }
+      : { notify: [], queue: [], completedTasks: [] }
+  ) as CodeTasksState;
   const projectName = stream.values?.projectName;
 
   React.useEffect(() => {
@@ -222,9 +235,9 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-  }, [projectName, projectHasBeenNamed])
+  }, [projectName, projectHasBeenNamed]);
 
-  const contextValue: LanggraphContextType = {    
+  const contextValue: LanggraphContextType = {
     isLoading,
     isFetchingThreads,
     projectName,
@@ -237,19 +250,21 @@ export function LanggraphProvider({ children }: { children: React.ReactNode }): 
     stop: stream.stop,
     events,
     getMessagesMetadata: stream.getMessagesMetadata,
-  }
+  };
 
   return (
     <LanggraphContext.Provider value={contextValue}>
       {children}
     </LanggraphContext.Provider>
-  )
+  );
 }
 
 export function useLanggraphContext() {
   const context = React.useContext(LanggraphContext);
   if (!context) {
-    throw new Error("useLanggraphContext must be used within a LanggraphProvider");
+    throw new Error(
+      "useLanggraphContext must be used within a LanggraphProvider"
+    );
   }
   return context;
 }

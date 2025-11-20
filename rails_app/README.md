@@ -41,6 +41,7 @@ nvm use && pnpm install
 bundle install # sync gems
 bundle exec rake db:migrate # sync database
 bundle exec rake seeds:template # sync templates
+bundle exec rake annotaterb # annotate models
 ```
 
 ## Documenting APIs

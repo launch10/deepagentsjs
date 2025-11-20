@@ -2,13 +2,13 @@
 #
 # Table name: theme_variants
 #
-#  id               :integer          not null, primary key
+#  id               :bigint           not null, primary key
+#  accent_class     :string
 #  background_class :string           not null
 #  foreground_class :string
 #  muted_class      :string
 #  primary_class    :string
 #  secondary_class  :string
-#  accent_class     :string
 #  created_at       :datetime         not null
 #  updated_at       :datetime         not null
 #
