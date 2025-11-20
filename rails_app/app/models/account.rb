@@ -45,6 +45,7 @@ class Account < ApplicationRecord
   has_many :domain_request_counts
   has_many :account_request_counts
   has_many :themes, as: :author
+  has_many :uploads
   has_one :firewall, class_name: "Cloudflare::Firewall"
 
   scope :personal, -> { where(personal: true) }

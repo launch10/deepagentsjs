@@ -400,7 +400,7 @@ Layout/SpaceInsideBlockBraces:
   SpaceBeforeBlockParameters: true
 
 Layout/SpaceInsideHashLiteralBraces:
-  Enabled: true
+  Enabled: false
   EnforcedStyle: no_space
   EnforcedStyleForEmptyBraces: no_space
 

@@ -2111,6 +2111,40 @@ ALTER SEQUENCE public.themes_to_theme_labels_id_seq OWNED BY public.themes_to_th
 
 
 --
+-- Name: uploads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.uploads (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    file character varying NOT NULL,
+    media_type character varying NOT NULL,
+    uuid uuid DEFAULT gen_random_uuid() NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: uploads_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.uploads_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: uploads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.uploads_id_seq OWNED BY public.uploads.id;
+
+
+--
 -- Name: user_request_counts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2356,6 +2390,36 @@ CREATE SEQUENCE public.website_histories_id_seq
 --
 
 ALTER SEQUENCE public.website_histories_id_seq OWNED BY public.website_histories.id;
+
+
+--
+-- Name: website_uploads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.website_uploads (
+    id bigint NOT NULL,
+    website_id bigint NOT NULL,
+    upload_id bigint NOT NULL
+);
+
+
+--
+-- Name: website_uploads_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.website_uploads_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: website_uploads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.website_uploads_id_seq OWNED BY public.website_uploads.id;
 
 
 --
@@ -2812,6 +2876,13 @@ ALTER TABLE ONLY public.themes_to_theme_labels ALTER COLUMN id SET DEFAULT nextv
 
 
 --
+-- Name: uploads id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.uploads ALTER COLUMN id SET DEFAULT nextval('public.uploads_id_seq'::regclass);
+
+
+--
 -- Name: user_request_counts id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2844,6 +2915,13 @@ ALTER TABLE ONLY public.website_files ALTER COLUMN id SET DEFAULT nextval('publi
 --
 
 ALTER TABLE ONLY public.website_histories ALTER COLUMN id SET DEFAULT nextval('public.website_histories_id_seq'::regclass);
+
+
+--
+-- Name: website_uploads id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_uploads ALTER COLUMN id SET DEFAULT nextval('public.website_uploads_id_seq'::regclass);
 
 
 --
@@ -3366,6 +3444,14 @@ ALTER TABLE ONLY public.themes_to_theme_labels
 
 
 --
+-- Name: uploads uploads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.uploads
+    ADD CONSTRAINT uploads_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: user_request_counts user_request_counts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3435,6 +3521,14 @@ ALTER TABLE ONLY public.website_files
 
 ALTER TABLE ONLY public.website_histories
     ADD CONSTRAINT website_histories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: website_uploads website_uploads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_uploads
+    ADD CONSTRAINT website_uploads_pkey PRIMARY KEY (id);
 
 
 --
@@ -4818,6 +4912,34 @@ CREATE INDEX index_themes_to_theme_labels_on_theme_label_id ON public.themes_to_
 
 
 --
+-- Name: index_uploads_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_uploads_on_account_id ON public.uploads USING btree (account_id);
+
+
+--
+-- Name: index_uploads_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_uploads_on_created_at ON public.uploads USING btree (created_at);
+
+
+--
+-- Name: index_uploads_on_media_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_uploads_on_media_type ON public.uploads USING btree (media_type);
+
+
+--
+-- Name: index_uploads_on_uuid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_uploads_on_uuid ON public.uploads USING btree (uuid);
+
+
+--
 -- Name: index_user_request_counts_on_user_id_and_month; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5074,6 +5196,20 @@ CREATE INDEX index_website_histories_on_thread_id ON public.website_histories US
 --
 
 CREATE INDEX index_website_histories_on_website_id ON public.website_histories USING btree (website_id);
+
+
+--
+-- Name: index_website_uploads_on_upload_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_uploads_on_upload_id ON public.website_uploads USING btree (upload_id);
+
+
+--
+-- Name: index_website_uploads_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_uploads_on_website_id ON public.website_uploads USING btree (website_id);
 
 
 --
@@ -5611,6 +5747,8 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251120202225'),
+('20251120201336'),
 ('20251118140220'),
 ('20251118140001'),
 ('20251118135945'),
