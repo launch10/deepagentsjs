@@ -1,4 +1,3 @@
-
 module UploadConcerns
   module Serialization
     extend ActiveSupport::Concern

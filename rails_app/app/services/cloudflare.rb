@@ -8,7 +8,8 @@ class Cloudflare
   config_accessor :blocked_domains_list_id
   config_accessor :deploy_env
   config_accessor :r2_endpoint
-  config_accessor :r2_bucket, default: "deploys"
+  config_accessor :deploys_bucket, default: "deploys"
+  config_accessor :uploads_bucket, default: "uploads"
   config_accessor :r2_region, default: "auto"
   config_accessor :r2_access_key_id
   config_accessor :r2_secret_access_key

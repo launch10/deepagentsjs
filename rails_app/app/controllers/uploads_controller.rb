@@ -1,4 +1,4 @@
-class UploadsController < ApplicationController
+class UploadsController < SubscribedController
   before_action :authenticate_user!
 
   def index
