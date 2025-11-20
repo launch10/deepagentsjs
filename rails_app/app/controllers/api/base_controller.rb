@@ -5,7 +5,6 @@ class API::BaseController < ActionController::API
 
   include Accounts::SubscriptionStatus
   include ActiveStorage::SetCurrent
-  include InternalAPIVerification
   include Authentication
   include Authorization
   include Pagy::Backend

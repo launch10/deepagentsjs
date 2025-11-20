@@ -41,7 +41,10 @@ RSpec.describe "Brainstorms API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
       parameter name: :brainstorm_params, in: :body, schema: ApiSchemas::Brainstorm.params_schema
-      switch_account_to(account)
+
+      before do
+        switch_account_to(user1_owned_account)
+      end
 
       response '201', 'brainstorm created in owned account' do
         schema ApiSchemas::Brainstorm.response

@@ -474,9 +474,9 @@ paths:
                   - name
               required:
               - snapshot
-  "/themes":
+  "/api/v1/themes":
     get:
-      summary: Lists all themes
+      summary: Lists official themes + themes in account
       tags:
       - Themes
       security:
@@ -487,9 +487,19 @@ paths:
         required: false
         schema:
           type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
         '200':
-          description: returns empty array when no themes exist
+          description: retrieves community themes in separate account
           content:
             application/json:
               schema:
@@ -530,6 +540,99 @@ paths:
                   - theme_labels
         '401':
           description: unauthorized - invalid token
+    post:
+      summary: Creates theme
+      tags:
+      - Themes
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: theme created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Theme name
+                  colors:
+                    type: array
+                    items:
+                      type: string
+                    description: Theme color palette
+                  theme_labels:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        name:
+                          type: string
+                          description: Label name
+                      required:
+                      - id
+                      - name
+                    description: Associated theme labels
+                required:
+                - id
+                - name
+                - colors
+                - theme_labels
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    description: Array of error messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Theme name
+                colors:
+                  type: array
+                  items:
+                    type: string
+                  description: Theme color palette
+              required:
+              - name
+              - colors
 servers:
 - url: https://{defaultHost}
   variables:

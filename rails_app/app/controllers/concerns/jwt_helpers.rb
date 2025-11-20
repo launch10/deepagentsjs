@@ -8,6 +8,8 @@ module JwtHelpers
   end
 
   def refresh_jwt(account: nil)
+    set_request_details
+
     return unless current_user
 
     account ||= Current.account

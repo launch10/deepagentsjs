@@ -57,7 +57,7 @@ RSpec.describe "Themes API", type: :request do
         end
       end
 
-      response '200', 'retrieves community themes in separate account' do
+      response '200', 'retrieves official + account themes' do
         schema ApiSchemas::Theme.collection_response
         let(:Authorization) { auth_headers_for(user)['Authorization'] }
         let(:'X-Signature') { auth_headers_for(user)['X-Signature'] }
