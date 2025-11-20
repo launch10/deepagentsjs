@@ -51,7 +51,7 @@ The Rails app manages users, authentication, and project metadata. The Langgraph
 ## Project Structure
 
 ```
-nichefinder/
+launch10/
 ├── rails_app/               # Rails frontend application
 │   ├── app/
 │   │   ├── controllers/     # Rails controllers (API + Inertia)
@@ -139,7 +139,7 @@ docker compose up
 
 # Run with custom Postgres/Redis
 # Update langgraph_app/.env.docker with host.docker.internal URLs
-docker build -t nichefinder ./langgraph_app
+docker build -t launch10 ./langgraph_app
 docker compose up
 ```
 
