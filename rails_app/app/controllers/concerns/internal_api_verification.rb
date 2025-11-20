@@ -1,8 +1,6 @@
 module InternalAPIVerification
   extend ActiveSupport::Concern
 
-  private
-
   def internal_api_request?
     # internal_api sends JWT via Authorization header, not cookies
     # Frontend sends JWT via cookies
@@ -10,6 +8,8 @@ module InternalAPIVerification
     request.headers['X-Signature'].present? &&
     request.headers['X-Timestamp'].present?
   end
+
+  private
 
   def verify_internal_api_signature
     signature = request.headers['X-Signature']

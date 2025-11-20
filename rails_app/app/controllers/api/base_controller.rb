@@ -7,6 +7,7 @@ class API::BaseController < ActionController::API
   include ActiveStorage::SetCurrent
   include Authentication
   include Authorization
+  include InternalAPIVerification
   include Pagy::Backend
   include SetCurrentRequestDetails
   include SetLocale
