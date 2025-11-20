@@ -3,7 +3,6 @@ module UploadConcerns
   module Serialization
     extend ActiveSupport::Concern
 
-
     def to_json
       {
         id: id,
