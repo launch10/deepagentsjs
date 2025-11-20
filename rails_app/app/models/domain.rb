@@ -20,6 +20,13 @@
 #
 
 class Domain < ApplicationRecord
+  RESTRICTED_DOMAINS = [
+    "uploads",
+    "dev-uploads",
+    "staging",
+    "www",
+  ].map { |d| "#{d}.launch10.ai" }.freeze
+
   include Atlas::Domain
   include Cloudflare::Monitorable
   include DomainConcerns::NormalizeDomain
@@ -34,6 +41,7 @@ class Domain < ApplicationRecord
 
   before_validation :set_default_domain, on: :create
   before_validation :set_normalized_domain, on: :create
+  validate :domain_not_restricted
 
   def blocked?
     firewall_rule&.blocked? || false
@@ -70,5 +78,10 @@ class Domain < ApplicationRecord
   def set_normalized_domain
     return if domain.blank?
     write_attribute(:domain, normalize_domain(domain))
+  end
+
+  def domain_not_restricted
+    return if RESTRICTED_DOMAINS.exclude?(domain)
+    errors.add(:domain, "is restricted")
   end
 end

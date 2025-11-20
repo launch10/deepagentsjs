@@ -61,6 +61,8 @@ Rails.application.routes.draw do
     # When user first signs in, they are taken to the onboarding page
     # For now, just mock this as the brainstorms index
     root to: "brainstorms#new", as: :onboarding
+    
+    resources :uploads, only: [:index]
   end
 
   get "up" => "rails/health#show", :as => :rails_health_check

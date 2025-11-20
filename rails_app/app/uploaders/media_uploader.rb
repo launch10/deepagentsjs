@@ -6,11 +6,11 @@ class MediaUploader < CarrierWave::Uploader::Base
   end
 
   def store_dir
-    "#{Rails.env}/#{model.class.to_s.underscore.pluralize}/#{model.uuid}"
+    "uploads"
   end
 
   def filename
-    "#{secure_token}.#{file.extension}" if original_filename.present?
+    "#{secure_token}.#{file.extension}"
   end
 
   # image/jpeg, video/mp4, etc (mimetypes)

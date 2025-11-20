@@ -4,12 +4,20 @@ CarrierWave.configure do |config|
     config.enable_processing = false
   else
     config.storage = :aws
-    config.aws_bucket = ENV.fetch('AWS_BUCKET')
-    config.aws_acl = 'public-read'
+    config.aws_bucket = ENV.fetch("CLOUDFLARE_UPLOADS_BUCKET") do
+      Rails.application.credentials.dig(:cloudflare, :uploads_bucket) || (Rails.env.production? ? "uploads" : "dev-uploads")
+    end
+    config.aws_acl = "public-read"
+    config.asset_host = ENV.fetch("CLOUDFLARE_ASSET_HOST") do
+      Rails.env.production? ? "https://uploads.launch10.ai" : "http://dev-uploads.launch10.ai"
+    end
+
     config.aws_credentials = {
-      access_key_id:     ENV.fetch('AWS_ACCESS_KEY_ID'),
-      secret_access_key: ENV.fetch('AWS_SECRET_ACCESS_KEY'),
-      region:            ENV.fetch('AWS_REGION', 'us-east-1')
+      access_key_id: Rails.application.credentials.dig(:cloudflare, :r2_access_key_id),
+      secret_access_key: Rails.application.credentials.dig(:cloudflare, :r2_secret_access_key),
+      region: "auto",
+      endpoint: Rails.application.credentials.dig(:cloudflare, :r2_endpoint),
+      ssl_verify_peer: Rails.env.production?
     }
   end
 end

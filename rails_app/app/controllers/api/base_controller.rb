@@ -1,4 +1,5 @@
 class API::BaseController < ActionController::API
+  include ActionController::Cookies
   include AbstractController::Translation
   include ActionController::Caching
   include Turbo::Native::Navigation
