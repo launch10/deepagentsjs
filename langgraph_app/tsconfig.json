@@ -45,7 +45,6 @@
       "@factories": ["./tests/factories/index.ts"],
       "@state": ["../shared/state/index.ts"],
       "@types": ["../shared/types/index.ts"],
-      "@models": ["app/models/index.ts"],
       "@db": ["app/db/index.ts"],
       "@core": ["./app/core/index.ts"],
       "@services": ["./app/services/index.ts"],
@@ -68,5 +67,5 @@
     "tests/**/*.ts",
     "scripts/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "tests/TODO"]
 }

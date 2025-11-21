@@ -58,7 +58,7 @@ export const WebsiteAnnotation = Annotation.Root({
     }),
 
     files: Annotation<FileMap>({
-        default: () => {},
+        default: () => ({}),
         reducer: (current, next) => next
     }),
 
