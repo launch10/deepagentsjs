@@ -412,7 +412,7 @@ describe.sequential('Brainstorming Flow', () => {
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
             expect(result.error).toBeUndefined();
-            expect(result.state.redirect).toBe('website_builder');
+            expect(result.state.redirect).toBe('website');
         });
     })
 
@@ -428,7 +428,7 @@ describe.sequential('Brainstorming Flow', () => {
             assertDefined(lastAIResponse, 'lastAIResponse is defined');
 
             expect(result.error).toBeUndefined();
-            expect(result.state.redirect).toEqual("website_builder");
+            expect(result.state.redirect).toEqual("website");
         });
 
         it("answers questions about UI", async () => {

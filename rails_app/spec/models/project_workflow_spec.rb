@@ -167,12 +167,12 @@ RSpec.describe ProjectWorkflow, type: :model do
 
     context "when there are remaining steps" do
       it "returns the next step after current step" do
-        expect(WorkflowConfig.next_step("launch", "brainstorm")).to eq("landing_page")
+        expect(WorkflowConfig.next_step("launch", "brainstorm")).to eq("website")
       end
 
       it "returns the next step in sequence" do
-        workflow.update(step: "landing_page")
-        expect(WorkflowConfig.next_step("launch", "landing_page")).to eq("ad_campaign")
+        workflow.update(step: "website")
+        expect(WorkflowConfig.next_step("launch", "website")).to eq("ad_campaign")
       end
 
       it "returns the next step from ad_campaign" do
@@ -240,7 +240,7 @@ RSpec.describe ProjectWorkflow, type: :model do
     it "includes available steps" do
       json = workflow.as_json
 
-      expect(json[:available_steps]).to eq(%w[brainstorm landing_page ad_campaign launch])
+      expect(json[:available_steps]).to eq(%w[brainstorm website ad_campaign launch])
     end
   end
 
@@ -258,7 +258,7 @@ RSpec.describe ProjectWorkflow, type: :model do
       workflow.update(step: "brainstorm")
       expect(workflow.send(:calculate_progress)).to eq(0)
 
-      workflow.update(step: "landing_page")
+      workflow.update(step: "website")
       expect(workflow.send(:calculate_progress)).to eq(25)
 
       workflow.update(step: "ad_campaign")

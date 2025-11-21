@@ -50,14 +50,14 @@ RSpec.describe "Project Workflows API", type: :request do
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project1_owned.uuid }
         let(:id) { workflow1_owned.id }
-        let(:project_workflow_params) { { project_workflow: { step: "landing_page" } } }
+        let(:project_workflow_params) { { project_workflow: { step: "website" } } }
 
         run_test! do |response|
           data = JSON.parse(response.body)
           workflow1_owned.reload
 
-          expect(workflow1_owned.step).to eq("landing_page")
-          expect(data["step"]).to eq("landing_page")
+          expect(workflow1_owned.step).to eq("website")
+          expect(data["step"]).to eq("website")
           expect(data["progress"]).to eq(25)
         end
       end
@@ -89,7 +89,7 @@ RSpec.describe "Project Workflows API", type: :request do
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project1_team.uuid }
         let(:id) { workflow1_team.id }
-        let(:project_workflow_params) { { project_workflow: { step: "landing_page" } } }
+        let(:project_workflow_params) { { project_workflow: { step: "website" } } }
 
         before do
           switch_account_to(user1_team_account)
@@ -99,8 +99,8 @@ RSpec.describe "Project Workflows API", type: :request do
           data = JSON.parse(response.body)
           workflow1_team.reload
 
-          expect(workflow1_team.step).to eq("landing_page")
-          expect(data["step"]).to eq("landing_page")
+          expect(workflow1_team.step).to eq("website")
+          expect(data["step"]).to eq("website")
         end
       end
 
@@ -110,7 +110,7 @@ RSpec.describe "Project Workflows API", type: :request do
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project2_owned.uuid }
         let(:id) { workflow2_owned.id }
-        let(:project_workflow_params) { { project_workflow: { step: "landing_page" } } }
+        let(:project_workflow_params) { { project_workflow: { step: "website" } } }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -124,7 +124,7 @@ RSpec.describe "Project Workflows API", type: :request do
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { "nonexistent-uuid" }
         let(:id) { workflow1_owned.id }
-        let(:project_workflow_params) { { project_workflow: { step: "landing_page" } } }
+        let(:project_workflow_params) { { project_workflow: { step: "website" } } }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -193,8 +193,8 @@ RSpec.describe "Project Workflows API", type: :request do
           data = JSON.parse(response.body)
           workflow1_owned.reload
 
-          expect(workflow1_owned.step).to eq("landing_page")
-          expect(data["step"]).to eq("landing_page")
+          expect(workflow1_owned.step).to eq("website")
+          expect(data["step"]).to eq("website")
           expect(data["progress"]).to eq(25)
         end
       end
@@ -208,7 +208,7 @@ RSpec.describe "Project Workflows API", type: :request do
         let(:id) { workflow1_owned.id }
 
         before do
-          workflow1_owned.update(step: "landing_page")
+          workflow1_owned.update(step: "website")
         end
 
         run_test! do |response|
