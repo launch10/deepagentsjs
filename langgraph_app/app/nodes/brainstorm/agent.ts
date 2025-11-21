@@ -74,10 +74,15 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
 
     const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } = await new BrainstormNextStepsService(state).nextSteps();
 
+    let messages = state.messages || [];
+    if (structuredMessage) {
+        messages = [...messages, structuredMessage];
+    }
+
     return {
         redirect: result.redirect as Brainstorm.RedirectType,
         skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
-        messages: [...state.messages, structuredMessage],
+        messages,
         memories,
         currentTopic,
         remainingTopics,
