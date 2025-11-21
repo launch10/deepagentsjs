@@ -1845,6 +1845,42 @@ ALTER SEQUENCE public.plans_id_seq OWNED BY public.plans.id;
 
 
 --
+-- Name: project_workflows; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.project_workflows (
+    id bigint NOT NULL,
+    project_id bigint NOT NULL,
+    workflow_type character varying NOT NULL,
+    step character varying NOT NULL,
+    substep character varying,
+    status character varying DEFAULT 'active'::character varying NOT NULL,
+    data jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: project_workflows_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.project_workflows_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: project_workflows_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.project_workflows_id_seq OWNED BY public.project_workflows.id;
+
+
+--
 -- Name: projects; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1853,7 +1889,8 @@ CREATE TABLE public.projects (
     name character varying NOT NULL,
     account_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    uuid uuid DEFAULT gen_random_uuid() NOT NULL
 );
 
 
@@ -2822,6 +2859,13 @@ ALTER TABLE ONLY public.plans ALTER COLUMN id SET DEFAULT nextval('public.plans_
 
 
 --
+-- Name: project_workflows id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_workflows ALTER COLUMN id SET DEFAULT nextval('public.project_workflows_id_seq'::regclass);
+
+
+--
 -- Name: projects id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3374,6 +3418,14 @@ ALTER TABLE ONLY public.plans
 
 
 --
+-- Name: project_workflows project_workflows_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_workflows
+    ADD CONSTRAINT project_workflows_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: projects projects_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3777,6 +3829,13 @@ CREATE INDEX domain_request_counts_2025_12_domain_id_hour_request_count_idx ON p
 --
 
 CREATE INDEX idx_icon_embeddings_text ON public.icon_embeddings USING ivfflat (embedding public.vector_cosine_ops);
+
+
+--
+-- Name: idx_on_project_id_workflow_type_status_a7aa4433b7; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_project_id_workflow_type_status_a7aa4433b7 ON public.project_workflows USING btree (project_id, workflow_type, status);
 
 
 --
@@ -4662,6 +4721,55 @@ CREATE UNIQUE INDEX index_plans_on_name ON public.plans USING btree (name);
 
 
 --
+-- Name: index_project_workflows_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_project_workflows_on_created_at ON public.project_workflows USING btree (created_at);
+
+
+--
+-- Name: index_project_workflows_on_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_project_workflows_on_project_id ON public.project_workflows USING btree (project_id);
+
+
+--
+-- Name: index_project_workflows_on_project_id_and_workflow_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_project_workflows_on_project_id_and_workflow_type ON public.project_workflows USING btree (project_id, workflow_type);
+
+
+--
+-- Name: index_project_workflows_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_project_workflows_on_status ON public.project_workflows USING btree (status);
+
+
+--
+-- Name: index_project_workflows_on_step; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_project_workflows_on_step ON public.project_workflows USING btree (step);
+
+
+--
+-- Name: index_project_workflows_on_substep; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_project_workflows_on_substep ON public.project_workflows USING btree (substep);
+
+
+--
+-- Name: index_project_workflows_on_workflow_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_project_workflows_on_workflow_type ON public.project_workflows USING btree (workflow_type);
+
+
+--
 -- Name: index_projects_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4708,6 +4816,13 @@ CREATE INDEX index_projects_on_name ON public.projects USING btree (name);
 --
 
 CREATE INDEX index_projects_on_updated_at ON public.projects USING btree (updated_at);
+
+
+--
+-- Name: index_projects_on_uuid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_projects_on_uuid ON public.projects USING btree (uuid);
 
 
 --
@@ -5756,6 +5871,9 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251121145610'),
+('20251121145502'),
+('20251121145154'),
 ('20251121141322'),
 ('20251120202225'),
 ('20251120201336'),

@@ -2,14 +2,15 @@
 #
 # Table name: uploads
 #
-#  id         :bigint           not null, primary key
-#  file       :string           not null
-#  is_logo    :boolean          default(FALSE), not null
-#  media_type :string           not null
-#  uuid       :uuid             not null
-#  created_at :datetime         not null
-#  updated_at :datetime         not null
-#  account_id :bigint           not null
+#  id                :bigint           not null, primary key
+#  file              :string           not null
+#  is_logo           :boolean          default(FALSE), not null
+#  media_type        :string           not null
+#  original_filename :string
+#  uuid              :uuid             not null
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
+#  account_id        :bigint           not null
 #
 # Indexes
 #

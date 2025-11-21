@@ -682,6 +682,8 @@ GEM
     unicode-emoji (4.0.4)
     uri (1.1.1)
     useragent (0.16.11)
+    uuid7 (0.2.0)
+      zeitwerk (~> 2.4)
     vite_rails (3.0.19)
       railties (>= 5.1, < 9)
       vite_ruby (~> 3.0, >= 3.2.2)
@@ -812,6 +814,7 @@ DEPENDENCIES
   turbo-rails (~> 2.0.3)
   typhoeus
   tzinfo-data
+  uuid7
   vite_rails (~> 3.0)
   web-console (>= 4.1.0)
   webmock
