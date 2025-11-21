@@ -31,6 +31,7 @@ Rails.application.routes.draw do
   draw :hotwire_native
   draw :users
   draw :dev if Rails.env.local?
+  draw :subscribed
 
   authenticated :user, lambda { |u| u.admin? } do
     draw :madmin
@@ -56,12 +57,6 @@ Rails.application.routes.draw do
 
   match "/404", via: :all, to: "errors#not_found"
   match "/500", via: :all, to: "errors#internal_server_error"
-
-  authenticated :user do
-    # When user first signs in, they are taken to the onboarding page
-    # For now, just mock this as the brainstorms index
-    root to: "brainstorms#new", as: :onboarding
-  end
 
   get "up" => "rails/health#show", :as => :rails_health_check
   root to: "static#index"

@@ -63,6 +63,15 @@ module ApiSchemas
               look_and_feel: {
                 type: :string,
                 description: 'Design preferences'
+              },
+              project_attributes: {
+                type: :object,
+                properties: {
+                  uuid: {
+                    type: :string,
+                    description: 'Optional UUID for the project'
+                  }
+                }
               }
             }
           }

@@ -13,6 +13,9 @@ class API::V1::BrainstormsController < API::BaseController
     unless brainstorm_params[:thread_id].present?
       render json: {errors: ["Thread ID is required"]}, status: :unprocessable_entity and return
     end
+    unless brainstorm_params.dig(:project_attributes, :uuid).present?
+      render json: {errors: ["Project UUID is required"]}, status: :unprocessable_entity and return
+    end
 
     begin
       values = Brainstorm.create_brainstorm!(current_account, brainstorm_params)
@@ -50,7 +53,7 @@ class API::V1::BrainstormsController < API::BaseController
   end
 
   def brainstorm_params
-    params.require(:brainstorm).permit(:name, :thread_id, :account_id)
+    params.require(:brainstorm).permit(:name, :thread_id, :account_id, project_attributes: [:uuid])
   end
 
   def update_params

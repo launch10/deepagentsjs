@@ -43,6 +43,10 @@ export interface paths {
                             social_proof?: string;
                             /** @description Design preferences */
                             look_and_feel?: string;
+                            project_attributes?: {
+                                /** @description Optional UUID for the project */
+                                uuid?: string;
+                            };
                         };
                     };
                 };
@@ -214,6 +218,10 @@ export interface paths {
                             social_proof?: string;
                             /** @description Design preferences */
                             look_and_feel?: string;
+                            project_attributes?: {
+                                /** @description Optional UUID for the project */
+                                uuid?: string;
+                            };
                         };
                     };
                 };
@@ -256,6 +264,167 @@ export interface paths {
                 };
                 /** @description brainstorm not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/projects/{project_uuid}/workflows/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                project_uuid: string;
+                /** @description Workflow ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Updates a project workflow */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                    /** @description Workflow ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        project_workflow: {
+                            /** @description Step to advance to */
+                            step: string;
+                            /** @description Optional substep to advance to */
+                            substep?: string;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description workflow advanced in team account after switching */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Type of workflow */
+                            workflow_type: string;
+                            /** @description Current step in the workflow */
+                            step: string;
+                            /** @description Current substep in the workflow */
+                            substep?: string | null;
+                            /** @description Progress percentage (0-100) */
+                            progress: number;
+                            /** @description List of available steps in this workflow */
+                            available_steps: string[];
+                        };
+                    };
+                };
+                /** @description project not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description missing step parameter */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/projects/{project_uuid}/workflows/{id}/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                project_uuid: string;
+                /** @description Workflow ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Advances workflow to next step */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                    /** @description Workflow ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description workflow advanced to next step with substep */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Type of workflow */
+                            workflow_type: string;
+                            /** @description Current step in the workflow */
+                            step: string;
+                            /** @description Current substep in the workflow */
+                            substep?: string | null;
+                            /** @description Progress percentage (0-100) */
+                            progress: number;
+                            /** @description List of available steps in this workflow */
+                            available_steps: string[];
+                        };
+                    };
+                };
+                /** @description workflow not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description already at final step */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };

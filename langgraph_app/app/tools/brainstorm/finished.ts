@@ -6,7 +6,7 @@ export const finishedTool = tool(
   async (input, config) => {
     return new Command({
         update: {
-            redirect: "website_builder" as const,
+            redirect: "website" as const,
             messages: [new ToolMessage({
                 content: "Redirecting to website builder",
                 tool_call_id: config?.toolCall.id,

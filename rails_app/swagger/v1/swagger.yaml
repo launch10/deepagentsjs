@@ -106,6 +106,12 @@ paths:
                     look_and_feel:
                       type: string
                       description: Design preferences
+                    project_attributes:
+                      type: object
+                      properties:
+                        uuid:
+                          type: string
+                          description: Optional UUID for the project
               required:
               - brainstorm
   "/api/v1/brainstorms/{thread_id}":
@@ -283,8 +289,175 @@ paths:
                     look_and_feel:
                       type: string
                       description: Design preferences
+                    project_attributes:
+                      type: object
+                      properties:
+                        uuid:
+                          type: string
+                          description: Optional UUID for the project
               required:
               - brainstorm
+  "/api/v1/projects/{project_uuid}/workflows/{id}":
+    parameters:
+    - name: project_uuid
+      in: path
+      description: Project UUID
+      required: true
+      schema:
+        type: string
+    - name: id
+      in: path
+      description: Workflow ID
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Updates a project workflow
+      tags:
+      - Project Workflows
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: workflow advanced in team account after switching
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workflow_type:
+                    type: string
+                    description: Type of workflow
+                  step:
+                    type: string
+                    description: Current step in the workflow
+                  substep:
+                    type: string
+                    nullable: true
+                    description: Current substep in the workflow
+                  progress:
+                    type: number
+                    description: Progress percentage (0-100)
+                  available_steps:
+                    type: array
+                    items:
+                      type: string
+                    description: List of available steps in this workflow
+                required:
+                - workflow_type
+                - step
+                - progress
+                - available_steps
+        '404':
+          description: project not found
+        '422':
+          description: missing step parameter
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_workflow:
+                  type: object
+                  properties:
+                    step:
+                      type: string
+                      description: Step to advance to
+                    substep:
+                      type: string
+                      description: Optional substep to advance to
+                  required:
+                  - step
+              required:
+              - project_workflow
+  "/api/v1/projects/{project_uuid}/workflows/{id}/next":
+    parameters:
+    - name: project_uuid
+      in: path
+      description: Project UUID
+      required: true
+      schema:
+        type: string
+    - name: id
+      in: path
+      description: Workflow ID
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Advances workflow to next step
+      tags:
+      - Project Workflows
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: workflow advanced to next step with substep
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workflow_type:
+                    type: string
+                    description: Type of workflow
+                  step:
+                    type: string
+                    description: Current step in the workflow
+                  substep:
+                    type: string
+                    nullable: true
+                    description: Current substep in the workflow
+                  progress:
+                    type: number
+                    description: Progress percentage (0-100)
+                  available_steps:
+                    type: array
+                    items:
+                      type: string
+                    description: List of available steps in this workflow
+                required:
+                - workflow_type
+                - step
+                - progress
+                - available_steps
+        '422':
+          description: already at final step
+        '404':
+          description: workflow not found
   "/test/database/truncate":
     post:
       summary: Truncates the database

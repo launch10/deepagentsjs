@@ -24,7 +24,10 @@ export const createBrainstorm = NodeMiddleware.use({}, async (
     }
 
     const apiService = new BrainstormAPIService({ jwt: state.jwt });
-    const brainstorm = await apiService.create(config.configurable.thread_id);
+    const brainstorm = await apiService.create({
+      threadId: config.configurable.thread_id,
+      projectUUID: state.projectUUID,
+    });
 
     return { 
       brainstormId: brainstorm.id,

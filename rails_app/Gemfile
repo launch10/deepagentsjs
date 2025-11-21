@@ -37,6 +37,7 @@ gem "rollbar"
 gem "zhong"
 gem "sinatra", require: false # Required for Zhong web
 gem "rswag"
+gem "uuid7"
 
 group :development, :test do
   gem "annotaterb"
