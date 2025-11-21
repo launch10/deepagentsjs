@@ -25,12 +25,17 @@
 #
 class ProjectWorkflow < ApplicationRecord
   belongs_to :project
+
   validates :workflow_type, presence: true
   validates :status, inclusion: { in: %w[active completed archived] }
   validates :step, presence: true
   validate :only_one_launch_workflow_per_project
   before_validation :set_default_values, on: :create
+
   scope :active, -> { where(status: 'active') }
+  scope :completed, -> { where(status: 'completed') }
+  scope :archived, -> { where(status: 'archived') }
+  scope :launch, -> { where(workflow_type: 'launch') }
 
   def next_step
     WorkflowConfig.next_step(workflow_type, step)

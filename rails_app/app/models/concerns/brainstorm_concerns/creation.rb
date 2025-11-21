@@ -14,6 +14,11 @@ module BrainstormConcerns
             name: name
           )
 
+          project.workflows.create!(
+            workflow_type: "launch",
+            step: "brainstorm",
+          )
+
           # Create website
           website = Website.create!(
             project_id: project.id,
