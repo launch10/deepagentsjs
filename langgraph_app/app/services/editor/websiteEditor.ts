@@ -252,8 +252,12 @@ export class WebsiteEditor implements AsyncDisposable {
       // Check if file exists in database
       const [existingFile] = await db.select()
         .from(websiteFiles)
-        .where(eq(websiteFiles.websiteId, this.websiteId!))
-        .where(eq(websiteFiles.path, relativePath))
+        .where(
+          and(
+            eq(websiteFiles.websiteId, this.websiteId!),
+            eq(websiteFiles.path, relativePath)
+          )
+        )
         .limit(1);
 
       if (existingFile) {

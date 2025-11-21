@@ -1,29 +1,22 @@
 import { z } from "zod";
-import { CodeFileModel } from "@models";
-import { CodeFileSourceEnum } from "@types";
+import { codeFiles as codeFilesTable, db, and, eq } from "@db";
 
 // Input schema for the service
 export const listFilesInputSchema = z.object({
     websiteId: z.number().describe("The ID of the website to list files for"),
     path: z.string().optional().describe("Optional path prefix to filter files (e.g., 'src/', 'components/')"),
     extensions: z.array(z.string()).optional().describe("Optional file extensions to filter (e.g., ['js', 'tsx'])"),
-    source: z.nativeEnum(CodeFileSourceEnum).optional().describe("Filter by source: 'website' for user-modified, 'template' for defaults"),
-    limit: z.number().optional().default(25).describe("Maximum number of files to return"),
+    limit: z.number().optional().describe("Maximum number of files to return"),
 });
 
 export type ListFilesInput = z.infer<typeof listFilesInputSchema>;
 
+type CodeFileRow = typeof codeFilesTable.$inferSelect;
+type CodeFile = Required<CodeFileRow>;
+
 // Output type
 export interface ListFilesOutput {
-    files: Array<{
-        path: string;
-        source: CodeFileSourceEnum;
-        fileType: string;
-        language: string;
-        shasum: string | null;
-        createdAt: Date | string;
-        updatedAt: Date | string;
-    }>;
+    files: Array<CodeFile>;
     totalCount: number;
     websiteId: number;
 }
@@ -35,27 +28,33 @@ export interface ListFilesOutput {
 export class ListFilesService {
     async execute(input: ListFilesInput): Promise<ListFilesOutput> {
         const validatedInput = listFilesInputSchema.parse(input);
-        const { websiteId, path, extensions, source, limit } = validatedInput;
+        let { websiteId, path, extensions, limit } = validatedInput;
 
-        // Build query conditions
-        const conditions: any = { websiteId };
-        
-        if (source) {
-            conditions.source = source;
+        if (!limit) {
+            limit = 25;
         }
 
+        // Build query conditions
+        const predicates = [
+            eq(codeFilesTable.websiteId, websiteId),
+
+            path ? eq(codeFilesTable.path, path) : undefined,
+        ].filter((p) => p); // Remove undefined
+
         // Get files based on conditions
-        let files = await CodeFileModel.where(conditions);
+        let files = await db.select()
+            .from(codeFilesTable)
+            .where(and(...predicates))
 
         // Apply path filter if provided
         if (path) {
-            files = files.filter(file => file.path.startsWith(path));
+            files = files.filter(file => file.path && file.path.startsWith(path));
         }
 
         // Apply extension filter if provided
         if (extensions && extensions.length > 0) {
             files = files.filter(file => {
-                const fileExt = file.path.split('.').pop()?.toLowerCase();
+                const fileExt = file.path?.split('.').pop()?.toLowerCase();
                 return fileExt && extensions.includes(fileExt);
             });
         }
@@ -66,42 +65,20 @@ export class ListFilesService {
 
         // Map to output format
         const formattedFiles = files.map(file => ({
-            path: file.path,
-            source: file.source,
-            fileType: this.getFileType(file.path),
-            language: this.getLanguage(file.path),
+            path: file.path!,
+            source: file.sourceType,
+            fileType: this.getFileType(file.path!),
+            language: this.getLanguage(file.path!),
             shasum: file.shasum,
             createdAt: file.createdAt,
             updatedAt: file.updatedAt,
         }));
 
         return {
-            files: formattedFiles,
+            files: formattedFiles as unknown as CodeFile[],
             totalCount,
             websiteId,
         };
-    }
-
-    /**
-     * List only user-modified files
-     */
-    async listWebsiteFiles(websiteId: number, limit?: number): Promise<ListFilesOutput> {
-        return this.execute({
-            websiteId,
-            source: CodeFileSourceEnum.Website,
-            limit,
-        });
-    }
-
-    /**
-     * List only template files
-     */
-    async listTemplateFiles(websiteId: number, limit?: number): Promise<ListFilesOutput> {
-        return this.execute({
-            websiteId,
-            source: CodeFileSourceEnum.Template,
-            limit,
-        });
     }
 
     /**
@@ -120,7 +97,7 @@ export class ListFilesService {
      */
     private getFileType(path: string): string {
         const match = path.match(/\.([^.]+)$/);
-        return match ? match[1].toLowerCase() : '';
+        return match && match[1] ? match[1].toLowerCase() : '';
     }
 
     /**
