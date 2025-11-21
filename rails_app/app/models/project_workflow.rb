@@ -37,6 +37,16 @@ class ProjectWorkflow < ApplicationRecord
   scope :archived, -> { where(status: 'archived') }
   scope :launch, -> { where(workflow_type: 'launch') }
 
+  def next_step!
+    next_step, next_substep = WorkflowConfig.next(workflow_type, step, substep)
+    unless next_step
+      complete!
+      return [nil, nil]
+    end
+    update(step: next_step, substep: next_substep)
+    [next_step, next_substep]
+  end
+
   def next_step
     WorkflowConfig.next_step(workflow_type, step)
   end
@@ -52,6 +62,18 @@ class ProjectWorkflow < ApplicationRecord
 
   def valid_step?(step, substep)
     WorkflowConfig.step_exists?(workflow_type, step) && (substep.nil? || WorkflowConfig.substep_exists?(workflow_type, step, substep))
+  end
+
+  def completed?
+    status == 'completed'
+  end
+
+  def archived?
+    status == 'archived'
+  end
+
+  def active?
+    status == 'active'
   end
 
   def complete!

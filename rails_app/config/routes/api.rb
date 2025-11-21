@@ -12,6 +12,8 @@ namespace :api, defaults: {format: :json} do
     resources :themes, only: [:index, :create]
     resources :brainstorms, param: :thread_id, only: [:show, :create, :update]
     resources :uploads, only: [:create, :index, :show]
+    patch "projects/:project_uuid/workflows/:id", to: "project_workflows#update"
+    patch "projects/:project_uuid/workflows/:id/next", to: "project_workflows#next"
   end
 end
 

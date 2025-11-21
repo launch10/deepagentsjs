@@ -51,6 +51,51 @@ RSpec.describe ProjectWorkflow, type: :model do
     end
   end
 
+  describe "#next_step!" do
+    it "advances to the next step" do
+      workflow.update(step: "brainstorm", substep: nil)
+      workflow.next_step!
+
+      expect(workflow.reload.step).to eq("landing_page")
+      expect(workflow.reload.substep).to be_nil
+
+      workflow.next_step!
+      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.substep).to eq("content")
+
+      workflow.next_step!
+      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.substep).to eq("highlights")
+
+      workflow.next_step!
+      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.substep).to eq("keywords")
+
+      workflow.next_step!
+      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.substep).to eq("settings")
+
+      workflow.next_step!
+      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.substep).to eq("launch")
+
+      workflow.next_step!
+      expect(workflow.reload.step).to eq("launch")
+      expect(workflow.reload.substep).to eq("settings")
+
+      workflow.next_step!
+      expect(workflow.reload.step).to eq("launch")
+      expect(workflow.reload.substep).to eq("review")
+
+      workflow.next_step!
+      expect(workflow.reload.step).to eq("launch")
+      expect(workflow.reload.substep).to eq("deployment")
+
+      workflow.next_step!
+      expect(workflow.reload).to be_completed
+    end
+  end
+
   describe "#advance_to" do
     context "when advancement is valid" do
       it "advances to a valid step without substep" do
