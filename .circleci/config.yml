@@ -168,6 +168,21 @@ jobs:
           key: rails-gems-v1
       - setup-database
       - run:
+          name: Install pnpm
+          command: |
+            curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=9.15.0 SHELL=/bin/bash sh -
+            echo 'export PNPM_HOME="$HOME/.local/share/pnpm"' >> $BASH_ENV
+            echo 'export PATH="$PNPM_HOME:$PATH"' >> $BASH_ENV
+            source $BASH_ENV
+      - run:
+          name: Install frontend dependencies
+          command: pnpm install --frozen-lockfile
+      - run:
+          name: Build Tailwind CSS
+          command: RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rake assets:precompile
+          environment:
+            <<: *rails-env
+      - run:
           name: Run RSpec tests
           command: RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rspec
           environment:
