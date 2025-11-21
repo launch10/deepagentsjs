@@ -2122,7 +2122,8 @@ CREATE TABLE public.uploads (
     uuid uuid DEFAULT gen_random_uuid() NOT NULL,
     is_logo boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    original_filename character varying
 );
 
 
@@ -5755,6 +5756,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251121141322'),
 ('20251120202225'),
 ('20251120201336'),
 ('20251118140220'),

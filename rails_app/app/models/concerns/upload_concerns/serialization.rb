@@ -9,6 +9,7 @@ module UploadConcerns
         url: file.url,
         media_type: media_type,
         is_logo: is_logo,
+        filename: original_filename,
         created_at: created_at,
         updated_at: updated_at
       }

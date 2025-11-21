@@ -34,6 +34,7 @@ class Upload < ApplicationRecord
   validates :file, presence: true
   validates :media_type, presence: true, inclusion: { in: MEDIA_TYPES }
   before_validation :set_media_type_from_file
+  before_validation :set_original_filename
 
   def video?
     media_type == "video"
@@ -54,5 +55,12 @@ class Upload < ApplicationRecord
     elsif content_type.start_with?("video/")
       "video"
     end
+  end
+
+  def set_original_filename
+    return unless file.present? && file.file.present?
+    return if original_filename.present?
+
+    self.original_filename = file.file.original_filename
   end
 end

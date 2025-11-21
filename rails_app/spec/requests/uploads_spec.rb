@@ -65,6 +65,8 @@ RSpec.describe "Uploads API", type: :request do
           expect(upload.account_id).to eq(user1_owned_account.id)
           expect(upload.media_type).to eq("image")
           expect(upload.is_logo).to eq(true)
+          expect(upload.original_filename).to eq("test_image.jpg")
+          expect(data["filename"]).to eq("test_image.jpg")
         end
       end
 
@@ -82,6 +84,7 @@ RSpec.describe "Uploads API", type: :request do
 
           expect(upload.account_id).to eq(user1_owned_account.id)
           expect(upload.websites).to include(website1_owned)
+          expect(upload.is_logo).to eq(false)
         end
       end
 
@@ -146,6 +149,8 @@ RSpec.describe "Uploads API", type: :request do
           upload = Upload.find(data["id"])
 
           expect(upload.media_type).to eq("video")
+          expect(upload.original_filename).to eq("test_video.mp4")
+          expect(data["filename"]).to eq("test_video.mp4")
         end
       end
 
