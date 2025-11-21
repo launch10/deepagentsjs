@@ -2,7 +2,7 @@ launch:
   steps:
     brainstorm:
       order: 1
-    landing_page:
+    website:
       order: 2
     ad_campaign:
       order: 3

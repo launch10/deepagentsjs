@@ -56,7 +56,7 @@ RSpec.describe ProjectWorkflow, type: :model do
       workflow.update(step: "brainstorm", substep: nil)
       workflow.next_step!
 
-      expect(workflow.reload.step).to eq("landing_page")
+      expect(workflow.reload.step).to eq("website")
       expect(workflow.reload.substep).to be_nil
 
       workflow.next_step!
