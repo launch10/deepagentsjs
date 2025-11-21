@@ -4,7 +4,7 @@ import { type BrainstormGraphState } from '@state';
 import { DatabaseSnapshotter, BrainstormNextStepsService } from '@services';
 import { brainstormGraph as uncompiledGraph } from '@graphs';
 import { HumanMessage, AIMessage, BaseMessage } from '@langchain/core/messages';
-import { lastAIMessage } from '@types';
+import { lastAIMessage, type UUIDType } from '@types';
 import { createBrainstorm } from '@nodes';
 import { summarizeAndSaveAnswers } from '@tools';
 import { v7 as uuidv7 } from 'uuid';
@@ -161,10 +161,12 @@ const restartChatFrom = async (topic: Brainstorm.TopicName, useHistory: ChatHist
     const chatHistory = chatMethodMap[topic]();
 
     const threadId = uuidv7();
+    const projectUUID = uuidv7();
     const config = { configurable: { thread_id: threadId } };
     let partialState = await createBrainstorm({
         jwt: "test-jwt",
         threadId,
+        projectUUID,
         messages: [],
     } as any, config);
 
@@ -228,9 +230,24 @@ describe.sequential('Brainstorming Flow', () => {
     }, 30000)
 
     describe("Chat flow", () => {
-        it("should default to the first question", async () => {
+        it("fails when frontend doesn't send project UUID", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
+                .withPrompt(`Sorry, what's going on?`)
+                .execute();
+
+            expect(result.state.error).toBeDefined();
+            expect(result.state.error!.message).toContain("Project UUID is required");
+        });
+
+        it("should default to the first question", async () => {
+            const projectUUID = uuidv7() as UUIDType;
+
+            const result = await testGraph<BrainstormGraphState>()
+                .withGraph(brainstormGraph)
+                .withState({
+                    projectUUID
+                })
                 .withPrompt(`Sorry, what's going on?`)
                 .execute();
 
@@ -242,8 +259,12 @@ describe.sequential('Brainstorming Flow', () => {
         });
 
         it("should stay consistent when the user answers the first question incorrectly", async () => {
+            const projectUUID = uuidv7() as UUIDType;
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
+                .withState({
+                    projectUUID
+                })
                 .withPrompt(`I like pasta.`)
                 .stopAfter('agent')
                 .execute();
@@ -270,8 +291,12 @@ describe.sequential('Brainstorming Flow', () => {
         });
 
         it("should update to the next question when we successfully give a business idea", async () => {
+            const projectUUID = uuidv7() as UUIDType;
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
+                .withState({
+                    projectUUID
+                })
                 .withPrompt(validAnswers.idea)
                 .stopAfter('agent')
                 .execute();
@@ -673,8 +698,12 @@ describe.sequential('Brainstorming Flow', () => {
 
     describe("Edge cases", () => {
         it("keeps pushing if the user doesn't have a good response", async () => {
+            const projectUUID = uuidv7() as UUIDType;
             const result1 = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
+                .withState({
+                    projectUUID
+                })
                 .withPrompt(`Friend of the Pod is a podcast matchmaking service.`)
                 .stopAfter('agent')
                 .execute();

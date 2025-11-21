@@ -1,12 +1,13 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import { Brainstorm, type PrimaryKeyType } from "@types";
-import type { Equal, Expect } from "@types";
+import type { Equal, Expect, UUIDType } from "@types";
 import type { BrainstormGraphState } from "@state";
 import { uniq } from "@utils";
 
 export const BrainstormAnnotation = Annotation.Root({
     ...BaseAnnotation.spec,
+    projectUUID: Annotation<UUIDType>(),
     currentTopic: Annotation<Brainstorm.TopicName | undefined>(),
     placeholderText: Annotation<string>(),
     brainstormId: Annotation<PrimaryKeyType | undefined>(),

@@ -43,6 +43,10 @@ export interface paths {
                             social_proof?: string;
                             /** @description Design preferences */
                             look_and_feel?: string;
+                            project_attributes?: {
+                                /** @description Optional UUID for the project */
+                                uuid?: string;
+                            };
                         };
                     };
                 };
@@ -214,6 +218,10 @@ export interface paths {
                             social_proof?: string;
                             /** @description Design preferences */
                             look_and_feel?: string;
+                            project_attributes?: {
+                                /** @description Optional UUID for the project */
+                                uuid?: string;
+                            };
                         };
                     };
                 };

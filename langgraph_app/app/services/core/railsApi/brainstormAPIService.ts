@@ -1,5 +1,5 @@
 import { createRailsApiClient, type paths } from "@rails_api";
-import { type ThreadIDType } from "@types";
+import { type ThreadIDType, type UUIDType } from "@types";
 
 /**
  * Type definitions for brainstorm operations
@@ -39,6 +39,11 @@ export interface BrainstormServiceOptions {
   jwt: string;
 }
 
+export interface CreateBrainstormParams {
+    threadId: ThreadIDType;
+    projectUUID: UUIDType;
+    name?: string;
+}
 /**
  * Service for interacting with the Rails Brainstorm API
  */
@@ -55,13 +60,16 @@ export class BrainstormAPIService {
    * @param name - Optional name for the brainstorm
    * @returns The created brainstorm
    */
-  async create(threadId: ThreadIDType, name?: string): Promise<Brainstorm> {
+  async create({ threadId, projectUUID, name }: CreateBrainstormParams): Promise<Brainstorm> {
     const client = createRailsApiClient({ jwt: this.jwt });
 
     const response = await client.POST("/api/v1/brainstorms", {
       body: {
         brainstorm: {
           thread_id: threadId,
+          project_attributes: {
+            uuid: projectUUID,
+          },
           ...(name ? { name } : {}),
         },
       },
