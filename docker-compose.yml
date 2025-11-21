@@ -43,7 +43,7 @@ services:
     networks:
       - app-network
   langgraph_app:
-    image: nichefinder
+    image: launch10
     ports:
       - "2024:8000"
     depends_on:

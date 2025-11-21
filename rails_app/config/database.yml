@@ -8,20 +8,20 @@ default: &default
 
 development:
   <<: *default
-  database: nichefinder_development
+  database: launch10_development
 
 test:
   <<: *default
-  database: nichefinder_test
+  database: launch10_test
 
 staging:
   <<: *default
-  database: nichefinder_staging
+  database: launch10_staging
   username: jumpstart
   password: <%= ENV["POSTGRES_PASSWORD"] %>
 
 production:
   <<: *default
-  database: nichefinder_production
-  username: nichefinder
+  database: launch10_production
+  username: launch10
   password: <%= ENV["POSTGRES_PASSWORD"] %>

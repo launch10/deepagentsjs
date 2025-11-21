@@ -1,6 +1,6 @@
 # Launch10
 
-NicheFinder consists of three main components that work together:
+Launch10 consists of three main components that work together:
 
 1. The Rails repo (built off Jumpstart Pro + inertia rails frontend)
 2. The Langgraph repo (builds the landing pages, SEO plans, and deployments)

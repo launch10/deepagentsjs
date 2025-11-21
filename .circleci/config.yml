@@ -7,18 +7,18 @@ orbs:
 # Shared environment configuration
 rails-env: &rails-env
   LANGGRAPH_API_URL: http://localhost:8080
-  DATABASE_URL: postgres://postgres:postgres@localhost:5432/nichefinder_test
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/launch10_test
   REDIS_URL: redis://localhost:6379
   RAILS_ENV: test
   CI: true
 
 langgraph-env: &langgraph-env
-  DATABASE_URL: postgres://postgres:postgres@localhost:5432/nichefinder_test
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/launch10_test
   REDIS_URL: redis://localhost:6379
   NODE_ENV: test
   USE_CACHE: false
   CI: true
-  LLM_COST: paid  # Use paid tier to avoid Ollama dependency in tests
+  LLM_COST: paid # Use paid tier to avoid Ollama dependency in tests
 
 commands:
   setup-database:
@@ -45,7 +45,7 @@ jobs:
         environment:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: nichefinder_test
+          POSTGRES_DB: launch10_test
       - image: cimg/redis:7.2
     working_directory: ~/project/langgraph_app
     environment:
@@ -149,7 +149,7 @@ jobs:
         environment:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: nichefinder_test
+          POSTGRES_DB: launch10_test
           LANGGRAPH_API_URL: http://localhost:8080
       - image: cimg/redis:7.2
     working_directory: ~/project/rails_app
