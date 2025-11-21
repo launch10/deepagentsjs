@@ -30,9 +30,14 @@ class Project < ApplicationRecord
   before_validation :set_uuid, on: :create
 
   has_one :website
+  has_one :brainstorm, through: :website
   has_many :workflows, class_name: 'ProjectWorkflow', dependent: :destroy
 
   include ProjectConcerns::Serialization
+
+  def launch_workflow
+    workflows.launch.first
+  end
 
   private
 

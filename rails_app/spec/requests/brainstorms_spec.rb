@@ -2,7 +2,6 @@ require 'swagger_helper'
 
 RSpec.describe "Brainstorms API", type: :request do
   let!(:template) { create(:template) }
-
   let!(:user1) { create(:user, name: "User 1") }
   let!(:user2) { create(:user, name: "User 2") }
 

@@ -58,7 +58,7 @@ class ProjectWorkflow < ApplicationRecord
     update(status: 'completed')
   end
 
-  def to_json
+  def as_json
     {
       workflow_type: workflow_type,
       step: step,
