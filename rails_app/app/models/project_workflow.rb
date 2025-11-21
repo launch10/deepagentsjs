@@ -28,6 +28,7 @@ class ProjectWorkflow < ApplicationRecord
   validates :workflow_type, presence: true
   validates :status, inclusion: { in: %w[active completed archived] }
   validates :step, presence: true
+  validate :only_one_launch_workflow_per_project
   before_validation :set_default_values, on: :create
   scope :active, -> { where(status: 'active') }
 
@@ -79,5 +80,13 @@ class ProjectWorkflow < ApplicationRecord
     self.workflow_type = (workflow_type.nil? || workflow_type.empty?) ? "launch" : workflow_type
     self.step ||= WorkflowConfig.first_step(workflow_type)
     self.substep ||= WorkflowConfig.first_substep(workflow_type)
+  end
+
+  def only_one_launch_workflow_per_project
+    return unless project
+
+    if project.workflows.where(workflow_type: "launch").where.not(id: id).exists?
+      errors.add(:workflow_type, "Only one launch workflow per project is allowed")
+    end
   end
 end

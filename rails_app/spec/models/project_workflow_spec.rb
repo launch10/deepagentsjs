@@ -41,7 +41,7 @@ RSpec.describe ProjectWorkflow, type: :model do
   describe "scopes" do
     describe ".active" do
       it "returns only active workflows" do
-        active_workflow = create(:project_workflow, project: project, status: "active")
+        active_workflow = workflow
         completed_workflow = create(:project_workflow, project: create(:project, account: account), status: "completed")
         archived_workflow = create(:project_workflow, project: create(:project, account: account), status: "archived")
 
@@ -197,6 +197,10 @@ RSpec.describe ProjectWorkflow, type: :model do
 
       expect(json[:available_steps]).to eq(%w[brainstorm landing_page ad_campaign launch])
     end
+  end
+
+  it "allows only 1 launch workflow per project" do
+    expect { create(:project_workflow, project: project, workflow_type: "launch") }.to raise_error(ActiveRecord::RecordInvalid)
   end
 
   describe "#calculate_progress" do
