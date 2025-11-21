@@ -25,7 +25,7 @@ RSpec.describe "Brainstorms API", type: :request do
       brainstorm: {
         name: name,
         thread_id: SecureRandom.uuid,
-        project_attributes: project_uuid ? { uuid: project_uuid } : {}
+        project_attributes: project_uuid ? { uuid: project_uuid } : { uuid: UUID7.generate }
       }
     }
   end

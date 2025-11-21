@@ -171,13 +171,13 @@ RSpec.describe ProjectWorkflow, type: :model do
     end
   end
 
-  describe "#to_json" do
+  describe "#as_json" do
     before do
       workflow.update(step: "ad_campaign", substep: "content")
     end
 
     it "returns workflow data as hash" do
-      json = workflow.to_json
+      json = workflow.as_json
 
       expect(json).to be_a(Hash)
       expect(json[:workflow_type]).to eq("launch")
@@ -186,14 +186,14 @@ RSpec.describe ProjectWorkflow, type: :model do
     end
 
     it "includes progress calculation" do
-      json = workflow.to_json
+      json = workflow.as_json
 
       expect(json).to have_key(:progress)
       expect(json[:progress]).to be_a(Numeric)
     end
 
     it "includes available steps" do
-      json = workflow.to_json
+      json = workflow.as_json
 
       expect(json[:available_steps]).to eq(%w[brainstorm landing_page ad_campaign launch])
     end
