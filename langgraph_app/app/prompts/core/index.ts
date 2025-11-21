@@ -31,11 +31,11 @@ function formatPromptContent(content: string): string {
       let processedContent = content.replace(/<file\s+[^>]*>[\s\S]*?<\/file>/g, (match) => {
         // Extract the path attribute
         const pathMatch = match.match(/path="([^"]*)"/);
-        const path = pathMatch ? pathMatch[1] : '';
+        const path = pathMatch && pathMatch[1] ? pathMatch[1] : '';
         
         // Extract the content (everything between opening and closing tags)
         const contentMatch = match.match(/<file[^>]*>([\s\S]*?)<\/file>/);
-        let fileContent = contentMatch ? contentMatch[1] : '';
+        let fileContent = contentMatch && contentMatch[1] ? contentMatch[1] : '';
         
         // Remove CDATA wrapper if present
         fileContent = fileContent.replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/, '$1');
@@ -146,7 +146,7 @@ function formatEmbeddedJson(content: string): string {
       
       // Get the indentation level from the surrounding context
       const lines = content.substring(0, content.indexOf(match)).split('\n');
-      const lastLine = lines[lines.length - 1];
+      let lastLine = lines.length > 0 ? (lines[lines.length - 1] || '') : '';
       const indent = lastLine.match(/^(\s*)/)?.[1] || '';
       
       // Indent each line of the JSON
@@ -169,7 +169,7 @@ function addXmlSpacing(content: string): string {
   let previousWasClosingTag = false;
   
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i] || '';
     const trimmedLine = line.trim();
     const isTopLevel = !line.startsWith('  ');
     const isOpeningTag = /^<[^\/]/.test(trimmedLine);

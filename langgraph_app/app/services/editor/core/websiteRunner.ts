@@ -160,23 +160,23 @@ export class WebsiteRunner implements AsyncDisposable {
         resolve();
       };
 
-      if (processToKill.killed) {
+      if (processToKill?.killed) {
         cleanup();
         return;
       }
 
       // Set up listeners
-      processToKill.once('close', cleanup);
-      processToKill.once('exit', cleanup);
-      processToKill.once('error', cleanup);
+      processToKill?.once('close', cleanup);
+      processToKill?.once('exit', cleanup);
+      processToKill?.once('error', cleanup);
       
       // Try to kill the process tree (including child processes)
       try {
         // On Unix-like systems, use negative PID to kill process group
-        if (process.platform !== 'win32' && processToKill.pid) {
-          process.kill(-processToKill.pid, 'SIGTERM');
+        if (process.platform !== 'win32' && processToKill?.pid) {
+          process.kill(-processToKill?.pid, 'SIGTERM');
         } else {
-          processToKill.kill('SIGTERM');
+          processToKill?.kill('SIGTERM');
         }
       } catch (err) {
         // Process might already be dead
@@ -186,12 +186,12 @@ export class WebsiteRunner implements AsyncDisposable {
       
       // Force kill after timeout
       setTimeout(() => {
-        if (this.devServerProcess && !processToKill.killed) {
+        if (this.devServerProcess && !processToKill?.killed) {
           try {
-            if (process.platform !== 'win32' && processToKill.pid) {
-              process.kill(-processToKill.pid, 'SIGKILL');
+            if (process.platform !== 'win32' && processToKill?.pid) {
+              process.kill(-processToKill?.pid, 'SIGKILL');
             } else {
-              processToKill.kill('SIGKILL');
+              processToKill?.kill('SIGKILL');
             }
           } catch (err) {
             // Process might already be dead

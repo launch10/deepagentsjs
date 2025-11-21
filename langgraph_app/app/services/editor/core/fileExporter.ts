@@ -65,7 +65,7 @@ export class FileExporter implements AsyncDisposable {
 
     // Write each file to the output directory
     for (const file of files) {
-      const filePath = join(this.outputDir, file.path);
+      const filePath = join(this.outputDir, file.path!);
       const fileDir = dirname(filePath);
       
       // Create directory structure if needed

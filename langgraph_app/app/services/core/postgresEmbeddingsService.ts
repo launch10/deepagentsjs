@@ -112,11 +112,6 @@ export class PostgresEmbeddingsService {
         contentColumnName: "text",
         metadataColumnName: "metadata",
       },
-      filter: {
-        // Ensure key is properly handled during upserts
-        whereClause: (key: string) => `key = '${key}'`,
-        columnName: "key",
-      },
     });
   }
 
@@ -181,29 +176,33 @@ export class PostgresEmbeddingsService {
     const cached = cachedResults[0];
 
     const now = new Date();
-    const expiresAt = new Date(cached.lastUsedAt);
-    expiresAt.setSeconds(expiresAt.getSeconds() + cached.ttlSeconds);
+    let expiresAt;
+    let ttlSeconds;
 
-    // Check if cache has expired
-    if (now > expiresAt) {
-      await this.db
-        .delete(this.cacheTable)
-        .where(eq(this.cacheTable.id, cached.id));
+    if (!cached) {
       return null;
     }
 
-    // Update last used time and increment use count
-    await this.db
-      .update(this.cacheTable)
-      .set({
-        lastUsedAt: now.toISOString(),
-        useCount: sql`${this.cacheTable.useCount} + 1`,
-      })
-      .where(eq(this.cacheTable.id, cached.id));
+    if (cached.lastUsedAt) {
+      expiresAt = new Date(String(cached.lastUsedAt));
+      ttlSeconds = Number(cached.ttlSeconds);
+      expiresAt.setSeconds(expiresAt.getSeconds() + ttlSeconds);
 
-    // If we need fewer results than cached, return only what was requested
-    const results = cached.results as EmbeddingResult[];
-    return results.slice(0, requestedTopK);
+      // Update last used time and increment use count
+      await this.db
+        .update(this.cacheTable)
+        .set({
+          lastUsedAt: now.toISOString(),
+          useCount: sql`${this.cacheTable.useCount} + 1`,
+        })
+        .where(eq(this.cacheTable.id, cached.id));
+
+      // If we need fewer results than cached, return only what was requested
+      const results = cached.results as EmbeddingResult[];
+      return results.slice(0, requestedTopK);
+    }
+
+    return null;
   }
 
   /**
@@ -286,9 +285,14 @@ export class PostgresEmbeddingsService {
     let normB = 0;
 
     for (let i = 0; i < vecA.length; i++) {
-      dotProduct += vecA[i] * vecB[i];
-      normA += vecA[i] * vecA[i];
-      normB += vecB[i] * vecB[i];
+      let vecAi = vecA[i];
+      let vecBi = vecB[i];
+      if (vecAi === undefined || vecBi === undefined) {
+        return -1;
+      }
+      dotProduct += vecAi * vecBi;
+      normA += vecAi * vecAi;
+      normB += vecBi * vecBi;
     }
 
     normA = Math.sqrt(normA);
