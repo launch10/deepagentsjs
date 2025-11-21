@@ -20,11 +20,12 @@ RSpec.describe "Brainstorms API", type: :request do
     subscribe_account(user2_owned_account, plan_name: 'pro')
   end
 
-  def valid_brainstorm_params(name:)
+  def valid_brainstorm_params(name:, project_uuid: nil)
     {
       brainstorm: {
         name: name,
-        thread_id: SecureRandom.uuid
+        thread_id: SecureRandom.uuid,
+        project_attributes: project_uuid ? { uuid: project_uuid } : {}
       }
     }
   end
@@ -63,6 +64,24 @@ RSpec.describe "Brainstorms API", type: :request do
 
           expect(brainstorm.project.workflows.launch.first.step).to eq("brainstorm")
           expect(brainstorm.project.workflows.launch.first.substep).to be_nil
+        end
+      end
+
+      response '201', 'brainstorm created with provided project UUID' do
+        schema ApiSchemas::Brainstorm.response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:'X-Signature') { auth_headers_for(user1)['X-Signature'] }
+        let(:'X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
+        let(:project_uuid) { SecureRandom.uuid }
+        let(:brainstorm_params) { valid_brainstorm_params(name: "Brainstorm with UUID", project_uuid: project_uuid) }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          brainstorm = Brainstorm.find(data["id"])
+
+          expect(brainstorm.project.uuid).to eq(project_uuid)
+          expect(brainstorm.project.account_id).to eq(user1_owned_account.id)
+          expect(brainstorm.name).to eq("Brainstorm with UUID")
         end
       end
 

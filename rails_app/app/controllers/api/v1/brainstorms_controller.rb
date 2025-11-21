@@ -50,7 +50,7 @@ class API::V1::BrainstormsController < API::BaseController
   end
 
   def brainstorm_params
-    params.require(:brainstorm).permit(:name, :thread_id, :account_id)
+    params.require(:brainstorm).permit(:name, :thread_id, :account_id, project_attributes: [:uuid])
   end
 
   def update_params

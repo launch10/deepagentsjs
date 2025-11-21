@@ -11,7 +11,8 @@ module BrainstormConcerns
 
           # Create project
           project = account.projects.create!(
-            name: name
+            name: name,
+            uuid: brainstorm_params.dig(:project_attributes, :uuid)
           )
 
           project.workflows.create!(
