@@ -1,5 +1,6 @@
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import type { NodeFunction, MinimalGraphState } from "../types";
+import type { NodeFunction } from "../types";
+import type { CoreGraphState } from "@types";
 import { v7 as uuidv7 } from "uuid";
 import { getNodeContext } from "./withContext";
 
@@ -31,7 +32,7 @@ type NotificationConfig = {
 /**
  * Wraps a node function with error handling
  */
-export const withNotifications = <TState extends MinimalGraphState>(
+export const withNotifications = <TState extends CoreGraphState>(
     nodeFunction: NodeFunction<TState>,
     options: NotificationConfig
 ): NodeFunction<TState> => {

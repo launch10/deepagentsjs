@@ -14,16 +14,16 @@ RSpec.describe "Account Switching via JWT", type: :request do
   it "defaults to owned account when no account specified" do
     token = generate_jwt_for(user)
     payload = JWT.decode(token, Rails.application.credentials.devise_jwt_secret_key, true, {algorithm: "HS256"})
-    
+
     expect(payload.dig(0, "account_id")).to eq(owned_account.id)
   end
 
   it "switches to team account when using switch_account_to" do
     switch_account_to(team_account)
-    
+
     token = generate_jwt_for(user)
     payload = JWT.decode(token, Rails.application.credentials.devise_jwt_secret_key, true, {algorithm: "HS256"})
-    
+
     expect(payload.dig(0, "account_id")).to eq(team_account.id)
   end
 end

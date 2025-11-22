@@ -15,7 +15,7 @@ Pay.setup do |config|
     recipients
   }
 end
-  
+
 module SubscriptionExtensions
   extend ActiveSupport::Concern
 

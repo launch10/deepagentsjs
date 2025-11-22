@@ -13,7 +13,7 @@ module JwtHelpers
     return unless current_user
 
     account ||= Current.account
-    
+
     payload = {
       jti: current_user.jwt_payload["jti"],
       sub: current_user.id,
@@ -32,7 +32,8 @@ module JwtHelpers
     }
   end
 
-private
+  private
+
   def real_jwt_user
     sub = real_jwt_field("sub")
     return nil if sub.blank?

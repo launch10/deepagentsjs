@@ -1,4 +1,5 @@
-import type { NodeFunction, MinimalGraphState } from "../types";
+import type { NodeFunction } from "../types";
+import type { CoreGraphState } from "@types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { startPolly, persistRecordings } from '@utils';
 import { getNodeContext } from "./withContext";
@@ -11,7 +12,7 @@ type WithPollyConfig = Record<string, never>;
 /**
  * Wraps a node function with polly (for testing, when we don't want to use fixtures)
  */
-export const withPolly = <TState extends MinimalGraphState>(
+export const withPolly = <TState extends CoreGraphState>(
     nodeFunction: NodeFunction<TState>,
     options: WithPollyConfig
 ): NodeFunction<TState> => {

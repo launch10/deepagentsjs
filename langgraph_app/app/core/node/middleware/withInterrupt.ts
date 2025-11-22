@@ -1,7 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { interrupt } from "@langchain/langgraph";
 import { env } from "@core";
-import type { NodeFunction, MinimalGraphState } from "../types";
+import type { NodeFunction } from "../types";
+import type { CoreGraphState } from "@types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getNodeContext } from "./withContext";
 
@@ -28,7 +29,7 @@ export class TestInterruptError extends Error {
     }
 }
 
-export const withInterrupt = <TState extends MinimalGraphState>(
+export const withInterrupt = <TState extends CoreGraphState>(
     nodeFunction: NodeFunction<TState>,
     options: WithInterruptConfig = {}
 ): NodeFunction<TState> => {

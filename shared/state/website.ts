@@ -1,6 +1,6 @@
-import { type CoreGraphState } from "./core";
+import { type CoreGraphState } from "../types/graph";
 import { type CodeTaskType, type ComponentContentPlanType, type TaskHistoryType, type ComponentOverviewType, type ProjectType, type WebsiteType, type ConsoleError, type FileMap } from "../types";
-import { Simplify } from "type-fest";
+import type { Simplify } from "type-fest";
 
 export type WebsiteGraphState = Simplify<CoreGraphState & {
     task: CodeTaskType | undefined;

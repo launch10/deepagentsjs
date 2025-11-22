@@ -22,7 +22,7 @@ const zodSchemaSchema = z.object({
 
 type ZodSchemaType = z.infer<typeof zodSchemaSchema>;
 
-export const schemaRegistry: Record<ComponentTypeEnum, ZodSchemaType> = {
+export const schemaRegistry: Partial<Record<ComponentTypeEnum, ZodSchemaType>> = {
     [SectionTypeEnum.Hero]: {
         schema: heroSchema,
     },

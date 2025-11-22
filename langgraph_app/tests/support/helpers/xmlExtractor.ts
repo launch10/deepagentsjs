@@ -69,6 +69,9 @@ export function extractXmlTag(
     return matches.map(processMatch).join('\n');
   } else {
     // Return first match only
+    if (!matches[0]) {
+      return null;
+    }
     return processMatch(matches[0]);
   }
 }
@@ -110,7 +113,7 @@ export function extractNestedXmlTag(
   let currentContent = xml;
   
   for (let i = 0; i < tags.length; i++) {
-    const tag = tags[i];
+    const tag = tags[i]!;
     const isLastTag = i === tags.length - 1;
     
     // For all tags except the last, we want to include the tag to search within it
@@ -151,6 +154,9 @@ export function parseSimpleXml(xml: string): Record<string, any> {
     
     while ((match = tagRegex.exec(xmlStr)) !== null) {
       const [, tagName, content] = match;
+      if (!tagName || !content) {
+        continue;
+      }
       const trimmedContent = content.trim();
       
       // Check if content contains nested tags
@@ -170,6 +176,9 @@ export function parseSimpleXml(xml: string): Record<string, any> {
   const rootMatch = cleanXml.match(/^<([\w-]+)(?:\s+[^>]*)?>(.+)<\/\1>$/s);
   if (rootMatch) {
     const [, rootTag, content] = rootMatch;
+    if (!rootTag || !content) {
+      return {};
+    }
     result[rootTag] = parseXmlString(content);
   } else {
     // Parse without a root tag
@@ -239,6 +248,9 @@ export function extractXmlAttributes(
   let attrMatch;
   
   while ((attrMatch = attrPattern.exec(match[1])) !== null) {
+    if (!attrMatch[1] || !attrMatch[2]) {
+      continue;
+    }
     attributes[attrMatch[1]] = attrMatch[2];
   }
   

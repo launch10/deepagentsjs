@@ -1,5 +1,12 @@
-import { isHumanMessage, isAIMessage } from "@langchain/core/messages";
-export { isHumanMessage, isAIMessage };
+import { BaseMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
+
+export const isHumanMessage = (message: unknown): message is HumanMessage => {
+    return HumanMessage.isInstance(message);
+}
+
+export const isAIMessage = (message: unknown): message is AIMessage => {
+    return AIMessage.isInstance(message);
+}
 
 export function isNumber(value: unknown): value is number {
     return typeof value === 'number';

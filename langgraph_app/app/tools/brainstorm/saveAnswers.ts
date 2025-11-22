@@ -38,12 +38,9 @@ export class MessageTagger {
   tagMessages(tags: Brainstorm.TopicName[]): BaseMessage[] {
     return this.taggableMessages().map((message) => {
       if (this.messageNotTagged(message)) {
-        return {
-          ...message,
-          additional_kwargs: {
-            ...message.additional_kwargs,
-            topics: tags,
-          },
+        message.additional_kwargs = {
+          ...message.additional_kwargs,
+          topics: tags,
         };
       }
       return message;
@@ -101,31 +98,31 @@ export const summarizeMessages = async (messages: BaseMessage[]): Promise<Partia
       }
     </output>
   `;
-  const structured = await getLLM().withStructuredOutput(
-  z.object({
+  const outputSchema = z.object({
       output: z.array(z.object({
-      topic: z.string(),
-      summary: z.string(),
+        topic: z.string(),
+        summary: z.string(),
       })),
-  })
-  ).invoke(prompt);
+  });
+  const structured = await getLLM().withStructuredOutput(outputSchema).invoke(prompt);
 
-  const output = structured.output;
-  const updates = output.reduce((acc, item) => {
-    acc[item.topic] = item.summary;
+  type Output = z.infer<typeof outputSchema>;
+  const output: Output["output"] = structured.output;
+  const updates = output.reduce((acc: Record<Brainstorm.TopicName, string>, item: Output['output'][number]) => {
+    acc[item.topic as Brainstorm.TopicName] = item.summary;
     return acc;
-  }, {} as Record<string, string>);
+  }, {} as Record<Brainstorm.TopicName, string>);
   const allTopicsCovered = Object.keys(updates);
-  const taggedMessages = messageTagger.tagMessages(allTopicsCovered);
+  const taggedMessages = messageTagger.tagMessages(allTopicsCovered as Brainstorm.TopicName[]);
 
   return {
-    memories: updates as Record<Brainstorm.TopicName, string>,
+    memories: updates,
     messages: taggedMessages,
   }
 }
 
 export const saveAnswers = async (
-  memories: Record<Brainstorm.TopicName, string>,
+  memories: Record<Brainstorm.ConversationalTopicName, string | undefined | null>,
   websiteId: number,
   skippedTopics: string[],
 ): Promise<Partial<BrainstormGraphState>> => {
@@ -157,7 +154,10 @@ export const summarizeAndSaveAnswers = async (
   websiteId: number,
   skippedTopics: string[],
 ): Promise<Partial<BrainstormGraphState>> => {
-  const { memories, messages: taggedMessages } = await summarizeMessages(messages);
+  let { memories, messages: taggedMessages } = await summarizeMessages(messages);
+  if (!memories) {
+    memories = {idea: "", audience: "", solution: "", socialProof: ""};
+  }
   const { memories: updatedMemories, skippedTopics: updatedSkippedTopics } = await saveAnswers(memories, websiteId, skippedTopics);
 
   return {
@@ -167,8 +167,14 @@ export const summarizeAndSaveAnswers = async (
   }
 }
 
+const answersSchema = z.array(z.object({
+  topic: z.enum(Brainstorm.BrainstormTopics),
+  answer: z.string(),
+}))
+type Answers = z.infer<typeof answersSchema>;
+
 export const saveAnswersTool = tool(
-  async (args: { answers?: Record<Brainstorm.TopicName, string> }, config) => {
+  async (args: { answers?: Answers }, config) => {
     const websiteId = getCurrentTaskInput<BrainstormGraphState>(config).websiteId;
     const skippedTopics = getCurrentTaskInput<BrainstormGraphState>(config).skippedTopics || [];
 
@@ -179,7 +185,6 @@ export const saveAnswersTool = tool(
     const toolMessage = new ToolMessage({
       content: "Saving answers...",
       tool_call_id: config?.toolCall.id,
-      status: "pending",
       name: "saveAnswersTool",
     });
 
@@ -196,12 +201,12 @@ export const saveAnswersTool = tool(
       });
     }
 
-    const answers = args.answers.reduce((acc, item) => {
-      acc[item.topic] = item.answer;
+    const answersObject = args.answers.reduce((acc, answer) => {
+      acc[answer.topic as Brainstorm.TopicName] = answer.answer;
       return acc;
     }, {} as Record<Brainstorm.TopicName, string>);
 
-    const stateUpdates = await saveAnswers(answers, websiteId, skippedTopics);
+    const stateUpdates = await saveAnswers(answersObject, websiteId, skippedTopics);
 
     return new Command({
       update: {
@@ -221,10 +226,7 @@ export const saveAnswersTool = tool(
         own words
     `,
     schema: z.object({
-      answers: z.array(z.object({
-        topic: z.enum(Brainstorm.BrainstormTopics),
-        answer: z.string(),
-      })).optional(),
+      answers: answersSchema.optional(),
     }),
   }
 );

@@ -1,15 +1,15 @@
 import { env } from "@app";
 import { shasum } from "@ext";
 import { getNodeContext } from "./withContext";
-import { isHumanMessage } from "@types";
+import { isHumanMessage, type CoreGraphState } from "@types";
 import type { BaseMessage } from "@langchain/core/messages";
-import type { NodeFunction, MinimalGraphState } from "../types";
+import type { NodeFunction } from "../types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeCache } from "@core";
 
 type KeyFunc<TState = any> = (state: TState) => string;
 
-const defaultKeyFunc: KeyFunc = (state: MinimalGraphState): string => {
+const defaultKeyFunc: KeyFunc = (state: CoreGraphState): string => {
     const params = state || {} as { messages: BaseMessage[] };
     const messages = params.messages as BaseMessage[] || [];
     const humanMessages = messages.filter(isHumanMessage);
@@ -43,7 +43,7 @@ type WithCachingConfig<TState = any> = {
  * Wraps a node function with context that includes node name and graph name
  * The graph name is automatically extracted from config.configurable (thread_id or checkpoint_ns)
  */
-export const withCaching = <TState extends MinimalGraphState>(
+export const withCaching = <TState extends CoreGraphState>(
     nodeFunction: NodeFunction<TState>,
     options: WithCachingConfig<TState> = {}
 ): NodeFunction<TState> => {

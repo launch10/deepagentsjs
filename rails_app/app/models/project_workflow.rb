@@ -32,10 +32,10 @@ class ProjectWorkflow < ApplicationRecord
   validate :only_one_launch_workflow_per_project
   before_validation :set_default_values, on: :create
 
-  scope :active, -> { where(status: 'active') }
-  scope :completed, -> { where(status: 'completed') }
-  scope :archived, -> { where(status: 'archived') }
-  scope :launch, -> { where(workflow_type: 'launch') }
+  scope :active, -> { where(status: "active") }
+  scope :completed, -> { where(status: "completed") }
+  scope :archived, -> { where(status: "archived") }
+  scope :launch, -> { where(workflow_type: "launch") }
 
   def next_step!
     next_step, next_substep = WorkflowConfig.next(workflow_type, step, substep)
@@ -65,19 +65,19 @@ class ProjectWorkflow < ApplicationRecord
   end
 
   def completed?
-    status == 'completed'
+    status == "completed"
   end
 
   def archived?
-    status == 'archived'
+    status == "archived"
   end
 
   def active?
-    status == 'active'
+    status == "active"
   end
 
   def complete!
-    update(status: 'completed')
+    update(status: "completed")
   end
 
   def as_json

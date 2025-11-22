@@ -1,5 +1,5 @@
-import { ReporterRegistry } from "./reporterRegistry";
 import { rollbar } from "./rollbar";
+import { ReporterRegistry } from "./reporterRegistry";
 import { env } from "@app";
 
 const devLogger = (e: unknown) => {
@@ -10,5 +10,6 @@ const devLogger = (e: unknown) => {
 }
 
 export const ErrorReporters = new ReporterRegistry()
-    .addReporter("rollbar", rollbar.error)
     .addReporter("dev", devLogger);
+
+export { rollbar }

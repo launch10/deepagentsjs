@@ -14,7 +14,8 @@ class API::V1::ThemesController < API::BaseController
     end
   end
 
-private
+  private
+
   def themes_params
     params.require(:theme).permit(:name, colors: [])
   end

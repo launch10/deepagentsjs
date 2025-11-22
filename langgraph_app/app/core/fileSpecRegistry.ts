@@ -9,8 +9,11 @@ const fileSpecs = await db.select().from(fileSpecifications).execute().catch((er
 });
 
 const registry = new Map<ComponentTypeEnum, FileSpecType>();
-fileSpecs.forEach((fileSpec: FileSpecType) => {
-    registry.set(fileSpec.componentType, fileSpec);
+// Annoying, but we can't easily alert the db about ComponentTypeEnum because
+// we use postgres reflection. I suspect we may end up moving away from this stuff as we
+// move towards the agentic system and away from hardcoded file specs.
+fileSpecs.forEach((fileSpec) => {
+    registry.set(fileSpec.componentType as ComponentTypeEnum, fileSpec as FileSpecType);
 });
 
 export const fileSpecRegistry: FileSpecRegistry = registry;

@@ -13,13 +13,11 @@ class API::V1::UploadsController < API::BaseController
   end
 
   def create
-    begin
-      result = Upload.create_upload!(current_account, upload_params)
-      upload = result[:upload]
-      render json: upload.to_json, status: :created
-    rescue => e
-      render json: { errors: "invalid upload"}, status: :unprocessable_entity
-    end
+    result = Upload.create_upload!(current_account, upload_params)
+    upload = result[:upload]
+    render json: upload.to_json, status: :created
+  rescue
+    render json: { errors: "invalid upload"}, status: :unprocessable_entity
   end
 
   private

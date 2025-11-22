@@ -252,14 +252,15 @@ export class ScenarioRunner {
     this.log(`📝 Applying ${this.modifications!.length} modification(s)...`);
     
     const files = await db.select().from(websiteFiles).where(eq(websiteFiles.websiteId, this.websiteId!));
-    const fileMap: Map<string, WebsiteFileType> = new Map(files.map((file: WebsiteFileType) => [file.path, file]));
+    const fileMap: Map<string, Pick<WebsiteFileType, 'path' | 'content' | 'websiteId'>> = new Map(files.map((file) => [file.path, file]));
     const allUpdates: Partial<string>[] = []
 
     for (const mod of this.modifications!) {
       this.log(`  - Modifying ${mod.path}`);
-      let file = fileMap.get(mod.path);
+      let file = fileMap.get(mod.path); // the file ALREADY exists for this website
       
       if (!file) {
+        // create a new file with empty content
         const [newFile] = await db.insert(websiteFiles)
           .values(withTimestamps({
             websiteId: this.websiteId!,
@@ -268,8 +269,8 @@ export class ScenarioRunner {
           }))
           .returning()
           .execute();
-        file = newFile;
-        fileMap.set(mod.path, {...newFile, content: ''});
+        file = newFile as Pick<WebsiteFileType, 'path' | 'content' | 'websiteId'>;
+        fileMap.set(mod.path, {...file, content: ''});
       }
       
       const updatedContent = await this.applyFileModification(mod, file);
@@ -278,7 +279,19 @@ export class ScenarioRunner {
     }
 
     const uniqueUpdates = [...new Set(allUpdates)];
-    const updatedFiles = uniqueUpdates.map(path => fileMap.get(path));
+    const filesToUpdate = uniqueUpdates
+      .map(path => fileMap.get(path))
+      .filter(
+        (f): f is Pick<WebsiteFileType, 'path' | 'content' | 'websiteId'> => !!f
+      );
+
+    const updatedFiles = filesToUpdate.map(file =>
+      withTimestamps({
+        websiteId: file.websiteId,
+        path: file.path,
+        content: file.content,
+      })
+    );
 
     if (uniqueUpdates.length > 0) {
       await db
@@ -286,7 +299,7 @@ export class ScenarioRunner {
         .values(updatedFiles)
         .onConflictDoUpdate({
           target: websiteFiles.id,
-          set: { content: sql.raw(`excluded.${websiteFiles.content.name}`) },
+          set: { content: sql.raw(`excluded.content`) }, // update the content, we just really care about upserting this
         });
     }
   }
@@ -294,7 +307,7 @@ export class ScenarioRunner {
   /**
    * Apply a file modification
    */
-  protected async applyFileModification(mod: FileModificationType, file: WebsiteFileType): Promise<string> {
+  protected async applyFileModification(mod: FileModificationType, file: Pick<WebsiteFileType, 'content'>): Promise<string> {
     let newContent = file.content;
     
     // Special case: if searching for empty string and current content is empty, 

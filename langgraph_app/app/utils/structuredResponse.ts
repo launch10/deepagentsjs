@@ -12,7 +12,7 @@ const keyLooksLikeForeignKey = (key: string) => key.endsWith("Id");
 const keyIsPrimaryKey = (key: string) => key === "id";
 
 export const schemaWithoutKeys = (schema: z.ZodSchema) => {
-  if (!schema._def.typeName || schema._def.typeName !== 'ZodObject') {
+  if (!schema._def) {
     return schema;
   }
   

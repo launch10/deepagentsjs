@@ -3,7 +3,7 @@ module SetCurrentRequestDetails
 
   included do |base|
     base.include JwtHelpers
-    
+
     if base < ActionController::Metal
       set_current_tenant_through_filter if defined? ActsAsTenant
       before_action :set_request_details
@@ -44,15 +44,15 @@ module SetCurrentRequestDetails
 
   def account_from_jwt
     return unless Current.user.present?
-    
+
     jwt = cookies[:jwt] || request.headers["Authorization"]&.split(" ")&.last
     return unless jwt
-    
+
     begin
       payload = JWT.decode(jwt, Rails.application.credentials.devise_jwt_secret_key, true, {algorithm: "HS256"})
       account_id = payload.dig(0, "account_id")
       return unless account_id
-      
+
       Current.user.accounts.includes(:payment_processor, :users).find_by(id: account_id)
     rescue JWT::DecodeError
       nil

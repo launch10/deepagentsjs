@@ -1,4 +1,3 @@
-
 authenticated :user do
   root to: "projects#new", as: :onboarding
 

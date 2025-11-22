@@ -1,8 +1,7 @@
 import { z } from "zod";
 import * as Core from "./core";
-import { componentSchema, ComponentTypeEnum } from "../website";
-import { primaryKeySchema, uuidSchema } from "../core";
-import { StatusEnum } from "./core";
+import { ComponentTypeEnum } from "../website";
+import { primaryKeySchema } from "../core";
 
 export enum SubtypeEnum {
   CREATE_PAGE = "CREATE_PAGE",
@@ -11,7 +10,7 @@ export enum SubtypeEnum {
   BUG_FIX = "BUG_FIX",
 }
 
-export const SubtypeDescriptions: Record<SubtypeEnum, string> = {
+export const SubtypeDescriptions: Partial<Record<SubtypeEnum, string>> = {
   [SubtypeEnum.CREATE_PAGE]: "Create a new page (e.g. PricingPage, IndexPage)",
   [SubtypeEnum.CREATE_COMPONENT]: "Create a new page section (e.g. Benefits, Features, Hero, etc)",
 };

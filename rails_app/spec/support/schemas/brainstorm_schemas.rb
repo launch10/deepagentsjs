@@ -16,8 +16,8 @@ module ApiSchemas
           **ApiSchemas.timestamps
         },
         required: [
-          'id', 
-          'thread_id', 
+          'id',
+          'thread_id',
           'account_id',
           'website_id',
           'project_id',

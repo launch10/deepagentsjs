@@ -93,7 +93,7 @@ export class BrowserErrorCapture {
         const args = msg.args();
         if (args.length > 0) {
           // Try to get the actual error object
-          const firstArg = await args[0].jsonValue().catch(() => null);
+          const firstArg = await args[0]?.jsonValue().catch(() => null);
           if (firstArg && typeof firstArg === 'object') {
             detailedMessage = firstArg.message || firstArg.toString() || text;
           }

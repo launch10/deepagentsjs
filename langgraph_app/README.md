@@ -201,7 +201,6 @@ The project uses path aliases for cleaner imports:
 ```typescript
 @services    → app/services
 @prompts     → app/prompts
-@models      → app/models
 @types       → app/shared/types
 @registries  → app/registries
 ```

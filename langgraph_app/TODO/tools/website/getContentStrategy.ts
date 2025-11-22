@@ -21,8 +21,8 @@
 
 import { z } from "zod";
 import { tool, Tool } from "@langchain/core/tools";
-import type { WebsiteGraphState} from "@shared/state/graph";
-import { type WebsiteContentStrategyType } from "@shared/types/website";
+import type { WebsiteGraphState} from "@state";
+import { type WebsiteContentStrategyType } from "@types";
 
 const description = `
     Retrieves the website's content strategy for generating consistent, on-brand copy.

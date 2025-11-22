@@ -35,6 +35,9 @@ class XmlParser implements FormatParser {
     
     while ((match = elementRegex.exec(content)) !== null) {
       const [, tagName, value] = match;
+      if (!tagName || !value) {
+        continue;
+      }
       const trimmedValue = value.trim();
       
       if (!result[tagName]) {
@@ -65,12 +68,16 @@ class XmlParser implements FormatParser {
 class PipeParser implements FormatParser {
   canParse(content: string): boolean {
     const lines = content.trim().split('\n');
-    return lines.length > 1 && lines[0].includes('|');
+    if (lines.length > 1 && !!(lines[0])) {
+      return lines[0].includes('|');
+    }
+    return false;
   }
   
   parse(content: string): unknown {
     const lines = content.trim().split('\n');
-    const headers = lines[0].split('|').map(h => h.trim());
+    let firstLine = lines[0] || '';
+    const headers = firstLine.split('|').map(h => h.trim());
     
     const rows = lines.slice(1).map(line => {
       const values = line.split('|').map(v => v.trim());
@@ -200,7 +207,14 @@ class SectionAssertion<T = unknown> {
       );
     }
     
-    return match[1].trim();
+    let content = match[1];
+    if (!content) {
+      throw new Error(
+        `Section '${name}' not found in prompt.\n` +
+        `Available sections: ${this.findAvailableSections().join(', ')}`
+      );
+    }
+    return content.trim();
   }
   
   private findAvailableSections(): string[] {
@@ -209,6 +223,9 @@ class SectionAssertion<T = unknown> {
     let match;
     
     while ((match = regex.exec(this.prompt)) !== null) {
+      if (!match || !match[1]) {
+        continue;
+      }
       sections.add(match[1]);
     }
     

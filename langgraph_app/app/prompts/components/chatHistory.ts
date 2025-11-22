@@ -1,5 +1,4 @@
-import { renderPrompt } from '@prompts';
-import { type Message, isHumanMessage, isAIMessage } from "@types";
+import { type Message, isHumanMessage } from "@types";
 
 /**
  * The chatHistory function renders a <chat-history> tag,
