@@ -4,19 +4,21 @@ cd "$(dirname "$0")/.."
 
 # Lint Langgraph code
 cd langgraph_app
-if pnpm run lint:fix && pnpm run typecheck; then
-  echo "✅ Langgraph linting passed!"
+if pnpm run lint:fix > /dev/null 2>&1 && pnpm run typecheck > /dev/null 2>&1; then
+  echo "✅ Langgraph"
 else
-  echo "❌ Langgraph linting failed!"
+  echo "❌ Langgraph failed - running checks to show errors:"
+  pnpm run lint:fix && pnpm run typecheck
   exit 1
 fi
 
 # Lint Rails code
 cd ../rails_app
-if bundle exec rubocop --autocorrect-all --format simple; then
-  echo "✅ Rubocop passed!"
+if bundle exec rubocop --autocorrect-all --format simple > /dev/null 2>&1; then
+  echo "✅ Rails"
 else
-  echo "❌ Rubocop failed!"
+  echo "❌ Rails failed - running rubocop to show errors:"
+  bundle exec rubocop --autocorrect-all --format simple
   exit 1
 fi
 
@@ -24,44 +26,28 @@ cd ../
 
 # Check if Rails API specs changed (triggers Swagger regeneration)
 if git diff --cached --name-only | grep -q "rails_app/spec/\(requests\|api\|integration\)/"; then
-  echo "1️⃣  Rails specs changed - generating Swagger documentation..."
-  ./scripts/generate-docs.sh
-  echo ""
+  ./scripts/generate-docs.sh > /dev/null 2>&1
   
   # Check if swagger was updated
   if ! git diff --quiet rails_app/swagger/ 2>/dev/null; then
-    echo "⚠️  Warning: Swagger documentation was updated!"
-    echo ""
-    echo "The following files were updated:"
+    echo "⚠️  Swagger updated - please review and commit:"
     git diff --name-only rails_app/swagger/ 2>/dev/null || true
-    echo ""
-    echo "Please review and commit these changes."
-    echo ""
     exit 1
   fi
-else
-  echo "1️⃣  Skipping Swagger generation (no spec changes)"
+  echo "✅ Swagger"
 fi
 
 # Check if Swagger changed (triggers TypeScript type regeneration)
 if git diff --cached --name-only | grep -q "rails_app/swagger/"; then
-  echo "2️⃣  Swagger changed - generating TypeScript types..."
-  ./scripts/generate-types.sh
-  echo ""
+  ./scripts/generate-types.sh > /dev/null 2>&1
   
   # Check if types were updated
   if ! git diff --quiet langgraph_app/app/lib/server/api/generated/ 2>/dev/null; then
-    echo "⚠️  Warning: TypeScript types were updated!"
-    echo ""
-    echo "The following files were updated:"
+    echo "⚠️  Types updated - please review and commit:"
     git diff --name-only langgraph_app/app/lib/server/api/generated/ 2>/dev/null || true
-    echo ""
-    echo "Please review and commit these changes."
-    echo ""
     exit 1
   fi
-else
-  echo "2️⃣  Skipping TypeScript type generation (no swagger changes)"
+  echo "✅ Types"
 fi
 
-echo "✅ Pre-commit checks passed!"
+echo "✅ Done"
