@@ -86,6 +86,12 @@ jobs:
             - langgraph-deps-v1-{{ checksum "pnpm-lock.yaml" }}
             - langgraph-deps-v1-
       - run:
+          name: Run typecheck
+          command: pnpm run typecheck
+      - run:
+          name: Run lint
+          command: pnpm run lint
+      - run:
           name: Install Rails dependencies
           command: |
             cd ~/project/rails_app
@@ -134,12 +140,6 @@ jobs:
           command: pnpm run test
           environment:
             <<: *langgraph-env
-      - run:
-          name: Run typecheck
-          command: pnpm run typecheck
-      - run:
-          name: Run lint
-          command: pnpm run lint
 
   rails-tests:
     docker:
