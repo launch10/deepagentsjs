@@ -119,7 +119,7 @@ class PollyManager {
         const { server } = PollyManager.polly!;
         PollyManager.AI_PROVIDERS.forEach(providerRegex => {
             server
-                .any(providerRegex)
+                .any(providerRegex as any) // regex seems to be permitted, not sure why not
                 .configure({ 
                     matchRequestsBy: {
                         method: true,
@@ -133,7 +133,7 @@ class PollyManager {
     }
 
     private static configureHeaders() {
-        const { server } = PollyManager.polly;
+        const { server } = PollyManager.polly!;
         server
             .any()
             .on('beforePersist', (req: any, recording: any) => {
@@ -216,7 +216,7 @@ export function mockApiResponse(pattern: string | RegExp, response: any) {
     }
     
     polly.server
-        .any(pattern)
+        .any(pattern as any) // regex seems to be permitted, not sure why not it's typed wrong
         .intercept((req: any, res: any) => {
             res.status(response.status || 200);
             res.json(response.body || response);

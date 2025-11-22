@@ -26,7 +26,7 @@ export interface ScorerParams {
   useCoT?: boolean,
 }
 
-const getChoiceScore = (choice: string, choiceScores: Record<string, number>): number => {
+const getChoiceScore = (choice: string, choiceScores: Record<string, number>): number | undefined => {
   return Object.entries(choiceScores).reduce((acc, [key, value]) => {
     acc[key.toLowerCase()] = value;
     return acc;
@@ -48,6 +48,6 @@ export const createScorer = ({prompt, choiceScores, additionalPromptParams = {}}
     const result = await parser.parse(unstructuredResponse.content as string)
     const choice = result.choice as keyof typeof choiceScores;
 
-    return getChoiceScore(choice, choiceScores)
+    return getChoiceScore(choice, choiceScores) ?? 0
   }
 }

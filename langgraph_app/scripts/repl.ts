@@ -23,8 +23,7 @@ import * as core from "@core";
 import * as prompts from '@prompts';
 import * as services from "@services";
 import * as nodes from "@nodes";
-import * as models from "@models";
-import * as tools from "app/tools/website";
+import * as tools from "@tools";
 import * as graphs from "@graphs";
 import * as utils from "@utils";
 import { env } from "@app";
@@ -133,7 +132,6 @@ Object.assign(server.context, {
     services,
     core,
     nodes,
-    models,
     tools,
     graphs,
     utils,
@@ -162,7 +160,7 @@ server.defineCommand('env', {
         } catch (error) {
             console.error('Failed to load environment:', error);
         }
-        this.displayPrompt();
+        (this as any).displayPrompt();
     }
 });
 

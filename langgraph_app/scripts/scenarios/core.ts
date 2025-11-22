@@ -54,13 +54,13 @@ export abstract class ScenarioCore {
     
     // Check if it's a number
     const index = parseInt(choice) - 1;
-    if (!isNaN(index) && index >= 0 && index < allWebsites.length) {
+    if (!isNaN(index) && index >= 0 && index < allWebsites.length && allWebsites[index] && allWebsites[index].name) {
       return allWebsites[index].name;
     }
     
     // Check if it's a valid name
     const website = allWebsites.find(w => w.name === choice);
-    if (website) {
+    if (website && website.name) {
       return website.name;
     }
     
@@ -193,7 +193,7 @@ export abstract class ScenarioCore {
     const answer = await this.rl.question('\nSelect a scenario to edit (number or name): ');
     
     const index = parseInt(answer) - 1;
-    if (!isNaN(index) && index >= 0 && index < scenarios.length) {
+    if (!isNaN(index) && index >= 0 && index < scenarios.length && scenarios[index]) {
       return scenarios[index];
     }
     
