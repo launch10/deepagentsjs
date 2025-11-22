@@ -37,12 +37,12 @@ else
 fi
 
 # Lint Langgraph code
-# cd ../langgraph_app
-# if pnpm run lint:fix && pnpm run typecheck; then
-#   echo "✅ Langgraph linting passed!"
-# else
-#   echo "❌ Langgraph linting failed!"
-#   exit 1
-# fi
+cd ../langgraph_app
+if pnpm run lint:fix && pnpm run typecheck; then
+  echo "✅ Langgraph linting passed!"
+else
+  echo "❌ Langgraph linting failed!"
+  exit 1
+fi
 
 echo "✅ Pre-commit checks passed!"
