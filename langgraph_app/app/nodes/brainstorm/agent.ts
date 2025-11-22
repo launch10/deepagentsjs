@@ -76,7 +76,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
 
     let messages = state.messages || [];
     if (structuredMessage) {
-        messages = [...messages, structuredMessage];
+        messages = [...(messages as any[]), structuredMessage];
     }
 
     return {
