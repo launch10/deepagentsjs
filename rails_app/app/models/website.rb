@@ -139,5 +139,4 @@ class Website < ApplicationRecord
   def set_default_theme
     self.theme = Theme.first if theme.nil?
   end
-
 end

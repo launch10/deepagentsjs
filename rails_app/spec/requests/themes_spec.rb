@@ -8,10 +8,10 @@ RSpec.describe "Themes API", type: :request do
   let!(:official_theme1) { create(:theme, name: 'Modern', colors: ['#000000', '#ffffff']) }
   let!(:official_theme2) { create(:theme, name: 'Classic', colors: ['#333333', '#eeeeee']) }
   let!(:label) { create(:theme_label, name: 'Dark') }
-  let!(:account1_theme1) { create(:theme, name: 'Account 1 Theme 1', colors: ['#111111', '#222222'], author: account ) }
-  let!(:account1_theme2) { create(:theme, name: 'Account 1 Theme 2', colors: ['#333333', '#444444'], author: account ) }
-  let!(:account2_theme1) { create(:theme, name: 'Account 2 Theme 1', colors: ['#555555', '#666666'], author: account2 ) }
-  let!(:account2_theme2) { create(:theme, name: 'Account 2 Theme 2', colors: ['#777777', '#888888'], author: account2 ) }
+  let!(:account1_theme1) { create(:theme, name: 'Account 1 Theme 1', colors: ['#111111', '#222222'], author: account) }
+  let!(:account1_theme2) { create(:theme, name: 'Account 1 Theme 2', colors: ['#333333', '#444444'], author: account) }
+  let!(:account2_theme1) { create(:theme, name: 'Account 2 Theme 1', colors: ['#555555', '#666666'], author: account2) }
+  let!(:account2_theme2) { create(:theme, name: 'Account 2 Theme 2', colors: ['#777777', '#888888'], author: account2) }
 
   before do
     ensure_plans_exist
@@ -31,8 +31,8 @@ RSpec.describe "Themes API", type: :request do
       response '200', 'themes retrieved' do
         schema ApiSchemas::Theme.collection_response
         let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:'X-Signature') { auth_headers_for(user)['X-Signature'] }
-        let(:'X-Timestamp') { auth_headers_for(user)['X-Timestamp'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
 
         before do
           official_theme1.theme_labels << label
@@ -60,8 +60,8 @@ RSpec.describe "Themes API", type: :request do
       response '200', 'retrieves official + account themes' do
         schema ApiSchemas::Theme.collection_response
         let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:'X-Signature') { auth_headers_for(user)['X-Signature'] }
-        let(:'X-Timestamp') { auth_headers_for(user)['X-Timestamp'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
 
         before do
           switch_account_to(account2)
@@ -108,8 +108,8 @@ RSpec.describe "Themes API", type: :request do
       response '200', 'theme created' do
         schema ApiSchemas::Theme.response
         let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:'X-Signature') { auth_headers_for(user)['X-Signature'] }
-        let(:'X-Timestamp') { auth_headers_for(user)['X-Timestamp'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
         let(:theme) { { theme: { name: 'New Theme', colors: ['#000000', '#ffffff'] } } }
 
         run_test! do |response|

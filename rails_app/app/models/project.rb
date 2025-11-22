@@ -31,7 +31,7 @@ class Project < ApplicationRecord
 
   has_one :website
   has_one :brainstorm, through: :website
-  has_many :workflows, class_name: 'ProjectWorkflow', dependent: :destroy
+  has_many :workflows, class_name: "ProjectWorkflow", dependent: :destroy
 
   include ProjectConcerns::Serialization
 

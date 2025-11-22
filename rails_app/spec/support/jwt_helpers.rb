@@ -10,7 +10,7 @@ module JwtHelpers
 
   def generate_jwt_for(user, account: nil, expires_in: 24.hours)
     account ||= @current_test_account || user.owned_account
-    
+
     payload = {
       jti: SecureRandom.uuid,
       sub: user.id,
@@ -26,7 +26,7 @@ module JwtHelpers
     token = generate_jwt_for(user, account: account, expires_in: expires_in)
     timestamp = Time.current.to_i
     signature = generate_internal_api_signature(timestamp)
-    
+
     {
       'Authorization' => "Bearer #{token}",
       'X-Signature' => signature,

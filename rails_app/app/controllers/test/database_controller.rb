@@ -4,16 +4,14 @@ class Test::DatabaseController < Test::TestController
   before_action :ensure_snapshots_directory_exists
 
   def truncate
-    begin
-      actually_truncate
-      puts "Database truncated"
-      render json: {status: "ok", message: "Database truncated"}, status: :ok
-    rescue => e
-      render json: {
-        status: "error",
-        errors: ["Failed to truncate database: #{e.message}"]
-      }, status: :internal_server_error
-    end
+    actually_truncate
+    puts "Database truncated"
+    render json: {status: "ok", message: "Database truncated"}, status: :ok
+  rescue => e
+    render json: {
+      status: "error",
+      errors: ["Failed to truncate database: #{e.message}"]
+    }, status: :internal_server_error
   end
 
   def index

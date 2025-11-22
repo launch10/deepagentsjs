@@ -24,7 +24,7 @@ class Domain < ApplicationRecord
     "uploads",
     "dev-uploads",
     "staging",
-    "www",
+    "www"
   ].map { |d| "#{d}.launch10.ai" }.freeze
 
   include Atlas::Domain

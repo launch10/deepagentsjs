@@ -44,7 +44,7 @@ class Theme < ApplicationRecord
       raise ArgumentError, "Author must be an Account"
     end
     self.theme_type = "community"
-    
+
     super
   end
 
