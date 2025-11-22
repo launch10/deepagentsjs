@@ -134,10 +134,9 @@ jobs:
           command: pnpm run test
           environment:
             <<: *langgraph-env
-      # TODO: Add typecheck once these will pass!!
-      # - run:
-      #     name: Run typecheck
-      #     command: pnpm run typecheck
+      - run:
+          name: Run typecheck
+          command: pnpm run typecheck
       - run:
           name: Run lint
           command: pnpm run lint
