@@ -1,4 +1,5 @@
-import type { NodeFunction, MinimalGraphState } from "../types";
+import type { NodeFunction } from "../types";
+import type { CoreGraphState } from "@types"
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getNodeContext } from "./withContext";
 import { ErrorReporters } from "@core";
@@ -11,7 +12,7 @@ type WithErrorHandlingConfig = {
 /**
  * Wraps a node function with error handling
  */
-export const withErrorHandling = <TState extends MinimalGraphState>(
+export const withErrorHandling = <TState extends CoreGraphState>(
     nodeFunction: NodeFunction<TState>,
     options: WithErrorHandlingConfig = { behavior: 'bubble' }
 ): NodeFunction<TState> => {
@@ -31,7 +32,7 @@ export const withErrorHandling = <TState extends MinimalGraphState>(
                 throw error;
             }
             return { 
-                error: { message: error.message, node: getNodeContext()?.name } 
+                error: { message: error.message, node: getNodeContext()?.name }
             } as Partial<TState>
         }
     }

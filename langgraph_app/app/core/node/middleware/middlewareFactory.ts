@@ -1,5 +1,5 @@
 import { type NodeFunction, type NodeMiddlewareType } from "../types";
-import type { MinimalGraphState } from "@state";
+import type { CoreGraphState } from "@state";
 
 type InferMiddlewareConfig<T, TState> = T extends (
   node: any,
@@ -41,17 +41,17 @@ export class NodeMiddlewareFactory<
   }
 
   // Overload signatures
-  use<TState extends MinimalGraphState>(
+  use<TState extends CoreGraphState>(
     node: NodeFunction<TState>
   ): NodeFunction<TState>;
 
-  use<TState extends MinimalGraphState>(
+  use<TState extends CoreGraphState>(
     config: MiddlewareConfig<TRegistered, TMiddlewares, TState>,
     node: NodeFunction<TState>
   ): NodeFunction<TState>;
 
   // Implementation signature
-  use<TState extends MinimalGraphState>(
+  use<TState extends CoreGraphState>(
     configOrNode: MiddlewareConfig<TRegistered, TMiddlewares, TState> |
   NodeFunction<TState>,
     node?: NodeFunction<TState>

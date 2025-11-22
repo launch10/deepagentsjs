@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
-import { MemorySaver } from '@langchain/langgraph';
+import { MemorySaver, Send } from '@langchain/langgraph';
 import { ErrorReporters } from '@core';
 import { getNodeContext, NodeMiddleware, NodeMiddlewareFactory, NodeCache } from '@core';
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
@@ -10,6 +10,7 @@ import { kebabCase } from "change-case";
 import * as fs from 'fs';
 import * as path from 'path';
 import { testGraph } from '@support';
+import { BaseAnnotation } from 'app/annotation/base';
 
 const getNodeName = () => {
     const context = getNodeContext();
@@ -251,9 +252,10 @@ describe('Node Core', () => {
 
           const downStreamNode = NodeMiddleware.use(
             {},
-            async (state: any, config: LangGraphRunnableConfig) => {
+            async (_: any, _config: LangGraphRunnableConfig) => {
                 calls['downStreamNode']++;
                 nodeName = getNodeName();
+                return {}
             }
           )
 
@@ -377,6 +379,7 @@ describe('Node Core', () => {
     describe('Interrupts', () => {
       it('stops execution after the specified node', async () => {
         const StateAnnotation = Annotation.Root({
+          ...BaseAnnotation.spec,
           completed: Annotation<string[]>({
             reducer: (state: string[] = [], update: string[]) => [...state, ...update]
           })
@@ -425,6 +428,7 @@ describe('Node Core', () => {
 
       it('interrupts correctly even when graph completes all nodes', async () => {
         const StateAnnotation = Annotation.Root({
+          ...BaseAnnotation.spec,
           steps: Annotation<string[]>({
             reducer: (state: string[] = [], update: string[]) => [...state, ...update]
           })
@@ -464,63 +468,63 @@ describe('Node Core', () => {
     });
 
     // TODO: Re-enable cache
-    it.skip('caches node results based on keyFunc', async() => {
-      NodeCache.clear();
+    // it.skip('caches node results based on keyFunc', async() => {
+    //   NodeCache.clear();
 
-      let executionCount = 0;
+    //   let executionCount = 0;
       
-      const StateAnnotation = Annotation.Root({
-        userId: Annotation<string>,
-        query: Annotation<string>,
-        result: Annotation<string | undefined>
-      });
-      type StateType = typeof StateAnnotation.State;
-      const node = NodeMiddleware.use(
-        {
-          cache: {
-            keyFunc: (state: StateType) => state.userId
-          }
-        },
-        async (state: typeof StateAnnotation.State, config: LangGraphRunnableConfig) => {
-          executionCount++;
-          return { result: `Result for ${state.query}` };
-        }
-      );
+    //   const StateAnnotation = Annotation.Root({
+    //     userId: Annotation<string>,
+    //     query: Annotation<string>,
+    //     result: Annotation<string | undefined>
+    //   });
+    //   type StateType = typeof StateAnnotation.State;
+    //   // const node = NodeMiddleware.use(
+    //   //   {
+    //   //     cache: {
+    //   //       keyFunc: (state: StateType) => state.userId
+    //   //     }
+    //   //   },
+    //   //   async (state: typeof StateAnnotation.State, config: LangGraphRunnableConfig) => {
+    //   //     executionCount++;
+    //   //     return { result: `Result for ${state.query}` };
+    //   //   }
+    //   // );
 
-      const graph = new StateGraph(StateAnnotation)
-        .addNode('cachedNode', node)
-        .addEdge("__start__", "cachedNode")
-        .addEdge("cachedNode", "__end__")
-        .compile({ checkpointer: new MemorySaver() });
+    //   const graph = new StateGraph(StateAnnotation)
+    //     .addNode('cachedNode', node)
+    //     .addEdge("__start__", "cachedNode")
+    //     .addEdge("cachedNode", "__end__")
+    //     .compile({ checkpointer: new MemorySaver() });
 
-      // First call with userId "user1" and query "query1"
-      const result1 = await graph.invoke({ userId: "user1", query: "user1" }, { configurable: {thread_id: 'thread1'}});
-      expect(executionCount).toBe(1);
+    //   // First call with userId "user1" and query "query1"
+    //   const result1 = await graph.invoke({ userId: "user1", query: "user1" }, { configurable: {thread_id: 'thread1'}});
+    //   expect(executionCount).toBe(1);
 
-      // Second call with same userId but different query - should use cache
-      const result2 = await graph.invoke({ userId: "user1", query: "user1" }, { configurable: {thread_id: 'thread1'}});
-      expect(result2.result).toBe("Result for user1"); // Returns cached result
-      expect(executionCount).toBe(1); // Should not increment
+    //   // Second call with same userId but different query - should use cache
+    //   const result2 = await graph.invoke({ userId: "user1", query: "user1" }, { configurable: {thread_id: 'thread1'}});
+    //   expect(result2.result).toBe("Result for user1"); // Returns cached result
+    //   expect(executionCount).toBe(1); // Should not increment
 
-      // Third call with different userId - should execute again
-      const result3 = await graph.invoke({ userId: "user2", query: "user2" }, { configurable: {thread_id: 'thread2'}});
-      expect(result3.result).toBe("Result for user2");
-      expect(executionCount).toBe(2);
+    //   // Third call with different userId - should execute again
+    //   const result3 = await graph.invoke({ userId: "user2", query: "user2" }, { configurable: {thread_id: 'thread2'}});
+    //   expect(result3.result).toBe("Result for user2");
+    //   expect(executionCount).toBe(2);
 
-      // Fourth call with first userId again - should use cache
-      const result4 = await graph.invoke({ userId: "user1", query: "user1" }, { configurable: {thread_id: 'thread1'}});
-      expect(result4.result).toBe("Result for user1"); // Returns original cached result
-      expect(executionCount).toBe(2); // Should not increment
+    //   // Fourth call with first userId again - should use cache
+    //   const result4 = await graph.invoke({ userId: "user1", query: "user1" }, { configurable: {thread_id: 'thread1'}});
+    //   expect(result4.result).toBe("Result for user1"); // Returns original cached result
+    //   expect(executionCount).toBe(2); // Should not increment
 
-      // Fifth call with different userId - should execute again
-      const result5 = await graph.invoke({ userId: "user2", query: "user2" }, { configurable: {thread_id: 'thread2'}});
-      expect(result5.result).toBe("Result for user2");
-      expect(executionCount).toBe(2);
+    //   // Fifth call with different userId - should execute again
+    //   const result5 = await graph.invoke({ userId: "user2", query: "user2" }, { configurable: {thread_id: 'thread2'}});
+    //   expect(result5.result).toBe("Result for user2");
+    //   expect(executionCount).toBe(2);
 
-      // Sixth call with different userId - should execute again
-      const result6 = await graph.invoke({ userId: "user3", query: "user3" }, { configurable: {thread_id: 'thread3'}});
-      expect(result6.result).toBe("Result for user3");
-      expect(executionCount).toBe(3);
-    })
+    //   // Sixth call with different userId - should execute again
+    //   const result6 = await graph.invoke({ userId: "user3", query: "user3" }, { configurable: {thread_id: 'thread3'}});
+    //   expect(result6.result).toBe("Result for user3");
+    //   expect(executionCount).toBe(3);
+    // })
   });
 });

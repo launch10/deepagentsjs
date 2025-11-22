@@ -1,15 +1,14 @@
-import type {
-    BaseMessage
-} from "@langchain/core/messages";
+import { type PrimaryKeyType, type BaseMessage, type ThreadIDType } from ".";
 
 export interface ErrorStateType { message: string; node: string }
-export interface MinimalGraphState {
+
+export type CoreGraphState = {
     error: ErrorStateType | undefined;
     jwt: string | undefined;
-    messages: BaseMessage[] | undefined;
-}
-export interface CoreGraphState extends MinimalGraphState {
-    accountId: number | undefined;
-    projectId: number | undefined;
+    messages: BaseMessage[];
+    threadId: ThreadIDType | undefined;
+    accountId: PrimaryKeyType | undefined;
+    projectId: PrimaryKeyType | undefined;
     projectName: string | undefined;
+    websiteId: PrimaryKeyType | undefined;
 }

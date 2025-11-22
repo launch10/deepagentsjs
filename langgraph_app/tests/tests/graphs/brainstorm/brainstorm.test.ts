@@ -224,6 +224,11 @@ const restartChatFrom = async (topic: Brainstorm.TopicName, useHistory: ChatHist
         .withState(state)
 }
 
+const getParsedBlocks = <T>(response: BaseMessage): T => {
+    const responseMetadata = response.response_metadata as { parsed_blocks?: { parsed?: any }[] };
+    return responseMetadata?.parsed_blocks?.[0]?.parsed as T;
+}
+
 describe.sequential('Brainstorming Flow', () => {
     beforeEach(async () => {
         await DatabaseSnapshotter.restoreSnapshot("basic_account");
@@ -280,8 +285,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableCommands).toHaveLength(1);
             expect(result.state.availableCommands[0]).toBe('helpMe');
 
-            const response = aiResponse?.response_metadata as Brainstorm.ReplyType;
-            const structuredOutput = response.parsed_blocks![0].parsed!;
+            const structuredOutput = getParsedBlocks<Brainstorm.ReplyType>(aiResponse!);
 
             assertDefined(structuredOutput);
             expect(structuredOutput.type).toBe('reply');
@@ -346,11 +350,11 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.availableCommands[2]).toBe('doTheRest');
 
             expect(lastAIResponse.content).toMatch(/solution|before|after|transformation|benefits/i)
-            const structuredOutput = lastAIResponse.response_metadata.parsed_blocks![0].parsed! as Brainstorm.ReplyType;
-            expect(structuredOutput.type).toBe('reply');
-            expect(structuredOutput.text).toBeDefined()
-            expect(structuredOutput.examples).toBeDefined()
-            expect(structuredOutput.conclusion).toBeDefined()
+            const structuredOutput = getParsedBlocks<Brainstorm.ReplyType>(lastAIResponse);
+            expect(structuredOutput?.type).toBe('reply');
+            expect(structuredOutput?.text).toBeDefined()
+            expect(structuredOutput?.examples).toBeDefined()
+            expect(structuredOutput?.conclusion).toBeDefined()
         })
 
         it('should ask about social proof after solution', async () => {
@@ -479,7 +483,7 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.redirect).toBeUndefined();
 
             expect(lastAIResponse.content).toMatch(/absolutely not|no|not at all|definitely not/i);
-            const structuredOutput = lastAIResponse.response_metadata.parsed_blocks![0];
+            const structuredOutput = getParsedBlocks<Brainstorm.ReplyType>(lastAIResponse);
             expect(structuredOutput).toBeDefined();
             expect(structuredOutput.type).toBe('text');
         })
@@ -638,7 +642,7 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(result.state.availableCommands[2]).toBe('doTheRest');
 
                 expect(lastAIResponse.content).toMatch(/audience|who|keeps them up at night/i)
-                let parsed = lastAIResponse.response_metadata.parsed_blocks![0].parsed as Brainstorm.HelpMeResponseType;
+                let parsed = getParsedBlocks<Brainstorm.HelpMeResponseType>(lastAIResponse);
                 expect(parsed.type).toBe('helpMe');
                 expect(parsed.text).toBeDefined()
                 expect(parsed.template).toBeDefined()

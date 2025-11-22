@@ -28,7 +28,7 @@ export class XmlTestHelper {
     if (expectedLines.length === 0) return null;
     
     // Get the first meaningful line (usually an opening tag)
-    const firstLine = expectedLines[0].trim();
+    const firstLine = (expectedLines[0] || '').trim();
     const tagMatch = firstLine.match(/<([\w-]+)[^>]*>/);
     if (!tagMatch) return null;
     

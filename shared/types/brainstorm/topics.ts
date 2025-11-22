@@ -1,6 +1,5 @@
 import z from "zod";
-import type { ConditionalKeys } from 'type-fest';
-import { CommandName, CommandNames } from "./commands";
+import { CommandNames } from "./commands";
 
 export const TopicKinds = ["conversational", "ui"] as const;
 export type TopicKind = typeof TopicKinds[number];

@@ -14,6 +14,6 @@ export * from "./guards";
 export * as Brainstorm from "./brainstorm";
 export * as Graphs from "./graphs";
 
-export * from "./graph";
 export * from "./message";
 export * from "./helpers";
+export * from "./graph";
