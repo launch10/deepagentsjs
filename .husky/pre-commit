@@ -1,9 +1,26 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
 # Run linters and auto-fix before commit
 echo "🔍 Running pre-commit checks..."
 cd "$(dirname "$0")/.."
+
+# Lint Langgraph code
+cd langgraph_app
+if pnpm run lint:fix && pnpm run typecheck; then
+  echo "✅ Langgraph linting passed!"
+else
+  echo "❌ Langgraph linting failed!"
+  exit 1
+fi
+
+# Lint Rails code
+cd ../rails_app
+if bundle exec rubocop --autocorrect-all --format simple; then
+  echo "✅ Rubocop passed!"
+else
+  echo "❌ Rubocop failed!"
+  exit 1
+fi
+
+cd ../
 
 # Generate Swagger documentation
 echo "1️⃣  Generating Swagger documentation..."
@@ -24,24 +41,6 @@ if ! git diff --quiet rails_app/swagger/ shared/types/ 2>/dev/null; then
   echo ""
   echo "Please review, commit, and push these changes."
   echo ""
-  exit 1
-fi
-
-# Lint Rails code
-cd rails_app
-if bundle exec rubocop --autocorrect-all --format simple; then
-  echo "✅ Rubocop passed!"
-else
-  echo "❌ Rubocop failed!"
-  exit 1
-fi
-
-# Lint Langgraph code
-cd ../langgraph_app
-if pnpm run lint:fix && pnpm run typecheck; then
-  echo "✅ Langgraph linting passed!"
-else
-  echo "❌ Langgraph linting failed!"
   exit 1
 fi
 
