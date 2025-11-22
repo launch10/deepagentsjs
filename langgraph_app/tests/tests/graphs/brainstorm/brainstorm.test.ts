@@ -483,9 +483,12 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.redirect).toBeUndefined();
 
             expect(lastAIResponse.content).toMatch(/absolutely not|no|not at all|definitely not/i);
-            const structuredOutput = getParsedBlocks<Brainstorm.ReplyType>(lastAIResponse);
-            expect(structuredOutput).toBeDefined();
-            expect(structuredOutput.type).toBe('text');
+
+            const metadata = lastAIResponse.response_metadata as { parsed_blocks?: { sourceText?: string, type?: string, parsed?: any }[] };
+            const parsedBlock = metadata?.parsed_blocks?.[0];   
+            expect(parsedBlock).toBeDefined();
+            expect(parsedBlock?.type).toBe('text');
+            expect(parsedBlock?.sourceText).toMatch(/absolutely not|no|not at all|definitely not/i)
         })
     });
 
