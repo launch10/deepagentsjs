@@ -167,8 +167,14 @@ export const summarizeAndSaveAnswers = async (
   }
 }
 
+const answersSchema = z.array(z.object({
+  topic: z.enum(Brainstorm.BrainstormTopics),
+  answer: z.string(),
+}))
+type Answers = z.infer<typeof answersSchema>;
+
 export const saveAnswersTool = tool(
-  async (args: { answers?: Record<Brainstorm.TopicName, string> }, config) => {
+  async (args: { answers?: Answers }, config) => {
     const websiteId = getCurrentTaskInput<BrainstormGraphState>(config).websiteId;
     const skippedTopics = getCurrentTaskInput<BrainstormGraphState>(config).skippedTopics || [];
 
@@ -195,12 +201,12 @@ export const saveAnswersTool = tool(
       });
     }
 
-    const answers = Object.entries(args.answers).reduce((acc, [topic, answer]) => {
-      acc[topic as Brainstorm.TopicName] = answer;
+    const answersObject = args.answers.reduce((acc, answer) => {
+      acc[answer.topic as Brainstorm.TopicName] = answer.answer;
       return acc;
     }, {} as Record<Brainstorm.TopicName, string>);
 
-    const stateUpdates = await saveAnswers(answers, websiteId, skippedTopics);
+    const stateUpdates = await saveAnswers(answersObject, websiteId, skippedTopics);
 
     return new Command({
       update: {
@@ -220,10 +226,7 @@ export const saveAnswersTool = tool(
         own words
     `,
     schema: z.object({
-      answers: z.array(z.object({
-        topic: z.enum(Brainstorm.BrainstormTopics),
-        answer: z.string(),
-      })).optional(),
+      answers: answersSchema.optional(),
     }),
   }
 );
