@@ -1,6 +1,7 @@
 import { HumanMessage, BaseMessage } from '@langchain/core/messages';
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { type CoreGraphState } from "@state";
+import { db, eq, projects as projectsTable } from "@db";
 import { generateUUID, type ConsoleError } from "@types";
 import { isGraphInterrupt } from "@langchain/langgraph";
 import { runScenario } from '@services';
@@ -45,16 +46,11 @@ export interface GraphTestConfig {
  */
 export class GraphTestBuilder<TGraphState extends CoreGraphState> {
     private prompt!: string;
-    private name?: string;
     private targetNode!: string;
-    private initialState: Partial<TGraphState> = {};
+    private initialState: any = {};
     private config: Partial<LangGraphRunnableConfig> = {};
     private graph: CompiledGraph | undefined;
     private websiteName?: string; // Store project name for deferred loading
-    private capturePrompts: string[] = [];
-    private capturedPromptOutputs: Map<string, string[]> = new Map();
-    private captureServices: string[] = [];
-    private capturedserviceSpy: Map<string, any[]> = new Map();
     private scenario?: string;
     private threadId?: string;
 
@@ -70,7 +66,11 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
         this.initialState = {
             jwt: "test-jwt",
             accountId: 1,
-        }
+            error: undefined,
+            messages: [] as BaseMessage[],
+            projectId: undefined,
+            projectName: undefined,
+        };
     }
 
     /**
@@ -78,11 +78,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
      */
     withPrompt(prompt: string): GraphTestBuilder<TGraphState> {
         this.prompt = prompt;
-        return this;
-    }
-
-    withName(name: string): GraphTestBuilder<TGraphState> {
-        this.name = name;
         return this;
     }
 
@@ -134,9 +129,9 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
             return;
         }
 
-        // Dynamically import to avoid circular dependencies
-        const { ProjectModel } = await import('@models');
-        const project = await ProjectModel.findBy({ name: this.websiteName });
+        const project = (await db.select().from(projectsTable).where(
+            eq(projectsTable.name, this.websiteName)
+        ).execute())[0];
         
         if (!project?.threadId) {
             throw new Error(`Project "${this.websiteName}" not found or has no thread_id`);
@@ -165,22 +160,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
     }
 
     /**
-     * Capture outputs from specified prompt functions
-     */
-    withPromptSpy(promptNames: string[]): GraphTestBuilder<TGraphState> {
-        this.capturePrompts = promptNames;
-        return this;
-    }
-
-    /**
-     * Capture outputs from specified service classes
-     */
-    withServiceSpy(serviceNames: string[]): GraphTestBuilder<TGraphState> {
-        this.captureServices = serviceNames;
-        return this;
-    }
-
-    /**
      * Execute the graph up to the target node and return the result
      */
     async execute(): Promise<NodeTestResult<TGraphState>> {
@@ -189,16 +168,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
         }
         if (!this.graph) {
             throw new Error("Graph is required. Use .withGraph() to set it.");
-        }
-
-        // Set up prompt capturing if requested
-        if (this.capturePrompts.length > 0) {
-            await this.setupPromptCapturing();
-        }
-        
-        // Set up service capturing if requested
-        if (this.captureServices.length > 0) {
-            await this.setupServiceCapturing();
         }
 
         // Load thread ID if website specified
@@ -244,8 +213,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
                     state,
                     messages: state.messages || [],
                     error: undefined,
-                    promptSpy: this.capturedPromptOutputs,
-                    serviceSpy: this.capturedserviceSpy
                 };
             }
             
@@ -253,21 +220,17 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
                 state: result,
                 messages: result.messages || [],
                 error: result.error,
-                promptSpy: this.capturedPromptOutputs,
-                serviceSpy: this.capturedserviceSpy
             }
         } catch (error) {
             // Check if this is a GraphInterrupt - this is expected for test interrupts
             if (isGraphInterrupt(error)) {
                 // Extract the interrupt value which should contain our state
-                const interruptValue = (error as any).interrupts?.[0]?.value || error.value;
+                const interruptValue = error.interrupts?.[0]?.value;
                 if (interruptValue && interruptValue.state) {
                     return {
                         state: interruptValue.state,
                         messages: interruptValue.state.messages || [],
                         error: undefined,
-                        promptSpy: this.capturedPromptOutputs,
-                        serviceSpy: this.capturedserviceSpy
                     };
                 }
                 // Fallback: use the initial state with updates from the error
@@ -275,8 +238,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
                     state: { ...initialState, ...(interruptValue || {}) },
                     messages: initialState.messages || [],
                     error: undefined,
-                    promptSpy: this.capturedPromptOutputs,
-                    serviceSpy: this.capturedserviceSpy
                 };
             }
             
@@ -285,150 +246,8 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
                 state: initialState,
                 messages: initialState.messages || [],
                 error: error as Error,
-                promptSpy: this.capturedPromptOutputs,
-                serviceSpy: this.capturedserviceSpy
             };
-        } finally {
-            // Clean up prompt mocks if they were set up
-            if (this.capturePrompts.length > 0) {
-                this.cleanupPromptCapturing();
-            }
-            // Clean up service mocks if they were set up
-            if (this.captureServices.length > 0) {
-                this.cleanupServiceCapturing();
-            }
         }
-    }
-
-    /**
-     * Setup prompt capturing using vi.doMock
-     */
-    private async setupPromptCapturing(): Promise<void> {
-        const capturedOutputs = this.capturedPromptOutputs;
-        const promptsToCapture = this.capturePrompts;
-        
-        // Clear any existing module mocks and caches
-        vi.resetModules();
-        
-        // Mock the @prompts module to capture outputs
-        vi.doMock('@prompts', async (importOriginal) => {
-            const actual = await importOriginal() as any;
-            const mockedPrompts: any = {};
-            
-            // Create spies for each requested prompt
-            for (const name of promptsToCapture) {
-                if (actual[name]) {
-                    mockedPrompts[name] = vi.fn().mockImplementation(async (...args: any[]) => {
-                        const output = await actual[name](...args);
-                        
-                        // Store the output
-                        if (!capturedOutputs.has(name)) {
-                            capturedOutputs.set(name, []);
-                        }
-                        capturedOutputs.get(name)!.push(output);
-                        
-                        return output;
-                    });
-                }
-            }
-            
-            // Return the module with mocked functions
-            return {
-                ...actual,
-                ...mockedPrompts
-            };
-        });
-        
-        // Force reload of the graph with mocked prompts
-        // We need to re-import the graph after setting up the mock
-        const { routerGraph } = await import('@graphs');
-        this.graph = routerGraph;
-    }
-
-    /**
-     * Clean up prompt mocks
-     */
-    private cleanupPromptCapturing(): void {
-        vi.doUnmock('@prompts');
-        vi.clearAllMocks();
-    }
-
-    /**
-     * Setup service capturing using vi.doMock
-     */
-    private async setupServiceCapturing(): Promise<void> {
-        const capturedOutputs = this.capturedserviceSpy;
-        const servicesToCapture = this.captureServices;
-        
-        // Clear any existing module mocks and caches
-        vi.resetModules();
-        
-        // Mock the @services module to capture outputs
-        vi.doMock('@services', async (importOriginal) => {
-            const actual = await importOriginal() as any;
-            const mockedServices: any = {};
-            
-            // Create mocked classes for each requested service
-            for (const name of servicesToCapture) {
-                if (actual[name]) {
-                    // Create a mocked class that extends the original
-                    mockedServices[name] = class extends actual[name] {
-                        async execute(...args: any[]) {
-                            const output = await super.execute(...args);
-                            
-                            // Store the output
-                            if (!capturedOutputs.has(name)) {
-                                capturedOutputs.set(name, []);
-                            }
-                            capturedOutputs.get(name)!.push(output);
-                            
-                            return output;
-                        }
-                    };
-                }
-            }
-            
-            // Return the module with mocked services
-            return {
-                ...actual,
-                ...mockedServices
-            };
-        });
-        
-        // Force reload of the graph with mocked services
-        // We need to re-import the graph after setting up the mock
-        const { routerGraph } = await import('@graphs');
-        this.graph = routerGraph;
-    }
-
-    /**
-     * Clean up service mocks
-     */
-    private cleanupServiceCapturing(): void {
-        vi.doUnmock('@services');
-        vi.clearAllMocks();
-    }
-
-    /**
-     * Helper to create a test for a specific node output
-     */
-    async expectOutput(assertion: (output: any) => void): Promise<void> {
-        const result = await this.execute();
-        if (result.error) {
-            throw result.error;
-        }
-        assertion(result.output);
-    }
-
-    /**
-     * Helper to get just the node's output for a specific field
-     */
-    async getOutput<T = any>(field?: string): Promise<T> {
-        const result = await this.execute();
-        if (result.error) {
-            throw result.error;
-        }
-        return field ? result.output[field] : result.output;
     }
 }
 

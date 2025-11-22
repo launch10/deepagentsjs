@@ -1,12 +1,12 @@
 import type {
-    Message
-} from ".";
+    BaseMessage
+} from "@langchain/core/messages";
 
 export interface ErrorStateType { message: string; node: string }
 export interface MinimalGraphState {
     error: ErrorStateType | undefined;
     jwt: string | undefined;
-    messages: Message[] | undefined;
+    messages: BaseMessage[] | undefined;
 }
 export interface CoreGraphState extends MinimalGraphState {
     accountId: number | undefined;
