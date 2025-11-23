@@ -14,14 +14,14 @@ export const headlinesSchema = z.object({
   text: z.string().describe('A simple reply detailing your thought process'),
   headlines: z.array(z.string()).max(6).describe(`List of headlines to include`),
 });
-export type HeadlinesType = z.infer<typeof headlinesSchema>;
+export type HeadlinesReplyType = z.infer<typeof headlinesSchema>;
 
 export const descriptionsSchema = z.object({
   type: z.literal("description"),
   text: z.string().describe('A simple reply detailing your thought process'),
   descriptions: z.array(z.string()).max(4).describe(`List of descriptions to include`),
 });
-export type DescriptionType = z.infer<typeof descriptionsSchema>;
+export type DescriptionsReplyType = z.infer<typeof descriptionsSchema>;
 
 export const featuresSchema = z.object({
   type: z.literal("features"),
@@ -32,14 +32,14 @@ export const featuresSchema = z.object({
     details: z.array(z.string()).max(3).describe(`List of details to include`),
   }).array().describe(`List of structured snippets to include`),
 });
-export type FeaturesType = z.infer<typeof featuresSchema>;
+export type FeaturesReplyType = z.infer<typeof featuresSchema>;
 
 export const keywordsSchema = z.object({
   type: z.literal("keywords"),
   text: z.string().describe('A simple reply detailing your thought process'),
   keywords: z.array(z.string()).max(10).describe(`List of keywords to include`),
 });
-export type KeywordsType = z.infer<typeof keywordsSchema>;
+export type KeywordsReplyType = z.infer<typeof keywordsSchema>;
 
 export const structuredMessageSchema = z.discriminatedUnion("type", [
     replySchema,

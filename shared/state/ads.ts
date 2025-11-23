@@ -5,6 +5,11 @@ import type { Simplify } from "type-fest";
 
 export type AdsGraphState = Simplify<CoreGraphState & {
     projectUUID: UUIDType;
+    headlines: Ads.Headline[] | undefined;
+    descriptions: Ads.Description[] | undefined;
+    uniqueFeatures: Ads.UniqueFeature[] | undefined;
+    structuredSnippets: Ads.StructuredSnippet[] | undefined;
+    keywords: Ads.Keyword[] | undefined;
     availableCommands: Ads.CommandName[];
     command: Ads.CommandName | undefined;
     redirect: Ads.RedirectType | undefined;
