@@ -32,6 +32,18 @@ export const promptBuilder = async (state: any, config?: LangGraphRunnableConfig
         }
     }, {} as Ads.AssetPromptMap);
 
+    const assetPrompts = Object.values(assetConfigs).map((assetConfig, index) => {
+        return `${index + 1}: ${assetConfig.prompt}`
+    });
+
+    // Merge this into a single output format
+    const outputFormats = Object.entries(assetConfigs).reduce((acc, [asset, assetConfig]) => {
+        return {
+            ...acc,
+            [asset]: assetConfig.outputFormat
+        }
+    }, {});
+
     return `
         You are an expert Google Ads copywriter helping to create compelling ad extensions for a business. You will generate Unique Features and Product/Service Offerings that will appear as Highlights in their Google Search ad.
 
@@ -41,8 +53,10 @@ export const promptBuilder = async (state: any, config?: LangGraphRunnableConfig
         # Your Task
         Generate the following assets for this business's Google Ads campaign:
 
+        ${assetPrompts.join("\n")}
+
         # Output Format
         Return your response as a JSON object with this structure:
-        ${config?.outputFormat}
+        ${JSON.stringify(outputFormats)}
     `
 }

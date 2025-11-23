@@ -26,7 +26,7 @@ export const Pages: PageMap = {
 
 export interface AssetPromptConfig {
     prompt: string;
-    outputFormat: string;
+    outputFormat: object;
 }
 
 export type AssetPromptMap = Record<AssetKind, AssetPromptConfig>;

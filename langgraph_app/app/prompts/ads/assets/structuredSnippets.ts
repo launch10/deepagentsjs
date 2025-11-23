@@ -1,4 +1,6 @@
-export const structuredSnippetsConfig: Partial<AssetPromptMap> = {
+import { type Ads } from "@types";
+
+export const structuredSnippetsConfig: Partial<Ads.AssetPromptMap> = {
     "structured_snippets": {
         prompt: `
             Product or Service Offerings (Structured Snippets)
@@ -20,15 +22,13 @@ export const structuredSnippetsConfig: Partial<AssetPromptMap> = {
             - Each detail should be 25 characters or less
             - Be specific to this business's actual offerings
         `,
-        outputFormat: `
-            "structured_snippets": {
-                "category": "Types",
-                "details": [
-                    "Detail 1",
-                    "Detail 2",
-                    "Detail 3"
-                ]
-            }
-        `
+        outputFormat: {
+            "category": "Types",
+            "details": [
+                "Detail 1",
+                "Detail 2",
+                "Detail 3"
+            ]
+        }
     }
 }

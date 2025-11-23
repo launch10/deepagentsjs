@@ -17,14 +17,12 @@
 
         Remember: These highlights make the ad larger and give potential customers more reasons to click. Make them compelling, specific, and relevant to the business's unique value proposition.
     `,
-    outputFormat: {
-        "unique_features": [
-            "Feature 1",
-            "Feature 2",
-            "Feature 3",
-            "Feature 4",
-            "Feature 5",
-            "Feature 6"
-        ]
-    }
+    outputFormat: [
+        "Feature 1",
+        "Feature 2",
+        "Feature 3",
+        "Feature 4",
+        "Feature 5",
+        "Feature 6"
+    ]
 }
