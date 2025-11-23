@@ -1,23 +1,5 @@
 import { type LangGraphRunnableConfig, Ads } from "@types";
 
-const AssetConfigs: Ads.AssetPromptMap = {
-    "unique_features": {
-    },
-    "structured_snippets": {
-        prompt: `Generate 6 unique structured snippets for this business's Google Ads campaign.`,
-        outputFormat: `
-            "structured_snippets": [
-                "Snippet 1",
-                "Snippet 2",
-                "Snippet 3",
-                "Snippet 4",
-                "Snippet 5",
-                "Snippet 6"
-            ]
-        `
-    }
-}
-
 // User clicks button "Refresh Suggestions" for headlines,
 // state includes page: "Content", command: refreshSuggestions,
 // assets: ["headlines"]
@@ -25,7 +7,7 @@ export const promptBuilder = async (state: any, config?: LangGraphRunnableConfig
     const page = Ads.Pages[state.page];
 
     const assetConfigs: Ads.AssetPromptMap = page.assets.reduce((acc: Ads.AssetPromptMap, asset: Ads.AssetKind) => {
-        const assetConfig = AssetConfigs[asset];
+        const assetConfig = Ads.AssetConfigs[asset];
         return {
             ...acc,
             [asset]: assetConfig
