@@ -42,9 +42,9 @@ const dynamicPromptMiddleware = createMiddleware({
 })
 
 /**
- * Node that asks a question to the user during brainstorming mode
+ * Node that generates ads content
  */
-export const brainstormAgent = NodeMiddleware.use({}, async (
+export const adsAgent = NodeMiddleware.use({}, async (
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> => {
@@ -63,27 +63,17 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
     });
     const result = await agent.invoke(state as any, config) as BrainstormGraphState;
     const lastMessage = lastAIMessage(result);
-    const structuredMessage = await toStructuredMessage(lastMessage as any);
-
     if (!lastMessage) {
         throw new Error("Agent did not return an AI message");
     }
 
-    const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } = await new BrainstormNextStepsService(state).nextSteps();
-
+    const structuredMessage = await toStructuredMessage(lastMessage as any);
     let messages = state.messages || [];
     if (structuredMessage) {
         messages = [...(messages as any[]), structuredMessage];
     }
 
     return {
-        redirect: result.redirect as Brainstorm.RedirectType,
-        skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
         messages,
-        memories,
-        currentTopic,
-        remainingTopics,
-        placeholderText,
-        availableCommands,
     };
 });
