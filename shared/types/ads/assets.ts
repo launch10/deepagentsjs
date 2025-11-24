@@ -1,24 +1,29 @@
+import { z } from "zod";
+
 export const AssetKinds = ["headlines", "descriptions", "unique_features", "structured_snippets"] as const;
 export type AssetKind = typeof AssetKinds[number];
 
 export const PageNames = ["Content", "Highlights"] as const;
 export type PageName = typeof PageNames[number];
 
-export interface Asset {
-    text: string;
-    rejected: boolean;
-    locked: boolean;
-}
+export const AssetSchema = z.object({
+    text: z.string(),
+    rejected: z.boolean(),
+    locked: z.boolean()
+});
+
+export type Asset = z.infer<typeof AssetSchema>;
 export interface Headline extends Asset {}
 export interface Description extends Asset {}
 export interface UniqueFeature extends Asset {}
-
 export interface StructuredSnippetCategory extends Asset {}
 export interface StructuredSnippetDetail extends Asset {}
-export interface StructuredSnippet {
-    category: StructuredSnippetCategory;
-    details: StructuredSnippetDetail[];
-}
+
+export const StructuredSnippetSchema = z.object({
+    category: AssetSchema,
+    details: z.array(AssetSchema)
+});
+export type StructuredSnippet = z.infer<typeof StructuredSnippetSchema>;
 export interface Keyword extends Asset {}
 
 export type Page = {
@@ -40,7 +45,6 @@ export const Pages: PageMap = {
         assets: ["unique_features", "structured_snippets"]
     }
 }
-
 export interface AssetPromptConfig {
     prompt: string;
     outputFormat: object;

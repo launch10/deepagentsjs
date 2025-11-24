@@ -1,7 +1,7 @@
 import { createAgent, createMiddleware } from "langchain";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
-import { chooseAgentPrompt } from "@prompts";
+import { chooseBrainstormPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { saveAnswersTool, finishedTool } from "@tools";
 import {
@@ -29,7 +29,7 @@ const dynamicPromptMiddleware = createMiddleware({
         const state = request.state as BrainstormGraphState;
 
         // Regenerate system prompt with current state
-        const systemPrompt = await chooseAgentPrompt(state, request.runtime);
+        const systemPrompt = await chooseBrainstormPrompt(state, request.runtime);
 
         // Return modified request
         const result = await handler({

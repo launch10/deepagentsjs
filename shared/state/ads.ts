@@ -5,6 +5,7 @@ import type { Simplify } from "type-fest";
 
 export type AdsGraphState = Simplify<CoreGraphState & {
     projectUUID: UUIDType;
+    substep: string | undefined; // TODO: Link workflow.yml to type definitions
     headlines: Ads.Headline[] | undefined;
     descriptions: Ads.Description[] | undefined;
     uniqueFeatures: Ads.UniqueFeature[] | undefined;

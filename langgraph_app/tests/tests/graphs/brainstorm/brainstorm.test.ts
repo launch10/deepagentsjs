@@ -206,6 +206,7 @@ const restartChatFrom = async (topic: Brainstorm.TopicName, useHistory: ChatHist
 
     // Get all the saved memories we have
     const memories = await (new BrainstormNextStepsService(partialState as any)).getMemories();
+    debugger;
 
     // Append any new messages from chatHistory that come after our tagged messages
     const newMessages = chatHistory.slice(allMessages.length);
@@ -219,6 +220,7 @@ const restartChatFrom = async (topic: Brainstorm.TopicName, useHistory: ChatHist
         currentTopic: topic,
     }
 
+    debugger;
     return testGraph<BrainstormGraphState>()
         .withGraph(brainstormGraph)
         .withState(state)
@@ -405,8 +407,9 @@ describe.sequential('Brainstorming Flow', () => {
             expect(result.state.memories.socialProof).toBeTruthy();
         });
 
-        it('ends the chat when user says they are finished', async () => {
+        it.only('ends the chat when user says they are finished', async () => {
             const graph = await restartChatFrom('lookAndFeel', SimpleChatHistory);
+            debugger;
             const result = await graph
                 .withPrompt(`Let's build my page!`)
                 .stopAfter('agent')
