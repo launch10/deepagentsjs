@@ -40,14 +40,14 @@ RSpec.describe "Brainstorms API", type: :request do
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
-      parameter name: :brainstorm_params, in: :body, schema: ApiSchemas::Brainstorm.params_schema
+      parameter name: :brainstorm_params, in: :body, schema: APISchemas::Brainstorm.params_schema
 
       before do
         switch_account_to(user1_owned_account)
       end
 
       response '201', 'brainstorm created in owned account' do
-        schema ApiSchemas::Brainstorm.response
+        schema APISchemas::Brainstorm.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -68,7 +68,7 @@ RSpec.describe "Brainstorms API", type: :request do
       end
 
       response '201', 'brainstorm created with provided project UUID' do
-        schema ApiSchemas::Brainstorm.response
+        schema APISchemas::Brainstorm.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -86,7 +86,7 @@ RSpec.describe "Brainstorms API", type: :request do
       end
 
       response '201', 'brainstorm created in team account after switching' do
-        schema ApiSchemas::Brainstorm.response
+        schema APISchemas::Brainstorm.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -157,7 +157,7 @@ RSpec.describe "Brainstorms API", type: :request do
       let!(:chat1_team) { create(:chat, thread_id: "456", project: project1_team, account: user1_team_account, contextable: brainstorm1_team) }
 
       response '200', 'brainstorm found in owned account' do
-        schema ApiSchemas::Brainstorm.response
+        schema APISchemas::Brainstorm.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -183,7 +183,7 @@ RSpec.describe "Brainstorms API", type: :request do
       end
 
       response '200', 'brainstorm found in team account after switching' do
-        schema ApiSchemas::Brainstorm.response
+        schema APISchemas::Brainstorm.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -222,7 +222,7 @@ RSpec.describe "Brainstorms API", type: :request do
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
-      parameter name: :brainstorm_params, in: :body, schema: ApiSchemas::Brainstorm.params_schema
+      parameter name: :brainstorm_params, in: :body, schema: APISchemas::Brainstorm.params_schema
 
       let!(:website1_owned) { create(:website, account: user1_owned_account, project: project1_owned, template: template) }
       let!(:website1_team) { create(:website, account: user1_team_account, project: project1_team, template: template) }
@@ -234,7 +234,7 @@ RSpec.describe "Brainstorms API", type: :request do
       let!(:chat1_team) { create(:chat, thread_id: brainstorm1_team.thread_id, project: project1_team, account: user1_team_account, contextable: brainstorm1_team) }
 
       response '200', 'brainstorm updated in owned account' do
-        schema ApiSchemas::Brainstorm.response
+        schema APISchemas::Brainstorm.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -264,7 +264,7 @@ RSpec.describe "Brainstorms API", type: :request do
       end
 
       response '200', 'brainstorm updated in team account after switching' do
-        schema ApiSchemas::Brainstorm.response
+        schema APISchemas::Brainstorm.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }

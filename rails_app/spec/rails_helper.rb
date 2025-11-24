@@ -30,7 +30,7 @@ RSpec.configure do |config|
   config.include SubscriptionHelpers, type: :request
   config.include PlanHelpers, type: :request
   config.include AccountHelpers, type: :request
-  config.include ApiHelpers
+  config.include APIHelpers
 
   # Database cleaner configuration
   config.before(:suite) do

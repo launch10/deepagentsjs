@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module ApiSchemas
+module APISchemas
   module ProjectWorkflow
     def self.response
       {

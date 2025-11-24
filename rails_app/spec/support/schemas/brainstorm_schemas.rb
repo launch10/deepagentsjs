@@ -1,19 +1,19 @@
 # frozen_string_literal: true
 
-module ApiSchemas
+module APISchemas
   module Brainstorm
     # Brainstorm response schema
     def self.response
       {
         type: :object,
         properties: {
-          id: ApiSchemas.id_field,
-          website_id: ApiSchemas.id_field,
-          project_id: ApiSchemas.id_field,
+          id: APISchemas.id_field,
+          website_id: APISchemas.id_field,
+          project_id: APISchemas.id_field,
           name: {type: :string, description: 'Brainstorm name'},
-          thread_id: ApiSchemas.uuid_field,
-          account_id: ApiSchemas.id_field,
-          **ApiSchemas.timestamps
+          thread_id: APISchemas.uuid_field,
+          account_id: APISchemas.id_field,
+          **APISchemas.timestamps
         },
         required: [
           'id',

@@ -1,4 +1,4 @@
-module ApiHelpers
+module APIHelpers
   def mock_api_response(mock_response, code: 200)
     # Create a mock HTTP response
     http_response = OpenStruct.new(

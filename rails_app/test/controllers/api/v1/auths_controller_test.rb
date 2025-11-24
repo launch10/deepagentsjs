@@ -48,7 +48,7 @@ class AuthsControllerTest < ActionDispatch::IntegrationTest
       post api_v1_auth_url, params: {email: user.email, password: "password"}
       assert_response :success
     end
-    assert_equal user.api_tokens.find_by(name: ApiToken::DEFAULT_NAME).token, response.parsed_body["token"]
+    assert_equal user.api_tokens.find_by(name: APIToken::DEFAULT_NAME).token, response.parsed_body["token"]
   end
 
   test "sets auth cookie during hotwire app login" do
