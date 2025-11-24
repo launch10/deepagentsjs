@@ -6,12 +6,21 @@ Launch10 consists of three main components that work together:
 2. The Langgraph repo (builds the landing pages, SEO plans, and deployments)
 3. The Atlas repo (user-deployed landing pages built on Cloudflare Workers)
 
+## After Pulling from GitHub
+
+Run the prepare script in the root of the project, which will install dependencies for all three repos:
+
+```bash
+./scripts/prepare.sh
+```
+
 ## Install Shared Dependencies
 
 1. Install Redis
 
 ```bash
 brew install redis
+brew services start redis
 ```
 
 2. Install Postgres
@@ -24,6 +33,12 @@ https://postgresapp.com/
 
 ```bash
 brew install pgvector
+```
+
+4. Install Stripe CLI
+
+```bash
+brew install stripe/stripe-cli/stripe
 ```
 
 ## Running Frontend
