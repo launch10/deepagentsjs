@@ -1,7 +1,7 @@
 import { HumanMessage, BaseMessage } from '@langchain/core/messages';
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { type CoreGraphState } from "@state";
-import { db, eq, projects as projectsTable } from "@db";
+import { db, eq, and, projects as projectsTable, chats as chatsTable } from "@db";
 import { generateUUID, type ConsoleError } from "@types";
 import { isGraphInterrupt } from "@langchain/langgraph";
 import { runScenario } from '@services';
@@ -53,6 +53,7 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
     private websiteName?: string; // Store project name for deferred loading
     private scenario?: string;
     private threadId?: string;
+    private chatType?: string;
 
     constructor() {
         // Initialize with an in-memory checkpointer for tests
@@ -122,6 +123,14 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
     }
 
     /**
+     * Set the chat type to test (e.g. helps us resume a brainstorm or website chat)
+     */
+    withChatType(chatType: "brainstorm" | "website" | "ads"): GraphTestBuilder<TGraphState> {
+        this.chatType = chatType;
+        return this;
+    }
+
+    /**
      * Load project thread ID if a project name was specified
      */
     private async loadThread(): Promise<void> {
@@ -132,16 +141,31 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
         const project = (await db.select().from(projectsTable).where(
             eq(projectsTable.name, this.websiteName)
         ).execute())[0];
+
+        if (!project) {
+            throw new Error(`Project "${this.websiteName}" not found`);
+        }
+
+        if (!this.chatType) {
+            throw new Error("Chat type is required when loading a project thread. Call .withChatType() to set it.")
+        }
+
+        const chat = (await db.select().from(chatsTable).where(
+            and(
+                eq(chatsTable.projectId, project.id),
+                eq(chatsTable.chatType, this.chatType)
+            )
+        ).execute())[0];
         
-        if (!project?.threadId) {
+        if (!chat?.threadId) {
             throw new Error(`Project "${this.websiteName}" not found or has no thread_id`);
         }
         
-        // Update config with the project's thread ID
+        // Update config with the chat's thread ID
         if (!this.config.configurable) {
             this.config.configurable = {};
         }
-        this.config.configurable.thread_id = project.threadId;
+        this.config.configurable.thread_id = chat.threadId;
     }
 
     /**
