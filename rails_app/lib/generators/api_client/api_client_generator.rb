@@ -1,4 +1,4 @@
-class ApiClientGenerator < Rails::Generators::NamedBase
+class APIClientGenerator < Rails::Generators::NamedBase
   Endpoint = Data.define(:name, :verb) do
     def self.parse(attribute)
       return attribute if attribute.is_a? Endpoint
@@ -41,7 +41,7 @@ class ApiClientGenerator < Rails::Generators::NamedBase
 
   # Note: This overrides the built-in parse_attributes! method from Rails::Generators::NamedBase
   # Instead of retruning instances of GeneratedAttributes (which makes sense for models)
-  # we want to return instances of ApiMethod.
+  # we want to return instances of APIMethod.
   def parse_attributes!
     self.attributes = Array.wrap(attributes).map do |attr|
       Endpoint.parse(attr)

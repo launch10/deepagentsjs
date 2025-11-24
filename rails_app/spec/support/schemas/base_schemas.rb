@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module ApiSchemas
+module APISchemas
   # Common field types
   def self.id_field
     {type: :integer, description: 'Unique identifier'}

@@ -37,14 +37,14 @@ RSpec.describe "Project Workflows API", type: :request do
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
-      parameter name: :project_workflow_params, in: :body, schema: ApiSchemas::ProjectWorkflow.params_schema
+      parameter name: :project_workflow_params, in: :body, schema: APISchemas::ProjectWorkflow.params_schema
 
       before do
         switch_account_to(user1_owned_account)
       end
 
       response '200', 'workflow advanced in owned account' do
-        schema ApiSchemas::ProjectWorkflow.response
+        schema APISchemas::ProjectWorkflow.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
@@ -63,7 +63,7 @@ RSpec.describe "Project Workflows API", type: :request do
       end
 
       response '200', 'workflow advanced with substep' do
-        schema ApiSchemas::ProjectWorkflow.response
+        schema APISchemas::ProjectWorkflow.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
@@ -83,7 +83,7 @@ RSpec.describe "Project Workflows API", type: :request do
       end
 
       response '200', 'workflow advanced in team account after switching' do
-        schema ApiSchemas::ProjectWorkflow.response
+        schema APISchemas::ProjectWorkflow.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
@@ -182,7 +182,7 @@ RSpec.describe "Project Workflows API", type: :request do
       end
 
       response '200', 'workflow advanced to next step' do
-        schema ApiSchemas::ProjectWorkflow.response
+        schema APISchemas::ProjectWorkflow.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
@@ -200,7 +200,7 @@ RSpec.describe "Project Workflows API", type: :request do
       end
 
       response '200', 'workflow advanced to next step with substep' do
-        schema ApiSchemas::ProjectWorkflow.response
+        schema APISchemas::ProjectWorkflow.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }

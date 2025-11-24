@@ -17,7 +17,7 @@ RSpec.describe "Test Database API", type: :request do
       description 'Truncates all tables in the database. Only available in development/test environments.'
 
       response '200', 'database truncated successfully' do
-        schema ApiSchemas::Database.operation_response
+        schema APISchemas::Database.operation_response
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -27,7 +27,7 @@ RSpec.describe "Test Database API", type: :request do
       end
 
       response '500', 'internal server error' do
-        schema ApiSchemas::Database.error_response
+        schema APISchemas::Database.error_response
 
         before do
           allow_any_instance_of(Database::Snapshotter).to receive(:truncate).and_raise(StandardError.new("Something went wrong"))
@@ -49,7 +49,7 @@ RSpec.describe "Test Database API", type: :request do
       description 'Returns a list of all available database snapshot names. Only available in development/test environments.'
 
       response '200', 'snapshots listed successfully' do
-        schema ApiSchemas::Database.snapshots_response
+        schema APISchemas::Database.snapshots_response
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -65,10 +65,10 @@ RSpec.describe "Test Database API", type: :request do
       produces 'application/json'
       description 'Creates a new database snapshot with the specified name. Only available in development/test environments.'
 
-      parameter name: :snapshot_params, in: :body, schema: ApiSchemas::Database.snapshot_params
+      parameter name: :snapshot_params, in: :body, schema: APISchemas::Database.snapshot_params
 
       response '201', 'snapshot created successfully' do
-        schema ApiSchemas::Database.operation_response
+        schema APISchemas::Database.operation_response
 
         let(:snapshot_params) do
           {
@@ -86,7 +86,7 @@ RSpec.describe "Test Database API", type: :request do
       end
 
       response '422', 'missing required parameters' do
-        schema ApiSchemas::Database.error_response
+        schema APISchemas::Database.error_response
 
         let(:snapshot_params) { {} }
 
@@ -104,10 +104,10 @@ RSpec.describe "Test Database API", type: :request do
       produces 'application/json'
       description 'Restores the database from a snapshot. Optionally truncates the database before restoring. Only available in development/test environments.'
 
-      parameter name: :snapshot_params, in: :body, schema: ApiSchemas::Database.snapshot_params
+      parameter name: :snapshot_params, in: :body, schema: APISchemas::Database.snapshot_params
 
       response '200', 'snapshot restored successfully' do
-        schema ApiSchemas::Database.operation_response
+        schema APISchemas::Database.operation_response
 
         let(:snapshot_name) { "restore_test_#{Time.now.to_i}" }
         let(:snapshot_params) do
@@ -141,7 +141,7 @@ RSpec.describe "Test Database API", type: :request do
       end
 
       response '422', 'snapshot restore failed - snapshot not found' do
-        schema ApiSchemas::Database.error_response
+        schema APISchemas::Database.error_response
 
         let(:snapshot_params) do
           {
@@ -159,7 +159,7 @@ RSpec.describe "Test Database API", type: :request do
       end
 
       response '422', 'missing required parameters' do
-        schema ApiSchemas::Database.error_response
+        schema APISchemas::Database.error_response
 
         let(:snapshot_params) { {} }
 

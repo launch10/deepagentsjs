@@ -1,6 +1,6 @@
 require "test_helper"
 
-class ApiBaseControllerTest < ActionDispatch::IntegrationTest
+class APIBaseControllerTest < ActionDispatch::IntegrationTest
   test "return 401 if not logged in" do
     get api_v1_me_url
     assert_response :unauthorized

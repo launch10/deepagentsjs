@@ -42,7 +42,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil session["warden.user.user.key"]
 
     # Returns an API token
-    assert_equal user.api_tokens.find_by(name: ApiToken::APP_NAME).token, response.parsed_body["token"]
+    assert_equal user.api_tokens.find_by(name: APIToken::APP_NAME).token, response.parsed_body["token"]
   end
 
   test "registration with account" do

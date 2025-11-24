@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module ApiSchemas
+module APISchemas
   module Theme
     def self.create_request
       {
@@ -17,7 +17,7 @@ module ApiSchemas
       {
         type: :object,
         properties: {
-          id: ApiSchemas.id_field,
+          id: APISchemas.id_field,
           name: {type: :string, description: 'Theme name'},
           colors: {type: :array, items: {type: :string}, description: 'Theme color palette'},
           theme_labels: {
@@ -25,7 +25,7 @@ module ApiSchemas
             items: {
               type: :object,
               properties: {
-                id: ApiSchemas.id_field,
+                id: APISchemas.id_field,
                 name: {type: :string, description: 'Label name'}
               },
               required: ['id', 'name']

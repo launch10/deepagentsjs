@@ -29,7 +29,7 @@ RSpec.describe "Themes API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
       response '200', 'themes retrieved' do
-        schema ApiSchemas::Theme.collection_response
+        schema APISchemas::Theme.collection_response
         let(:Authorization) { auth_headers_for(user)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
@@ -58,7 +58,7 @@ RSpec.describe "Themes API", type: :request do
       end
 
       response '200', 'retrieves official + account themes' do
-        schema ApiSchemas::Theme.collection_response
+        schema APISchemas::Theme.collection_response
         let(:Authorization) { auth_headers_for(user)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
@@ -103,10 +103,10 @@ RSpec.describe "Themes API", type: :request do
       parameter name: :Authorization, in: :header, type: :string, required: false
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
-      parameter name: :theme, in: :body, schema: ApiSchemas::Theme.create_request
+      parameter name: :theme, in: :body, schema: APISchemas::Theme.create_request
 
       response '200', 'theme created' do
-        schema ApiSchemas::Theme.response
+        schema APISchemas::Theme.response
         let(:Authorization) { auth_headers_for(user)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
@@ -122,7 +122,7 @@ RSpec.describe "Themes API", type: :request do
       end
 
       response '401', 'unauthorized' do
-        schema ApiSchemas.error_response
+        schema APISchemas.error_response
         let(:Authorization) { 'bloop' }
         let(:theme) { { theme: { name: 'New Theme', colors: ['#000000', '#ffffff'] } } }
 
