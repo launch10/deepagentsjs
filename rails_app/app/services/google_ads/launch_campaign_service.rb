@@ -1,4 +1,25 @@
 # app/services/google_ads/launch_campaign_service.rb
+
+# Create a Google Ads client:
+# https://console.cloud.google.com/auth/clients?project=launch10-479317
+# 1) Set web app
+# 2) Add authorized redirect URI: http://localhost:3000
+# 3) Add authorized redirect URI: https://launch10.ai
+# 4) Add authorized redirect URI: https://developers.google.com/oauthplayground/
+# 5) Copy Client ID and Client Secret to Rails credentials
+
+# Generate access tokens:
+# https://developers.google.com/oauthplayground
+# 1) Click gear icon -> Check 'Use your own OAuth credentials'
+# 2) Enter your client_id and client_secret
+# 3) In left panel, find 'Google Ads API' and select scope:
+#    https://www.googleapis.com/auth/adwords
+# 4) Click 'Authorize APIs' and grant access
+# 5) Click 'Exchange authorization code for tokens'
+# 6) Copy the refresh_token to your Rails credentials
+
+# Setup Test accounts:
+# https://developers.google.com/google-ads/api/docs/first-call/test-accounts
 module GoogleAds
   class LaunchCampaignService
     attr_reader :campaign, :client, :errors
