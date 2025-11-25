@@ -1,6 +1,7 @@
 module CampaignConcerns
   module GooglePlatformSettings
     extend ActiveSupport::Concern
+    include PlatformSettings
 
     ADVERTISING_CHANNEL_TYPES = %w[
       SEARCH
@@ -165,11 +166,12 @@ module CampaignConcerns
     ].freeze
 
     included do
-      platform_setting :google, :campaign_id
+      platform_setting :google, :campaign_id # foreign key
+      platform_setting :google, :budget_id # foreign key
       platform_setting :google, :advertising_channel_type, in: ADVERTISING_CHANNEL_TYPES
       platform_setting :google, :advertising_channel_sub_type, in: ADVERTISING_CHANNEL_SUB_TYPES
       platform_setting :google, :bidding_strategy, in: BIDDING_STRATEGIES.keys
-      platform_setting :google, :languages, in: LANGUAGE_CODES.keys
+      platform_setting :google, :languages, in: LANGUAGE_CODES.keys, array: true
       platform_setting :google, :status, in: CAMPAIGN_STATUSES
 
       NETWORK_SETTINGS_FIELDS.each do |field|

@@ -41,7 +41,6 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::Stages
   include CampaignConcerns::Scheduling
   include CampaignConcerns::LocationTargeting
-  include CampaignConcerns::PlatformSettings
   include CampaignConcerns::GooglePlatformSettings
   include CampaignConcerns::MetaPlatformSettings
 

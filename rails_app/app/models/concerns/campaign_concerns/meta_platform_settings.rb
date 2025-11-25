@@ -1,8 +1,6 @@
 module CampaignConcerns
   module MetaPlatformSettings
     extend ActiveSupport::Concern
-
-    included do
-    end
+    include PlatformSettings
   end
 end

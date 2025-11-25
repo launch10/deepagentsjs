@@ -158,10 +158,10 @@ RSpec.describe Campaign, type: :model do
         it "can set and get" do
           campaign, _, _ = create_campaign
           campaign.google_advertising_channel_type = "PERFORMANCE_MAX"
-          campaign.google_advertising_channel_sub_type = "TRAVEL_GOALS"
+          campaign.google_advertising_channel_sub_type = "TRAVEL_ACTIVITIES"
           campaign.save!
 
-          expect(campaign.reload.google_advertising_channel_sub_type).to eq("TRAVEL_GOALS")
+          expect(campaign.reload.google_advertising_channel_sub_type).to eq("TRAVEL_ACTIVITIES")
         end
 
         it "validates advertising_channel_sub_type" do
@@ -177,8 +177,8 @@ RSpec.describe Campaign, type: :model do
         it "returns true for valid combinations" do
           campaign, _, _ = create_campaign
 
-          campaign.google_advertising_channel_type = "PERFORMANCE_MAX"
-          campaign.google_advertising_channel_sub_type = "TRAVEL_GOALS"
+          campaign.google_advertising_channel_type = "TRAVEL"
+          campaign.google_advertising_channel_sub_type = "TRAVEL_ACTIVITIES"
           expect(campaign.google_valid_sub_type_for_channel_type?).to be true
 
           campaign.google_advertising_channel_type = "SEARCH"
@@ -190,12 +190,12 @@ RSpec.describe Campaign, type: :model do
           campaign, _, _ = create_campaign
 
           campaign.google_advertising_channel_type = "SEARCH"
-          campaign.google_advertising_channel_sub_type = "TRAVEL_GOALS"
+          campaign.google_advertising_channel_sub_type = "TRAVEL_ACTIVITIES"
           expect(campaign.google_valid_sub_type_for_channel_type?).to be false
         end
       end
 
-      describe "google_bidding_strategy and google_campaign_type" do
+      describe "google_bidding_strategy" do
         it "can set and get bidding_strategy" do
           campaign, _, _ = create_campaign
           campaign.google_bidding_strategy = "MAXIMIZE_CONVERSIONS"
@@ -203,13 +203,15 @@ RSpec.describe Campaign, type: :model do
 
           expect(campaign.reload.google_bidding_strategy).to eq("MAXIMIZE_CONVERSIONS")
         end
+      end
 
-        it "can set and get campaign_type" do
+      describe "google_languages", :focus do
+        it "can set and get languages" do
           campaign, _, _ = create_campaign
-          campaign.google_campaign_type = "standard"
+          campaign.google_languages = ["english", "spanish"]
           campaign.save!
 
-          expect(campaign.reload.google_campaign_type).to eq("standard")
+          expect(campaign.reload.google_languages).to eq(["english", "spanish"])
         end
       end
 
