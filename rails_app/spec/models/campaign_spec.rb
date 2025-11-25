@@ -28,33 +28,24 @@
 #  index_campaigns_on_status                 (status)
 #  index_campaigns_on_website_id             (website_id)
 #
-class Campaign < ApplicationRecord
-  include CampaignConcerns::Creation
+require 'rails_helper'
 
-  belongs_to :account
-  belongs_to :project
-  belongs_to :website
+RSpec.describe Campaign, type: :model do
+  describe "validations" do
+    it { should validate_presence_of(:status) }
+    it { should validate_inclusion_of(:status).in_array(Campaign::STATUSES) }
+    it { should validate_presence_of(:stage) }
+    it { should validate_inclusion_of(:stage).in_array(Campaign::STAGES) }
+  end
 
-  has_many :ad_groups, dependent: :destroy
-  has_many :ads, through: :ad_groups
-  has_one :project_workflow, -> { where(workflow_type: "launch") }, through: :project
+  describe "nested attributes" do
+    it { should accept_nested_attributes_for(:ad_groups).allow_destroy(true) }
+    it { should accept_nested_attributes_for(:callouts).allow_destroy(true) }
+    it { should accept_nested_attributes_for(:structured_snippets).allow_destroy(true) }
+  end
 
-  # Ad creative
-  has_many :callouts, -> { order(position: :asc) }, dependent: :destroy
-  has_many :structured_snippets, -> { order(position: :asc) }, dependent: :destroy
-  has_many :headlines, through: :ads
-  has_many :descriptions, through: :ads
-
-  # Ad targeting
-  has_many :keywords, through: :ad_groups
-
-  STATUSES = %w[draft active paused completed]
-  STAGES = %w[content highlights plan ready]
-
-  validates :status, presence: true, inclusion: { in: STATUSES }
-  validates :stage, presence: true, inclusion: { in: STAGES }
-
-  accepts_nested_attributes_for :ad_groups, allow_destroy: true
-  accepts_nested_attributes_for :callouts, allow_destroy: true
-  accepts_nested_attributes_for :structured_snippets, allow_destroy: true
+  describe "Creation", :focus do
+    it "creates ad, ad group, and campaign together" do
+    end
+  end
 end
