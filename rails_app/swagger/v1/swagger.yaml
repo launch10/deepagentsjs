@@ -297,6 +297,588 @@ paths:
                           description: Optional UUID for the project
               required:
               - brainstorm
+  "/api/v1/campaigns":
+    post:
+      summary: Creates a campaign
+      tags:
+      - Campaigns
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '201':
+          description: campaign created with ad group and ad
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Campaign name
+                  stage:
+                    type: string
+                    description: Current campaign stage
+                  status:
+                    type: string
+                    description: Campaign status
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    description: Unique identifier
+                  start_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign start date
+                  end_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign end date
+                  time_zone:
+                    type: string
+                    description: Campaign time zone
+                  daily_budget_cents:
+                    type: integer
+                    nullable: true
+                    description: Daily budget in cents
+                  workflow:
+                    type: object
+                    nullable: true
+                    properties:
+                      step:
+                        type: string
+                      substep:
+                        type: string
+                        nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - stage
+                - status
+                - account_id
+                - project_id
+                - website_id
+                - created_at
+                - updated_at
+        '200':
+          description: campaign already exists and is returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Campaign name
+                  stage:
+                    type: string
+                    description: Current campaign stage
+                  status:
+                    type: string
+                    description: Campaign status
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    description: Unique identifier
+                  start_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign start date
+                  end_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign end date
+                  time_zone:
+                    type: string
+                    description: Campaign time zone
+                  daily_budget_cents:
+                    type: integer
+                    nullable: true
+                    description: Daily budget in cents
+                  workflow:
+                    type: object
+                    nullable: true
+                    properties:
+                      step:
+                        type: string
+                      substep:
+                        type: string
+                        nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - stage
+                - status
+                - account_id
+                - project_id
+                - website_id
+                - created_at
+                - updated_at
+        '401':
+          description: unauthorized - missing token
+        '422':
+          description: invalid request - missing website_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                campaign:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Campaign name
+                    project_id:
+                      type: integer
+                      description: Project ID
+                    website_id:
+                      type: integer
+                      description: Website ID
+                  required:
+                  - project_id
+                  - website_id
+              required:
+              - campaign
+  "/api/v1/campaigns/{id}":
+    parameters:
+    - name: id
+      in: path
+      description: Campaign ID
+      required: true
+      schema:
+        type: integer
+    patch:
+      summary: Updates a campaign (autosave)
+      tags:
+      - Campaigns
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: idempotently replaces both headlines and descriptions together
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Campaign name
+                  stage:
+                    type: string
+                    description: Current campaign stage
+                  status:
+                    type: string
+                    description: Campaign status
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    description: Unique identifier
+                  start_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign start date
+                  end_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign end date
+                  time_zone:
+                    type: string
+                    description: Campaign time zone
+                  daily_budget_cents:
+                    type: integer
+                    nullable: true
+                    description: Daily budget in cents
+                  workflow:
+                    type: object
+                    nullable: true
+                    properties:
+                      step:
+                        type: string
+                      substep:
+                        type: string
+                        nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - stage
+                - status
+                - account_id
+                - project_id
+                - website_id
+                - created_at
+                - updated_at
+        '404':
+          description: campaign not found
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                campaign:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Campaign name
+                    start_date:
+                      type: string
+                      format: date
+                      description: Campaign start date
+                    end_date:
+                      type: string
+                      format: date
+                      description: Campaign end date
+                    time_zone:
+                      type: string
+                      description: Campaign time zone
+                    daily_budget_cents:
+                      type: integer
+                      description: Daily budget in cents
+                    google_advertising_channel_type:
+                      type: string
+                      description: Google Ads channel type
+                    google_bidding_strategy:
+                      type: string
+                      description: Google Ads bidding strategy
+                    ad_groups_attributes:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          name:
+                            type: string
+                          _destroy:
+                            type: boolean
+                          ads_attributes:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                _destroy:
+                                  type: boolean
+                                headlines_attributes:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      id:
+                                        type: integer
+                                      text:
+                                        type: string
+                                      _destroy:
+                                        type: boolean
+                                descriptions_attributes:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      id:
+                                        type: integer
+                                      text:
+                                        type: string
+                                      _destroy:
+                                        type: boolean
+                          keywords_attributes:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                text:
+                                  type: string
+                                match_type:
+                                  type: string
+                                _destroy:
+                                  type: boolean
+                    callouts_attributes:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          text:
+                            type: string
+                          _destroy:
+                            type: boolean
+                    structured_snippet_attributes:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        header:
+                          type: string
+                        values:
+                          type: array
+                          items:
+                            type: string
+                    location_targets:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          target_type:
+                            type: string
+                          location_name:
+                            type: string
+                          location_type:
+                            type: string
+                          country_code:
+                            type: string
+                          geo_target_constant:
+                            type: string
+                          targeted:
+                            type: boolean
+                          radius:
+                            type: number
+                          radius_units:
+                            type: string
+                    ad_schedules:
+                      type: object
+                      properties:
+                        time_zone:
+                          type: string
+                        always_on:
+                          type: boolean
+                        schedules:
+                          type: array
+              required:
+              - campaign
+  "/api/v1/campaigns/{id}/advance":
+    parameters:
+    - name: id
+      in: path
+      description: Campaign ID
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Advances campaign to next stage
+      tags:
+      - Campaigns
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: campaign advanced to next stage
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  stage:
+                    type: string
+                    description: New campaign stage after advancement
+                  status:
+                    type: string
+                    description: Campaign status
+                  workflow:
+                    type: object
+                    nullable: true
+                    properties:
+                      step:
+                        type: string
+                      substep:
+                        type: string
+                        nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - stage
+                - status
+        '422':
+          description: cannot advance - stage validation failed
+        '404':
+          description: campaign not found
+  "/api/v1/campaigns/{id}/back":
+    parameters:
+    - name: id
+      in: path
+      description: Campaign ID
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Steps back to previous stage
+      tags:
+      - Campaigns
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: campaign stepped back to previous stage
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  stage:
+                    type: string
+                    description: New campaign stage after advancement
+                  status:
+                    type: string
+                    description: Campaign status
+                  workflow:
+                    type: object
+                    nullable: true
+                    properties:
+                      step:
+                        type: string
+                      substep:
+                        type: string
+                        nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - stage
+                - status
+        '422':
+          description: cannot go back - already at first stage
+        '404':
+          description: campaign not found
   "/api/v1/projects/{project_uuid}/workflows/{id}":
     parameters:
     - name: project_uuid

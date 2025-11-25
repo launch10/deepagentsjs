@@ -21,9 +21,13 @@ module CampaignConcerns
 
               replace_ad_headlines(ad, ad_attrs[:headlines_attributes]) if ad_attrs[:headlines_attributes]
               replace_ad_descriptions(ad, ad_attrs[:descriptions_attributes]) if ad_attrs[:descriptions_attributes]
+              replace_ad_callouts(ad, ad_attrs[:callouts_attributes]) if ad_attrs[:callouts_attributes]
             end
           end
         end
+
+        replace_callouts(raw_params[:callouts_attributes]) if raw_params[:callouts_attributes]
+        replace_structured_snippet(raw_params[:structured_snippet_attributes]) if raw_params[:structured_snippet_attributes]
       end
     end
 
@@ -58,6 +62,59 @@ module CampaignConcerns
         else
           ad.descriptions.create!(text: attrs[:text], position: attrs[:position])
         end
+      end
+    end
+
+    def replace_ad_callouts(ad, callouts_attrs)
+      ad_group = ad.ad_group
+      submitted_ids = callouts_attrs.map { |attrs| attrs[:id] || attrs["id"] }.compact.map(&:to_i)
+
+      ad_group.callouts.where.not(id: submitted_ids).delete_all
+      ad_group.callouts.reset
+
+      callouts_attrs.each do |attrs|
+        if attrs[:id]
+          callout = ad_group.callouts.find_by(id: attrs[:id])
+          callout&.update!(text: attrs[:text], position: attrs[:position])
+        else
+          ad_group.callouts.create!(campaign: self, text: attrs[:text], position: attrs[:position])
+        end
+      end
+    end
+
+    def replace_callouts(callouts_attrs)
+      submitted_ids = callouts_attrs.map { |attrs| attrs[:id] || attrs["id"] }.compact.map(&:to_i)
+
+      callouts.where.not(id: submitted_ids).delete_all
+      callouts.reset
+
+      callouts_attrs.each do |attrs|
+        if attrs[:id]
+          callout = callouts.find_by(id: attrs[:id])
+          callout&.update!(text: attrs[:text], position: attrs[:position])
+        else
+          ad_group = ad_groups.first
+          callouts.create!(ad_group: ad_group, text: attrs[:text], position: attrs[:position])
+        end
+      end
+    end
+
+    def replace_structured_snippet(snippet_attrs)
+      if snippet_attrs[:_destroy] || snippet_attrs["_destroy"]
+        structured_snippet&.destroy
+        return
+      end
+
+      if structured_snippet.present?
+        structured_snippet.update!(
+          category: snippet_attrs[:category],
+          values: snippet_attrs[:values]
+        )
+      else
+        create_structured_snippet!(
+          category: snippet_attrs[:category],
+          values: snippet_attrs[:values]
+        )
       end
     end
   end

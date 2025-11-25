@@ -91,8 +91,12 @@ class API::V1::CampaignsController < API::BaseController
       ag_attrs[:ads_attributes].each do |ad_attrs|
         ad_attrs.delete(:headlines_attributes)
         ad_attrs.delete(:descriptions_attributes)
+        ad_attrs.delete(:callouts_attributes)
       end
     end
+
+    permitted.delete(:callouts_attributes)
+    permitted.delete(:structured_snippet_attributes)
 
     permitted
   end
@@ -126,8 +130,8 @@ class API::V1::CampaignsController < API::BaseController
         ],
         keywords_attributes: [:id, :text, :match_type, :_destroy]
       ],
-      callouts_attributes: [:id, :text, :_destroy],
-      structured_snippet_attributes: [:id, :header, values: []]
+      callouts_attributes: [:id, :text, :position, :_destroy],
+      structured_snippet_attributes: [:id, :category, :_destroy, { values: [] }]
     )
   end
 
@@ -161,6 +165,43 @@ class API::V1::CampaignsController < API::BaseController
       time_zone: campaign.time_zone,
       daily_budget_cents: campaign.daily_budget_cents,
       workflow: workflow ? {step: workflow.step, substep: workflow.substep} : nil,
+      ad_groups: campaign.ad_groups.map do |ad_group|
+        {
+          id: ad_group.id,
+          name: ad_group.name,
+          ads: ad_group.ads.map do |ad|
+            {
+              id: ad.id,
+              headlines: ad.headlines.order(:position).map do |headline|
+                {
+                  id: headline.id,
+                  text: headline.text,
+                  position: headline.position
+                }
+              end,
+              descriptions: ad.descriptions.order(:position).map do |description|
+                {
+                  id: description.id,
+                  text: description.text,
+                  position: description.position
+                }
+              end
+            }
+          end
+        }
+      end,
+      callouts: campaign.callouts.order(:position).map do |callout|
+        {
+          id: callout.id,
+          text: callout.text,
+          position: callout.position
+        }
+      end,
+      structured_snippet: campaign.structured_snippet ? {
+        id: campaign.structured_snippet.id,
+        category: campaign.structured_snippet.category,
+        values: campaign.structured_snippet.values
+      } : nil,
       created_at: campaign.created_at,
       updated_at: campaign.updated_at
     }
