@@ -11,7 +11,7 @@
 #  location_name       :string
 #  location_type       :string
 #  longitude           :decimal(10, 6)
-#  negative            :boolean          default(FALSE), not null
+#  targeted            :boolean          default(TRUE), not null
 #  platform_ids        :jsonb
 #  postal_code         :string
 #  radius              :decimal(10, 2)
@@ -42,11 +42,13 @@ class AdLocationTarget < ApplicationRecord
   validate :geo_location_fields_required
   validate :radius_fields_required
 
-  scope :targeted, -> { where(negative: false) }
-  scope :excluded, -> { where(negative: true) }
+  scope :targeted, -> { where(targeted: true) }
+  scope :excluded, -> { where(targeted: false) }
   scope :geo_locations, -> { where(target_type: 'geo_location') }
   scope :radius_targets, -> { where(target_type: 'radius') }
   scope :location_groups, -> { where(target_type: 'location_group') }
+
+  before_validation :infer_target_type, if: -> { target_type.blank? }
 
   def geo_location?
     target_type == 'geo_location'
@@ -61,7 +63,7 @@ class AdLocationTarget < ApplicationRecord
   end
 
   def excluded?
-    negative
+    !targeted
   end
 
   def google_criterion_id
@@ -71,6 +73,40 @@ class AdLocationTarget < ApplicationRecord
   def google_criterion_id=(value)
     self.platform_ids ||= {}
     self.platform_ids['google'] = value
+  end
+
+  # Alias for frontend convenience
+  def geo_target_constant=(value)
+    self.location_identifier = value
+  end
+
+  def geo_target_constant
+    location_identifier
+  end
+
+  # Normalize and store geo constant
+  def location_identifier=(value)
+    return super(nil) if value.blank?
+    
+    normalized = if value.to_s.start_with?('geoTargetConstants/')
+      value
+    else
+      "geoTargetConstants/#{value}"
+    end
+
+    super(normalized)
+    self.platform_ids ||= {}
+    self.platform_ids['google'] = normalized
+  end
+
+  # Auto-upcase location_type
+  def location_type=(value)
+    super(value&.upcase)
+  end
+
+  # Auto-upcase radius_units
+  def radius_units=(value)
+    super(value&.upcase)
   end
 
   # @return [Hash] JSON representation for the frontend
@@ -96,20 +132,21 @@ class AdLocationTarget < ApplicationRecord
   #     radius_units: 'MILES',
   #     negative: false
   #   }
-  def as_json
+  def as_json(_options = {})
     base = {
       target_type: target_type,
-      negative: negative
+      targeted: targeted
     }
 
     if geo_location?
       base.merge(
+        geo_target_constant: google_criterion_id || location_identifier,
         location_identifier: location_identifier,
         location_name: location_name,
         location_type: location_type,
         country_code: country_code,
         radius: radius&.to_f,
-        radius_units: radius_units
+        radius_units: radius_units&.downcase
       )
     elsif radius?
       base.merge(
@@ -119,7 +156,7 @@ class AdLocationTarget < ApplicationRecord
         postal_code: postal_code,
         country_code: country_code,
         radius: radius&.to_f,
-        radius_units: radius_units,
+        radius_units: radius_units&.downcase,
         latitude: latitude&.to_f,
         longitude: longitude&.to_f
       )
@@ -129,6 +166,14 @@ class AdLocationTarget < ApplicationRecord
   end
 
   private
+
+  def infer_target_type
+    if location_identifier.present?
+      self.target_type = 'geo_location'
+    elsif address_line_1.present? || latitude.present?
+      self.target_type = 'radius'
+    end
+  end
 
   def geo_location_fields_required
     return unless geo_location?

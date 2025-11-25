@@ -2,10 +2,6 @@ module CampaignConcerns
   module LocationTargeting
     extend ActiveSupport::Concern
 
-    def location_targeting
-      @location_targeting ||= ::LocationTargeting.new(self)
-    end
-
     def has_location_targeting?
       location_targets.targeted.exists?
     end
@@ -44,65 +40,12 @@ module CampaignConcerns
       Campaign.transaction do
         location_targets.destroy_all
 
-        targets = Array(targets_data).each do |target_data|
-          build_location_target(target_data)
+        targets = Array(targets_data).map do |target_data|
+          location_targets.new(target_data)
         end
-        LocationTarget.import(targets)
+
+        AdLocationTarget.import(targets, validate: false)
       end
-    end
-
-    private
-
-    def build_location_target(data)
-      target_type = data[:target_type] || infer_target_type(data)
-
-      attrs = {
-        target_type: target_type,
-        negative: !data.fetch(:targeted, true)
-      }
-
-      if target_type == 'geo_location'
-        attrs.merge!(
-          location_identifier: normalize_geo_constant(data[:geo_target_constant] || data[:location_identifier]),
-          location_name: data[:location_name],
-          location_type: data[:location_type]&.upcase,
-          country_code: data[:country_code],
-          radius: data[:radius],
-          radius_units: data[:radius_units]&.upcase
-        )
-      elsif target_type == 'radius'
-        attrs.merge!(
-          address_line_1: data[:address_line_1],
-          city: data[:city],
-          state: data[:state],
-          postal_code: data[:postal_code],
-          country_code: data[:country_code],
-          radius: data[:radius],
-          radius_units: data[:radius_units]&.upcase,
-          latitude: data[:latitude],
-          longitude: data[:longitude]
-        )
-      end
-
-      location_targets.new(attrs)
-    end
-
-    def infer_target_type(data)
-      if data[:geo_target_constant] || data[:location_identifier]
-        'geo_location'
-      elsif data[:address_line_1] || data[:latitude]
-        'radius'
-      else
-        'geo_location'
-      end
-    end
-
-    def normalize_geo_constant(value)
-      return nil if value.blank?
-
-      # Convert "2840" to "geoTargetConstants/2840"
-      # Or keep "geoTargetConstants/2840" as is
-      value.to_s.start_with?('geoTargetConstants/') ? value : "geoTargetConstants/#{value}"
     end
   end
 end

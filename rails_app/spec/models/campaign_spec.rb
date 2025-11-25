@@ -212,6 +212,18 @@ RSpec.describe Campaign, type: :model do
           time_zone: "America/New_York",
           always_on: true
         )
+        campaign.update_location_targets([
+          {
+            target_type: "geo_location",
+            location_name: "United States",
+            location_type: "COUNTRY",
+            country_code: "US",
+            geo_target_constant: "geoTargetConstants/2840",
+            targeted: true,
+            radius: 10,
+            radius_units: "miles"
+          }
+        ])
 
         expect(campaign).to be_done_settings_stage
 
