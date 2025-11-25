@@ -15,6 +15,7 @@
 #
 #  index_ads_on_ad_group_id             (ad_group_id)
 #  index_ads_on_ad_group_id_and_status  (ad_group_id,status)
+#  index_ads_on_google_id               (((platform_settings ->> 'google'::text)))
 #  index_ads_on_platform_settings       (platform_settings) USING gin
 #  index_ads_on_status                  (status)
 #

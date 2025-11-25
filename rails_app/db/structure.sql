@@ -440,6 +440,7 @@ CREATE TABLE public.ad_callouts (
     ad_group_id bigint,
     text character varying NOT NULL,
     "position" integer NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -473,6 +474,7 @@ CREATE TABLE public.ad_descriptions (
     ad_id bigint NOT NULL,
     text character varying NOT NULL,
     "position" integer NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -505,9 +507,9 @@ CREATE TABLE public.ad_groups (
     id bigint NOT NULL,
     campaign_id bigint,
     name character varying,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -539,6 +541,7 @@ CREATE TABLE public.ad_headlines (
     ad_id bigint NOT NULL,
     text character varying NOT NULL,
     "position" integer NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -573,6 +576,7 @@ CREATE TABLE public.ad_keywords (
     text character varying(120) NOT NULL,
     match_type character varying DEFAULT 'broad'::character varying NOT NULL,
     "position" integer NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -606,9 +610,9 @@ CREATE TABLE public.ad_location_targets (
     campaign_id bigint,
     target_type character varying NOT NULL,
     targeted boolean DEFAULT true NOT NULL,
+    location_identifier character varying,
     location_name character varying,
     location_type character varying,
-    platform_ids jsonb DEFAULT '{}'::jsonb,
     latitude numeric(10,6),
     longitude numeric(10,6),
     radius numeric(10,2),
@@ -618,6 +622,7 @@ CREATE TABLE public.ad_location_targets (
     state character varying,
     postal_code character varying,
     country_code character varying,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -654,11 +659,11 @@ CREATE TABLE public.ad_schedules (
     start_minute integer,
     end_hour integer,
     end_minute integer,
+    always_on boolean DEFAULT false,
     bid_modifier numeric(10,2),
-    platform_criterion_id character varying,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    always_on boolean DEFAULT false NOT NULL,
     CONSTRAINT valid_end_hour CHECK (((end_hour >= 0) AND (end_hour <= 24))),
     CONSTRAINT valid_end_minute CHECK ((end_minute = ANY (ARRAY[0, 15, 30, 45]))),
     CONSTRAINT valid_start_hour CHECK (((start_hour >= 0) AND (start_hour <= 23))),
@@ -694,6 +699,7 @@ CREATE TABLE public.ad_structured_snippets (
     campaign_id bigint NOT NULL,
     category character varying NOT NULL,
     "values" jsonb DEFAULT '[]'::jsonb NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -728,9 +734,9 @@ CREATE TABLE public.ads (
     status character varying DEFAULT 'draft'::character varying,
     display_path_1 character varying,
     display_path_2 character varying,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -918,14 +924,14 @@ CREATE TABLE public.campaigns (
     stage character varying DEFAULT 'content'::character varying,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     launched_at timestamp(6) without time zone,
+    time_zone character varying DEFAULT 'America/New_York'::character varying,
+    start_date date,
+    end_date date,
     account_id bigint,
     website_id bigint,
     project_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    time_zone character varying DEFAULT 'America/New_York'::character varying,
-    start_date date,
-    end_date date
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -4528,6 +4534,20 @@ CREATE INDEX index_ad_callouts_on_created_at ON public.ad_callouts USING btree (
 
 
 --
+-- Name: index_ad_callouts_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_google_id ON public.ad_callouts USING btree (((platform_settings ->> 'google'::text)));
+
+
+--
+-- Name: index_ad_callouts_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_platform_settings ON public.ad_callouts USING gin (platform_settings);
+
+
+--
 -- Name: index_ad_callouts_on_position; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4546,6 +4566,20 @@ CREATE INDEX index_ad_descriptions_on_ad_id ON public.ad_descriptions USING btre
 --
 
 CREATE INDEX index_ad_descriptions_on_created_at ON public.ad_descriptions USING btree (created_at);
+
+
+--
+-- Name: index_ad_descriptions_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_descriptions_on_google_id ON public.ad_descriptions USING btree (((platform_settings ->> 'google'::text)));
+
+
+--
+-- Name: index_ad_descriptions_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_descriptions_on_platform_settings ON public.ad_descriptions USING gin (platform_settings);
 
 
 --
@@ -4574,6 +4608,13 @@ CREATE INDEX index_ad_groups_on_campaign_id_and_name ON public.ad_groups USING b
 --
 
 CREATE INDEX index_ad_groups_on_created_at ON public.ad_groups USING btree (created_at);
+
+
+--
+-- Name: index_ad_groups_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_groups_on_google_id ON public.ad_groups USING btree (((platform_settings ->> 'google'::text)));
 
 
 --
@@ -4612,6 +4653,20 @@ CREATE INDEX index_ad_headlines_on_created_at ON public.ad_headlines USING btree
 
 
 --
+-- Name: index_ad_headlines_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_google_id ON public.ad_headlines USING btree (((platform_settings ->> 'google'::text)));
+
+
+--
+-- Name: index_ad_headlines_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_platform_settings ON public.ad_headlines USING gin (platform_settings);
+
+
+--
 -- Name: index_ad_headlines_on_position; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4633,10 +4688,24 @@ CREATE INDEX index_ad_keywords_on_created_at ON public.ad_keywords USING btree (
 
 
 --
+-- Name: index_ad_keywords_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_google_id ON public.ad_keywords USING btree (((platform_settings ->> 'google'::text)));
+
+
+--
 -- Name: index_ad_keywords_on_match_type; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_ad_keywords_on_match_type ON public.ad_keywords USING btree (match_type);
+
+
+--
+-- Name: index_ad_keywords_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_platform_settings ON public.ad_keywords USING gin (platform_settings);
 
 
 --
@@ -4664,7 +4733,28 @@ CREATE INDEX index_ad_location_targets_on_campaign_id ON public.ad_location_targ
 -- Name: index_ad_location_targets_on_google_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_ad_location_targets_on_google_id ON public.ad_location_targets USING btree (((platform_ids ->> 'google'::text)));
+CREATE INDEX index_ad_location_targets_on_google_id ON public.ad_location_targets USING btree (((platform_settings ->> 'google'::text)));
+
+
+--
+-- Name: index_ad_location_targets_on_location_identifier; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_location_targets_on_location_identifier ON public.ad_location_targets USING btree (location_identifier);
+
+
+--
+-- Name: index_ad_location_targets_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_location_targets_on_platform_settings ON public.ad_location_targets USING gin (platform_settings);
+
+
+--
+-- Name: index_ad_schedules_on_always_on; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_always_on ON public.ad_schedules USING btree (always_on);
 
 
 --
@@ -4696,6 +4786,20 @@ CREATE INDEX index_ad_schedules_on_day_of_week ON public.ad_schedules USING btre
 
 
 --
+-- Name: index_ad_schedules_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_google_id ON public.ad_schedules USING btree (((platform_settings ->> 'google'::text)));
+
+
+--
+-- Name: index_ad_schedules_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_platform_settings ON public.ad_schedules USING gin (platform_settings);
+
+
+--
 -- Name: index_ad_structured_snippets_on_campaign_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4717,6 +4821,20 @@ CREATE INDEX index_ad_structured_snippets_on_created_at ON public.ad_structured_
 
 
 --
+-- Name: index_ad_structured_snippets_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_google_id ON public.ad_structured_snippets USING btree (((platform_settings ->> 'google'::text)));
+
+
+--
+-- Name: index_ad_structured_snippets_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_platform_settings ON public.ad_structured_snippets USING gin (platform_settings);
+
+
+--
 -- Name: index_ads_accounts_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4728,6 +4846,13 @@ CREATE INDEX index_ads_accounts_on_account_id ON public.ads_accounts USING btree
 --
 
 CREATE UNIQUE INDEX index_ads_accounts_on_account_id_and_platform ON public.ads_accounts USING btree (account_id, platform);
+
+
+--
+-- Name: index_ads_accounts_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_accounts_on_google_id ON public.ads_accounts USING btree (((platform_settings ->> 'google'::text)));
 
 
 --
@@ -4756,6 +4881,13 @@ CREATE INDEX index_ads_on_ad_group_id ON public.ads USING btree (ad_group_id);
 --
 
 CREATE INDEX index_ads_on_ad_group_id_and_status ON public.ads USING btree (ad_group_id, status);
+
+
+--
+-- Name: index_ads_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_on_google_id ON public.ads USING btree (((platform_settings ->> 'google'::text)));
 
 
 --
@@ -4843,6 +4975,20 @@ CREATE INDEX index_campaigns_on_created_at ON public.campaigns USING btree (crea
 
 
 --
+-- Name: index_campaigns_on_end_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_end_date ON public.campaigns USING btree (end_date);
+
+
+--
+-- Name: index_campaigns_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_google_id ON public.campaigns USING btree (((platform_settings ->> 'google'::text)));
+
+
+--
 -- Name: index_campaigns_on_launched_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4882,6 +5028,13 @@ CREATE INDEX index_campaigns_on_project_id_and_status ON public.campaigns USING 
 --
 
 CREATE INDEX index_campaigns_on_stage ON public.campaigns USING btree (stage);
+
+
+--
+-- Name: index_campaigns_on_start_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_start_date ON public.campaigns USING btree (start_date);
 
 
 --
@@ -6784,14 +6937,6 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
-('20251125155414'),
-('20251125155413'),
-('20251125155407'),
-('20251125152131'),
-('20251125151927'),
-('20251125032642'),
-('20251125032237'),
-('20251125031808'),
 ('20251125000849'),
 ('20251125000841'),
 ('20251125000832'),
@@ -6802,6 +6947,7 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20251124234418'),
 ('20251124234408'),
 ('20251124234404'),
+('20251124234400'),
 ('20251121145610'),
 ('20251121145502'),
 ('20251121145154'),
