@@ -3,6 +3,8 @@ class CreateAds < ActiveRecord::Migration[8.0]
     create_table :ads do |t|
       t.bigint :ad_group_id
       t.string :status, default: 'draft'
+      t.string :display_path_1
+      t.string :display_path_2
       t.timestamps
 
       t.index :ad_group_id
