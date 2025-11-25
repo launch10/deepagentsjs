@@ -11,6 +11,7 @@ class CreateAdGroups < ActiveRecord::Migration[8.0]
       t.index [:campaign_id, :name]
       t.index :created_at
       t.index :platform_settings, using: :gin
+      t.index "(platform_settings->>'google')", name: "index_ad_groups_on_google_id", algorithm: :concurrently, if_not_exists: true
     end
   end
 end

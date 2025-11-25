@@ -25,6 +25,7 @@ class CreateCampaigns < ActiveRecord::Migration[8.0]
       t.index [:project_id, :status]
       t.index [:project_id, :stage]
       t.index :platform_settings, using: :gin
+      t.index "(platform_settings->>'google')", name: "index_campaigns_on_google_id", algorithm: :concurrently, if_not_exists: true
     end
   end
 end
