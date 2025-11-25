@@ -60,6 +60,14 @@ RSpec.describe Campaign, type: :model do
     return campaign, ad_group, ad
   end
 
+  def finish_keywords_stage
+    campaign, ad_group, ad = finish_highlights_stage
+    create_list(:ad_keyword, 5, ad_group: ad_group)
+    campaign.advance_stage!
+
+    return campaign, ad_group, ad
+  end
+
   describe "validations" do
     it { should validate_presence_of(:status) }
     it { should validate_inclusion_of(:status).in_array(Campaign::STATUSES) }
@@ -165,13 +173,36 @@ RSpec.describe Campaign, type: :model do
         expect(campaign).to be_done_highlights_stage
       end
 
-      it "validates keywords stage", :focus do
+      it "validates keywords stage" do
         campaign, ad_group, ad = finish_highlights_stage
 
         expect(campaign).to be_done_highlights_stage
         expect(campaign.stage).to eq("keywords")
         expect(campaign).to be_valid
         campaign.stage = "settings"
+        expect(campaign).to_not be_valid # You wouldn't be ALLOWED since prev stage isn't complete
+
+        create_list(:ad_keyword, 5, ad_group: ad_group)
+        expect(campaign).to be_done_keywords_stage
+
+        campaign.ad_groups.first.keywords.destroy_all
+        create_list(:ad_keyword, 15, ad_group: ad_group)
+        expect(campaign).to be_done_keywords_stage
+
+        campaign.ad_groups.first.keywords.destroy_all
+
+        # too few keywords
+        create_list(:ad_keyword, 4, ad_group: ad_group)
+        expect(campaign).to_not be_done_keywords_stage
+      end
+
+      it "validates settings stage", :focus do
+        campaign, ad_group, ad = finish_keywords_stage
+
+        expect(campaign).to be_done_keywords_stage
+        expect(campaign.stage).to eq("settings")
+        expect(campaign).to be_valid
+        campaign.stage = "launch"
         expect(campaign).to_not be_valid # You wouldn't be ALLOWED since prev stage isn't complete
 
         create_list(:ad_keyword, 5, ad_group: ad_group)

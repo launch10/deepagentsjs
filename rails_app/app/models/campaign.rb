@@ -31,6 +31,7 @@
 class Campaign < ApplicationRecord
   include CampaignConcerns::Creation
   include CampaignConcerns::Stages
+  include CampaignConcerns::Scheduling
 
   belongs_to :account
   belongs_to :project

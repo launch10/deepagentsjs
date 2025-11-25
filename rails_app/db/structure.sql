@@ -649,15 +649,16 @@ ALTER SEQUENCE public.ad_location_targets_id_seq OWNED BY public.ad_location_tar
 CREATE TABLE public.ad_schedules (
     id bigint NOT NULL,
     campaign_id bigint NOT NULL,
-    day_of_week character varying NOT NULL,
-    start_hour integer NOT NULL,
-    start_minute integer NOT NULL,
-    end_hour integer NOT NULL,
-    end_minute integer NOT NULL,
+    day_of_week character varying,
+    start_hour integer,
+    start_minute integer,
+    end_hour integer,
+    end_minute integer,
     bid_modifier numeric(10,2),
     platform_criterion_id character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    always_on boolean DEFAULT false NOT NULL,
     CONSTRAINT valid_end_hour CHECK (((end_hour >= 0) AND (end_hour <= 24))),
     CONSTRAINT valid_end_minute CHECK ((end_minute = ANY (ARRAY[0, 15, 30, 45]))),
     CONSTRAINT valid_start_hour CHECK (((start_hour >= 0) AND (start_hour <= 23))),
@@ -884,7 +885,8 @@ CREATE TABLE public.campaigns (
     website_id bigint,
     project_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    time_zone character varying DEFAULT 'America/New_York'::character varying
 );
 
 
@@ -6686,6 +6688,9 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251125032642'),
+('20251125032237'),
+('20251125031808'),
 ('20251125000849'),
 ('20251125000841'),
 ('20251125000832'),
