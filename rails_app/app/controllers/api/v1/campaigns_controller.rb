@@ -25,8 +25,6 @@ class API::V1::CampaignsController < API::BaseController
 
     begin
       campaign.update_idempotently!(campaign_params_for_idempotent_update, campaign_params.to_h)
-      handle_location_targets(campaign) if params.dig(:campaign, :location_targets).present?
-      handle_ad_schedules(campaign) if params.dig(:campaign, :ad_schedules).present?
     rescue ActiveRecord::RecordInvalid => e
       render json: {errors: e.record.errors.full_messages}, status: :unprocessable_entity and return
     rescue => e
@@ -133,21 +131,15 @@ class API::V1::CampaignsController < API::BaseController
       ],
       callouts_attributes: [:id, :text, :position, :_destroy],
       structured_snippet_attributes: [:id, :category, :_destroy, { values: [] }]
-    )
-  end
-
-  def handle_location_targets(campaign)
-    location_targets = params.dig(:campaign, :location_targets)
-    return unless location_targets.is_a?(Array)
-
-    campaign.update_location_targets(location_targets.map(&:to_unsafe_h))
-  end
-
-  def handle_ad_schedules(campaign)
-    ad_schedules = params.dig(:campaign, :ad_schedules)
-    return unless ad_schedules.is_a?(ActionController::Parameters)
-
-    campaign.update_ad_schedules(ad_schedules.to_unsafe_h.symbolize_keys)
+    ).tap do |permitted|
+      # location_targets and ad_schedules need special handling as they're not nested attributes
+      if params.dig(:campaign, :location_targets).present?
+        permitted[:location_targets] = params[:campaign][:location_targets].map(&:permit!)
+      end
+      if params.dig(:campaign, :ad_schedules).present?
+        permitted[:ad_schedules] = params[:campaign][:ad_schedules].permit!
+      end
+    end
   end
 
   def campaign_json(campaign)

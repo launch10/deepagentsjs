@@ -4,7 +4,23 @@ module CampaignConcerns
 
     def update_idempotently!(update_params, raw_params)
       transaction do
-        update!(update_params)
+        # Handle location_targets and ad_schedules before regular update
+        # since they use their own methods (not accepts_nested_attributes)
+        if update_params[:location_targets]
+          targets_array = Array(update_params[:location_targets]).map do |target|
+            target.is_a?(Hash) ? target : target.to_unsafe_h
+          end
+          update_location_targets(targets_array)
+        end
+        
+        if update_params[:ad_schedules]
+          schedule_hash = update_params[:ad_schedules].is_a?(Hash) ? update_params[:ad_schedules] : update_params[:ad_schedules].to_unsafe_h
+          update_ad_schedules(schedule_hash.symbolize_keys)
+        end
+
+        # Remove location_targets and ad_schedules from update_params since they're already handled
+        clean_params = update_params.except(:location_targets, :ad_schedules)
+        update!(clean_params)
 
         if raw_params[:ad_groups_attributes].present?
           raw_params[:ad_groups_attributes].each do |ad_group_attrs|

@@ -999,6 +999,208 @@ RSpec.describe "Campaigns API", type: :request do
           end
         end
       end
+
+      describe "Settings stage" do
+        context 'location targets, schedules, and budget' do
+          let!(:settings_campaign) do
+            result = Campaign.create_campaign!(user1_account, {
+              name: "Settings Campaign",
+              project_id: project1.id,
+              website_id: website1.id
+            })
+            campaign = result[:campaign]
+            ad = campaign.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+            campaign.advance_stage!
+
+            ad_group = campaign.ad_groups.first
+            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+            campaign.advance_stage!
+
+            create_list(:ad_keyword, 5, ad_group: ad_group)
+            campaign.advance_stage!
+            campaign.reload
+          end
+
+          let(:id) { settings_campaign.id }
+
+          response '200', 'idempotently updates location targets' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'geo_location',
+                      location_name: 'United States',
+                      location_type: 'COUNTRY',
+                      country_code: 'US',
+                      targeted: true,
+                      google_criterion_id: '2840'
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              settings_campaign.reload
+
+              expect(settings_campaign.location_targets.count).to eq(1)
+              expect(settings_campaign.location_targets.first.location_name).to eq('United States')
+              expect(data["ready_for_next_stage"]).to eq(false)
+            end
+          end
+
+          response '200', 'updates ad schedules' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:campaign_params) do
+              {
+                campaign: {
+                  ad_schedules: {
+                    always_on: false,
+                    day_of_week: ['Monday', 'Tuesday', 'Wednesday'],
+                    start_time: '9:00am',
+                    end_time: '5:00pm',
+                    time_zone: 'America/New_York'
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              settings_campaign.reload
+
+              expect(settings_campaign.ad_schedules.count).to eq(3)
+              expect(settings_campaign.schedule.always_on?).to be false
+              expect(data["ready_for_next_stage"]).to eq(false)
+            end
+          end
+
+          response '200', 'updates daily budget' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:campaign_params) do
+              {
+                campaign: {
+                  daily_budget_cents: 5000
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              settings_campaign.reload
+
+              expect(settings_campaign.daily_budget_cents).to eq(5000)
+              expect(settings_campaign.budget.daily_budget_cents).to eq(5000)
+              expect(data["daily_budget_cents"]).to eq(5000)
+              expect(data["ready_for_next_stage"]).to eq(false)
+            end
+          end
+
+          response '200', 'ready_for_next_stage is true after all settings configured' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:campaign_params) do
+              {
+                campaign: {
+                  daily_budget_cents: 5000,
+                  location_targets: [
+                    {
+                      target_type: 'geo_location',
+                      location_name: 'United States',
+                      location_type: 'COUNTRY',
+                      country_code: 'US',
+                      targeted: true,
+                      google_criterion_id: '2840'
+                    }
+                  ],
+                  ad_schedules: {
+                    always_on: true
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              settings_campaign.reload
+
+              expect(settings_campaign.location_targets.count).to eq(1)
+              expect(settings_campaign.ad_schedules.count).to eq(1)
+              expect(settings_campaign.daily_budget_cents).to eq(5000)
+              expect(data["ready_for_next_stage"]).to eq(true)
+            end
+          end
+
+          response '200', 'replaces location targets idempotently' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+            before do
+              settings_campaign.update_location_targets([
+                {
+                  target_type: 'geo_location',
+                  location_name: 'Canada',
+                  location_type: 'COUNTRY',
+                  country_code: 'CA',
+                  targeted: true,
+                  google_criterion_id: '2124'
+                }
+              ])
+            end
+
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'geo_location',
+                      location_name: 'United States',
+                      location_type: 'COUNTRY',
+                      country_code: 'US',
+                      targeted: true,
+                      google_criterion_id: '2840'
+                    },
+                    {
+                      target_type: 'geo_location',
+                      location_name: 'Mexico',
+                      location_type: 'COUNTRY',
+                      country_code: 'MX',
+                      targeted: true,
+                      google_criterion_id: '2484'
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              settings_campaign.reload
+
+              expect(settings_campaign.location_targets.count).to eq(2)
+              expect(settings_campaign.location_targets.pluck(:location_name).sort).to eq(['Mexico', 'United States'])
+              expect(settings_campaign.location_targets.where(location_name: 'Canada').exists?).to be false
+            end
+          end
+        end
+      end
     end
   end
 
@@ -1202,6 +1404,96 @@ RSpec.describe "Campaigns API", type: :request do
 
           keywords_stage_campaign.reload
           expect(keywords_stage_campaign.stage).to eq("keywords")
+        end
+      end
+
+      response '200', 'campaign advanced from settings to launch stage' do
+        schema APISchemas::Campaign.advance_response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+        let!(:settings_stage_campaign) do
+          result = Campaign.create_campaign!(user1_account, {
+            name: "Settings Stage Campaign",
+            project_id: project1.id,
+            website_id: website1.id
+          })
+          campaign = result[:campaign]
+          ad = campaign.ad_groups.first.ads.first
+          create_list(:ad_headline, 3, ad: ad)
+          create_list(:ad_description, 2, ad: ad)
+          campaign.advance_stage!
+
+          ad_group = campaign.ad_groups.first
+          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+          campaign.advance_stage!
+
+          create_list(:ad_keyword, 5, ad_group: ad_group)
+          campaign.advance_stage!
+
+          campaign.update_location_targets([{
+            target_type: 'geo_location',
+            location_name: 'United States',
+            location_type: 'COUNTRY',
+            country_code: 'US',
+            targeted: true,
+            google_criterion_id: '2840'
+          }])
+          campaign.update_ad_schedules({always_on: true})
+          campaign.daily_budget_cents = 5000
+
+          campaign
+        end
+
+        let(:id) { settings_stage_campaign.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["stage"]).to eq("launch")
+
+          settings_stage_campaign.reload
+          expect(settings_stage_campaign.stage).to eq("launch")
+          expect(data["ready_for_next_stage"]).to eq(false)
+        end
+      end
+
+      response '422', 'cannot advance from settings - validation failed (missing location)' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+        let!(:settings_stage_campaign) do
+          result = Campaign.create_campaign!(user1_account, {
+            name: "Settings Stage Campaign",
+            project_id: project1.id,
+            website_id: website1.id
+          })
+          campaign = result[:campaign]
+          ad = campaign.ad_groups.first.ads.first
+          create_list(:ad_headline, 3, ad: ad)
+          create_list(:ad_description, 2, ad: ad)
+          campaign.advance_stage!
+
+          ad_group = campaign.ad_groups.first
+          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+          campaign.advance_stage!
+
+          create_list(:ad_keyword, 5, ad_group: ad_group)
+          campaign.advance_stage!
+
+          campaign
+        end
+
+        let(:id) { settings_stage_campaign.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to be_present
+          expect(data["errors"]).to include("Location targeting must be configured")
+
+          settings_stage_campaign.reload
+          expect(settings_stage_campaign.stage).to eq("settings")
         end
       end
 
