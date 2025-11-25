@@ -5,6 +5,7 @@ class CreateAdCallouts < ActiveRecord::Migration[8.0]
       t.bigint :ad_group_id
       t.string :text, null: false
       t.integer :position, null: false
+      t.jsonb :platform_settings, default: { google: {}, meta: {} }
 
       t.timestamps
 
@@ -12,6 +13,7 @@ class CreateAdCallouts < ActiveRecord::Migration[8.0]
       t.index :ad_group_id
       t.index :created_at
       t.index :position
+      t.index :platform_settings, using: :gin
     end
   end
 end

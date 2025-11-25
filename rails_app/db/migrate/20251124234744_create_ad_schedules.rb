@@ -12,8 +12,7 @@ class CreateAdSchedules < ActiveRecord::Migration[8.0]
       # bid adjustment (Google supports this, Meta doesn't)
       t.decimal :bid_modifier, precision: 10, scale: 2 # e.g., 1.2 = 20% increase
 
-      # Tracking
-      t.string :platform_criterion_id # ID from the ad platform after creation
+      t.jsonb :platform_settings, default: { google: {}, meta: {} }
 
       t.timestamps
 
@@ -21,6 +20,7 @@ class CreateAdSchedules < ActiveRecord::Migration[8.0]
       t.index :day_of_week
       t.index :created_at
       t.index [:campaign_id, :day_of_week]
+      t.index :platform_settings, using: :gin
 
       t.check_constraint "start_hour >= 0 AND start_hour <= 23",
         name: "valid_start_hour"

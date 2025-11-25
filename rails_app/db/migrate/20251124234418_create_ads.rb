@@ -5,11 +5,13 @@ class CreateAds < ActiveRecord::Migration[8.0]
       t.string :status, default: 'draft'
       t.string :display_path_1
       t.string :display_path_2
+      t.jsonb :platform_settings, default: { google: {}, meta: {} }
       t.timestamps
 
       t.index :ad_group_id
       t.index :status
       t.index [:ad_group_id, :status]
+      t.index :platform_settings, using: :gin
     end
   end
 end

@@ -165,6 +165,7 @@ module CampaignConcerns
     ].freeze
 
     included do
+      platform_setting :google, :campaign_id
       platform_setting :google, :advertising_channel_type, in: ADVERTISING_CHANNEL_TYPES
       platform_setting :google, :advertising_channel_sub_type, in: ADVERTISING_CHANNEL_SUB_TYPES
       platform_setting :google, :bidding_strategy, in: BIDDING_STRATEGIES.keys

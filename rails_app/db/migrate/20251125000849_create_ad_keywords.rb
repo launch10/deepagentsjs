@@ -5,6 +5,7 @@ class CreateAdKeywords < ActiveRecord::Migration[8.0]
       t.string :text, null: false, limit: 120
       t.string :match_type, null: false, default: 'broad'
       t.integer :position, null: false
+      t.jsonb :platform_settings, default: { google: {}, meta: {} }
       t.timestamps
 
       t.index :ad_group_id
@@ -12,6 +13,7 @@ class CreateAdKeywords < ActiveRecord::Migration[8.0]
       t.index :match_type
       t.index :position
       t.index :text
+      t.index :platform_settings, using: :gin
     end
   end
 end

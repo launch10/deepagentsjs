@@ -9,8 +9,6 @@ class CreateAdLocationTargets < ActiveRecord::Migration[8.0]
       t.string :location_name # Human readable: New York City, New York, United States
       t.string :location_type # e.g. COUNTRY, REGION, CITY, POSTAL
 
-      t.jsonb :platform_ids, default: {} # google: "XYZ", facebook: "ABC"
-
       t.decimal :latitude, precision: 10, scale: 6
       t.decimal :longitude, precision: 10, scale: 6
       t.decimal :radius, precision: 10, scale: 2
@@ -23,11 +21,13 @@ class CreateAdLocationTargets < ActiveRecord::Migration[8.0]
       t.string :postal_code
       t.string :country_code
 
+      t.jsonb :platform_settings, default: { google: {}, meta: {} }
+
       t.timestamps
 
       t.index :campaign_id
       t.index :location_identifier
-      t.index :platform_ids, using: :gin
+      t.index :platform_settings, using: :gin
     end
   end
 end

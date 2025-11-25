@@ -506,7 +506,8 @@ CREATE TABLE public.ad_groups (
     campaign_id bigint,
     name character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb
 );
 
 
@@ -728,8 +729,42 @@ CREATE TABLE public.ads (
     display_path_1 character varying,
     display_path_2 character varying,
     created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb
+);
+
+
+--
+-- Name: ads_accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ads_accounts (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    platform character varying NOT NULL,
+    platform_settings jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+
+--
+-- Name: ads_accounts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ads_accounts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ads_accounts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ads_accounts_id_seq OWNED BY public.ads_accounts.id;
 
 
 --
@@ -3061,6 +3096,13 @@ ALTER TABLE ONLY public.ads ALTER COLUMN id SET DEFAULT nextval('public.ads_id_s
 
 
 --
+-- Name: ads_accounts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ads_accounts ALTER COLUMN id SET DEFAULT nextval('public.ads_accounts_id_seq'::regclass);
+
+
+--
 -- Name: announcements id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3584,6 +3626,14 @@ ALTER TABLE ONLY public.ad_schedules
 
 ALTER TABLE ONLY public.ad_structured_snippets
     ADD CONSTRAINT ad_structured_snippets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ads_accounts ads_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ads_accounts
+    ADD CONSTRAINT ads_accounts_pkey PRIMARY KEY (id);
 
 
 --
@@ -4534,6 +4584,13 @@ CREATE INDEX index_ad_groups_on_name ON public.ad_groups USING btree (name);
 
 
 --
+-- Name: index_ad_groups_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_groups_on_platform_settings ON public.ad_groups USING gin (platform_settings);
+
+
+--
 -- Name: index_ad_headlines_on_ad_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4660,6 +4717,34 @@ CREATE INDEX index_ad_structured_snippets_on_created_at ON public.ad_structured_
 
 
 --
+-- Name: index_ads_accounts_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_accounts_on_account_id ON public.ads_accounts USING btree (account_id);
+
+
+--
+-- Name: index_ads_accounts_on_account_id_and_platform; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_ads_accounts_on_account_id_and_platform ON public.ads_accounts USING btree (account_id, platform);
+
+
+--
+-- Name: index_ads_accounts_on_platform; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_accounts_on_platform ON public.ads_accounts USING btree (platform);
+
+
+--
+-- Name: index_ads_accounts_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_accounts_on_platform_settings ON public.ads_accounts USING gin (platform_settings);
+
+
+--
 -- Name: index_ads_on_ad_group_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4671,6 +4756,13 @@ CREATE INDEX index_ads_on_ad_group_id ON public.ads USING btree (ad_group_id);
 --
 
 CREATE INDEX index_ads_on_ad_group_id_and_status ON public.ads USING btree (ad_group_id, status);
+
+
+--
+-- Name: index_ads_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_on_platform_settings ON public.ads USING gin (platform_settings);
 
 
 --
@@ -6692,6 +6784,9 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251125155414'),
+('20251125155413'),
+('20251125155407'),
 ('20251125152131'),
 ('20251125151927'),
 ('20251125032642'),
