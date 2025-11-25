@@ -80,7 +80,7 @@ RSpec.describe Campaign, type: :model do
   def finish_settings_stage
     campaign, ad_group, ad = finish_keywords_stage
 
-    campaign.update_column(:daily_budget_cents, 1000)
+    campaign.update(daily_budget_cents: 1000)
     campaign.update_ad_schedules(
       time_zone: "America/New_York",
       always_on: true
@@ -97,6 +97,10 @@ RSpec.describe Campaign, type: :model do
         radius_units: "miles"
       }
     ])
+
+    campaign.advance_stage!
+
+    [campaign, ad_group, ad]
   end
 
   describe "validations" do
@@ -435,6 +439,25 @@ RSpec.describe Campaign, type: :model do
         # Invalid again
         campaign.location_targets.destroy_all
         expect(campaign).to_not be_done_settings_stage
+      end
+
+      it "validates launch stage" do
+        campaign, _, _ = finish_settings_stage
+
+        expect(campaign).to be_done_settings_stage
+        expect(campaign.stage).to eq("launch")
+        expect(campaign).to be_valid
+
+        expect(campaign).to_not be_done_launch_stage
+
+        campaign.update(google_advertising_channel_type: "SEARCH")
+        expect(campaign).to_not be_done_launch_stage
+
+        campaign.update(google_bidding_strategy: "MAXIMIZE_CLICKS")
+        expect(campaign).to_not be_done_launch_stage
+
+        campaign.update(start_date: Time.zone.now, end_date: Time.zone.now + 1.month)
+        expect(campaign).to be_done_launch_stage
       end
     end
 

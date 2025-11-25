@@ -154,15 +154,24 @@ module CampaignConcerns
       errors.empty?
     end
 
-    def done_launch?
+    def done_launch_stage?
       errors.clear
 
-      if name.blank?
-        errors.add(:name, "can't be blank")
+      if google_advertising_channel_type.blank?
+        errors.add(:google_advertising_channel_type, "must be configured")
       end
 
-      done_highlights_stage?
-      done_plan_stage?
+      if google_bidding_strategy.blank?
+        errors.add(:google_bidding_strategy, "must be configured")
+      end
+
+      if start_date.blank?
+        errors.add(:start_date, "must be configured")
+      end
+
+      if end_date.blank?
+        errors.add(:end_date, "must be configured")
+      end
 
       errors.empty?
     end
