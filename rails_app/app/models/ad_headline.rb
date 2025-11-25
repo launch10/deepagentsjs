@@ -31,9 +31,9 @@ class AdHeadline < ApplicationRecord
   private
 
   def unique_position_within_campaign
-    return unless ad&.campaign
+    return unless ad
 
-    existing = AdHeadline.joins(:ad)
+    existing = AdHeadline
       .where(ad_id: ad.id)
       .where(position: position)
       .where.not(id: id)

@@ -29,6 +29,9 @@ class Ad < ApplicationRecord
   has_many :headlines, dependent: :destroy, class_name: "AdHeadline"
   has_many :descriptions, dependent: :destroy, class_name: "AdDescription"
 
+  accepts_nested_attributes_for :headlines, allow_destroy: true
+  accepts_nested_attributes_for :descriptions, allow_destroy: true
+
   platform_setting :google, :ad_id
 
   def google_customer_id
