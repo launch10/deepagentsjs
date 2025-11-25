@@ -68,18 +68,6 @@ class API::V1::CampaignsController < API::BaseController
 
   private
 
-  def has_ad_content_updates?
-    return false unless params.dig(:campaign, :ad_groups_attributes)
-
-    params[:campaign][:ad_groups_attributes].any? do |ag_attrs|
-      next false unless ag_attrs[:ads_attributes]
-
-      ag_attrs[:ads_attributes].any? do |ad_attrs|
-        ad_attrs[:headlines_attributes].present? || ad_attrs[:descriptions_attributes].present?
-      end
-    end
-  end
-
   def campaign_params_for_idempotent_update
     permitted = campaign_params.to_h
 
@@ -109,7 +97,9 @@ class API::V1::CampaignsController < API::BaseController
   end
 
   def campaign_params
-    params.require(:campaign).permit(
+    campaign_hash = params.require(:campaign)
+
+    permitted = campaign_hash.permit(
       :name,
       :start_date,
       :end_date,
@@ -131,15 +121,17 @@ class API::V1::CampaignsController < API::BaseController
       ],
       callouts_attributes: [:id, :text, :position, :_destroy],
       structured_snippet_attributes: [:id, :category, :_destroy, { values: [] }]
-    ).tap do |permitted|
-      # location_targets and ad_schedules need special handling as they're not nested attributes
-      if params.dig(:campaign, :location_targets).present?
-        permitted[:location_targets] = params[:campaign][:location_targets].map(&:permit!)
-      end
-      if params.dig(:campaign, :ad_schedules).present?
-        permitted[:ad_schedules] = params[:campaign][:ad_schedules].permit!
-      end
+    )
+
+    if campaign_hash[:location_targets].present?
+      permitted[:location_targets] = campaign_hash[:location_targets].map(&:permit!)
     end
+
+    if campaign_hash[:ad_schedules].present?
+      permitted[:ad_schedules] = campaign_hash[:ad_schedules].permit!
+    end
+
+    permitted
   end
 
   def campaign_json(campaign)

@@ -80,6 +80,10 @@ RSpec.describe ProjectWorkflow, type: :model do
       expect(workflow.reload.substep).to eq("launch")
 
       workflow.next_step!
+      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.substep).to eq("review")
+
+      workflow.next_step!
       expect(workflow.reload.step).to eq("launch")
       expect(workflow.reload.substep).to eq("settings")
 
@@ -191,7 +195,7 @@ RSpec.describe ProjectWorkflow, type: :model do
     context "substeps handling" do
       it "returns all substeps for ad_campaign" do
         substeps = WorkflowConfig.substeps_for("launch", "ad_campaign")
-        expect(substeps).to eq(["content", "highlights", "keywords", "settings", "launch"])
+        expect(substeps).to eq(["content", "highlights", "keywords", "settings", "launch", "review"])
       end
 
       it "returns all substeps for launch step" do

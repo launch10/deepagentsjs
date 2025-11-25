@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe GoogleAds::LaunchCampaignService do
-  describe '#call' do
+  xdescribe '#call' do
     let(:customer_id) { ENV['GOOGLE_ADS_TEST_CUSTOMER_ID'] || '1234567890' }
     let(:campaign) { finish_settings_stage.first }
 

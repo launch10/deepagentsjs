@@ -1,4 +1,4 @@
-class GoogleAds
+module GoogleAds
   include ActiveSupport::Configurable
 
   config_accessor :client_id
