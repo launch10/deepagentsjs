@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { fn } from "storybook/test";
 
-import Projects from "../app/javascript/frontend/pages/Projects.js";
+import Projects from "@pages/Projects.tsx";
 
 const meta = {
   title: "Projects/Page",

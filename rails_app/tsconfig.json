@@ -34,7 +34,8 @@
       "@types/*": ["./app/javascript/frontend/types/*"],
       "@styles/*": ["./app/javascript/frontend/styles/*"],
       "@webcontainer/*": ["./app/javascript/frontend/webcontainer/*"],
-      "@shared": ["../shared/index.ts"]
+      "@shared": ["../shared/index.ts"],
+      "@pages/*": ["./app/javascript/frontend/pages/*"],
     },
     "noEmit": true,
     "incremental": true
