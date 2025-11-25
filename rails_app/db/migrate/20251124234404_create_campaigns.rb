@@ -2,7 +2,6 @@ class CreateCampaigns < ActiveRecord::Migration[8.0]
   def change
     create_table :campaigns do |t|
       t.string :name
-      t.integer :daily_budget_cents
       t.string :status, default: 'draft'
       t.string :stage, default: 'content'
       t.jsonb :platform_settings, default: { google: {}, meta: {} }

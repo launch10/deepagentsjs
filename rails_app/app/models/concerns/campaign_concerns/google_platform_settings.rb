@@ -153,7 +153,6 @@ module CampaignConcerns
       platform_setting :google, :advertising_channel_type, in: ADVERTISING_CHANNEL_TYPES
       platform_setting :google, :advertising_channel_sub_type, in: ADVERTISING_CHANNEL_SUB_TYPES
       platform_setting :google, :bidding_strategy, in: BIDDING_STRATEGIES.keys
-      platform_setting :google, :languages, in: LANGUAGE_CODES.keys, array: true
       platform_setting :google, :status, in: CAMPAIGN_STATUSES
 
       NETWORK_SETTINGS_FIELDS.each do |field|
@@ -181,11 +180,6 @@ module CampaignConcerns
         ns.target_youtube = google_target_youtube if google_target_youtube.present?
         ns.target_google_tv_network = google_target_google_tv_network if google_target_google_tv_network.present?
       end
-    end
-
-    # TODO: Move to an API module...
-    def google_language_codes_for_api
-      google_languages.map { |lang| LANGUAGE_CODES[lang] }
     end
 
     # TODO: Move to an API module...

@@ -16,6 +16,10 @@
 #  index_ad_languages_on_platform_settings     (platform_settings) USING gin
 #
 class AdLanguage < ApplicationRecord
+  include PlatformSettings
+  platform_setting :google, :criterion_id
+  platform_setting :google, :language, in: GOOGLE_LANGUAGE_CODES.keys, array: true
+
   belongs_to :campaign
 
   GOOGLE_LANGUAGE_CODES = {
@@ -34,4 +38,9 @@ class AdLanguage < ApplicationRecord
     arabic: "1019"
     # Full list: https://developers.google.com/google-ads/api/reference/data/codes-formats#languages
   }.freeze
+
+  # TODO: Move to an API module...
+  def google_api_code
+    GOOGLE_LANGUAGE_CODES[google_language]
+  end
 end

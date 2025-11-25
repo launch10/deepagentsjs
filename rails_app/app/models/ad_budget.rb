@@ -16,5 +16,7 @@
 #  index_ad_budgets_on_platform_settings  (platform_settings) USING gin
 #
 class AdBudget < ApplicationRecord
+  include PlatformSettings
   belongs_to :campaign
+  platform_setting :google, :budget_id
 end

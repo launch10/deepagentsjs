@@ -21,6 +21,8 @@
 #  index_ad_callouts_on_position           (position)
 #
 class AdCallout < ApplicationRecord
+  include PlatformSettings
   belongs_to :campaign, class_name: "Campaign", inverse_of: :callouts
   belongs_to :ad_group, class_name: "AdGroup", inverse_of: :callouts
+  platform_setting :google, :asset_id
 end

@@ -19,6 +19,8 @@
 #  index_ad_descriptions_on_position           (position)
 #
 class AdDescription < ApplicationRecord
+  include PlatformSettings
   belongs_to :ad, class_name: "Ad", inverse_of: :descriptions
   has_one :campaign, through: :ad
+  platform_setting :google, :asset_id
 end

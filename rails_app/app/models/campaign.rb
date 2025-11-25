@@ -62,6 +62,8 @@ class Campaign < ApplicationRecord
   has_many :descriptions, through: :ads, class_name: "AdDescription"
 
   # Ad targeting
+  has_many :languages, class_name: "AdLanguage", dependent: :destroy
+  has_one :budget, class_name: "AdBudget", dependent: :destroy
   has_many :keywords, through: :ad_groups, class_name: "AdKeyword"
   has_many :location_targets, class_name: "AdLocationTarget", dependent: :destroy do
     # Google Ads requires at least one positive (non-excluded) location target

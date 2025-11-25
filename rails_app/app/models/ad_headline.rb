@@ -20,6 +20,9 @@
 #  index_ad_headlines_on_position            (position)
 #
 class AdHeadline < ApplicationRecord
+  include PlatformSettings
+  platform_setting :google, :asset_id
+
   belongs_to :ad, class_name: "Ad", inverse_of: :headlines
   has_one :campaign, through: :ad
 
