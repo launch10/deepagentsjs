@@ -431,6 +431,39 @@ ALTER SEQUENCE public.active_storage_variant_records_id_seq OWNED BY public.acti
 
 
 --
+-- Name: ad_budgets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_budgets (
+    id bigint NOT NULL,
+    campaign_id bigint,
+    daily_budget_cents integer,
+    platform_settings jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_budgets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_budgets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_budgets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_budgets_id_seq OWNED BY public.ad_budgets.id;
+
+
+--
 -- Name: ad_callouts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -599,6 +632,38 @@ CREATE SEQUENCE public.ad_keywords_id_seq
 --
 
 ALTER SEQUENCE public.ad_keywords_id_seq OWNED BY public.ad_keywords.id;
+
+
+--
+-- Name: ad_languages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_languages (
+    id bigint NOT NULL,
+    campaign_id bigint,
+    platform_settings jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_languages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_languages_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_languages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_languages_id_seq OWNED BY public.ad_languages.id;
 
 
 --
@@ -930,6 +995,7 @@ CREATE TABLE public.campaigns (
     account_id bigint,
     website_id bigint,
     project_id bigint,
+    ads_account_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -3039,6 +3105,13 @@ ALTER TABLE ONLY public.active_storage_variant_records ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: ad_budgets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_budgets ALTER COLUMN id SET DEFAULT nextval('public.ad_budgets_id_seq'::regclass);
+
+
+--
 -- Name: ad_callouts id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3071,6 +3144,13 @@ ALTER TABLE ONLY public.ad_headlines ALTER COLUMN id SET DEFAULT nextval('public
 --
 
 ALTER TABLE ONLY public.ad_keywords ALTER COLUMN id SET DEFAULT nextval('public.ad_keywords_id_seq'::regclass);
+
+
+--
+-- Name: ad_languages id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_languages ALTER COLUMN id SET DEFAULT nextval('public.ad_languages_id_seq'::regclass);
 
 
 --
@@ -3571,6 +3651,14 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 
 --
+-- Name: ad_budgets ad_budgets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_budgets
+    ADD CONSTRAINT ad_budgets_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ad_callouts ad_callouts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3608,6 +3696,14 @@ ALTER TABLE ONLY public.ad_headlines
 
 ALTER TABLE ONLY public.ad_keywords
     ADD CONSTRAINT ad_keywords_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_languages ad_languages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_languages
+    ADD CONSTRAINT ad_languages_pkey PRIMARY KEY (id);
 
 
 --
@@ -4513,6 +4609,27 @@ CREATE UNIQUE INDEX index_active_storage_variant_records_uniqueness ON public.ac
 
 
 --
+-- Name: index_ad_budgets_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_budgets_on_campaign_id ON public.ad_budgets USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_budgets_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_budgets_on_google_id ON public.ad_budgets USING btree ((((platform_settings -> 'google'::text) ->> 'budget_id'::text)));
+
+
+--
+-- Name: index_ad_budgets_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_budgets_on_platform_settings ON public.ad_budgets USING gin (platform_settings);
+
+
+--
 -- Name: index_ad_callouts_on_ad_group_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4720,6 +4837,34 @@ CREATE INDEX index_ad_keywords_on_position ON public.ad_keywords USING btree ("p
 --
 
 CREATE INDEX index_ad_keywords_on_text ON public.ad_keywords USING btree (text);
+
+
+--
+-- Name: index_ad_languages_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_languages_on_campaign_id ON public.ad_languages USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_languages_on_criterion_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_languages_on_criterion_id ON public.ad_languages USING btree ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)));
+
+
+--
+-- Name: index_ad_languages_on_language_constant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_languages_on_language_constant_id ON public.ad_languages USING btree ((((platform_settings -> 'google'::text) ->> 'language_constant_id'::text)));
+
+
+--
+-- Name: index_ad_languages_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_languages_on_platform_settings ON public.ad_languages USING gin (platform_settings);
 
 
 --
@@ -4965,6 +5110,13 @@ CREATE INDEX index_campaigns_on_account_id_and_stage ON public.campaigns USING b
 --
 
 CREATE INDEX index_campaigns_on_account_id_and_status ON public.campaigns USING btree (account_id, status);
+
+
+--
+-- Name: index_campaigns_on_ads_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_ads_account_id ON public.campaigns USING btree (ads_account_id);
 
 
 --
@@ -6937,6 +7089,8 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251125163826'),
+('20251125163744'),
 ('20251125000849'),
 ('20251125000841'),
 ('20251125000832'),

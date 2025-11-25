@@ -19,7 +19,10 @@
 #  index_ad_groups_on_platform_settings     (platform_settings) USING gin
 #
 class AdGroup < ApplicationRecord
+  include PlatformSettings
+
   belongs_to :campaign
+  has_one :ads_account, through: :campaign
   has_many :ads, dependent: :destroy
   has_many :keywords, dependent: :destroy, class_name: "AdKeyword"
   has_many :headlines, through: :ads
@@ -31,4 +34,10 @@ class AdGroup < ApplicationRecord
 
   accepts_nested_attributes_for :ads, allow_destroy: true
   accepts_nested_attributes_for :keywords, allow_destroy: true
+
+  def google_customer_id
+    ads_account.google_customer_id
+  end
+
+  platform_setting :google, :ad_group_id
 end

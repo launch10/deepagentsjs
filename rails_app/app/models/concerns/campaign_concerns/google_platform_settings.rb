@@ -142,23 +142,6 @@ module CampaignConcerns
       }
     }
 
-    LANGUAGE_CODES = {
-      english: "1000",
-      spanish: "1003",
-      french: "1005",
-      german: "1001",
-      italian: "1004",
-      dutch: "1010",
-      portuguese: "1014",
-      japanese: "1005",
-      chinese_simplified: "1017",
-      chinese_traditional: "1018",
-      korean: "1012",
-      russian: "1020",
-      arabic: "1019"
-      # Full list: https://developers.google.com/google-ads/api/reference/data/codes-formats#languages
-    }.freeze
-
     CAMPAIGN_STATUSES = %w[
       ENABLED
       PAUSED
@@ -167,7 +150,6 @@ module CampaignConcerns
 
     included do
       platform_setting :google, :campaign_id # foreign key
-      platform_setting :google, :budget_id # foreign key
       platform_setting :google, :advertising_channel_type, in: ADVERTISING_CHANNEL_TYPES
       platform_setting :google, :advertising_channel_sub_type, in: ADVERTISING_CHANNEL_SUB_TYPES
       platform_setting :google, :bidding_strategy, in: BIDDING_STRATEGIES.keys

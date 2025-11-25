@@ -26,7 +26,12 @@
 #  index_ad_schedules_on_platform_settings            (platform_settings) USING gin
 #
 class AdSchedule < ApplicationRecord
+  include PlatformSettings
+
   belongs_to :campaign
+  has_one :ads_account, through: :campaign
+
+  platform_setting :google, :criterion_id
 
   validate :only_one_schedule_if_always_on
   validate :no_time_fields_if_always_on

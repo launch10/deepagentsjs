@@ -15,6 +15,7 @@
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
 #  account_id         :bigint
+#  ads_account_id     :bigint
 #  project_id         :bigint
 #  website_id         :bigint
 #
@@ -23,6 +24,7 @@
 #  index_campaigns_on_account_id             (account_id)
 #  index_campaigns_on_account_id_and_stage   (account_id,stage)
 #  index_campaigns_on_account_id_and_status  (account_id,status)
+#  index_campaigns_on_ads_account_id         (ads_account_id)
 #  index_campaigns_on_created_at             (created_at)
 #  index_campaigns_on_end_date               (end_date)
 #  index_campaigns_on_google_id              (((platform_settings ->> 'google'::text)))

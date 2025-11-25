@@ -20,8 +20,26 @@
 #  index_ads_on_status                  (status)
 #
 class Ad < ApplicationRecord
+  include PlatformSettings
+
   belongs_to :ad_group
   has_one :campaign, through: :ad_group
+  has_one :ads_account, through: :campaign
+
   has_many :headlines, dependent: :destroy, class_name: "AdHeadline"
   has_many :descriptions, dependent: :destroy, class_name: "AdDescription"
+
+  platform_setting :google, :ad_id
+
+  def google_customer_id
+    ads_account.google_customer_id
+  end
+
+  def google_ad_group_id
+    ad_group.google_ad_group_id
+  end
+
+  def google_campaign_id
+    campaign.google_campaign_id
+  end
 end

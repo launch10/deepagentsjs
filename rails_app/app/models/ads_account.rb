@@ -18,4 +18,12 @@
 #  index_ads_accounts_on_platform_settings        (platform_settings) USING gin
 #
 class AdsAccount < ApplicationRecord
+  include PlatformSettings
+
+  belongs_to :account
+
+  PLATFORMS = %w[google meta]
+  validates :platform, presence: true, in: PLATFORMS
+
+  platform_setting :google, :customer_id
 end

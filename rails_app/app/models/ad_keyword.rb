@@ -22,7 +22,13 @@
 #  index_ad_keywords_on_text               (text)
 #
 class AdKeyword < ApplicationRecord
+  include PlatformSettings
+
   belongs_to :ad_group, class_name: "AdGroup", inverse_of: :keywords
+  has_one :campaign, through: :ad_group
+  has_one :ads_account, through: :campaign
 
   validates :text, presence: true, length: { maximum: 80 }
+
+  platform_setting :google, :criterion_id
 end
