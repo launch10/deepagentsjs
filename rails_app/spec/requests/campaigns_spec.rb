@@ -802,7 +802,7 @@ RSpec.describe "Campaigns API", type: :request do
             end
           end
 
-          response '200', 'ready_for_next_stage works with callouts and structured snippet', focus: true do
+          response '200', 'ready_for_next_stage works with callouts and structured snippet' do
             schema APISchemas::Campaign.response
             let(:Authorization) { auth_headers_for(user1)['Authorization'] }
             let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
@@ -834,6 +834,167 @@ RSpec.describe "Campaigns API", type: :request do
               expect(data["callouts"].all? { |c| c["id"].present? }).to be true
               expect(data["structured_snippet"]).to be_present
               expect(data["structured_snippet"]["id"]).to be_present
+            end
+          end
+        end
+      end
+
+      describe "Keywords stage" do
+        context 'keywords' do
+          let!(:keywords_campaign) do
+            result = Campaign.create_campaign!(user1_account, {
+              name: "Keywords Campaign",
+              project_id: project1.id,
+              website_id: website1.id
+            })
+            campaign = result[:campaign]
+            ad = campaign.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+            campaign.advance_stage!
+
+            ad_group = campaign.ad_groups.first
+            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+            campaign.advance_stage!
+            campaign.reload
+          end
+
+          let(:id) { keywords_campaign.id }
+
+          response '200', 'idempotently creates keywords on first update' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:campaign_params) do
+              ad_group = keywords_campaign.ad_groups.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: ad_group.id,
+                      keywords_attributes: [
+                        {text: "running shoes", match_type: "broad", position: 0},
+                        {text: "athletic footwear", match_type: "phrase", position: 1}
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              keywords_campaign.reload
+              ad_group = keywords_campaign.ad_groups.first
+
+              expect(ad_group.keywords.count).to eq(2)
+              expect(ad_group.keywords.order(:position).pluck(:text)).to eq(["running shoes", "athletic footwear"])
+              expect(data["ready_for_next_stage"]).to eq(false)
+
+              expect(data["ad_groups"]).to be_present
+              keywords = data["ad_groups"].first["keywords"]
+              expect(keywords.length).to eq(2)
+              expect(keywords[0]["id"]).to be_present
+              expect(keywords[0]["text"]).to eq("running shoes")
+              expect(keywords[0]["match_type"]).to eq("broad")
+              expect(keywords[0]["position"]).to eq(0)
+              expect(keywords[1]["id"]).to be_present
+              expect(keywords[1]["text"]).to eq("athletic footwear")
+              expect(keywords[1]["match_type"]).to eq("phrase")
+              expect(keywords[1]["position"]).to eq(1)
+            end
+          end
+
+          response '200', 'ready_for_next_stage is true after creating 5 keywords' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:campaign_params) do
+              ad_group = keywords_campaign.ad_groups.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: ad_group.id,
+                      keywords_attributes: [
+                        {text: "running shoes", match_type: "broad", position: 0},
+                        {text: "athletic footwear", match_type: "phrase", position: 1},
+                        {text: "sneakers", match_type: "exact", position: 2},
+                        {text: "sports shoes", match_type: "broad", position: 3},
+                        {text: "training shoes", match_type: "phrase", position: 4}
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              keywords_campaign.reload
+              ad_group = keywords_campaign.ad_groups.first
+
+              expect(ad_group.keywords.count).to eq(5)
+              expect(data["ready_for_next_stage"]).to eq(true)
+
+              keywords = data["ad_groups"].first["keywords"]
+              expect(keywords.length).to eq(5)
+              expect(keywords.all? { |k| k["id"].present? }).to be true
+              expect(keywords.map { |k| k["match_type"] }).to eq(["broad", "phrase", "exact", "broad", "phrase"])
+            end
+          end
+
+          response '200', 'idempotently replaces keywords - delete and update' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+            let!(:initial_keywords) do
+              ad_group = keywords_campaign.ad_groups.first
+              [
+                create(:ad_keyword, ad_group: ad_group, text: "keyword 1", match_type: "broad", position: 0),
+                create(:ad_keyword, ad_group: ad_group, text: "keyword 2", match_type: "phrase", position: 1),
+                create(:ad_keyword, ad_group: ad_group, text: "keyword 3", match_type: "exact", position: 2)
+              ]
+            end
+
+            let(:campaign_params) do
+              ad_group = keywords_campaign.ad_groups.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: ad_group.id,
+                      keywords_attributes: [
+                        {id: initial_keywords[1].id, text: "keyword 2 updated", match_type: "exact", position: 0},
+                        {text: "keyword 4", match_type: "broad", position: 1}
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              keywords_campaign.reload
+              ad_group = keywords_campaign.ad_groups.first
+
+              expect(ad_group.keywords.count).to eq(2)
+              expect(ad_group.keywords.order(:position).pluck(:text)).to eq(["keyword 2 updated", "keyword 4"])
+              expect(AdKeyword.exists?(initial_keywords[0].id)).to be false
+              expect(AdKeyword.exists?(initial_keywords[2].id)).to be false
+
+              keywords = data["ad_groups"].first["keywords"]
+              expect(keywords.length).to eq(2)
+              expect(keywords[0]["id"]).to eq(initial_keywords[1].id)
+              expect(keywords[0]["text"]).to eq("keyword 2 updated")
+              expect(keywords[0]["match_type"]).to eq("exact")
+              expect(keywords[1]["id"]).to be_present
+              expect(keywords[1]["text"]).to eq("keyword 4")
             end
           end
         end
@@ -966,6 +1127,81 @@ RSpec.describe "Campaigns API", type: :request do
 
           highlights_stage_campaign.reload
           expect(highlights_stage_campaign.stage).to eq("highlights")
+        end
+      end
+
+      response '200', 'campaign advanced from keywords to settings stage' do
+        schema APISchemas::Campaign.advance_response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+        let!(:keywords_stage_campaign) do
+          result = Campaign.create_campaign!(user1_account, {
+            name: "Keywords Stage Campaign",
+            project_id: project1.id,
+            website_id: website1.id
+          })
+          campaign = result[:campaign]
+          ad = campaign.ad_groups.first.ads.first
+          create_list(:ad_headline, 3, ad: ad)
+          create_list(:ad_description, 2, ad: ad)
+          campaign.advance_stage!
+
+          ad_group = campaign.ad_groups.first
+          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+          campaign.advance_stage!
+
+          create_list(:ad_keyword, 5, ad_group: ad_group)
+
+          campaign
+        end
+
+        let(:id) { keywords_stage_campaign.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["stage"]).to eq("settings")
+
+          keywords_stage_campaign.reload
+          expect(keywords_stage_campaign.stage).to eq("settings")
+          expect(data["ready_for_next_stage"]).to eq(false)
+        end
+      end
+
+      response '422', 'cannot advance from keywords - validation failed' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+        let!(:keywords_stage_campaign) do
+          result = Campaign.create_campaign!(user1_account, {
+            name: "Keywords Stage Campaign",
+            project_id: project1.id,
+            website_id: website1.id
+          })
+          campaign = result[:campaign]
+          ad = campaign.ad_groups.first.ads.first
+          create_list(:ad_headline, 3, ad: ad)
+          create_list(:ad_description, 2, ad: ad)
+          campaign.advance_stage!
+
+          ad_group = campaign.ad_groups.first
+          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+          campaign.advance_stage!
+
+          campaign
+        end
+
+        let(:id) { keywords_stage_campaign.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to be_present
+          expect(data["errors"]).to include("Keywords must have between 5-15 keywords per ad group (currently has 0)")
+
+          keywords_stage_campaign.reload
+          expect(keywords_stage_campaign.stage).to eq("keywords")
         end
       end
 

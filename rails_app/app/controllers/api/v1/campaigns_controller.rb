@@ -86,12 +86,13 @@ class API::V1::CampaignsController < API::BaseController
     permitted = campaign_params.to_h
 
     permitted[:ad_groups_attributes]&.each do |ag_attrs|
+      ag_attrs.delete(:keywords_attributes)
+
       next unless ag_attrs[:ads_attributes]
 
       ag_attrs[:ads_attributes].each do |ad_attrs|
         ad_attrs.delete(:headlines_attributes)
         ad_attrs.delete(:descriptions_attributes)
-        ad_attrs.delete(:callouts_attributes)
       end
     end
 
@@ -128,7 +129,7 @@ class API::V1::CampaignsController < API::BaseController
           headlines_attributes: [:id, :text, :position, :_destroy],
           descriptions_attributes: [:id, :text, :position, :_destroy]
         ],
-        keywords_attributes: [:id, :text, :match_type, :_destroy]
+        keywords_attributes: [:id, :text, :match_type, :position, :_destroy]
       ],
       callouts_attributes: [:id, :text, :position, :_destroy],
       structured_snippet_attributes: [:id, :category, :_destroy, { values: [] }]
@@ -186,6 +187,14 @@ class API::V1::CampaignsController < API::BaseController
                   position: description.position
                 }
               end
+            }
+          end,
+          keywords: ad_group.keywords.order(:position).map do |keyword|
+            {
+              id: keyword.id,
+              text: keyword.text,
+              match_type: keyword.match_type,
+              position: keyword.position
             }
           end
         }
