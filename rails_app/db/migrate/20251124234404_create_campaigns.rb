@@ -5,6 +5,7 @@ class CreateCampaigns < ActiveRecord::Migration[8.0]
       t.integer :daily_budget_cents
       t.string :status, default: 'draft'
       t.string :stage, default: 'content'
+      t.jsonb :platform_settings, default: { google: {}, facebook: {} }
       t.datetime :launched_at
 
       t.bigint :account_id
@@ -23,6 +24,7 @@ class CreateCampaigns < ActiveRecord::Migration[8.0]
       t.index [:account_id, :stage]
       t.index [:project_id, :status]
       t.index [:project_id, :stage]
+      t.index :platform_settings, using: :gin
     end
   end
 end
