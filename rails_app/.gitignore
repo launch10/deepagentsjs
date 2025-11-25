@@ -77,3 +77,6 @@ tasks.json
 /tasks/ 
 # LangGraph API
 .langgraph_api
+
+*storybook.log
+storybook-static
