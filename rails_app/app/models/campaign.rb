@@ -49,6 +49,7 @@ class Campaign < ApplicationRecord
 
   # Ad targeting
   has_many :keywords, through: :ad_groups, class_name: "AdKeyword"
+  has_many :location_targeting, class_name: "AdLocationTarget"
 
   STATUSES = %w[draft active paused completed]
 

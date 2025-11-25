@@ -123,7 +123,7 @@ module CampaignConcerns
       errors.empty?
     end
 
-    def done_plan_stage?
+    def done_settings_stage?
       errors.clear
 
       # Validate keywords for each ad group
