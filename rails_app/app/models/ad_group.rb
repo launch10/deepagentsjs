@@ -18,7 +18,7 @@
 class AdGroup < ApplicationRecord
   belongs_to :campaign
   has_many :ads, dependent: :destroy
-  has_many :keywords, -> { order(position: :asc) }, dependent: :destroy
+  has_many :keywords, dependent: :destroy, class_name: "AdKeyword"
   has_many :headlines, through: :ads
   has_many :descriptions, through: :ads
   has_many :callouts, dependent: :destroy, class_name: "AdCallout"

@@ -92,7 +92,7 @@ module CampaignConcerns
       # Structured snippets validation
       if structured_snippet.present?
         snippet_values = structured_snippet.values
-        
+
         if snippet_values.blank? || !snippet_values.is_a?(Array)
           errors.add(:structured_snippet, "must have values")
         elsif !snippet_values.length.between?(3, 10)
@@ -103,6 +103,20 @@ module CampaignConcerns
               errors.add(:structured_snippet, "item #{index + 1} must be between 1-25 characters (currently #{value.to_s.length})")
             end
           end
+        end
+      end
+
+      errors.empty?
+    end
+
+    def done_keywords_stage?
+      errors.clear
+
+      # Validate keywords for each ad group
+      ad_groups.each do |ad_group|
+        keyword_count = ad_group.keywords.count
+        unless keyword_count.between?(5, 15)
+          errors.add(:keywords, "must have between 5-15 keywords per ad group (currently has #{keyword_count})")
         end
       end
 

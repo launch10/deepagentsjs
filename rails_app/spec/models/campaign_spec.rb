@@ -42,6 +42,24 @@ RSpec.describe Campaign, type: :model do
     })
     return created_records[:campaign], created_records[:ad_group], created_records[:ad]
   end
+
+  def finish_content_stage
+    campaign, ad_group, ad = create_campaign
+    create_list(:ad_headline, 3, ad: ad)
+    create_list(:ad_description, 2, ad: ad)
+    campaign.advance_stage!
+
+    return campaign, ad_group, ad
+  end
+
+  def finish_highlights_stage
+    campaign, ad_group, ad = finish_content_stage
+    create_list(:ad_callout, 2, ad_group: ad_group, campaign: campaign)
+    campaign.advance_stage!
+
+    return campaign, ad_group, ad
+  end
+
   describe "validations" do
     it { should validate_presence_of(:status) }
     it { should validate_inclusion_of(:status).in_array(Campaign::STATUSES) }
@@ -114,10 +132,8 @@ RSpec.describe Campaign, type: :model do
         expect(campaign).to be_done_content_stage
       end
 
-      it "validates highlights stage", :focus do
-        campaign, ad_group, ad = create_campaign
-        create_list(:ad_headline, 3, ad: ad)
-        create_list(:ad_description, 2, ad: ad)
+      it "validates highlights stage" do
+        campaign, ad_group, ad = finish_content_stage
 
         expect(campaign).to be_done_content_stage
         campaign.advance_stage!
@@ -147,6 +163,29 @@ RSpec.describe Campaign, type: :model do
         snippet.update(values: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]) # just right
         campaign.reload
         expect(campaign).to be_done_highlights_stage
+      end
+
+      it "validates keywords stage", :focus do
+        campaign, ad_group, ad = finish_highlights_stage
+
+        expect(campaign).to be_done_highlights_stage
+        expect(campaign.stage).to eq("keywords")
+        expect(campaign).to be_valid
+        campaign.stage = "settings"
+        expect(campaign).to_not be_valid # You wouldn't be ALLOWED since prev stage isn't complete
+
+        create_list(:ad_keyword, 5, ad_group: ad_group)
+        expect(campaign).to be_done_keywords_stage
+
+        campaign.ad_groups.first.keywords.destroy_all
+        create_list(:ad_keyword, 15, ad_group: ad_group)
+        expect(campaign).to be_done_keywords_stage
+
+        campaign.ad_groups.first.keywords.destroy_all
+
+        # too few keywords
+        create_list(:ad_keyword, 4, ad_group: ad_group)
+        expect(campaign).to_not be_done_keywords_stage
       end
     end
 

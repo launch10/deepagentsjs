@@ -1,6 +1,6 @@
 # == Schema Information
 #
-# Table name: callouts
+# Table name: ad_callouts
 #
 #  id          :bigint           not null, primary key
 #  position    :integer          not null
@@ -12,10 +12,10 @@
 #
 # Indexes
 #
-#  index_callouts_on_ad_group_id  (ad_group_id)
-#  index_callouts_on_campaign_id  (campaign_id)
-#  index_callouts_on_created_at   (created_at)
-#  index_callouts_on_position     (position)
+#  index_ad_callouts_on_ad_group_id  (ad_group_id)
+#  index_ad_callouts_on_campaign_id  (campaign_id)
+#  index_ad_callouts_on_created_at   (created_at)
+#  index_ad_callouts_on_position     (position)
 #
 class AdCallout < ApplicationRecord
   belongs_to :campaign, class_name: "Campaign", inverse_of: :callouts

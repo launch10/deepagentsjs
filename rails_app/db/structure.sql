@@ -563,6 +563,40 @@ ALTER SEQUENCE public.ad_headlines_id_seq OWNED BY public.ad_headlines.id;
 
 
 --
+-- Name: ad_keywords; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_keywords (
+    id bigint NOT NULL,
+    ad_group_id bigint NOT NULL,
+    text character varying(120) NOT NULL,
+    match_type character varying DEFAULT 'broad'::character varying NOT NULL,
+    "position" integer NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_keywords_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_keywords_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_keywords_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_keywords_id_seq OWNED BY public.ad_keywords.id;
+
+
+--
 -- Name: ad_location_targets; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1667,40 +1701,6 @@ CREATE SEQUENCE public.inbound_webhooks_id_seq
 --
 
 ALTER SEQUENCE public.inbound_webhooks_id_seq OWNED BY public.inbound_webhooks.id;
-
-
---
--- Name: keywords; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.keywords (
-    id bigint NOT NULL,
-    ad_group_id bigint NOT NULL,
-    text character varying(120) NOT NULL,
-    match_type character varying DEFAULT 'broad'::character varying NOT NULL,
-    "position" integer NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: keywords_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.keywords_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: keywords_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.keywords_id_seq OWNED BY public.keywords.id;
 
 
 --
@@ -3020,6 +3020,13 @@ ALTER TABLE ONLY public.ad_headlines ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: ad_keywords id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_keywords ALTER COLUMN id SET DEFAULT nextval('public.ad_keywords_id_seq'::regclass);
+
+
+--
 -- Name: ad_location_targets id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3185,13 +3192,6 @@ ALTER TABLE ONLY public.icon_query_caches ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.inbound_webhooks ALTER COLUMN id SET DEFAULT nextval('public.inbound_webhooks_id_seq'::regclass);
-
-
---
--- Name: keywords id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.keywords ALTER COLUMN id SET DEFAULT nextval('public.keywords_id_seq'::regclass);
 
 
 --
@@ -3549,6 +3549,14 @@ ALTER TABLE ONLY public.ad_headlines
 
 
 --
+-- Name: ad_keywords ad_keywords_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_keywords
+    ADD CONSTRAINT ad_keywords_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ad_location_targets ad_location_targets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3810,14 +3818,6 @@ ALTER TABLE ONLY public.icon_query_caches
 
 ALTER TABLE ONLY public.inbound_webhooks
     ADD CONSTRAINT inbound_webhooks_pkey PRIMARY KEY (id);
-
-
---
--- Name: keywords keywords_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.keywords
-    ADD CONSTRAINT keywords_pkey PRIMARY KEY (id);
 
 
 --
@@ -4553,6 +4553,41 @@ CREATE INDEX index_ad_headlines_on_created_at ON public.ad_headlines USING btree
 --
 
 CREATE INDEX index_ad_headlines_on_position ON public.ad_headlines USING btree ("position");
+
+
+--
+-- Name: index_ad_keywords_on_ad_group_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_ad_group_id ON public.ad_keywords USING btree (ad_group_id);
+
+
+--
+-- Name: index_ad_keywords_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_created_at ON public.ad_keywords USING btree (created_at);
+
+
+--
+-- Name: index_ad_keywords_on_match_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_match_type ON public.ad_keywords USING btree (match_type);
+
+
+--
+-- Name: index_ad_keywords_on_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_position ON public.ad_keywords USING btree ("position");
+
+
+--
+-- Name: index_ad_keywords_on_text; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_text ON public.ad_keywords USING btree (text);
 
 
 --
@@ -5309,41 +5344,6 @@ CREATE INDEX index_icon_query_caches_on_ttl_seconds ON public.icon_query_caches 
 --
 
 CREATE INDEX index_icon_query_caches_on_use_count ON public.icon_query_caches USING btree (use_count);
-
-
---
--- Name: index_keywords_on_ad_group_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_keywords_on_ad_group_id ON public.keywords USING btree (ad_group_id);
-
-
---
--- Name: index_keywords_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_keywords_on_created_at ON public.keywords USING btree (created_at);
-
-
---
--- Name: index_keywords_on_match_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_keywords_on_match_type ON public.keywords USING btree (match_type);
-
-
---
--- Name: index_keywords_on_position; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_keywords_on_position ON public.keywords USING btree ("position");
-
-
---
--- Name: index_keywords_on_text; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_keywords_on_text ON public.keywords USING btree (text);
 
 
 --
