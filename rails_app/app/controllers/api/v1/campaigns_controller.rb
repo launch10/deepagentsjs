@@ -144,6 +144,7 @@ class API::V1::CampaignsController < API::BaseController
       name: campaign.name,
       stage: campaign.stage,
       status: campaign.status,
+      ready_for_next_stage: campaign.ready_for_next_stage?,
       account_id: campaign.account_id,
       project_id: campaign.project_id,
       website_id: campaign.website_id,

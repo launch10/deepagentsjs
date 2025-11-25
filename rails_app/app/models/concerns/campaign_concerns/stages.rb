@@ -10,6 +10,11 @@ module CampaignConcerns
       validate :prev_stage_must_be_complete, if: :stage_changed?
     end
 
+    def ready_for_next_stage?
+      return false if stage.blank?
+      send("done_#{stage}_stage?")
+    end
+
     def prev_stage
       return nil if stage.blank?
       stage_index = STAGES.index(stage)

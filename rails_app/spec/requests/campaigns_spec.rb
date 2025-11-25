@@ -279,11 +279,57 @@ RSpec.describe "Campaigns API", type: :request do
         end
 
         run_test! do |response|
+          data = JSON.parse(response.body)
           campaign1.reload
           ad = campaign1.ad_groups.first.ads.first
-          
+
           expect(ad.headlines.count).to eq(2)
           expect(ad.headlines.order(:position).pluck(:text)).to eq(["Headline 1", "Headline 2"])
+          expect(data["ready_for_next_stage"]).to eq(false)
+        end
+      end
+
+      response '200', 'ready_for_next_stage is true after creating 3 headlines and 2 descriptions' do
+        schema APISchemas::Campaign.response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:id) { campaign1.id }
+        let(:campaign_params) do
+          ad = campaign1.ad_groups.first.ads.first
+          {
+            campaign: {
+              ad_groups_attributes: [
+                {
+                  id: campaign1.ad_groups.first.id,
+                  ads_attributes: [
+                    {
+                      id: ad.id,
+                      headlines_attributes: [
+                        {text: "Headline 1", position: 0},
+                        {text: "Headline 2", position: 1},
+                        {text: "Headline 3", position: 2}
+                      ],
+                      descriptions_attributes: [
+                        {text: "Description 1", position: 0},
+                        {text: "Description 2", position: 1}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          campaign1.reload
+          ad = campaign1.ad_groups.first.ads.first
+
+          expect(ad.headlines.count).to eq(3)
+          expect(ad.descriptions.count).to eq(2)
+          expect(data["ready_for_next_stage"]).to eq(true)
         end
       end
 
@@ -293,7 +339,7 @@ RSpec.describe "Campaigns API", type: :request do
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
         let(:id) { campaign1.id }
-        
+
         let!(:initial_headlines) do
           ad = campaign1.ad_groups.first.ads.first
           [
@@ -327,7 +373,7 @@ RSpec.describe "Campaigns API", type: :request do
         run_test! do |response|
           campaign1.reload
           ad = campaign1.ad_groups.first.ads.first
-          
+
           expect(ad.headlines.count).to eq(2)
           expect(ad.headlines.order(:position).pluck(:text)).to eq(["Headline 2 Updated", "Headline 3"])
           expect(AdHeadline.exists?(initial_headlines[0].id)).to be false
@@ -365,7 +411,7 @@ RSpec.describe "Campaigns API", type: :request do
         run_test! do |response|
           campaign1.reload
           ad = campaign1.ad_groups.first.ads.first
-          
+
           expect(ad.descriptions.count).to eq(2)
           expect(ad.descriptions.order(:position).pluck(:text)).to eq(["Description 1", "Description 2"])
         end
@@ -377,7 +423,7 @@ RSpec.describe "Campaigns API", type: :request do
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
         let(:id) { campaign1.id }
-        
+
         let!(:initial_descriptions) do
           ad = campaign1.ad_groups.first.ads.first
           [
@@ -411,7 +457,7 @@ RSpec.describe "Campaigns API", type: :request do
         run_test! do |response|
           campaign1.reload
           ad = campaign1.ad_groups.first.ads.first
-          
+
           expect(ad.descriptions.count).to eq(2)
           expect(ad.descriptions.order(:position).pluck(:text)).to eq(["Description 2 Updated", "Description 3"])
           expect(AdDescription.exists?(initial_descriptions[0].id)).to be false
@@ -424,7 +470,7 @@ RSpec.describe "Campaigns API", type: :request do
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
         let(:id) { campaign1.id }
-        
+
         let!(:initial_content) do
           ad = campaign1.ad_groups.first.ads.first
           {
@@ -468,11 +514,11 @@ RSpec.describe "Campaigns API", type: :request do
         run_test! do |response|
           campaign1.reload
           ad = campaign1.ad_groups.first.ads.first
-          
+
           expect(ad.headlines.count).to eq(2)
           expect(ad.headlines.order(:position).pluck(:text)).to eq(["Headline 2 Updated", "Headline 3"])
           expect(AdHeadline.exists?(initial_content[:headlines][0].id)).to be false
-          
+
           expect(ad.descriptions.count).to eq(2)
           expect(ad.descriptions.order(:position).pluck(:text)).to eq(["Description 1 Updated", "Description 3"])
           expect(AdDescription.exists?(initial_content[:descriptions][1].id)).to be false
