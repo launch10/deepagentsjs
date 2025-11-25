@@ -4,7 +4,7 @@ const config: StorybookConfig = {
   "stories": [
     "../stories/**/*.stories.@(js|jsx|mjs|ts|tsx)"
   ],
-  "addons": [],
+  "addons": ["@storybook/addon-styling-webpack"],
   "framework": {
     "name": "@storybook/react-vite",
     "options": {}
