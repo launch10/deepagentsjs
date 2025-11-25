@@ -12,6 +12,7 @@ class CreateAds < ActiveRecord::Migration[8.0]
       t.index :status
       t.index [:ad_group_id, :status]
       t.index :platform_settings, using: :gin
+      t.index "(platform_settings->>'google')", name: "index_ads_on_google_id", if_not_exists: true
     end
   end
 end

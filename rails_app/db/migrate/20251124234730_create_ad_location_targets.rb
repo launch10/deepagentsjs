@@ -28,7 +28,7 @@ class CreateAdLocationTargets < ActiveRecord::Migration[8.0]
       t.index :campaign_id
       t.index :location_identifier
       t.index :platform_settings, using: :gin
-      t.index :ad_location_tagets, "(platform_settings->>'google')", name: "index_ad_location_targets_on_google_id", algorithm: :concurrently, if_not_exists: true
+      t.index "(platform_settings->>'google')", name: "index_ad_location_targets_on_google_id", if_not_exists: true
     end
   end
 end

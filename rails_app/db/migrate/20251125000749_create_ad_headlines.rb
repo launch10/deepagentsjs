@@ -13,6 +13,7 @@ class CreateAdHeadlines < ActiveRecord::Migration[8.0]
       t.index :position
       t.index [:ad_id, :position]
       t.index :platform_settings, using: :gin
+      t.index "(platform_settings->>'google')", name: "index_ad_headlines_on_google_id", if_not_exists: true
     end
   end
 end

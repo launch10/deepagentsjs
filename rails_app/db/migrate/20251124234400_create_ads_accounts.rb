@@ -10,6 +10,7 @@ class CreateAdsAccounts < ActiveRecord::Migration[8.0]
       t.index :platform
       t.index [:account_id, :platform], unique: true
       t.index :platform_settings, using: :gin
+      t.index "(platform_settings->>'google')", name: "index_ads_accounts_on_google_id", if_not_exists: true
     end
   end
 end

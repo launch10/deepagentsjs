@@ -11,6 +11,7 @@ class CreateAdStructuredSnippets < ActiveRecord::Migration[8.0]
       t.index :created_at
       t.index :category
       t.index :platform_settings, using: :gin
+      t.index "(platform_settings->>'google')", name: "index_ad_structured_snippets_on_google_id", if_not_exists: true
     end
   end
 end

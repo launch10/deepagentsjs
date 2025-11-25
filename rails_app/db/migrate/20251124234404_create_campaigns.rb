@@ -7,6 +7,9 @@ class CreateCampaigns < ActiveRecord::Migration[8.0]
       t.string :stage, default: 'content'
       t.jsonb :platform_settings, default: { google: {}, meta: {} }
       t.datetime :launched_at
+      t.string :time_zone, default: 'America/New_York'
+      t.date :start_date
+      t.date :end_date
 
       t.bigint :account_id
       t.bigint :website_id
@@ -25,7 +28,9 @@ class CreateCampaigns < ActiveRecord::Migration[8.0]
       t.index [:project_id, :status]
       t.index [:project_id, :stage]
       t.index :platform_settings, using: :gin
-      t.index "(platform_settings->>'google')", name: "index_campaigns_on_google_id", algorithm: :concurrently, if_not_exists: true
+      t.index "(platform_settings->>'google')", name: "index_campaigns_on_google_id", if_not_exists: true
+      t.index :start_date
+      t.index :end_date
     end
   end
 end

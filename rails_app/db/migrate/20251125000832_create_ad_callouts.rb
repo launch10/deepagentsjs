@@ -14,6 +14,7 @@ class CreateAdCallouts < ActiveRecord::Migration[8.0]
       t.index :created_at
       t.index :position
       t.index :platform_settings, using: :gin
+      t.index "(platform_settings->>'google')", name: "index_ad_callouts_on_google_id", if_not_exists: true
     end
   end
 end
