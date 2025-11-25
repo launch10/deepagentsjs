@@ -33,5 +33,10 @@ module CampaignConcerns
     def update_ad_schedules(schedule_data)
       schedule.update(schedule_data)
     end
+
+    # Custom setter for ad_schedules to work with strong parameters
+    def ad_schedules=(schedule_data)
+      update_ad_schedules(schedule_data) if schedule_data.present?
+    end
   end
 end

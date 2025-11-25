@@ -24,7 +24,7 @@ class API::V1::CampaignsController < API::BaseController
     end
 
     begin
-      campaign.update_idempotently!(campaign_params_for_idempotent_update, campaign_params.to_h)
+      campaign.update_idempotently!(campaign_params.to_h)
     rescue ActiveRecord::RecordInvalid => e
       render json: {errors: e.record.errors.full_messages}, status: :unprocessable_entity and return
     rescue => e
@@ -68,26 +68,6 @@ class API::V1::CampaignsController < API::BaseController
 
   private
 
-  def campaign_params_for_idempotent_update
-    permitted = campaign_params.to_h
-
-    permitted[:ad_groups_attributes]&.each do |ag_attrs|
-      ag_attrs.delete(:keywords_attributes)
-
-      next unless ag_attrs[:ads_attributes]
-
-      ag_attrs[:ads_attributes].each do |ad_attrs|
-        ad_attrs.delete(:headlines_attributes)
-        ad_attrs.delete(:descriptions_attributes)
-      end
-    end
-
-    permitted.delete(:callouts_attributes)
-    permitted.delete(:structured_snippet_attributes)
-
-    permitted
-  end
-
   def current_campaign
     current_account.campaigns.find_by(id: params[:id])
   end
@@ -97,9 +77,7 @@ class API::V1::CampaignsController < API::BaseController
   end
 
   def campaign_params
-    campaign_hash = params.require(:campaign)
-
-    permitted = campaign_hash.permit(
+    params.require(:campaign).permit(
       :name,
       :start_date,
       :end_date,
@@ -107,6 +85,8 @@ class API::V1::CampaignsController < API::BaseController
       :daily_budget_cents,
       :google_advertising_channel_type,
       :google_bidding_strategy,
+      location_targets: [:target_type, :location_name, :location_type, :country_code, :targeted, :google_criterion_id, :radius, :radius_units],
+      ad_schedules: [:always_on, :start_time, :end_time, :time_zone, { day_of_week: [] }],
       ad_groups_attributes: [
         :id,
         :name,
@@ -122,16 +102,6 @@ class API::V1::CampaignsController < API::BaseController
       callouts_attributes: [:id, :text, :position, :_destroy],
       structured_snippet_attributes: [:id, :category, :_destroy, { values: [] }]
     )
-
-    if campaign_hash[:location_targets].present?
-      permitted[:location_targets] = campaign_hash[:location_targets].map(&:permit!)
-    end
-
-    if campaign_hash[:ad_schedules].present?
-      permitted[:ad_schedules] = campaign_hash[:ad_schedules].permit!
-    end
-
-    permitted
   end
 
   def campaign_json(campaign)

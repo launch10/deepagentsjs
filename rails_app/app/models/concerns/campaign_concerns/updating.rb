@@ -2,28 +2,31 @@ module CampaignConcerns
   module Updating
     extend ActiveSupport::Concern
 
-    def update_idempotently!(update_params, raw_params)
+    def update_idempotently!(params)
       transaction do
-        # Handle location_targets and ad_schedules before regular update
-        # since they use their own methods (not accepts_nested_attributes)
-        if update_params[:location_targets]
-          targets_array = Array(update_params[:location_targets]).map do |target|
-            target.is_a?(Hash) ? target : target.to_unsafe_h
+        # Separate params into regular attributes and idempotent attributes
+        idempotent_params = params.deep_dup
+        regular_params = params.deep_dup
+        
+        # Remove idempotent attributes from regular_params (they need special handling)
+        regular_params[:ad_groups_attributes]&.each do |ag_attrs|
+          ag_attrs.delete(:keywords_attributes)
+          
+          ag_attrs[:ads_attributes]&.each do |ad_attrs|
+            ad_attrs.delete(:headlines_attributes)
+            ad_attrs.delete(:descriptions_attributes)
           end
-          update_location_targets(targets_array)
         end
+        
+        regular_params.delete(:callouts_attributes)
+        regular_params.delete(:structured_snippet_attributes)
+        
+        # Update regular attributes (location_targets and ad_schedules handled by custom setters)
+        update!(regular_params)
 
-        if update_params[:ad_schedules]
-          schedule_hash = update_params[:ad_schedules].is_a?(Hash) ? update_params[:ad_schedules] : update_params[:ad_schedules].to_unsafe_h
-          update_ad_schedules(schedule_hash.symbolize_keys)
-        end
-
-        # Remove location_targets and ad_schedules from update_params since they're already handled
-        clean_params = update_params.except(:location_targets, :ad_schedules)
-        update!(clean_params)
-
-        if raw_params[:ad_groups_attributes].present?
-          raw_params[:ad_groups_attributes].each do |ad_group_attrs|
+        # Handle idempotent attributes
+        if idempotent_params[:ad_groups_attributes].present?
+          idempotent_params[:ad_groups_attributes].each do |ad_group_attrs|
             ad_group = ad_groups.find_by(id: ad_group_attrs[:id])
             next unless ad_group
 
@@ -43,8 +46,8 @@ module CampaignConcerns
           end
         end
 
-        replace_callouts(raw_params[:callouts_attributes]) if raw_params[:callouts_attributes]
-        replace_structured_snippet(raw_params[:structured_snippet_attributes]) if raw_params[:structured_snippet_attributes]
+        replace_callouts(idempotent_params[:callouts_attributes]) if idempotent_params[:callouts_attributes]
+        replace_structured_snippet(idempotent_params[:structured_snippet_attributes]) if idempotent_params[:structured_snippet_attributes]
       end
     end
 

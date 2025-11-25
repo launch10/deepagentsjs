@@ -47,5 +47,10 @@ module CampaignConcerns
         AdLocationTarget.import(targets, validate: false)
       end
     end
+
+    # Custom setter for location_targets to work with strong parameters
+    def location_targets=(targets_data)
+      update_location_targets(targets_data) if targets_data.present?
+    end
   end
 end
