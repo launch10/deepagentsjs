@@ -12,7 +12,7 @@ class CreateAdDescriptions < ActiveRecord::Migration[8.0]
       t.index :created_at
       t.index :position
       t.index :platform_settings, using: :gin
-      t.index "(platform_settings->>'google'->>'asset_id')", name: "index_ad_descriptions_on_asset_id", if_not_exists: true
+      t.index "(platform_settings->'google'->>'asset_id')", name: "index_ad_descriptions_on_asset_id", if_not_exists: true
     end
   end
 end

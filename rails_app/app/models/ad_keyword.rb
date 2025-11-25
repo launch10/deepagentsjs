@@ -15,7 +15,7 @@
 #
 #  index_ad_keywords_on_ad_group_id        (ad_group_id)
 #  index_ad_keywords_on_created_at         (created_at)
-#  index_ad_keywords_on_google_id          (((platform_settings ->> 'google'::text)))
+#  index_ad_keywords_on_criterion_id       ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)))
 #  index_ad_keywords_on_match_type         (match_type)
 #  index_ad_keywords_on_platform_settings  (platform_settings) USING gin
 #  index_ad_keywords_on_position           (position)

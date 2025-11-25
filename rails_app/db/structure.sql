@@ -4637,6 +4637,13 @@ CREATE INDEX index_ad_callouts_on_ad_group_id ON public.ad_callouts USING btree 
 
 
 --
+-- Name: index_ad_callouts_on_asset_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_asset_id ON public.ad_callouts USING btree ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)));
+
+
+--
 -- Name: index_ad_callouts_on_campaign_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4648,13 +4655,6 @@ CREATE INDEX index_ad_callouts_on_campaign_id ON public.ad_callouts USING btree 
 --
 
 CREATE INDEX index_ad_callouts_on_created_at ON public.ad_callouts USING btree (created_at);
-
-
---
--- Name: index_ad_callouts_on_google_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ad_callouts_on_google_id ON public.ad_callouts USING btree (((platform_settings ->> 'google'::text)));
 
 
 --
@@ -4679,17 +4679,17 @@ CREATE INDEX index_ad_descriptions_on_ad_id ON public.ad_descriptions USING btre
 
 
 --
+-- Name: index_ad_descriptions_on_asset_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_descriptions_on_asset_id ON public.ad_descriptions USING btree ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)));
+
+
+--
 -- Name: index_ad_descriptions_on_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_ad_descriptions_on_created_at ON public.ad_descriptions USING btree (created_at);
-
-
---
--- Name: index_ad_descriptions_on_google_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ad_descriptions_on_google_id ON public.ad_descriptions USING btree (((platform_settings ->> 'google'::text)));
 
 
 --
@@ -4731,7 +4731,7 @@ CREATE INDEX index_ad_groups_on_created_at ON public.ad_groups USING btree (crea
 -- Name: index_ad_groups_on_google_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_ad_groups_on_google_id ON public.ad_groups USING btree (((platform_settings ->> 'google'::text)));
+CREATE INDEX index_ad_groups_on_google_id ON public.ad_groups USING btree ((((platform_settings -> 'google'::text) ->> 'ad_group_id'::text)));
 
 
 --
@@ -4763,17 +4763,17 @@ CREATE INDEX index_ad_headlines_on_ad_id_and_position ON public.ad_headlines USI
 
 
 --
+-- Name: index_ad_headlines_on_asset_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_asset_id ON public.ad_headlines USING btree ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)));
+
+
+--
 -- Name: index_ad_headlines_on_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_ad_headlines_on_created_at ON public.ad_headlines USING btree (created_at);
-
-
---
--- Name: index_ad_headlines_on_google_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ad_headlines_on_google_id ON public.ad_headlines USING btree (((platform_settings ->> 'google'::text)));
 
 
 --
@@ -4805,10 +4805,10 @@ CREATE INDEX index_ad_keywords_on_created_at ON public.ad_keywords USING btree (
 
 
 --
--- Name: index_ad_keywords_on_google_id; Type: INDEX; Schema: public; Owner: -
+-- Name: index_ad_keywords_on_criterion_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_ad_keywords_on_google_id ON public.ad_keywords USING btree (((platform_settings ->> 'google'::text)));
+CREATE INDEX index_ad_keywords_on_criterion_id ON public.ad_keywords USING btree ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)));
 
 
 --
@@ -4875,10 +4875,10 @@ CREATE INDEX index_ad_location_targets_on_campaign_id ON public.ad_location_targ
 
 
 --
--- Name: index_ad_location_targets_on_google_id; Type: INDEX; Schema: public; Owner: -
+-- Name: index_ad_location_targets_on_criterion_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_ad_location_targets_on_google_id ON public.ad_location_targets USING btree (((platform_settings ->> 'google'::text)));
+CREATE INDEX index_ad_location_targets_on_criterion_id ON public.ad_location_targets USING btree ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)));
 
 
 --
@@ -4924,6 +4924,13 @@ CREATE INDEX index_ad_schedules_on_created_at ON public.ad_schedules USING btree
 
 
 --
+-- Name: index_ad_schedules_on_criterion_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_criterion_id ON public.ad_schedules USING btree ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)));
+
+
+--
 -- Name: index_ad_schedules_on_day_of_week; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4931,17 +4938,17 @@ CREATE INDEX index_ad_schedules_on_day_of_week ON public.ad_schedules USING btre
 
 
 --
--- Name: index_ad_schedules_on_google_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ad_schedules_on_google_id ON public.ad_schedules USING btree (((platform_settings ->> 'google'::text)));
-
-
---
 -- Name: index_ad_schedules_on_platform_settings; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_ad_schedules_on_platform_settings ON public.ad_schedules USING gin (platform_settings);
+
+
+--
+-- Name: index_ad_structured_snippets_on_asset_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_asset_id ON public.ad_structured_snippets USING btree ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)));
 
 
 --
@@ -4963,13 +4970,6 @@ CREATE INDEX index_ad_structured_snippets_on_category ON public.ad_structured_sn
 --
 
 CREATE INDEX index_ad_structured_snippets_on_created_at ON public.ad_structured_snippets USING btree (created_at);
-
-
---
--- Name: index_ad_structured_snippets_on_google_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ad_structured_snippets_on_google_id ON public.ad_structured_snippets USING btree (((platform_settings ->> 'google'::text)));
 
 
 --
@@ -5032,7 +5032,7 @@ CREATE INDEX index_ads_on_ad_group_id_and_status ON public.ads USING btree (ad_g
 -- Name: index_ads_on_google_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_ads_on_google_id ON public.ads USING btree (((platform_settings ->> 'google'::text)));
+CREATE INDEX index_ads_on_google_id ON public.ads USING btree ((((platform_settings -> 'google'::text) ->> 'ad_id'::text)));
 
 
 --
@@ -5137,7 +5137,7 @@ CREATE INDEX index_campaigns_on_end_date ON public.campaigns USING btree (end_da
 -- Name: index_campaigns_on_google_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_campaigns_on_google_id ON public.campaigns USING btree (((platform_settings ->> 'google'::text)));
+CREATE INDEX index_campaigns_on_google_id ON public.campaigns USING btree ((((platform_settings -> 'google'::text) ->> 'campaign_id'::text)));
 
 
 --

@@ -23,7 +23,7 @@ class CreateAdSchedules < ActiveRecord::Migration[8.0]
       t.index [:campaign_id, :day_of_week]
       t.index :platform_settings, using: :gin
       t.index :always_on
-      t.index "(platform_settings->>'google'->>'criterion_id')", name: "index_ad_schedules_on_criterion_id", if_not_exists: true
+      t.index "(platform_settings->'google'->>'criterion_id')", name: "index_ad_schedules_on_criterion_id", if_not_exists: true
 
       t.check_constraint "start_hour >= 0 AND start_hour <= 23",
         name: "valid_start_hour"

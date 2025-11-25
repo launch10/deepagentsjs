@@ -14,9 +14,9 @@
 # Indexes
 #
 #  index_ad_callouts_on_ad_group_id        (ad_group_id)
+#  index_ad_callouts_on_asset_id           ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)))
 #  index_ad_callouts_on_campaign_id        (campaign_id)
 #  index_ad_callouts_on_created_at         (created_at)
-#  index_ad_callouts_on_google_id          (((platform_settings ->> 'google'::text)))
 #  index_ad_callouts_on_platform_settings  (platform_settings) USING gin
 #  index_ad_callouts_on_position           (position)
 #

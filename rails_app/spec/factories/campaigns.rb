@@ -27,7 +27,7 @@
 #  index_campaigns_on_ads_account_id         (ads_account_id)
 #  index_campaigns_on_created_at             (created_at)
 #  index_campaigns_on_end_date               (end_date)
-#  index_campaigns_on_google_id              (((platform_settings ->> 'google'::text)))
+#  index_campaigns_on_google_id              ((((platform_settings -> 'google'::text) ->> 'campaign_id'::text)))
 #  index_campaigns_on_launched_at            (launched_at)
 #  index_campaigns_on_platform_settings      (platform_settings) USING gin
 #  index_campaigns_on_project_id             (project_id)

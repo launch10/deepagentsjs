@@ -30,7 +30,7 @@ class CreateCampaigns < ActiveRecord::Migration[8.0]
       t.index [:project_id, :status]
       t.index [:project_id, :stage]
       t.index :platform_settings, using: :gin
-      t.index "(platform_settings->>'google'->>'campaign_id)", name: "index_campaigns_on_google_id", if_not_exists: true
+      t.index "((platform_settings->'google'->>'campaign_id'))", name: "index_campaigns_on_google_id", if_not_exists: true
       t.index :start_date
       t.index :end_date
     end

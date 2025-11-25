@@ -21,8 +21,8 @@
 #  index_ad_schedules_on_campaign_id                  (campaign_id)
 #  index_ad_schedules_on_campaign_id_and_day_of_week  (campaign_id,day_of_week)
 #  index_ad_schedules_on_created_at                   (created_at)
+#  index_ad_schedules_on_criterion_id                 ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)))
 #  index_ad_schedules_on_day_of_week                  (day_of_week)
-#  index_ad_schedules_on_google_id                    (((platform_settings ->> 'google'::text)))
 #  index_ad_schedules_on_platform_settings            (platform_settings) USING gin
 #
 class AdSchedule < ApplicationRecord

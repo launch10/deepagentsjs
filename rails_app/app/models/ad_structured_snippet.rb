@@ -12,10 +12,10 @@
 #
 # Indexes
 #
+#  index_ad_structured_snippets_on_asset_id           ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)))
 #  index_ad_structured_snippets_on_campaign_id        (campaign_id)
 #  index_ad_structured_snippets_on_category           (category)
 #  index_ad_structured_snippets_on_created_at         (created_at)
-#  index_ad_structured_snippets_on_google_id          (((platform_settings ->> 'google'::text)))
 #  index_ad_structured_snippets_on_platform_settings  (platform_settings) USING gin
 #
 class AdStructuredSnippet < ApplicationRecord

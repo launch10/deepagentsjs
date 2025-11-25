@@ -13,8 +13,8 @@
 # Indexes
 #
 #  index_ad_descriptions_on_ad_id              (ad_id)
+#  index_ad_descriptions_on_asset_id           ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)))
 #  index_ad_descriptions_on_created_at         (created_at)
-#  index_ad_descriptions_on_google_id          (((platform_settings ->> 'google'::text)))
 #  index_ad_descriptions_on_platform_settings  (platform_settings) USING gin
 #  index_ad_descriptions_on_position           (position)
 #
