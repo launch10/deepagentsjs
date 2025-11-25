@@ -17,10 +17,10 @@ module PlatformSettings
           if options[:array]
             invalid = Array(value).map(&:to_s) - allowed
             if invalid.any?
-              raise ArgumentError, "Invalid #{attribute}: #{invalid.join(', ')}. Valid options: #{options[:in].join(', ')}"
+              raise ArgumentError, "Invalid #{attribute}: #{invalid.join(", ")}. Valid options: #{options[:in].join(", ")}"
             end
           elsif !allowed.include?(value.to_s)
-            raise ArgumentError, "Invalid #{attribute}: #{value}. Valid options: #{options[:in].join(', ')}"
+            raise ArgumentError, "Invalid #{attribute}: #{value}. Valid options: #{options[:in].join(", ")}"
           end
         end
 
@@ -48,7 +48,7 @@ module PlatformSettings
     end
 
     platform_attrs.each do |key, value|
-      send("#{key.to_s.delete_suffix('=')}=", value)
+      send("#{key.to_s.delete_suffix("=")}=", value)
     end
 
     super(regular_attrs.to_h)

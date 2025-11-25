@@ -92,7 +92,8 @@ class Campaign < ApplicationRecord
 
   def daily_budget_cents=(amount)
     if amount.nil?
-      return budget&.destroy
+      budget&.destroy
+      return
     end
 
     build_budget if budget.nil?

@@ -22,12 +22,10 @@ customer = client.resource.customer do |c|
 end
 
 puts 'Creating client account...'
-response = client.service.customer.create_customer_client(
+client.service.customer.create_customer_client(
   customer_id: manager_customer_id,
   customer_client: customer
 )
-binding.pry
-
 
 begin
   response = client.service.customer.create_customer_client(
@@ -53,6 +51,6 @@ rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
       puts "  #{k}: #{v}"
     end
   end
-rescue StandardError => e
+rescue => e
   puts "\nFAILED: #{e.message}"
 end

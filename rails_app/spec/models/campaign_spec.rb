@@ -287,7 +287,7 @@ RSpec.describe Campaign, type: :model do
         campaign.reload
         expect(campaign.callouts.count).to eq(0)
         expect(campaign).to_not be_done_highlights_stage
-        
+
         create_list(:ad_callout, 2, ad_group: ad_group, campaign: campaign)
         campaign.reload
         expect(campaign).to be_done_highlights_stage

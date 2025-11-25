@@ -99,7 +99,7 @@ module CampaignConcerns
     BIDDING_STRATEGIES = {
       # Set an average daily budget and the Google Ads system sets your maximum cost per click (CPC) bids on your behalf, with the goal of getting you the most clicks possible within that budget.
       # I.e. maximize traffic
-      "MAXIMIZE_CLICKS": {
+      MAXIMIZE_CLICKS: {
         api_field: "target_spend",
         fields: [
           Field.new(name: "cpc_bid_ceiling_micros", is_required: false, type: "int64")
@@ -108,36 +108,36 @@ module CampaignConcerns
 
       # To use Target ROAS bidding, most campaign types need at least 15 conversions in the past 30 days.
       # https://support.google.com/google-ads/answer/6268637
-      "MAXIMIZE_ROAS": {
+      MAXIMIZE_ROAS: {
         api_field: "target_roas",
         fields: [
           Field.new(name: "target_roas", is_required: false, type: "double"),
           Field.new(name: "cpc_bid_ceiling_micros", is_required: false, type: "int64"),
           Field.new(name: "cpc_bid_floor_micros", is_required: false, type: "int64"),
-          Field.new(name: "target_roas_tolerance_percent_millis", is_required: false, type: "int64"),
+          Field.new(name: "target_roas_tolerance_percent_millis", is_required: false, type: "int64")
         ]
       },
 
       # I.e. maximize leads / signups
       # set with target_cpa field
-      "MAXIMIZE_CONVERSIONS": {
+      MAXIMIZE_CONVERSIONS: {
         api_field: "maximize_conversions",
         fields: [
           Field.new(name: "target_cpa_micros", is_required: false, type: "int64"),
           Field.new(name: "cpc_bid_ceiling_micros", is_required: false, type: "int64"),
-          Field.new(name: "cpc_bid_floor_micros", is_required: false, type: "int64"),
+          Field.new(name: "cpc_bid_floor_micros", is_required: false, type: "int64")
         ]
       },
 
       # For ecommerce sales
       # with target_roas set
-      "MAXIMIZE_CONVERSION_VALUE": {
+      MAXIMIZE_CONVERSION_VALUE: {
         api_field: "maximize_conversion_value",
         fields: [
           Field.new(name: "target_roas", is_required: false, type: "double"),
           Field.new(name: "cpc_bid_ceiling_micros", is_required: false, type: "int64"),
           Field.new(name: "cpc_bid_floor_micros", is_required: false, type: "int64"),
-          Field.new(name: "target_roas_tolerance_percent_millis", is_required: false, type: "int64"),
+          Field.new(name: "target_roas_tolerance_percent_millis", is_required: false, type: "int64")
         ]
       }
     }
@@ -213,7 +213,7 @@ module CampaignConcerns
         c.status = new_status
       end
 
-      response = client.service.campaign.mutate_campaigns(
+      client.service.campaign.mutate_campaigns(
         customer_id: google_customer_id,
         operations: [operation]
       )
@@ -236,6 +236,5 @@ module CampaignConcerns
         send(setter, value) if respond_to?(setter) && send("google_#{field}").nil?
       end
     end
-
   end
 end

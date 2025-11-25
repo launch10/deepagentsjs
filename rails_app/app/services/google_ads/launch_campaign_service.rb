@@ -56,7 +56,7 @@ module GoogleAds
     rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
       handle_google_ads_error(e)
       error_result(errors.join(", "))
-    rescue StandardError => e
+    rescue => e
       error_result(e.message)
     end
 
@@ -64,7 +64,7 @@ module GoogleAds
 
     def set_customer_id!
       # Get customer ID from environment or configuration
-      customer_id = ENV['GOOGLE_ADS_CUSTOMER_ID'] || campaign.account&.google_customer_id
+      customer_id = ENV["GOOGLE_ADS_CUSTOMER_ID"] || campaign.account&.google_customer_id
       raise "No Google Ads customer ID configured" unless customer_id
 
       campaign.google_customer_id = customer_id.tr("-", "")
@@ -86,7 +86,7 @@ module GoogleAds
       )
 
       budget_resource_name = response.results.first.resource_name
-      campaign.google_budget_id = budget_resource_name.split('/').last
+      campaign.google_budget_id = budget_resource_name.split("/").last
 
       Rails.logger.info("Created budget: #{budget_resource_name}")
     end
@@ -119,8 +119,8 @@ campaign.google_advertising_channel_sub_type.present?
         end
 
         # Dates
-        c.start_date = campaign.start_date.strftime('%Y%m%d') if campaign.start_date
-        c.end_date = campaign.end_date.strftime('%Y%m%d') if campaign.end_date
+        c.start_date = campaign.start_date.strftime("%Y%m%d") if campaign.start_date
+        c.end_date = campaign.end_date.strftime("%Y%m%d") if campaign.end_date
 
         # EU political advertising
         c.contains_eu_political_advertising = :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
@@ -134,7 +134,7 @@ campaign.google_advertising_channel_sub_type.present?
       )
 
       campaign_resource_name = response.results.first.resource_name
-      campaign.google_campaign_id = campaign_resource_name.split('/').last
+      campaign.google_campaign_id = campaign_resource_name.split("/").last
 
       Rails.logger.info("Created campaign: #{campaign_resource_name}")
     end
@@ -236,19 +236,19 @@ campaign.google_advertising_channel_sub_type.present?
       # Store criterion IDs
       idx = 0
       campaign.location_targets.each do |location|
-        criterion_id = response.mutate_operation_responses[idx].campaign_criterion_result.resource_name.split('~').last
+        criterion_id = response.mutate_operation_responses[idx].campaign_criterion_result.resource_name.split("~").last
         location.update_column(:google_criterion_id, criterion_id)
         idx += 1
       end
 
       campaign.language_targets.each do |language|
-        criterion_id = response.mutate_operation_responses[idx].campaign_criterion_result.resource_name.split('~').last
+        criterion_id = response.mutate_operation_responses[idx].campaign_criterion_result.resource_name.split("~").last
         language.update_column(:google_criterion_id, criterion_id)
         idx += 1
       end
 
       campaign.ad_schedules.scheduled.each do |schedule|
-        criterion_id = response.mutate_operation_responses[idx].campaign_criterion_result.resource_name.split('~').last
+        criterion_id = response.mutate_operation_responses[idx].campaign_criterion_result.resource_name.split("~").last
         schedule.update_column(:google_criterion_id, criterion_id)
         idx += 1
       end
@@ -278,7 +278,7 @@ campaign.google_advertising_channel_sub_type.present?
 
       ad_group_resource_name = response.results.first.resource_name
       ad_group.google_customer_id = campaign.google_customer_id
-      ad_group.google_ad_group_id = ad_group_resource_name.split('/').last
+      ad_group.google_ad_group_id = ad_group_resource_name.split("/").last
       ad_group.save!
 
       Rails.logger.info("Created ad group: #{ad_group_resource_name}")
@@ -309,7 +309,7 @@ campaign.google_advertising_channel_sub_type.present?
 
       # Store criterion IDs
       ad_group.keywords.each_with_index do |keyword, idx|
-        criterion_id = response.results[idx].resource_name.split('~').last
+        criterion_id = response.results[idx].resource_name.split("~").last
         keyword.google_customer_id = campaign.google_customer_id
         keyword.google_ad_group_id = ad_group.google_ad_group_id
         keyword.google_criterion_id = criterion_id
@@ -360,7 +360,7 @@ campaign.google_advertising_channel_sub_type.present?
 
       ad_group.callouts.each do |callout|
         asset_resource_name = response.mutate_operation_responses[asset_idx].asset_result.resource_name
-        asset_id = asset_resource_name.split('/').last
+        asset_id = asset_resource_name.split("/").last
 
         callout.google_customer_id = campaign.google_customer_id
         callout.google_asset_id = asset_id
@@ -380,7 +380,7 @@ campaign.google_advertising_channel_sub_type.present?
 
       if campaign.structured_snippet.present?
         asset_resource_name = response.mutate_operation_responses[asset_idx].asset_result.resource_name
-        asset_id = asset_resource_name.split('/').last
+        asset_id = asset_resource_name.split("/").last
 
         campaign.structured_snippet.google_customer_id = campaign.google_customer_id
         campaign.structured_snippet.google_asset_id = asset_id
@@ -448,7 +448,7 @@ campaign.google_advertising_channel_sub_type.present?
 
       ad_resource_name = response.results.first.resource_name
       # Format: customers/123/adGroupAds/456~789
-      parts = ad_resource_name.split('~')
+      parts = ad_resource_name.split("~")
 
       ad.google_customer_id = campaign.google_customer_id
       ad.google_ad_group_id = ad_group.google_ad_group_id
@@ -497,7 +497,7 @@ campaign.google_advertising_channel_sub_type.present?
         error_message = "Google Ads Error: #{err.message}"
 
         if err.location
-          fields = err.location.field_path_elements.map(&:field_name).join('.')
+          fields = err.location.field_path_elements.map(&:field_name).join(".")
           error_message += " (field: #{fields})"
         end
 

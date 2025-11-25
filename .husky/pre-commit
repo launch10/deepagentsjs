@@ -1,53 +1,53 @@
-# # Run linters and auto-fix before commit
-# echo "🔍 Running pre-commit checks..."
-# cd "$(dirname "$0")/.."
+# Run linters and auto-fix before commit
+echo "🔍 Running pre-commit checks..."
+cd "$(dirname "$0")/.."
 
-# # Lint Langgraph code
-# cd langgraph_app
-# if pnpm run lint:fix > /dev/null 2>&1 && pnpm run typecheck > /dev/null 2>&1; then
-#   echo "✅ Langgraph"
-# else
-#   echo "❌ Langgraph failed - running checks to show errors:"
-#   pnpm run lint:fix && pnpm run typecheck
-#   exit 1
-# fi
+# Lint Langgraph code
+cd langgraph_app
+if pnpm run lint:fix > /dev/null 2>&1 && pnpm run typecheck > /dev/null 2>&1; then
+  echo "✅ Langgraph"
+else
+  echo "❌ Langgraph failed - running checks to show errors:"
+  pnpm run lint:fix && pnpm run typecheck
+  exit 1
+fi
 
-# # Lint Rails code
-# cd ../rails_app
-# if bundle exec rubocop --autocorrect-all --format simple > /dev/null 2>&1; then
-#   echo "✅ Rails"
-# else
-#   echo "❌ Rails failed - running rubocop to show errors:"
-#   bundle exec rubocop --autocorrect-all --format simple
-#   exit 1
-# fi
+# Lint Rails code
+cd ../rails_app
+if bundle exec rubocop --autocorrect-all --format simple > /dev/null 2>&1; then
+  echo "✅ Rails"
+else
+  echo "❌ Rails failed - running rubocop to show errors:"
+  bundle exec rubocop --autocorrect-all --format simple
+  exit 1
+fi
 
-# cd ../
+cd ../
 
-# # Check if Rails API specs changed (triggers Swagger regeneration)
-# if git diff --cached --name-only | grep -q "rails_app/spec/\(requests\|api\|integration\)/"; then
-#   ./scripts/generate-docs.sh > /dev/null 2>&1
+# Check if Rails API specs changed (triggers Swagger regeneration)
+if git diff --cached --name-only | grep -q "rails_app/spec/\(requests\|api\|integration\)/"; then
+  ./scripts/generate-docs.sh > /dev/null 2>&1
   
-#   # Check if swagger was updated
-#   if ! git diff --quiet rails_app/swagger/ 2>/dev/null; then
-#     echo "⚠️  Swagger updated - please review and commit:"
-#     git diff --name-only rails_app/swagger/ 2>/dev/null || true
-#     exit 1
-#   fi
-#   echo "✅ Swagger"
-# fi
+  # Check if swagger was updated
+  if ! git diff --quiet rails_app/swagger/ 2>/dev/null; then
+    echo "⚠️  Swagger updated - please review and commit:"
+    git diff --name-only rails_app/swagger/ 2>/dev/null || true
+    exit 1
+  fi
+  echo "✅ Swagger"
+fi
 
-# # Check if Swagger changed (triggers TypeScript type regeneration)
-# if git diff --cached --name-only | grep -q "rails_app/swagger/"; then
-#   ./scripts/generate-types.sh > /dev/null 2>&1
+# Check if Swagger changed (triggers TypeScript type regeneration)
+if git diff --cached --name-only | grep -q "rails_app/swagger/"; then
+  ./scripts/generate-types.sh > /dev/null 2>&1
   
-#   # Check if types were updated
-#   if ! git diff --quiet langgraph_app/app/lib/server/api/generated/ 2>/dev/null; then
-#     echo "⚠️  Types updated - please review and commit:"
-#     git diff --name-only langgraph_app/app/lib/server/api/generated/ 2>/dev/null || true
-#     exit 1
-#   fi
-#   echo "✅ Types"
-# fi
+  # Check if types were updated
+  if ! git diff --quiet langgraph_app/app/lib/server/api/generated/ 2>/dev/null; then
+    echo "⚠️  Types updated - please review and commit:"
+    git diff --name-only langgraph_app/app/lib/server/api/generated/ 2>/dev/null || true
+    exit 1
+  fi
+  echo "✅ Types"
+fi
 
-# echo "✅ Done"
+echo "✅ Done"

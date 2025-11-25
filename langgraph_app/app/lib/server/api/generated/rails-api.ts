@@ -273,6 +273,496 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a campaign */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        campaign: {
+                            /** @description Campaign name */
+                            name?: string;
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Website ID */
+                            website_id: number;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description campaign already exists and is returned */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Campaign name */
+                            name?: string;
+                            /** @description Current campaign stage */
+                            stage: string;
+                            /** @description Campaign status */
+                            status: string;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Unique identifier */
+                            website_id: number;
+                            /**
+                             * Format: date
+                             * @description Campaign start date
+                             */
+                            start_date?: string | null;
+                            /**
+                             * Format: date
+                             * @description Campaign end date
+                             */
+                            end_date?: string | null;
+                            /** @description Campaign time zone */
+                            time_zone?: string;
+                            /** @description Daily budget in cents */
+                            daily_budget_cents?: number | null;
+                            workflow?: {
+                                step?: string;
+                                substep?: string | null;
+                            } | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description campaign created with ad group and ad */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Campaign name */
+                            name?: string;
+                            /** @description Current campaign stage */
+                            stage: string;
+                            /** @description Campaign status */
+                            status: string;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Unique identifier */
+                            website_id: number;
+                            /**
+                             * Format: date
+                             * @description Campaign start date
+                             */
+                            start_date?: string | null;
+                            /**
+                             * Format: date
+                             * @description Campaign end date
+                             */
+                            end_date?: string | null;
+                            /** @description Campaign time zone */
+                            time_zone?: string;
+                            /** @description Daily budget in cents */
+                            daily_budget_cents?: number | null;
+                            workflow?: {
+                                step?: string;
+                                substep?: string | null;
+                            } | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid request - missing website_id */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Campaign ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Updates a campaign (autosave) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Campaign ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        campaign: {
+                            /** @description Campaign name */
+                            name?: string;
+                            /**
+                             * Format: date
+                             * @description Campaign start date
+                             */
+                            start_date?: string;
+                            /**
+                             * Format: date
+                             * @description Campaign end date
+                             */
+                            end_date?: string;
+                            /** @description Campaign time zone */
+                            time_zone?: string;
+                            /** @description Daily budget in cents */
+                            daily_budget_cents?: number;
+                            /** @description Google Ads channel type */
+                            google_advertising_channel_type?: string;
+                            /** @description Google Ads bidding strategy */
+                            google_bidding_strategy?: string;
+                            ad_groups_attributes?: {
+                                id?: number;
+                                name?: string;
+                                _destroy?: boolean;
+                                ads_attributes?: {
+                                    id?: number;
+                                    _destroy?: boolean;
+                                    headlines_attributes?: {
+                                        id?: number;
+                                        text?: string;
+                                        _destroy?: boolean;
+                                    }[];
+                                    descriptions_attributes?: {
+                                        id?: number;
+                                        text?: string;
+                                        _destroy?: boolean;
+                                    }[];
+                                }[];
+                                keywords_attributes?: {
+                                    id?: number;
+                                    text?: string;
+                                    match_type?: string;
+                                    _destroy?: boolean;
+                                }[];
+                            }[];
+                            callouts_attributes?: {
+                                id?: number;
+                                text?: string;
+                                _destroy?: boolean;
+                            }[];
+                            structured_snippet_attributes?: {
+                                id?: number;
+                                header?: string;
+                                values?: string[];
+                            };
+                            location_targets?: {
+                                target_type?: string;
+                                location_name?: string;
+                                location_type?: string;
+                                country_code?: string;
+                                geo_target_constant?: string;
+                                targeted?: boolean;
+                                radius?: number;
+                                radius_units?: string;
+                            }[];
+                            ad_schedules?: {
+                                time_zone?: string;
+                                always_on?: boolean;
+                                schedules?: unknown[];
+                            };
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description ready_for_next_stage is true after all launch fields are configured */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Campaign name */
+                            name?: string;
+                            /** @description Current campaign stage */
+                            stage: string;
+                            /** @description Campaign status */
+                            status: string;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Unique identifier */
+                            website_id: number;
+                            /**
+                             * Format: date
+                             * @description Campaign start date
+                             */
+                            start_date?: string | null;
+                            /**
+                             * Format: date
+                             * @description Campaign end date
+                             */
+                            end_date?: string | null;
+                            /** @description Campaign time zone */
+                            time_zone?: string;
+                            /** @description Daily budget in cents */
+                            daily_budget_cents?: number | null;
+                            workflow?: {
+                                step?: string;
+                                substep?: string | null;
+                            } | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description campaign not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/campaigns/{id}/advance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Campaign ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Advances campaign to next stage */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Campaign ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description campaign advanced from launch to review stage */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description New campaign stage after advancement */
+                            stage: string;
+                            /** @description Campaign status */
+                            status: string;
+                            workflow?: {
+                                step?: string;
+                                substep?: string | null;
+                            } | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at?: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at?: string;
+                        };
+                    };
+                };
+                /** @description campaign not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot advance from launch - validation failed (missing fields) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{id}/back": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Campaign ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Steps back to previous stage */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Campaign ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description goes back to previous project workflow step when at first campaign stage */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description New campaign stage after advancement */
+                            stage: string;
+                            /** @description Campaign status */
+                            status: string;
+                            workflow?: {
+                                step?: string;
+                                substep?: string | null;
+                            } | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at?: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at?: string;
+                        };
+                    };
+                };
+                /** @description campaign not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_uuid}/workflows/{id}": {
         parameters: {
             query?: never;

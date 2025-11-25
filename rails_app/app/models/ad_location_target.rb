@@ -87,7 +87,7 @@ class AdLocationTarget < ApplicationRecord
       "geoTargetConstants/#{value}"
     end
 
-    self.platform_settings["google"]["criterion_id"] = normalized
+    platform_settings["google"]["criterion_id"] = normalized
   end
 
   # Auto-upcase location_type

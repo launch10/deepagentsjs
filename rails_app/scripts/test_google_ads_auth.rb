@@ -6,11 +6,11 @@ puts
 
 creds = Rails.application.credentials.google_ads
 puts "Credentials loaded:"
-puts "  client_id:       #{creds[:client_id] ? creds[:client_id][0..20] + '...' : 'MISSING'}"
-puts "  client_secret:   #{creds[:client_secret] ? '***' + creds[:client_secret][-4..] : 'MISSING'}"
-puts "  refresh_token:   #{creds[:refresh_token] ? '***' + creds[:refresh_token][-10..] : 'MISSING'}"
-puts "  developer_token: #{creds[:developer_token] ? '***' + creds[:developer_token][-4..] : 'MISSING'}"
-puts "  login_customer_id: #{ENV['GOOGLE_ADS_MANAGER_ID'] || creds[:login_customer_id] || 'MISSING'}"
+puts "  client_id:       #{creds[:client_id] ? creds[:client_id][0..20] + "..." : "MISSING"}"
+puts "  client_secret:   #{creds[:client_secret] ? "***" + creds[:client_secret][-4..] : "MISSING"}"
+puts "  refresh_token:   #{creds[:refresh_token] ? "***" + creds[:refresh_token][-10..] : "MISSING"}"
+puts "  developer_token: #{creds[:developer_token] ? "***" + creds[:developer_token][-4..] : "MISSING"}"
+puts "  login_customer_id: #{ENV["GOOGLE_ADS_MANAGER_ID"] || creds[:login_customer_id] || "MISSING"}"
 puts
 
 config_path = Rails.root.join('config', 'initializers', 'google_ads.rb')
@@ -53,6 +53,6 @@ rescue GRPC::Unavailable => e
   puts "4. Click 'Authorize APIs' and grant access"
   puts "5. Click 'Exchange authorization code for tokens'"
   puts "6. Copy the refresh_token to your Rails credentials"
-rescue StandardError => e
+rescue => e
   puts "Error: #{e.class} - #{e.message}"
 end

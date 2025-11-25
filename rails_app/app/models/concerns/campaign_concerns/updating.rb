@@ -12,7 +12,7 @@ module CampaignConcerns
           end
           update_location_targets(targets_array)
         end
-        
+
         if update_params[:ad_schedules]
           schedule_hash = update_params[:ad_schedules].is_a?(Hash) ? update_params[:ad_schedules] : update_params[:ad_schedules].to_unsafe_h
           update_ad_schedules(schedule_hash.symbolize_keys)

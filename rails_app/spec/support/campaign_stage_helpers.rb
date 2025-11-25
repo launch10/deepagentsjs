@@ -7,27 +7,27 @@ module CampaignStageHelpers
     else
       # Ensure a template exists
       template = Template.first || create(:template)
-      
+
       # Use canonical way to create project/website/brainstorm
       brainstorm_data = Brainstorm.create_brainstorm!(account, {
         name: attrs[:name] || "Test Campaign",
         thread_id: attrs[:thread_id] || "thread_#{SecureRandom.hex(8)}"
       })
-      
+
       # Update website with template
       website = brainstorm_data[:website]
       website.update!(template: template)
-      
+
       website_id = website.id
       project_id = brainstorm_data[:project].id
     end
-    
+
     created_records = Campaign.create_campaign!(account, {
       name: attrs[:name] || "Test Campaign",
       website_id: website_id,
       project_id: project_id
     })
-    
+
     [created_records[:campaign], created_records[:ad_group], created_records[:ad]]
   end
 

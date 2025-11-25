@@ -1736,7 +1736,7 @@ RSpec.describe "Campaigns API", type: :request do
         let(:id) { first_stage_campaign.id }
 
         run_test! do |response|
-          data = JSON.parse(response.body)
+          JSON.parse(response.body)
           expect(response.status).to eq(200)
 
           first_stage_campaign.reload

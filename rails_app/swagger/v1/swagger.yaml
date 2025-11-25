@@ -839,7 +839,8 @@ paths:
           type: string
       responses:
         '200':
-          description: campaign stepped back to previous stage
+          description: goes back to previous project workflow step when at first campaign
+            stage
           content:
             application/json:
               schema:
@@ -875,8 +876,6 @@ paths:
                 - id
                 - stage
                 - status
-        '422':
-          description: cannot go back - already at first stage
         '404':
           description: campaign not found
   "/api/v1/projects/{project_uuid}/workflows/{id}":
