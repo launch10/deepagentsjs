@@ -32,6 +32,7 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::Creation
   include CampaignConcerns::Stages
   include CampaignConcerns::Scheduling
+  include CampaignConcerns::LocationTargeting
 
   belongs_to :account
   belongs_to :project
@@ -49,7 +50,7 @@ class Campaign < ApplicationRecord
 
   # Ad targeting
   has_many :keywords, through: :ad_groups, class_name: "AdKeyword"
-  has_many :location_targeting, class_name: "AdLocationTarget"
+  has_many :location_targets, class_name: "AdLocationTarget", dependent: :destroy
 
   STATUSES = %w[draft active paused completed]
 

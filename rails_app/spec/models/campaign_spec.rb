@@ -205,18 +205,19 @@ RSpec.describe Campaign, type: :model do
         campaign.stage = "launch"
         expect(campaign).to_not be_valid # You wouldn't be ALLOWED since prev stage isn't complete
 
-        create_list(:ad_keyword, 5, ad_group: ad_group)
-        expect(campaign).to be_done_keywords_stage
+        expect(campaign).to_not be_done_settings_stage
 
-        campaign.ad_groups.first.keywords.destroy_all
-        create_list(:ad_keyword, 15, ad_group: ad_group)
-        expect(campaign).to be_done_keywords_stage
+        campaign.update_column(:daily_budget_cents, 1000)
+        campaign.update_ad_schedules(
+          time_zone: "America/New_York",
+          always_on: true
+        )
 
-        campaign.ad_groups.first.keywords.destroy_all
+        expect(campaign).to be_done_settings_stage
 
-        # too few keywords
-        create_list(:ad_keyword, 4, ad_group: ad_group)
-        expect(campaign).to_not be_done_keywords_stage
+        campaign.ad_schedules.destroy_all
+
+
       end
     end
 

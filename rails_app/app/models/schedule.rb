@@ -89,31 +89,59 @@ class Schedule
     end
   end
 
+  # Updates the campaign schedule from structured data
+  #
+  # @param schedule_data [Hash] the schedule configuration
+  # @option schedule_data [Boolean] :always_on whether the campaign runs 24/7
+  # @option schedule_data [Array<String>] :day_of_week days when ads should run (e.g., ['Monday', 'Tuesday'])
+  # @option schedule_data [String] :start_time time when ads start (e.g., '9:00am')
+  # @option schedule_data [String] :end_time time when ads end (e.g., '5:00pm')
+  # @option schedule_data [String] :time_zone IANA time zone (e.g., 'America/New_York')
+  #
+  # @example Always-on schedule
+  #   schedule.update(always_on: true, time_zone: 'America/New_York')
+  #
+  # @example Specific days and times
+  #   schedule.update(
+  #     always_on: false,
+  #     day_of_week: ['Monday', 'Tuesday'],
+  #     start_time: '9:00am',
+  #     end_time: '5:00pm',
+  #     time_zone: 'America/Chicago'
+  #   )
+  #
+  # @return [void]
   def update(schedule_data)
-    campaign.ad_schedules.destroy_all
+    Campaign.transaction do
+      destroy
 
-    if schedule_data[:time_zone].present?
-      self.time_zone = schedule_data[:time_zone]
-    end
+      if schedule_data[:time_zone].present?
+        self.time_zone = schedule_data[:time_zone]
+      end
 
-    if schedule_data[:always_on]
-      campaign.ad_schedules.create!(always_on: true)
-    else
-      days = schedule_data[:day_of_week] || []
-      start_hour, start_minute = parse_time(schedule_data[:start_time])
-      end_hour, end_minute = parse_time(schedule_data[:end_time])
+      if schedule_data[:always_on]
+        campaign.ad_schedules.create!(always_on: true)
+      else
+        days = schedule_data[:day_of_week] || []
+        start_hour, start_minute = parse_time(schedule_data[:start_time])
+        end_hour, end_minute = parse_time(schedule_data[:end_time])
 
-      days.each do |day|
-        campaign.ad_schedules.create!(
-          day_of_week: day,
-          start_hour: start_hour,
-          start_minute: start_minute,
-          end_hour: end_hour,
-          end_minute: end_minute,
-          always_on: false
-        )
+        days.each do |day|
+          campaign.ad_schedules.create!(
+            day_of_week: day,
+            start_hour: start_hour,
+            start_minute: start_minute,
+            end_hour: end_hour,
+            end_minute: end_minute,
+            always_on: false
+          )
+        end
       end
     end
+  end
+
+  def destroy
+    campaign.ad_schedules.destroy_all
   end
 
   private

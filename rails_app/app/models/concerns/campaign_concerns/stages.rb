@@ -134,10 +134,10 @@ module CampaignConcerns
         end
       end
 
-      # Validate targeting and budget
-      if location_targeting.blank? || location_targeting.empty?
-        errors.add(:location_targeting, "must be configured")
-      end
+      # # Validate targeting and budget
+      # if location_targeting.blank? || location_targeting.empty?
+      #   errors.add(:location_targeting, "must be configured")
+      # end
 
       if schedule.blank? || schedule.empty?
         errors.add(:schedule, "must be configured")

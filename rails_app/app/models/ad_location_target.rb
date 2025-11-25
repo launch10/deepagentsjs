@@ -30,4 +30,120 @@
 #
 class AdLocationTarget < ApplicationRecord
   belongs_to :campaign
+
+  TARGET_TYPES = %w[geo_location radius location_group].freeze
+  LOCATION_TYPES = %w[COUNTRY REGION CITY POSTAL DMA AIRPORT UNIVERSITY].freeze
+  RADIUS_UNITS = %w[MILES KILOMETERS].freeze
+
+  validates :target_type, presence: true, inclusion: { in: TARGET_TYPES }
+  validates :location_type, inclusion: { in: LOCATION_TYPES }, allow_nil: true
+  validates :radius_units, inclusion: { in: RADIUS_UNITS }, allow_nil: true
+
+  validate :geo_location_fields_required
+  validate :radius_fields_required
+
+  scope :targeted, -> { where(negative: false) }
+  scope :excluded, -> { where(negative: true) }
+  scope :geo_locations, -> { where(target_type: 'geo_location') }
+  scope :radius_targets, -> { where(target_type: 'radius') }
+  scope :location_groups, -> { where(target_type: 'location_group') }
+
+  def geo_location?
+    target_type == 'geo_location'
+  end
+
+  def radius?
+    target_type == 'radius'
+  end
+
+  def location_group?
+    target_type == 'location_group'
+  end
+
+  def excluded?
+    negative
+  end
+
+  def google_criterion_id
+    platform_ids&.dig('google')
+  end
+
+  def google_criterion_id=(value)
+    self.platform_ids ||= {}
+    self.platform_ids['google'] = value
+  end
+
+  # @return [Hash] JSON representation for the frontend
+  # @example Geo location target
+  #   {
+  #     target_type: 'geo_location',
+  #     location_identifier: 'geoTargetConstants/2840',
+  #     location_name: 'United States',
+  #     location_type: 'COUNTRY',
+  #     country_code: 'US',
+  #     negative: false,
+  #     radius: 10,
+  #     radius_units: 'MILES'
+  #   }
+  # @example Radius target
+  #   {
+  #     target_type: 'radius',
+  #     address_line_1: '38 avenue de l\'Opéra',
+  #     city: 'Paris',
+  #     postal_code: '75002',
+  #     country_code: 'FR',
+  #     radius: 10,
+  #     radius_units: 'MILES',
+  #     negative: false
+  #   }
+  def as_json
+    base = {
+      target_type: target_type,
+      negative: negative
+    }
+
+    if geo_location?
+      base.merge(
+        location_identifier: location_identifier,
+        location_name: location_name,
+        location_type: location_type,
+        country_code: country_code,
+        radius: radius&.to_f,
+        radius_units: radius_units
+      )
+    elsif radius?
+      base.merge(
+        address_line_1: address_line_1,
+        city: city,
+        state: state,
+        postal_code: postal_code,
+        country_code: country_code,
+        radius: radius&.to_f,
+        radius_units: radius_units,
+        latitude: latitude&.to_f,
+        longitude: longitude&.to_f
+      )
+    else
+      base
+    end
+  end
+
+  private
+
+  def geo_location_fields_required
+    return unless geo_location?
+
+    errors.add(:location_identifier, "can't be blank") if location_identifier.blank?
+    errors.add(:location_name, "can't be blank") if location_name.blank?
+    errors.add(:country_code, "can't be blank") if country_code.blank?
+  end
+
+  def radius_fields_required
+    return unless radius?
+
+    errors.add(:radius, "can't be blank") if radius.blank?
+    errors.add(:radius_units, "can't be blank") if radius_units.blank?
+    errors.add(:city, "can't be blank") if city.blank?
+    errors.add(:country_code, "can't be blank") if country_code.blank?
+  end
 end
