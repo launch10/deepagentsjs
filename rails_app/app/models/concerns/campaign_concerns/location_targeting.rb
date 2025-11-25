@@ -3,7 +3,7 @@ module CampaignConcerns
     extend ActiveSupport::Concern
 
     def has_location_targeting?
-      location_targets.targeted.exists?
+      location_targets.valid?
     end
 
     def location_targets_json

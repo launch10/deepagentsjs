@@ -51,7 +51,17 @@ class Campaign < ApplicationRecord
 
   # Ad targeting
   has_many :keywords, through: :ad_groups, class_name: "AdKeyword"
-  has_many :location_targets, class_name: "AdLocationTarget", dependent: :destroy
+  has_many :location_targets, class_name: "AdLocationTarget", dependent: :destroy do
+    # Google Ads requires at least one positive (non-excluded) location target
+    def invalid?
+      targeted.empty?
+    end
+
+    def valid?
+      !invalid?
+    end
+  end
+  alias_method :location_targeting, :location_targets
 
   STATUSES = %w[draft active paused completed]
 

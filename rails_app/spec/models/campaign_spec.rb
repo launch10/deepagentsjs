@@ -69,6 +69,28 @@ RSpec.describe Campaign, type: :model do
     [campaign, ad_group, ad]
   end
 
+  def finish_settings_stage
+    campaign, ad_group, ad = finish_keywords_stage
+
+    campaign.update_column(:daily_budget_cents, 1000)
+    campaign.update_ad_schedules(
+      time_zone: "America/New_York",
+      always_on: true
+    )
+    campaign.update_location_targets([
+      {
+        target_type: "geo_location",
+        location_name: "United States",
+        location_type: "COUNTRY",
+        country_code: "US",
+        geo_target_constant: "geoTargetConstants/2840",
+        targeted: true,
+        radius: 10,
+        radius_units: "miles"
+      }
+    ])
+  end
+
   describe "validations" do
     it { should validate_presence_of(:status) }
     it { should validate_inclusion_of(:status).in_array(Campaign::STATUSES) }
@@ -197,7 +219,7 @@ RSpec.describe Campaign, type: :model do
         expect(campaign).to_not be_done_keywords_stage
       end
 
-      it "validates settings stage", :focus do
+      it "validates settings stage" do
         campaign, _, _ = finish_keywords_stage
 
         expect(campaign).to be_done_keywords_stage
@@ -228,7 +250,26 @@ RSpec.describe Campaign, type: :model do
 
         expect(campaign).to be_done_settings_stage
 
+        # Invalidate
+        campaign.update_column(:daily_budget_cents, nil)
+        expect(campaign).to_not be_done_settings_stage
+
+        # Valid again
+        campaign.update_column(:daily_budget_cents, 1000)
+
+        # Invalid again
         campaign.ad_schedules.destroy_all
+        expect(campaign).to_not be_done_settings_stage
+
+        # Valid again
+        campaign.update_ad_schedules(
+          time_zone: "America/New_York",
+          always_on: true
+        )
+
+        # Invalid again
+        campaign.location_targets.destroy_all
+        expect(campaign).to_not be_done_settings_stage
       end
     end
 
