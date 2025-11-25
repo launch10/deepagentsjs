@@ -19,6 +19,9 @@
 #  index_ad_structured_snippets_on_platform_settings  (platform_settings) USING gin
 #
 class AdStructuredSnippet < ApplicationRecord
+  include PlatformSettings
+  platform_setting :google, :asset_id
+
   include AdStructuredSnippetConcerns::Categories
 
   belongs_to :campaign
