@@ -13,6 +13,5 @@ class CreateAdKeywords < ActiveRecord::Migration[8.0]
       t.index :position
       t.index :text
     end
-
   end
 end

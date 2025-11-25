@@ -35,7 +35,7 @@ class AdSchedule < ApplicationRecord
   def on_now?(time = Time.current)
     return true if always_on?
 
-    day = time.strftime('%A').downcase
+    day = time.strftime("%A").downcase
     return false unless day_of_week.downcase == day
 
     time_in_minutes = time.hour * 60 + time.min
@@ -59,8 +59,8 @@ class AdSchedule < ApplicationRecord
   def no_time_fields_if_always_on
     return unless always_on?
 
-    if day_of_week.present? || start_hour.present? || start_minute.present? || 
-       end_hour.present? || end_minute.present?
+    if day_of_week.present? || start_hour.present? || start_minute.present? ||
+        end_hour.present? || end_minute.present?
       errors.add(:always_on, "schedule should not have time fields when always_on is true")
     end
   end

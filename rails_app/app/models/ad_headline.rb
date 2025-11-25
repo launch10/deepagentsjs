@@ -28,10 +28,10 @@ class AdHeadline < ApplicationRecord
     return unless ad&.campaign
 
     existing = AdHeadline.joins(:ad)
-                        .where(ad_id: ad.id)
-                        .where(position: position)
-                        .where.not(id: id)
-                        .exists?
+      .where(ad_id: ad.id)
+      .where(position: position)
+      .where.not(id: id)
+      .exists?
 
     errors.add(:position, "must be unique within campaign") if existing
   end

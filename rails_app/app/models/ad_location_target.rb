@@ -44,22 +44,22 @@ class AdLocationTarget < ApplicationRecord
 
   scope :targeted, -> { where(targeted: true) }
   scope :excluded, -> { where(targeted: false) }
-  scope :geo_locations, -> { where(target_type: 'geo_location') }
-  scope :radius_targets, -> { where(target_type: 'radius') }
-  scope :location_groups, -> { where(target_type: 'location_group') }
+  scope :geo_locations, -> { where(target_type: "geo_location") }
+  scope :radius_targets, -> { where(target_type: "radius") }
+  scope :location_groups, -> { where(target_type: "location_group") }
 
   before_validation :infer_target_type, if: -> { target_type.blank? }
 
   def geo_location?
-    target_type == 'geo_location'
+    target_type == "geo_location"
   end
 
   def radius?
-    target_type == 'radius'
+    target_type == "radius"
   end
 
   def location_group?
-    target_type == 'location_group'
+    target_type == "location_group"
   end
 
   def excluded?
@@ -67,12 +67,12 @@ class AdLocationTarget < ApplicationRecord
   end
 
   def google_criterion_id
-    platform_ids&.dig('google')
+    platform_ids&.dig("google")
   end
 
   def google_criterion_id=(value)
     self.platform_ids ||= {}
-    self.platform_ids['google'] = value
+    self.platform_ids["google"] = value
   end
 
   # Alias for frontend convenience
@@ -87,8 +87,8 @@ class AdLocationTarget < ApplicationRecord
   # Normalize and store geo constant
   def location_identifier=(value)
     return super(nil) if value.blank?
-    
-    normalized = if value.to_s.start_with?('geoTargetConstants/')
+
+    normalized = if value.to_s.start_with?("geoTargetConstants/")
       value
     else
       "geoTargetConstants/#{value}"
@@ -96,7 +96,7 @@ class AdLocationTarget < ApplicationRecord
 
     super(normalized)
     self.platform_ids ||= {}
-    self.platform_ids['google'] = normalized
+    self.platform_ids["google"] = normalized
   end
 
   # Auto-upcase location_type
@@ -169,9 +169,9 @@ class AdLocationTarget < ApplicationRecord
 
   def infer_target_type
     if location_identifier.present?
-      self.target_type = 'geo_location'
+      self.target_type = "geo_location"
     elsif address_line_1.present? || latitude.present?
-      self.target_type = 'radius'
+      self.target_type = "radius"
     end
   end
 

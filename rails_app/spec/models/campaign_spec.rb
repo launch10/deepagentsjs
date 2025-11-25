@@ -41,7 +41,7 @@ RSpec.describe Campaign, type: :model do
       website_id: website.id,
       project_id: website.project.id
     })
-    return created_records[:campaign], created_records[:ad_group], created_records[:ad]
+    [created_records[:campaign], created_records[:ad_group], created_records[:ad]]
   end
 
   def finish_content_stage
@@ -50,7 +50,7 @@ RSpec.describe Campaign, type: :model do
     create_list(:ad_description, 2, ad: ad)
     campaign.advance_stage!
 
-    return campaign, ad_group, ad
+    [campaign, ad_group, ad]
   end
 
   def finish_highlights_stage
@@ -58,7 +58,7 @@ RSpec.describe Campaign, type: :model do
     create_list(:ad_callout, 2, ad_group: ad_group, campaign: campaign)
     campaign.advance_stage!
 
-    return campaign, ad_group, ad
+    [campaign, ad_group, ad]
   end
 
   def finish_keywords_stage
@@ -66,7 +66,7 @@ RSpec.describe Campaign, type: :model do
     create_list(:ad_keyword, 5, ad_group: ad_group)
     campaign.advance_stage!
 
-    return campaign, ad_group, ad
+    [campaign, ad_group, ad]
   end
 
   describe "validations" do
@@ -95,7 +95,7 @@ RSpec.describe Campaign, type: :model do
   describe "Stages" do
     describe "stage helpers" do
       it "returns correct prev_stage and next_stage" do
-        campaign, ad_group, ad = create_campaign
+        campaign, _, _ = create_campaign
 
         expect(campaign.stage).to eq("content")
         expect(campaign.prev_stage).to be_nil
@@ -107,7 +107,7 @@ RSpec.describe Campaign, type: :model do
       end
 
       it "validates prev_stage completion when advancing" do
-        campaign, ad_group, ad = create_campaign
+        campaign, _, ad = create_campaign
 
         expect(campaign.be_done_prev_stage?).to be true # first stage has no prev
 
@@ -124,11 +124,11 @@ RSpec.describe Campaign, type: :model do
     end
 
     describe "valid stages" do
-      it "allows all stages listed in workflow.yml"do
+      it "allows all stages listed in workflow.yml" do
         expect(Campaign::STAGES).to eq(%w[content highlights keywords settings launch])
       end
       it "validates content stage" do
-        campaign, ad_group, ad = create_campaign
+        campaign, _, ad = create_campaign
 
         expect(campaign).to_not be_done_content_stage
         expect(campaign.errors[:headlines]).to include("must have between 3-15 headlines (currently has 0)")
@@ -142,7 +142,7 @@ RSpec.describe Campaign, type: :model do
       end
 
       it "validates highlights stage" do
-        campaign, ad_group, ad = finish_content_stage
+        campaign, ad_group, _ = finish_content_stage
 
         expect(campaign).to be_done_content_stage
         campaign.advance_stage!
@@ -175,7 +175,7 @@ RSpec.describe Campaign, type: :model do
       end
 
       it "validates keywords stage" do
-        campaign, ad_group, ad = finish_highlights_stage
+        campaign, ad_group, _ = finish_highlights_stage
 
         expect(campaign).to be_done_highlights_stage
         expect(campaign.stage).to eq("keywords")
@@ -198,7 +198,7 @@ RSpec.describe Campaign, type: :model do
       end
 
       it "validates settings stage", :focus do
-        campaign, ad_group, ad = finish_keywords_stage
+        campaign, _, _ = finish_keywords_stage
 
         expect(campaign).to be_done_keywords_stage
         expect(campaign.stage).to eq("settings")
@@ -229,14 +229,12 @@ RSpec.describe Campaign, type: :model do
         expect(campaign).to be_done_settings_stage
 
         campaign.ad_schedules.destroy_all
-
-
       end
     end
 
     describe "Content" do
       it "allows saving any partial headlines and descriptions" do
-        campaign, ad_group, ad = create_campaign
+        campaign, _, _ = create_campaign
 
         campaign.update_column(:stage, "highlights")
         expect(campaign.stage).to eq("highlights")

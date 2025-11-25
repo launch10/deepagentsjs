@@ -77,6 +77,5 @@ module AdStructuredSnippetConcerns
 
       validates :category, presence: true, inclusion: { in: CATEGORIES }
     end
-
   end
 end
