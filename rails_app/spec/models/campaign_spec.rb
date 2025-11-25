@@ -109,7 +109,7 @@ RSpec.describe Campaign, type: :model do
   describe "nested attributes" do
     it { should accept_nested_attributes_for(:ad_groups).allow_destroy(true) }
     it { should accept_nested_attributes_for(:callouts).allow_destroy(true) }
-    it { should accept_nested_attributes_for(:structured_snippets).allow_destroy(true) }
+    it { should accept_nested_attributes_for(:structured_snippet) }
   end
 
   describe "PlatformSettings" do
@@ -332,7 +332,6 @@ RSpec.describe Campaign, type: :model do
         campaign, ad_group, _ = finish_content_stage
 
         expect(campaign).to be_done_content_stage
-        campaign.advance_stage!
         expect(campaign.stage).to eq("highlights")
         expect(campaign).to be_valid
         campaign.stage = "keywords"
@@ -395,7 +394,7 @@ RSpec.describe Campaign, type: :model do
 
         expect(campaign).to_not be_done_settings_stage
 
-        campaign.update_column(:daily_budget_cents, 1000)
+        campaign.update(daily_budget_cents: 1000)
         campaign.update_ad_schedules(
           time_zone: "America/New_York",
           always_on: true
@@ -416,11 +415,12 @@ RSpec.describe Campaign, type: :model do
         expect(campaign).to be_done_settings_stage
 
         # Invalidate
-        campaign.update_column(:daily_budget_cents, nil)
+        campaign.update(daily_budget_cents: nil)
+        campaign.reload
         expect(campaign).to_not be_done_settings_stage
 
         # Valid again
-        campaign.update_column(:daily_budget_cents, 1000)
+        campaign.update(daily_budget_cents: 1000)
 
         # Invalid again
         campaign.ad_schedules.destroy_all

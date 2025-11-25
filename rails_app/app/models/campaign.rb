@@ -84,4 +84,17 @@ class Campaign < ApplicationRecord
   accepts_nested_attributes_for :ad_groups, allow_destroy: true
   accepts_nested_attributes_for :callouts, allow_destroy: true
   accepts_nested_attributes_for :structured_snippet, allow_destroy: true
+
+  def daily_budget_cents
+    budget&.daily_budget_cents
+  end
+
+  def daily_budget_cents=(amount)
+    if amount.nil?
+      return budget&.destroy
+    end
+
+    build_budget if budget.nil?
+    budget.update!(daily_budget_cents: amount)
+  end
 end

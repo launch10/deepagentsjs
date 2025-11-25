@@ -30,6 +30,9 @@
 #  index_ad_location_targets_on_platform_settings    (platform_settings) USING gin
 #
 class AdLocationTarget < ApplicationRecord
+  include PlatformSettings
+  platform_setting :google, :criterion_id
+
   belongs_to :campaign
 
   TARGET_TYPES = %w[geo_location radius location_group].freeze
@@ -67,15 +70,6 @@ class AdLocationTarget < ApplicationRecord
     !targeted
   end
 
-  def google_criterion_id
-    platform_ids&.dig("google")
-  end
-
-  def google_criterion_id=(value)
-    self.platform_ids ||= {}
-    self.platform_ids["google"] = value
-  end
-
   def geo_target_constant=(value)
     self.google_criterion_id = value
   end
@@ -93,8 +87,7 @@ class AdLocationTarget < ApplicationRecord
       "geoTargetConstants/#{value}"
     end
 
-    self.platform_ids ||= {}
-    self.platform_ids["google"] = normalized
+    self.platform_settings["google"]["criterion_id"] = normalized
   end
 
   # Auto-upcase location_type
