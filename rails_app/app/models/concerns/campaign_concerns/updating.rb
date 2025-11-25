@@ -7,20 +7,20 @@ module CampaignConcerns
         # Separate params into regular attributes and idempotent attributes
         idempotent_params = params.deep_dup
         regular_params = params.deep_dup
-        
+
         # Remove idempotent attributes from regular_params (they need special handling)
         regular_params[:ad_groups_attributes]&.each do |ag_attrs|
           ag_attrs.delete(:keywords_attributes)
-          
+
           ag_attrs[:ads_attributes]&.each do |ad_attrs|
             ad_attrs.delete(:headlines_attributes)
             ad_attrs.delete(:descriptions_attributes)
           end
         end
-        
+
         regular_params.delete(:callouts_attributes)
         regular_params.delete(:structured_snippet_attributes)
-        
+
         # Update regular attributes (location_targets and ad_schedules handled by custom setters)
         update!(regular_params)
 
@@ -59,14 +59,24 @@ module CampaignConcerns
       ad.headlines.where.not(id: submitted_ids).delete_all
       ad.headlines.reset
 
+      headlines_to_update = []
+      headlines_to_create = []
+
       headlines_attrs.each do |attrs|
         if attrs[:id]
           headline = ad.headlines.find_by(id: attrs[:id])
-          headline&.update!(text: attrs[:text], position: attrs[:position])
+          if headline
+            headline.text = attrs[:text]
+            headline.position = attrs[:position]
+            headlines_to_update << headline
+          end
         else
-          ad.headlines.create!(text: attrs[:text], position: attrs[:position])
+          headlines_to_create << ad.headlines.new(text: attrs[:text], position: attrs[:position])
         end
       end
+
+      AdHeadline.import(headlines_to_update, on_duplicate_key_update: [:text, :position], validate: false) if headlines_to_update.any?
+      AdHeadline.import(headlines_to_create, validate: false) if headlines_to_create.any?
     end
 
     def replace_ad_descriptions(ad, descriptions_attrs)
@@ -75,14 +85,24 @@ module CampaignConcerns
       ad.descriptions.where.not(id: submitted_ids).delete_all
       ad.descriptions.reset
 
+      descriptions_to_update = []
+      descriptions_to_create = []
+
       descriptions_attrs.each do |attrs|
         if attrs[:id]
           description = ad.descriptions.find_by(id: attrs[:id])
-          description&.update!(text: attrs[:text], position: attrs[:position])
+          if description
+            description.text = attrs[:text]
+            description.position = attrs[:position]
+            descriptions_to_update << description
+          end
         else
-          ad.descriptions.create!(text: attrs[:text], position: attrs[:position])
+          descriptions_to_create << ad.descriptions.new(text: attrs[:text], position: attrs[:position])
         end
       end
+
+      AdDescription.import(descriptions_to_update, on_duplicate_key_update: [:text, :position], validate: false) if descriptions_to_update.any?
+      AdDescription.import(descriptions_to_create, validate: false) if descriptions_to_create.any?
     end
 
     def replace_callouts(callouts_attrs)
@@ -91,15 +111,25 @@ module CampaignConcerns
       callouts.where.not(id: submitted_ids).delete_all
       callouts.reset
 
+      callouts_to_update = []
+      callouts_to_create = []
+
       callouts_attrs.each do |attrs|
         if attrs[:id]
           callout = callouts.find_by(id: attrs[:id])
-          callout&.update!(text: attrs[:text], position: attrs[:position])
+          if callout
+            callout.text = attrs[:text]
+            callout.position = attrs[:position]
+            callouts_to_update << callout
+          end
         else
           ad_group = ad_groups.first
-          callouts.create!(ad_group: ad_group, text: attrs[:text], position: attrs[:position])
+          callouts_to_create << callouts.new(ad_group: ad_group, text: attrs[:text], position: attrs[:position])
         end
       end
+
+      AdCallout.import(callouts_to_update, on_duplicate_key_update: [:text, :position], validate: false) if callouts_to_update.any?
+      AdCallout.import(callouts_to_create, validate: false) if callouts_to_create.any?
     end
 
     def replace_structured_snippet(snippet_attrs)
@@ -127,14 +157,25 @@ module CampaignConcerns
       ad_group.keywords.where.not(id: submitted_ids).delete_all
       ad_group.keywords.reset
 
+      keywords_to_update = []
+      keywords_to_create = []
+
       keywords_attrs.each do |attrs|
         if attrs[:id]
           keyword = ad_group.keywords.find_by(id: attrs[:id])
-          keyword&.update!(text: attrs[:text], match_type: attrs[:match_type], position: attrs[:position])
+          if keyword
+            keyword.text = attrs[:text]
+            keyword.match_type = attrs[:match_type]
+            keyword.position = attrs[:position]
+            keywords_to_update << keyword
+          end
         else
-          ad_group.keywords.create!(text: attrs[:text], match_type: attrs[:match_type], position: attrs[:position])
+          keywords_to_create << ad_group.keywords.new(text: attrs[:text], match_type: attrs[:match_type], position: attrs[:position])
         end
       end
+
+      AdKeyword.import(keywords_to_update, on_duplicate_key_update: [:text, :match_type, :position], validate: false) if keywords_to_update.any?
+      AdKeyword.import(keywords_to_create, validate: false) if keywords_to_create.any?
     end
   end
 end
