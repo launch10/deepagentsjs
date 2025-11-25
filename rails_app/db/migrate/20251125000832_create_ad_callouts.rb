@@ -1,6 +1,6 @@
-class CreateCallouts < ActiveRecord::Migration[8.0]
+class CreateAdCallouts < ActiveRecord::Migration[8.0]
   def change
-    create_table :callouts do |t|
+    create_table :ad_callouts do |t|
       t.bigint :campaign_id, null: false
       t.bigint :ad_group_id
       t.string :text, null: false

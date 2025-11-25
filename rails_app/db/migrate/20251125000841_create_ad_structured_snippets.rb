@@ -1,6 +1,6 @@
-class CreateStructuredSnippets < ActiveRecord::Migration[8.0]
+class CreateAdStructuredSnippets < ActiveRecord::Migration[8.0]
   def change
-    create_table :structured_snippets do |t|
+    create_table :ad_structured_snippets do |t|
       t.bigint :campaign_id, null: false
       t.string :category, null: false
       t.jsonb :values, null: false, default: []

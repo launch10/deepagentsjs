@@ -2,6 +2,8 @@ module CampaignConcerns
   module Stages
     extend ActiveSupport::Concern
 
+    validates :valid_for_stage?, if: { stage_will_change? && stage.present? }
+
     def advance_stage!
       case stage.to_s
       when 'content'

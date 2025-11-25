@@ -1,6 +1,6 @@
-class CreateLocationTargets < ActiveRecord::Migration[8.0]
+class CreateAdLocationTargets < ActiveRecord::Migration[8.0]
   def change
-    create_table :location_targets do |t|
+    create_table :ad_location_targets do |t|
       t.bigint :campaign_id
       t.string :target_type, null: false # geo_location, radius, location_group
       t.boolean :negative, null: false, default: false

@@ -18,6 +18,6 @@
 #  index_keywords_on_position     (position)
 #  index_keywords_on_text         (text)
 #
-class Keyword < ApplicationRecord
-  belongs_to :ad_group
+class AdKeyword < ApplicationRecord
+  belongs_to :ad_group, class_name: "AdGroup", inverse_of: :keywords
 end

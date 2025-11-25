@@ -431,6 +431,40 @@ ALTER SEQUENCE public.active_storage_variant_records_id_seq OWNED BY public.acti
 
 
 --
+-- Name: ad_callouts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_callouts (
+    id bigint NOT NULL,
+    campaign_id bigint NOT NULL,
+    ad_group_id bigint,
+    text character varying NOT NULL,
+    "position" integer NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_callouts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_callouts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_callouts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_callouts_id_seq OWNED BY public.ad_callouts.id;
+
+
+--
 -- Name: ad_descriptions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -496,6 +530,85 @@ ALTER SEQUENCE public.ad_groups_id_seq OWNED BY public.ad_groups.id;
 
 
 --
+-- Name: ad_headlines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_headlines (
+    id bigint NOT NULL,
+    ad_id bigint NOT NULL,
+    text character varying NOT NULL,
+    "position" integer NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_headlines_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_headlines_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_headlines_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_headlines_id_seq OWNED BY public.ad_headlines.id;
+
+
+--
+-- Name: ad_location_targets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_location_targets (
+    id bigint NOT NULL,
+    campaign_id bigint,
+    target_type character varying NOT NULL,
+    negative boolean DEFAULT false NOT NULL,
+    location_identifier character varying,
+    location_name character varying,
+    location_type character varying,
+    platform_ids jsonb DEFAULT '{}'::jsonb,
+    latitude numeric(10,6),
+    longitude numeric(10,6),
+    radius numeric(10,2),
+    radius_units character varying,
+    address_line_1 character varying,
+    city character varying,
+    state character varying,
+    postal_code character varying,
+    country_code character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_location_targets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_location_targets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_location_targets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_location_targets_id_seq OWNED BY public.ad_location_targets.id;
+
+
+--
 -- Name: ad_schedules; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -535,6 +648,39 @@ CREATE SEQUENCE public.ad_schedules_id_seq
 --
 
 ALTER SEQUENCE public.ad_schedules_id_seq OWNED BY public.ad_schedules.id;
+
+
+--
+-- Name: ad_structured_snippets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_structured_snippets (
+    id bigint NOT NULL,
+    campaign_id bigint NOT NULL,
+    category character varying NOT NULL,
+    "values" jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_structured_snippets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_structured_snippets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_structured_snippets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_structured_snippets_id_seq OWNED BY public.ad_structured_snippets.id;
 
 
 --
@@ -687,40 +833,6 @@ CREATE SEQUENCE public.brainstorms_id_seq
 --
 
 ALTER SEQUENCE public.brainstorms_id_seq OWNED BY public.brainstorms.id;
-
-
---
--- Name: callouts; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.callouts (
-    id bigint NOT NULL,
-    campaign_id bigint NOT NULL,
-    ad_group_id bigint,
-    text character varying NOT NULL,
-    "position" integer NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: callouts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.callouts_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: callouts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.callouts_id_seq OWNED BY public.callouts.id;
 
 
 --
@@ -1456,39 +1568,6 @@ ALTER SEQUENCE public.file_specifications_id_seq OWNED BY public.file_specificat
 
 
 --
--- Name: headlines; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.headlines (
-    id bigint NOT NULL,
-    ad_id bigint NOT NULL,
-    text character varying NOT NULL,
-    "position" integer NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: headlines_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.headlines_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: headlines_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.headlines_id_seq OWNED BY public.headlines.id;
-
-
---
 -- Name: icon_embeddings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1622,52 +1701,6 @@ CREATE SEQUENCE public.keywords_id_seq
 --
 
 ALTER SEQUENCE public.keywords_id_seq OWNED BY public.keywords.id;
-
-
---
--- Name: location_targets; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.location_targets (
-    id bigint NOT NULL,
-    campaign_id bigint,
-    target_type character varying NOT NULL,
-    negative boolean DEFAULT false NOT NULL,
-    location_identifier character varying,
-    location_name character varying,
-    location_type character varying,
-    platform_ids jsonb DEFAULT '{}'::jsonb,
-    latitude numeric(10,6),
-    longitude numeric(10,6),
-    radius numeric(10,2),
-    radius_units character varying,
-    address_line_1 character varying,
-    city character varying,
-    state character varying,
-    postal_code character varying,
-    country_code character varying,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: location_targets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.location_targets_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: location_targets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.location_targets_id_seq OWNED BY public.location_targets.id;
 
 
 --
@@ -2244,39 +2277,6 @@ ALTER SEQUENCE public.projects_id_seq OWNED BY public.projects.id;
 CREATE TABLE public.schema_migrations (
     version character varying NOT NULL
 );
-
-
---
--- Name: structured_snippets; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.structured_snippets (
-    id bigint NOT NULL,
-    campaign_id bigint NOT NULL,
-    category character varying NOT NULL,
-    "values" jsonb DEFAULT '[]'::jsonb NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: structured_snippets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.structured_snippets_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: structured_snippets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.structured_snippets_id_seq OWNED BY public.structured_snippets.id;
 
 
 --
@@ -2992,6 +2992,13 @@ ALTER TABLE ONLY public.active_storage_variant_records ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: ad_callouts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_callouts ALTER COLUMN id SET DEFAULT nextval('public.ad_callouts_id_seq'::regclass);
+
+
+--
 -- Name: ad_descriptions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3006,10 +3013,31 @@ ALTER TABLE ONLY public.ad_groups ALTER COLUMN id SET DEFAULT nextval('public.ad
 
 
 --
+-- Name: ad_headlines id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_headlines ALTER COLUMN id SET DEFAULT nextval('public.ad_headlines_id_seq'::regclass);
+
+
+--
+-- Name: ad_location_targets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_location_targets ALTER COLUMN id SET DEFAULT nextval('public.ad_location_targets_id_seq'::regclass);
+
+
+--
 -- Name: ad_schedules id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ad_schedules ALTER COLUMN id SET DEFAULT nextval('public.ad_schedules_id_seq'::regclass);
+
+
+--
+-- Name: ad_structured_snippets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_structured_snippets ALTER COLUMN id SET DEFAULT nextval('public.ad_structured_snippets_id_seq'::regclass);
 
 
 --
@@ -3038,13 +3066,6 @@ ALTER TABLE ONLY public.api_tokens ALTER COLUMN id SET DEFAULT nextval('public.a
 --
 
 ALTER TABLE ONLY public.brainstorms ALTER COLUMN id SET DEFAULT nextval('public.brainstorms_id_seq'::regclass);
-
-
---
--- Name: callouts id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.callouts ALTER COLUMN id SET DEFAULT nextval('public.callouts_id_seq'::regclass);
 
 
 --
@@ -3146,13 +3167,6 @@ ALTER TABLE ONLY public.file_specifications ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
--- Name: headlines id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.headlines ALTER COLUMN id SET DEFAULT nextval('public.headlines_id_seq'::regclass);
-
-
---
 -- Name: icon_embeddings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3178,13 +3192,6 @@ ALTER TABLE ONLY public.inbound_webhooks ALTER COLUMN id SET DEFAULT nextval('pu
 --
 
 ALTER TABLE ONLY public.keywords ALTER COLUMN id SET DEFAULT nextval('public.keywords_id_seq'::regclass);
-
-
---
--- Name: location_targets id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.location_targets ALTER COLUMN id SET DEFAULT nextval('public.location_targets_id_seq'::regclass);
 
 
 --
@@ -3290,13 +3297,6 @@ ALTER TABLE ONLY public.project_workflows ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.projects ALTER COLUMN id SET DEFAULT nextval('public.projects_id_seq'::regclass);
-
-
---
--- Name: structured_snippets id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.structured_snippets ALTER COLUMN id SET DEFAULT nextval('public.structured_snippets_id_seq'::regclass);
 
 
 --
@@ -3517,6 +3517,14 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 
 --
+-- Name: ad_callouts ad_callouts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_callouts
+    ADD CONSTRAINT ad_callouts_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ad_descriptions ad_descriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3533,11 +3541,35 @@ ALTER TABLE ONLY public.ad_groups
 
 
 --
+-- Name: ad_headlines ad_headlines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_headlines
+    ADD CONSTRAINT ad_headlines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_location_targets ad_location_targets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_location_targets
+    ADD CONSTRAINT ad_location_targets_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ad_schedules ad_schedules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ad_schedules
     ADD CONSTRAINT ad_schedules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_structured_snippets ad_structured_snippets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_structured_snippets
+    ADD CONSTRAINT ad_structured_snippets_pkey PRIMARY KEY (id);
 
 
 --
@@ -3578,14 +3610,6 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 ALTER TABLE ONLY public.brainstorms
     ADD CONSTRAINT brainstorms_pkey PRIMARY KEY (id);
-
-
---
--- Name: callouts callouts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.callouts
-    ADD CONSTRAINT callouts_pkey PRIMARY KEY (id);
 
 
 --
@@ -3765,14 +3789,6 @@ ALTER TABLE ONLY public.file_specifications
 
 
 --
--- Name: headlines headlines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.headlines
-    ADD CONSTRAINT headlines_pkey PRIMARY KEY (id);
-
-
---
 -- Name: icon_embeddings icon_embeddings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3802,14 +3818,6 @@ ALTER TABLE ONLY public.inbound_webhooks
 
 ALTER TABLE ONLY public.keywords
     ADD CONSTRAINT keywords_pkey PRIMARY KEY (id);
-
-
---
--- Name: location_targets location_targets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.location_targets
-    ADD CONSTRAINT location_targets_pkey PRIMARY KEY (id);
 
 
 --
@@ -3938,14 +3946,6 @@ ALTER TABLE ONLY public.projects
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
-
-
---
--- Name: structured_snippets structured_snippets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.structured_snippets
-    ADD CONSTRAINT structured_snippets_pkey PRIMARY KEY (id);
 
 
 --
@@ -4451,6 +4451,34 @@ CREATE UNIQUE INDEX index_active_storage_variant_records_uniqueness ON public.ac
 
 
 --
+-- Name: index_ad_callouts_on_ad_group_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_ad_group_id ON public.ad_callouts USING btree (ad_group_id);
+
+
+--
+-- Name: index_ad_callouts_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_campaign_id ON public.ad_callouts USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_callouts_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_created_at ON public.ad_callouts USING btree (created_at);
+
+
+--
+-- Name: index_ad_callouts_on_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_position ON public.ad_callouts USING btree ("position");
+
+
+--
 -- Name: index_ad_descriptions_on_ad_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4500,6 +4528,55 @@ CREATE INDEX index_ad_groups_on_name ON public.ad_groups USING btree (name);
 
 
 --
+-- Name: index_ad_headlines_on_ad_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_ad_id ON public.ad_headlines USING btree (ad_id);
+
+
+--
+-- Name: index_ad_headlines_on_ad_id_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_ad_id_and_position ON public.ad_headlines USING btree (ad_id, "position");
+
+
+--
+-- Name: index_ad_headlines_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_created_at ON public.ad_headlines USING btree (created_at);
+
+
+--
+-- Name: index_ad_headlines_on_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_position ON public.ad_headlines USING btree ("position");
+
+
+--
+-- Name: index_ad_location_targets_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_location_targets_on_campaign_id ON public.ad_location_targets USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_location_targets_on_location_identifier; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_location_targets_on_location_identifier ON public.ad_location_targets USING btree (location_identifier);
+
+
+--
+-- Name: index_ad_location_targets_on_platform_ids; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_location_targets_on_platform_ids ON public.ad_location_targets USING gin (platform_ids);
+
+
+--
 -- Name: index_ad_schedules_on_campaign_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4525,6 +4602,27 @@ CREATE INDEX index_ad_schedules_on_created_at ON public.ad_schedules USING btree
 --
 
 CREATE INDEX index_ad_schedules_on_day_of_week ON public.ad_schedules USING btree (day_of_week);
+
+
+--
+-- Name: index_ad_structured_snippets_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_campaign_id ON public.ad_structured_snippets USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_structured_snippets_on_category; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_category ON public.ad_structured_snippets USING btree (category);
+
+
+--
+-- Name: index_ad_structured_snippets_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_created_at ON public.ad_structured_snippets USING btree (created_at);
 
 
 --
@@ -4588,34 +4686,6 @@ CREATE UNIQUE INDEX index_brainstorms_on_thread_id ON public.brainstorms USING b
 --
 
 CREATE UNIQUE INDEX index_brainstorms_on_website_id ON public.brainstorms USING btree (website_id);
-
-
---
--- Name: index_callouts_on_ad_group_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_callouts_on_ad_group_id ON public.callouts USING btree (ad_group_id);
-
-
---
--- Name: index_callouts_on_campaign_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_callouts_on_campaign_id ON public.callouts USING btree (campaign_id);
-
-
---
--- Name: index_callouts_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_callouts_on_created_at ON public.callouts USING btree (created_at);
-
-
---
--- Name: index_callouts_on_position; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_callouts_on_position ON public.callouts USING btree ("position");
 
 
 --
@@ -5193,34 +5263,6 @@ CREATE INDEX index_file_specifications_on_filetype ON public.file_specifications
 
 
 --
--- Name: index_headlines_on_ad_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_headlines_on_ad_id ON public.headlines USING btree (ad_id);
-
-
---
--- Name: index_headlines_on_ad_id_and_position; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_headlines_on_ad_id_and_position ON public.headlines USING btree (ad_id, "position");
-
-
---
--- Name: index_headlines_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_headlines_on_created_at ON public.headlines USING btree (created_at);
-
-
---
--- Name: index_headlines_on_position; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_headlines_on_position ON public.headlines USING btree ("position");
-
-
---
 -- Name: index_icon_embeddings_on_key; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5302,27 +5344,6 @@ CREATE INDEX index_keywords_on_position ON public.keywords USING btree ("positio
 --
 
 CREATE INDEX index_keywords_on_text ON public.keywords USING btree (text);
-
-
---
--- Name: index_location_targets_on_campaign_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_location_targets_on_campaign_id ON public.location_targets USING btree (campaign_id);
-
-
---
--- Name: index_location_targets_on_location_identifier; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_location_targets_on_location_identifier ON public.location_targets USING btree (location_identifier);
-
-
---
--- Name: index_location_targets_on_platform_ids; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_location_targets_on_platform_ids ON public.location_targets USING gin (platform_ids);
 
 
 --
@@ -5617,27 +5638,6 @@ CREATE INDEX index_projects_on_updated_at ON public.projects USING btree (update
 --
 
 CREATE UNIQUE INDEX index_projects_on_uuid ON public.projects USING btree (uuid);
-
-
---
--- Name: index_structured_snippets_on_campaign_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_structured_snippets_on_campaign_id ON public.structured_snippets USING btree (campaign_id);
-
-
---
--- Name: index_structured_snippets_on_category; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_structured_snippets_on_category ON public.structured_snippets USING btree (category);
-
-
---
--- Name: index_structured_snippets_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_structured_snippets_on_created_at ON public.structured_snippets USING btree (created_at);
 
 
 --
