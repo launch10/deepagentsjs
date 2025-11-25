@@ -31,6 +31,8 @@
 require 'rails_helper'
 
 RSpec.describe Campaign, type: :model do
+  let(:account) { create(:account) }
+  let(:website) { create(:website, account: account) }
   describe "validations" do
     it { should validate_presence_of(:status) }
     it { should validate_inclusion_of(:status).in_array(Campaign::STATUSES) }
@@ -46,6 +48,18 @@ RSpec.describe Campaign, type: :model do
 
   describe "Creation", :focus do
     it "creates ad, ad group, and campaign together" do
+      created_records = Campaign.create_campaign!(account, {
+        name: "Test Campaign",
+        website_id: website.id,
+        project_id: website.project.id
+      })
+      campaign = created_records[:campaign]
+      ad_group = created_records[:ad_group]
+      ad = created_records[:ad]
+
+      expect(campaign).to be_persisted
+      expect(ad_group).to be_persisted
+      expect(ad).to be_persisted
     end
   end
 end

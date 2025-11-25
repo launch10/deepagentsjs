@@ -5,11 +5,10 @@ module CampaignConcerns
     class_methods do
       def create_campaign!(account, campaign_params)
         transaction do
-          campaign = Campaign.create!(
+          campaign = account.campaigns.create!(
             name: campaign_params[:name],
             project_id: campaign_params[:project_id],
             website_id: campaign_params[:website_id],
-            thread_id: campaign_params[:thread_id]
           )
 
           ad_group = campaign.ad_groups.create!(

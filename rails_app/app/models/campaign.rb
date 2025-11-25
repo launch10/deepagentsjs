@@ -40,10 +40,10 @@ class Campaign < ApplicationRecord
   has_one :project_workflow, -> { where(workflow_type: "launch") }, through: :project
 
   # Ad creative
-  has_many :callouts, class_name: "AdCallout", -> { order(position: :asc) }, dependent: :destroy
-  has_many :structured_snippets, class_name: "AdStructuredSnippet", -> { order(position: :asc) }, dependent: :destroy
-  has_many :headlines, through: :ads, class_name: "AdHeadline"
-  has_many :descriptions, through: :ads, class_name: "AdDescription"
+  has_many :callouts, -> { order(position: :asc) }, class_name: "AdCallout", dependent: :destroy
+  has_many :structured_snippets, -> { order(position: :asc) }, class_name: "AdStructuredSnippet", dependent: :destroy
+  has_many :headlines, -> { order(position: :asc) }, through: :ads, class_name: "AdHeadline"
+  has_many :descriptions, -> { order(position: :asc) }, through: :ads, class_name: "AdDescription"
 
   # Ad targeting
   has_many :keywords, through: :ad_groups, class_name: "AdKeyword"
