@@ -4,10 +4,12 @@
 #
 #  id                 :bigint           not null, primary key
 #  daily_budget_cents :integer
+#  end_date           :date
 #  launched_at        :datetime
 #  name               :string
 #  platform_settings  :jsonb
 #  stage              :string           default("content")
+#  start_date         :date
 #  status             :string           default("draft")
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null

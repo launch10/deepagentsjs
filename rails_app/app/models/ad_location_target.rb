@@ -2,31 +2,29 @@
 #
 # Table name: ad_location_targets
 #
-#  id                  :bigint           not null, primary key
-#  address_line_1      :string
-#  city                :string
-#  country_code        :string
-#  latitude            :decimal(10, 6)
-#  location_identifier :string
-#  location_name       :string
-#  location_type       :string
-#  longitude           :decimal(10, 6)
-#  targeted            :boolean          default(TRUE), not null
-#  platform_ids        :jsonb
-#  postal_code         :string
-#  radius              :decimal(10, 2)
-#  radius_units        :string
-#  state               :string
-#  target_type         :string           not null
-#  created_at          :datetime         not null
-#  updated_at          :datetime         not null
-#  campaign_id         :bigint
+#  id             :bigint           not null, primary key
+#  address_line_1 :string
+#  city           :string
+#  country_code   :string
+#  latitude       :decimal(10, 6)
+#  location_name  :string
+#  location_type  :string
+#  longitude      :decimal(10, 6)
+#  platform_ids   :jsonb
+#  postal_code    :string
+#  radius         :decimal(10, 2)
+#  radius_units   :string
+#  state          :string
+#  target_type    :string           not null
+#  targeted       :boolean          default(TRUE), not null
+#  created_at     :datetime         not null
+#  updated_at     :datetime         not null
+#  campaign_id    :bigint
 #
 # Indexes
 #
-#  index_ad_location_targets_on_campaign_id          (campaign_id)
-#  index_ad_location_targets_on_location_identifier  (location_identifier)
-#  index_ad_location_targets_on_platform_ids         (platform_ids) USING gin
+#  index_ad_location_targets_on_campaign_id  (campaign_id)
+#  index_ad_location_targets_on_google_id    (((platform_ids ->> 'google'::text)))
 #
 class AdLocationTarget < ApplicationRecord
   belongs_to :campaign
@@ -75,18 +73,16 @@ class AdLocationTarget < ApplicationRecord
     self.platform_ids["google"] = value
   end
 
-  # Alias for frontend convenience
   def geo_target_constant=(value)
-    self.location_identifier = value
+    self.google_criterion_id = value
   end
 
   def geo_target_constant
-    location_identifier
+    google_criterion_id
   end
 
-  # Normalize and store geo constant
-  def location_identifier=(value)
-    return super(nil) if value.blank?
+  def google_criterion_id=(value)
+    return if value.blank?
 
     normalized = if value.to_s.start_with?("geoTargetConstants/")
       value
@@ -94,7 +90,6 @@ class AdLocationTarget < ApplicationRecord
       "geoTargetConstants/#{value}"
     end
 
-    super(normalized)
     self.platform_ids ||= {}
     self.platform_ids["google"] = normalized
   end
@@ -140,8 +135,7 @@ class AdLocationTarget < ApplicationRecord
 
     if geo_location?
       base.merge(
-        geo_target_constant: google_criterion_id || location_identifier,
-        location_identifier: location_identifier,
+        geo_target_constant: google_criterion_id,
         location_name: location_name,
         location_type: location_type,
         country_code: country_code,
@@ -168,7 +162,7 @@ class AdLocationTarget < ApplicationRecord
   private
 
   def infer_target_type
-    if location_identifier.present?
+    if google_criterion_id.present?
       self.target_type = "geo_location"
     elsif address_line_1.present? || latitude.present?
       self.target_type = "radius"
@@ -178,7 +172,7 @@ class AdLocationTarget < ApplicationRecord
   def geo_location_fields_required
     return unless geo_location?
 
-    errors.add(:location_identifier, "can't be blank") if location_identifier.blank?
+    errors.add(:google_criterion_id, "can't be blank") if google_criterion_id.blank?
     errors.add(:location_name, "can't be blank") if location_name.blank?
     errors.add(:country_code, "can't be blank") if country_code.blank?
   end

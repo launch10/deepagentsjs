@@ -605,7 +605,6 @@ CREATE TABLE public.ad_location_targets (
     campaign_id bigint,
     target_type character varying NOT NULL,
     targeted boolean DEFAULT true NOT NULL,
-    location_identifier character varying,
     location_name character varying,
     location_type character varying,
     platform_ids jsonb DEFAULT '{}'::jsonb,
@@ -886,7 +885,9 @@ CREATE TABLE public.campaigns (
     website_id bigint,
     project_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    start_date date,
+    end_date date
 );
 
 
@@ -4600,17 +4601,10 @@ CREATE INDEX index_ad_location_targets_on_campaign_id ON public.ad_location_targ
 
 
 --
--- Name: index_ad_location_targets_on_location_identifier; Type: INDEX; Schema: public; Owner: -
+-- Name: index_ad_location_targets_on_google_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_ad_location_targets_on_location_identifier ON public.ad_location_targets USING btree (location_identifier);
-
-
---
--- Name: index_ad_location_targets_on_platform_ids; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ad_location_targets_on_platform_ids ON public.ad_location_targets USING gin (platform_ids);
+CREATE INDEX index_ad_location_targets_on_google_id ON public.ad_location_targets USING btree (((platform_ids ->> 'google'::text)));
 
 
 --
@@ -6695,6 +6689,8 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251125152131'),
+('20251125151927'),
 ('20251125032642'),
 ('20251125032237'),
 ('20251125031808'),
