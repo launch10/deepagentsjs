@@ -2,22 +2,21 @@
 #
 # Table name: campaigns
 #
-#  id                 :bigint           not null, primary key
-#  daily_budget_cents :integer
-#  end_date           :date
-#  launched_at        :datetime
-#  name               :string
-#  platform_settings  :jsonb
-#  stage              :string           default("content")
-#  start_date         :date
-#  status             :string           default("draft")
-#  time_zone          :string           default("America/New_York")
-#  created_at         :datetime         not null
-#  updated_at         :datetime         not null
-#  account_id         :bigint
-#  ads_account_id     :bigint
-#  project_id         :bigint
-#  website_id         :bigint
+#  id                :bigint           not null, primary key
+#  end_date          :date
+#  launched_at       :datetime
+#  name              :string
+#  platform_settings :jsonb
+#  stage             :string           default("content")
+#  start_date        :date
+#  status            :string           default("draft")
+#  time_zone         :string           default("America/New_York")
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
+#  account_id        :bigint
+#  ads_account_id    :bigint
+#  project_id        :bigint
+#  website_id        :bigint
 #
 # Indexes
 #

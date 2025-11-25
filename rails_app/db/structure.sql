@@ -984,7 +984,6 @@ ALTER SEQUENCE public.brainstorms_id_seq OWNED BY public.brainstorms.id;
 CREATE TABLE public.campaigns (
     id bigint NOT NULL,
     name character varying,
-    daily_budget_cents integer,
     status character varying DEFAULT 'draft'::character varying,
     stage character varying DEFAULT 'content'::character varying,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
