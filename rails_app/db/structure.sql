@@ -604,7 +604,7 @@ CREATE TABLE public.ad_location_targets (
     id bigint NOT NULL,
     campaign_id bigint,
     target_type character varying NOT NULL,
-    targeted boolean DEFAULT false NOT NULL,
+    targeted boolean DEFAULT true NOT NULL,
     location_identifier character varying,
     location_name character varying,
     location_type character varying,

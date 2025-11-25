@@ -1,3 +1,27 @@
+# == Schema Information
+#
+# Table name: ad_schedules
+#
+#  id                    :bigint           not null, primary key
+#  always_on             :boolean          default(FALSE), not null
+#  bid_modifier          :decimal(10, 2)
+#  day_of_week           :string
+#  end_hour              :integer
+#  end_minute            :integer
+#  start_hour            :integer
+#  start_minute          :integer
+#  created_at            :datetime         not null
+#  updated_at            :datetime         not null
+#  campaign_id           :bigint           not null
+#  platform_criterion_id :string
+#
+# Indexes
+#
+#  index_ad_schedules_on_campaign_id                  (campaign_id)
+#  index_ad_schedules_on_campaign_id_and_day_of_week  (campaign_id,day_of_week)
+#  index_ad_schedules_on_created_at                   (created_at)
+#  index_ad_schedules_on_day_of_week                  (day_of_week)
+#
 require 'rails_helper'
 
 RSpec.describe AdSchedule, type: :model do

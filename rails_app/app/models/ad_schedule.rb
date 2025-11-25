@@ -3,12 +3,13 @@
 # Table name: ad_schedules
 #
 #  id                    :bigint           not null, primary key
+#  always_on             :boolean          default(FALSE), not null
 #  bid_modifier          :decimal(10, 2)
-#  day_of_week           :string           not null
-#  end_hour              :integer          not null
-#  end_minute            :integer          not null
-#  start_hour            :integer          not null
-#  start_minute          :integer          not null
+#  day_of_week           :string
+#  end_hour              :integer
+#  end_minute            :integer
+#  start_hour            :integer
+#  start_minute          :integer
 #  created_at            :datetime         not null
 #  updated_at            :datetime         not null
 #  campaign_id           :bigint           not null
