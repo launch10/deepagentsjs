@@ -725,6 +725,8 @@ CREATE TABLE public.ads (
     id bigint NOT NULL,
     ad_group_id bigint,
     status character varying DEFAULT 'draft'::character varying,
+    display_path_1 character varying,
+    display_path_2 character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -886,6 +888,7 @@ CREATE TABLE public.campaigns (
     project_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    time_zone character varying DEFAULT 'America/New_York'::character varying,
     start_date date,
     end_date date
 );

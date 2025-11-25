@@ -11,6 +11,7 @@
 #  stage              :string           default("content")
 #  start_date         :date
 #  status             :string           default("draft")
+#  time_zone          :string           default("America/New_York")
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
 #  account_id         :bigint

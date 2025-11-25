@@ -2,11 +2,13 @@
 #
 # Table name: ads
 #
-#  id          :bigint           not null, primary key
-#  status      :string           default("draft")
-#  created_at  :datetime         not null
-#  updated_at  :datetime         not null
-#  ad_group_id :bigint
+#  id             :bigint           not null, primary key
+#  display_path_1 :string
+#  display_path_2 :string
+#  status         :string           default("draft")
+#  created_at     :datetime         not null
+#  updated_at     :datetime         not null
+#  ad_group_id    :bigint
 #
 # Indexes
 #
