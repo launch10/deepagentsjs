@@ -119,6 +119,28 @@ RSpec.describe Campaign, type: :model do
     end
 
     describe "google settings" do
+      describe "google_campaign_id" do
+        it "can set and get via direct methods" do
+          campaign, _, _ = create_campaign
+          campaign.google_campaign_id = "123"
+          campaign.save!
+
+          expect(campaign.reload.google_campaign_id).to eq("123")
+          expect(campaign.platform_settings["google"]["campaign_id"]).to eq("123")
+        end
+      end
+
+      describe "google_status" do
+        it "can set and get via direct methods" do
+          campaign, _, _ = create_campaign
+          campaign.google_status = "ENABLED"
+          campaign.save!
+
+          expect(campaign.reload.google_status).to eq("ENABLED")
+          expect(campaign.platform_settings["google"]["status"]).to eq("ENABLED")
+        end
+      end
+
       describe "google_advertising_channel_type" do
         it "can set and get via direct methods" do
           campaign, _, _ = create_campaign
@@ -206,7 +228,7 @@ RSpec.describe Campaign, type: :model do
         end
       end
 
-      describe "google_languages", :focus do
+      describe "google_languages" do
         it "can set and get languages" do
           campaign, _, _ = create_campaign
           campaign.languages.create(google_language: "english")
@@ -218,6 +240,16 @@ RSpec.describe Campaign, type: :model do
         end
       end
 
+      describe "google_budgets" do
+        it "can set and get budgets" do
+          campaign, _, _ = create_campaign
+          budget = AdBudget.create(daily_budget_cents: 1000, campaign: campaign)
+
+          expect(campaign.reload.budget.daily_budget_cents).to eq(1000)
+          budget.update!(google_budget_id: "123")
+          expect(campaign.reload.budget.google_budget_id).to eq("123")
+        end
+      end
 
       describe "batch update" do
         it "updates multiple settings at once via update" do
