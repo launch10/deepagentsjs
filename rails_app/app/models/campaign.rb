@@ -1,0 +1,62 @@
+# == Schema Information
+#
+# Table name: campaigns
+#
+#  id                 :bigint           not null, primary key
+#  daily_budget_cents :integer
+#  launched_at        :datetime
+#  name               :string
+#  stage              :string           default("content")
+#  status             :string           default("draft")
+#  created_at         :datetime         not null
+#  updated_at         :datetime         not null
+#  account_id         :bigint
+#  project_id         :bigint
+#  website_id         :bigint
+#
+# Indexes
+#
+#  index_campaigns_on_account_id             (account_id)
+#  index_campaigns_on_account_id_and_stage   (account_id,stage)
+#  index_campaigns_on_account_id_and_status  (account_id,status)
+#  index_campaigns_on_created_at             (created_at)
+#  index_campaigns_on_launched_at            (launched_at)
+#  index_campaigns_on_project_id             (project_id)
+#  index_campaigns_on_project_id_and_stage   (project_id,stage)
+#  index_campaigns_on_project_id_and_status  (project_id,status)
+#  index_campaigns_on_stage                  (stage)
+#  index_campaigns_on_status                 (status)
+#  index_campaigns_on_website_id             (website_id)
+#
+class Campaign < ApplicationRecord
+  include CampaignConcerns::Creation
+
+  belongs_to :account
+  belongs_to :project
+  belongs_to :website
+
+  has_many :ad_groups, dependent: :destroy
+  has_many :ads, through: :ad_groups
+  has_one :project_workflow, through: :project, -> { where(workflow_type: "launch") }
+
+  # Ad creative
+  has_many :callouts, -> { order(position: :asc) }, dependent: :destroy
+  has_many :structured_snippets, -> { order(position: :asc) }, dependent: :destroy
+  has_many :headlines, through: :ads
+  has_many :descriptions, through: :ads
+
+  # Ad targeting
+  has_many :keywords, through: :ad_groups
+
+  monetize :daily_budget_cents
+
+  STATUSES = %w[draft active paused completed]
+  STAGES = %w[content highlights plan ready]
+
+  validates :status, presence: true, inclusion: { in: STATUSES }
+  validates :stage, presence: true, inclusion: { in: STAGES }
+
+  accepts_nested_attributes_for :ad_groups, allow_destroy: true
+  accepts_nested_attributes_for :callouts, allow_destroy: true
+  accepts_nested_attributes_for :structured_snippets, allow_destroy: true
+end
