@@ -1718,7 +1718,8 @@ RSpec.describe "Campaigns API", type: :request do
         end
       end
 
-      response '422', 'cannot go back - already at first stage' do
+      response '200', 'goes back to previous project workflow step when at first campaign stage' do
+        schema APISchemas::Campaign.advance_response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -1736,11 +1737,12 @@ RSpec.describe "Campaigns API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data["errors"]).to be_present
-          expect(data["errors"]).to include("Stage Already at first stage")
+          expect(response.status).to eq(200)
 
           first_stage_campaign.reload
           expect(first_stage_campaign.stage).to eq("content")
+          expect(first_stage_campaign.launch_workflow.step).to eq("website")
+          expect(first_stage_campaign.launch_workflow.substep).to be_nil
         end
       end
 
