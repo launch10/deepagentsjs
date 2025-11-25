@@ -66,14 +66,43 @@ RSpec.describe Campaign, type: :model do
   end
 
   describe "Stages" do
-    describe "valid stages" do
-      it "allows all stages listed in workflow.yml", :focus do
-        expect(Campaign::STAGES).to eq(%w[content highlights keywords settings launch])
-
+    describe "stage helpers" do
+      it "returns correct prev_stage and next_stage" do
         campaign, ad_group, ad = create_campaign
-        expect(campaign.stage).to eq("content") # initial stage
 
+        expect(campaign.stage).to eq("content")
+        expect(campaign.prev_stage).to be_nil
+        expect(campaign.next_stage).to eq("highlights")
+
+        campaign.update_column(:stage, "highlights")
+        expect(campaign.prev_stage).to eq("content")
+        expect(campaign.next_stage).to eq("keywords")
+      end
+
+      it "validates prev_stage completion when advancing" do
+        campaign, ad_group, ad = create_campaign
+
+        expect(campaign.be_done_prev_stage?).to be true # first stage has no prev
+
+        campaign.stage = "highlights"
+        expect(campaign).to_not be_valid
+        expect(campaign.errors[:stage]).to include("cannot advance to highlights until content stage is complete")
+
+        create_list(:ad_headline, 3, ad: ad)
+        create_list(:ad_description, 2, ad: ad)
+
+        campaign.stage = "highlights"
         expect(campaign).to be_valid
+      end
+    end
+
+    describe "valid stages" do
+      it "allows all stages listed in workflow.yml"do
+        expect(Campaign::STAGES).to eq(%w[content highlights keywords settings launch])
+      end
+      it "validates content stage" do
+        campaign, ad_group, ad = create_campaign
+
         expect(campaign).to_not be_done_content_stage
         expect(campaign.errors[:headlines]).to include("must have between 3-15 headlines (currently has 0)")
 
@@ -84,14 +113,49 @@ RSpec.describe Campaign, type: :model do
         create_list(:ad_description, 2, ad: ad)
         expect(campaign).to be_done_content_stage
       end
+
+      it "validates highlights stage", :focus do
+        campaign, ad_group, ad = create_campaign
+        create_list(:ad_headline, 3, ad: ad)
+        create_list(:ad_description, 2, ad: ad)
+
+        expect(campaign).to be_done_content_stage
+        campaign.advance_stage!
+        expect(campaign.stage).to eq("highlights")
+        expect(campaign).to be_valid
+        campaign.stage = "keywords"
+        expect(campaign).to_not be_valid # You wouldn't be ALLOWED since prev stage isn't complete
+
+        # expect(campaign).to_not be_done_highlights_stage
+        create_list(:ad_callout, 2, ad_group: ad_group, campaign: campaign)
+        expect(campaign).to be_done_highlights_stage
+
+        # if we create any structured snippets, we re-validate
+        create(:ad_structured_snippet, campaign: campaign)
+        campaign.reload
+        expect(campaign).to be_done_highlights_stage
+        snippet = campaign.structured_snippet
+
+        # Create an invalid snippet
+        snippet.update(values: ["a"])
+        expect(campaign).to_not be_done_highlights_stage
+
+        snippet.update(values: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"]) # too long
+        campaign.reload
+        expect(campaign).to_not be_done_highlights_stage
+
+        snippet.update(values: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]) # just right
+        campaign.reload
+        expect(campaign).to be_done_highlights_stage
+      end
     end
 
     describe "Content" do
       it "allows saving any partial headlines and descriptions" do
         campaign, ad_group, ad = create_campaign
 
-        campaign.update!(stage: "headlines")
-        expect(campaign.stage).to eq("headlines")
+        campaign.update_column(:stage, "highlights")
+        expect(campaign.stage).to eq("highlights")
       end
     end
   end

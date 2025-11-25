@@ -6,30 +6,40 @@ module CampaignConcerns
 
     included do
       const_set(:STAGES, CampaignConcerns::Stages::STAGES)
+
+      validate :prev_stage_must_be_complete, if: :stage_changed?
     end
 
-    # validates :done_stage?, if: { stage_will_change? && stage.present? }
+    def prev_stage
+      return nil if stage.blank?
+      stage_index = STAGES.index(stage)
+      return nil if stage_index.nil? || stage_index.zero?
+      STAGES[stage_index - 1]
+    end
+
+    def next_stage
+      return nil if stage.blank?
+      stage_index = STAGES.index(stage)
+      return nil if stage_index.nil? || stage_index >= STAGES.length - 1
+      STAGES[stage_index + 1]
+    end
+
+    def be_done_prev_stage?
+      prev = prev_stage
+      return true if prev.nil?
+      send("done_#{prev}_stage?")
+    end
 
     def advance_stage!
-      case stage.to_s
-      when 'content'
-        if done_content_stage?
-          update!(stage: 'highlights')
-        else
-          raise ActiveRecord::RecordInvalid.new(self)
-        end
-      when 'highlights'
-        if done_highlights_stage?
-          update!(stage: 'plan')
-        else
-          raise ActiveRecord::RecordInvalid.new(self)
-        end
-      when 'plan'
-        if done_plan_stage?
-          update!(stage: 'ready')
-        else
-          raise ActiveRecord::RecordInvalid.new(self)
-        end
+      current_done_method = "done_#{stage}_stage?"
+
+      unless respond_to?(current_done_method) && send(current_done_method)
+        raise ActiveRecord::RecordInvalid.new(self)
+      end
+
+      next_stage_name = next_stage
+      if next_stage_name
+        update!(stage: next_stage_name)
       end
     end
 
@@ -79,10 +89,21 @@ module CampaignConcerns
         errors.add(:callouts, "must have between 2-10 unique features (currently has #{callout_count})")
       end
 
-      # Structured snippets are optional, but if present, should have at least 2
-      snippet_count = structured_snippets.count
-      if snippet_count > 0 && snippet_count < 2
-        errors.add(:structured_snippets, "must have at least 2 items if any are provided")
+      # Structured snippets validation
+      if structured_snippet.present?
+        snippet_values = structured_snippet.values
+        
+        if snippet_values.blank? || !snippet_values.is_a?(Array)
+          errors.add(:structured_snippet, "must have values")
+        elsif !snippet_values.length.between?(3, 10)
+          errors.add(:structured_snippet, "must have between 3-10 items (currently has #{snippet_values.length})")
+        else
+          snippet_values.each_with_index do |value, index|
+            unless value.to_s.length.between?(1, 25)
+              errors.add(:structured_snippet, "item #{index + 1} must be between 1-25 characters (currently #{value.to_s.length})")
+            end
+          end
+        end
       end
 
       errors.empty?
@@ -126,6 +147,15 @@ module CampaignConcerns
       done_plan_stage?
 
       errors.empty?
+    end
+
+    private
+
+    def prev_stage_must_be_complete
+      return if be_done_prev_stage?
+
+      prev = prev_stage
+      errors.add(:stage, "cannot advance to #{stage} until #{prev} stage is complete")
     end
   end
 end

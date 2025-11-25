@@ -21,6 +21,8 @@ class AdGroup < ApplicationRecord
   has_many :keywords, -> { order(position: :asc) }, dependent: :destroy
   has_many :headlines, through: :ads
   has_many :descriptions, through: :ads
+  has_many :callouts, dependent: :destroy, class_name: "AdCallout"
+  has_one :structured_snippet, dependent: :destroy, class_name: "AdStructuredSnippet"
 
   validates :name, presence: true
 

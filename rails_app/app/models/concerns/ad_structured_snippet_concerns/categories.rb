@@ -1,0 +1,82 @@
+module AdStructuredSnippetConcerns
+  module Categories
+    extend ActiveSupport::Concern
+
+    CATEGORY_DEFINITIONS = {
+      "brands" => {
+        key: "Brands",
+        definition: "Company or product line names",
+        examples: "Brands: Nest, Nexus, Chromebook"
+      },
+      "amenities" => {
+        key: "Amenities",
+        definition: "Desirable or useful features or facilities of a building or place",
+        examples: "Amenities: Ski Storage, Swimming Pool, Restaurant"
+      },
+      "styles" => {
+        key: "Styles",
+        definition: "Variants of a product",
+        examples: "Styles: Wingback, Button Tufted, French Country, Swivel, Nailhead, Scalloped"
+      },
+      "types" => {
+        key: "Types",
+        definition: "Categories or variants of a product or service",
+        examples: "Types: LED, Incandescent, Halogen, Fluorescent, Metal Halide"
+      },
+      "destinations" => {
+        key: "Destinations",
+        definition: "Geographic entities - cities, states, countries, etc.",
+        examples: "Destinations: Las Vegas, New York, Tokyo, Rome, Cancun, Paris"
+      },
+      "services" => {
+        key: "Services",
+        definition: "Services offered",
+        examples: "Services: Oil change, Smog check, tire alignment"
+      },
+      "courses" => {
+        key: "Courses",
+        definition: "Educational offerings",
+        examples: "Courses: Linear Algebra, Creative Writing, Data Structures"
+      },
+      "neighborhoods" => {
+        key: "Neighborhoods",
+        examples: "Neighborhoods: Downtown, Hayes Valley, Mission, Excelsior"
+      },
+      "shows" => {
+        key: "Shows",
+        definition: "TV shows or theater",
+        examples: "Shows: The Voyage, Knights, American Dancer"
+      },
+      "insurance_coverage" => {
+        key: "Insurance coverage",
+        definition: "Types of coverage offered by insurance companies",
+        examples: "Coverage: Liability, Collision, Comprehensive"
+      },
+      "degree_programs" => {
+        key: "Degree programs",
+        definition: "Major subjects of study at an educational institution",
+        examples: "Degree programs: Accounting, Biology, Psychology"
+      },
+      "featured_hotels" => {
+        key: "Featured hotels",
+        definition: "Hotel names",
+        examples: "Featured hotels: Luxury Inn, Alpine Lodge, Lakeside Hotel"
+      },
+      "models" => {
+        key: "Models",
+        definition: "Car product lines",
+        examples: "Models: Corolla, Camry, Prius"
+      }
+    }
+
+    CATEGORIES = CATEGORY_DEFINITIONS.keys
+
+    included do
+      const_set(:CATEGORY_DEFINITIONS, CATEGORY_DEFINITIONS)
+      const_set(:CATEGORIES, CATEGORIES)
+
+      validates :category, presence: true, inclusion: { in: CATEGORIES }
+    end
+
+  end
+end

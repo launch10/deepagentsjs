@@ -16,5 +16,9 @@
 #  index_ad_structured_snippets_on_created_at   (created_at)
 #
 class AdStructuredSnippet < ApplicationRecord
+  include AdStructuredSnippetConcerns::Categories
+
   belongs_to :campaign
+
+  validates :category, presence: true
 end

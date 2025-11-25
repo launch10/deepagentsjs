@@ -17,7 +17,7 @@
 #  index_callouts_on_created_at   (created_at)
 #  index_callouts_on_position     (position)
 #
-class Callout < ApplicationRecord
+class AdCallout < ApplicationRecord
   belongs_to :campaign, class_name: "Campaign", inverse_of: :callouts
   belongs_to :ad_group, class_name: "AdGroup", inverse_of: :callouts
 end
