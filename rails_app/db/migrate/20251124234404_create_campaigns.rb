@@ -5,7 +5,7 @@ class CreateCampaigns < ActiveRecord::Migration[8.0]
       t.integer :daily_budget_cents
       t.string :status, default: 'draft'
       t.string :stage, default: 'content'
-      t.jsonb :platform_settings, default: { google: {}, facebook: {} }
+      t.jsonb :platform_settings, default: { google: {}, meta: {} }
       t.datetime :launched_at
 
       t.bigint :account_id

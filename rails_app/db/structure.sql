@@ -880,13 +880,13 @@ CREATE TABLE public.campaigns (
     daily_budget_cents integer,
     status character varying DEFAULT 'draft'::character varying,
     stage character varying DEFAULT 'content'::character varying,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     launched_at timestamp(6) without time zone,
     account_id bigint,
     website_id bigint,
     project_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    time_zone character varying DEFAULT 'America/New_York'::character varying
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -4758,6 +4758,13 @@ CREATE INDEX index_campaigns_on_created_at ON public.campaigns USING btree (crea
 --
 
 CREATE INDEX index_campaigns_on_launched_at ON public.campaigns USING btree (launched_at);
+
+
+--
+-- Name: index_campaigns_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_platform_settings ON public.campaigns USING gin (platform_settings);
 
 
 --

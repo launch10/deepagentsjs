@@ -6,9 +6,9 @@
 #  daily_budget_cents :integer
 #  launched_at        :datetime
 #  name               :string
+#  platform_settings  :jsonb
 #  stage              :string           default("content")
 #  status             :string           default("draft")
-#  time_zone          :string           default("America/New_York")
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
 #  account_id         :bigint
@@ -22,6 +22,7 @@
 #  index_campaigns_on_account_id_and_status  (account_id,status)
 #  index_campaigns_on_created_at             (created_at)
 #  index_campaigns_on_launched_at            (launched_at)
+#  index_campaigns_on_platform_settings      (platform_settings) USING gin
 #  index_campaigns_on_project_id             (project_id)
 #  index_campaigns_on_project_id_and_stage   (project_id,stage)
 #  index_campaigns_on_project_id_and_status  (project_id,status)
@@ -34,6 +35,9 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::Stages
   include CampaignConcerns::Scheduling
   include CampaignConcerns::LocationTargeting
+  include CampaignConcerns::PlatformSettings
+  include CampaignConcerns::GooglePlatformSettings
+  include CampaignConcerns::MetaPlatformSettings
 
   belongs_to :account
   belongs_to :project

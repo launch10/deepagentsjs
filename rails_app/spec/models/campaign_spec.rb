@@ -6,9 +6,9 @@
 #  daily_budget_cents :integer
 #  launched_at        :datetime
 #  name               :string
+#  platform_settings  :jsonb
 #  stage              :string           default("content")
 #  status             :string           default("draft")
-#  time_zone          :string           default("America/New_York")
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
 #  account_id         :bigint
@@ -22,6 +22,7 @@
 #  index_campaigns_on_account_id_and_status  (account_id,status)
 #  index_campaigns_on_created_at             (created_at)
 #  index_campaigns_on_launched_at            (launched_at)
+#  index_campaigns_on_platform_settings      (platform_settings) USING gin
 #  index_campaigns_on_project_id             (project_id)
 #  index_campaigns_on_project_id_and_stage   (project_id,stage)
 #  index_campaigns_on_project_id_and_status  (project_id,status)
@@ -102,6 +103,126 @@ RSpec.describe Campaign, type: :model do
     it { should accept_nested_attributes_for(:ad_groups).allow_destroy(true) }
     it { should accept_nested_attributes_for(:callouts).allow_destroy(true) }
     it { should accept_nested_attributes_for(:structured_snippets).allow_destroy(true) }
+  end
+
+  describe "PlatformSettings" do
+    it "initializes platform_settings as empty hash" do
+      campaign = build(:campaign)
+      expect(campaign.platform_settings).to eq({ "google" => {}, "meta" => {} })
+    end
+
+    describe "google settings" do
+      describe "google_advertising_channel_type" do
+        it "can set and get via direct methods" do
+          campaign, _, _ = create_campaign
+          campaign.google_advertising_channel_type = "SEARCH"
+          campaign.save!
+
+          expect(campaign.reload.google_advertising_channel_type).to eq("SEARCH")
+          expect(campaign.platform_settings["google"]["advertising_channel_type"]).to eq("SEARCH")
+        end
+
+        it "can set via update" do
+          campaign, _, _ = create_campaign
+          campaign.update!(google_advertising_channel_type: "DISPLAY")
+
+          expect(campaign.reload.google_advertising_channel_type).to eq("DISPLAY")
+        end
+
+        it "validates advertising_channel_type" do
+          campaign, _, _ = create_campaign
+
+          expect {
+            campaign.google_advertising_channel_type = "INVALID"
+          }.to raise_error(ArgumentError, /Invalid advertising_channel_type/)
+        end
+
+        it "accepts all valid channel types" do
+          campaign, _, _ = create_campaign
+
+          %w[SEARCH DISPLAY PERFORMANCE_MAX DEMAND_GEN SHOPPING MULTI_CHANNEL LOCAL HOTEL TRAVEL SMART VIDEO].each do |type|
+            expect {
+              campaign.google_advertising_channel_type = type
+            }.not_to raise_error
+          end
+        end
+      end
+
+      describe "google_advertising_channel_sub_type" do
+        it "can set and get" do
+          campaign, _, _ = create_campaign
+          campaign.google_advertising_channel_type = "PERFORMANCE_MAX"
+          campaign.google_advertising_channel_sub_type = "TRAVEL_GOALS"
+          campaign.save!
+
+          expect(campaign.reload.google_advertising_channel_sub_type).to eq("TRAVEL_GOALS")
+        end
+
+        it "validates advertising_channel_sub_type" do
+          campaign, _, _ = create_campaign
+
+          expect {
+            campaign.google_advertising_channel_sub_type = "INVALID"
+          }.to raise_error(ArgumentError, /Invalid advertising_channel_sub_type/)
+        end
+      end
+
+      describe "google_valid_sub_type_for_channel_type?" do
+        it "returns true for valid combinations" do
+          campaign, _, _ = create_campaign
+
+          campaign.google_advertising_channel_type = "PERFORMANCE_MAX"
+          campaign.google_advertising_channel_sub_type = "TRAVEL_GOALS"
+          expect(campaign.google_valid_sub_type_for_channel_type?).to be true
+
+          campaign.google_advertising_channel_type = "SEARCH"
+          campaign.google_advertising_channel_sub_type = nil
+          expect(campaign.google_valid_sub_type_for_channel_type?).to be true
+        end
+
+        it "returns false for invalid combinations" do
+          campaign, _, _ = create_campaign
+
+          campaign.google_advertising_channel_type = "SEARCH"
+          campaign.google_advertising_channel_sub_type = "TRAVEL_GOALS"
+          expect(campaign.google_valid_sub_type_for_channel_type?).to be false
+        end
+      end
+
+      describe "google_bidding_strategy and google_campaign_type" do
+        it "can set and get bidding_strategy" do
+          campaign, _, _ = create_campaign
+          campaign.google_bidding_strategy = "MAXIMIZE_CONVERSIONS"
+          campaign.save!
+
+          expect(campaign.reload.google_bidding_strategy).to eq("MAXIMIZE_CONVERSIONS")
+        end
+
+        it "can set and get campaign_type" do
+          campaign, _, _ = create_campaign
+          campaign.google_campaign_type = "standard"
+          campaign.save!
+
+          expect(campaign.reload.google_campaign_type).to eq("standard")
+        end
+      end
+
+      describe "batch update" do
+        it "updates multiple settings at once via update" do
+          campaign, _, _ = create_campaign
+          campaign.update!(
+            name: "Updated Name",
+            google_advertising_channel_type: "SEARCH",
+            google_bidding_strategy: "MAXIMIZE_CLICKS"
+          )
+
+          campaign.reload
+          expect(campaign.name).to eq("Updated Name")
+          expect(campaign.google_advertising_channel_type).to eq("SEARCH")
+          expect(campaign.google_bidding_strategy).to eq("MAXIMIZE_CLICKS")
+        end
+      end
+    end
   end
 
   describe "Creation" do
