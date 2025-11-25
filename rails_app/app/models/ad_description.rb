@@ -16,5 +16,6 @@
 #  index_ad_descriptions_on_position    (position)
 #
 class AdDescription < ApplicationRecord
-  belongs_to :campaign, class_name: "Campaign", inverse_of: :descriptions
+  belongs_to :ad, class_name: "Ad", inverse_of: :descriptions
+  has_one :campaign, through: :ad
 end

@@ -33,6 +33,15 @@ require 'rails_helper'
 RSpec.describe Campaign, type: :model do
   let(:account) { create(:account) }
   let(:website) { create(:website, account: account) }
+
+  def create_campaign
+    created_records = Campaign.create_campaign!(account, {
+      name: "Test Campaign",
+      website_id: website.id,
+      project_id: website.project.id
+    })
+    return created_records[:campaign], created_records[:ad_group], created_records[:ad]
+  end
   describe "validations" do
     it { should validate_presence_of(:status) }
     it { should validate_inclusion_of(:status).in_array(Campaign::STATUSES) }
@@ -46,20 +55,44 @@ RSpec.describe Campaign, type: :model do
     it { should accept_nested_attributes_for(:structured_snippets).allow_destroy(true) }
   end
 
-  describe "Creation", :focus do
+  describe "Creation" do
     it "creates ad, ad group, and campaign together" do
-      created_records = Campaign.create_campaign!(account, {
-        name: "Test Campaign",
-        website_id: website.id,
-        project_id: website.project.id
-      })
-      campaign = created_records[:campaign]
-      ad_group = created_records[:ad_group]
-      ad = created_records[:ad]
+      campaign, ad_group, ad = create_campaign
 
       expect(campaign).to be_persisted
       expect(ad_group).to be_persisted
       expect(ad).to be_persisted
+    end
+  end
+
+  describe "Stages" do
+    describe "valid stages" do
+      it "allows all stages listed in workflow.yml", :focus do
+        expect(Campaign::STAGES).to eq(%w[content highlights keywords settings launch])
+
+        campaign, ad_group, ad = create_campaign
+        expect(campaign.stage).to eq("content") # initial stage
+
+        expect(campaign).to be_valid
+        expect(campaign).to_not be_done_content_stage
+        expect(campaign.errors[:headlines]).to include("must have between 3-15 headlines (currently has 0)")
+
+        create_list(:ad_headline, 3, ad: ad)
+        expect(campaign).to_not be_done_content_stage
+        expect(campaign.errors[:descriptions]).to include("must have between 2-4 descriptions (currently has 0)")
+
+        create_list(:ad_description, 2, ad: ad)
+        expect(campaign).to be_done_content_stage
+      end
+    end
+
+    describe "Content" do
+      it "allows saving any partial headlines and descriptions" do
+        campaign, ad_group, ad = create_campaign
+
+        campaign.update!(stage: "headlines")
+        expect(campaign.stage).to eq("headlines")
+      end
     end
   end
 end

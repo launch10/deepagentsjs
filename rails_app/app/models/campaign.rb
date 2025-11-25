@@ -30,6 +30,7 @@
 #
 class Campaign < ApplicationRecord
   include CampaignConcerns::Creation
+  include CampaignConcerns::Stages
 
   belongs_to :account
   belongs_to :project
@@ -49,7 +50,6 @@ class Campaign < ApplicationRecord
   has_many :keywords, through: :ad_groups, class_name: "AdKeyword"
 
   STATUSES = %w[draft active paused completed]
-  STAGES = %w[content highlights plan ready]
 
   validates :status, presence: true, inclusion: { in: STATUSES }
   validates :stage, presence: true, inclusion: { in: STAGES }

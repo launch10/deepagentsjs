@@ -16,4 +16,7 @@
 #
 class Ad < ApplicationRecord
   belongs_to :ad_group
+  has_one :campaign, through: :ad_group
+  has_many :headlines, dependent: :destroy, class_name: "AdHeadline"
+  has_many :descriptions, dependent: :destroy, class_name: "AdDescription"
 end
