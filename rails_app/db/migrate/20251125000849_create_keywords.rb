@@ -1,0 +1,18 @@
+class CreateKeywords < ActiveRecord::Migration[8.0]
+  def change
+    create_table :keywords do |t|
+      t.bigint :ad_group_id, null: false
+      t.string :text, null: false, limit: 120
+      t.string :match_type, null: false, default: 'broad'
+      t.integer :position, null: false
+      t.timestamps
+
+      t.index :ad_group_id
+      t.index :created_at
+      t.index :match_type
+      t.index :position
+      t.index :text
+    end
+
+  end
+end
