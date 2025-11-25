@@ -257,20 +257,7 @@ RSpec.describe "Campaigns API", type: :request do
       end
 
       describe "Content stage" do
-        let!(:content_stage_campaign) do
-          result = Campaign.create_campaign!(user1_account, {
-            name: "Content Stage Campaign",
-            project_id: project1.id,
-            website_id: website1.id
-          })
-          campaign = result[:campaign]
-          ad = campaign.ad_groups.first.ads.first
-          create_list(:ad_headline, 3, ad: ad)
-          create_list(:ad_description, 2, ad: ad)
-          campaign.advance_stage!
-          campaign.reload
-        end
-
+        let!(:content_stage_campaign) { finish_content_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
         let(:id) { content_stage_campaign.id }
 
         response '200', 'idempotently creates headlines on first update' do
@@ -600,20 +587,7 @@ RSpec.describe "Campaigns API", type: :request do
 
       describe "Highlights stage" do
         context 'highlights stage - callouts' do
-          let!(:highlights_campaign) do
-            result = Campaign.create_campaign!(user1_account, {
-              name: "Highlights Campaign",
-              project_id: project1.id,
-              website_id: website1.id
-            })
-            campaign = result[:campaign]
-            ad = campaign.ad_groups.first.ads.first
-            create_list(:ad_headline, 3, ad: ad)
-            create_list(:ad_description, 2, ad: ad)
-            campaign.advance_stage!
-            campaign.reload
-          end
-
+          let!(:highlights_campaign) { finish_content_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
           let(:id) { highlights_campaign.id }
 
           response '200', 'idempotently creates callouts on first update' do
@@ -720,20 +694,7 @@ RSpec.describe "Campaigns API", type: :request do
         end
 
         context 'highlights stage - structured snippets' do
-          let!(:highlights_campaign) do
-            result = Campaign.create_campaign!(user1_account, {
-              name: "Highlights Campaign",
-              project_id: project1.id,
-              website_id: website1.id
-            })
-            campaign = result[:campaign]
-            ad = campaign.ad_groups.first.ads.first
-            create_list(:ad_headline, 3, ad: ad)
-            create_list(:ad_description, 2, ad: ad)
-            campaign.advance_stage!
-            campaign.reload
-          end
-
+          let!(:highlights_campaign) { finish_content_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
           let(:id) { highlights_campaign.id }
 
           response '200', 'idempotently creates structured snippet on first update' do
@@ -841,24 +802,7 @@ RSpec.describe "Campaigns API", type: :request do
 
       describe "Keywords stage" do
         context 'keywords' do
-          let!(:keywords_campaign) do
-            result = Campaign.create_campaign!(user1_account, {
-              name: "Keywords Campaign",
-              project_id: project1.id,
-              website_id: website1.id
-            })
-            campaign = result[:campaign]
-            ad = campaign.ad_groups.first.ads.first
-            create_list(:ad_headline, 3, ad: ad)
-            create_list(:ad_description, 2, ad: ad)
-            campaign.advance_stage!
-
-            ad_group = campaign.ad_groups.first
-            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
-            campaign.advance_stage!
-            campaign.reload
-          end
-
+          let!(:keywords_campaign) { finish_highlights_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
           let(:id) { keywords_campaign.id }
 
           response '200', 'idempotently creates keywords on first update' do
@@ -1002,27 +946,7 @@ RSpec.describe "Campaigns API", type: :request do
 
       describe "Settings stage" do
         context 'location targets, schedules, and budget' do
-          let!(:settings_campaign) do
-            result = Campaign.create_campaign!(user1_account, {
-              name: "Settings Campaign",
-              project_id: project1.id,
-              website_id: website1.id
-            })
-            campaign = result[:campaign]
-            ad = campaign.ad_groups.first.ads.first
-            create_list(:ad_headline, 3, ad: ad)
-            create_list(:ad_description, 2, ad: ad)
-            campaign.advance_stage!
-
-            ad_group = campaign.ad_groups.first
-            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
-            campaign.advance_stage!
-
-            create_list(:ad_keyword, 5, ad_group: ad_group)
-            campaign.advance_stage!
-            campaign.reload
-          end
-
+          let!(:settings_campaign) { finish_keywords_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
           let(:id) { settings_campaign.id }
 
           response '200', 'idempotently updates location targets' do
@@ -1203,40 +1127,7 @@ RSpec.describe "Campaigns API", type: :request do
       end
       describe "Launch stage" do
         context 'google platform settings and dates' do
-          let!(:launch_campaign) do
-            result = Campaign.create_campaign!(user1_account, {
-              name: "Launch Campaign",
-              project_id: project1.id,
-              website_id: website1.id
-            })
-            campaign = result[:campaign]
-            ad = campaign.ad_groups.first.ads.first
-            create_list(:ad_headline, 3, ad: ad)
-            create_list(:ad_description, 2, ad: ad)
-            campaign.advance_stage!
-
-            ad_group = campaign.ad_groups.first
-            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
-            campaign.advance_stage!
-
-            create_list(:ad_keyword, 5, ad_group: ad_group)
-            campaign.advance_stage!
-
-            campaign.update_location_targets([{
-              target_type: 'geo_location',
-              location_name: 'United States',
-              location_type: 'COUNTRY',
-              country_code: 'US',
-              targeted: true,
-              google_criterion_id: '2840'
-            }])
-            campaign.update_ad_schedules({always_on: true})
-            campaign.daily_budget_cents = 5000
-            campaign.save!
-            campaign.advance_stage!
-            campaign.reload
-          end
-
+          let!(:launch_campaign) { finish_settings_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
           let(:id) { launch_campaign.id }
 
           response '200', 'updates google_advertising_channel_type' do

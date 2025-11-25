@@ -522,7 +522,7 @@ paths:
           type: string
       responses:
         '200':
-          description: idempotently replaces both headlines and descriptions together
+          description: ready_for_next_stage is true after all launch fields are configured
           content:
             application/json:
               schema:
@@ -767,7 +767,7 @@ paths:
           type: string
       responses:
         '200':
-          description: campaign advanced to next stage
+          description: campaign advanced from launch to review stage
           content:
             application/json:
               schema:
@@ -804,7 +804,7 @@ paths:
                 - stage
                 - status
         '422':
-          description: cannot advance - stage validation failed
+          description: cannot advance from launch - validation failed (missing fields)
         '404':
           description: campaign not found
   "/api/v1/campaigns/{id}/back":

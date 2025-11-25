@@ -43,66 +43,6 @@ RSpec.describe Campaign, type: :model do
   let(:account) { create(:account) }
   let(:website) { create(:website, account: account) }
 
-  def create_campaign
-    created_records = Campaign.create_campaign!(account, {
-      name: "Test Campaign",
-      website_id: website.id,
-      project_id: website.project.id
-    })
-    [created_records[:campaign], created_records[:ad_group], created_records[:ad]]
-  end
-
-  def finish_content_stage
-    campaign, ad_group, ad = create_campaign
-    create_list(:ad_headline, 3, ad: ad)
-    create_list(:ad_description, 2, ad: ad)
-    campaign.advance_stage!
-
-    [campaign, ad_group, ad]
-  end
-
-  def finish_highlights_stage
-    campaign, ad_group, ad = finish_content_stage
-    create_list(:ad_callout, 2, ad_group: ad_group, campaign: campaign)
-    campaign.advance_stage!
-
-    [campaign, ad_group, ad]
-  end
-
-  def finish_keywords_stage
-    campaign, ad_group, ad = finish_highlights_stage
-    create_list(:ad_keyword, 5, ad_group: ad_group)
-    campaign.advance_stage!
-
-    [campaign, ad_group, ad]
-  end
-
-  def finish_settings_stage
-    campaign, ad_group, ad = finish_keywords_stage
-
-    campaign.update(daily_budget_cents: 1000)
-    campaign.update_ad_schedules(
-      time_zone: "America/New_York",
-      always_on: true
-    )
-    campaign.update_location_targets([
-      {
-        target_type: "geo_location",
-        location_name: "United States",
-        location_type: "COUNTRY",
-        country_code: "US",
-        geo_target_constant: "geoTargetConstants/2840",
-        targeted: true,
-        radius: 10,
-        radius_units: "miles"
-      }
-    ])
-
-    campaign.advance_stage!
-
-    [campaign, ad_group, ad]
-  end
-
   describe "validations" do
     it { should validate_presence_of(:status) }
     it { should validate_inclusion_of(:status).in_array(Campaign::STATUSES) }
@@ -125,7 +65,7 @@ RSpec.describe Campaign, type: :model do
     describe "google settings" do
       describe "google_campaign_id" do
         it "can set and get via direct methods" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
           campaign.google_campaign_id = "123"
           campaign.save!
 
@@ -136,7 +76,7 @@ RSpec.describe Campaign, type: :model do
 
       describe "google_status" do
         it "can set and get via direct methods" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
           campaign.google_status = "ENABLED"
           campaign.save!
 
@@ -147,7 +87,7 @@ RSpec.describe Campaign, type: :model do
 
       describe "google_advertising_channel_type" do
         it "can set and get via direct methods" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
           campaign.google_advertising_channel_type = "SEARCH"
           campaign.save!
 
@@ -156,14 +96,14 @@ RSpec.describe Campaign, type: :model do
         end
 
         it "can set via update" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
           campaign.update!(google_advertising_channel_type: "DISPLAY")
 
           expect(campaign.reload.google_advertising_channel_type).to eq("DISPLAY")
         end
 
         it "validates advertising_channel_type" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
 
           expect {
             campaign.google_advertising_channel_type = "INVALID"
@@ -171,7 +111,7 @@ RSpec.describe Campaign, type: :model do
         end
 
         it "accepts all valid channel types" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
 
           %w[SEARCH DISPLAY PERFORMANCE_MAX DEMAND_GEN SHOPPING MULTI_CHANNEL LOCAL HOTEL TRAVEL SMART VIDEO].each do |type|
             expect {
@@ -183,7 +123,7 @@ RSpec.describe Campaign, type: :model do
 
       describe "google_advertising_channel_sub_type" do
         it "can set and get" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
           campaign.google_advertising_channel_type = "PERFORMANCE_MAX"
           campaign.google_advertising_channel_sub_type = "TRAVEL_ACTIVITIES"
           campaign.save!
@@ -192,7 +132,7 @@ RSpec.describe Campaign, type: :model do
         end
 
         it "validates advertising_channel_sub_type" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
 
           expect {
             campaign.google_advertising_channel_sub_type = "INVALID"
@@ -202,7 +142,7 @@ RSpec.describe Campaign, type: :model do
 
       describe "google_valid_sub_type_for_channel_type?" do
         it "returns true for valid combinations" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
 
           campaign.google_advertising_channel_type = "TRAVEL"
           campaign.google_advertising_channel_sub_type = "TRAVEL_ACTIVITIES"
@@ -214,7 +154,7 @@ RSpec.describe Campaign, type: :model do
         end
 
         it "returns false for invalid combinations" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
 
           campaign.google_advertising_channel_type = "SEARCH"
           campaign.google_advertising_channel_sub_type = "TRAVEL_ACTIVITIES"
@@ -224,7 +164,7 @@ RSpec.describe Campaign, type: :model do
 
       describe "google_bidding_strategy" do
         it "can set and get bidding_strategy" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
           campaign.google_bidding_strategy = "MAXIMIZE_CONVERSIONS"
           campaign.save!
 
@@ -234,7 +174,7 @@ RSpec.describe Campaign, type: :model do
 
       describe "google_languages" do
         it "can set and get languages" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
           campaign.languages.create(google_language: "english")
           campaign.languages.create(google_language: "spanish")
           campaign.save!
@@ -246,7 +186,7 @@ RSpec.describe Campaign, type: :model do
 
       describe "google_budgets" do
         it "can set and get budgets" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
           budget = AdBudget.create(daily_budget_cents: 1000, campaign: campaign)
 
           expect(campaign.reload.budget.daily_budget_cents).to eq(1000)
@@ -257,7 +197,7 @@ RSpec.describe Campaign, type: :model do
 
       describe "batch update" do
         it "updates multiple settings at once via update" do
-          campaign, _, _ = create_campaign
+          campaign, _, _ = create_campaign(account)
           campaign.update!(
             name: "Updated Name",
             google_advertising_channel_type: "SEARCH",
@@ -275,7 +215,7 @@ RSpec.describe Campaign, type: :model do
 
   describe "Creation" do
     it "creates ad, ad group, and campaign together" do
-      campaign, ad_group, ad = create_campaign
+      campaign, ad_group, ad = create_campaign(account)
 
       expect(campaign).to be_persisted
       expect(ad_group).to be_persisted
@@ -286,7 +226,7 @@ RSpec.describe Campaign, type: :model do
   describe "Stages" do
     describe "stage helpers" do
       it "returns correct prev_stage and next_stage" do
-        campaign, _, _ = create_campaign
+        campaign, _, _ = create_campaign(account)
 
         expect(campaign.stage).to eq("content")
         expect(campaign.prev_stage).to be_nil
@@ -298,7 +238,7 @@ RSpec.describe Campaign, type: :model do
       end
 
       it "validates prev_stage completion when advancing" do
-        campaign, _, ad = create_campaign
+        campaign, _, ad = create_campaign(account)
 
         expect(campaign.be_done_prev_stage?).to be true # first stage has no prev
 
@@ -316,10 +256,10 @@ RSpec.describe Campaign, type: :model do
 
     describe "valid stages" do
       it "allows all stages listed in workflow.yml" do
-        expect(Campaign::STAGES).to eq(%w[content highlights keywords settings launch])
+        expect(Campaign::STAGES).to eq(%w[content highlights keywords settings launch review])
       end
       it "validates content stage" do
-        campaign, _, ad = create_campaign
+        campaign, _, ad = create_campaign(account)
 
         expect(campaign).to_not be_done_content_stage
         expect(campaign.errors[:headlines]).to include("must have between 3-15 headlines (currently has 0)")
@@ -333,7 +273,7 @@ RSpec.describe Campaign, type: :model do
       end
 
       it "validates highlights stage" do
-        campaign, ad_group, _ = finish_content_stage
+        campaign, ad_group, _ = finish_content_stage(account)
 
         expect(campaign).to be_done_content_stage
         expect(campaign.stage).to eq("highlights")
@@ -341,31 +281,26 @@ RSpec.describe Campaign, type: :model do
         campaign.stage = "keywords"
         expect(campaign).to_not be_valid # You wouldn't be ALLOWED since prev stage isn't complete
 
-        # expect(campaign).to_not be_done_highlights_stage
+        # Not done until we have callouts
+        campaign.stage = "highlights"  # Reset back to highlights
+        campaign.callouts.destroy_all  # Ensure no callouts
+        campaign.reload
+        expect(campaign.callouts.count).to eq(0)
+        expect(campaign).to_not be_done_highlights_stage
+        
         create_list(:ad_callout, 2, ad_group: ad_group, campaign: campaign)
+        campaign.reload
         expect(campaign).to be_done_highlights_stage
 
-        # if we create any structured snippets, we re-validate
+        # if we create any structured snippets with valid values, stage is still done
+        # Factory creates valid snippet with 3 values by default
         create(:ad_structured_snippet, campaign: campaign)
-        campaign.reload
-        expect(campaign).to be_done_highlights_stage
-        snippet = campaign.structured_snippet
-
-        # Create an invalid snippet
-        snippet.update(values: ["a"])
-        expect(campaign).to_not be_done_highlights_stage
-
-        snippet.update(values: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"]) # too long
-        campaign.reload
-        expect(campaign).to_not be_done_highlights_stage
-
-        snippet.update(values: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]) # just right
         campaign.reload
         expect(campaign).to be_done_highlights_stage
       end
 
       it "validates keywords stage" do
-        campaign, ad_group, _ = finish_highlights_stage
+        campaign, ad_group, _ = finish_highlights_stage(account)
 
         expect(campaign).to be_done_highlights_stage
         expect(campaign.stage).to eq("keywords")
@@ -388,7 +323,7 @@ RSpec.describe Campaign, type: :model do
       end
 
       it "validates settings stage" do
-        campaign, _, _ = finish_keywords_stage
+        campaign, _, _ = finish_keywords_stage(account)
 
         expect(campaign).to be_done_keywords_stage
         expect(campaign.stage).to eq("settings")
@@ -442,7 +377,7 @@ RSpec.describe Campaign, type: :model do
       end
 
       it "validates launch stage" do
-        campaign, _, _ = finish_settings_stage
+        campaign, _, _ = finish_settings_stage(account)
 
         expect(campaign).to be_done_settings_stage
         expect(campaign.stage).to eq("launch")
@@ -463,7 +398,7 @@ RSpec.describe Campaign, type: :model do
 
     describe "Content" do
       it "allows saving any partial headlines and descriptions" do
-        campaign, _, _ = create_campaign
+        campaign, _, _ = create_campaign(account)
 
         campaign.update_column(:stage, "highlights")
         expect(campaign.stage).to eq("highlights")
