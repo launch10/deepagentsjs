@@ -17,9 +17,6 @@
 #
 class AdLanguage < ApplicationRecord
   include PlatformSettings
-  platform_setting :google, :criterion_id
-  platform_setting :google, :language, in: GOOGLE_LANGUAGE_CODES.keys, array: true
-
   belongs_to :campaign
 
   GOOGLE_LANGUAGE_CODES = {
@@ -39,8 +36,11 @@ class AdLanguage < ApplicationRecord
     # Full list: https://developers.google.com/google-ads/api/reference/data/codes-formats#languages
   }.freeze
 
+  platform_setting :google, :criterion_id
+  platform_setting :google, :language, in: GOOGLE_LANGUAGE_CODES.keys, array: true
+
   # TODO: Move to an API module...
   def google_api_code
-    GOOGLE_LANGUAGE_CODES[google_language]
+    GOOGLE_LANGUAGE_CODES[google_language.to_sym]
   end
 end

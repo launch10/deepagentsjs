@@ -3,7 +3,7 @@ class CreateAdBudgets < ActiveRecord::Migration[8.0]
     create_table :ad_budgets do |t|
       t.bigint :campaign_id
       t.integer :daily_budget_cents
-      t.jsonb :platform_settings # google_budget_id
+      t.jsonb :platform_settings, default: { google: {}, meta: {} }
       t.timestamps
 
       t.index :campaign_id

@@ -23,7 +23,7 @@ class AdsAccount < ApplicationRecord
   belongs_to :account
 
   PLATFORMS = %w[google meta]
-  validates :platform, presence: true, in: PLATFORMS
+  validates :platform, presence: true, inclusion: { in: PLATFORMS }
 
   platform_setting :google, :customer_id
 end

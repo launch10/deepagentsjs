@@ -48,7 +48,7 @@ class Campaign < ApplicationRecord
   belongs_to :account
   belongs_to :project
   belongs_to :website
-  belongs_to :ads_account
+  belongs_to :ads_account, optional: true
 
   has_many :ad_groups, dependent: :destroy
   has_many :ads, through: :ad_groups

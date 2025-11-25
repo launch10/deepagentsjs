@@ -438,7 +438,7 @@ CREATE TABLE public.ad_budgets (
     id bigint NOT NULL,
     campaign_id bigint,
     daily_budget_cents integer,
-    platform_settings jsonb,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -641,7 +641,7 @@ ALTER SEQUENCE public.ad_keywords_id_seq OWNED BY public.ad_keywords.id;
 CREATE TABLE public.ad_languages (
     id bigint NOT NULL,
     campaign_id bigint,
-    platform_settings jsonb,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );

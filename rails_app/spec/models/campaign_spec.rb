@@ -209,12 +209,15 @@ RSpec.describe Campaign, type: :model do
       describe "google_languages", :focus do
         it "can set and get languages" do
           campaign, _, _ = create_campaign
-          campaign.google_languages = ["english", "spanish"]
+          campaign.languages.create(google_language: "english")
+          campaign.languages.create(google_language: "spanish")
           campaign.save!
 
-          expect(campaign.reload.google_languages).to eq(["english", "spanish"])
+          expect(campaign.reload.languages.map(&:google_language)).to eq(["english", "spanish"])
+          expect(campaign.reload.languages.map(&:google_api_code)).to eq(["1000", "1003"])
         end
       end
+
 
       describe "batch update" do
         it "updates multiple settings at once via update" do
