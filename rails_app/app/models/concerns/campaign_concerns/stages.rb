@@ -45,7 +45,29 @@ module CampaignConcerns
       next_stage_name = next_stage
       if next_stage_name
         update!(stage: next_stage_name)
+        sync_workflow_substep
       end
+    end
+
+    def back_stage!
+      if can_go_back?
+        update!(stage: prev_stage)
+        sync_workflow_substep
+      else
+        errors.add(:stage, "Already at first stage")
+        raise ActiveRecord::RecordInvalid.new(self)
+      end
+    end
+
+    def sync_workflow_substep
+      workflow = project&.launch_workflow
+      return unless workflow
+
+      workflow.advance_to(step: "ad_campaign", substep: stage)
+    end
+
+    def can_go_back?
+      prev_stage.present?
     end
 
     # Stage-based validation methods

@@ -8,10 +8,16 @@ RSpec.describe "Campaigns API", type: :request do
   let!(:user2_account) { user2.owned_account }
 
   let!(:template) { create(:template) }
-  let!(:project1) { create(:project, account: user1_account) }
-  let!(:website1) { create(:website, account: user1_account, project: project1, template: template) }
-  let!(:project2) { create(:project, account: user2_account) }
-  let!(:website2) { create(:website, account: user2_account, project: project2, template: template) }
+  let!(:project1) {
+    data = Brainstorm.create_brainstorm!(user1_account, name: "Project 1", thread_id: "thread_id_1")
+    data[:project]
+  }
+  let!(:website1) { project1.website }
+  let!(:project2) {
+    data = Brainstorm.create_brainstorm!(user2_account, name: "Project 2", thread_id: "thread_id_2")
+    data[:project]
+  }
+  let!(:website2) { project2.website }
 
   before do
     ensure_plans_exist
@@ -566,6 +572,7 @@ RSpec.describe "Campaigns API", type: :request do
 
           campaign1.reload
           expect(campaign1.stage).to eq("highlights")
+          expect(data["ready_for_next_stage"]).to eq(false)
         end
       end
 
@@ -579,8 +586,96 @@ RSpec.describe "Campaigns API", type: :request do
           data = JSON.parse(response.body)
           expect(data["errors"]).to be_present
 
+          expect(data["errors"]).to include("Headlines must have between 3-15 headlines (currently has 0)")
+          expect(data["errors"]).to include("Descriptions must have between 2-4 descriptions (currently has 0)")
+
           campaign1.reload
           expect(campaign1.stage).to eq("content")
+        end
+      end
+
+      response '404', 'campaign not found' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:id) { 999999 }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("Campaign not found")
+        end
+      end
+    end
+  end
+
+  path '/api/v1/campaigns/{id}/back' do
+    parameter name: :id, in: :path, type: :integer, description: 'Campaign ID'
+
+    post 'Steps back to previous stage' do
+      tags 'Campaigns'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+
+      let!(:campaign1) do
+        result = Campaign.create_campaign!(user1_account, {
+          name: "User 1 Campaign",
+          project_id: project1.id,
+          website_id: website1.id
+        })
+        campaign = result[:campaign]
+
+        ad = campaign.ad_groups.first.ads.first
+        create_list(:ad_headline, 3, ad: ad)
+        create_list(:ad_description, 2, ad: ad)
+
+        campaign.advance_stage!
+        expect(campaign.launch_workflow.reload.substep).to eq("highlights")
+        campaign
+      end
+
+      response '200', 'campaign stepped back to previous stage' do
+        schema APISchemas::Campaign.advance_response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:id) { campaign1.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["stage"]).to eq("content")
+
+          campaign1.reload
+          expect(campaign1.stage).to eq("content")
+          expect(campaign1.launch_workflow.substep).to eq("content")
+        end
+      end
+
+      response '422', 'cannot go back - already at first stage' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+        let!(:first_stage_campaign) do
+          result = Campaign.create_campaign!(user1_account, {
+            name: "First Stage Campaign",
+            project_id: project1.id,
+            website_id: website1.id
+          })
+          result[:campaign]
+        end
+
+        let(:id) { first_stage_campaign.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to be_present
+          expect(data["errors"]).to include("Stage Already at first stage")
+
+          first_stage_campaign.reload
+          expect(first_stage_campaign.stage).to eq("content")
         end
       end
 

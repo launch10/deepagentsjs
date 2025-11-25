@@ -17,6 +17,7 @@ namespace :api, defaults: {format: :json} do
 
     resources :campaigns, only: [:create, :update] do
       post :advance, on: :member
+      post :back, on: :member
     end
   end
 end

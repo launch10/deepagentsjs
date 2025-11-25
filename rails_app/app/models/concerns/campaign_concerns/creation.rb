@@ -17,6 +17,8 @@ module CampaignConcerns
 
           ad = ad_group.ads.create!(status: "draft")
 
+          campaign.launch_workflow.update!(step: "ad_campaign", substep: "content")
+
           {
             campaign: campaign,
             ad_group: ad_group,

@@ -45,7 +45,22 @@ class API::V1::CampaignsController < API::BaseController
 
     begin
       campaign.advance_stage!
-      sync_workflow_substep(campaign)
+    rescue ActiveRecord::RecordInvalid => e
+      render json: {errors: e.record.errors.full_messages}, status: :unprocessable_entity and return
+    end
+
+    render json: campaign_json(campaign)
+  end
+
+  def back
+    campaign = current_campaign
+
+    unless campaign
+      render json: {errors: ["Campaign not found"]}, status: :not_found and return
+    end
+
+    begin
+      campaign.back_stage!
     rescue ActiveRecord::RecordInvalid => e
       render json: {errors: e.record.errors.full_messages}, status: :unprocessable_entity and return
     end
@@ -128,13 +143,6 @@ class API::V1::CampaignsController < API::BaseController
     return unless ad_schedules.is_a?(ActionController::Parameters)
 
     campaign.update_ad_schedules(ad_schedules.to_unsafe_h.symbolize_keys)
-  end
-
-  def sync_workflow_substep(campaign)
-    workflow = campaign.project&.launch_workflow
-    return unless workflow
-
-    workflow.advance_to(step: "ad_campaign", substep: campaign.stage)
   end
 
   def campaign_json(campaign)
