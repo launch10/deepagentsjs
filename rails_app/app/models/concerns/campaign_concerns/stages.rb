@@ -203,6 +203,10 @@ module CampaignConcerns
       errors.empty?
     end
 
+    def done_review_stage?
+      true
+    end
+
     private
 
     def prev_stage_must_be_complete

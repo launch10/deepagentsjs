@@ -157,6 +157,8 @@ class API::V1::CampaignsController < API::BaseController
       end_date: campaign.end_date,
       time_zone: campaign.time_zone,
       daily_budget_cents: campaign.daily_budget_cents,
+      google_advertising_channel_type: campaign.google_advertising_channel_type,
+      google_bidding_strategy: campaign.google_bidding_strategy,
       workflow: workflow ? {step: workflow.step, substep: workflow.substep} : nil,
       ad_groups: campaign.ad_groups.map do |ad_group|
         {

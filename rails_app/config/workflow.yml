@@ -12,6 +12,7 @@ launch:
         - keywords
         - settings
         - launch
+        - review
     launch:
       order: 4
       substeps:

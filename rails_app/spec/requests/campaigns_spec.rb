@@ -1201,6 +1201,165 @@ RSpec.describe "Campaigns API", type: :request do
           end
         end
       end
+      describe "Launch stage" do
+        context 'google platform settings and dates' do
+          let!(:launch_campaign) do
+            result = Campaign.create_campaign!(user1_account, {
+              name: "Launch Campaign",
+              project_id: project1.id,
+              website_id: website1.id
+            })
+            campaign = result[:campaign]
+            ad = campaign.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+            campaign.advance_stage!
+
+            ad_group = campaign.ad_groups.first
+            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+            campaign.advance_stage!
+
+            create_list(:ad_keyword, 5, ad_group: ad_group)
+            campaign.advance_stage!
+
+            campaign.update_location_targets([{
+              target_type: 'geo_location',
+              location_name: 'United States',
+              location_type: 'COUNTRY',
+              country_code: 'US',
+              targeted: true,
+              google_criterion_id: '2840'
+            }])
+            campaign.update_ad_schedules({always_on: true})
+            campaign.daily_budget_cents = 5000
+            campaign.save!
+            campaign.advance_stage!
+            campaign.reload
+          end
+
+          let(:id) { launch_campaign.id }
+
+          response '200', 'updates google_advertising_channel_type' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:campaign_params) do
+              {
+                campaign: {
+                  google_advertising_channel_type: 'SEARCH'
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              launch_campaign.reload
+
+              expect(launch_campaign.google_advertising_channel_type).to eq('SEARCH')
+              expect(data["google_advertising_channel_type"]).to eq('SEARCH')
+              expect(data["ready_for_next_stage"]).to eq(false)
+            end
+          end
+
+          response '200', 'updates google_bidding_strategy' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:campaign_params) do
+              {
+                campaign: {
+                  google_bidding_strategy: 'MAXIMIZE_CLICKS'
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              launch_campaign.reload
+
+              expect(launch_campaign.google_bidding_strategy).to eq('MAXIMIZE_CLICKS')
+              expect(data["google_bidding_strategy"]).to eq('MAXIMIZE_CLICKS')
+              expect(data["ready_for_next_stage"]).to eq(false)
+            end
+          end
+
+          response '200', 'updates start_date' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:campaign_params) do
+              {
+                campaign: {
+                  start_date: '2025-12-01'
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              launch_campaign.reload
+
+              expect(launch_campaign.start_date).to eq(Date.parse('2025-12-01'))
+              expect(data["start_date"]).to eq('2025-12-01')
+              expect(data["ready_for_next_stage"]).to eq(false)
+            end
+          end
+
+          response '200', 'updates end_date' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:campaign_params) do
+              {
+                campaign: {
+                  end_date: '2025-12-31'
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              launch_campaign.reload
+
+              expect(launch_campaign.end_date).to eq(Date.parse('2025-12-31'))
+              expect(data["end_date"]).to eq('2025-12-31')
+              expect(data["ready_for_next_stage"]).to eq(false)
+            end
+          end
+
+          response '200', 'ready_for_next_stage is true after all launch fields are configured' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:campaign_params) do
+              {
+                campaign: {
+                  google_advertising_channel_type: 'SEARCH',
+                  google_bidding_strategy: 'MAXIMIZE_CLICKS',
+                  start_date: '2025-12-01',
+                  end_date: '2025-12-31'
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              launch_campaign.reload
+
+              expect(launch_campaign.google_advertising_channel_type).to eq('SEARCH')
+              expect(launch_campaign.google_bidding_strategy).to eq('MAXIMIZE_CLICKS')
+              expect(launch_campaign.start_date).to eq(Date.parse('2025-12-01'))
+              expect(launch_campaign.end_date).to eq(Date.parse('2025-12-31'))
+              expect(data["ready_for_next_stage"]).to eq(true)
+            end
+          end
+        end
+      end
     end
   end
 
@@ -1494,6 +1653,118 @@ RSpec.describe "Campaigns API", type: :request do
 
           settings_stage_campaign.reload
           expect(settings_stage_campaign.stage).to eq("settings")
+        end
+      end
+
+      response '200', 'campaign advanced from launch to review stage' do
+        schema APISchemas::Campaign.advance_response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+        let!(:launch_stage_campaign) do
+          result = Campaign.create_campaign!(user1_account, {
+            name: "Launch Stage Campaign",
+            project_id: project1.id,
+            website_id: website1.id
+          })
+          campaign = result[:campaign]
+          ad = campaign.ad_groups.first.ads.first
+          create_list(:ad_headline, 3, ad: ad)
+          create_list(:ad_description, 2, ad: ad)
+          campaign.advance_stage!
+
+          ad_group = campaign.ad_groups.first
+          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+          campaign.advance_stage!
+
+          create_list(:ad_keyword, 5, ad_group: ad_group)
+          campaign.advance_stage!
+
+          campaign.update_location_targets([{
+            target_type: 'geo_location',
+            location_name: 'United States',
+            location_type: 'COUNTRY',
+            country_code: 'US',
+            targeted: true,
+            google_criterion_id: '2840'
+          }])
+          campaign.update_ad_schedules({always_on: true})
+          campaign.daily_budget_cents = 5000
+          campaign.save!
+          campaign.advance_stage!
+
+          campaign.google_advertising_channel_type = 'SEARCH'
+          campaign.google_bidding_strategy = 'MAXIMIZE_CLICKS'
+          campaign.start_date = Date.parse('2025-12-01')
+          campaign.end_date = Date.parse('2025-12-31')
+          campaign.save!
+
+          campaign
+        end
+
+        let(:id) { launch_stage_campaign.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["stage"]).to eq("review")
+
+          launch_stage_campaign.reload
+          expect(launch_stage_campaign.stage).to eq("review")
+          expect(launch_stage_campaign.done_review_stage?).to eq(true)
+          expect(data["ready_for_next_stage"]).to eq(true)
+        end
+      end
+
+      response '422', 'cannot advance from launch - validation failed (missing fields)' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+        let!(:launch_stage_campaign) do
+          result = Campaign.create_campaign!(user1_account, {
+            name: "Launch Stage Campaign",
+            project_id: project1.id,
+            website_id: website1.id
+          })
+          campaign = result[:campaign]
+          ad = campaign.ad_groups.first.ads.first
+          create_list(:ad_headline, 3, ad: ad)
+          create_list(:ad_description, 2, ad: ad)
+          campaign.advance_stage!
+
+          ad_group = campaign.ad_groups.first
+          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+          campaign.advance_stage!
+
+          create_list(:ad_keyword, 5, ad_group: ad_group)
+          campaign.advance_stage!
+
+          campaign.update_location_targets([{
+            target_type: 'geo_location',
+            location_name: 'United States',
+            location_type: 'COUNTRY',
+            country_code: 'US',
+            targeted: true,
+            google_criterion_id: '2840'
+          }])
+          campaign.update_ad_schedules({always_on: true})
+          campaign.daily_budget_cents = 5000
+          campaign.save!
+          campaign.advance_stage!
+
+          campaign
+        end
+
+        let(:id) { launch_stage_campaign.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to be_present
+          expect(data["errors"]).to include("Google advertising channel type must be configured")
+
+          launch_stage_campaign.reload
+          expect(launch_stage_campaign.stage).to eq("launch")
         end
       end
 
