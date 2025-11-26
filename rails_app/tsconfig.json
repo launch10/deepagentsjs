@@ -32,6 +32,7 @@
       "@utils/*": ["./app/javascript/frontend/lib/utils/*"],
       "@runtime/*": ["./app/javascript/frontend/runtime/*"],
       "@types/*": ["./app/javascript/frontend/types/*"],
+      "@rails_api": ["../shared/lib/api/index.ts"],
       "@styles/*": ["./app/javascript/frontend/styles/*"],
       "@webcontainer/*": ["./app/javascript/frontend/webcontainer/*"],
       "@shared": ["../shared/index.ts"],

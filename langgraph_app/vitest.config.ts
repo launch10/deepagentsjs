@@ -4,7 +4,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 export default defineConfig({
   plugins: [tsconfigPaths()],
   resolve: {
-    conditions: ['types', 'node', 'default'],
+    conditions: ['types', 'import', 'node', 'default'],
   },
   test: {
     typecheck: {

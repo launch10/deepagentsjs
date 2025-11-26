@@ -14,6 +14,11 @@ namespace :api, defaults: {format: :json} do
     resources :uploads, only: [:create, :index, :show]
     patch "projects/:project_uuid/workflows/:id", to: "project_workflows#update"
     patch "projects/:project_uuid/workflows/:id/next", to: "project_workflows#next"
+
+    resources :campaigns, only: [:create, :update] do
+      post :advance, on: :member
+      post :back, on: :member
+    end
   end
 end
 

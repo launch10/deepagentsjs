@@ -1,0 +1,93 @@
+# == Schema Information
+#
+# Table name: ad_schedules
+#
+#  id                :bigint           not null, primary key
+#  always_on         :boolean          default(FALSE)
+#  bid_modifier      :decimal(10, 2)
+#  day_of_week       :string
+#  end_hour          :integer
+#  end_minute        :integer
+#  platform_settings :jsonb
+#  start_hour        :integer
+#  start_minute      :integer
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
+#  campaign_id       :bigint           not null
+#
+# Indexes
+#
+#  index_ad_schedules_on_always_on                    (always_on)
+#  index_ad_schedules_on_campaign_id                  (campaign_id)
+#  index_ad_schedules_on_campaign_id_and_day_of_week  (campaign_id,day_of_week)
+#  index_ad_schedules_on_created_at                   (created_at)
+#  index_ad_schedules_on_criterion_id                 ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)))
+#  index_ad_schedules_on_day_of_week                  (day_of_week)
+#  index_ad_schedules_on_platform_settings            (platform_settings) USING gin
+#
+class AdSchedule < ApplicationRecord
+  include PlatformSettings
+
+  belongs_to :campaign
+  has_one :ads_account, through: :campaign
+
+  platform_setting :google, :criterion_id
+
+  DAYS_OF_WEEK = %w[Monday Tuesday Wednesday Thursday Friday Saturday Sunday].freeze
+
+  validates :day_of_week, inclusion: { in: DAYS_OF_WEEK }, allow_nil: true
+  validates :start_hour, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 23 }, allow_nil: true
+  validates :start_minute, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 59 }, allow_nil: true
+  validates :end_hour, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 23 }, allow_nil: true
+  validates :end_minute, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 59 }, allow_nil: true
+
+  validate :only_one_schedule_if_always_on
+  validate :no_time_fields_if_always_on
+  validate :time_fields_required_unless_always_on
+
+  scope :always_on, -> { where(always_on: true) }
+  scope :scheduled, -> { where(always_on: false) }
+
+  def on_now?(time = Time.current)
+    return true if always_on?
+
+    day = time.strftime("%A").downcase
+    return false unless day_of_week.downcase == day
+
+    time_in_minutes = time.hour * 60 + time.min
+    start_time = start_hour * 60 + start_minute
+    end_time = end_hour * 60 + end_minute
+
+    time_in_minutes >= start_time && time_in_minutes < end_time
+  end
+
+  private
+
+  def only_one_schedule_if_always_on
+    return unless always_on?
+
+    other_schedules = campaign.ad_schedules.where.not(id: id)
+    if other_schedules.exists?
+      errors.add(:always_on, "cannot be true when other schedules exist")
+    end
+  end
+
+  def no_time_fields_if_always_on
+    return unless always_on?
+
+    if day_of_week.present? || start_hour.present? || start_minute.present? ||
+        end_hour.present? || end_minute.present?
+      errors.add(:always_on, "schedule should not have time fields when always_on is true")
+    end
+  end
+
+  def time_fields_required_unless_always_on
+    return if always_on?
+
+    errors.add(:day_of_week, "can't be blank") if day_of_week.blank?
+    errors.add(:start_hour, "can't be blank") if start_hour.blank?
+    errors.add(:start_minute, "can't be blank") if start_minute.blank?
+    errors.add(:end_hour, "can't be blank") if end_hour.blank?
+    errors.add(:end_minute, "can't be blank") if end_minute.blank?
+  end
+end

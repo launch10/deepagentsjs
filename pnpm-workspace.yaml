@@ -1,5 +1,6 @@
 packages:
   - "atlas"
   - "langgraph_app"
+  - "langgraph_app/app/lib/shared"
   - "rails_app"
   - "shared"

@@ -431,6 +431,433 @@ ALTER SEQUENCE public.active_storage_variant_records_id_seq OWNED BY public.acti
 
 
 --
+-- Name: ad_budgets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_budgets (
+    id bigint NOT NULL,
+    campaign_id bigint,
+    daily_budget_cents integer,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_budgets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_budgets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_budgets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_budgets_id_seq OWNED BY public.ad_budgets.id;
+
+
+--
+-- Name: ad_callouts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_callouts (
+    id bigint NOT NULL,
+    campaign_id bigint NOT NULL,
+    ad_group_id bigint,
+    text character varying NOT NULL,
+    "position" integer NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_callouts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_callouts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_callouts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_callouts_id_seq OWNED BY public.ad_callouts.id;
+
+
+--
+-- Name: ad_descriptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_descriptions (
+    id bigint NOT NULL,
+    ad_id bigint NOT NULL,
+    text character varying NOT NULL,
+    "position" integer NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_descriptions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_descriptions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_descriptions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_descriptions_id_seq OWNED BY public.ad_descriptions.id;
+
+
+--
+-- Name: ad_groups; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_groups (
+    id bigint NOT NULL,
+    campaign_id bigint,
+    name character varying,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_groups_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_groups_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_groups_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_groups_id_seq OWNED BY public.ad_groups.id;
+
+
+--
+-- Name: ad_headlines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_headlines (
+    id bigint NOT NULL,
+    ad_id bigint NOT NULL,
+    text character varying NOT NULL,
+    "position" integer NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_headlines_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_headlines_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_headlines_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_headlines_id_seq OWNED BY public.ad_headlines.id;
+
+
+--
+-- Name: ad_keywords; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_keywords (
+    id bigint NOT NULL,
+    ad_group_id bigint NOT NULL,
+    text character varying(120) NOT NULL,
+    match_type character varying DEFAULT 'broad'::character varying NOT NULL,
+    "position" integer NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_keywords_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_keywords_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_keywords_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_keywords_id_seq OWNED BY public.ad_keywords.id;
+
+
+--
+-- Name: ad_languages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_languages (
+    id bigint NOT NULL,
+    campaign_id bigint,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_languages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_languages_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_languages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_languages_id_seq OWNED BY public.ad_languages.id;
+
+
+--
+-- Name: ad_location_targets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_location_targets (
+    id bigint NOT NULL,
+    campaign_id bigint,
+    target_type character varying NOT NULL,
+    targeted boolean DEFAULT true NOT NULL,
+    location_identifier character varying,
+    location_name character varying,
+    location_type character varying,
+    latitude numeric(10,6),
+    longitude numeric(10,6),
+    radius numeric(10,2),
+    radius_units character varying,
+    address_line_1 character varying,
+    city character varying,
+    state character varying,
+    postal_code character varying,
+    country_code character varying,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_location_targets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_location_targets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_location_targets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_location_targets_id_seq OWNED BY public.ad_location_targets.id;
+
+
+--
+-- Name: ad_schedules; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_schedules (
+    id bigint NOT NULL,
+    campaign_id bigint NOT NULL,
+    day_of_week character varying,
+    start_hour integer,
+    start_minute integer,
+    end_hour integer,
+    end_minute integer,
+    always_on boolean DEFAULT false,
+    bid_modifier numeric(10,2),
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT valid_end_hour CHECK (((end_hour >= 0) AND (end_hour <= 24))),
+    CONSTRAINT valid_end_minute CHECK ((end_minute = ANY (ARRAY[0, 15, 30, 45]))),
+    CONSTRAINT valid_start_hour CHECK (((start_hour >= 0) AND (start_hour <= 23))),
+    CONSTRAINT valid_start_minute CHECK ((start_minute = ANY (ARRAY[0, 15, 30, 45])))
+);
+
+
+--
+-- Name: ad_schedules_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_schedules_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_schedules_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_schedules_id_seq OWNED BY public.ad_schedules.id;
+
+
+--
+-- Name: ad_structured_snippets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_structured_snippets (
+    id bigint NOT NULL,
+    campaign_id bigint NOT NULL,
+    category character varying NOT NULL,
+    "values" jsonb DEFAULT '[]'::jsonb NOT NULL,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_structured_snippets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_structured_snippets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_structured_snippets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_structured_snippets_id_seq OWNED BY public.ad_structured_snippets.id;
+
+
+--
+-- Name: ads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ads (
+    id bigint NOT NULL,
+    ad_group_id bigint,
+    status character varying DEFAULT 'draft'::character varying,
+    display_path_1 character varying,
+    display_path_2 character varying,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ads_accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ads_accounts (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    platform character varying NOT NULL,
+    platform_settings jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ads_accounts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ads_accounts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ads_accounts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ads_accounts_id_seq OWNED BY public.ads_accounts.id;
+
+
+--
+-- Name: ads_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ads_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ads_id_seq OWNED BY public.ads.id;
+
+
+--
 -- Name: announcements; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -548,6 +975,48 @@ CREATE SEQUENCE public.brainstorms_id_seq
 --
 
 ALTER SEQUENCE public.brainstorms_id_seq OWNED BY public.brainstorms.id;
+
+
+--
+-- Name: campaigns; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.campaigns (
+    id bigint NOT NULL,
+    name character varying,
+    status character varying DEFAULT 'draft'::character varying,
+    stage character varying DEFAULT 'content'::character varying,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    launched_at timestamp(6) without time zone,
+    time_zone character varying DEFAULT 'America/New_York'::character varying,
+    start_date date,
+    end_date date,
+    account_id bigint,
+    website_id bigint,
+    project_id bigint,
+    ads_account_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: campaigns_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.campaigns_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: campaigns_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.campaigns_id_seq OWNED BY public.campaigns.id;
 
 
 --
@@ -2635,6 +3104,90 @@ ALTER TABLE ONLY public.active_storage_variant_records ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: ad_budgets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_budgets ALTER COLUMN id SET DEFAULT nextval('public.ad_budgets_id_seq'::regclass);
+
+
+--
+-- Name: ad_callouts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_callouts ALTER COLUMN id SET DEFAULT nextval('public.ad_callouts_id_seq'::regclass);
+
+
+--
+-- Name: ad_descriptions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_descriptions ALTER COLUMN id SET DEFAULT nextval('public.ad_descriptions_id_seq'::regclass);
+
+
+--
+-- Name: ad_groups id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_groups ALTER COLUMN id SET DEFAULT nextval('public.ad_groups_id_seq'::regclass);
+
+
+--
+-- Name: ad_headlines id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_headlines ALTER COLUMN id SET DEFAULT nextval('public.ad_headlines_id_seq'::regclass);
+
+
+--
+-- Name: ad_keywords id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_keywords ALTER COLUMN id SET DEFAULT nextval('public.ad_keywords_id_seq'::regclass);
+
+
+--
+-- Name: ad_languages id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_languages ALTER COLUMN id SET DEFAULT nextval('public.ad_languages_id_seq'::regclass);
+
+
+--
+-- Name: ad_location_targets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_location_targets ALTER COLUMN id SET DEFAULT nextval('public.ad_location_targets_id_seq'::regclass);
+
+
+--
+-- Name: ad_schedules id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_schedules ALTER COLUMN id SET DEFAULT nextval('public.ad_schedules_id_seq'::regclass);
+
+
+--
+-- Name: ad_structured_snippets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_structured_snippets ALTER COLUMN id SET DEFAULT nextval('public.ad_structured_snippets_id_seq'::regclass);
+
+
+--
+-- Name: ads id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ads ALTER COLUMN id SET DEFAULT nextval('public.ads_id_seq'::regclass);
+
+
+--
+-- Name: ads_accounts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ads_accounts ALTER COLUMN id SET DEFAULT nextval('public.ads_accounts_id_seq'::regclass);
+
+
+--
 -- Name: announcements id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2653,6 +3206,13 @@ ALTER TABLE ONLY public.api_tokens ALTER COLUMN id SET DEFAULT nextval('public.a
 --
 
 ALTER TABLE ONLY public.brainstorms ALTER COLUMN id SET DEFAULT nextval('public.brainstorms_id_seq'::regclass);
+
+
+--
+-- Name: campaigns id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.campaigns ALTER COLUMN id SET DEFAULT nextval('public.campaigns_id_seq'::regclass);
 
 
 --
@@ -3090,6 +3650,102 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 
 --
+-- Name: ad_budgets ad_budgets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_budgets
+    ADD CONSTRAINT ad_budgets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_callouts ad_callouts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_callouts
+    ADD CONSTRAINT ad_callouts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_descriptions ad_descriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_descriptions
+    ADD CONSTRAINT ad_descriptions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_groups ad_groups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_groups
+    ADD CONSTRAINT ad_groups_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_headlines ad_headlines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_headlines
+    ADD CONSTRAINT ad_headlines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_keywords ad_keywords_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_keywords
+    ADD CONSTRAINT ad_keywords_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_languages ad_languages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_languages
+    ADD CONSTRAINT ad_languages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_location_targets ad_location_targets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_location_targets
+    ADD CONSTRAINT ad_location_targets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_schedules ad_schedules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_schedules
+    ADD CONSTRAINT ad_schedules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ad_structured_snippets ad_structured_snippets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_structured_snippets
+    ADD CONSTRAINT ad_structured_snippets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ads_accounts ads_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ads_accounts
+    ADD CONSTRAINT ads_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ads ads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ads
+    ADD CONSTRAINT ads_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: announcements announcements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3119,6 +3775,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 ALTER TABLE ONLY public.brainstorms
     ADD CONSTRAINT brainstorms_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: campaigns campaigns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.campaigns
+    ADD CONSTRAINT campaigns_pkey PRIMARY KEY (id);
 
 
 --
@@ -3944,6 +4608,447 @@ CREATE UNIQUE INDEX index_active_storage_variant_records_uniqueness ON public.ac
 
 
 --
+-- Name: index_ad_budgets_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_budgets_on_campaign_id ON public.ad_budgets USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_budgets_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_budgets_on_google_id ON public.ad_budgets USING btree ((((platform_settings -> 'google'::text) ->> 'budget_id'::text)));
+
+
+--
+-- Name: index_ad_budgets_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_budgets_on_platform_settings ON public.ad_budgets USING gin (platform_settings);
+
+
+--
+-- Name: index_ad_callouts_on_ad_group_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_ad_group_id ON public.ad_callouts USING btree (ad_group_id);
+
+
+--
+-- Name: index_ad_callouts_on_asset_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_asset_id ON public.ad_callouts USING btree ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)));
+
+
+--
+-- Name: index_ad_callouts_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_campaign_id ON public.ad_callouts USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_callouts_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_created_at ON public.ad_callouts USING btree (created_at);
+
+
+--
+-- Name: index_ad_callouts_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_platform_settings ON public.ad_callouts USING gin (platform_settings);
+
+
+--
+-- Name: index_ad_callouts_on_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_position ON public.ad_callouts USING btree ("position");
+
+
+--
+-- Name: index_ad_descriptions_on_ad_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_descriptions_on_ad_id ON public.ad_descriptions USING btree (ad_id);
+
+
+--
+-- Name: index_ad_descriptions_on_asset_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_descriptions_on_asset_id ON public.ad_descriptions USING btree ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)));
+
+
+--
+-- Name: index_ad_descriptions_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_descriptions_on_created_at ON public.ad_descriptions USING btree (created_at);
+
+
+--
+-- Name: index_ad_descriptions_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_descriptions_on_platform_settings ON public.ad_descriptions USING gin (platform_settings);
+
+
+--
+-- Name: index_ad_descriptions_on_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_descriptions_on_position ON public.ad_descriptions USING btree ("position");
+
+
+--
+-- Name: index_ad_groups_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_groups_on_campaign_id ON public.ad_groups USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_groups_on_campaign_id_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_groups_on_campaign_id_and_name ON public.ad_groups USING btree (campaign_id, name);
+
+
+--
+-- Name: index_ad_groups_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_groups_on_created_at ON public.ad_groups USING btree (created_at);
+
+
+--
+-- Name: index_ad_groups_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_groups_on_google_id ON public.ad_groups USING btree ((((platform_settings -> 'google'::text) ->> 'ad_group_id'::text)));
+
+
+--
+-- Name: index_ad_groups_on_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_groups_on_name ON public.ad_groups USING btree (name);
+
+
+--
+-- Name: index_ad_groups_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_groups_on_platform_settings ON public.ad_groups USING gin (platform_settings);
+
+
+--
+-- Name: index_ad_headlines_on_ad_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_ad_id ON public.ad_headlines USING btree (ad_id);
+
+
+--
+-- Name: index_ad_headlines_on_ad_id_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_ad_id_and_position ON public.ad_headlines USING btree (ad_id, "position");
+
+
+--
+-- Name: index_ad_headlines_on_asset_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_asset_id ON public.ad_headlines USING btree ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)));
+
+
+--
+-- Name: index_ad_headlines_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_created_at ON public.ad_headlines USING btree (created_at);
+
+
+--
+-- Name: index_ad_headlines_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_platform_settings ON public.ad_headlines USING gin (platform_settings);
+
+
+--
+-- Name: index_ad_headlines_on_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_position ON public.ad_headlines USING btree ("position");
+
+
+--
+-- Name: index_ad_keywords_on_ad_group_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_ad_group_id ON public.ad_keywords USING btree (ad_group_id);
+
+
+--
+-- Name: index_ad_keywords_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_created_at ON public.ad_keywords USING btree (created_at);
+
+
+--
+-- Name: index_ad_keywords_on_criterion_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_criterion_id ON public.ad_keywords USING btree ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)));
+
+
+--
+-- Name: index_ad_keywords_on_match_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_match_type ON public.ad_keywords USING btree (match_type);
+
+
+--
+-- Name: index_ad_keywords_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_platform_settings ON public.ad_keywords USING gin (platform_settings);
+
+
+--
+-- Name: index_ad_keywords_on_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_position ON public.ad_keywords USING btree ("position");
+
+
+--
+-- Name: index_ad_keywords_on_text; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_text ON public.ad_keywords USING btree (text);
+
+
+--
+-- Name: index_ad_languages_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_languages_on_campaign_id ON public.ad_languages USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_languages_on_criterion_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_languages_on_criterion_id ON public.ad_languages USING btree ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)));
+
+
+--
+-- Name: index_ad_languages_on_language_constant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_languages_on_language_constant_id ON public.ad_languages USING btree ((((platform_settings -> 'google'::text) ->> 'language_constant_id'::text)));
+
+
+--
+-- Name: index_ad_languages_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_languages_on_platform_settings ON public.ad_languages USING gin (platform_settings);
+
+
+--
+-- Name: index_ad_location_targets_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_location_targets_on_campaign_id ON public.ad_location_targets USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_location_targets_on_criterion_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_location_targets_on_criterion_id ON public.ad_location_targets USING btree ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)));
+
+
+--
+-- Name: index_ad_location_targets_on_location_identifier; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_location_targets_on_location_identifier ON public.ad_location_targets USING btree (location_identifier);
+
+
+--
+-- Name: index_ad_location_targets_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_location_targets_on_platform_settings ON public.ad_location_targets USING gin (platform_settings);
+
+
+--
+-- Name: index_ad_schedules_on_always_on; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_always_on ON public.ad_schedules USING btree (always_on);
+
+
+--
+-- Name: index_ad_schedules_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_campaign_id ON public.ad_schedules USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_schedules_on_campaign_id_and_day_of_week; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_campaign_id_and_day_of_week ON public.ad_schedules USING btree (campaign_id, day_of_week);
+
+
+--
+-- Name: index_ad_schedules_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_created_at ON public.ad_schedules USING btree (created_at);
+
+
+--
+-- Name: index_ad_schedules_on_criterion_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_criterion_id ON public.ad_schedules USING btree ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)));
+
+
+--
+-- Name: index_ad_schedules_on_day_of_week; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_day_of_week ON public.ad_schedules USING btree (day_of_week);
+
+
+--
+-- Name: index_ad_schedules_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_platform_settings ON public.ad_schedules USING gin (platform_settings);
+
+
+--
+-- Name: index_ad_structured_snippets_on_asset_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_asset_id ON public.ad_structured_snippets USING btree ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)));
+
+
+--
+-- Name: index_ad_structured_snippets_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_campaign_id ON public.ad_structured_snippets USING btree (campaign_id);
+
+
+--
+-- Name: index_ad_structured_snippets_on_category; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_category ON public.ad_structured_snippets USING btree (category);
+
+
+--
+-- Name: index_ad_structured_snippets_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_created_at ON public.ad_structured_snippets USING btree (created_at);
+
+
+--
+-- Name: index_ad_structured_snippets_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_platform_settings ON public.ad_structured_snippets USING gin (platform_settings);
+
+
+--
+-- Name: index_ads_accounts_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_accounts_on_account_id ON public.ads_accounts USING btree (account_id);
+
+
+--
+-- Name: index_ads_accounts_on_account_id_and_platform; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_ads_accounts_on_account_id_and_platform ON public.ads_accounts USING btree (account_id, platform);
+
+
+--
+-- Name: index_ads_accounts_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_accounts_on_google_id ON public.ads_accounts USING btree (((platform_settings ->> 'google'::text)));
+
+
+--
+-- Name: index_ads_accounts_on_platform; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_accounts_on_platform ON public.ads_accounts USING btree (platform);
+
+
+--
+-- Name: index_ads_accounts_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_accounts_on_platform_settings ON public.ads_accounts USING gin (platform_settings);
+
+
+--
+-- Name: index_ads_on_ad_group_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_on_ad_group_id ON public.ads USING btree (ad_group_id);
+
+
+--
+-- Name: index_ads_on_ad_group_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_on_ad_group_id_and_status ON public.ads USING btree (ad_group_id, status);
+
+
+--
+-- Name: index_ads_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_on_google_id ON public.ads USING btree ((((platform_settings -> 'google'::text) ->> 'ad_id'::text)));
+
+
+--
+-- Name: index_ads_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_on_platform_settings ON public.ads USING gin (platform_settings);
+
+
+--
+-- Name: index_ads_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_on_status ON public.ads USING btree (status);
+
+
+--
 -- Name: index_api_tokens_on_token; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3983,6 +5088,118 @@ CREATE UNIQUE INDEX index_brainstorms_on_thread_id ON public.brainstorms USING b
 --
 
 CREATE UNIQUE INDEX index_brainstorms_on_website_id ON public.brainstorms USING btree (website_id);
+
+
+--
+-- Name: index_campaigns_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_account_id ON public.campaigns USING btree (account_id);
+
+
+--
+-- Name: index_campaigns_on_account_id_and_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_account_id_and_stage ON public.campaigns USING btree (account_id, stage);
+
+
+--
+-- Name: index_campaigns_on_account_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_account_id_and_status ON public.campaigns USING btree (account_id, status);
+
+
+--
+-- Name: index_campaigns_on_ads_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_ads_account_id ON public.campaigns USING btree (ads_account_id);
+
+
+--
+-- Name: index_campaigns_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_created_at ON public.campaigns USING btree (created_at);
+
+
+--
+-- Name: index_campaigns_on_end_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_end_date ON public.campaigns USING btree (end_date);
+
+
+--
+-- Name: index_campaigns_on_google_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_google_id ON public.campaigns USING btree ((((platform_settings -> 'google'::text) ->> 'campaign_id'::text)));
+
+
+--
+-- Name: index_campaigns_on_launched_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_launched_at ON public.campaigns USING btree (launched_at);
+
+
+--
+-- Name: index_campaigns_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_platform_settings ON public.campaigns USING gin (platform_settings);
+
+
+--
+-- Name: index_campaigns_on_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_project_id ON public.campaigns USING btree (project_id);
+
+
+--
+-- Name: index_campaigns_on_project_id_and_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_project_id_and_stage ON public.campaigns USING btree (project_id, stage);
+
+
+--
+-- Name: index_campaigns_on_project_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_project_id_and_status ON public.campaigns USING btree (project_id, status);
+
+
+--
+-- Name: index_campaigns_on_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_stage ON public.campaigns USING btree (stage);
+
+
+--
+-- Name: index_campaigns_on_start_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_start_date ON public.campaigns USING btree (start_date);
+
+
+--
+-- Name: index_campaigns_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_status ON public.campaigns USING btree (status);
+
+
+--
+-- Name: index_campaigns_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_website_id ON public.campaigns USING btree (website_id);
 
 
 --
@@ -5871,6 +7088,19 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251125163826'),
+('20251125163744'),
+('20251125000849'),
+('20251125000841'),
+('20251125000832'),
+('20251125000816'),
+('20251125000749'),
+('20251124234744'),
+('20251124234730'),
+('20251124234418'),
+('20251124234408'),
+('20251124234404'),
+('20251124234400'),
 ('20251121145610'),
 ('20251121145502'),
 ('20251121145154'),

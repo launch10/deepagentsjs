@@ -38,7 +38,7 @@ class ProjectWorkflow < ApplicationRecord
   scope :launch, -> { where(workflow_type: "launch") }
 
   def next_step!
-    next_step, next_substep = WorkflowConfig.next(workflow_type, step, substep)
+    next_step, next_substep = self.next_step
     unless next_step
       complete!
       return [nil, nil]
@@ -48,7 +48,11 @@ class ProjectWorkflow < ApplicationRecord
   end
 
   def next_step
-    WorkflowConfig.next_step(workflow_type, step)
+    WorkflowConfig.next(workflow_type, step, substep)
+  end
+
+  def prev_step
+    WorkflowConfig.prev(workflow_type, step, substep)
   end
 
   def advance_to(step:, substep: nil)
@@ -58,10 +62,6 @@ class ProjectWorkflow < ApplicationRecord
     return false unless valid_step?(step, substep)
 
     update(step: step, substep: substep)
-  end
-
-  def valid_step?(step, substep)
-    WorkflowConfig.step_exists?(workflow_type, step) && (substep.nil? || WorkflowConfig.substep_exists?(workflow_type, step, substep))
   end
 
   def completed?
@@ -91,6 +91,10 @@ class ProjectWorkflow < ApplicationRecord
   end
 
   private
+
+  def valid_step?(step, substep)
+    WorkflowConfig.step_exists?(workflow_type, step) && (substep.nil? || WorkflowConfig.substep_exists?(workflow_type, step, substep))
+  end
 
   def calculate_progress
     config = WorkflowConfig.definition(workflow_type)

@@ -297,6 +297,1006 @@ paths:
                           description: Optional UUID for the project
               required:
               - brainstorm
+  "/api/v1/campaigns":
+    post:
+      summary: Creates a campaign
+      tags:
+      - Campaigns
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '201':
+          description: campaign created with ad group and ad
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Campaign name
+                  stage:
+                    type: string
+                    description: Current campaign stage
+                  status:
+                    type: string
+                    description: Campaign status
+                  ready_for_next_stage:
+                    type: boolean
+                    description: Whether campaign is ready to advance to next stage
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    description: Unique identifier
+                  start_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign start date
+                  end_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign end date
+                  time_zone:
+                    type: string
+                    description: Campaign time zone
+                  daily_budget_cents:
+                    type: integer
+                    nullable: true
+                    description: Daily budget in cents
+                  google_advertising_channel_type:
+                    type: string
+                    nullable: true
+                    description: Google Ads channel type
+                  google_bidding_strategy:
+                    type: string
+                    nullable: true
+                    description: Google Ads bidding strategy
+                  ad_groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        name:
+                          type: string
+                        ads:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              headlines:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                              descriptions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                        keywords:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              text:
+                                type: string
+                              match_type:
+                                type: string
+                              position:
+                                type: integer
+                  callouts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        text:
+                          type: string
+                        position:
+                          type: integer
+                  structured_snippet:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: integer
+                        description: Unique identifier
+                      category:
+                        type: string
+                      values:
+                        type: array
+                        items:
+                          type: string
+                  workflow:
+                    type: object
+                    nullable: true
+                    properties:
+                      step:
+                        type: string
+                      substep:
+                        type: string
+                        nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - stage
+                - status
+                - account_id
+                - project_id
+                - website_id
+                - created_at
+                - updated_at
+        '200':
+          description: campaign already exists and is returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Campaign name
+                  stage:
+                    type: string
+                    description: Current campaign stage
+                  status:
+                    type: string
+                    description: Campaign status
+                  ready_for_next_stage:
+                    type: boolean
+                    description: Whether campaign is ready to advance to next stage
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    description: Unique identifier
+                  start_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign start date
+                  end_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign end date
+                  time_zone:
+                    type: string
+                    description: Campaign time zone
+                  daily_budget_cents:
+                    type: integer
+                    nullable: true
+                    description: Daily budget in cents
+                  google_advertising_channel_type:
+                    type: string
+                    nullable: true
+                    description: Google Ads channel type
+                  google_bidding_strategy:
+                    type: string
+                    nullable: true
+                    description: Google Ads bidding strategy
+                  ad_groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        name:
+                          type: string
+                        ads:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              headlines:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                              descriptions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                        keywords:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              text:
+                                type: string
+                              match_type:
+                                type: string
+                              position:
+                                type: integer
+                  callouts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        text:
+                          type: string
+                        position:
+                          type: integer
+                  structured_snippet:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: integer
+                        description: Unique identifier
+                      category:
+                        type: string
+                      values:
+                        type: array
+                        items:
+                          type: string
+                  workflow:
+                    type: object
+                    nullable: true
+                    properties:
+                      step:
+                        type: string
+                      substep:
+                        type: string
+                        nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - stage
+                - status
+                - account_id
+                - project_id
+                - website_id
+                - created_at
+                - updated_at
+        '401':
+          description: unauthorized - missing token
+        '422':
+          description: invalid request - missing website_id
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                campaign:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Campaign name
+                    project_id:
+                      type: integer
+                      description: Project ID
+                    website_id:
+                      type: integer
+                      description: Website ID
+                  required:
+                  - project_id
+                  - website_id
+              required:
+              - campaign
+  "/api/v1/campaigns/{id}":
+    parameters:
+    - name: id
+      in: path
+      description: Campaign ID
+      required: true
+      schema:
+        type: integer
+    patch:
+      summary: Validates campaign updates
+      tags:
+      - Campaigns
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: preserves all previous stage content when updating launch settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Campaign name
+                  stage:
+                    type: string
+                    description: Current campaign stage
+                  status:
+                    type: string
+                    description: Campaign status
+                  ready_for_next_stage:
+                    type: boolean
+                    description: Whether campaign is ready to advance to next stage
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    description: Unique identifier
+                  start_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign start date
+                  end_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Campaign end date
+                  time_zone:
+                    type: string
+                    description: Campaign time zone
+                  daily_budget_cents:
+                    type: integer
+                    nullable: true
+                    description: Daily budget in cents
+                  google_advertising_channel_type:
+                    type: string
+                    nullable: true
+                    description: Google Ads channel type
+                  google_bidding_strategy:
+                    type: string
+                    nullable: true
+                    description: Google Ads bidding strategy
+                  ad_groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        name:
+                          type: string
+                        ads:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              headlines:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                              descriptions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                        keywords:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              text:
+                                type: string
+                              match_type:
+                                type: string
+                              position:
+                                type: integer
+                  callouts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        text:
+                          type: string
+                        position:
+                          type: integer
+                  structured_snippet:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: integer
+                        description: Unique identifier
+                      category:
+                        type: string
+                      values:
+                        type: array
+                        items:
+                          type: string
+                  workflow:
+                    type: object
+                    nullable: true
+                    properties:
+                      step:
+                        type: string
+                      substep:
+                        type: string
+                        nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - stage
+                - status
+                - account_id
+                - project_id
+                - website_id
+                - created_at
+                - updated_at
+        '404':
+          description: campaign not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
+        '422':
+          description: does not save any changes when validation fails
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                campaign:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Campaign name
+                    start_date:
+                      type: string
+                      format: date
+                      description: Campaign start date
+                    end_date:
+                      type: string
+                      format: date
+                      description: Campaign end date
+                    time_zone:
+                      type: string
+                      description: Campaign time zone
+                    daily_budget_cents:
+                      type: integer
+                      description: Daily budget in cents
+                    google_advertising_channel_type:
+                      type: string
+                      description: Google Ads channel type
+                    google_bidding_strategy:
+                      type: string
+                      description: Google Ads bidding strategy
+                    ad_groups_attributes:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          name:
+                            type: string
+                          ads_attributes:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                headlines_attributes:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      id:
+                                        type: integer
+                                      text:
+                                        type: string
+                                      position:
+                                        type: integer
+                                descriptions_attributes:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      id:
+                                        type: integer
+                                      text:
+                                        type: string
+                                      position:
+                                        type: integer
+                          keywords_attributes:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                text:
+                                  type: string
+                                match_type:
+                                  type: string
+                                position:
+                                  type: integer
+                    callouts_attributes:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          text:
+                            type: string
+                          position:
+                            type: integer
+                    structured_snippet_attributes:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        category:
+                          type: string
+                        values:
+                          type: array
+                          items:
+                            type: string
+                        _destroy:
+                          type: boolean
+                    location_targets:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          target_type:
+                            type: string
+                          location_name:
+                            type: string
+                          location_type:
+                            type: string
+                          country_code:
+                            type: string
+                          targeted:
+                            type: boolean
+                          google_criterion_id:
+                            type: string
+                          radius:
+                            type: number
+                          radius_units:
+                            type: string
+                    ad_schedules:
+                      type: object
+                      properties:
+                        always_on:
+                          type: boolean
+                          description: Whether the campaign runs 24/7
+                        start_time:
+                          type: string
+                          description: Start time in format like "9:00am"
+                          example: 9:00am
+                        end_time:
+                          type: string
+                          description: End time in format like "5:00pm"
+                          example: 5:00pm
+                        time_zone:
+                          type: string
+                          description: IANA time zone
+                          example: America/New_York
+                        day_of_week:
+                          type: array
+                          items:
+                            type: string
+                          description: Days when ads should run
+                          example:
+                          - Monday
+                          - Tuesday
+                          - Wednesday
+              required:
+              - campaign
+  "/api/v1/campaigns/{id}/advance":
+    parameters:
+    - name: id
+      in: path
+      description: Campaign ID
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Advances campaign to next stage
+      tags:
+      - Campaigns
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '404':
+          description: campaign not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
+        '200':
+          description: campaign advanced from launch to review stage
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  stage:
+                    type: string
+                    description: New campaign stage after advancement
+                  status:
+                    type: string
+                    description: Campaign status
+                  workflow:
+                    type: object
+                    nullable: true
+                    properties:
+                      step:
+                        type: string
+                      substep:
+                        type: string
+                        nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - stage
+                - status
+        '422':
+          description: cannot advance from launch - validation failed (missing fields)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
+  "/api/v1/campaigns/{id}/back":
+    parameters:
+    - name: id
+      in: path
+      description: Campaign ID
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Steps back to previous stage
+      tags:
+      - Campaigns
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: campaign stepped back to previous stage
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  stage:
+                    type: string
+                    description: New campaign stage after advancement
+                  status:
+                    type: string
+                    description: Campaign status
+                  workflow:
+                    type: object
+                    nullable: true
+                    properties:
+                      step:
+                        type: string
+                      substep:
+                        type: string
+                        nullable: true
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - stage
+                - status
+        '404':
+          description: campaign not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
   "/api/v1/projects/{project_uuid}/workflows/{id}":
     parameters:
     - name: project_uuid
@@ -783,29 +1783,42 @@ paths:
                 properties:
                   error:
                     type: string
-                    description: Error message
+                    description: Single error message
                   errors:
-                    type: array
-                    items:
-                      type: string
-                    description: Array of error messages
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                name:
-                  type: string
-                  description: Theme name
-                colors:
-                  type: array
-                  items:
-                    type: string
-                  description: Theme color palette
+                theme:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Theme name
+                    colors:
+                      type: array
+                      items:
+                        type: string
+                      description: Theme color palette
+                  required:
+                  - name
+                  - colors
               required:
-              - name
-              - colors
+              - theme
   "/api/v1/uploads":
     post:
       summary: Creates an upload
@@ -832,6 +1845,57 @@ paths:
       responses:
         '201':
           description: creating upload without website
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  uuid:
+                    type: string
+                    description: Upload UUID
+                  url:
+                    type: string
+                    description: Full size file URL
+                  thumb_url:
+                    type: string
+                    nullable: true
+                    description: Thumbnail URL (images only)
+                  medium_url:
+                    type: string
+                    nullable: true
+                    description: Medium size URL (images only)
+                  media_type:
+                    type: string
+                    enum:
+                    - image
+                    - video
+                    description: Media type
+                  is_logo:
+                    type: boolean
+                    description: Whether this upload is a logo
+                  filename:
+                    type: string
+                    description: Original filename
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Creation timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Last update timestamp
+                required:
+                - id
+                - uuid
+                - url
+                - media_type
+                - is_logo
+                - filename
+                - created_at
+                - updated_at
         '422':
           description: rejects PDF upload
         '401':
@@ -873,6 +1937,59 @@ paths:
       responses:
         '200':
           description: returns team account uploads after switching
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Unique identifier
+                    uuid:
+                      type: string
+                      description: Upload UUID
+                    url:
+                      type: string
+                      description: Full size file URL
+                    thumb_url:
+                      type: string
+                      nullable: true
+                      description: Thumbnail URL (images only)
+                    medium_url:
+                      type: string
+                      nullable: true
+                      description: Medium size URL (images only)
+                    media_type:
+                      type: string
+                      enum:
+                      - image
+                      - video
+                      description: Media type
+                    is_logo:
+                      type: boolean
+                      description: Whether this upload is a logo
+                    filename:
+                      type: string
+                      description: Original filename
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Creation timestamp
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                  required:
+                  - id
+                  - uuid
+                  - url
+                  - media_type
+                  - is_logo
+                  - filename
+                  - created_at
+                  - updated_at
         '404':
           description: website not found when filtering
 servers:

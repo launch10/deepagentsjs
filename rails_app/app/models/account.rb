@@ -35,6 +35,7 @@ class Account < ApplicationRecord
   belongs_to :owner, class_name: "User"
   has_many :account_invitations, dependent: :destroy
   has_many :account_users, dependent: :destroy
+  has_many :campaigns, dependent: :destroy
   has_many :notification_mentions, as: :record, dependent: :destroy, class_name: "Noticed::Event"
   has_many :account_notifications, dependent: :destroy, class_name: "Noticed::Event"
   has_many :users, through: :account_users
@@ -47,6 +48,7 @@ class Account < ApplicationRecord
   has_many :themes, as: :author
   has_many :uploads
   has_one :firewall, class_name: "Cloudflare::Firewall"
+  has_many :ads_accounts, dependent: :destroy
 
   scope :personal, -> { where(personal: true) }
   scope :team, -> { where(personal: false) }

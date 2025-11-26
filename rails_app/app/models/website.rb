@@ -47,6 +47,8 @@ class Website < ApplicationRecord
 
   has_many :website_uploads
   has_many :uploads, through: :website_uploads
+  has_many :campaigns
+  alias_method :ad_campaigns, :campaigns
 
   accepts_nested_attributes_for :website_files, allow_destroy: true
 
