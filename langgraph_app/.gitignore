@@ -43,3 +43,6 @@ node_modules/
 .vscode
 
 node_modules/**/**
+
+# TypeScript build info
+*.tsbuildinfo
