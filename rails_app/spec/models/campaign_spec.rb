@@ -48,6 +48,34 @@ RSpec.describe Campaign, type: :model do
     it { should validate_inclusion_of(:status).in_array(Campaign::STATUSES) }
     it { should validate_presence_of(:stage) }
     it { should validate_inclusion_of(:stage).in_array(Campaign::STAGES) }
+
+    describe "time_zone" do
+      it "allows valid IANA time zone identifiers" do
+        campaign = build(:campaign, time_zone: "America/New_York")
+        expect(campaign).to be_valid
+
+        campaign.time_zone = "Europe/London"
+        expect(campaign).to be_valid
+
+        campaign.time_zone = "Asia/Tokyo"
+        expect(campaign).to be_valid
+      end
+
+      it "allows nil time_zone" do
+        campaign = build(:campaign, time_zone: nil)
+        expect(campaign).to be_valid
+      end
+
+      it "rejects invalid time zone identifiers" do
+        campaign = build(:campaign, time_zone: "Invalid/Timezone")
+        expect(campaign).to_not be_valid
+        expect(campaign.errors[:time_zone]).to include("is not included in the list")
+
+        campaign.time_zone = "EST"
+        expect(campaign).to_not be_valid
+        expect(campaign.errors[:time_zone]).to include("is not included in the list")
+      end
+    end
   end
 
   describe "nested attributes" do

@@ -81,6 +81,7 @@ class Campaign < ApplicationRecord
 
   validates :status, presence: true, inclusion: { in: STATUSES }
   validates :stage, presence: true, inclusion: { in: STAGES }
+  validates :time_zone, inclusion: { in: ActiveSupport::TimeZone::MAPPING.values }, allow_nil: true
 
   accepts_nested_attributes_for :ad_groups, allow_destroy: true
   accepts_nested_attributes_for :callouts, allow_destroy: true
