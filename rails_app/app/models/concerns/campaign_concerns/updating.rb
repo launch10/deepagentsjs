@@ -2,10 +2,20 @@ module CampaignConcerns
   module Updating
     extend ActiveSupport::Concern
 
+    class UpdateValidationError < StandardError
+      attr_reader :record, :errors
+
+      def initialize(record, errors)
+        @record = record
+        @errors = errors
+        super("Validation failed")
+      end
+    end
+
     class UpdateResult
       attr_reader :success, :campaign, :errors
 
-      def initialize(success:, campaign:, errors: [])
+      def initialize(success:, campaign:, errors: {})
         @success = success
         @campaign = campaign
         @errors = errors
@@ -23,8 +33,7 @@ module CampaignConcerns
     def update_idempotently!(params)
       result = update_idempotently(params)
       if result.failed?
-        result.errors.each { |e| errors.add(:base, e) }
-        raise ActiveRecord::RecordInvalid.new(self)
+        raise UpdateValidationError.new(self, result.errors)
       end
       result
     end
@@ -42,12 +51,13 @@ module CampaignConcerns
         @objects_to_validate = []
         @deletions_to_perform = []
         @saves_to_perform = []
+        @validation_context = []
       end
 
       def update
         validation_errors = []
 
-        result = Campaign.transaction do
+        did_execute = Campaign.transaction do
           prepare_regular_attrs!
           prepare_idempotent_attrs!
           execute_deletions!
@@ -58,10 +68,10 @@ module CampaignConcerns
           end
 
           execute_saves!
-          :success
+          true
         end
 
-        if result == :success
+        if did_execute
           UpdateResult.new(success: true, campaign: campaign.reload)
         else
           UpdateResult.new(success: false, campaign: campaign, errors: validation_errors)
@@ -85,7 +95,7 @@ module CampaignConcerns
         location_targets_data = regular_params.delete(:location_targets)
 
         campaign.assign_attributes(regular_params)
-        @objects_to_validate << campaign
+        add_to_validation(campaign, 'campaign')
         @saves_to_perform << -> { campaign.save! }
 
         if location_targets_data.present?
@@ -121,15 +131,7 @@ module CampaignConcerns
       end
 
       def validate_all_objects!
-        errors = []
-        @objects_to_validate.each do |obj|
-          unless obj.valid?
-            obj.errors.full_messages.each do |message|
-              errors << "#{obj.class.name}: #{message}"
-            end
-          end
-        end
-        errors
+        ValidationErrorFormatter.new(@validation_context).format_errors
       end
 
       def execute_deletions!
@@ -152,8 +154,12 @@ module CampaignConcerns
         headlines_to_create = []
         all_headlines = []
         existing_headlines = ad.headlines.reload.index_by(&:id)
+        ad_group_index = find_ad_group_index(ad.ad_group_id)
+        ad_index = find_ad_index(ad.ad_group_id, ad.id)
 
-        headlines_attrs.each do |attrs|
+        headlines_attrs.each_with_index do |attrs, idx|
+          path = "ad_groups[#{ad_group_index}].ads[#{ad_index}].headlines[#{idx}]"
+
           if attrs[:id]
             headline = existing_headlines[attrs[:id]]
             if headline
@@ -161,7 +167,7 @@ module CampaignConcerns
               headline.skip_position_uniqueness_validation = true
               headlines_to_update << headline
               all_headlines << headline
-              @objects_to_validate << headline
+              add_to_validation(headline, path)
             end
           else
             new_headline = AdHeadline.new(
@@ -173,7 +179,7 @@ module CampaignConcerns
             new_headline.skip_position_uniqueness_validation = true
             headlines_to_create << new_headline
             all_headlines << new_headline
-            @objects_to_validate << new_headline
+            add_to_validation(new_headline, path)
           end
         end
 
@@ -188,15 +194,19 @@ module CampaignConcerns
         descriptions_to_create = []
         all_descriptions = []
         existing_descriptions = ad.descriptions.reload.index_by(&:id)
+        ad_group_index = find_ad_group_index(ad.ad_group_id)
+        ad_index = find_ad_index(ad.ad_group_id, ad.id)
 
-        descriptions_attrs.each do |attrs|
+        descriptions_attrs.each_with_index do |attrs, idx|
+          path = "ad_groups[#{ad_group_index}].ads[#{ad_index}].descriptions[#{idx}]"
+
           if attrs[:id]
             description = existing_descriptions[attrs[:id]]
             if description
               description.assign_attributes(text: attrs[:text], position: attrs[:position], platform_settings: attrs[:platform_settings])
               descriptions_to_update << description
               all_descriptions << description
-              @objects_to_validate << description
+              add_to_validation(description, path)
             end
           else
             new_description = AdDescription.new(
@@ -207,7 +217,7 @@ module CampaignConcerns
             )
             descriptions_to_create << new_description
             all_descriptions << new_description
-            @objects_to_validate << new_description
+            add_to_validation(new_description, path)
           end
         end
 
@@ -223,14 +233,16 @@ module CampaignConcerns
         all_callouts = []
         existing_callouts = campaign.callouts.reload.index_by(&:id)
 
-        callouts_attrs.each do |attrs|
+        callouts_attrs.each_with_index do |attrs, idx|
+          path = "callouts[#{idx}]"
+
           if attrs[:id]
             callout = existing_callouts[attrs[:id]]
             if callout
               callout.assign_attributes(text: attrs[:text], position: attrs[:position], platform_settings: attrs[:platform_settings])
               callouts_to_update << callout
               all_callouts << callout
-              @objects_to_validate << callout
+              add_to_validation(callout, path)
             end
           else
             new_callout = AdCallout.new(
@@ -242,7 +254,7 @@ module CampaignConcerns
             )
             callouts_to_create << new_callout
             all_callouts << new_callout
-            @objects_to_validate << new_callout
+            add_to_validation(new_callout, path)
           end
         end
 
@@ -256,13 +268,15 @@ module CampaignConcerns
           return
         end
 
+        path = "structured_snippet"
+
         if campaign.structured_snippet.present?
           campaign.structured_snippet.assign_attributes(category: snippet_attrs[:category], values: snippet_attrs[:values])
-          @objects_to_validate << campaign.structured_snippet
+          add_to_validation(campaign.structured_snippet, path)
           @saves_to_perform << -> { campaign.structured_snippet.save! }
         else
           new_snippet = campaign.build_structured_snippet(category: snippet_attrs[:category], values: snippet_attrs[:values])
-          @objects_to_validate << new_snippet
+          add_to_validation(new_snippet, path)
           @saves_to_perform << -> { new_snippet.save! }
         end
       end
@@ -274,15 +288,18 @@ module CampaignConcerns
         keywords_to_create = []
         all_keywords = []
         existing_keywords = ad_group.keywords.reload.index_by(&:id)
+        ad_group_index = find_ad_group_index(ad_group.id)
 
-        keywords_attrs.each do |attrs|
+        keywords_attrs.each_with_index do |attrs, idx|
+          path = "ad_groups[#{ad_group_index}].keywords[#{idx}]"
+
           if attrs[:id]
             keyword = existing_keywords[attrs[:id]]
             if keyword
               keyword.assign_attributes(text: attrs[:text], match_type: attrs[:match_type], position: attrs[:position])
               keywords_to_update << keyword
               all_keywords << keyword
-              @objects_to_validate << keyword
+              add_to_validation(keyword, path)
             end
           else
             new_keyword = AdKeyword.new(
@@ -293,7 +310,7 @@ module CampaignConcerns
             )
             keywords_to_create << new_keyword
             all_keywords << new_keyword
-            @objects_to_validate << new_keyword
+            add_to_validation(new_keyword, path)
           end
         end
 
@@ -328,6 +345,20 @@ module CampaignConcerns
             )
           end
         }
+      end
+
+      def add_to_validation(object, path)
+        @objects_to_validate << object
+        @validation_context << { object: object, path: path }
+      end
+
+      def find_ad_group_index(ad_group_id)
+        params[:ad_groups_attributes]&.find_index { |ag| ag[:id] == ad_group_id } || 0
+      end
+
+      def find_ad_index(ad_group_id, ad_id)
+        ad_group_attrs = params[:ad_groups_attributes]&.find { |ag| ag[:id] == ad_group_id }
+        ad_group_attrs&.dig(:ads_attributes)&.find_index { |ad| ad[:id] == ad_id } || 0
       end
     end
   end

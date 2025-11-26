@@ -25,6 +25,8 @@ class API::V1::CampaignsController < API::BaseController
 
     begin
       campaign.update_idempotently!(campaign_params.to_h)
+    rescue CampaignConcerns::Updating::UpdateValidationError => e
+      render json: {errors: e.errors}, status: :unprocessable_entity and return
     rescue ActiveRecord::RecordInvalid => e
       render json: {errors: e.record.errors.full_messages}, status: :unprocessable_entity and return
     rescue => e

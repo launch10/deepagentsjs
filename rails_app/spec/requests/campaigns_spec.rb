@@ -2772,7 +2772,7 @@ RSpec.describe "Campaigns API", type: :request do
         end
 
         describe 'Multiple validation errors' do
-          response '422', 'returns all validation errors at once' do
+          response '422', 'returns all validation errors at once', focus: true do
             let(:campaign_params) do
               ad = campaign1.ad_groups.first.ads.first
               ad_group = campaign1.ad_groups.first
@@ -2787,7 +2787,9 @@ RSpec.describe "Campaigns API", type: :request do
                           id: ad.id,
                           headlines_attributes: [
                             {text: "", position: 0},
-                            {text: "A" * 31, position: 1}
+                            {text: "A" * 31, position: 1},
+                            {text: "Legal headline", position: 2},
+                            {text: "Illegal headline" * 30, position: 3}
                           ],
                           descriptions_attributes: [
                             {text: "", position: 0}
@@ -2809,7 +2811,17 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].length).to be > 3
+              expect(data["errors"]).to be_a(Hash)
+              expect(data["errors"].keys.length).to be > 3
+
+              expect(data["errors"].keys).to include("ad_groups[0].ads[0].headlines[0].text")
+              expect(data["errors"].keys).to include("ad_groups[0].ads[0].headlines[1].text")
+              expect(data["errors"].keys).to_not include("ad_groups[0].ads[0].headlines[2].text")
+              expect(data["errors"].keys).to include("ad_groups[0].ads[0].headlines[3].text")
+              expect(data["errors"].keys).to include(match(/ad_groups\[\d+\]\.ads\[\d+\]\.descriptions\[\d+\]\.text/))
+              expect(data["errors"].keys).to include(match(/ad_groups\[\d+\]\.keywords\[\d+\]/))
+              expect(data["errors"].keys).to include(match(/callouts\[\d+\]\.text/))
+              expect(data["errors"].keys).to include("campaign.time_zone")
             end
           end
         end
