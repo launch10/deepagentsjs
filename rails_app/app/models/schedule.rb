@@ -89,6 +89,31 @@ class Schedule
     end
   end
 
+  # Builds ad schedules from structured data without saving
+  #
+  # @param schedule_data [Hash] the schedule configuration
+  # @return [Array<AdSchedule>] array of built (unsaved) ad schedules
+  def build(schedule_data)
+    if schedule_data[:always_on]
+      [campaign.ad_schedules.new(always_on: true)]
+    else
+      days = schedule_data[:day_of_week] || []
+      start_hour, start_minute = parse_time(schedule_data[:start_time])
+      end_hour, end_minute = parse_time(schedule_data[:end_time])
+
+      days.map do |day|
+        campaign.ad_schedules.new(
+          day_of_week: day,
+          start_hour: start_hour,
+          start_minute: start_minute,
+          end_hour: end_hour,
+          end_minute: end_minute,
+          always_on: false
+        )
+      end
+    end
+  end
+
   # Updates the campaign schedule from structured data
   #
   # @param schedule_data [Hash] the schedule configuration
@@ -119,24 +144,8 @@ class Schedule
         self.time_zone = schedule_data[:time_zone]
       end
 
-      if schedule_data[:always_on]
-        campaign.ad_schedules.create!(always_on: true)
-      else
-        days = schedule_data[:day_of_week] || []
-        start_hour, start_minute = parse_time(schedule_data[:start_time])
-        end_hour, end_minute = parse_time(schedule_data[:end_time])
-
-        days.each do |day|
-          campaign.ad_schedules.create!(
-            day_of_week: day,
-            start_hour: start_hour,
-            start_minute: start_minute,
-            end_hour: end_hour,
-            end_minute: end_minute,
-            always_on: false
-          )
-        end
-      end
+      schedules = build(schedule_data)
+      schedules.each(&:save!)
     end
   end
 

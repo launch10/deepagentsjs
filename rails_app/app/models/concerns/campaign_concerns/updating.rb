@@ -61,6 +61,7 @@ module CampaignConcerns
         regular_params.delete(:callouts_attributes)
         regular_params.delete(:structured_snippet_attributes)
         location_targets_data = regular_params.delete(:location_targets)
+        ad_schedules_data = regular_params.delete(:ad_schedules)
 
         campaign.assign_attributes(regular_params)
         add_to_validation(campaign, "campaign")
@@ -68,6 +69,10 @@ module CampaignConcerns
 
         if location_targets_data.present?
           prepare_location_targets(location_targets_data)
+        end
+
+        if ad_schedules_data.present?
+          prepare_ad_schedules(ad_schedules_data)
         end
       end
 
@@ -246,6 +251,21 @@ module CampaignConcerns
             )
           end
         }
+      end
+
+      def prepare_ad_schedules(schedule_data)
+        if schedule_data[:time_zone].present?
+          campaign.time_zone = schedule_data[:time_zone]
+        end
+
+        schedules = campaign.schedule.build(schedule_data)
+
+        schedules.each_with_index do |schedule, idx|
+          path = "ad_schedules"
+          add_to_validation(schedule, path)
+        end
+
+        @saves_to_perform << -> { campaign.schedule.update(schedule_data) }
       end
 
       def prepare_structured_snippet(snippet_attrs)
