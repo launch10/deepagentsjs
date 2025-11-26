@@ -33,6 +33,7 @@ class Account < ApplicationRecord
   include AccountConcerns::TrafficLimits
 
   belongs_to :owner, class_name: "User"
+  has_one :ads_account, dependent: :destroy
   has_many :account_invitations, dependent: :destroy
   has_many :account_users, dependent: :destroy
   has_many :campaigns, dependent: :destroy

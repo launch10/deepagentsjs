@@ -54,6 +54,7 @@ class Campaign < ApplicationRecord
   has_many :ad_groups, dependent: :destroy
   has_many :ads, through: :ad_groups
   has_one :launch_workflow, -> { where(workflow_type: "launch") }, through: :project, source: :workflows
+  has_many :ad_schedules, dependent: :destroy
 
   # Ad creative
   has_many :callouts, class_name: "AdCallout", dependent: :destroy
