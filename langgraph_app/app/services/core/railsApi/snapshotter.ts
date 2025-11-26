@@ -1,5 +1,5 @@
 import { RailsAPIBase, type paths } from "@rails_api";
-import { type Simplify } from "type-fest";
+import type { Simplify } from "type-fest";
 
 /**
  * Type definitions for test database operations
