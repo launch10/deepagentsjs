@@ -44,7 +44,25 @@ module CampaignConcerns
           location_targets.new(target_data)
         end
 
-        AdLocationTarget.import(targets, validate: false)
+        errors = []
+        targets.each do |target|
+          unless target.valid?
+            target.errors.full_messages.each do |message|
+              errors << "AdLocationTarget: #{message}"
+            end
+          end
+        end
+
+        if errors.any?
+          errors.each { |e| self.errors.add(:base, e) }
+          raise ActiveRecord::RecordInvalid.new(self)
+        end
+
+        if targets.any?
+          AdLocationTarget.insert_all(
+            targets.map { |t| t.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
+          )
+        end
       end
     end
 

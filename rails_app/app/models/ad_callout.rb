@@ -25,4 +25,7 @@ class AdCallout < ApplicationRecord
   belongs_to :campaign, class_name: "Campaign", inverse_of: :callouts
   belongs_to :ad_group, class_name: "AdGroup", inverse_of: :callouts
   platform_setting :google, :asset_id
+
+  validates :text, presence: true, length: { maximum: 25 }
+  validates :position, presence: true
 end

@@ -28,7 +28,11 @@ class AdKeyword < ApplicationRecord
   has_one :campaign, through: :ad_group
   has_one :ads_account, through: :campaign
 
+  MATCH_TYPES = %w[broad phrase exact].freeze
+
   validates :text, presence: true, length: { maximum: 80 }
+  validates :match_type, presence: true, inclusion: { in: MATCH_TYPES }
+  validates :position, presence: true
 
   platform_setting :google, :criterion_id
 end

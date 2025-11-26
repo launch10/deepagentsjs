@@ -26,11 +26,14 @@ class AdHeadline < ApplicationRecord
   belongs_to :ad, class_name: "Ad", inverse_of: :headlines
   has_one :campaign, through: :ad
 
-  validate :unique_position_within_campaign
+  validates :text, presence: true, length: { maximum: 30 }
+  validates :position, presence: true
+
+  validate :unique_position_within_ad
 
   private
 
-  def unique_position_within_campaign
+  def unique_position_within_ad
     return unless ad
 
     existing = AdHeadline
@@ -39,6 +42,6 @@ class AdHeadline < ApplicationRecord
       .where.not(id: id)
       .exists?
 
-    errors.add(:position, "must be unique within campaign") if existing
+    errors.add(:position, "must be unique within ad") if existing
   end
 end

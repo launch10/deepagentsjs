@@ -603,6 +603,8 @@ RSpec.describe "Campaigns API", type: :request do
               data = JSON.parse(response.body)
               highlights_campaign.reload
 
+              puts "CALLOUTS FROM DB: #{highlights_campaign.callouts.pluck(:id, :text, :position).inspect}"
+              puts "CALLOUTS FROM RESPONSE: #{data['callouts'].inspect}"
               expect(highlights_campaign.callouts.count).to eq(1)
               expect(highlights_campaign.callouts.first.text).to eq("Free Shipping")
               expect(data["ready_for_next_stage"]).to eq(false)
@@ -2039,6 +2041,825 @@ RSpec.describe "Campaigns API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data["errors"]).to include("Campaign not found")
+        end
+      end
+    end
+  end
+
+  describe "Validation Errors" do
+    let!(:campaign1) do
+      result = Campaign.create_campaign!(user1_account, {
+        name: "Test Campaign",
+        project_id: project1.id,
+        website_id: website1.id
+      })
+      result[:campaign]
+    end
+
+    path '/api/v1/campaigns/{id}' do
+      parameter name: :id, in: :path, type: :integer, description: 'Campaign ID'
+
+      patch 'Validates campaign updates' do
+        tags 'Campaigns'
+        consumes 'application/json'
+        produces 'application/json'
+        security [bearer_auth: []]
+        parameter name: :Authorization, in: :header, type: :string, required: false
+        parameter name: 'X-Signature', in: :header, type: :string, required: false
+        parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+        parameter name: :campaign_params, in: :body, schema: APISchemas::Campaign.params_schema
+
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:id) { campaign1.id }
+
+        describe 'Campaign validations' do
+          response '422', 'rejects invalid time_zone' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  time_zone: 'Invalid/TimeZone'
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/time.zone/i)
+            end
+          end
+        end
+
+        describe 'Headline validations' do
+          response '422', 'rejects blank headline text' do
+            let(:campaign_params) do
+              ad = campaign1.ad_groups.first.ads.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: campaign1.ad_groups.first.id,
+                      ads_attributes: [
+                        {
+                          id: ad.id,
+                          headlines_attributes: [
+                            {text: "", position: 0}
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/text/i)
+            end
+          end
+
+          response '422', 'rejects headline text exceeding 30 characters' do
+            let(:campaign_params) do
+              ad = campaign1.ad_groups.first.ads.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: campaign1.ad_groups.first.id,
+                      ads_attributes: [
+                        {
+                          id: ad.id,
+                          headlines_attributes: [
+                            {text: "A" * 31, position: 0}
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/30/i)
+            end
+          end
+
+          response '422', 'rejects headline with missing position' do
+            let(:campaign_params) do
+              ad = campaign1.ad_groups.first.ads.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: campaign1.ad_groups.first.id,
+                      ads_attributes: [
+                        {
+                          id: ad.id,
+                          headlines_attributes: [
+                            {text: "Valid headline"}
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/position/i)
+            end
+          end
+        end
+
+        describe 'Description validations' do
+          response '422', 'rejects blank description text' do
+            let(:campaign_params) do
+              ad = campaign1.ad_groups.first.ads.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: campaign1.ad_groups.first.id,
+                      ads_attributes: [
+                        {
+                          id: ad.id,
+                          descriptions_attributes: [
+                            {text: "", position: 0}
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/text/i)
+            end
+          end
+
+          response '422', 'rejects description text exceeding 90 characters' do
+            let(:campaign_params) do
+              ad = campaign1.ad_groups.first.ads.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: campaign1.ad_groups.first.id,
+                      ads_attributes: [
+                        {
+                          id: ad.id,
+                          descriptions_attributes: [
+                            {text: "A" * 91, position: 0}
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/90/i)
+            end
+          end
+
+          response '422', 'rejects description with missing position' do
+            let(:campaign_params) do
+              ad = campaign1.ad_groups.first.ads.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: campaign1.ad_groups.first.id,
+                      ads_attributes: [
+                        {
+                          id: ad.id,
+                          descriptions_attributes: [
+                            {text: "Valid description"}
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/position/i)
+            end
+          end
+        end
+
+        describe 'Callout validations' do
+          response '422', 'rejects blank callout text' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  callouts_attributes: [
+                    {text: "", position: 0}
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/text/i)
+            end
+          end
+
+          response '422', 'rejects callout text exceeding 25 characters' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  callouts_attributes: [
+                    {text: "A" * 26, position: 0}
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/25/i)
+            end
+          end
+
+          response '422', 'rejects callout with missing position' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  callouts_attributes: [
+                    {text: "Valid callout"}
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/position/i)
+            end
+          end
+        end
+
+        describe 'Keyword validations' do
+          response '422', 'rejects blank keyword text' do
+            let(:campaign_params) do
+              ad_group = campaign1.ad_groups.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: ad_group.id,
+                      keywords_attributes: [
+                        {text: "", match_type: "broad", position: 0}
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/text/i)
+            end
+          end
+
+          response '422', 'rejects keyword text exceeding 80 characters' do
+            let(:campaign_params) do
+              ad_group = campaign1.ad_groups.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: ad_group.id,
+                      keywords_attributes: [
+                        {text: "A" * 81, match_type: "broad", position: 0}
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/80/i)
+            end
+          end
+
+          response '422', 'rejects invalid keyword match_type' do
+            let(:campaign_params) do
+              ad_group = campaign1.ad_groups.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: ad_group.id,
+                      keywords_attributes: [
+                        {text: "valid keyword", match_type: "invalid_type", position: 0}
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/match.type/i)
+            end
+          end
+
+          response '422', 'rejects keyword with missing match_type' do
+            let(:campaign_params) do
+              ad_group = campaign1.ad_groups.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: ad_group.id,
+                      keywords_attributes: [
+                        {text: "valid keyword", position: 0}
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/match.type/i)
+            end
+          end
+
+          response '422', 'rejects keyword with missing position' do
+            let(:campaign_params) do
+              ad_group = campaign1.ad_groups.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: ad_group.id,
+                      keywords_attributes: [
+                        {text: "valid keyword", match_type: "broad"}
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/position/i)
+            end
+          end
+        end
+
+        describe 'Structured snippet validations' do
+          response '422', 'rejects invalid structured snippet category' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  structured_snippet_attributes: {
+                    category: "invalid_category",
+                    values: ["Value 1", "Value 2", "Value 3"]
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/category/i)
+            end
+          end
+
+          response '422', 'rejects structured snippet with less than 3 values' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  structured_snippet_attributes: {
+                    category: "brands",
+                    values: ["Value 1", "Value 2"]
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/values/i)
+            end
+          end
+
+          response '422', 'rejects structured snippet with more than 10 values' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  structured_snippet_attributes: {
+                    category: "brands",
+                    values: (1..11).map { |i| "Value #{i}" }
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/values/i)
+            end
+          end
+
+          response '422', 'rejects structured snippet with blank category' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  structured_snippet_attributes: {
+                    category: "",
+                    values: ["Value 1", "Value 2", "Value 3"]
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/category/i)
+            end
+          end
+        end
+
+        describe 'Location target validations' do
+          let!(:settings_campaign) { finish_keywords_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
+          let(:id) { settings_campaign.id }
+
+          response '422', 'rejects invalid location target_type' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'invalid_type',
+                      location_name: 'United States',
+                      country_code: 'US',
+                      targeted: true
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/target.type/i)
+            end
+          end
+
+          response '422', 'rejects invalid location_type' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'geo_location',
+                      location_name: 'United States',
+                      location_type: 'INVALID_TYPE',
+                      country_code: 'US',
+                      targeted: true,
+                      google_criterion_id: '2840'
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/location.type/i)
+            end
+          end
+
+          response '422', 'rejects geo_location without google_criterion_id' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'geo_location',
+                      location_name: 'United States',
+                      location_type: 'COUNTRY',
+                      country_code: 'US',
+                      targeted: true
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/criterion/i)
+            end
+          end
+
+          response '422', 'rejects geo_location without location_name' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'geo_location',
+                      location_type: 'COUNTRY',
+                      country_code: 'US',
+                      targeted: true,
+                      google_criterion_id: '2840'
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/location.name/i)
+            end
+          end
+
+          response '422', 'rejects geo_location without country_code' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'geo_location',
+                      location_name: 'United States',
+                      location_type: 'COUNTRY',
+                      targeted: true,
+                      google_criterion_id: '2840'
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/country.code/i)
+            end
+          end
+
+          response '422', 'rejects radius target without radius value' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'radius',
+                      city: 'New York',
+                      country_code: 'US',
+                      radius_units: 'MILES',
+                      targeted: true
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/radius/i)
+            end
+          end
+
+          response '422', 'rejects radius target with invalid radius_units' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'radius',
+                      city: 'New York',
+                      country_code: 'US',
+                      radius: 10,
+                      radius_units: 'INVALID_UNITS',
+                      targeted: true
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/radius.units/i)
+            end
+          end
+
+          response '422', 'rejects radius target without city' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'radius',
+                      country_code: 'US',
+                      radius: 10,
+                      radius_units: 'MILES',
+                      targeted: true
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/city/i)
+            end
+          end
+        end
+
+        describe 'Ad schedule validations' do
+          let!(:settings_campaign) { finish_keywords_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
+          let(:id) { settings_campaign.id }
+
+          response '422', 'rejects invalid day_of_week' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  ad_schedules: {
+                    always_on: false,
+                    day_of_week: ['InvalidDay'],
+                    start_time: '9:00am',
+                    end_time: '5:00pm',
+                    time_zone: 'America/New_York'
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/day.of.week/i)
+            end
+          end
+
+          response '422', 'rejects schedule with invalid time_zone' do
+            let(:campaign_params) do
+              {
+                campaign: {
+                  ad_schedules: {
+                    always_on: false,
+                    day_of_week: ['Monday'],
+                    start_time: '9:00am',
+                    end_time: '5:00pm',
+                    time_zone: 'Invalid/TimeZone'
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].join).to match(/time.zone/i)
+            end
+          end
+        end
+
+        describe 'Multiple validation errors' do
+          response '422', 'returns all validation errors at once' do
+            let(:campaign_params) do
+              ad = campaign1.ad_groups.first.ads.first
+              ad_group = campaign1.ad_groups.first
+              {
+                campaign: {
+                  time_zone: 'Invalid/TimeZone',
+                  ad_groups_attributes: [
+                    {
+                      id: ad_group.id,
+                      ads_attributes: [
+                        {
+                          id: ad.id,
+                          headlines_attributes: [
+                            {text: "", position: 0},
+                            {text: "A" * 31, position: 1}
+                          ],
+                          descriptions_attributes: [
+                            {text: "", position: 0}
+                          ]
+                        }
+                      ],
+                      keywords_attributes: [
+                        {text: "", match_type: "invalid", position: 0}
+                      ]
+                    }
+                  ],
+                  callouts_attributes: [
+                    {text: "", position: 0}
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              expect(data["errors"].length).to be > 3
+            end
+          end
+        end
+
+        describe 'No partial updates on validation failure' do
+          response '422', 'does not save any changes when validation fails' do
+            let!(:initial_headlines) do
+              ad = campaign1.ad_groups.first.ads.first
+              [
+                create(:ad_headline, ad: ad, text: "Original Headline 1", position: 0),
+                create(:ad_headline, ad: ad, text: "Original Headline 2", position: 1)
+              ]
+            end
+
+            let(:campaign_params) do
+              ad = campaign1.ad_groups.first.ads.first
+              {
+                campaign: {
+                  name: "Updated Campaign Name",
+                  ad_groups_attributes: [
+                    {
+                      id: campaign1.ad_groups.first.id,
+                      ads_attributes: [
+                        {
+                          id: ad.id,
+                          headlines_attributes: [
+                            {id: initial_headlines[0].id, text: "Updated Headline", position: 0},
+                            {text: "", position: 1}
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+
+              campaign1.reload
+              expect(campaign1.name).to eq("Test Campaign")
+
+              initial_headlines[0].reload
+              expect(initial_headlines[0].text).to eq("Original Headline 1")
+            end
+          end
         end
       end
     end

@@ -33,6 +33,14 @@ class AdSchedule < ApplicationRecord
 
   platform_setting :google, :criterion_id
 
+  DAYS_OF_WEEK = %w[Monday Tuesday Wednesday Thursday Friday Saturday Sunday].freeze
+
+  validates :day_of_week, inclusion: { in: DAYS_OF_WEEK }, allow_nil: true
+  validates :start_hour, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 23 }, allow_nil: true
+  validates :start_minute, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 59 }, allow_nil: true
+  validates :end_hour, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 23 }, allow_nil: true
+  validates :end_minute, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 59 }, allow_nil: true
+
   validate :only_one_schedule_if_always_on
   validate :no_time_fields_if_always_on
   validate :time_fields_required_unless_always_on
