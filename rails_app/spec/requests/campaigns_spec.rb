@@ -303,12 +303,8 @@ RSpec.describe "Campaigns API", type: :request do
             expect(data["ad_groups"].first["ads"]).to be_present
             headlines = data["ad_groups"].first["ads"].first["headlines"]
             expect(headlines.length).to eq(2)
-            expect(headlines[0]["id"]).to be_present
-            expect(headlines[0]["text"]).to eq("Headline 1")
-            expect(headlines[0]["position"]).to eq(0)
-            expect(headlines[1]["id"]).to be_present
-            expect(headlines[1]["text"]).to eq("Headline 2")
-            expect(headlines[1]["position"]).to eq(1)
+            expect(headlines[0]).to match(hash_including("id" => a_kind_of(Integer), "text" => "Headline 1", "position" => 0))
+            expect(headlines[1]).to match(hash_including("id" => a_kind_of(Integer), "text" => "Headline 2", "position" => 1))
           end
         end
 
@@ -367,23 +363,19 @@ RSpec.describe "Campaigns API", type: :request do
           let(:Authorization) { auth_headers_for(user1)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-          let(:id) { campaign1.id }
+          let(:id) { content_stage_campaign.id }
 
           let!(:initial_headlines) do
-            ad = campaign1.ad_groups.first.ads.first
-            [
-              create(:ad_headline, ad: ad, text: "Headline 1", position: 0),
-              create(:ad_headline, ad: ad, text: "Headline 2", position: 1)
-            ]
+            content_stage_campaign.headlines
           end
 
           let(:campaign_params) do
-            ad = campaign1.ad_groups.first.ads.first
+            ad = content_stage_campaign.ad_groups.first.ads.first
             {
               campaign: {
                 ad_groups_attributes: [
                   {
-                    id: campaign1.ad_groups.first.id,
+                    id: content_stage_campaign.ad_groups.first.id,
                     ads_attributes: [
                       {
                         id: ad.id,
@@ -401,19 +393,19 @@ RSpec.describe "Campaigns API", type: :request do
 
           run_test! do |response|
             data = JSON.parse(response.body)
-            campaign1.reload
-            ad = campaign1.ad_groups.first.ads.first
+            content_stage_campaign.reload
+            ad = content_stage_campaign.ad_groups.first.ads.first
 
             expect(ad.headlines.count).to eq(2)
             expect(ad.headlines.order(:position).pluck(:text)).to eq(["Headline 2 Updated", "Headline 3"])
             expect(AdHeadline.exists?(initial_headlines[0].id)).to be false
+            expect(AdHeadline.exists?(initial_headlines[1].id)).to be true
+            expect(AdHeadline.exists?(initial_headlines[2].id)).to be false
 
             headlines = data["ad_groups"].first["ads"].first["headlines"]
             expect(headlines.length).to eq(2)
-            expect(headlines[0]["id"]).to eq(initial_headlines[1].id)
-            expect(headlines[0]["text"]).to eq("Headline 2 Updated")
-            expect(headlines[1]["id"]).to be_present
-            expect(headlines[1]["text"]).to eq("Headline 3")
+            expect(headlines[0]).to match(hash_including("id" => initial_headlines[1].id, "text" => "Headline 2 Updated", "position" => 0))
+            expect(headlines[1]).to match(hash_including("id" => a_kind_of(Integer), "text" => "Headline 3", "position" => 1))
           end
         end
 
@@ -1681,7 +1673,6 @@ RSpec.describe "Campaigns API", type: :request do
           end
         end
       end
-
     end
   end
 

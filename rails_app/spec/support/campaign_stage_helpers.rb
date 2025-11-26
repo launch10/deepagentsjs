@@ -1,5 +1,12 @@
 module CampaignStageHelpers
   def create_campaign(account, attrs = {})
+    if attrs[:campaign]
+      campaign = attrs[:campaign]
+      ad_group = campaign.ad_groups.first
+      ad = ad_group.ads.first
+      return [campaign, ad_group, ad]
+    end
+
     # Create website with project via Brainstorm if not provided
     if attrs[:website_id] && attrs[:project_id]
       website_id = attrs[:website_id]

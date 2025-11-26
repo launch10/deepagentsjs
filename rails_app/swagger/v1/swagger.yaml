@@ -766,6 +766,8 @@ paths:
         schema:
           type: string
       responses:
+        '404':
+          description: campaign not found
         '200':
           description: campaign advanced from launch to review stage
           content:
@@ -805,8 +807,6 @@ paths:
                 - status
         '422':
           description: cannot advance from launch - validation failed (missing fields)
-        '404':
-          description: campaign not found
   "/api/v1/campaigns/{id}/back":
     parameters:
     - name: id
@@ -839,8 +839,7 @@ paths:
           type: string
       responses:
         '200':
-          description: goes back to previous project workflow step when at first campaign
-            stage
+          description: campaign stepped back to previous stage
           content:
             application/json:
               schema:

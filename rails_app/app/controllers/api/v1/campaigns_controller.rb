@@ -105,7 +105,7 @@ class API::V1::CampaignsController < API::BaseController
   end
 
   def eager_load(campaign)
-    campaign = Campaign
+    Campaign
       .includes(
         :structured_snippet,
         callouts: [],
