@@ -685,6 +685,39 @@ RSpec.describe "Campaigns API", type: :request do
               expect(data["callouts"][1]["text"]).to eq("Callout 3")
             end
           end
+
+          response '200', 'preserves headlines and descriptions when updating callouts' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+            let!(:initial_headlines) { highlights_campaign.headlines }
+            let!(:initial_descriptions) { highlights_campaign.descriptions }
+
+            let(:campaign_params) do
+              {
+                campaign: {
+                  callouts_attributes: [
+                    {text: "Free Shipping", position: 0},
+                    {text: "24/7 Support", position: 1}
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              highlights_campaign.reload
+              ad = highlights_campaign.ad_groups.first.ads.first
+
+              expect(highlights_campaign.callouts.count).to eq(2)
+              expect(ad.headlines.count).to eq(initial_headlines.count)
+              expect(ad.descriptions.count).to eq(initial_descriptions.count)
+              expect(ad.headlines.pluck(:id)).to match_array(initial_headlines.pluck(:id))
+              expect(ad.descriptions.pluck(:id)).to match_array(initial_descriptions.pluck(:id))
+            end
+          end
         end
 
         context 'highlights stage - structured snippets' do
@@ -789,6 +822,39 @@ RSpec.describe "Campaigns API", type: :request do
               expect(data["callouts"].all? { |c| c["id"].present? }).to be true
               expect(data["structured_snippet"]).to be_present
               expect(data["structured_snippet"]["id"]).to be_present
+            end
+          end
+
+          response '200', 'preserves headlines and descriptions when updating structured snippet' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+            let!(:initial_headlines) { highlights_campaign.headlines }
+            let!(:initial_descriptions) { highlights_campaign.descriptions }
+
+            let(:campaign_params) do
+              {
+                campaign: {
+                  structured_snippet_attributes: {
+                    category: "brands",
+                    values: ["Nike", "Adidas", "Puma"]
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              highlights_campaign.reload
+              ad = highlights_campaign.ad_groups.first.ads.first
+
+              expect(highlights_campaign.structured_snippet).to be_present
+              expect(ad.headlines.count).to eq(initial_headlines.count)
+              expect(ad.descriptions.count).to eq(initial_descriptions.count)
+              expect(ad.headlines.pluck(:id)).to match_array(initial_headlines.pluck(:id))
+              expect(ad.descriptions.pluck(:id)).to match_array(initial_descriptions.pluck(:id))
             end
           end
         end
@@ -933,6 +999,54 @@ RSpec.describe "Campaigns API", type: :request do
               expect(keywords[0]["match_type"]).to eq("exact")
               expect(keywords[1]["id"]).to be_present
               expect(keywords[1]["text"]).to eq("keyword 4")
+            end
+          end
+
+          response '200', 'preserves headlines, descriptions, and callouts when updating keywords' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+            let!(:initial_headlines) { keywords_campaign.headlines }
+            let!(:initial_descriptions) { keywords_campaign.descriptions }
+            let!(:initial_callouts) { keywords_campaign.callouts }
+            let!(:initial_structured_snippet) { keywords_campaign.structured_snippet }
+
+            let(:campaign_params) do
+              ad_group = keywords_campaign.ad_groups.first
+              {
+                campaign: {
+                  ad_groups_attributes: [
+                    {
+                      id: ad_group.id,
+                      keywords_attributes: [
+                        {text: "keyword 1", match_type: "broad", position: 0},
+                        {text: "keyword 2", match_type: "phrase", position: 1},
+                        {text: "keyword 3", match_type: "exact", position: 2},
+                        {text: "keyword 4", match_type: "broad", position: 3},
+                        {text: "keyword 5", match_type: "phrase", position: 4}
+                      ]
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              keywords_campaign.reload
+              ad = keywords_campaign.ad_groups.first.ads.first
+              ad_group = keywords_campaign.ad_groups.first
+
+              expect(ad_group.keywords.count).to eq(5)
+              expect(ad.headlines.count).to eq(initial_headlines.count)
+              expect(ad.descriptions.count).to eq(initial_descriptions.count)
+              expect(keywords_campaign.callouts.count).to eq(initial_callouts.count)
+              expect(ad.headlines.pluck(:id)).to match_array(initial_headlines.pluck(:id))
+              expect(ad.descriptions.pluck(:id)).to match_array(initial_descriptions.pluck(:id))
+              expect(keywords_campaign.callouts.pluck(:id)).to match_array(initial_callouts.pluck(:id))
+              expect(keywords_campaign.structured_snippet&.id).to eq(initial_structured_snippet&.id)
             end
           end
         end
@@ -1117,6 +1231,59 @@ RSpec.describe "Campaigns API", type: :request do
               expect(settings_campaign.location_targets.where(location_name: 'Canada').exists?).to be false
             end
           end
+
+          response '200', 'preserves headlines, descriptions, callouts, and keywords when updating settings' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+            let!(:initial_headlines) { settings_campaign.headlines }
+            let!(:initial_descriptions) { settings_campaign.descriptions }
+            let!(:initial_callouts) { settings_campaign.callouts }
+            let!(:initial_keywords) { settings_campaign.ad_groups.first.keywords }
+            let!(:initial_structured_snippet) { settings_campaign.structured_snippet }
+
+            let(:campaign_params) do
+              {
+                campaign: {
+                  daily_budget_cents: 5000,
+                  location_targets: [
+                    {
+                      target_type: 'geo_location',
+                      location_name: 'United States',
+                      location_type: 'COUNTRY',
+                      country_code: 'US',
+                      targeted: true,
+                      google_criterion_id: '2840'
+                    }
+                  ],
+                  ad_schedules: {
+                    always_on: true
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              settings_campaign.reload
+              ad = settings_campaign.ad_groups.first.ads.first
+              ad_group = settings_campaign.ad_groups.first
+
+              expect(settings_campaign.daily_budget_cents).to eq(5000)
+              expect(settings_campaign.location_targets.count).to eq(1)
+              expect(ad.headlines.count).to eq(initial_headlines.count)
+              expect(ad.descriptions.count).to eq(initial_descriptions.count)
+              expect(settings_campaign.callouts.count).to eq(initial_callouts.count)
+              expect(ad_group.keywords.count).to eq(initial_keywords.count)
+              expect(ad.headlines.pluck(:id)).to match_array(initial_headlines.pluck(:id))
+              expect(ad.descriptions.pluck(:id)).to match_array(initial_descriptions.pluck(:id))
+              expect(settings_campaign.callouts.pluck(:id)).to match_array(initial_callouts.pluck(:id))
+              expect(ad_group.keywords.pluck(:id)).to match_array(initial_keywords.pluck(:id))
+              expect(settings_campaign.structured_snippet&.id).to eq(initial_structured_snippet&.id)
+            end
+          end
         end
       end
       describe "Launch stage" do
@@ -1241,6 +1408,52 @@ RSpec.describe "Campaigns API", type: :request do
               expect(launch_campaign.start_date).to eq(Date.parse('2025-12-01'))
               expect(launch_campaign.end_date).to eq(Date.parse('2025-12-31'))
               expect(data["ready_for_next_stage"]).to eq(true)
+            end
+          end
+
+          response '200', 'preserves all previous stage content when updating launch settings' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+            let!(:initial_headlines) { launch_campaign.headlines }
+            let!(:initial_descriptions) { launch_campaign.descriptions }
+            let!(:initial_callouts) { launch_campaign.callouts }
+            let!(:initial_keywords) { launch_campaign.ad_groups.first.keywords }
+            let!(:initial_location_targets) { launch_campaign.location_targets }
+            let!(:initial_structured_snippet) { launch_campaign.structured_snippet }
+
+            let(:campaign_params) do
+              {
+                campaign: {
+                  google_advertising_channel_type: 'SEARCH',
+                  google_bidding_strategy: 'MAXIMIZE_CLICKS',
+                  start_date: '2025-12-01',
+                  end_date: '2025-12-31'
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              launch_campaign.reload
+              ad = launch_campaign.ad_groups.first.ads.first
+              ad_group = launch_campaign.ad_groups.first
+
+              expect(launch_campaign.google_advertising_channel_type).to eq('SEARCH')
+              expect(launch_campaign.google_bidding_strategy).to eq('MAXIMIZE_CLICKS')
+              expect(ad.headlines.count).to eq(initial_headlines.count)
+              expect(ad.descriptions.count).to eq(initial_descriptions.count)
+              expect(launch_campaign.callouts.count).to eq(initial_callouts.count)
+              expect(ad_group.keywords.count).to eq(initial_keywords.count)
+              expect(launch_campaign.location_targets.count).to eq(initial_location_targets.count)
+              expect(ad.headlines.pluck(:id)).to match_array(initial_headlines.pluck(:id))
+              expect(ad.descriptions.pluck(:id)).to match_array(initial_descriptions.pluck(:id))
+              expect(launch_campaign.callouts.pluck(:id)).to match_array(initial_callouts.pluck(:id))
+              expect(ad_group.keywords.pluck(:id)).to match_array(initial_keywords.pluck(:id))
+              expect(launch_campaign.location_targets.pluck(:id)).to match_array(initial_location_targets.pluck(:id))
+              expect(launch_campaign.structured_snippet&.id).to eq(initial_structured_snippet&.id)
             end
           end
         end
