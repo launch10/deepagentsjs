@@ -92,16 +92,14 @@ class API::V1::CampaignsController < API::BaseController
       ad_groups_attributes: [
         :id,
         :name,
-        :_destroy,
         ads_attributes: [
           :id,
-          :_destroy,
-          headlines_attributes: [:id, :text, :position, :_destroy],
-          descriptions_attributes: [:id, :text, :position, :_destroy]
+          headlines_attributes: [:id, :text, :position],
+          descriptions_attributes: [:id, :text, :position]
         ],
-        keywords_attributes: [:id, :text, :match_type, :position, :_destroy]
+        keywords_attributes: [:id, :text, :match_type, :position]
       ],
-      callouts_attributes: [:id, :text, :position, :_destroy],
+      callouts_attributes: [:id, :text, :position],
       structured_snippet_attributes: [:id, :category, :_destroy, { values: [] }]
     )
   end
