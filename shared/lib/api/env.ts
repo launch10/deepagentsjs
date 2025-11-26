@@ -11,5 +11,13 @@
 // @ts-ignore
 export const env = import.meta?.env ?? process.env;
 
-export const isFrontend = () => typeof import.meta !== 'undefined' && 'env' in import.meta;
+// Check if running in browser (frontend) vs Node.js (backend/tests)
+export const isFrontend = () => {
+  try {
+    // @ts-ignore
+    return typeof window !== 'undefined' && typeof document !== 'undefined';
+  } catch {
+    return false;
+  }
+};
 export const isBackend = () => !isFrontend();

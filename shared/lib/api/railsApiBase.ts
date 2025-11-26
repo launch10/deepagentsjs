@@ -6,14 +6,9 @@ export type Options = {
 }
 
 export class RailsAPIBase {
-    client: Awaited<ReturnType<typeof createRailsApiClient>>;
+    client: ReturnType<typeof createRailsApiClient>;
     
     constructor(options: Options) {
-        this.client = null as any; // Will be initialized by init()
-        this.init(options);
-    }
-    
-    private async init(options: Options) {
-        this.client = await createRailsApiClient(options);
+        this.client = createRailsApiClient(options);
     }
 }
