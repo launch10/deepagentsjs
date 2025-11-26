@@ -29,7 +29,9 @@ class AdHeadline < ApplicationRecord
   validates :text, presence: true, length: { maximum: 30 }
   validates :position, presence: true
 
-  validate :unique_position_within_ad
+  attr_accessor :skip_position_uniqueness_validation
+
+  validate :unique_position_within_ad, unless: :skip_position_uniqueness_validation
 
   private
 

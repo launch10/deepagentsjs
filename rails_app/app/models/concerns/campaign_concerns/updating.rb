@@ -87,10 +87,15 @@ module CampaignConcerns
 
         regular_params.delete(:callouts_attributes)
         regular_params.delete(:structured_snippet_attributes)
+        location_targets_data = regular_params.delete(:location_targets)
 
         campaign.assign_attributes(regular_params)
         @objects_to_validate << campaign
         @objects_to_save << campaign
+
+        if location_targets_data.present?
+          @objects_to_save << -> { campaign.update_location_targets(location_targets_data) }
+        end
       end
 
       def perform_deletions!
@@ -159,9 +164,7 @@ module CampaignConcerns
       end
 
       def execute_saves!
-        puts "[UPDATING] execute_saves! objects_to_save count: #{@objects_to_save.count}"
-        @objects_to_save.each_with_index do |obj, i|
-          puts "[UPDATING] execute_saves! item #{i}: #{obj.class.name}"
+        @objects_to_save.each do |obj|
           if obj.is_a?(Proc)
             obj.call
           else
@@ -182,9 +185,7 @@ module CampaignConcerns
 
       def delete_callouts(callouts_attrs)
         submitted_ids = callouts_attrs.map { |attrs| attrs[:id] || attrs["id"] }.compact.map(&:to_i)
-        before_count = AdCallout.where(campaign_id: campaign.id).count
-        deleted_count = AdCallout.where(campaign_id: campaign.id).where.not(id: submitted_ids).delete_all
-        puts "[UPDATING] delete_callouts: campaign_id=#{campaign.id}, submitted_ids=#{submitted_ids.inspect}, before=#{before_count}, deleted=#{deleted_count}"
+        AdCallout.where(campaign_id: campaign.id).where.not(id: submitted_ids).delete_all
       end
 
       def delete_keywords(ad_group, keywords_attrs)
@@ -195,6 +196,7 @@ module CampaignConcerns
       def prepare_headlines(ad, headlines_attrs)
         headlines_to_update = []
         headlines_to_create = []
+        all_headlines = []
 
         existing_headlines = ad.headlines.reload.index_by(&:id)
 
@@ -203,7 +205,9 @@ module CampaignConcerns
             headline = existing_headlines[attrs[:id]]
             if headline
               headline.assign_attributes(text: attrs[:text], position: attrs[:position], platform_settings: attrs[:platform_settings])
+              headline.skip_position_uniqueness_validation = true
               headlines_to_update << headline
+              all_headlines << headline
               @objects_to_validate << headline
             end
           else
@@ -213,8 +217,18 @@ module CampaignConcerns
               position: attrs[:position],
               platform_settings: attrs[:platform_settings]
             )
+            new_headline.skip_position_uniqueness_validation = true
             headlines_to_create << new_headline
+            all_headlines << new_headline
             @objects_to_validate << new_headline
+          end
+        end
+
+        positions = all_headlines.map(&:position)
+        if positions.length != positions.uniq.length
+          duplicate_positions = positions.select { |p| positions.count(p) > 1 }.uniq
+          duplicate_positions.each do |pos|
+            all_headlines.find { |h| h.position == pos }&.errors&.add(:position, "must be unique within ad")
           end
         end
 
@@ -310,13 +324,9 @@ module CampaignConcerns
             )
           end
           if callouts_to_create.any?
-            before_count = AdCallout.where(campaign_id: campaign.id).count
-            puts "[UPDATING] BEFORE insert: #{before_count} callouts in campaign"
-            insert_data = callouts_to_create.map { |c| c.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
-            puts "[UPDATING] insert callouts: count=#{callouts_to_create.count}, data=#{insert_data.inspect}"
-            AdCallout.insert_all(insert_data)
-            after_count = AdCallout.where(campaign_id: campaign.id).count
-            puts "[UPDATING] AFTER insert: #{after_count} callouts in campaign"
+            AdCallout.insert_all(
+              callouts_to_create.map { |c| c.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
+            )
           end
         }
       end
@@ -353,7 +363,12 @@ module CampaignConcerns
               @objects_to_validate << keyword
             end
           else
-            new_keyword = ad_group.keywords.new(text: attrs[:text], match_type: attrs[:match_type], position: attrs[:position])
+            new_keyword = AdKeyword.new(
+              ad_group_id: ad_group.id,
+              text: attrs[:text],
+              match_type: attrs[:match_type],
+              position: attrs[:position]
+            )
             keywords_to_create << new_keyword
             @objects_to_validate << new_keyword
           end

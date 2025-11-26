@@ -603,8 +603,6 @@ RSpec.describe "Campaigns API", type: :request do
               data = JSON.parse(response.body)
               highlights_campaign.reload
 
-              puts "CALLOUTS FROM DB: #{highlights_campaign.callouts.pluck(:id, :text, :position).inspect}"
-              puts "CALLOUTS FROM RESPONSE: #{data['callouts'].inspect}"
               expect(highlights_campaign.callouts.count).to eq(1)
               expect(highlights_campaign.callouts.first.text).to eq("Free Shipping")
               expect(data["ready_for_next_stage"]).to eq(false)
