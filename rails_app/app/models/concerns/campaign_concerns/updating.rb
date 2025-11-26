@@ -2,50 +2,18 @@ module CampaignConcerns
   module Updating
     extend ActiveSupport::Concern
 
-    class UpdateValidationError < StandardError
-      attr_reader :record, :errors
-
-      def initialize(record, errors)
-        @record = record
-        @errors = errors
-        super("Validation failed")
-      end
-    end
-
-    class UpdateResult
-      attr_reader :success, :campaign, :errors
-
-      def initialize(success:, campaign:, errors: {})
-        @success = success
-        @campaign = campaign
-        @errors = errors
-      end
-
-      def success?
-        @success
-      end
-
-      def failed?
-        !@success
-      end
-    end
-
     def update_idempotently!(params)
-      result = update_idempotently(params)
+      result = IdempotentCampaignUpdater.new(self, params).update
       if result.failed?
         raise UpdateValidationError.new(self, result.errors)
       end
       result
     end
 
-    def update_idempotently(params)
-      IdempotentCampaignUpdater.new(self, params).update
-    end
-
     class IdempotentCampaignUpdater
       attr_reader :campaign, :params
 
-      def initialize(campaign, params={})
+      def initialize(campaign, params = {})
         @campaign = campaign
         @params = params
         @objects_to_validate = []
@@ -95,11 +63,11 @@ module CampaignConcerns
         location_targets_data = regular_params.delete(:location_targets)
 
         campaign.assign_attributes(regular_params)
-        add_to_validation(campaign, 'campaign')
+        add_to_validation(campaign, "campaign")
         @saves_to_perform << -> { campaign.save! }
 
         if location_targets_data.present?
-          @saves_to_perform << -> { campaign.update_location_targets(location_targets_data) }
+          prepare_location_targets(location_targets_data)
         end
       end
 
@@ -262,6 +230,24 @@ module CampaignConcerns
         batch_upsert_and_insert(AdCallout, callouts_to_update, callouts_to_create)
       end
 
+      def prepare_location_targets(location_targets_data)
+        targets = Array(location_targets_data).map.with_index do |target_data, idx|
+          target = campaign.location_targets.new(target_data)
+          path = "location_targets[#{idx}]"
+          add_to_validation(target, path)
+          target
+        end
+
+        @saves_to_perform << -> {
+          campaign.location_targets.destroy_all
+          if targets.any?
+            AdLocationTarget.insert_all(
+              targets.map { |t| t.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
+            )
+          end
+        }
+      end
+
       def prepare_structured_snippet(snippet_attrs)
         if snippet_attrs[:_destroy] || snippet_attrs["_destroy"]
           @saves_to_perform << -> { campaign.structured_snippet&.destroy }
@@ -359,6 +345,59 @@ module CampaignConcerns
       def find_ad_index(ad_group_id, ad_id)
         ad_group_attrs = params[:ad_groups_attributes]&.find { |ag| ag[:id] == ad_group_id }
         ad_group_attrs&.dig(:ads_attributes)&.find_index { |ad| ad[:id] == ad_id } || 0
+      end
+    end
+
+    class ValidationErrorFormatter
+      def initialize(validation_context)
+        @validation_context = validation_context
+      end
+
+      def format_errors
+        errors = {}
+
+        @validation_context.each do |context|
+          object = context[:object]
+          path = context[:path]
+
+          next if object.valid?
+
+          object.errors.each do |error|
+            key = "#{path}.#{error.attribute}"
+            errors[key] ||= []
+            errors[key] << error.message
+          end
+        end
+
+        errors
+      end
+    end
+
+    class UpdateValidationError < StandardError
+      attr_reader :record, :errors
+
+      def initialize(record, errors)
+        @record = record
+        @errors = errors
+        super("Validation failed")
+      end
+    end
+
+    class UpdateResult
+      attr_reader :success, :campaign, :errors
+
+      def initialize(success:, campaign:, errors: {})
+        @success = success
+        @campaign = campaign
+        @errors = errors
+      end
+
+      def success?
+        @success
+      end
+
+      def failed?
+        !@success
       end
     end
   end

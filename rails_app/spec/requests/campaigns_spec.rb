@@ -2085,7 +2085,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/time.zone/i)
+              expect(data["errors"]["campaign.time_zone"]).to be_present
             end
           end
         end
@@ -2116,7 +2116,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/text/i)
+              expect(data.dig("errors", "ad_groups[0].ads[0].headlines[0].text")).to be_present
             end
           end
 
@@ -2145,7 +2145,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/30/i)
+              expect(data.dig("errors", "ad_groups[0].ads[0].headlines[0].text")).to include("is too long (maximum is 30 characters)")
             end
           end
 
@@ -2174,7 +2174,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/position/i)
+              expect(data.dig("errors", "ad_groups[0].ads[0].headlines[0].position")).to include("can't be blank")
             end
           end
         end
@@ -2205,7 +2205,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/text/i)
+              expect(data.dig("errors", "ad_groups[0].ads[0].descriptions[0].text")).to include("can't be blank")
             end
           end
 
@@ -2234,7 +2234,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/90/i)
+              expect(data.dig("errors", "ad_groups[0].ads[0].descriptions[0].text")).to include("is too long (maximum is 90 characters)")
             end
           end
 
@@ -2263,7 +2263,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/position/i)
+              expect(data.dig("errors", "ad_groups[0].ads[0].descriptions[0].position")).to include("can't be blank")
             end
           end
         end
@@ -2283,7 +2283,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/text/i)
+              expect(data.dig("errors", "callouts[0].text")).to include("can't be blank")
             end
           end
 
@@ -2301,7 +2301,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/25/i)
+              expect(data.dig("errors", "callouts[0].text")).to include("is too long (maximum is 25 characters)")
             end
           end
 
@@ -2319,7 +2319,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/position/i)
+              expect(data.dig("errors", "callouts[0].position")).to include("can't be blank")
             end
           end
         end
@@ -2345,7 +2345,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/text/i)
+              expect(data.dig("errors", "ad_groups[0].keywords[0].text")).to include("can't be blank")
             end
           end
 
@@ -2369,7 +2369,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/80/i)
+              expect(data.dig("errors", "ad_groups[0].keywords[0].text")).to include("is too long (maximum is 80 characters)")
             end
           end
 
@@ -2393,7 +2393,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/match.type/i)
+              expect(data.dig("errors", "ad_groups[0].keywords[0].match_type")).to include("is not included in the list")
             end
           end
 
@@ -2417,7 +2417,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/match.type/i)
+              expect(data.dig("errors", "ad_groups[0].keywords[0].match_type")).to include("can't be blank")
             end
           end
 
@@ -2441,7 +2441,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/position/i)
+              expect(data.dig("errors", "ad_groups[0].keywords[0].position")).to include("can't be blank")
             end
           end
         end
@@ -2462,7 +2462,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/category/i)
+              expect(data.dig("errors", "structured_snippet.category")).to include("is not included in the list")
             end
           end
 
@@ -2481,7 +2481,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/values/i)
+              expect(data.dig("errors", "structured_snippet.values")).to include("is too short (minimum is 3 characters)")
             end
           end
 
@@ -2500,7 +2500,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/values/i)
+              expect(data.dig("errors", "structured_snippet.values")).to include("is too long (maximum is 10 characters)")
             end
           end
 
@@ -2519,7 +2519,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/category/i)
+              expect(data.dig("errors", "structured_snippet.category")).to include("can't be blank")
             end
           end
         end
@@ -2547,7 +2547,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/target.type/i)
+              expect(data.dig("errors", "location_targets[0].target_type")).to include("is not included in the list")
             end
           end
 
@@ -2572,7 +2572,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/location.type/i)
+              expect(data.dig("errors", "location_targets[0].location_type")).to include("is not included in the list")
             end
           end
 
@@ -2596,7 +2596,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/criterion/i)
+              expect(data.dig("errors", "location_targets[0].google_criterion_id")).to include("can't be blank")
             end
           end
 
@@ -2620,7 +2620,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/location.name/i)
+              expect(data.dig("errors", "location_targets[0].location_name")).to include("can't be blank")
             end
           end
 
@@ -2644,7 +2644,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/country.code/i)
+              expect(data.dig("errors", "location_targets[0].country_code")).to include("can't be blank")
             end
           end
 
@@ -2668,7 +2668,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/radius/i)
+              expect(data.dig("errors", "location_targets[0].radius")).to include("can't be blank")
             end
           end
 
@@ -2693,7 +2693,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/radius.units/i)
+              expect(data.dig("errors", "location_targets[0].radius_units")).to include("is not included in the list")
             end
           end
 
@@ -2717,7 +2717,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/city/i)
+              expect(data.dig("errors", "location_targets[0].city")).to include("can't be blank")
             end
           end
         end
@@ -2744,7 +2744,7 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/day.of.week/i)
+              expect(data.dig("errors", "ad_schedules.day_of_week")).to include("is not included in the list")
             end
           end
 
@@ -2766,13 +2766,13 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              expect(data["errors"].join).to match(/time.zone/i)
+              expect(data.dig("errors", "campaign.time_zone")).to include("is not included in the list")
             end
           end
         end
 
         describe 'Multiple validation errors' do
-          response '422', 'returns all validation errors at once', focus: true do
+          response '422', 'returns all validation errors at once' do
             let(:campaign_params) do
               ad = campaign1.ad_groups.first.ads.first
               ad_group = campaign1.ad_groups.first
