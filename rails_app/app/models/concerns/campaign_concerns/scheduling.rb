@@ -2,10 +2,6 @@ module CampaignConcerns
   module Scheduling
     extend ActiveSupport::Concern
 
-    included do
-      has_many :ad_schedules, dependent: :destroy
-    end
-
     def schedule
       @schedule ||= Schedule.new(self)
     end

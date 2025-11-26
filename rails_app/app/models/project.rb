@@ -22,6 +22,8 @@
 #
 
 class Project < ApplicationRecord
+  include ProjectConcerns::Serialization
+
   acts_as_tenant :account
 
   belongs_to :account
@@ -30,13 +32,40 @@ class Project < ApplicationRecord
   before_validation :set_uuid, on: :create
 
   has_one :website
+  has_one :ads_account, through: :account
   has_one :brainstorm, through: :website
   has_many :workflows, class_name: "ProjectWorkflow", dependent: :destroy
+  has_one :launch_workflow, -> { where(workflow_type: "launch") }, class_name: "ProjectWorkflow"
 
-  include ProjectConcerns::Serialization
+  # Ads relations
+  has_many :campaigns
+  has_many :ad_groups, through: :campaigns
+  has_many :ads, through: :ad_groups
+  has_many :ad_schedules, through: :campaigns
+  has_many :languages, through: :campaigns
+  has_many :headlines, through: :campaigns
+  has_many :descriptions, through: :campaigns
+  has_many :keywords, through: :ad_groups
+  has_many :location_targets, through: :campaigns
+  has_many :callouts, through: :campaigns
+  has_many :structured_snippets, through: :campaigns
 
-  def launch_workflow
-    workflows.launch.first
+  def self.with_launch_relations
+    Project.includes(
+      :brainstorm,
+      :launch_workflow,
+      :website,
+      :ads_account,
+      campaigns: [
+        :languages,
+        :keywords,
+        :location_targets,
+        :callouts,
+        :structured_snippet,
+        :ad_schedules,
+        { ad_groups: { ads: [:headlines, :descriptions] } }
+      ]
+    )
   end
 
   private
