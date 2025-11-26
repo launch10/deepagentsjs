@@ -1,4 +1,6 @@
 class MediaUploader < CarrierWave::Uploader::Base
+  include CarrierWave::MiniMagick
+
   if Rails.env.test?
     storage :file
   else
@@ -11,6 +13,14 @@ class MediaUploader < CarrierWave::Uploader::Base
 
   def filename
     "#{secure_token}.#{file.extension}"
+  end
+
+  version :thumb, if: :image? do
+    process resize_to_fill: [200, 200]
+  end
+
+  version :medium, if: :image? do
+    process resize_to_fill: [800, 600]
   end
 
   # image/jpeg, video/mp4, etc (mimetypes)
@@ -27,5 +37,9 @@ class MediaUploader < CarrierWave::Uploader::Base
   def secure_token
     var = :"@#{mounted_as}_secure_token"
     model.instance_variable_get(var) || model.instance_variable_set(var, SecureRandom.uuid)
+  end
+
+  def image?(new_file)
+    new_file.content_type&.start_with?("image/")
   end
 end

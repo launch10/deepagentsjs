@@ -20,10 +20,6 @@ export class CampaignService extends RailsAPIBase {
             throw new Error(`Failed to advance campaign: ${JSON.stringify(response.error)}`);
         }
 
-        if (!response.data) {
-            throw new Error(`Failed to advance campaign: ${JSON.stringify(response.error)}`);
-        }
-
         return response.data satisfies AdvanceCampaignResponse;
     }
 }

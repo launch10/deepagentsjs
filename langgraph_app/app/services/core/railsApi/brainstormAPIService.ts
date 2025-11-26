@@ -1,6 +1,6 @@
 import { RailsAPIBase, type paths } from "@rails_api";
-import { type ThreadIDType, type UUIDType } from "@types";
-import { type Simplify } from "type-fest";
+import type { ThreadIDType, UUIDType } from "@types";
+import type { Simplify } from "type-fest";
 
 /**
  * Type definitions for brainstorm operations

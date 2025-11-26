@@ -1845,6 +1845,57 @@ paths:
       responses:
         '201':
           description: creating upload without website
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  uuid:
+                    type: string
+                    description: Upload UUID
+                  url:
+                    type: string
+                    description: Full size file URL
+                  thumb_url:
+                    type: string
+                    nullable: true
+                    description: Thumbnail URL (images only)
+                  medium_url:
+                    type: string
+                    nullable: true
+                    description: Medium size URL (images only)
+                  media_type:
+                    type: string
+                    enum:
+                    - image
+                    - video
+                    description: Media type
+                  is_logo:
+                    type: boolean
+                    description: Whether this upload is a logo
+                  filename:
+                    type: string
+                    description: Original filename
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Creation timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Last update timestamp
+                required:
+                - id
+                - uuid
+                - url
+                - media_type
+                - is_logo
+                - filename
+                - created_at
+                - updated_at
         '422':
           description: rejects PDF upload
         '401':
@@ -1886,6 +1937,59 @@ paths:
       responses:
         '200':
           description: returns team account uploads after switching
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Unique identifier
+                    uuid:
+                      type: string
+                      description: Upload UUID
+                    url:
+                      type: string
+                      description: Full size file URL
+                    thumb_url:
+                      type: string
+                      nullable: true
+                      description: Thumbnail URL (images only)
+                    medium_url:
+                      type: string
+                      nullable: true
+                      description: Medium size URL (images only)
+                    media_type:
+                      type: string
+                      enum:
+                      - image
+                      - video
+                      description: Media type
+                    is_logo:
+                      type: boolean
+                      description: Whether this upload is a logo
+                    filename:
+                      type: string
+                      description: Original filename
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Creation timestamp
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                  required:
+                  - id
+                  - uuid
+                  - url
+                  - media_type
+                  - is_logo
+                  - filename
+                  - created_at
+                  - updated_at
         '404':
           description: website not found when filtering
 servers:

@@ -52,6 +52,7 @@ RSpec.describe "Uploads API", type: :request do
       end
 
       response '201', 'upload created in owned account' do
+        schema APISchemas::Upload.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -67,6 +68,8 @@ RSpec.describe "Uploads API", type: :request do
           expect(upload.is_logo).to eq(true)
           expect(upload.original_filename).to eq("test_image.jpg")
           expect(data["filename"]).to eq("test_image.jpg")
+          expect(data["thumb_url"]).to be_present
+          expect(data["medium_url"]).to be_present
         end
       end
 
@@ -209,6 +212,7 @@ RSpec.describe "Uploads API", type: :request do
       end
 
       response "200", "returns all account uploads" do
+        schema APISchemas::Upload.collection_response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }

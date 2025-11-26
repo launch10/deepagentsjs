@@ -1518,7 +1518,39 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Upload UUID */
+                            uuid: string;
+                            /** @description Full size file URL */
+                            url: string;
+                            /** @description Thumbnail URL (images only) */
+                            thumb_url?: string | null;
+                            /** @description Medium size URL (images only) */
+                            medium_url?: string | null;
+                            /**
+                             * @description Media type
+                             * @enum {string}
+                             */
+                            media_type: "image" | "video";
+                            /** @description Whether this upload is a logo */
+                            is_logo: boolean;
+                            /** @description Original filename */
+                            filename: string;
+                            /**
+                             * Format: date-time
+                             * @description Creation timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Last update timestamp
+                             */
+                            updated_at: string;
+                        }[];
+                    };
                 };
                 /** @description website not found when filtering */
                 404: {
@@ -1553,7 +1585,39 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Upload UUID */
+                            uuid: string;
+                            /** @description Full size file URL */
+                            url: string;
+                            /** @description Thumbnail URL (images only) */
+                            thumb_url?: string | null;
+                            /** @description Medium size URL (images only) */
+                            medium_url?: string | null;
+                            /**
+                             * @description Media type
+                             * @enum {string}
+                             */
+                            media_type: "image" | "video";
+                            /** @description Whether this upload is a logo */
+                            is_logo: boolean;
+                            /** @description Original filename */
+                            filename: string;
+                            /**
+                             * Format: date-time
+                             * @description Creation timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Last update timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
                 };
                 /** @description unauthorized - missing token */
                 401: {
