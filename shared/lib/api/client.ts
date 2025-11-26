@@ -1,19 +1,36 @@
 import createClient from "openapi-fetch";
 import type { paths } from "./generated/rails-api";
-import * as jwtLib from 'jsonwebtoken';
-import { createHmac } from 'crypto';
-import { env } from "@core";
+import { env, isFrontend, isBackend } from "./env";
+
+// Backend-only imports - lazy loaded to avoid bundling in frontend
+let jwtLib: typeof import('jsonwebtoken') | undefined;
+let crypto: typeof import('crypto') | undefined;
+
+async function loadBackendDeps() {
+  if (!jwtLib && isBackend()) {
+    try {
+      jwtLib = await import('jsonwebtoken');
+      crypto = await import('crypto');
+    } catch (e) {
+      // Dependencies not available (frontend build)
+    }
+  }
+}
+
 export interface RailsApiClientOptions {
-  jwt: string;
+  jwt?: string;
   baseUrl?: string;
 }
 
 function generateSignature(timestamp: number): string {
+  if (!crypto) return '';
   const secret = env.JWT_SECRET || 'test-secret-key';
-  return createHmac('sha256', secret).update(timestamp.toString()).digest('hex');
+  return crypto.createHmac('sha256', secret).update(timestamp.toString()).digest('hex');
 }
 
 const testHeaders = (baseHeaders: Record<string, string>) => {
+  if (!jwtLib) return baseHeaders;
+  
   const jwtSecret = env.JWT_SECRET || 'test-secret-key';
   const testTimestamp = Date.now();
   
@@ -29,22 +46,33 @@ const testHeaders = (baseHeaders: Record<string, string>) => {
   }
 }
 
-const headers = (jwt: string) => {
-  const timestamp = Math.floor(Date.now() / 1000);
-  const signature = generateSignature(timestamp);
-
-  let headers: Record<string, string> = {
+const sharedHeaders = (): Record<string, string> => {
+  return {
     "Content-Type": "application/json",
     "Accept": "application/json",
-    "Authorization": `Bearer ${jwt}`,
-    "X-Signature": signature,
-    "X-Timestamp": timestamp.toString(),
   };
+}
 
-  if (env.NODE_ENV === "test") {
-    return testHeaders(headers);
+const addBackendHeaders = (headers: Record<string, string>, jwt: string) => {
+  if (!isFrontend()) {
+    const timestamp = Math.floor(Date.now() / 1000);
+    headers["Authorization"] = `Bearer ${jwt}`;
+    headers["X-Signature"] = generateSignature(timestamp);
+    headers["X-Timestamp"] = timestamp.toString();
+
+    if (env.NODE_ENV === "test") {
+      return testHeaders(headers);
+    }
   }
+  return headers;
+}
 
+const headers = (jwt?: string) => {
+  let headers: Record<string, string> = sharedHeaders();
+
+  if (jwt && isBackend()) {
+    headers = addBackendHeaders(headers, jwt);
+  }
   return headers;
 }
 
@@ -53,12 +81,10 @@ const headers = (jwt: string) => {
  * @param options - Configuration options for the client
  * @returns A typed openapi-fetch client
  */
-export function createRailsApiClient(options: RailsApiClientOptions) {
-  const { jwt, baseUrl = env.RAILS_API_URL || "http://localhost:3000" } = options;
-
-  if (!jwt) {
-    throw new Error("JWT is required for API authentication");
-  }
+export async function createRailsApiClient(options: RailsApiClientOptions) {
+  await loadBackendDeps();
+  
+  const { jwt, baseUrl = env.RAILS_API_URL || env.VITE_RAILS_API_URL || "http://localhost:3000" } = options;
 
   const client = createClient<paths>({
     baseUrl,

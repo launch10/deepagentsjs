@@ -1,5 +1,6 @@
-import { createRailsApiClient, type paths } from "@rails_api";
+import { RailsAPIBase, type paths } from "@rails_api";
 import { type ThreadIDType, type UUIDType } from "@types";
+import { type Simplify } from "type-fest";
 
 /**
  * Type definitions for brainstorm operations
@@ -47,11 +48,9 @@ export interface CreateBrainstormParams {
 /**
  * Service for interacting with the Rails Brainstorm API
  */
-export class BrainstormAPIService {
-  private jwt: string;
-
-  constructor(options: BrainstormServiceOptions) {
-    this.jwt = options.jwt;
+export class BrainstormAPIService extends RailsAPIBase {
+  constructor(options: Simplify<ConstructorParameters<typeof RailsAPIBase>[0]>) {
+    super(options)
   }
 
   /**
@@ -61,9 +60,7 @@ export class BrainstormAPIService {
    * @returns The created brainstorm
    */
   async create({ threadId, projectUUID, name }: CreateBrainstormParams): Promise<Brainstorm> {
-    const client = createRailsApiClient({ jwt: this.jwt });
-
-    const response = await client.POST("/api/v1/brainstorms", {
+    const response = await this.client.POST("/api/v1/brainstorms", {
       body: {
         brainstorm: {
           thread_id: threadId,
@@ -92,9 +89,7 @@ export class BrainstormAPIService {
    * @returns The brainstorm
    */
   async get(threadId: ThreadIDType): Promise<Brainstorm> {
-    const client = createRailsApiClient({ jwt: this.jwt });
-
-    const response = await client.GET("/api/v1/brainstorms/{thread_id}", {
+    const response = await this.client.GET("/api/v1/brainstorms/{thread_id}", {
       params: {
         path: { thread_id: threadId },
       },
@@ -121,9 +116,7 @@ export class BrainstormAPIService {
     threadId: ThreadIDType,
     updates: UpdateBrainstormRequest["brainstorm"]
   ): Promise<Brainstorm> {
-    const client = createRailsApiClient({ jwt: this.jwt });
-
-    const response = await client.PATCH("/api/v1/brainstorms/{thread_id}", {
+    const response = await this.client.PATCH("/api/v1/brainstorms/{thread_id}", {
       params: {
         path: { thread_id: threadId },
       },

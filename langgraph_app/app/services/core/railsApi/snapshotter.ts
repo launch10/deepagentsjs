@@ -1,4 +1,5 @@
-import { createRailsApiClient, type paths } from "@rails_api";
+import { RailsAPIBase, type paths } from "@rails_api";
+import { type Simplify } from "type-fest";
 
 /**
  * Type definitions for test database operations
@@ -35,11 +36,9 @@ export interface DatabaseOperationResult {
 /**
  * Service for interacting with the Rails Test Database API
  */
-export class DatabaseSnapshotterAPI {
-  private jwt: string;
-
-  constructor() {
-    this.jwt = 'test-jwt';
+export class DatabaseSnapshotterAPI extends RailsAPIBase {
+  constructor(options: Simplify<ConstructorParameters<typeof RailsAPIBase>[0]>) {
+    super(options)
   }
 
   /**
@@ -47,9 +46,7 @@ export class DatabaseSnapshotterAPI {
    * @returns Operation result with status and message
    */
   async truncate(): Promise<DatabaseOperationResult> {
-    const client = createRailsApiClient({ jwt: this.jwt });
-
-    const response = await client.POST("/test/database/truncate", {});
+    const response = await this.client.POST("/test/database/truncate", {});
 
     if (response.error?.errors) {
       throw new Error(`Failed to truncate database: ${response.error.errors.join(", ")}`);
@@ -67,9 +64,7 @@ export class DatabaseSnapshotterAPI {
    * @returns Array of snapshot names
    */
   async listSnapshots(): Promise<string[]> {
-    const client = createRailsApiClient({ jwt: this.jwt });
-
-    const response = await client.GET("/test/database/snapshots", {});
+    const response = await this.client.GET("/test/database/snapshots", {});
 
     if (!response.data) {
       throw new Error(`Failed to list snapshots: no data returned`);
@@ -88,9 +83,7 @@ export class DatabaseSnapshotterAPI {
     name: string,
     truncateFirst: boolean = false
   ): Promise<DatabaseOperationResult> {
-    const client = createRailsApiClient({ jwt: this.jwt });
-
-    const response = await client.POST("/test/database/snapshots", {
+    const response = await this.client.POST("/test/database/snapshots", {
       body: {
         snapshot: {
           name,
@@ -98,7 +91,6 @@ export class DatabaseSnapshotterAPI {
         },
       },
     });
-    console.log(response)
 
     if (response.error) {
       throw new Error(`Failed to create snapshot: ${JSON.stringify(response.error)}`);
@@ -121,9 +113,7 @@ export class DatabaseSnapshotterAPI {
     name: string,
     truncateFirst: boolean = true
   ): Promise<DatabaseOperationResult> {
-    const client = createRailsApiClient({ jwt: this.jwt });
-
-    const response = await client.POST("/test/database/restore_snapshot", {
+    const response = await this.client.POST("/test/database/restore_snapshot", {
       body: {
         snapshot: {
           name,
@@ -144,4 +134,6 @@ export class DatabaseSnapshotterAPI {
   }
 }
 
-export const DatabaseSnapshotter = new DatabaseSnapshotterAPI();
+export const DatabaseSnapshotter = new DatabaseSnapshotterAPI({
+    jwt: "test-jwt",
+});

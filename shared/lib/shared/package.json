@@ -1,0 +1,9 @@
+{
+  "name": "@launch10/shared-types",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "api:generate": "cd ../../../../ && ./langgraph_app/node_modules/.bin/openapi-typescript rails_app/swagger/v1/swagger.yaml -o langgraph_app/app/lib/shared/api/generated/rails-api.ts"
+  }
+}
