@@ -707,7 +707,7 @@ RSpec.describe "Campaigns API", type: :request do
             end
 
             run_test! do |response|
-              data = JSON.parse(response.body)
+              JSON.parse(response.body)
               highlights_campaign.reload
               ad = highlights_campaign.ad_groups.first.ads.first
 
@@ -846,7 +846,7 @@ RSpec.describe "Campaigns API", type: :request do
             end
 
             run_test! do |response|
-              data = JSON.parse(response.body)
+              JSON.parse(response.body)
               highlights_campaign.reload
               ad = highlights_campaign.ad_groups.first.ads.first
 
@@ -1034,7 +1034,7 @@ RSpec.describe "Campaigns API", type: :request do
             end
 
             run_test! do |response|
-              data = JSON.parse(response.body)
+              JSON.parse(response.body)
               keywords_campaign.reload
               ad = keywords_campaign.ad_groups.first.ads.first
               ad_group = keywords_campaign.ad_groups.first
@@ -1266,7 +1266,7 @@ RSpec.describe "Campaigns API", type: :request do
             end
 
             run_test! do |response|
-              data = JSON.parse(response.body)
+              JSON.parse(response.body)
               settings_campaign.reload
               ad = settings_campaign.ad_groups.first.ads.first
               ad_group = settings_campaign.ad_groups.first
@@ -1436,7 +1436,7 @@ RSpec.describe "Campaigns API", type: :request do
             end
 
             run_test! do |response|
-              data = JSON.parse(response.body)
+              JSON.parse(response.body)
               launch_campaign.reload
               ad = launch_campaign.ad_groups.first.ads.first
               ad_group = launch_campaign.ad_groups.first

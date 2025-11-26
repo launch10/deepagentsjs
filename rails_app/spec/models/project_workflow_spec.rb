@@ -103,7 +103,7 @@ RSpec.describe ProjectWorkflow, type: :model do
   describe "#advance_to" do
     context "when advancement is valid" do
       it "advances to a valid step without substep" do
-        expected_step, expected_substep = workflow.next_step
+        expected_step, _ = workflow.next_step
         result = workflow.advance_to(step: expected_step)
 
         expect(result).to be true

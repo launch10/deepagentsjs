@@ -451,7 +451,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Updates a campaign (autosave) */
+        /** Validates campaign updates */
         patch: {
             parameters: {
                 query?: never;
@@ -545,7 +545,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description ready_for_next_stage is true after all launch fields are configured */
+                /** @description preserves all previous stage content when updating launch settings */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -599,6 +599,13 @@ export interface paths {
                 };
                 /** @description campaign not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description does not save any changes when validation fails */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -718,7 +725,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description goes back to previous project workflow step when at first campaign stage */
+                /** @description campaign stepped back to previous stage */
                 200: {
                     headers: {
                         [name: string]: unknown;
