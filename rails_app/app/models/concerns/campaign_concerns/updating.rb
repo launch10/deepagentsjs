@@ -40,7 +40,8 @@ module CampaignConcerns
         @campaign = campaign
         @params = params
         @objects_to_validate = []
-        @objects_to_save = []
+        @deletions_to_perform = []
+        @saves_to_perform = []
       end
 
       def update
@@ -48,8 +49,8 @@ module CampaignConcerns
 
         result = Campaign.transaction do
           prepare_regular_attrs!
-          perform_deletions!
-          prepare_objects_for_save!
+          prepare_idempotent_attrs!
+          execute_deletions!
           validation_errors = validate_all_objects!
 
           if validation_errors.any?
@@ -69,12 +70,6 @@ module CampaignConcerns
 
       private
 
-      def collect_validation_errors
-        @objects_to_validate.flat_map do |obj|
-          obj.errors.full_messages.map { |msg| "#{obj.class.name}: #{msg}" }
-        end
-      end
-
       def prepare_regular_attrs!
         regular_params = params.deep_dup
         regular_params[:ad_groups_attributes]&.each do |ag_attrs|
@@ -91,40 +86,14 @@ module CampaignConcerns
 
         campaign.assign_attributes(regular_params)
         @objects_to_validate << campaign
-        @objects_to_save << campaign
+        @saves_to_perform << -> { campaign.save! }
 
         if location_targets_data.present?
-          @objects_to_save << -> { campaign.update_location_targets(location_targets_data) }
+          @saves_to_perform << -> { campaign.update_location_targets(location_targets_data) }
         end
       end
 
-      def perform_deletions!
-        idempotent_params = params.deep_dup
-
-        if idempotent_params[:ad_groups_attributes].present?
-          idempotent_params[:ad_groups_attributes].each do |ad_group_attrs|
-            ad_group = campaign.ad_groups.find_by(id: ad_group_attrs[:id])
-            next unless ad_group
-
-            if ad_group_attrs[:ads_attributes].present?
-              ad_group_attrs[:ads_attributes].each do |ad_attrs|
-                next unless ad_attrs[:id]
-                ad = ad_group.ads.find_by(id: ad_attrs[:id])
-                next unless ad
-
-                delete_headlines(ad, ad_attrs[:headlines_attributes]) if ad_attrs[:headlines_attributes]
-                delete_descriptions(ad, ad_attrs[:descriptions_attributes]) if ad_attrs[:descriptions_attributes]
-              end
-            end
-
-            delete_keywords(ad_group, ad_group_attrs[:keywords_attributes]) if ad_group_attrs[:keywords_attributes]
-          end
-        end
-
-        delete_callouts(idempotent_params[:callouts_attributes]) if idempotent_params[:callouts_attributes]
-      end
-
-      def prepare_objects_for_save!
+      def prepare_idempotent_attrs!
         idempotent_params = params.deep_dup
 
         if idempotent_params[:ad_groups_attributes].present?
@@ -163,41 +132,25 @@ module CampaignConcerns
         errors
       end
 
+      def execute_deletions!
+        @deletions_to_perform.each(&:call)
+      end
+
       def execute_saves!
-        @objects_to_save.each do |obj|
-          if obj.is_a?(Proc)
-            obj.call
-          else
-            obj.save!
-          end
-        end
+        @saves_to_perform.each(&:call)
       end
 
-      def delete_headlines(ad, headlines_attrs)
-        submitted_ids = headlines_attrs.map { |attrs| attrs[:id] || attrs["id"] }.compact.map(&:to_i)
-        AdHeadline.where(ad_id: ad.id).where.not(id: submitted_ids).delete_all
-      end
-
-      def delete_descriptions(ad, descriptions_attrs)
-        submitted_ids = descriptions_attrs.map { |attrs| attrs[:id] || attrs["id"] }.compact.map(&:to_i)
-        AdDescription.where(ad_id: ad.id).where.not(id: submitted_ids).delete_all
-      end
-
-      def delete_callouts(callouts_attrs)
-        submitted_ids = callouts_attrs.map { |attrs| attrs[:id] || attrs["id"] }.compact.map(&:to_i)
-        AdCallout.where(campaign_id: campaign.id).where.not(id: submitted_ids).delete_all
-      end
-
-      def delete_keywords(ad_group, keywords_attrs)
-        submitted_ids = keywords_attrs.map { |attrs| attrs[:id] || attrs["id"] }.compact.map(&:to_i)
-        AdKeyword.where(ad_group_id: ad_group.id).where.not(id: submitted_ids).delete_all
+      def queue_deletion(relation, attrs_array)
+        submitted_ids = attrs_array.map { |attrs| attrs[:id] || attrs["id"] }.compact.map(&:to_i)
+        @deletions_to_perform << -> { relation.where.not(id: submitted_ids).delete_all }
       end
 
       def prepare_headlines(ad, headlines_attrs)
+        queue_deletion(ad.headlines, headlines_attrs)
+
         headlines_to_update = []
         headlines_to_create = []
         all_headlines = []
-
         existing_headlines = ad.headlines.reload.index_by(&:id)
 
         headlines_attrs.each do |attrs|
@@ -224,33 +177,16 @@ module CampaignConcerns
           end
         end
 
-        positions = all_headlines.map(&:position)
-        if positions.length != positions.uniq.length
-          duplicate_positions = positions.select { |p| positions.count(p) > 1 }.uniq
-          duplicate_positions.each do |pos|
-            all_headlines.find { |h| h.position == pos }&.errors&.add(:position, "must be unique within ad")
-          end
-        end
-
-        @objects_to_save << -> {
-          if headlines_to_update.any?
-            AdHeadline.upsert_all(
-              headlines_to_update.map { |h| h.attributes.slice("id", "ad_id", "text", "position", "platform_settings") },
-              update_only: [:text, :position, :platform_settings]
-            )
-          end
-          if headlines_to_create.any?
-            AdHeadline.insert_all(
-              headlines_to_create.map { |h| h.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
-            )
-          end
-        }
+        validate_position_uniqueness(all_headlines, "must be unique within ad")
+        batch_upsert_and_insert(AdHeadline, headlines_to_update, headlines_to_create)
       end
 
       def prepare_descriptions(ad, descriptions_attrs)
+        queue_deletion(ad.descriptions, descriptions_attrs)
+
         descriptions_to_update = []
         descriptions_to_create = []
-
+        all_descriptions = []
         existing_descriptions = ad.descriptions.reload.index_by(&:id)
 
         descriptions_attrs.each do |attrs|
@@ -259,6 +195,7 @@ module CampaignConcerns
             if description
               description.assign_attributes(text: attrs[:text], position: attrs[:position], platform_settings: attrs[:platform_settings])
               descriptions_to_update << description
+              all_descriptions << description
               @objects_to_validate << description
             end
           else
@@ -269,29 +206,21 @@ module CampaignConcerns
               platform_settings: attrs[:platform_settings]
             )
             descriptions_to_create << new_description
+            all_descriptions << new_description
             @objects_to_validate << new_description
           end
         end
 
-        @objects_to_save << -> {
-          if descriptions_to_update.any?
-            AdDescription.upsert_all(
-              descriptions_to_update.map { |d| d.attributes.slice("id", "ad_id", "text", "position", "platform_settings") },
-              update_only: [:text, :position, :platform_settings]
-            )
-          end
-          if descriptions_to_create.any?
-            AdDescription.insert_all(
-              descriptions_to_create.map { |d| d.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
-            )
-          end
-        }
+        validate_position_uniqueness(all_descriptions, "must be unique within ad")
+        batch_upsert_and_insert(AdDescription, descriptions_to_update, descriptions_to_create)
       end
 
       def prepare_callouts(callouts_attrs)
+        queue_deletion(campaign.callouts, callouts_attrs)
+
         callouts_to_update = []
         callouts_to_create = []
-
+        all_callouts = []
         existing_callouts = campaign.callouts.reload.index_by(&:id)
 
         callouts_attrs.each do |attrs|
@@ -300,58 +229,50 @@ module CampaignConcerns
             if callout
               callout.assign_attributes(text: attrs[:text], position: attrs[:position], platform_settings: attrs[:platform_settings])
               callouts_to_update << callout
+              all_callouts << callout
               @objects_to_validate << callout
             end
           else
-            ad_group = campaign.ad_groups.first
             new_callout = AdCallout.new(
               text: attrs[:text],
               position: attrs[:position],
               platform_settings: attrs[:platform_settings],
               campaign_id: campaign.id,
-              ad_group_id: ad_group.id
+              ad_group_id: campaign.ad_groups.first.id
             )
             callouts_to_create << new_callout
+            all_callouts << new_callout
             @objects_to_validate << new_callout
           end
         end
 
-        @objects_to_save << -> {
-          if callouts_to_update.any?
-            AdCallout.upsert_all(
-              callouts_to_update.map { |c| c.attributes.slice("id", "campaign_id", "ad_group_id", "text", "position", "platform_settings") },
-              update_only: [:text, :position, :platform_settings]
-            )
-          end
-          if callouts_to_create.any?
-            AdCallout.insert_all(
-              callouts_to_create.map { |c| c.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
-            )
-          end
-        }
+        validate_position_uniqueness(all_callouts, "must be unique within campaign")
+        batch_upsert_and_insert(AdCallout, callouts_to_update, callouts_to_create)
       end
 
       def prepare_structured_snippet(snippet_attrs)
         if snippet_attrs[:_destroy] || snippet_attrs["_destroy"]
-          @objects_to_save << -> { campaign.structured_snippet&.destroy }
+          @saves_to_perform << -> { campaign.structured_snippet&.destroy }
           return
         end
 
         if campaign.structured_snippet.present?
           campaign.structured_snippet.assign_attributes(category: snippet_attrs[:category], values: snippet_attrs[:values])
           @objects_to_validate << campaign.structured_snippet
-          @objects_to_save << campaign.structured_snippet
+          @saves_to_perform << -> { campaign.structured_snippet.save! }
         else
           new_snippet = campaign.build_structured_snippet(category: snippet_attrs[:category], values: snippet_attrs[:values])
           @objects_to_validate << new_snippet
-          @objects_to_save << new_snippet
+          @saves_to_perform << -> { new_snippet.save! }
         end
       end
 
       def prepare_keywords(ad_group, keywords_attrs)
+        queue_deletion(ad_group.keywords, keywords_attrs)
+
         keywords_to_update = []
         keywords_to_create = []
-
+        all_keywords = []
         existing_keywords = ad_group.keywords.reload.index_by(&:id)
 
         keywords_attrs.each do |attrs|
@@ -360,6 +281,7 @@ module CampaignConcerns
             if keyword
               keyword.assign_attributes(text: attrs[:text], match_type: attrs[:match_type], position: attrs[:position])
               keywords_to_update << keyword
+              all_keywords << keyword
               @objects_to_validate << keyword
             end
           else
@@ -370,20 +292,39 @@ module CampaignConcerns
               position: attrs[:position]
             )
             keywords_to_create << new_keyword
+            all_keywords << new_keyword
             @objects_to_validate << new_keyword
           end
         end
 
-        @objects_to_save << -> {
-          if keywords_to_update.any?
-            AdKeyword.upsert_all(
-              keywords_to_update.map { |k| k.attributes.slice("id", "ad_group_id", "text", "match_type", "position", "platform_settings") },
-              update_only: [:text, :match_type, :position]
+        validate_position_uniqueness(all_keywords, "must be unique within ad group")
+        batch_upsert_and_insert(AdKeyword, keywords_to_update, keywords_to_create)
+      end
+
+      def validate_position_uniqueness(records, error_message)
+        positions = records.map(&:position).compact
+        return if positions.empty?
+
+        if positions.length != positions.uniq.length
+          duplicate_positions = positions.select { |p| positions.count(p) > 1 }.uniq
+          duplicate_positions.each do |pos|
+            records.select { |r| r.position == pos }.each do |record|
+              record.errors.add(:position, error_message)
+            end
+          end
+        end
+      end
+
+      def batch_upsert_and_insert(model_class, to_update, to_create)
+        @saves_to_perform << -> {
+          if to_update.any?
+            model_class.upsert_all(
+              to_update.map(&:attributes).map { |attrs| attrs.except("created_at", "updated_at") }
             )
           end
-          if keywords_to_create.any?
-            AdKeyword.insert_all(
-              keywords_to_create.map { |k| k.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
+          if to_create.any?
+            model_class.insert_all(
+              to_create.map { |r| r.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
             )
           end
         }
