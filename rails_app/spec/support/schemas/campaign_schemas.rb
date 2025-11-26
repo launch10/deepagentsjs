@@ -10,6 +10,7 @@ module APISchemas
           name: {type: :string, description: 'Campaign name'},
           stage: {type: :string, description: 'Current campaign stage'},
           status: {type: :string, description: 'Campaign status'},
+          ready_for_next_stage: {type: :boolean, description: 'Whether campaign is ready to advance to next stage'},
           account_id: APISchemas.id_field,
           project_id: APISchemas.id_field,
           website_id: APISchemas.id_field,
@@ -17,6 +18,81 @@ module APISchemas
           end_date: {type: :string, format: 'date', nullable: true, description: 'Campaign end date'},
           time_zone: {type: :string, description: 'Campaign time zone'},
           daily_budget_cents: {type: :integer, nullable: true, description: 'Daily budget in cents'},
+          google_advertising_channel_type: {type: :string, nullable: true, description: 'Google Ads channel type'},
+          google_bidding_strategy: {type: :string, nullable: true, description: 'Google Ads bidding strategy'},
+          ad_groups: {
+            type: :array,
+            items: {
+              type: :object,
+              properties: {
+                id: APISchemas.id_field,
+                name: {type: :string},
+                ads: {
+                  type: :array,
+                  items: {
+                    type: :object,
+                    properties: {
+                      id: APISchemas.id_field,
+                      headlines: {
+                        type: :array,
+                        items: {
+                          type: :object,
+                          properties: {
+                            id: APISchemas.id_field,
+                            text: {type: :string},
+                            position: {type: :integer}
+                          }
+                        }
+                      },
+                      descriptions: {
+                        type: :array,
+                        items: {
+                          type: :object,
+                          properties: {
+                            id: APISchemas.id_field,
+                            text: {type: :string},
+                            position: {type: :integer}
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                keywords: {
+                  type: :array,
+                  items: {
+                    type: :object,
+                    properties: {
+                      id: APISchemas.id_field,
+                      text: {type: :string},
+                      match_type: {type: :string},
+                      position: {type: :integer}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          callouts: {
+            type: :array,
+            items: {
+              type: :object,
+              properties: {
+                id: APISchemas.id_field,
+                text: {type: :string},
+                position: {type: :integer}
+              }
+            }
+          },
+          structured_snippet: {
+            type: :object,
+            nullable: true,
+            properties: {
+              id: APISchemas.id_field,
+              category: {type: :string},
+              values: {type: :array, items: {type: :string}}
+            }
+          },
           workflow: {
             type: :object,
             nullable: true,
@@ -193,6 +269,10 @@ module APISchemas
         },
         required: %w[id stage status]
       }
+    end
+
+    def self.error_response
+      APISchemas.error_response
     end
   end
 end

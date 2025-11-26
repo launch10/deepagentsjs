@@ -324,6 +324,8 @@ export interface paths {
                             stage: string;
                             /** @description Campaign status */
                             status: string;
+                            /** @description Whether campaign is ready to advance to next stage */
+                            ready_for_next_stage?: boolean;
                             /** @description Unique identifier */
                             account_id: number;
                             /** @description Unique identifier */
@@ -344,6 +346,50 @@ export interface paths {
                             time_zone?: string;
                             /** @description Daily budget in cents */
                             daily_budget_cents?: number | null;
+                            /** @description Google Ads channel type */
+                            google_advertising_channel_type?: string | null;
+                            /** @description Google Ads bidding strategy */
+                            google_bidding_strategy?: string | null;
+                            ad_groups?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                name?: string;
+                                ads?: {
+                                    /** @description Unique identifier */
+                                    id?: number;
+                                    headlines?: {
+                                        /** @description Unique identifier */
+                                        id?: number;
+                                        text?: string;
+                                        position?: number;
+                                    }[];
+                                    descriptions?: {
+                                        /** @description Unique identifier */
+                                        id?: number;
+                                        text?: string;
+                                        position?: number;
+                                    }[];
+                                }[];
+                                keywords?: {
+                                    /** @description Unique identifier */
+                                    id?: number;
+                                    text?: string;
+                                    match_type?: string;
+                                    position?: number;
+                                }[];
+                            }[];
+                            callouts?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                text?: string;
+                                position?: number;
+                            }[];
+                            structured_snippet?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                category?: string;
+                                values?: string[];
+                            } | null;
                             workflow?: {
                                 step?: string;
                                 substep?: string | null;
@@ -376,6 +422,8 @@ export interface paths {
                             stage: string;
                             /** @description Campaign status */
                             status: string;
+                            /** @description Whether campaign is ready to advance to next stage */
+                            ready_for_next_stage?: boolean;
                             /** @description Unique identifier */
                             account_id: number;
                             /** @description Unique identifier */
@@ -396,6 +444,50 @@ export interface paths {
                             time_zone?: string;
                             /** @description Daily budget in cents */
                             daily_budget_cents?: number | null;
+                            /** @description Google Ads channel type */
+                            google_advertising_channel_type?: string | null;
+                            /** @description Google Ads bidding strategy */
+                            google_bidding_strategy?: string | null;
+                            ad_groups?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                name?: string;
+                                ads?: {
+                                    /** @description Unique identifier */
+                                    id?: number;
+                                    headlines?: {
+                                        /** @description Unique identifier */
+                                        id?: number;
+                                        text?: string;
+                                        position?: number;
+                                    }[];
+                                    descriptions?: {
+                                        /** @description Unique identifier */
+                                        id?: number;
+                                        text?: string;
+                                        position?: number;
+                                    }[];
+                                }[];
+                                keywords?: {
+                                    /** @description Unique identifier */
+                                    id?: number;
+                                    text?: string;
+                                    match_type?: string;
+                                    position?: number;
+                                }[];
+                            }[];
+                            callouts?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                text?: string;
+                                position?: number;
+                            }[];
+                            structured_snippet?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                category?: string;
+                                values?: string[];
+                            } | null;
                             workflow?: {
                                 step?: string;
                                 substep?: string | null;
@@ -425,7 +517,15 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
                 };
             };
         };
@@ -582,6 +682,8 @@ export interface paths {
                             stage: string;
                             /** @description Campaign status */
                             status: string;
+                            /** @description Whether campaign is ready to advance to next stage */
+                            ready_for_next_stage?: boolean;
                             /** @description Unique identifier */
                             account_id: number;
                             /** @description Unique identifier */
@@ -602,6 +704,50 @@ export interface paths {
                             time_zone?: string;
                             /** @description Daily budget in cents */
                             daily_budget_cents?: number | null;
+                            /** @description Google Ads channel type */
+                            google_advertising_channel_type?: string | null;
+                            /** @description Google Ads bidding strategy */
+                            google_bidding_strategy?: string | null;
+                            ad_groups?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                name?: string;
+                                ads?: {
+                                    /** @description Unique identifier */
+                                    id?: number;
+                                    headlines?: {
+                                        /** @description Unique identifier */
+                                        id?: number;
+                                        text?: string;
+                                        position?: number;
+                                    }[];
+                                    descriptions?: {
+                                        /** @description Unique identifier */
+                                        id?: number;
+                                        text?: string;
+                                        position?: number;
+                                    }[];
+                                }[];
+                                keywords?: {
+                                    /** @description Unique identifier */
+                                    id?: number;
+                                    text?: string;
+                                    match_type?: string;
+                                    position?: number;
+                                }[];
+                            }[];
+                            callouts?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                text?: string;
+                                position?: number;
+                            }[];
+                            structured_snippet?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                category?: string;
+                                values?: string[];
+                            } | null;
                             workflow?: {
                                 step?: string;
                                 substep?: string | null;
@@ -624,14 +770,30 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
                 };
                 /** @description does not save any changes when validation fails */
                 422: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
                 };
             };
         };
@@ -701,14 +863,30 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
                 };
                 /** @description cannot advance from launch - validation failed (missing fields) */
                 422: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
                 };
             };
         };
@@ -782,7 +960,15 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
                 };
             };
         };
@@ -1285,10 +1471,11 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            /** @description Error message */
+                            /** @description Single error message */
                             error?: string;
-                            /** @description Array of error messages */
-                            errors?: string[];
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
                         };
                     };
                 };

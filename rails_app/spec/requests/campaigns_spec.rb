@@ -115,6 +115,7 @@ RSpec.describe "Campaigns API", type: :request do
       end
 
       response '422', 'invalid request - missing website_id' do
+        schema APISchemas::Campaign.error_response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -217,6 +218,7 @@ RSpec.describe "Campaigns API", type: :request do
         end
 
         response '404', 'cannot access another users campaign' do
+          schema APISchemas::Campaign.error_response
           let(:Authorization) { auth_headers_for(user1)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -239,6 +241,7 @@ RSpec.describe "Campaigns API", type: :request do
         end
 
         response '404', 'campaign not found' do
+          schema APISchemas::Campaign.error_response
           let(:Authorization) { auth_headers_for(user1)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -1482,6 +1485,7 @@ RSpec.describe "Campaigns API", type: :request do
       end
 
       response '404', 'campaign not found' do
+        schema APISchemas::Campaign.error_response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -1517,6 +1521,7 @@ RSpec.describe "Campaigns API", type: :request do
         end
 
         response '422', 'cannot advance - stage validation failed' do
+          schema APISchemas::Campaign.error_response
           let(:Authorization) { auth_headers_for(user1)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -1573,6 +1578,7 @@ RSpec.describe "Campaigns API", type: :request do
         end
 
         response '422', 'cannot advance from highlights - validation failed' do
+          schema APISchemas::Campaign.error_response
           let(:Authorization) { auth_headers_for(user1)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -1645,6 +1651,7 @@ RSpec.describe "Campaigns API", type: :request do
         end
 
         response '422', 'cannot advance from keywords - validation failed' do
+          schema APISchemas::Campaign.error_response
           let(:Authorization) { auth_headers_for(user1)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -1734,6 +1741,7 @@ RSpec.describe "Campaigns API", type: :request do
         end
 
         response '422', 'cannot advance from settings - validation failed (missing location)' do
+          schema APISchemas::Campaign.error_response
           let(:Authorization) { auth_headers_for(user1)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -1835,6 +1843,7 @@ RSpec.describe "Campaigns API", type: :request do
         end
 
         response '422', 'cannot advance from launch - validation failed (missing fields)' do
+          schema APISchemas::Campaign.error_response
           let(:Authorization) { auth_headers_for(user1)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -2031,6 +2040,7 @@ RSpec.describe "Campaigns API", type: :request do
       end
 
       response '404', 'campaign not found' do
+        schema APISchemas::Campaign.error_response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -2074,6 +2084,7 @@ RSpec.describe "Campaigns API", type: :request do
 
         describe 'Campaign validations' do
           response '422', 'rejects invalid time_zone' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2092,6 +2103,7 @@ RSpec.describe "Campaigns API", type: :request do
 
         describe 'Headline validations' do
           response '422', 'rejects blank headline text' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad = campaign1.ad_groups.first.ads.first
               {
@@ -2121,6 +2133,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects headline text exceeding 30 characters' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad = campaign1.ad_groups.first.ads.first
               {
@@ -2150,6 +2163,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects headline with missing position' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad = campaign1.ad_groups.first.ads.first
               {
@@ -2181,6 +2195,7 @@ RSpec.describe "Campaigns API", type: :request do
 
         describe 'Description validations' do
           response '422', 'rejects blank description text' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad = campaign1.ad_groups.first.ads.first
               {
@@ -2210,6 +2225,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects description text exceeding 90 characters' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad = campaign1.ad_groups.first.ads.first
               {
@@ -2239,6 +2255,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects description with missing position' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad = campaign1.ad_groups.first.ads.first
               {
@@ -2270,6 +2287,7 @@ RSpec.describe "Campaigns API", type: :request do
 
         describe 'Callout validations' do
           response '422', 'rejects blank callout text' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2288,6 +2306,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects callout text exceeding 25 characters' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2306,6 +2325,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects callout with missing position' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2326,6 +2346,7 @@ RSpec.describe "Campaigns API", type: :request do
 
         describe 'Keyword validations' do
           response '422', 'rejects blank keyword text' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad_group = campaign1.ad_groups.first
               {
@@ -2350,6 +2371,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects keyword text exceeding 80 characters' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad_group = campaign1.ad_groups.first
               {
@@ -2374,6 +2396,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects invalid keyword match_type' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad_group = campaign1.ad_groups.first
               {
@@ -2398,6 +2421,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects keyword with missing match_type' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad_group = campaign1.ad_groups.first
               {
@@ -2422,6 +2446,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects keyword with missing position' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad_group = campaign1.ad_groups.first
               {
@@ -2448,6 +2473,7 @@ RSpec.describe "Campaigns API", type: :request do
 
         describe 'Structured snippet validations' do
           response '422', 'rejects invalid structured snippet category' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2467,6 +2493,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects structured snippet with less than 3 values' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2486,6 +2513,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects structured snippet with more than 10 values' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2505,6 +2533,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects structured snippet with blank category' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2529,6 +2558,7 @@ RSpec.describe "Campaigns API", type: :request do
           let(:id) { settings_campaign.id }
 
           response '422', 'rejects invalid location target_type' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2552,6 +2582,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects invalid location_type' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2577,6 +2608,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects geo_location without google_criterion_id' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2601,6 +2633,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects geo_location without location_name' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2625,6 +2658,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects geo_location without country_code' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2649,6 +2683,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects radius target without radius value' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2673,6 +2708,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects radius target with invalid radius_units' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2698,6 +2734,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects radius target without city' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2727,6 +2764,7 @@ RSpec.describe "Campaigns API", type: :request do
           let(:id) { settings_campaign.id }
 
           response '422', 'rejects invalid day_of_week' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2749,6 +2787,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           response '422', 'rejects schedule with invalid time_zone' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
@@ -2773,6 +2812,7 @@ RSpec.describe "Campaigns API", type: :request do
 
         describe 'Multiple validation errors' do
           response '422', 'returns all validation errors at once' do
+            schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               ad = campaign1.ad_groups.first.ads.first
               ad_group = campaign1.ad_groups.first
@@ -2828,6 +2868,7 @@ RSpec.describe "Campaigns API", type: :request do
 
         describe 'No partial updates on validation failure' do
           response '422', 'does not save any changes when validation fails' do
+            schema APISchemas::Campaign.error_response
             let!(:initial_headlines) do
               ad = campaign1.ad_groups.first.ads.first
               [

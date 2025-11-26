@@ -340,6 +340,9 @@ paths:
                   status:
                     type: string
                     description: Campaign status
+                  ready_for_next_stage:
+                    type: boolean
+                    description: Whether campaign is ready to advance to next stage
                   account_id:
                     type: integer
                     description: Unique identifier
@@ -366,6 +369,95 @@ paths:
                     type: integer
                     nullable: true
                     description: Daily budget in cents
+                  google_advertising_channel_type:
+                    type: string
+                    nullable: true
+                    description: Google Ads channel type
+                  google_bidding_strategy:
+                    type: string
+                    nullable: true
+                    description: Google Ads bidding strategy
+                  ad_groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        name:
+                          type: string
+                        ads:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              headlines:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                              descriptions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                        keywords:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              text:
+                                type: string
+                              match_type:
+                                type: string
+                              position:
+                                type: integer
+                  callouts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        text:
+                          type: string
+                        position:
+                          type: integer
+                  structured_snippet:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: integer
+                        description: Unique identifier
+                      category:
+                        type: string
+                      values:
+                        type: array
+                        items:
+                          type: string
                   workflow:
                     type: object
                     nullable: true
@@ -411,6 +503,9 @@ paths:
                   status:
                     type: string
                     description: Campaign status
+                  ready_for_next_stage:
+                    type: boolean
+                    description: Whether campaign is ready to advance to next stage
                   account_id:
                     type: integer
                     description: Unique identifier
@@ -437,6 +532,95 @@ paths:
                     type: integer
                     nullable: true
                     description: Daily budget in cents
+                  google_advertising_channel_type:
+                    type: string
+                    nullable: true
+                    description: Google Ads channel type
+                  google_bidding_strategy:
+                    type: string
+                    nullable: true
+                    description: Google Ads bidding strategy
+                  ad_groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        name:
+                          type: string
+                        ads:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              headlines:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                              descriptions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                        keywords:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              text:
+                                type: string
+                              match_type:
+                                type: string
+                              position:
+                                type: integer
+                  callouts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        text:
+                          type: string
+                        position:
+                          type: integer
+                  structured_snippet:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: integer
+                        description: Unique identifier
+                      category:
+                        type: string
+                      values:
+                        type: array
+                        items:
+                          type: string
                   workflow:
                     type: object
                     nullable: true
@@ -467,6 +651,27 @@ paths:
           description: unauthorized - missing token
         '422':
           description: invalid request - missing website_id
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
       requestBody:
         content:
           application/json:
@@ -540,6 +745,9 @@ paths:
                   status:
                     type: string
                     description: Campaign status
+                  ready_for_next_stage:
+                    type: boolean
+                    description: Whether campaign is ready to advance to next stage
                   account_id:
                     type: integer
                     description: Unique identifier
@@ -566,6 +774,95 @@ paths:
                     type: integer
                     nullable: true
                     description: Daily budget in cents
+                  google_advertising_channel_type:
+                    type: string
+                    nullable: true
+                    description: Google Ads channel type
+                  google_bidding_strategy:
+                    type: string
+                    nullable: true
+                    description: Google Ads bidding strategy
+                  ad_groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        name:
+                          type: string
+                        ads:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              headlines:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                              descriptions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: Unique identifier
+                                    text:
+                                      type: string
+                                    position:
+                                      type: integer
+                        keywords:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              text:
+                                type: string
+                              match_type:
+                                type: string
+                              position:
+                                type: integer
+                  callouts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        text:
+                          type: string
+                        position:
+                          type: integer
+                  structured_snippet:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: integer
+                        description: Unique identifier
+                      category:
+                        type: string
+                      values:
+                        type: array
+                        items:
+                          type: string
                   workflow:
                     type: object
                     nullable: true
@@ -594,8 +891,50 @@ paths:
                 - updated_at
         '404':
           description: campaign not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
         '422':
           description: does not save any changes when validation fails
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
       requestBody:
         content:
           application/json:
@@ -786,6 +1125,27 @@ paths:
       responses:
         '404':
           description: campaign not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
         '200':
           description: campaign advanced from launch to review stage
           content:
@@ -825,6 +1185,27 @@ paths:
                 - status
         '422':
           description: cannot advance from launch - validation failed (missing fields)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
   "/api/v1/campaigns/{id}/back":
     parameters:
     - name: id
@@ -895,6 +1276,27 @@ paths:
                 - status
         '404':
           description: campaign not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
   "/api/v1/projects/{project_uuid}/workflows/{id}":
     parameters:
     - name: project_uuid
@@ -1381,12 +1783,20 @@ paths:
                 properties:
                   error:
                     type: string
-                    description: Error message
+                    description: Single error message
                   errors:
-                    type: array
-                    items:
-                      type: string
-                    description: Array of error messages
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
       requestBody:
         content:
           application/json:

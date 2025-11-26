@@ -27,11 +27,23 @@ module APISchemas
     {
       type: :object,
       properties: {
-        error: {type: :string, description: 'Error message'},
+        error: {type: :string, description: 'Single error message'},
         errors: {
-          type: :array,
-          items: {type: :string},
-          description: 'Array of error messages'
+          oneOf: [
+            {
+              type: :array,
+              items: {type: :string},
+              description: 'Array of error messages'
+            },
+            {
+              type: :object,
+              additionalProperties: {
+                type: :array,
+                items: {type: :string}
+              },
+              description: 'Object with field paths as keys and arrays of error messages as values'
+            }
+          ]
         }
       }
     }
