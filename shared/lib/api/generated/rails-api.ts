@@ -1433,10 +1433,12 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        /** @description Theme name */
-                        name: string;
-                        /** @description Theme color palette */
-                        colors: string[];
+                        theme: {
+                            /** @description Theme name */
+                            name: string;
+                            /** @description Theme color palette */
+                            colors: string[];
+                        };
                     };
                 };
             };

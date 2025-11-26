@@ -34,5 +34,8 @@
     "type-fest": "^5.2.0",
     "typescript": "^5.5.4",
     "openapi-typescript": "^7.10.1"
+  },
+  "scripts": {
+    "api:generate": "openapi-typescript ../rails_app/swagger/v1/swagger.yaml -o lib/api/generated/rails-api.ts"
   }
 }

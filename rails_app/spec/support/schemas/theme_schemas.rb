@@ -6,10 +6,16 @@ module APISchemas
       {
         type: :object,
         properties: {
-          name: {type: :string, description: 'Theme name'},
-          colors: {type: :array, items: {type: :string}, description: 'Theme color palette'}
+          theme: {
+            type: :object,
+            properties: {
+              name: {type: :string, description: 'Theme name'},
+              colors: {type: :array, items: {type: :string}, description: 'Theme color palette'}
+            },
+            required: ['name', 'colors']
+          }
         },
-        required: ['name', 'colors']
+        required: ['theme']
       }
     end
 
