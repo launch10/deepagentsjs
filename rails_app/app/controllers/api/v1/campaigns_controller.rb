@@ -104,8 +104,7 @@ class API::V1::CampaignsController < API::BaseController
     )
   end
 
-  def campaign_json(campaign)
-    # Reload with eager loading to avoid N+1 queries and get fresh data
+  def eager_load(campaign)
     campaign = Campaign
       .includes(
         :structured_snippet,
@@ -117,7 +116,12 @@ class API::V1::CampaignsController < API::BaseController
         ]
       )
       .find(campaign.id)
-    
+  end
+
+  def campaign_json(campaign)
+    # Reload with eager loading to avoid N+1 queries and get fresh data
+    campaign = eager_load(campaign)
+
     workflow = campaign.project&.launch_workflow
     {
       id: campaign.id,

@@ -20,6 +20,20 @@ class WorkflowConfig
       end
     end
 
+    def prev(workflow_type, current_step, current_substep)
+      if prev_substep(workflow_type, current_step, current_substep)
+        [
+          current_step,
+          prev_substep(workflow_type, current_step, current_substep)
+        ]
+      elsif prev_step(workflow_type, current_step)
+        [
+          prev_step(workflow_type, current_step),
+          last_substep(workflow_type, prev_step(workflow_type, current_step))
+        ]
+      end
+    end
+
     def step_exists?(workflow_type, step)
       definition(workflow_type).steps.key?(step)
     end
@@ -39,12 +53,33 @@ class WorkflowConfig
       definition(workflow_type).substeps_for(step).first
     end
 
+    def last_substep(workflow_type, step = nil)
+      if step.nil?
+        step = last_step(workflow_type)
+      end
+      definition(workflow_type).substeps_for(step).last
+    end
+
     def steps_for(workflow_type)
       definition(workflow_type).steps.keys.map(&:to_s)
     end
 
     def next_step(workflow_type, current_step)
       steps_for(workflow_type)[steps_for(workflow_type).index(current_step) + 1]
+    end
+
+    def prev_step(workflow_type, current_step)
+      steps_for(workflow_type)[steps_for(workflow_type).index(current_step) - 1]
+    end
+
+    def prev_substep(workflow_type, current_step, current_substep)
+      all_substeps = substeps_for(workflow_type, current_step)
+      return nil unless all_substeps.any?
+
+      current_substep_idx = all_substeps.index(current_substep)
+      return nil if current_substep_idx.zero?
+
+      all_substeps[current_substep_idx - 1]
     end
 
     def next_substep(workflow_type, current_step, current_substep)

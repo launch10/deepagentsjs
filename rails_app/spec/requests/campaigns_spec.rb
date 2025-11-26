@@ -166,93 +166,95 @@ RSpec.describe "Campaigns API", type: :request do
         result[:campaign]
       end
 
-      response '200', 'campaign updated' do
-        schema APISchemas::Campaign.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-        let(:id) { campaign1.id }
-        let(:campaign_params) do
-          {
-            campaign: {
-              name: "Updated Campaign Name"
+      describe "General" do
+        response '200', 'campaign updated' do
+          schema APISchemas::Campaign.response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:id) { campaign1.id }
+          let(:campaign_params) do
+            {
+              campaign: {
+                name: "Updated Campaign Name"
+              }
             }
-          }
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["name"]).to eq("Updated Campaign Name")
+
+            campaign1.reload
+            expect(campaign1.name).to eq("Updated Campaign Name")
+          end
         end
 
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["name"]).to eq("Updated Campaign Name")
-
-          campaign1.reload
-          expect(campaign1.name).to eq("Updated Campaign Name")
-        end
-      end
-
-      response '200', 'campaign updated with nested ad group attributes' do
-        schema APISchemas::Campaign.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-        let(:id) { campaign1.id }
-        let(:campaign_params) do
-          ad_group = campaign1.ad_groups.first
-          {
-            campaign: {
-              ad_groups_attributes: [
-                {
-                  id: ad_group.id,
-                  name: "Renamed Ad Group"
-                }
-              ]
+        response '200', 'campaign updated with nested ad group attributes' do
+          schema APISchemas::Campaign.response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:id) { campaign1.id }
+          let(:campaign_params) do
+            ad_group = campaign1.ad_groups.first
+            {
+              campaign: {
+                ad_groups_attributes: [
+                  {
+                    id: ad_group.id,
+                    name: "Renamed Ad Group"
+                  }
+                ]
+              }
             }
-          }
+          end
+
+          run_test! do |response|
+            campaign1.reload
+            expect(campaign1.ad_groups.first.name).to eq("Renamed Ad Group")
+          end
         end
 
-        run_test! do |response|
-          campaign1.reload
-          expect(campaign1.ad_groups.first.name).to eq("Renamed Ad Group")
-        end
-      end
-
-      response '404', 'cannot access another users campaign' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-        let(:id) { campaign2.id }
-        let(:campaign_params) do
-          {
-            campaign: {
-              name: "Should Not Update"
+        response '404', 'cannot access another users campaign' do
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:id) { campaign2.id }
+          let(:campaign_params) do
+            {
+              campaign: {
+                name: "Should Not Update"
+              }
             }
-          }
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["errors"]).to include("Campaign not found")
+
+            campaign2.reload
+            expect(campaign2.name).to eq("User 2 Campaign")
+          end
         end
 
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["errors"]).to include("Campaign not found")
-
-          campaign2.reload
-          expect(campaign2.name).to eq("User 2 Campaign")
-        end
-      end
-
-      response '404', 'campaign not found' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-        let(:id) { 999999 }
-        let(:campaign_params) do
-          {
-            campaign: {
-              name: "Test"
+        response '404', 'campaign not found' do
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:id) { 999999 }
+          let(:campaign_params) do
+            {
+              campaign: {
+                name: "Test"
+              }
             }
-          }
-        end
+          end
 
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["errors"]).to include("Campaign not found")
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["errors"]).to include("Campaign not found")
+          end
         end
       end
 
@@ -1274,391 +1276,6 @@ RSpec.describe "Campaigns API", type: :request do
         result[:campaign]
       end
 
-      response '200', 'campaign advanced to next stage' do
-        schema APISchemas::Campaign.advance_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-        let(:id) { campaign1.id }
-
-        before do
-          ad = campaign1.ad_groups.first.ads.first
-          create_list(:ad_headline, 3, ad: ad)
-          create_list(:ad_description, 2, ad: ad)
-        end
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["stage"]).to eq("highlights")
-
-          campaign1.reload
-          expect(campaign1.stage).to eq("highlights")
-          expect(data["ready_for_next_stage"]).to eq(false)
-        end
-      end
-
-      response '422', 'cannot advance - stage validation failed' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-        let(:id) { campaign1.id }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["errors"]).to be_present
-
-          expect(data["errors"]).to include("Headlines must have between 3-15 headlines (currently has 0)")
-          expect(data["errors"]).to include("Descriptions must have between 2-4 descriptions (currently has 0)")
-
-          campaign1.reload
-          expect(campaign1.stage).to eq("content")
-        end
-      end
-
-      response '200', 'campaign advanced from highlights to keywords stage' do
-        schema APISchemas::Campaign.advance_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-
-        let!(:highlights_stage_campaign) do
-          result = Campaign.create_campaign!(user1_account, {
-            name: "Highlights Stage Campaign",
-            project_id: project1.id,
-            website_id: website1.id
-          })
-          campaign = result[:campaign]
-          ad = campaign.ad_groups.first.ads.first
-          create_list(:ad_headline, 3, ad: ad)
-          create_list(:ad_description, 2, ad: ad)
-          campaign.advance_stage!
-
-          ad_group = campaign.ad_groups.first
-          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
-
-          campaign
-        end
-
-        let(:id) { highlights_stage_campaign.id }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["stage"]).to eq("keywords")
-
-          highlights_stage_campaign.reload
-          expect(highlights_stage_campaign.stage).to eq("keywords")
-          expect(data["ready_for_next_stage"]).to eq(false)
-        end
-      end
-
-      response '422', 'cannot advance from highlights - validation failed' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-
-        let!(:highlights_stage_campaign) do
-          result = Campaign.create_campaign!(user1_account, {
-            name: "Highlights Stage Campaign",
-            project_id: project1.id,
-            website_id: website1.id
-          })
-          campaign = result[:campaign]
-          ad = campaign.ad_groups.first.ads.first
-          create_list(:ad_headline, 3, ad: ad)
-          create_list(:ad_description, 2, ad: ad)
-          campaign.advance_stage!
-          campaign
-        end
-
-        let(:id) { highlights_stage_campaign.id }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["errors"]).to be_present
-          expect(data["errors"]).to include("Callouts must have between 2-10 unique features (currently has 0)")
-
-          highlights_stage_campaign.reload
-          expect(highlights_stage_campaign.stage).to eq("highlights")
-        end
-      end
-
-      response '200', 'campaign advanced from keywords to settings stage' do
-        schema APISchemas::Campaign.advance_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-
-        let!(:keywords_stage_campaign) do
-          result = Campaign.create_campaign!(user1_account, {
-            name: "Keywords Stage Campaign",
-            project_id: project1.id,
-            website_id: website1.id
-          })
-          campaign = result[:campaign]
-          ad = campaign.ad_groups.first.ads.first
-          create_list(:ad_headline, 3, ad: ad)
-          create_list(:ad_description, 2, ad: ad)
-          campaign.advance_stage!
-
-          ad_group = campaign.ad_groups.first
-          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
-          campaign.advance_stage!
-
-          create_list(:ad_keyword, 5, ad_group: ad_group)
-
-          campaign
-        end
-
-        let(:id) { keywords_stage_campaign.id }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["stage"]).to eq("settings")
-
-          keywords_stage_campaign.reload
-          expect(keywords_stage_campaign.stage).to eq("settings")
-          expect(data["ready_for_next_stage"]).to eq(false)
-        end
-      end
-
-      response '422', 'cannot advance from keywords - validation failed' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-
-        let!(:keywords_stage_campaign) do
-          result = Campaign.create_campaign!(user1_account, {
-            name: "Keywords Stage Campaign",
-            project_id: project1.id,
-            website_id: website1.id
-          })
-          campaign = result[:campaign]
-          ad = campaign.ad_groups.first.ads.first
-          create_list(:ad_headline, 3, ad: ad)
-          create_list(:ad_description, 2, ad: ad)
-          campaign.advance_stage!
-
-          ad_group = campaign.ad_groups.first
-          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
-          campaign.advance_stage!
-
-          campaign
-        end
-
-        let(:id) { keywords_stage_campaign.id }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["errors"]).to be_present
-          expect(data["errors"]).to include("Keywords must have between 5-15 keywords per ad group (currently has 0)")
-
-          keywords_stage_campaign.reload
-          expect(keywords_stage_campaign.stage).to eq("keywords")
-        end
-      end
-
-      response '200', 'campaign advanced from settings to launch stage' do
-        schema APISchemas::Campaign.advance_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-
-        let!(:settings_stage_campaign) do
-          result = Campaign.create_campaign!(user1_account, {
-            name: "Settings Stage Campaign",
-            project_id: project1.id,
-            website_id: website1.id
-          })
-          campaign = result[:campaign]
-          ad = campaign.ad_groups.first.ads.first
-          create_list(:ad_headline, 3, ad: ad)
-          create_list(:ad_description, 2, ad: ad)
-          campaign.advance_stage!
-
-          ad_group = campaign.ad_groups.first
-          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
-          campaign.advance_stage!
-
-          create_list(:ad_keyword, 5, ad_group: ad_group)
-          campaign.advance_stage!
-
-          campaign.update_location_targets([{
-            target_type: 'geo_location',
-            location_name: 'United States',
-            location_type: 'COUNTRY',
-            country_code: 'US',
-            targeted: true,
-            google_criterion_id: '2840'
-          }])
-          campaign.update_ad_schedules({always_on: true})
-          campaign.daily_budget_cents = 5000
-
-          campaign
-        end
-
-        let(:id) { settings_stage_campaign.id }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["stage"]).to eq("launch")
-
-          settings_stage_campaign.reload
-          expect(settings_stage_campaign.stage).to eq("launch")
-          expect(data["ready_for_next_stage"]).to eq(false)
-        end
-      end
-
-      response '422', 'cannot advance from settings - validation failed (missing location)' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-
-        let!(:settings_stage_campaign) do
-          result = Campaign.create_campaign!(user1_account, {
-            name: "Settings Stage Campaign",
-            project_id: project1.id,
-            website_id: website1.id
-          })
-          campaign = result[:campaign]
-          ad = campaign.ad_groups.first.ads.first
-          create_list(:ad_headline, 3, ad: ad)
-          create_list(:ad_description, 2, ad: ad)
-          campaign.advance_stage!
-
-          ad_group = campaign.ad_groups.first
-          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
-          campaign.advance_stage!
-
-          create_list(:ad_keyword, 5, ad_group: ad_group)
-          campaign.advance_stage!
-
-          campaign
-        end
-
-        let(:id) { settings_stage_campaign.id }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["errors"]).to be_present
-          expect(data["errors"]).to include("Location targeting must be configured")
-
-          settings_stage_campaign.reload
-          expect(settings_stage_campaign.stage).to eq("settings")
-        end
-      end
-
-      response '200', 'campaign advanced from launch to review stage' do
-        schema APISchemas::Campaign.advance_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-
-        let!(:launch_stage_campaign) do
-          result = Campaign.create_campaign!(user1_account, {
-            name: "Launch Stage Campaign",
-            project_id: project1.id,
-            website_id: website1.id
-          })
-          campaign = result[:campaign]
-          ad = campaign.ad_groups.first.ads.first
-          create_list(:ad_headline, 3, ad: ad)
-          create_list(:ad_description, 2, ad: ad)
-          campaign.advance_stage!
-
-          ad_group = campaign.ad_groups.first
-          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
-          campaign.advance_stage!
-
-          create_list(:ad_keyword, 5, ad_group: ad_group)
-          campaign.advance_stage!
-
-          campaign.update_location_targets([{
-            target_type: 'geo_location',
-            location_name: 'United States',
-            location_type: 'COUNTRY',
-            country_code: 'US',
-            targeted: true,
-            google_criterion_id: '2840'
-          }])
-          campaign.update_ad_schedules({always_on: true})
-          campaign.daily_budget_cents = 5000
-          campaign.save!
-          campaign.advance_stage!
-
-          campaign.google_advertising_channel_type = 'SEARCH'
-          campaign.google_bidding_strategy = 'MAXIMIZE_CLICKS'
-          campaign.start_date = Date.parse('2025-12-01')
-          campaign.end_date = Date.parse('2025-12-31')
-          campaign.save!
-
-          campaign
-        end
-
-        let(:id) { launch_stage_campaign.id }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["stage"]).to eq("review")
-
-          launch_stage_campaign.reload
-          expect(launch_stage_campaign.stage).to eq("review")
-          expect(launch_stage_campaign.done_review_stage?).to eq(true)
-          expect(data["ready_for_next_stage"]).to eq(true)
-        end
-      end
-
-      response '422', 'cannot advance from launch - validation failed (missing fields)' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-
-        let!(:launch_stage_campaign) do
-          result = Campaign.create_campaign!(user1_account, {
-            name: "Launch Stage Campaign",
-            project_id: project1.id,
-            website_id: website1.id
-          })
-          campaign = result[:campaign]
-          ad = campaign.ad_groups.first.ads.first
-          create_list(:ad_headline, 3, ad: ad)
-          create_list(:ad_description, 2, ad: ad)
-          campaign.advance_stage!
-
-          ad_group = campaign.ad_groups.first
-          create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
-          campaign.advance_stage!
-
-          create_list(:ad_keyword, 5, ad_group: ad_group)
-          campaign.advance_stage!
-
-          campaign.update_location_targets([{
-            target_type: 'geo_location',
-            location_name: 'United States',
-            location_type: 'COUNTRY',
-            country_code: 'US',
-            targeted: true,
-            google_criterion_id: '2840'
-          }])
-          campaign.update_ad_schedules({always_on: true})
-          campaign.daily_budget_cents = 5000
-          campaign.save!
-          campaign.advance_stage!
-
-          campaign
-        end
-
-        let(:id) { launch_stage_campaign.id }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["errors"]).to be_present
-          expect(data["errors"]).to include("Google advertising channel type must be configured")
-
-          launch_stage_campaign.reload
-          expect(launch_stage_campaign.stage).to eq("launch")
-        end
-      end
-
       response '404', 'campaign not found' do
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
@@ -1670,6 +1287,401 @@ RSpec.describe "Campaigns API", type: :request do
           expect(data["errors"]).to include("Campaign not found")
         end
       end
+      describe "Content -> Highlights" do
+        response '200', 'campaign advanced to next stage' do
+          schema APISchemas::Campaign.advance_response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:id) { campaign1.id }
+
+          before do
+            ad = campaign1.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["stage"]).to eq("highlights")
+
+            campaign1.reload
+            expect(campaign1.stage).to eq("highlights")
+            expect(data["ready_for_next_stage"]).to eq(false)
+          end
+        end
+
+        response '422', 'cannot advance - stage validation failed' do
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:id) { campaign1.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["errors"]).to be_present
+
+            expect(data["errors"]).to include("Headlines must have between 3-15 headlines (currently has 0)")
+            expect(data["errors"]).to include("Descriptions must have between 2-4 descriptions (currently has 0)")
+
+            campaign1.reload
+            expect(campaign1.stage).to eq("content")
+          end
+        end
+      end
+
+      describe "Highlights -> Keywords" do
+        response '200', 'campaign advanced from highlights to keywords stage' do
+          schema APISchemas::Campaign.advance_response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+          let!(:highlights_stage_campaign) do
+            result = Campaign.create_campaign!(user1_account, {
+              name: "Highlights Stage Campaign",
+              project_id: project1.id,
+              website_id: website1.id
+            })
+            campaign = result[:campaign]
+            ad = campaign.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+            campaign.advance_stage!
+
+            ad_group = campaign.ad_groups.first
+            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+
+            campaign
+          end
+
+          let(:id) { highlights_stage_campaign.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["stage"]).to eq("keywords")
+
+            highlights_stage_campaign.reload
+            expect(highlights_stage_campaign.stage).to eq("keywords")
+            expect(data["ready_for_next_stage"]).to eq(false)
+          end
+        end
+
+        response '422', 'cannot advance from highlights - validation failed' do
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+          let!(:highlights_stage_campaign) do
+            result = Campaign.create_campaign!(user1_account, {
+              name: "Highlights Stage Campaign",
+              project_id: project1.id,
+              website_id: website1.id
+            })
+            campaign = result[:campaign]
+            ad = campaign.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+            campaign.advance_stage!
+            campaign
+          end
+
+          let(:id) { highlights_stage_campaign.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["errors"]).to be_present
+            expect(data["errors"]).to include("Callouts must have between 2-10 unique features (currently has 0)")
+
+            highlights_stage_campaign.reload
+            expect(highlights_stage_campaign.stage).to eq("highlights")
+          end
+        end
+      end
+
+      describe "Keywords -> Settings" do
+        response '200', 'campaign advanced from keywords to settings stage' do
+          schema APISchemas::Campaign.advance_response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+          let!(:keywords_stage_campaign) do
+            result = Campaign.create_campaign!(user1_account, {
+              name: "Keywords Stage Campaign",
+              project_id: project1.id,
+              website_id: website1.id
+            })
+            campaign = result[:campaign]
+            ad = campaign.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+            campaign.advance_stage!
+
+            ad_group = campaign.ad_groups.first
+            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+            campaign.advance_stage!
+
+            create_list(:ad_keyword, 5, ad_group: ad_group)
+
+            campaign
+          end
+
+          let(:id) { keywords_stage_campaign.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["stage"]).to eq("settings")
+
+            keywords_stage_campaign.reload
+            expect(keywords_stage_campaign.stage).to eq("settings")
+            expect(data["ready_for_next_stage"]).to eq(false)
+          end
+        end
+
+        response '422', 'cannot advance from keywords - validation failed' do
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+          let!(:keywords_stage_campaign) do
+            result = Campaign.create_campaign!(user1_account, {
+              name: "Keywords Stage Campaign",
+              project_id: project1.id,
+              website_id: website1.id
+            })
+            campaign = result[:campaign]
+            ad = campaign.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+            campaign.advance_stage!
+
+            ad_group = campaign.ad_groups.first
+            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+            campaign.advance_stage!
+
+            campaign
+          end
+
+          let(:id) { keywords_stage_campaign.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["errors"]).to be_present
+            expect(data["errors"]).to include("Keywords must have between 5-15 keywords per ad group (currently has 0)")
+
+            keywords_stage_campaign.reload
+            expect(keywords_stage_campaign.stage).to eq("keywords")
+          end
+        end
+      end
+
+      describe "Settings -> Launch" do
+        response '200', 'campaign advanced from settings to launch stage' do
+          schema APISchemas::Campaign.advance_response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+          let!(:settings_stage_campaign) do
+            result = Campaign.create_campaign!(user1_account, {
+              name: "Settings Stage Campaign",
+              project_id: project1.id,
+              website_id: website1.id
+            })
+            campaign = result[:campaign]
+            ad = campaign.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+            campaign.advance_stage!
+
+            ad_group = campaign.ad_groups.first
+            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+            campaign.advance_stage!
+
+            create_list(:ad_keyword, 5, ad_group: ad_group)
+            campaign.advance_stage!
+
+            campaign.update_location_targets([{
+              target_type: 'geo_location',
+              location_name: 'United States',
+              location_type: 'COUNTRY',
+              country_code: 'US',
+              targeted: true,
+              google_criterion_id: '2840'
+            }])
+            campaign.update_ad_schedules({always_on: true})
+            campaign.daily_budget_cents = 5000
+
+            campaign
+          end
+
+          let(:id) { settings_stage_campaign.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["stage"]).to eq("launch")
+
+            settings_stage_campaign.reload
+            expect(settings_stage_campaign.stage).to eq("launch")
+            expect(data["ready_for_next_stage"]).to eq(false)
+          end
+        end
+
+        response '422', 'cannot advance from settings - validation failed (missing location)' do
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+          let!(:settings_stage_campaign) do
+            result = Campaign.create_campaign!(user1_account, {
+              name: "Settings Stage Campaign",
+              project_id: project1.id,
+              website_id: website1.id
+            })
+            campaign = result[:campaign]
+            ad = campaign.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+            campaign.advance_stage!
+
+            ad_group = campaign.ad_groups.first
+            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+            campaign.advance_stage!
+
+            create_list(:ad_keyword, 5, ad_group: ad_group)
+            campaign.advance_stage!
+
+            campaign
+          end
+
+          let(:id) { settings_stage_campaign.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["errors"]).to be_present
+            expect(data["errors"]).to include("Location targeting must be configured")
+
+            settings_stage_campaign.reload
+            expect(settings_stage_campaign.stage).to eq("settings")
+          end
+        end
+      end
+
+      describe "Launch -> Review" do
+        response '200', 'campaign advanced from launch to review stage' do
+          schema APISchemas::Campaign.advance_response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+          let!(:launch_stage_campaign) do
+            result = Campaign.create_campaign!(user1_account, {
+              name: "Launch Stage Campaign",
+              project_id: project1.id,
+              website_id: website1.id
+            })
+            campaign = result[:campaign]
+            ad = campaign.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+            campaign.advance_stage!
+
+            ad_group = campaign.ad_groups.first
+            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+            campaign.advance_stage!
+
+            create_list(:ad_keyword, 5, ad_group: ad_group)
+            campaign.advance_stage!
+
+            campaign.update_location_targets([{
+              target_type: 'geo_location',
+              location_name: 'United States',
+              location_type: 'COUNTRY',
+              country_code: 'US',
+              targeted: true,
+              google_criterion_id: '2840'
+            }])
+            campaign.update_ad_schedules({always_on: true})
+            campaign.daily_budget_cents = 5000
+            campaign.save!
+            campaign.advance_stage!
+
+            campaign.google_advertising_channel_type = 'SEARCH'
+            campaign.google_bidding_strategy = 'MAXIMIZE_CLICKS'
+            campaign.start_date = Date.parse('2025-12-01')
+            campaign.end_date = Date.parse('2025-12-31')
+            campaign.save!
+
+            campaign
+          end
+
+          let(:id) { launch_stage_campaign.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["stage"]).to eq("review")
+
+            launch_stage_campaign.reload
+            expect(launch_stage_campaign.stage).to eq("review")
+            expect(launch_stage_campaign.done_review_stage?).to eq(true)
+            expect(data["ready_for_next_stage"]).to eq(true)
+          end
+        end
+
+        response '422', 'cannot advance from launch - validation failed (missing fields)' do
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+          let!(:launch_stage_campaign) do
+            result = Campaign.create_campaign!(user1_account, {
+              name: "Launch Stage Campaign",
+              project_id: project1.id,
+              website_id: website1.id
+            })
+            campaign = result[:campaign]
+            ad = campaign.ad_groups.first.ads.first
+            create_list(:ad_headline, 3, ad: ad)
+            create_list(:ad_description, 2, ad: ad)
+            campaign.advance_stage!
+
+            ad_group = campaign.ad_groups.first
+            create_list(:ad_callout, 2, campaign: campaign, ad_group: ad_group)
+            campaign.advance_stage!
+
+            create_list(:ad_keyword, 5, ad_group: ad_group)
+            campaign.advance_stage!
+
+            campaign.update_location_targets([{
+              target_type: 'geo_location',
+              location_name: 'United States',
+              location_type: 'COUNTRY',
+              country_code: 'US',
+              targeted: true,
+              google_criterion_id: '2840'
+            }])
+            campaign.update_ad_schedules({always_on: true})
+            campaign.daily_budget_cents = 5000
+            campaign.save!
+            campaign.advance_stage!
+
+            campaign
+          end
+
+          let(:id) { launch_stage_campaign.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["errors"]).to be_present
+            expect(data["errors"]).to include("Google advertising channel type must be configured")
+
+            launch_stage_campaign.reload
+            expect(launch_stage_campaign.stage).to eq("launch")
+          end
+        end
+      end
+
     end
   end
 
@@ -1684,65 +1696,133 @@ RSpec.describe "Campaigns API", type: :request do
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
-      let!(:campaign1) do
-        result = Campaign.create_campaign!(user1_account, {
-          name: "User 1 Campaign",
-          project_id: project1.id,
-          website_id: website1.id
-        })
-        campaign = result[:campaign]
+      describe "Content -> Website Builder" do
+        response '200', 'goes back to previous project workflow step when at first campaign stage' do
+          schema APISchemas::Campaign.advance_response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
 
-        ad = campaign.ad_groups.first.ads.first
-        create_list(:ad_headline, 3, ad: ad)
-        create_list(:ad_description, 2, ad: ad)
+          let!(:first_stage_campaign) do
+            campaign, _, _ = create_campaign(user1_account)
+            expect(campaign.stage).to eq("content")
+            expect(campaign.launch_workflow.step).to eq("ad_campaign")
+            expect(campaign.launch_workflow.substep).to eq("content")
 
-        campaign.advance_stage!
-        expect(campaign.launch_workflow.reload.substep).to eq("highlights")
-        campaign
-      end
+            campaign
+          end
 
-      response '200', 'campaign stepped back to previous stage' do
-        schema APISchemas::Campaign.advance_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-        let(:id) { campaign1.id }
+          let(:id) { first_stage_campaign.id }
 
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["stage"]).to eq("content")
+          run_test! do |response|
+            JSON.parse(response.body)
+            expect(response.status).to eq(200)
 
-          campaign1.reload
-          expect(campaign1.stage).to eq("content")
-          expect(campaign1.launch_workflow.substep).to eq("content")
+            first_stage_campaign.reload
+            expect(first_stage_campaign.stage).to eq("content")
+            expect(first_stage_campaign.launch_workflow.step).to eq("website")
+            expect(first_stage_campaign.launch_workflow.substep).to be_nil
+          end
         end
       end
 
-      response '200', 'goes back to previous project workflow step when at first campaign stage' do
-        schema APISchemas::Campaign.advance_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
-
-        let!(:first_stage_campaign) do
-          result = Campaign.create_campaign!(user1_account, {
-            name: "First Stage Campaign",
-            project_id: project1.id,
-            website_id: website1.id
-          })
-          result[:campaign]
+      describe "Highlights -> Content" do
+        let!(:highlights_campaign) do
+          campaign, _, _, = finish_content_stage(user1_account)
+          expect(campaign.launch_workflow.reload.substep).to eq("highlights")
+          campaign
         end
 
-        let(:id) { first_stage_campaign.id }
+        response '200', 'campaign stepped back to previous stage' do
+          schema APISchemas::Campaign.advance_response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:id) { highlights_campaign.id }
 
-        run_test! do |response|
-          JSON.parse(response.body)
-          expect(response.status).to eq(200)
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["stage"]).to eq("content")
 
-          first_stage_campaign.reload
-          expect(first_stage_campaign.stage).to eq("content")
-          expect(first_stage_campaign.launch_workflow.step).to eq("website")
-          expect(first_stage_campaign.launch_workflow.substep).to be_nil
+            highlights_campaign.reload
+            expect(highlights_campaign.stage).to eq("content")
+            expect(highlights_campaign.launch_workflow.substep).to eq("content")
+          end
+        end
+      end
+
+      describe "Keywords -> Highlights" do
+        let!(:keywords_campaign) do
+          campaign, _, _, = finish_highlights_stage(user1_account)
+          expect(campaign.launch_workflow.reload.substep).to eq("keywords")
+          campaign
+        end
+
+        response '200', 'campaign stepped back to previous stage' do
+          schema APISchemas::Campaign.advance_response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:id) { keywords_campaign.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["stage"]).to eq("highlights")
+
+            keywords_campaign.reload
+            expect(keywords_campaign.stage).to eq("highlights")
+            expect(keywords_campaign.launch_workflow.substep).to eq("highlights")
+          end
+        end
+      end
+
+      describe "Settings -> Keywords" do
+        let!(:settings_campaign) do
+          campaign, _, _, = finish_keywords_stage(user1_account)
+          expect(campaign.launch_workflow.reload.substep).to eq("settings")
+          campaign
+        end
+
+        response '200', 'campaign stepped back to previous stage' do
+          schema APISchemas::Campaign.advance_response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:id) { settings_campaign.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["stage"]).to eq("keywords")
+
+            settings_campaign.reload
+            expect(settings_campaign.stage).to eq("keywords")
+            expect(settings_campaign.launch_workflow.substep).to eq("keywords")
+          end
+        end
+      end
+
+      describe "Launch -> Settings" do
+        let!(:launch_campaign) do
+          campaign, _, _, = finish_settings_stage(user1_account)
+          expect(campaign.launch_workflow.reload.substep).to eq("launch")
+          campaign
+        end
+
+        response '200', 'campaign stepped back to previous stage' do
+          schema APISchemas::Campaign.advance_response
+          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:id) { launch_campaign.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data["stage"]).to eq("settings")
+
+            launch_campaign.reload
+            expect(launch_campaign.stage).to eq("settings")
+            expect(launch_campaign.launch_workflow.substep).to eq("settings")
+          end
         end
       end
 

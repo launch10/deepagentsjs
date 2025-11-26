@@ -73,7 +73,8 @@ module CampaignConcerns
       workflow = project&.launch_workflow
       return unless workflow
 
-      workflow.update!(step: "website", substep: nil)
+      prev_step, prev_substep = workflow.prev_step
+      workflow.update!(step: prev_step, substep: prev_substep)
     end
 
     # Stage-based validation methods
