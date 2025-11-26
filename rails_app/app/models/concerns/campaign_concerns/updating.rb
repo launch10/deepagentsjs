@@ -260,9 +260,10 @@ module CampaignConcerns
 
         schedules = campaign.schedule.build(schedule_data)
 
-        schedules.each_with_index do |schedule, idx|
-          path = "ad_schedules"
-          add_to_validation(schedule, path)
+        schedules.each do |schedule|
+          # ad_schedules is a single object in the API, not an array
+          # so all schedule errors map to "ad_schedules.attribute"
+          add_to_validation(schedule, "ad_schedules")
         end
 
         @saves_to_perform << -> { campaign.schedule.update(schedule_data) }

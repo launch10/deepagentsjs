@@ -70,14 +70,12 @@ module APISchemas
                   properties: {
                     id: {type: :integer},
                     name: {type: :string},
-                    _destroy: {type: :boolean},
                     ads_attributes: {
                       type: :array,
                       items: {
                         type: :object,
                         properties: {
                           id: {type: :integer},
-                          _destroy: {type: :boolean},
                           headlines_attributes: {
                             type: :array,
                             items: {
@@ -85,7 +83,7 @@ module APISchemas
                               properties: {
                                 id: {type: :integer},
                                 text: {type: :string},
-                                _destroy: {type: :boolean}
+                                position: {type: :integer}
                               }
                             }
                           },
@@ -96,7 +94,7 @@ module APISchemas
                               properties: {
                                 id: {type: :integer},
                                 text: {type: :string},
-                                _destroy: {type: :boolean}
+                                position: {type: :integer}
                               }
                             }
                           }
@@ -111,7 +109,7 @@ module APISchemas
                           id: {type: :integer},
                           text: {type: :string},
                           match_type: {type: :string},
-                          _destroy: {type: :boolean}
+                          position: {type: :integer}
                         }
                       }
                     }
@@ -125,7 +123,7 @@ module APISchemas
                   properties: {
                     id: {type: :integer},
                     text: {type: :string},
-                    _destroy: {type: :boolean}
+                    position: {type: :integer}
                   }
                 }
               },
@@ -133,8 +131,9 @@ module APISchemas
                 type: :object,
                 properties: {
                   id: {type: :integer},
-                  header: {type: :string},
-                  values: {type: :array, items: {type: :string}}
+                  category: {type: :string},
+                  values: {type: :array, items: {type: :string}},
+                  _destroy: {type: :boolean}
                 }
               },
               location_targets: {
@@ -146,8 +145,8 @@ module APISchemas
                     location_name: {type: :string},
                     location_type: {type: :string},
                     country_code: {type: :string},
-                    geo_target_constant: {type: :string},
                     targeted: {type: :boolean},
+                    google_criterion_id: {type: :string},
                     radius: {type: :number},
                     radius_units: {type: :string}
                   }
@@ -156,9 +155,16 @@ module APISchemas
               ad_schedules: {
                 type: :object,
                 properties: {
-                  time_zone: {type: :string},
-                  always_on: {type: :boolean},
-                  schedules: {type: :array}
+                  always_on: {type: :boolean, description: 'Whether the campaign runs 24/7'},
+                  start_time: {type: :string, description: 'Start time in format like "9:00am"', example: '9:00am'},
+                  end_time: {type: :string, description: 'End time in format like "5:00pm"', example: '5:00pm'},
+                  time_zone: {type: :string, description: 'IANA time zone', example: 'America/New_York'},
+                  day_of_week: {
+                    type: :array,
+                    items: {type: :string},
+                    description: 'Days when ads should run',
+                    example: ['Monday', 'Tuesday', 'Wednesday']
+                  }
                 }
               }
             }

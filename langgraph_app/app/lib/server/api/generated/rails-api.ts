@@ -493,52 +493,74 @@ export interface paths {
                             ad_groups_attributes?: {
                                 id?: number;
                                 name?: string;
-                                _destroy?: boolean;
                                 ads_attributes?: {
                                     id?: number;
-                                    _destroy?: boolean;
                                     headlines_attributes?: {
                                         id?: number;
                                         text?: string;
-                                        _destroy?: boolean;
+                                        position?: number;
                                     }[];
                                     descriptions_attributes?: {
                                         id?: number;
                                         text?: string;
-                                        _destroy?: boolean;
+                                        position?: number;
                                     }[];
                                 }[];
                                 keywords_attributes?: {
                                     id?: number;
                                     text?: string;
                                     match_type?: string;
-                                    _destroy?: boolean;
+                                    position?: number;
                                 }[];
                             }[];
                             callouts_attributes?: {
                                 id?: number;
                                 text?: string;
-                                _destroy?: boolean;
+                                position?: number;
                             }[];
                             structured_snippet_attributes?: {
                                 id?: number;
-                                header?: string;
+                                category?: string;
                                 values?: string[];
+                                _destroy?: boolean;
                             };
                             location_targets?: {
                                 target_type?: string;
                                 location_name?: string;
                                 location_type?: string;
                                 country_code?: string;
-                                geo_target_constant?: string;
                                 targeted?: boolean;
+                                google_criterion_id?: string;
                                 radius?: number;
                                 radius_units?: string;
                             }[];
                             ad_schedules?: {
-                                time_zone?: string;
+                                /** @description Whether the campaign runs 24/7 */
                                 always_on?: boolean;
-                                schedules?: unknown[];
+                                /**
+                                 * @description Start time in format like "9:00am"
+                                 * @example 9:00am
+                                 */
+                                start_time?: string;
+                                /**
+                                 * @description End time in format like "5:00pm"
+                                 * @example 5:00pm
+                                 */
+                                end_time?: string;
+                                /**
+                                 * @description IANA time zone
+                                 * @example America/New_York
+                                 */
+                                time_zone?: string;
+                                /**
+                                 * @description Days when ads should run
+                                 * @example [
+                                 *       "Monday",
+                                 *       "Tuesday",
+                                 *       "Wednesday"
+                                 *     ]
+                                 */
+                                day_of_week?: string[];
                             };
                         };
                     };

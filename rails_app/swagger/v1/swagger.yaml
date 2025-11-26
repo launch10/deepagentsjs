@@ -637,8 +637,6 @@ paths:
                             type: integer
                           name:
                             type: string
-                          _destroy:
-                            type: boolean
                           ads_attributes:
                             type: array
                             items:
@@ -646,8 +644,6 @@ paths:
                               properties:
                                 id:
                                   type: integer
-                                _destroy:
-                                  type: boolean
                                 headlines_attributes:
                                   type: array
                                   items:
@@ -657,8 +653,8 @@ paths:
                                         type: integer
                                       text:
                                         type: string
-                                      _destroy:
-                                        type: boolean
+                                      position:
+                                        type: integer
                                 descriptions_attributes:
                                   type: array
                                   items:
@@ -668,8 +664,8 @@ paths:
                                         type: integer
                                       text:
                                         type: string
-                                      _destroy:
-                                        type: boolean
+                                      position:
+                                        type: integer
                           keywords_attributes:
                             type: array
                             items:
@@ -681,8 +677,8 @@ paths:
                                   type: string
                                 match_type:
                                   type: string
-                                _destroy:
-                                  type: boolean
+                                position:
+                                  type: integer
                     callouts_attributes:
                       type: array
                       items:
@@ -692,19 +688,21 @@ paths:
                             type: integer
                           text:
                             type: string
-                          _destroy:
-                            type: boolean
+                          position:
+                            type: integer
                     structured_snippet_attributes:
                       type: object
                       properties:
                         id:
                           type: integer
-                        header:
+                        category:
                           type: string
                         values:
                           type: array
                           items:
                             type: string
+                        _destroy:
+                          type: boolean
                     location_targets:
                       type: array
                       items:
@@ -718,10 +716,10 @@ paths:
                             type: string
                           country_code:
                             type: string
-                          geo_target_constant:
-                            type: string
                           targeted:
                             type: boolean
+                          google_criterion_id:
+                            type: string
                           radius:
                             type: number
                           radius_units:
@@ -729,12 +727,30 @@ paths:
                     ad_schedules:
                       type: object
                       properties:
-                        time_zone:
-                          type: string
                         always_on:
                           type: boolean
-                        schedules:
+                          description: Whether the campaign runs 24/7
+                        start_time:
+                          type: string
+                          description: Start time in format like "9:00am"
+                          example: 9:00am
+                        end_time:
+                          type: string
+                          description: End time in format like "5:00pm"
+                          example: 5:00pm
+                        time_zone:
+                          type: string
+                          description: IANA time zone
+                          example: America/New_York
+                        day_of_week:
                           type: array
+                          items:
+                            type: string
+                          description: Days when ads should run
+                          example:
+                          - Monday
+                          - Tuesday
+                          - Wednesday
               required:
               - campaign
   "/api/v1/campaigns/{id}/advance":
