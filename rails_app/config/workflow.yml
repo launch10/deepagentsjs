@@ -4,7 +4,7 @@ launch:
       order: 1
     website:
       order: 2
-    ads:
+    ad_campaign:
       order: 3
       substeps:
         - content
