@@ -1,10 +1,11 @@
 import { createAgent, createMiddleware } from "langchain";
+import { AIMessage } from "@langchain/core/messages";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { HumanMessage } from "@langchain/core/messages";
 import { getLLM } from "@core";
 import { chooseAdsPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
-import { saveAnswersTool, finishedTool } from "@tools";
+import { saveAnswersTool, finishedTool, adsFaqTool } from "@tools";
 import { type AdsGraphState } from "@state";
 import z from "zod";
 import { toStructuredMessage } from "langgraph-ai-sdk";
@@ -29,10 +30,8 @@ const dynamicPromptMiddleware = createMiddleware({
     wrapModelCall: async (request, handler) => {
         const state = request.state as unknown as AdsGraphState;
 
-        // Regenerate system prompt with current state
         const systemPrompt = await chooseAdsPrompt(state, request.runtime);
 
-        // Return modified request
         const result = await handler({
             ...request,
             systemPrompt,
@@ -40,17 +39,81 @@ const dynamicPromptMiddleware = createMiddleware({
 
         return await toStructuredMessage(result as any) as any;
     },
-})
+});
 
-/**
- * Node that generates ads content
- */
+
+class MessageProcessor<TGraphState> {
+    message: AIMessage;
+    schema: z.ZodSchema;
+
+    constructor(message: AIMessage, schema: z.ZodSchema) {
+        this.message = message;
+        this.schema = schema;
+    }
+
+    async parse(): Promise<[AIMessage, Partial<TGraphState>]> {
+        const structuredMessage = (await toStructuredMessage(this.message)) as AIMessage;
+        const message = this.extractMessage(structuredMessage);
+        const state = this.extractState(structuredMessage);
+        return [message, state];
+    }
+
+    private extractMessage(structuredMessage: AIMessage): AIMessage {
+        const cleaned = this.cleanMessage(structuredMessage);
+        const responseMetadata = structuredMessage.response_metadata || {};
+        const aiMessage = new AIMessage(cleaned);
+        aiMessage.response_metadata = responseMetadata;
+
+        return aiMessage;
+    }
+
+    private cleanMessage(message: AIMessage): string {
+        const content = message.content as string;
+        if (!content) return '';
+        return content.replace(/```json.*?```/gs, '').trim().replace(/\n{3,}/, "\n\n");
+    }
+
+    private extractState(message: AIMessage): Partial<TGraphState> {
+        const parsedBlocks = message.response_metadata?.parsed_blocks;
+        const parsedData = Array.isArray(parsedBlocks) && parsedBlocks.length > 0 
+            ? parsedBlocks[0]?.parsed 
+            : undefined;
+
+        if (!parsedData) {
+            return {} as Partial<TGraphState>;
+        }
+
+        const validationResult = this.schema.safeParse(parsedData);
+        if (!validationResult.success) {
+            return {} as Partial<TGraphState>;
+        }
+
+        const stateData = Object.entries(validationResult.data).reduce((acc, [key, value]) => {
+            if (Array.isArray(value)) {
+                acc[key] = value.map((text: string) => ({
+                    text,
+                    rejected: false,
+                    locked: false
+                }));
+            }
+            return acc;
+        }, {} as Record<string, any>);
+        
+        return stateData as Partial<TGraphState>;
+    }
+}
+
+const adsDataSchema = z.object({
+    headlines: z.array(z.string()),
+    descriptions: z.array(z.string()),
+}).partial();
+
 export const adsAgent = NodeMiddleware.use({}, async (
     state: AdsGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<AdsGraphState>> => {
     const llm = getLLM().withConfig({ tags: ['notify'] })
-    const tools = [saveAnswersTool, finishedTool];
+    const tools = [saveAnswersTool, finishedTool, adsFaqTool];
 
     const agent = await createAgent({
         model: llm,
@@ -71,37 +134,12 @@ export const adsAgent = NodeMiddleware.use({}, async (
         throw new Error("Agent did not return an AI message");
     }
 
-    const structuredMessage = await toStructuredMessage(lastMessage);
-    const adsData = structuredMessage?.response_metadata?.parsed_blocks?.[0]?.parsed;
-    let messages = state.messages || [];
-    if (structuredMessage) {
-        messages = [...(messages as any[]), structuredMessage];
-    }
-
-    const dataSchema = z.object({
-        headlines: z.array(z.string()),
-        descriptions: z.array(z.string()),
-    });
-
-    // Validate the parsed data
-    const validationResult = dataSchema.safeParse(adsData);
-    if (!validationResult.success) {
-        console.error("Validation failed:", validationResult.error);
-    }
-    // Keep locked headlines and rejected, add up to X new ones (based on data type)
-    const stateData = Object.entries(validationResult.success ? validationResult.data : {}).reduce((acc, [key, value]) => {
-        if (Array.isArray(value)) {
-            acc[key] = value.map((text: string) => ({
-                text,
-                rejected: false,
-                locked: false
-            } as Ads.Asset));
-        }
-        return acc;
-    }, {} as Record<string, any>);
+    const processor = new MessageProcessor<AdsGraphState>(lastMessage, adsDataSchema);
+    const [message, stateUpdates] = await processor.parse();
+    debugger;
 
     return {
-        messages,
-        ...stateData,
+        messages: state.messages ? [...state.messages, message] : [message],
+        ...stateUpdates,
     };
 });

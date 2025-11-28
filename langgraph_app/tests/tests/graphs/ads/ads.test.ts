@@ -23,7 +23,7 @@ describe.sequential('Ads Flow', () => {
     }, 2000)
 
     describe("Chat flow", () => {
-        it("automatically sends an initial agent message and populates initial headlines", async () => {
+        it("automatically populates headlines and descriptions", async () => {
             const result = await testGraph<AdsGraphState>()
                 .withGraph(adsGraph)
                 .withState({
@@ -37,8 +37,10 @@ describe.sequential('Ads Flow', () => {
             
             const lastMessage = result.state.messages?.at(-1);
             expect(lastMessage?.content).toBeDefined();
+            debugger;
             expect(lastMessage?.content).toContain("Here are some initial");
             expect(lastMessage?.content).not.toContain("```json");
+
         });
     });
 });
