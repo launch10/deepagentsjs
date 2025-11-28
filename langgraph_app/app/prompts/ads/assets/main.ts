@@ -14,7 +14,9 @@ export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunn
     const page = Ads.Stages[state.stage];
     const responseTemplate = ResponseTemplates[state.stage];
 
-    const assetConfigs: Ads.AssetPromptMap = page.assets.reduce((acc: Ads.AssetPromptMap, asset: Ads.AssetKind) => {
+    const assetsToGenerate = state.refreshContext ?? page.assets;
+
+    const assetConfigs: Ads.AssetPromptMap = assetsToGenerate.reduce((acc: Ads.AssetPromptMap, asset: Ads.AssetKind) => {
         const assetConfig = promptConfig[asset];
         return {
             ...acc,
