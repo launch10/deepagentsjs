@@ -1,0 +1,15 @@
+core_data:
+  class: CoreData
+  description: "Seeds plans, templates, and themes (no accounts)"
+
+basic_account:
+  class: BasicAccount
+  description: "Creates a subscribed test user account"
+
+website_created:
+  class: WebsiteCreated
+  description: "Creates a website with brainstorm data"
+
+campaign_created:
+  class: CampaignCreated
+  description: "Creates a campaign with ad groups and ads"

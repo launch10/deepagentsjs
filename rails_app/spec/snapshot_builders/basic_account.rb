@@ -1,10 +1,15 @@
-namespace :seeds do
-  desc "Create a basic account"
-  task basic_account: :environment do
-    user = User.find_or_initialize_by(
-      email: "test_user@launch10.ai"
-    )
-    user.update(
+class BasicAccount < BaseBuilder
+  def base_snapshot
+    "core_data"
+  end
+
+  def output_name
+    "basic_account"
+  end
+
+  def build
+    user = User.find_or_initialize_by(email: "test_user@launch10.ai")
+    user.assign_attributes(
       password: "password",
       password_confirmation: "password",
       first_name: "Basic",
@@ -12,24 +17,19 @@ namespace :seeds do
       terms_of_service: true,
       confirmed_at: Time.current
     )
+    user.save!
 
-    # Account is automatically created via after_create callback
     account = user.owned_account
-
-    # Set up payment processor for the account
-    # Use fake_processor for development/testing
-    # account.set_payment_processor :stripe, allow_fake: true
     account.set_payment_processor :fake_processor, allow_fake: true
 
-    # Subscribe to a plan
-    plan = Plan.last
+    plan = Plan.find_by(name: "pro") || Plan.last
+    raise "No plans found - core_data snapshot may be missing" unless plan
 
-    # Create subscription through the payment processor
     unless account.plan&.present?
-      plan.update(fake_processor_id: "abcefg")
+      plan.update!(fake_processor_id: "pro_plan") unless plan.fake_processor_id.present?
       subscription = account.payment_processor.subscribe(
         plan: plan.fake_processor_id,
-        ends_at: nil # No end date, ongoing subscription
+        ends_at: nil
       )
       puts "Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"
     end

@@ -30,6 +30,11 @@ module Database
       @env = {"PGPASSWORD" => @config[:password].to_s}
     end
 
+    class << self
+      extend Forwardable
+      def_delegators :new, :restore, :dump, :list_snapshots, :truncate
+    end
+
     # Dumps the database to a file.
     #
     # @param output_path [String] The path to the output .sql file.
@@ -184,7 +189,7 @@ module Database
     def create_partition_if_not_exists(parent_table, partition_name, start_time, end_time)
       # Check if partition already exists
       result = ActiveRecord::Base.connection.execute(<<-SQL)
-        SELECT 1 FROM pg_tables 
+        SELECT 1 FROM pg_tables
         WHERE tablename = '#{partition_name}'
         AND schemaname = 'public'
         LIMIT 1;
@@ -193,8 +198,8 @@ module Database
       # Create partition if it doesn't exist
       if result.count == 0
         ActiveRecord::Base.connection.execute(<<-SQL)
-          CREATE TABLE IF NOT EXISTS #{partition_name} 
-          PARTITION OF #{parent_table} 
+          CREATE TABLE IF NOT EXISTS #{partition_name}
+          PARTITION OF #{parent_table}
           FOR VALUES FROM ('#{start_time.to_fs(:db)}') TO ('#{end_time.to_fs(:db)}')
         SQL
         puts "✅ Created partition #{partition_name}"
@@ -217,7 +222,7 @@ module Database
 
       # Query to get all sequences and their current values
       sequence_query = <<-SQL
-        SELECT 
+        SELECT
           schemaname,
           sequencename,
           last_value,
