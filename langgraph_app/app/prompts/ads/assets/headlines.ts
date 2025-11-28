@@ -6,6 +6,7 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
         prompt: (state: AdsGraphState, _config?: any) => {
             const likedHeadlines = state?.headlines?.filter((h) => h.locked);
             const rejectedHeadlines = state?.headlines?.filter((h) => h.rejected);
+            const provideBackground = likedHeadlines?.length > 0 || rejectedHeadlines?.length > 0;
 
             return `
             ## Headlines
@@ -32,11 +33,15 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
 
             Remember: Google Ads shows up to 3 headlines at once, so they should work both independently and together.
 
-            ## Background:
-            ${likedHeadlines ? `The user likes these headlines:\n${likedHeadlines.map((h: Ads.Headline, i: number) => `${i+1}. ${h.text}`).join('\n')}` : 'None provided yet.'}
-            
-            The user DOES NOT LIKE the following headlines (avoid these patterns and similar themes):
-            ${rejectedHeadlines?.map((h: Ads.Headline, i: number) => `${i+1}. ${h.text}`).join('\n') || 'None provided yet.'}
+            ${
+                provideBackground 
+                    ? `User's preferences. Understand what the user likes and dislikes about the headlines, and adapt your approach accordingly:\n` +
+                      (likedHeadlines ? `Liked headlines:\n${likedHeadlines.map((h: Ads.Headline, i: number) => `${i+1}. ${h.text}`).join('\n')}\n` : '') +
+                      (rejectedHeadlines ? `Rejected headlines (avoid these patterns):\n${rejectedHeadlines.map((h: Ads.Headline, i: number) => `${i+1}. ${h.text}`).join('\n')}\n` : '')
+                    : ''
+            }
+
+            ${provideBackground ? 'Always generate net-new, unique headlines (do not repeat ones user previously liked or rejected).' : ''}
         `;
         },
         outputFormat: [

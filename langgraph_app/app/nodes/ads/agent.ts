@@ -103,10 +103,24 @@ class MessageProcessor<TGraphState> {
     }
 }
 
-const adsDataSchema = z.object({
-    headlines: z.array(z.string()),
-    descriptions: z.array(z.string()),
-}).partial();
+const mergeStructuredOutput = (existing: Ads.Asset[], incoming: string[]): Ads.Asset[] => {
+    const result: Ads.Asset[] = existing;
+    const existingAssets = new Set(existing.map(asset => asset.text));
+    
+    incoming.forEach((text, index) => {
+        // Skip if this text already exists in the current assets
+        if (existingAssets.has(text)) {
+            return;
+        }
+        result.push({
+            text,
+            rejected: false,
+            locked: false
+        });
+    });
+    
+    return result;
+};
 
 export const adsAgent = NodeMiddleware.use({}, async (
     state: AdsGraphState,
@@ -134,7 +148,14 @@ export const adsAgent = NodeMiddleware.use({}, async (
         throw new Error("Agent did not return an AI message");
     }
 
-    const structuredData = ((lastMessage.response_metadata?.parsed_blocks as any[] || []).filter((block: any) => block.type === 'structured').map((block: any) => block.parsed).at(-1) || {}) as Partial<AdsGraphState>;
+    const rawData = ((lastMessage.response_metadata?.parsed_blocks as any[] || []).filter((block: any) => block.type === 'structured').map((block: any) => block.parsed).at(-1) || {}) as Partial<AdsGraphState>;
+
+    const structuredData = Object.entries(rawData).reduce((acc, [key, value]) => {
+        if (Array.isArray(value)) {
+            (acc as any)[key] = mergeStructuredOutput(state[key] || [], value);
+        }
+        return acc;
+    }, {} as Partial<AdsGraphState>);
 
     return {
         ...structuredData,

@@ -4,8 +4,9 @@ import { type AdsGraphState } from "@state";
 export const Descriptions: Partial<Ads.AssetPromptMap> = {
     "descriptions": {
         prompt: (state: AdsGraphState, _config?: any) => {
-            const likedDescriptions = state?.descriptions?.filter((d) => d.locked);
-            const rejectedDescriptions = state?.descriptions?.filter((d) => d.rejected);
+            const likedDescriptions = state?.descriptions?.filter((d) => d.locked) || [];
+            const rejectedDescriptions = state?.descriptions?.filter((d) => d.rejected) || [];
+            const provideBackground = (likedDescriptions?.length ?? 0) > 0 || (rejectedDescriptions?.length ?? 0) > 0;
 
             return `
             ## Descriptions
@@ -32,11 +33,15 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
 
             Remember: Google Ads shows up to 2 descriptions at once. They should complement the headlines and give users a reason to click.
 
-            ## Background:
-            ${likedDescriptions?.length ? `The user likes these descriptions:\n${likedDescriptions.map((d: Ads.Description, i: number) => `${i+1}. ${d.text}`).join('\n')}` : 'None provided yet.'}
-            
-            The user DOES NOT LIKE the following descriptions (avoid these patterns and similar themes):
-            ${rejectedDescriptions?.map((d: Ads.Description, i: number) => `${i+1}. ${d.text}`).join('\n') || 'None provided yet.'}
+            ${
+                provideBackground 
+                    ? `User's preferences:\n` +
+                      (likedDescriptions ? `Liked descriptions:\n${likedDescriptions.map((d: Ads.Description, i: number) => `${i+1}. ${d.text}`).join('\n')}\n` : '') +
+                      (rejectedDescriptions ? `Rejected descriptions (avoid these patterns):\n${rejectedDescriptions.map((d: Ads.Description, i: number) => `${i+1}. ${d.text}`).join('\n')}\n` : '')
+                    : ''
+            }
+
+            ${provideBackground ? 'Always generate net-new, unique headlines (do not repeat ones user previously liked or rejected).' : ''}
         `;
         },
         outputFormat: [

@@ -23,7 +23,7 @@ export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunn
     }, {} as Ads.AssetPromptMap);
 
     const assetPrompts = Object.values(assetConfigs).map((assetConfig, index) => {
-        return `${index + 1}: ${assetConfig.prompt}`
+        return `${index + 1}: ${assetConfig.prompt(state, config)}`
     });
 
     const mergedOutputFormat = Object.entries(assetConfigs).reduce((acc, [asset, assetConfig]) => {
@@ -82,5 +82,6 @@ export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunn
         - NEVER mix the two paths. Either provide structured JSON (happy path) OR plain text answers (help path)
         - For the happy path, ALWAYS include the introductory text BEFORE the JSON block
         - For the help path, NEVER include JSON - only conversational text
+        - Always return net-new assets, never duplicate existing headlines, descriptions, etc
     `
 }
