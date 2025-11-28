@@ -1,4 +1,4 @@
-import { PageNames } from "./assets";
+import { StageNames } from "./assets";
 
-export const Redirects = [...PageNames, "deploy"] as const;
+export const Redirects = [...StageNames, "deploy"] as const;
 export type RedirectType = typeof Redirects[number];

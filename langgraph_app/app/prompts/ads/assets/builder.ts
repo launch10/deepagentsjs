@@ -9,6 +9,9 @@ export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunn
     if (!state.stage) {
         throw new Error("Stage is required");
     }
+    if (!state.brainstorm) {
+        throw new Error("Brainstorm is required");
+    }
 
     const page = Ads.Stages[state.stage];
 
@@ -36,7 +39,10 @@ export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunn
         You are an expert Google Ads copywriter helping to create compelling ad extensions for a business. 
 
         # Business Context
-        {business_context}
+        Idea: ${state.brainstorm.idea}
+        Target Audience: ${state.brainstorm.audience}
+        Solution: ${state.brainstorm.solution}
+        Social Proof: ${state.brainstorm.socialProof}
 
         # Your Task
         Generate the following assets for this business's Google Ads campaign:

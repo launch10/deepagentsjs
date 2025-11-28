@@ -80,4 +80,11 @@ export const topicsAndDescriptions = (topics: TopicName[]): string => {
     return topics.map((topic) => Topics[topic].description).join("\n\n");
 }
 
-export type MemoriesType = Record<ConversationalTopicName, string | undefined | null>;
+export const MemoriesSchema = z.object({
+    idea: z.string().optional().nullable(),
+    audience: z.string().optional().nullable(),
+    solution: z.string().optional().nullable(),
+    socialProof: z.string().optional().nullable(),
+})
+
+export type MemoriesType = z.infer<typeof MemoriesSchema>;

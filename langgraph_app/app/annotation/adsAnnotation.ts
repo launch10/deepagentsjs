@@ -1,12 +1,15 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
-import { Ads } from "@types";
-import type { Equal, Expect, UUIDType } from "@types";
+import { Ads, Brainstorm } from "@types";
+import type { Equal, Expect, UUIDType, PrimaryKeyType } from "@types";
 import type { AdsGraphState } from "@state";
 
 export const AdsAnnotation = Annotation.Root({
     ...BaseAnnotation.spec,
     projectUUID: Annotation<UUIDType>(),
+    websiteId: Annotation<PrimaryKeyType>(),
+    brainstorm: Annotation<Brainstorm.MemoriesType | undefined>(),
+    stage: Annotation<Ads.StageName | undefined>(),
     headlines: Annotation<Ads.Headline[] | undefined>(),
     descriptions: Annotation<Ads.Description[] | undefined>(),
     uniqueFeatures: Annotation<Ads.UniqueFeature[] | undefined>(),

@@ -27,13 +27,18 @@ describe.sequential('Ads Flow', () => {
             const result = await testGraph<AdsGraphState>()
                 .withGraph(adsGraph)
                 .withState({
-                    projectUUID
+                    projectUUID,
+                    stage: "content"
                 })
-                .withPrompt(`Sorry, what's going on?`)
                 .execute();
 
-            expect(result.state.error).toBeDefined();
-            expect(result.state.error!.message).toContain("Project UUID is required");
+            expect(result.state.headlines?.length).toEqual(6);
+            expect(result.state.descriptions?.length).toEqual(4);
+            
+            const lastMessage = result.state.messages?.at(-1);
+            expect(lastMessage?.content).toBeDefined();
+            expect(lastMessage?.content).toContain("Here are some initial");
+            expect(lastMessage?.content).not.toContain("```json");
         });
     });
 });
