@@ -11,16 +11,16 @@ const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" });
 
 describe.sequential('Ads Flow', () => {
     let projectUUID: UUIDType;
+
     beforeEach(async () => {
-        await DatabaseSnapshotter.restoreSnapshot("basic_account");
+        await DatabaseSnapshotter.restoreSnapshot("campaign_created");
         projectUUID = await db.select().from(projectsTable).limit(1).execute().then((res) => {
-            debugger;
             if (!res[0]) {
                 throw new Error("No projects found");
             }
             return res[0]!.uuid as UUIDType;
         });
-    }, 30000)
+    }, 2000)
 
     describe("Chat flow", () => {
         it("automatically sends an initial agent message and populates initial headlines", async () => {

@@ -1,10 +1,13 @@
 import { z } from "zod";
+import { 
+    LaunchAdCampaignSubsteps
+ } from "../workflow";
 
-export const AssetKinds = ["headlines", "descriptions", "unique_features", "structured_snippets"] as const;
+export const AssetKinds = ["headlines", "descriptions", "callouts", "structured_snippets", "keywords"] as const;
 export type AssetKind = typeof AssetKinds[number];
 
-export const PageNames = ["Content", "Highlights"] as const;
-export type PageName = typeof PageNames[number];
+export const StageNames = LaunchAdCampaignSubsteps;
+export type StageName = typeof StageNames[number];
 
 export const AssetSchema = z.object({
     text: z.string(),
@@ -26,27 +29,45 @@ export const StructuredSnippetSchema = z.object({
 export type StructuredSnippet = z.infer<typeof StructuredSnippetSchema>;
 export interface Keyword extends Asset {}
 
-export type Page = {
-    name: string;
-    assets: string[];
+export type Stage = {
+    stage: StageName;
+    assets: AssetKind[];
 }
 
-export type PageMap = {
-    [key in PageName]: Page;
+export type StageMap = {
+    [key in StageName]: Stage;
 }
 
-export const Pages: PageMap = {
-    "Content": {
-        name: "Content",
+export const Stages: StageMap = {
+    "content": {
+        stage: "content",
         assets: ["headlines", "descriptions"]
     },
-    "Highlights": {
-        name: "Highlights",
-        assets: ["unique_features", "structured_snippets"]
+    "highlights": {
+        stage: "highlights",
+        assets: ["callouts", "structured_snippets"]
+    },
+    "keywords": {
+        stage: "keywords",
+        assets: ["keywords"]
+    },
+    "settings": {
+        stage: "settings",
+        assets: []
+    },
+    "launch": {
+        stage: "launch",
+        assets: []
+    },
+    "review": {
+        stage: "review",
+        assets: []
     }
-}
+};
+
+type PromptFn = (state: any, config?: any) => string;
 export interface AssetPromptConfig {
-    prompt: string;
+    prompt: PromptFn;
     outputFormat: object;
 }
 

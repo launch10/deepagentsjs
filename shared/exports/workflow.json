@@ -1,0 +1,31 @@
+{
+  "launch": {
+    "steps": {
+      "brainstorm": {
+        "order": 1
+      },
+      "website": {
+        "order": 2
+      },
+      "ad_campaign": {
+        "order": 3,
+        "substeps": [
+          "content",
+          "highlights",
+          "keywords",
+          "settings",
+          "launch",
+          "review"
+        ]
+      },
+      "launch": {
+        "order": 4,
+        "substeps": [
+          "settings",
+          "review",
+          "deployment"
+        ]
+      }
+    }
+  }
+}

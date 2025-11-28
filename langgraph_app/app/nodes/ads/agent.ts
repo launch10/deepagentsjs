@@ -4,26 +4,21 @@ import { getLLM } from "@core";
 import { chooseAdsPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { saveAnswersTool, finishedTool } from "@tools";
-import {
-  Brainstorm,
-} from '@types';
-import { type AdsGraphState, type BrainstormGraphState } from "@state";
+import { type AdsGraphState } from "@state";
 import z from "zod";
-import { BrainstormNextStepsService } from "@services";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { lastAIMessage } from "@types";
 import { Ads } from "@types";
-import { desc } from "drizzle-orm";
 
 const dynamicPromptMiddleware = createMiddleware({
     name: "DynamicPromptMiddleware",
     stateSchema: z.object({
         projectUUID: z.string(),
-        headlines: z.array(Ads.AssetSchema),
-        descriptions: z.array(Ads.AssetSchema),
-        uniqueFeatures: z.array(Ads.AssetSchema),
-        structuredSnippets: z.array(Ads.AssetSchema),
-        keywords: z.array(Ads.AssetSchema),
+        headlines: z.array(Ads.AssetSchema).optional(),
+        descriptions: z.array(Ads.AssetSchema).optional(),
+        uniqueFeatures: z.array(Ads.AssetSchema).optional(),
+        structuredSnippets: z.array(Ads.AssetSchema).optional(),
+        keywords: z.array(Ads.AssetSchema).optional(),
         availableCommands: z.array(z.string()),
         command: z.string().optional(),
         redirect: z.string().optional(),

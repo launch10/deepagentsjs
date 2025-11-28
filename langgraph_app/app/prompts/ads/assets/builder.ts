@@ -1,13 +1,19 @@
 import { type LangGraphRunnableConfig, Ads } from "@types";
+import { type AdsGraphState } from "@state";
+import { promptConfig } from "./promptConfig";
 
 // User clicks button "Refresh Suggestions" for headlines,
 // state includes page: "Content", command: refreshSuggestions,
 // assets: ["headlines"]
-export const promptBuilder = async (state: any, config?: LangGraphRunnableConfig) => {
-    const page = Ads.Pages[state.page];
+export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunnableConfig) => {
+    if (!state.stage) {
+        throw new Error("Stage is required");
+    }
+
+    const page = Ads.Stages[state.stage];
 
     const assetConfigs: Ads.AssetPromptMap = page.assets.reduce((acc: Ads.AssetPromptMap, asset: Ads.AssetKind) => {
-        const assetConfig = Ads.AssetConfigs[asset];
+        const assetConfig = promptConfig[asset];
         return {
             ...acc,
             [asset]: assetConfig
@@ -19,7 +25,7 @@ export const promptBuilder = async (state: any, config?: LangGraphRunnableConfig
     });
 
     // Merge this into a single output format
-    const outputFormats = Object.entries(assetConfigs).reduce((acc, [asset, assetConfig]) => {
+    const mergedOutputFormat = Object.entries(assetConfigs).reduce((acc, [asset, assetConfig]) => {
         return {
             ...acc,
             [asset]: assetConfig.outputFormat
@@ -27,7 +33,7 @@ export const promptBuilder = async (state: any, config?: LangGraphRunnableConfig
     }, {});
 
     return `
-        You are an expert Google Ads copywriter helping to create compelling ad extensions for a business. You will generate Unique Features and Product/Service Offerings that will appear as Highlights in their Google Search ad.
+        You are an expert Google Ads copywriter helping to create compelling ad extensions for a business. 
 
         # Business Context
         {business_context}
@@ -39,6 +45,6 @@ export const promptBuilder = async (state: any, config?: LangGraphRunnableConfig
 
         # Output Format
         Return your response as a JSON object with this structure:
-        ${JSON.stringify(outputFormats)}
+        ${JSON.stringify(mergedOutputFormat)}
     `
 }

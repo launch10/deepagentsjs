@@ -36,6 +36,7 @@
     "openapi-typescript": "^7.10.1"
   },
   "scripts": {
-    "api:generate": "openapi-typescript ../rails_app/swagger/v1/swagger.yaml -o lib/api/generated/rails-api.ts"
+    "api:generate": "openapi-typescript ../rails_app/swagger/v1/swagger.yaml -o lib/api/generated/rails-api.ts",
+    "config:export": "npx tsx scripts/export-config.ts"
   }
 }
