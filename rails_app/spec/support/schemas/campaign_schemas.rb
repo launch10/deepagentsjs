@@ -8,6 +8,7 @@ module APISchemas
         properties: {
           id: APISchemas.id_field,
           name: {type: :string, description: 'Campaign name'},
+          thread_id: {type: :string, description: 'Thread ID for campaign'},
           stage: {type: :string, description: 'Current campaign stage'},
           status: {type: :string, description: 'Campaign status'},
           ready_for_next_stage: {type: :boolean, description: 'Whether campaign is ready to advance to next stage'},

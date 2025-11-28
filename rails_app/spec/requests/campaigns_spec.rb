@@ -36,7 +36,7 @@ RSpec.describe "Campaigns API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
       parameter name: :campaign_params, in: :body, schema: APISchemas::Campaign.create_params_schema
 
-      response '201', 'campaign created with ad group and ad' do
+      response '201', 'campaign created with ad group and ad', focus: true do
         schema APISchemas::Campaign.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
@@ -62,6 +62,7 @@ RSpec.describe "Campaigns API", type: :request do
           expect(campaign.stage).to eq("content")
           expect(campaign.ad_groups.count).to eq(1)
           expect(campaign.ad_groups.first.ads.count).to eq(1)
+          expect(data.dig("thread_id")).to eq(campaign.chat.thread_id)
         end
       end
 
