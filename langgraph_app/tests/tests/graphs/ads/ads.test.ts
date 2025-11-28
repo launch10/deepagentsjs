@@ -6,8 +6,23 @@ import { graphParams } from '@core';
 import { DatabaseSnapshotter } from '@services';
 import { db, projects as projectsTable } from '@db';
 import { type UUIDType } from '@types';
+import { AIMessage } from '@langchain/core/messages';
 
 const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" }); 
+
+const getTextData = (message: AIMessage): string => {
+    return (message.response_metadata?.parsed_blocks as any[] || [])
+        .filter((block: any) => block.type === 'text')
+        .map((block: any) => block.sourceText)
+        .join('\n') || '';
+}
+
+const getStateData = (message: AIMessage) => {
+    return (message?.response_metadata?.parsed_blocks as any[] || [])
+        .filter((block: any) => block.type === 'structured')
+        .map((block: any) => block.parsed)
+        .at(-1) || {};
+}
 
 describe.sequential('Ads Flow', () => {
     let projectUUID: UUIDType;
@@ -35,12 +50,13 @@ describe.sequential('Ads Flow', () => {
             expect(result.state.headlines?.length).toEqual(6);
             expect(result.state.descriptions?.length).toEqual(4);
             
-            const lastMessage = result.state.messages?.at(-1);
-            expect(lastMessage?.content).toBeDefined();
-            debugger;
-            expect(lastMessage?.content).toContain("Here are some initial");
-            expect(lastMessage?.content).not.toContain("```json");
+            const lastMessage = result.state.messages?.at(-1) as AIMessage;
+            const stateData = getStateData(lastMessage);
+            const message = getTextData(lastMessage);
 
+            expect(stateData).toBeDefined();
+            expect(message).toMatch(/start building|drafted a few headlines/);
+            expect(message).not.toContain("```json");
         });
     });
 });

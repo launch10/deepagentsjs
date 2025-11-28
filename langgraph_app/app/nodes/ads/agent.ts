@@ -134,12 +134,10 @@ export const adsAgent = NodeMiddleware.use({}, async (
         throw new Error("Agent did not return an AI message");
     }
 
-    const processor = new MessageProcessor<AdsGraphState>(lastMessage, adsDataSchema);
-    const [message, stateUpdates] = await processor.parse();
-    debugger;
+    const structuredData = ((lastMessage.response_metadata?.parsed_blocks as any[] || []).filter((block: any) => block.type === 'structured').map((block: any) => block.parsed).at(-1) || {}) as Partial<AdsGraphState>;
 
     return {
-        messages: state.messages ? [...state.messages, message] : [message],
-        ...stateUpdates,
+        ...structuredData,
+        messages: state.messages ? [...state.messages, lastMessage] : [lastMessage],
     };
 });
