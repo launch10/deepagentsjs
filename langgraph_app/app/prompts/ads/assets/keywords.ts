@@ -43,11 +43,10 @@ export const Keywords: Partial<Ads.AssetPromptMap> = {
             ${userPrefs}
         `;
         },
-        outputFormat: [
-            "keyword 1",
-            "keyword 2",
-            "keyword 3",
-            "keyword 4",
-        ]
+        outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+            const nVariants = state.refresh?.nVariants || 8;
+            const keywords = Array.from({ length: nVariants }, (_, i) => `Keyword ${i + 1}`);
+            return { keywords };
+        }
     }
 }

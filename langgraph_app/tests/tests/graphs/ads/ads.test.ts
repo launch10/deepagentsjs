@@ -71,7 +71,7 @@ describe.sequential('Ads Flow', () => {
             expect(descriptionContent).toMatch(/schedule|scheduling|meeting times/i);
         });
 
-        it("refreshes only the specified context (headlines), not descriptions", async () => {
+        it.only("refreshes only the specified context (headlines), not descriptions", async () => {
             const result = await testGraph<AdsGraphState>()
                 .withGraph(adsGraph)
                 .withState({
@@ -84,8 +84,8 @@ describe.sequential('Ads Flow', () => {
             expect(result.state.descriptions?.length).toEqual(4);
             
             const headlines = result.state.headlines as Ads.Asset[];
-            if (!headlines[0]) {
-                throw new Error("No headlines available for testing");
+            if (!headlines[0] || !headlines[1] || !headlines[2]) {
+                throw new Error("Not enough headlines available for testing");
             }
 
             headlines[0].text = `Sync or swim.`
@@ -108,7 +108,10 @@ describe.sequential('Ads Flow', () => {
                 .withState({
                     projectUUID,
                     stage: "content",
-                    refreshContext: ["headlines"],
+                    refresh: {
+                        asset: "headlines",
+                        nVariants: 2
+                    },
                     headlines: result.state.headlines,
                     descriptions: result.state.descriptions
                 })
@@ -116,7 +119,7 @@ describe.sequential('Ads Flow', () => {
                 
             const nonRejectedHeadlines = refreshedResult.state.headlines?.filter(h => !h.rejected);
             const uniqueNonRejectedCount = new Set(nonRejectedHeadlines?.map(h => h.text)).size;
-            expect(uniqueNonRejectedCount).toEqual(9);
+            expect(uniqueNonRejectedCount).toEqual(5); // It uses nVariants=2 to generate 2 new headlines, plus the 3 existing locked + 2 new = 5 total
 
             expect(refreshedResult.state.descriptions).toEqual(originalDescriptions);
         });

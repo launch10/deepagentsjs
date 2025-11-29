@@ -36,13 +36,10 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
             ${userPrefs}
         `;
         },
-        outputFormat: [
-            "Headline 1",
-            "Headline 2",
-            "Headline 3",
-            "Headline 4",
-            "Headline 5",
-            "Headline 6",
-        ]
+        outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+            const nVariants = state.refresh?.nVariants || 6;
+            const headlines = Array.from({ length: nVariants }, (_, i) => `Headline ${i + 1}`);
+            return { headlines };
+        },
     }
 }

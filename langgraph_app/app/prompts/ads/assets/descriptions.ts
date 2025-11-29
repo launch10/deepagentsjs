@@ -36,11 +36,10 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
             ${userPrefs}
         `;
         },
-        outputFormat: [
-            "Description 1",
-            "Description 2",
-            "Description 3",
-            "Description 4"
-        ]
+        outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+            const nVariants = state.refresh?.nVariants || 4;
+            const descriptions = Array.from({ length: nVariants }, (_, i) => `Description ${i + 1}`);
+            return { descriptions };
+        }
     }
 }

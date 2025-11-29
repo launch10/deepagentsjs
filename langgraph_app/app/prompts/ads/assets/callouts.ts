@@ -29,13 +29,10 @@ export const Callouts: Partial<Ads.AssetPromptMap> = {
             ${userPrefs}
         `;
         },
-        outputFormat: [
-            "Feature 1",
-            "Feature 2",
-            "Feature 3",
-            "Feature 4",
-            "Feature 5",
-            "Feature 6"
-        ]
+        outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+            const nVariants = state.refresh?.nVariants || 6;
+            const callouts = Array.from({ length: nVariants }, (_, i) => `Feature ${i + 1}`);
+            return { callouts };
+        }
     }
 }

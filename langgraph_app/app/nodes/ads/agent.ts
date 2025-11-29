@@ -18,10 +18,11 @@ const dynamicPromptMiddleware = createMiddleware({
         websiteId: z.number(),
         brainstorm: z.any(),    
         stage: z.string(),
+        refresh: Ads.RefreshContextSchema.optional(),
         headlines: z.array(Ads.AssetSchema),
         descriptions: z.array(Ads.AssetSchema),
         uniqueFeatures: z.array(Ads.AssetSchema),
-        structuredSnippets: z.array(Ads.AssetSchema),
+        structuredSnippet: Ads.StructuredSnippetSchema,
         keywords: z.array(Ads.AssetSchema),
         availableCommands: z.array(z.string()),
         command: z.string(),
@@ -43,7 +44,6 @@ const dynamicPromptMiddleware = createMiddleware({
 const mergeStructuredOutput = (
     existing: Ads.Asset[],
     incoming: string[],
-    maxNewAssets: number = Infinity
 ): Ads.Asset[] => {
     const result: Ads.Asset[] = [...existing];
     const existingAssets = new Set(existing.map(asset => asset.text));
@@ -52,9 +52,6 @@ const mergeStructuredOutput = (
     for (const text of incoming) {
         if (existingAssets.has(text)) {
             continue;
-        }
-        if (maxNewAssets !== undefined && addedCount >= maxNewAssets) {
-            break;
         }
         result.push({
             text,
@@ -95,7 +92,7 @@ export const adsAgent = NodeMiddleware.use({}, async (
 
     const rawData = ((lastMessage.response_metadata?.parsed_blocks as any[] || []).filter((block: any) => block.type === 'structured').map((block: any) => block.parsed).at(-1) || {}) as Partial<AdsGraphState>;
 
-    const allowedKeys = state.refreshContext ?? Ads.AssetKinds;
+    const allowedKeys = state.refresh?.asset ? [state.refresh.asset] : Ads.AssetKinds;
 
     const structuredData = Object.entries(rawData).reduce((acc, [key, value]) => {
         if (Array.isArray(value) && allowedKeys.includes(key as Ads.AssetKind)) {

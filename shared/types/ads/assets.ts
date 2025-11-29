@@ -66,14 +66,18 @@ export const Stages: StageMap = {
 };
 
 type PromptFn = (state: any, config?: any) => Promise<string>;
+type OutputFormatFn = (state: any, config?: any) => Promise<string[] | object>;
 export interface AssetPromptConfig {
     prompt: PromptFn;
-    outputFormat: object;
+    outputFormat: OutputFormatFn;
 }
 
 export type AssetPromptMap = Record<AssetKind, AssetPromptConfig>;
 
-export type RefreshContext = {
-    asset: AssetKind;
-    nVariants: number;
-};
+
+export const RefreshContextSchema = z.object({
+    asset: z.enum(AssetKinds),
+    nVariants: z.number().min(1).max(10)
+});
+
+export type RefreshContext = z.infer<typeof RefreshContextSchema>;

@@ -5,7 +5,7 @@ import { userPreferencesPrompt } from "./userPreferences";
 export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
     "structured_snippets": {
         prompt: async (state: AdsGraphState, _config?: any) => {
-            const snippetCategory = state?.structuredSnippet?.category?.text || "Services";
+            const snippetCategory = state?.structuredSnippet?.category?.text
             const userPrefs = await userPreferencesPrompt(state, "structured_snippets");
             const numberOfDetails = state?.refresh?.nVariants || 3;
 
@@ -14,7 +14,9 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
             Generate a category header and ${numberOfDetails}-10 specific examples of what this business offers. These appear as structured snippet extensions in Google Ads.
 
             **Category Header:**
-            Choose ONE header that best describes what you're listing (e.g., "Types", "Services", "Amenities", "Products", "Styles", "Brands", "Courses", "Destinations")
+            ${
+                snippetCategory ? snippetCategory : `Choose ONE header that best describes what you're listing (e.g., "Types", "Services", "Amenities", "Products", "Styles", "Brands", "Courses", "Destinations")`
+            }
 
             **Details (Values):**
             List 3-10 specific offerings under that category header.
@@ -29,16 +31,18 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
             - Each detail should be 25 characters or less
             - Be specific to this business's actual offerings
 
+
             ${userPrefs}
         `;
         },
-        outputFormat: {
-            "category": "Types",
-            "details": [
-                "Detail 1",
-                "Detail 2",
-                "Detail 3"
-            ]
+        outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+            const numberOfDetails = state?.refresh?.nVariants || 3;
+            return {
+                structuredSnippet: {
+                    category: "Types",
+                    details: Array.from({ length: numberOfDetails }, (_, i) => `Detail ${i + 1}`)
+                }
+            };
         }
     }
 }

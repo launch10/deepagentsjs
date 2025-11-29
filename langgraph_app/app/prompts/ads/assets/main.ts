@@ -24,16 +24,15 @@ export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunn
         }
     }, {} as Ads.AssetPromptMap);
 
-    const assetPrompts = Object.values(assetConfigs).map((assetConfig, index) => {
-        return `${index + 1}: ${assetConfig.prompt(state, config)}`
-    });
+    const assetPrompts = await Promise.all(Object.values(assetConfigs).map(async (assetConfig, index) => {
+        const prompt = await assetConfig.prompt(state, config);
+        return `${index + 1}: ${prompt.trim()}`
+    }));
 
-    const mergedOutputFormat = Object.entries(assetConfigs).reduce((acc, [asset, assetConfig]) => {
-        return {
-            ...acc,
-            [asset]: assetConfig.outputFormat
-        }
-    }, {});
+    const arrayOfOutputFormats = await Promise.all(Object.values(assetConfigs).map(async (assetConfig) => {
+        return await assetConfig.outputFormat(state, config);
+    }));
+    const mergedOutputFormat = arrayOfOutputFormats.reduce((acc, formatObj) => ({ ...acc, ...formatObj }), {});
 
     return `
         You are an expert Google Ads copywriter helping to create compelling ad extensions for a business.
