@@ -6,7 +6,8 @@ class EmbeddingService
       return nil if text.blank?
 
       result = RubyLLM.embed(truncate_text(text), model: MODEL)
-      result.vectors.first
+      vectors = result.vectors
+      vectors.is_a?(Array) && vectors.first.is_a?(Array) ? vectors.first : vectors
     rescue => e
       Rails.logger.error("EmbeddingService error: #{e.message}")
       nil

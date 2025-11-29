@@ -20,6 +20,6 @@ module Embeddable
   end
 
   def enqueue_embedding_generation
-    GenerateEmbeddingWorker.perform_later(self.class.name, id)
+    AI::GenerateEmbeddingWorker.perform_async(self.class.name, id)
   end
 end

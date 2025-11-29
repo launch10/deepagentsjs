@@ -3,8 +3,6 @@ require_relative "core/templates"
 require_relative "core/themes"
 
 class CoreData < BaseBuilder
-  NON_TEXT_FORMATS = ["lockb", "ico", "png", "jpg", "jpeg", "gif", "svg", "webp"]
-
   def base_snapshot
     nil
   end

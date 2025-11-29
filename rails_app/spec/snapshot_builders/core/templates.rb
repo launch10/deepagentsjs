@@ -46,7 +46,16 @@ module Core
         TemplateFile.where(template_id: template.id).where.not(path: current_files).destroy_all
       end
 
+      embed_missing
+
       puts "Templates seeded: #{Template.count} templates, #{TemplateFile.count} files"
+    end
+
+    def embed_missing
+      puts "Embedding missing template files..."
+      TemplateFile.where(embedding: nil).find_each do |file|
+        AI::GenerateEmbeddingWorker.perform_async("TemplateFile", file.id)
+      end
     end
   end
 end
