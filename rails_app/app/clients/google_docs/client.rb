@@ -39,9 +39,9 @@ module GoogleDocs
       files
     end
 
-    def find_folder_by_path(path)
+    def find_folder_by_path(path, base_folder_id: 'root')
       parts = path.split('/')
-      parent_id = 'root'
+      parent_id = base_folder_id
 
       parts.each do |folder_name|
         folder = find_folder_in_parent(folder_name, parent_id)

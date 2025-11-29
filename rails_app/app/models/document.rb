@@ -31,7 +31,7 @@ class Document < ApplicationRecord
   include DocumentConcerns::FrontmatterParsing
   include DocumentConcerns::SyncableDocument
 
-  DOCUMENT_TYPES = %w[qa]
+  DOCUMENT_TYPES = %w[faq]
   SOURCE_TYPES = %w[google_docs]
 
   has_many :chunks, class_name: 'DocumentChunk', dependent: :destroy

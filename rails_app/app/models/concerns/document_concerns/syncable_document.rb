@@ -14,7 +14,7 @@ module DocumentConcerns
           title: fm[:title] || overrides[:title],
           content: parsed[:content],
           status: fm[:status] || overrides[:status] || 'live',
-          document_type: fm[:type] || fm[:document_type] || overrides[:document_type] || 'qa',
+          document_type: overrides[:document_type] || 'faq',
           tags: fm[:tags] || overrides[:tags] || [],
           source_type: source_type,
           source_id: source_id,

@@ -1,20 +1,22 @@
 module GoogleDocs
   class SyncService
-    FAQ_FOLDER_PATH = 'FAQs/Live'.freeze
+    # Ensure you share access to any Google Drive folder you need to sync
+    # with the service account: launch10@launch10-479317.iam.gserviceaccount.com
+    # as a VIEWER
+    FOLDER_PATHS = {
+      'FAQs' => "1F7svsAd9l-Fqt9KtjqrAgRnHXDGZc1WL" # Pull from https://drive.google.com/drive/u/1/folders/1F6pUGR272yRysjuO03OXIib0IZT8ZgiI
+    }
 
     attr_reader :client, :langgraph_client
 
-    def initialize(client: nil, langgraph_client: nil)
-      @client = client || GoogleDocs::Client.new
-      @langgraph_client = langgraph_client || LanggraphClient.new
+    def initialize(langgraph_client: nil)
+      @client = GoogleDocs::Client.new
+      @langgraph_client = LanggraphClient.new
     end
 
     def sync_all
-      folder_id = client.find_folder_by_path(FAQ_FOLDER_PATH)
-      raise "Folder not found: #{FAQ_FOLDER_PATH}" unless folder_id
-
-      files = client.list_files_in_folder(folder_id)
-      Rails.logger.info("[GoogleDocs::SyncService] Found #{files.count} documents in #{FAQ_FOLDER_PATH}")
+      files = client.list_files_in_folder(FOLDER_PATHS['FAQs'])
+      Rails.logger.info("[GoogleDocs::SyncService] Found #{files.count} documents in FAQs")
 
       results = { synced: [], skipped: [], failed: [] }
 
@@ -41,6 +43,7 @@ module GoogleDocs
       metadata = client.get_document_metadata(file.id)
 
       doc = Document.find_or_create_from_external!(content,
+        document_type: "faq",
         source_type: 'google_docs',
         source_id: file.id,
         slug: generate_slug(file.name),
@@ -51,6 +54,7 @@ module GoogleDocs
           google_created_time: metadata[:created_time]
         }
       )
+      binding.pry
 
       extract_and_sync_chunks(doc)
 
