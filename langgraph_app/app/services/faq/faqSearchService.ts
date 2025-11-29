@@ -7,7 +7,6 @@ import { env } from "@core";
 
 export interface FAQSearchOptions {
   topK?: number;
-  tags?: string[];
   documentType?: string;
   status?: "live" | "draft";
   rerankTopN?: number;
@@ -50,7 +49,6 @@ export class FAQSearchService {
   async search(query: string, options: FAQSearchOptions = {}): Promise<FAQSearchResult[]> {
     const {
       topK = 10,
-      tags,
       documentType,
       status = "live",
       rerankTopN = topK,
@@ -63,10 +61,6 @@ export class FAQSearchService {
 
     if (documentType) {
       conditions.push(eq(documents.documentType, documentType));
-    }
-
-    if (tags && tags.length > 0) {
-      conditions.push(sql`${documents.tags} ?| array[${sql.join(tags.map(t => sql`${t}`), sql`, `)}]`);
     }
 
     const candidateResults = await db

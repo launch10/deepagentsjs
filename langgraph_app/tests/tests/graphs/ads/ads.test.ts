@@ -152,10 +152,15 @@ describe.sequential('Ads Flow', () => {
                 })
                 .execute();
 
+            const toolCall = result.state.messages?.at(-2);
+            expect(toolCall).toBeDefined();
+            expect(toolCall?.content).toMatch(/What are .*Details.*/i);
+
             const lastMessage = result.state.messages?.at(-1) as AIMessage;
             const message = getTextData(lastMessage);
             const stateData = getStateData(lastMessage);
 
+            expect(message).toMatch(/90 characters/) // It pulls in context from FAQ 
             expect(message).toMatch(/description|text|headline|ad/i);
             expect(stateData.headlines).toBeUndefined();
             expect(stateData.descriptions).toBeUndefined();

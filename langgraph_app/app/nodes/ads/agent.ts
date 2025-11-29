@@ -5,7 +5,7 @@ import { HumanMessage } from "@langchain/core/messages";
 import { getLLM } from "@core";
 import { chooseAdsPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
-import { saveAnswersTool, finishedTool, adsFaqTool } from "@tools";
+import { adsFaqTool } from "@tools";
 import { type AdsGraphState } from "@state";
 import z from "zod";
 import { toStructuredMessage } from "langgraph-ai-sdk";
@@ -36,8 +36,7 @@ const dynamicPromptMiddleware = createMiddleware({
             ...request,
             systemPrompt,
         });
-
-        return await toStructuredMessage(result as any) as any;
+        return await toStructuredMessage(result);
     },
 });
 
@@ -134,8 +133,8 @@ export const adsAgent = NodeMiddleware.use({}, async (
     state: AdsGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<AdsGraphState>> => {
-    const llm = getLLM().withConfig({ tags: ['notify'] })
-    const tools = [saveAnswersTool, finishedTool, adsFaqTool];
+    const llm = getLLM()
+    const tools = [adsFaqTool];
 
     const agent = await createAgent({
         model: llm,
@@ -169,6 +168,6 @@ export const adsAgent = NodeMiddleware.use({}, async (
 
     return {
         ...structuredData,
-        messages: state.messages ? [...state.messages, lastMessage] : [lastMessage],
+        messages: result.messages,
     };
 });
