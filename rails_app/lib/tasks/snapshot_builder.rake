@@ -28,6 +28,35 @@ namespace :db do
       BuilderFinder.list_available_builders
     end
 
+    desc "Build all snapshots in dependency order"
+    task build_all: :environment do
+      unless Rails.env.test?
+        puts "ERROR: This task can only be run in the test environment"
+        puts "Run with: RAILS_ENV=test rake db:snapshot:build_all"
+        exit 1
+      end
+
+      require_snapshot_builder_support!
+
+      builders = BuilderFinder.builder_config.keys
+      if builders.empty?
+        puts "No builders found"
+        exit 0
+      end
+
+      sorted = TopologicalSort.sort(builders)
+      puts "Building #{sorted.length} snapshots in order: #{sorted.join(' -> ')}"
+      puts
+
+      sorted.each do |builder_name|
+        puts "=" * 60
+        SnapshotBuilder.build(builder_name, force: true)
+        puts
+      end
+
+      puts "All snapshots built successfully!"
+    end
+
     desc "Show dependency graph for a builder"
     task :deps, [:builder_name] => :environment do |t, args|
       unless Rails.env.test?
@@ -264,6 +293,37 @@ class SnapshotBuilder
         puts result.stderr
         exit 1
       end
+    end
+  end
+end
+
+class TopologicalSort
+  class << self
+    def sort(builder_names)
+      graph = {}
+      builder_names.each do |name|
+        config = BuilderFinder.builder_config[name]
+        base = config&.dig("base_snapshot")
+        graph[name] = base && builder_names.include?(base) ? [base] : []
+      end
+
+      sorted = []
+      visited = Set.new
+      temp_visited = Set.new
+
+      visit = lambda do |node|
+        return if visited.include?(node)
+        raise "Circular dependency detected at #{node}" if temp_visited.include?(node)
+
+        temp_visited.add(node)
+        graph[node].each { |dep| visit.call(dep) }
+        temp_visited.delete(node)
+        visited.add(node)
+        sorted << node
+      end
+
+      builder_names.each { |name| visit.call(name) }
+      sorted
     end
   end
 end
