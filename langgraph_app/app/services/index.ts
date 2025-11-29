@@ -5,3 +5,4 @@ export * from "./editor";
 export * from "./core/railsApi";
 export * from "./brainstorm";
 export * from "./webhooks";
+export * from "./faq";

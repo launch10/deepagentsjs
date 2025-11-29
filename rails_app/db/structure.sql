@@ -5963,6 +5963,20 @@ CREATE INDEX index_documents_on_document_type ON public.documents USING btree (d
 
 
 --
+-- Name: index_documents_on_last_synced_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_documents_on_last_synced_at ON public.documents USING btree (last_synced_at);
+
+
+--
+-- Name: index_documents_on_metadata; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_documents_on_metadata ON public.documents USING gin (metadata);
+
+
+--
 -- Name: index_documents_on_slug; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6100,6 +6114,13 @@ CREATE INDEX index_icon_query_caches_on_ttl_seconds ON public.icon_query_caches 
 --
 
 CREATE INDEX index_icon_query_caches_on_use_count ON public.icon_query_caches USING btree (use_count);
+
+
+--
+-- Name: index_job_runs_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_created_at ON public.job_runs USING btree (created_at);
 
 
 --

@@ -290,15 +290,17 @@ export const websiteFiles = pgTable("website_files", {
 	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
 	shasum: varchar(),
 	contentTsv: tsvector("content_tsv"),
+	embedding: vector({ dimensions: 1536 }),
 }, (table) => [
 	index("idx_website_files_content_tsv").using("gin", table.contentTsv.asc().nullsLast().op("tsvector_ops")),
+	index("idx_website_files_embedding").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")).with({lists: "100"}),
 	index("idx_website_files_path_trgm").using("gin", table.path.asc().nullsLast().op("gin_trgm_ops")),
 	index("index_website_files_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
 	index("index_website_files_on_file_specification_id").using("btree", table.fileSpecificationId.asc().nullsLast().op("int8_ops")),
 	index("index_website_files_on_shasum").using("btree", table.shasum.asc().nullsLast().op("text_ops")),
 	index("index_website_files_on_updated_at").using("btree", table.updatedAt.asc().nullsLast().op("timestamp_ops")),
 	index("index_website_files_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_website_files_on_website_id_and_path_unique").using("btree", table.websiteId.asc().nullsLast().op("text_ops"), table.path.asc().nullsLast().op("text_ops")),
+	uniqueIndex("index_website_files_on_website_id_and_path_unique").using("btree", table.websiteId.asc().nullsLast().op("int8_ops"), table.path.asc().nullsLast().op("int8_ops")),
 ]);
 
 export const websites = pgTable("websites", {
@@ -371,27 +373,6 @@ export const componentOverviews = pgTable("component_overviews", {
 	index("index_component_overviews_on_path").using("btree", table.path.asc().nullsLast().op("text_ops")),
 	index("index_component_overviews_on_sort_order").using("btree", table.sortOrder.asc().nullsLast().op("int4_ops")),
 	index("index_component_overviews_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-]);
-
-export const templateFiles = pgTable("template_files", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	templateId: bigint("template_id", { mode: "number" }),
-	path: varchar(),
-	content: text(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	shasum: varchar(),
-	fileSpecificationId: integer("file_specification_id"),
-	contentTsv: tsvector("content_tsv"),
-}, (table) => [
-	index("idx_template_files_content_tsv").using("gin", table.contentTsv.asc().nullsLast().op("tsvector_ops")),
-	index("idx_template_files_path_trgm").using("gin", table.path.asc().nullsLast().op("gin_trgm_ops")),
-	index("index_template_files_on_file_specification_id").using("btree", table.fileSpecificationId.asc().nullsLast().op("int4_ops")),
-	index("index_template_files_on_path").using("btree", table.path.asc().nullsLast().op("text_ops")),
-	index("index_template_files_on_shasum").using("btree", table.shasum.asc().nullsLast().op("text_ops")),
-	index("index_template_files_on_template_id").using("btree", table.templateId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_template_files_on_template_id_and_path").using("btree", table.templateId.asc().nullsLast().op("text_ops"), table.path.asc().nullsLast().op("text_ops")),
 ]);
 
 export const components = pgTable("components", {
@@ -1392,11 +1373,101 @@ export const adBudgets = pgTable("ad_budgets", {
 	index("index_ad_budgets_on_google_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'budget_id'::text))`),
 	index("index_ad_budgets_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
 ]);
+
+export const templateFiles = pgTable("template_files", {
+	id: bigserial({ mode: "number" }).primaryKey().notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	templateId: bigint("template_id", { mode: "number" }),
+	path: varchar(),
+	content: text(),
+	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+	shasum: varchar(),
+	fileSpecificationId: integer("file_specification_id"),
+	contentTsv: tsvector("content_tsv"),
+	embedding: vector({ dimensions: 1536 }),
+}, (table) => [
+	index("idx_template_files_content_tsv").using("gin", table.contentTsv.asc().nullsLast().op("tsvector_ops")),
+	index("idx_template_files_embedding").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")).with({lists: "100"}),
+	index("idx_template_files_path_trgm").using("gin", table.path.asc().nullsLast().op("gin_trgm_ops")),
+	index("index_template_files_on_file_specification_id").using("btree", table.fileSpecificationId.asc().nullsLast().op("int4_ops")),
+	index("index_template_files_on_path").using("btree", table.path.asc().nullsLast().op("text_ops")),
+	index("index_template_files_on_shasum").using("btree", table.shasum.asc().nullsLast().op("text_ops")),
+	index("index_template_files_on_template_id").using("btree", table.templateId.asc().nullsLast().op("int8_ops")),
+	uniqueIndex("index_template_files_on_template_id_and_path").using("btree", table.templateId.asc().nullsLast().op("int8_ops"), table.path.asc().nullsLast().op("int8_ops")),
+]);
+
+export const documents = pgTable("documents", {
+	id: bigserial({ mode: "number" }).primaryKey().notNull(),
+	slug: varchar().notNull(),
+	title: varchar(),
+	content: text(),
+	status: varchar().default('draft').notNull(),
+	documentType: varchar("document_type"),
+	sourceType: varchar("source_type"),
+	sourceId: varchar("source_id"),
+	sourceUrl: varchar("source_url"),
+	tags: jsonb().default([]),
+	metadata: jsonb().default({}),
+	lastSyncedAt: timestamp("last_synced_at", { precision: 6, mode: 'string' }),
+	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+}, (table) => [
+	index("index_documents_on_document_type").using("btree", table.documentType.asc().nullsLast().op("text_ops")),
+	uniqueIndex("index_documents_on_slug").using("btree", table.slug.asc().nullsLast().op("text_ops")),
+	index("index_documents_on_source_type").using("btree", table.sourceType.asc().nullsLast().op("text_ops")),
+	uniqueIndex("index_documents_on_source_type_and_source_id").using("btree", table.sourceType.asc().nullsLast().op("text_ops"), table.sourceId.asc().nullsLast().op("text_ops")),
+	index("index_documents_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	index("index_documents_on_tags").using("gin", table.tags.asc().nullsLast().op("jsonb_ops")),
+]);
+
+export const documentChunks = pgTable("document_chunks", {
+	id: bigserial({ mode: "number" }).primaryKey().notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	documentId: bigint("document_id", { mode: "number" }).notNull(),
+	questionHash: varchar("question_hash").notNull(),
+	question: text().notNull(),
+	answer: text().notNull(),
+	content: text(),
+	section: varchar(),
+	context: jsonb().default({}),
+	position: integer(),
+	embedding: vector({ dimensions: 1536 }),
+	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+}, (table) => [
+	index("idx_document_chunks_embedding").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")),
+	index("index_document_chunks_on_document_id").using("btree", table.documentId.asc().nullsLast().op("int8_ops")),
+	uniqueIndex("index_document_chunks_on_document_id_and_question_hash").using("btree", table.documentId.asc().nullsLast().op("int8_ops"), table.questionHash.asc().nullsLast().op("int8_ops")),
+	index("index_document_chunks_on_section").using("btree", table.section.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.documentId],
+			foreignColumns: [documents.id],
+			name: "fk_rails_99b41ada32"
+		}),
+]);
+
+export const jobRuns = pgTable("job_runs", {
+	id: bigserial({ mode: "number" }).primaryKey().notNull(),
+	jobClass: varchar("job_class").notNull(),
+	status: varchar().default('pending').notNull(),
+	errorMessage: text("error_message"),
+	jobArgs: jsonb("job_args").default({}),
+	startedAt: timestamp("started_at", { precision: 6, mode: 'string' }),
+	completedAt: timestamp("completed_at", { precision: 6, mode: 'string' }),
+	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+}, (table) => [
+	index("index_job_runs_on_job_class").using("btree", table.jobClass.asc().nullsLast().op("text_ops")),
+	index("index_job_runs_on_job_class_and_status").using("btree", table.jobClass.asc().nullsLast().op("text_ops"), table.status.asc().nullsLast().op("text_ops")),
+	index("index_job_runs_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+]);
 export const codeFiles = pgView("code_files", {	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	websiteId: bigint("website_id", { mode: "number" }),
 	path: varchar(),
 	content: varchar(),
 	contentTsv: tsvector("content_tsv"),
+	embedding: vector({ dimensions: 1536 }),
 	shasum: varchar(),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	fileSpecificationId: bigint("file_specification_id", { mode: "number" }),
@@ -1405,4 +1476,4 @@ export const codeFiles = pgView("code_files", {	// You can use { mode: "bigint" 
 	sourceId: bigint("source_id", { mode: "number" }),
 	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }),
 	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }),
-}).as(sql`WITH merged_files AS ( SELECT wf.website_id, wf.path, wf.content, wf.content_tsv, wf.shasum, wf.file_specification_id, wf.created_at, wf.updated_at, 'WebsiteFile'::text AS source_type, wf.id AS source_id FROM website_files wf UNION ALL SELECT w.id AS website_id, tf.path, tf.content, tf.content_tsv, tf.shasum, tf.file_specification_id, tf.created_at, tf.updated_at, 'TemplateFile'::text AS source_type, tf.id AS source_id FROM template_files tf JOIN websites w ON w.template_id = tf.template_id WHERE NOT (EXISTS ( SELECT 1 FROM website_files wf2 WHERE wf2.website_id = w.id AND wf2.path::text = tf.path::text)) ) SELECT website_id, path, content, content_tsv, shasum, file_specification_id, source_type, source_id, created_at, updated_at FROM merged_files ORDER BY website_id, path`);
+}).as(sql`WITH merged_files AS ( SELECT wf.website_id, wf.path, wf.content, wf.content_tsv, wf.embedding, wf.shasum, wf.file_specification_id, wf.created_at, wf.updated_at, 'WebsiteFile'::text AS source_type, wf.id AS source_id FROM website_files wf UNION ALL SELECT w.id AS website_id, tf.path, tf.content, tf.content_tsv, tf.embedding, tf.shasum, tf.file_specification_id, tf.created_at, tf.updated_at, 'TemplateFile'::text AS source_type, tf.id AS source_id FROM template_files tf JOIN websites w ON w.template_id = tf.template_id WHERE NOT (EXISTS ( SELECT 1 FROM website_files wf2 WHERE wf2.website_id = w.id AND wf2.path::text = tf.path::text)) ) SELECT website_id, path, content, content_tsv, embedding, shasum, file_specification_id, source_type, source_id, created_at, updated_at FROM merged_files ORDER BY website_id, path`);
