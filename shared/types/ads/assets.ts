@@ -74,10 +74,22 @@ export interface AssetPromptConfig {
 
 export type AssetPromptMap = Record<AssetKind, AssetPromptConfig>;
 
-
 export const RefreshContextSchema = z.object({
     asset: z.enum(AssetKinds),
     nVariants: z.number().min(1).max(10)
 });
 
 export type RefreshContext = z.infer<typeof RefreshContextSchema>;
+
+export const DefaultNumAssets: Record<AssetKind, number> = {
+    headlines: 6,
+    descriptions: 4,
+    callouts: 6,
+    structured_snippets: 3,
+    keywords: 8
+};
+
+export const diffAssets = (original: Asset[], updated: Asset[]): Asset[] => {
+    const originalTexts = new Set(original.map(a => a.text));
+    return updated.filter(a => !originalTexts.has(a.text));
+};

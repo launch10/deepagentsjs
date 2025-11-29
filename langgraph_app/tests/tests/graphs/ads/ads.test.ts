@@ -71,7 +71,7 @@ describe.sequential('Ads Flow', () => {
             expect(descriptionContent).toMatch(/schedule|scheduling|meeting times/i);
         });
 
-        it.only("refreshes only the specified context (headlines), not descriptions", async () => {
+        it("refreshes only the specified context (headlines), not descriptions", async () => {
             const result = await testGraph<AdsGraphState>()
                 .withGraph(adsGraph)
                 .withState({
@@ -122,6 +122,236 @@ describe.sequential('Ads Flow', () => {
             expect(uniqueNonRejectedCount).toEqual(5); // It uses nVariants=2 to generate 2 new headlines, plus the 3 existing locked + 2 new = 5 total
 
             expect(refreshedResult.state.descriptions).toEqual(originalDescriptions);
+        });
+
+        it("automatically populates callouts and structured snippets on highlights stage", async () => {
+            const result = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    projectUUID,
+                    stage: "highlights"
+                })
+                .execute();
+
+            expect(result.state.callouts?.length).toEqual(6);
+            expect(result.state.structuredSnippet).toBeDefined();
+            expect(result.state.structuredSnippet?.category).toBeDefined();
+            expect(result.state.structuredSnippet?.details?.length).toBeGreaterThanOrEqual(3);
+            
+            const lastMessage = result.state.messages?.at(-1) as AIMessage;
+            const stateData = getStateData(lastMessage);
+            const message = getTextData(lastMessage);
+
+            expect(stateData).toBeDefined();
+            expect(message).toMatch(/unique features|spell out|real estate/i);
+            expect(message).not.toContain("```json");
+
+            const callouts = stateData.callouts || [];
+            expect(callouts.length).toEqual(Ads.DefaultNumAssets.callouts);
+
+            const structuredSnippet = stateData.structuredSnippet;
+            expect(structuredSnippet).toBeDefined();
+            expect(structuredSnippet.category).toBeDefined();
+            expect(structuredSnippet.details?.length).toEqual(Ads.DefaultNumAssets.structured_snippets);
+        });
+
+        it("refreshes only callouts, when using refresh context", async () => {
+            const result = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    projectUUID,
+                    stage: "highlights"
+                })
+                .execute();
+
+            expect(result.state.callouts?.length).toEqual(6);
+            
+            const callouts = result.state.callouts as Ads.Asset[];
+            if (!callouts[0] || !callouts[1]) {
+                throw new Error("Not enough callouts available for testing");
+            }
+
+            if (!result.state.structuredSnippet?.details) {
+                throw new Error("Structured snippet details not available for testing");
+            }
+
+            callouts[0].text = `Free Consultations`;
+            callouts[1].text = `24/7 Support`;
+            callouts[0].locked = true;
+            callouts[1].locked = true;
+            [2, 3, 4, 5].forEach(index => {
+                if (callouts[index]) {
+                    callouts[index].rejected = true;
+                }
+            });
+
+            const refreshedResult = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    projectUUID,
+                    stage: "highlights",
+                    refresh: {
+                        asset: "callouts",
+                        nVariants: 3
+                    },
+                    callouts: result.state.callouts,
+                    structuredSnippet: result.state.structuredSnippet
+                })
+                .execute();
+
+            if (!refreshedResult.state.structuredSnippet?.details) {
+                throw new Error("Refreshed structured snippet details not available");
+            }
+
+            if (!refreshedResult.state.callouts) {
+                throw new Error("Refreshed callouts not available");
+            }
+
+            const newCallouts = Ads.diffAssets(
+                callouts,
+                refreshedResult.state.callouts,
+            )
+            expect(newCallouts.length).toEqual(3); // Should generate 3 new callouts (nVariants)
+
+            const newSnippets = Ads.diffAssets(
+                result.state.structuredSnippet.details,
+                refreshedResult.state.structuredSnippet.details,
+            )
+            expect(newSnippets).toBeDefined();
+            expect(Array.isArray(newSnippets)).toBe(true);
+            expect(newSnippets.length).toEqual(0); // Should have no new snippets (same data)
+        });
+
+        it("refreshes only snippets, when using refresh context", async () => {
+            const result = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    projectUUID,
+                    stage: "highlights"
+                })
+                .execute();
+
+            expect(result.state.callouts?.length).toEqual(6);
+            
+            const callouts = result.state.callouts as Ads.Asset[];
+            if (!callouts[0] || !callouts[1]) {
+                throw new Error("Not enough callouts available for testing");
+            }
+
+            if (!result.state.structuredSnippet?.details) {
+                throw new Error("Structured snippet details not available for testing");
+            }
+
+            const refreshedResult = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    projectUUID,
+                    stage: "highlights",
+                    refresh: {
+                        asset: "structured_snippets",
+                        nVariants: 1
+                    },
+                    callouts: result.state.callouts,
+                    structuredSnippet: result.state.structuredSnippet
+                })
+                .execute();
+
+            if (!refreshedResult.state.structuredSnippet?.details) {
+                throw new Error("Refreshed structured snippet details not available");
+            }
+
+            if (!refreshedResult.state.callouts) {
+                throw new Error("Refreshed callouts not available");
+            }
+
+            const newCallouts = Ads.diffAssets(
+                callouts,
+                refreshedResult.state.callouts,
+            )
+            expect(newCallouts.length).toEqual(0); // Should generate 0 new callouts (same data)
+
+            const newSnippets = Ads.diffAssets(
+                result.state.structuredSnippet.details,
+                refreshedResult.state.structuredSnippet.details,
+            )
+            expect(newSnippets).toBeDefined();
+            expect(Array.isArray(newSnippets)).toBe(true);
+            expect(newSnippets.length).toEqual(1); // Should have 1 new snippet (nVariants=1 from refresh)
+        });
+
+        it("automatically populates keywords on keywords stage", async () => {
+            const result = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    projectUUID,
+                    stage: "keywords"
+                })
+                .execute();
+
+            expect(result.state.keywords?.length).toEqual(8);
+            
+            const lastMessage = result.state.messages?.at(-1) as AIMessage;
+            const keywords = result.state.keywords
+            const message = getTextData(lastMessage);
+
+            expect(message).toMatch(/keywords|searching|audience/i);
+            expect(message).not.toContain("```json");
+
+            if (!keywords || !keywords[0]) {
+                throw new Error("Keywords are undefined or empty");
+            }
+            expect(keywords.length).toEqual(Ads.DefaultNumAssets.keywords);
+            expect(keywords[0].text).toBeDefined();
+        });
+
+        it("refreshes keywords", async () => {
+            const result = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    projectUUID,
+                    stage: "keywords"
+                })
+                .execute();
+
+            expect(result.state.keywords?.length).toEqual(8);
+            
+            const keywords = result.state.keywords as Ads.Asset[];
+            if (!keywords[0] || !keywords[1] || !keywords[2]) {
+                throw new Error("Not enough keywords available for testing");
+            }
+
+            keywords[0].text = `pet photography`;
+            keywords[1].text = `dog portraits`;
+            keywords[2].text = `cat photos`;
+            keywords[0].locked = true;
+            keywords[1].locked = true;
+            keywords[2].locked = true;
+            [3, 4, 5, 6, 7].forEach(index => {
+                if (keywords[index]) {
+                    keywords[index].rejected = true;
+                }
+            });
+            
+            const refreshedResult = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    projectUUID,
+                    stage: "keywords",
+                    refresh: {
+                        asset: "keywords",
+                        nVariants: 4
+                    },
+                    keywords: result.state.keywords
+                })
+                .execute();
+            if (!refreshedResult.state.keywords) {
+                throw new Error("Refreshed keywords are undefined");
+            }
+                
+            const newKeywords = Ads.diffAssets(keywords, refreshedResult.state.keywords);
+            expect(newKeywords).toBeDefined();
+            expect(Array.isArray(newKeywords)).toBe(true);
+            expect(newKeywords.length).toEqual(4);
         });
     });
 

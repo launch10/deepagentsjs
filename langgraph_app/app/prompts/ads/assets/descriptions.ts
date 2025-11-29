@@ -1,4 +1,4 @@
-import { type Ads } from "@types";
+import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
 import { userPreferencesPrompt } from "./userPreferences";
 
@@ -6,7 +6,7 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
     "descriptions": {
         prompt: async (state: AdsGraphState, _config?: any) => {
             const userPrefs = await userPreferencesPrompt(state, "descriptions");
-            const nVariants = state.refresh?.nVariants || 4;
+            const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.descriptions;
 
             return `
             ## Descriptions
@@ -37,7 +37,7 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
         `;
         },
         outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-            const nVariants = state.refresh?.nVariants || 4;
+            const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.descriptions;
             const descriptions = Array.from({ length: nVariants }, (_, i) => `Description ${i + 1}`);
             return { descriptions };
         }

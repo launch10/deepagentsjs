@@ -47,7 +47,6 @@ const mergeStructuredOutput = (
 ): Ads.Asset[] => {
     const result: Ads.Asset[] = [...existing];
     const existingAssets = new Set(existing.map(asset => asset.text));
-    let addedCount = 0;
     
     for (const text of incoming) {
         if (existingAssets.has(text)) {
@@ -58,11 +57,63 @@ const mergeStructuredOutput = (
             rejected: false,
             locked: false
         });
-        addedCount++;
     }
-    
+
     return result;
 };
+
+const mergeStructuredSnippet = (
+    existing: Ads.StructuredSnippet | undefined,
+    incoming: { category?: string; details?: string[] }
+): Ads.StructuredSnippet => {
+    const category: Ads.Asset = existing?.category ?? {
+        text: incoming.category || "Types",
+        rejected: false,
+        locked: false
+    };
+    
+    if (incoming.category && incoming.category !== existing?.category?.text) {
+        category.text = incoming.category;
+    }
+
+    const existingDetails = existing?.details || [];
+    const existingTexts = new Set(existingDetails.map(d => d.text));
+    const newDetails: Ads.Asset[] = [...existingDetails];
+
+    for (const detail of incoming.details || []) {
+        if (!existingTexts.has(detail)) {
+            newDetails.push({
+                text: detail,
+                rejected: false,
+                locked: false
+            });
+        }
+    }
+
+    return { category, details: newDetails };
+};
+
+const getStructuredData = (state: AdsGraphState, lastMessage: AIMessage) => {
+    const rawData = ((lastMessage.response_metadata?.parsed_blocks as any[] || []).filter((block: any) => block.type === 'structured').map((block: any) => block.parsed).at(-1) || {}) as Partial<AdsGraphState> & { structuredSnippet?: { category?: string; details?: string[] } };
+
+    const allowedKeys = state.refresh?.asset ? [state.refresh.asset] : Ads.AssetKinds;
+
+    const structuredData = Object.entries(rawData).reduce((acc, [key, value]) => {
+        if (key === 'structuredSnippet' && value && typeof value === 'object' && !Array.isArray(value)) {
+            if (allowedKeys.includes('structured_snippets')) {
+                (acc as any).structuredSnippet = mergeStructuredSnippet(
+                    state.structuredSnippet,
+                    value as { category?: string; details?: string[] }
+                );
+            }
+        } else if (Array.isArray(value) && allowedKeys.includes(key as Ads.AssetKind)) {
+            (acc as any)[key] = mergeStructuredOutput((state as any)[key] || [], value);
+        }
+        return acc;
+    }, {} as Partial<AdsGraphState>);
+
+    return structuredData;
+}
 
 export const adsAgent = NodeMiddleware.use({}, async (
     state: AdsGraphState,
@@ -90,16 +141,7 @@ export const adsAgent = NodeMiddleware.use({}, async (
         throw new Error("Agent did not return an AI message");
     }
 
-    const rawData = ((lastMessage.response_metadata?.parsed_blocks as any[] || []).filter((block: any) => block.type === 'structured').map((block: any) => block.parsed).at(-1) || {}) as Partial<AdsGraphState>;
-
-    const allowedKeys = state.refresh?.asset ? [state.refresh.asset] : Ads.AssetKinds;
-
-    const structuredData = Object.entries(rawData).reduce((acc, [key, value]) => {
-        if (Array.isArray(value) && allowedKeys.includes(key as Ads.AssetKind)) {
-            (acc as any)[key] = mergeStructuredOutput((state as any)[key] || [], value);
-        }
-        return acc;
-    }, {} as Partial<AdsGraphState>);
+    const structuredData = getStructuredData(state, lastMessage);
 
     return {
         ...structuredData,

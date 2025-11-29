@@ -1,4 +1,4 @@
-import { type Ads } from "@types";
+import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
 import { userPreferencesPrompt } from "./userPreferences";
 
@@ -7,11 +7,11 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
         prompt: async (state: AdsGraphState, _config?: any) => {
             const snippetCategory = state?.structuredSnippet?.category?.text
             const userPrefs = await userPreferencesPrompt(state, "structured_snippets");
-            const numberOfDetails = state?.refresh?.nVariants || 3;
+            const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structured_snippets;
 
             return `
             ## Product or Service Offerings (Structured Snippets)
-            Generate a category header and ${numberOfDetails}-10 specific examples of what this business offers. These appear as structured snippet extensions in Google Ads.
+            Generate a category header and ${numberOfDetails} specific examples of what this business offers. These appear as structured snippet extensions in Google Ads.
 
             **Category Header:**
             ${
@@ -19,7 +19,7 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
             }
 
             **Details (Values):**
-            List 3-10 specific offerings under that category header.
+            List ${numberOfDetails} specific offerings under that category header.
             - Examples: 
               - Types: "Web Design", "SEO", "Content Marketing"
               - Amenities: "Free WiFi", "Free Parking", "Included Breakfast", "Spa Services"
@@ -27,16 +27,16 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
 
             **Requirements:**
             - Choose an appropriate category header
-            - Generate ${numberOfDetails} specific, relevant details
+            - Generate exactly ${numberOfDetails} specific, relevant details
+            - Do not generate more than ${numberOfDetails} details
             - Each detail should be 25 characters or less
             - Be specific to this business's actual offerings
-
 
             ${userPrefs}
         `;
         },
         outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-            const numberOfDetails = state?.refresh?.nVariants || 3;
+            const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structured_snippets;
             return {
                 structuredSnippet: {
                     category: "Types",
