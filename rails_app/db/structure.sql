@@ -1914,6 +1914,42 @@ ALTER SEQUENCE public.inbound_webhooks_id_seq OWNED BY public.inbound_webhooks.i
 
 
 --
+-- Name: job_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.job_runs (
+    id bigint NOT NULL,
+    job_class character varying NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    error_message text,
+    job_args jsonb DEFAULT '{}'::jsonb,
+    started_at timestamp(6) without time zone,
+    completed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: job_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.job_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: job_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.job_runs_id_seq OWNED BY public.job_runs.id;
+
+
+--
 -- Name: noticed_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3440,6 +3476,13 @@ ALTER TABLE ONLY public.inbound_webhooks ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
+-- Name: job_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_runs ALTER COLUMN id SET DEFAULT nextval('public.job_runs_id_seq'::regclass);
+
+
+--
 -- Name: noticed_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4103,6 +4146,14 @@ ALTER TABLE ONLY public.icon_query_caches
 
 ALTER TABLE ONLY public.inbound_webhooks
     ADD CONSTRAINT inbound_webhooks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: job_runs job_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_runs
+    ADD CONSTRAINT job_runs_pkey PRIMARY KEY (id);
 
 
 --
@@ -5926,6 +5977,13 @@ CREATE INDEX index_documents_on_source_type ON public.documents USING btree (sou
 
 
 --
+-- Name: index_documents_on_source_type_and_source_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_documents_on_source_type_and_source_id ON public.documents USING btree (source_type, source_id);
+
+
+--
 -- Name: index_documents_on_status; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6042,6 +6100,27 @@ CREATE INDEX index_icon_query_caches_on_ttl_seconds ON public.icon_query_caches 
 --
 
 CREATE INDEX index_icon_query_caches_on_use_count ON public.icon_query_caches USING btree (use_count);
+
+
+--
+-- Name: index_job_runs_on_job_class; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_job_class ON public.job_runs USING btree (job_class);
+
+
+--
+-- Name: index_job_runs_on_job_class_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_job_class_and_status ON public.job_runs USING btree (job_class, status);
+
+
+--
+-- Name: index_job_runs_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_status ON public.job_runs USING btree (status);
 
 
 --
@@ -7393,6 +7472,8 @@ SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
 ('20251130121846'),
+('20251129165029'),
+('20251129163807'),
 ('20251129160020'),
 ('20251129155957'),
 ('20251129094502'),

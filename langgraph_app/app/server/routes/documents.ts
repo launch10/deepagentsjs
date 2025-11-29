@@ -1,14 +1,10 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import { authMiddleware, type AuthContext } from '../middleware/auth';
+import { adminAuthMiddleware } from '../middleware/adminAuth';
 import { getLLM } from '@core';
 import { withStructuredResponse } from '@utils';
 import { structuredOutputPrompt } from '@prompts';
-
-type Variables = {
-  auth: AuthContext;
-};
 
 const qaExtractionSchema = z.object({
   pairs: z.array(z.object({
@@ -103,9 +99,9 @@ function deduplicateQAPairs(pairs: QAPair[]): QAPair[] {
   return Array.from(seen.values());
 }
 
-export const documentsRoutes = new Hono<{ Variables: Variables }>();
+export const documentsRoutes = new Hono();
 
-documentsRoutes.post('/extract-qa', authMiddleware, async (c) => {
+documentsRoutes.post('/extract-qa', adminAuthMiddleware, async (c) => {
   const body = await c.req.json();
   const { content, metadata } = body;
 

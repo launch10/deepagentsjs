@@ -19,44 +19,6 @@ module DocumentConcerns
         end
       end
 
-      def create_from_raw!(raw_content, overrides = {})
-        parsed = parse_frontmatter(raw_content)
-        fm = parsed[:frontmatter]
-
-        create!(
-          slug: fm[:slug],
-          title: fm[:title],
-          content: parsed[:content],
-          status: fm[:status] || 'draft',
-          document_type: fm[:type] || fm[:document_type],
-          tags: fm[:tags] || [],
-          metadata: fm[:metadata] || {},
-          **overrides
-        )
-      end
-
-      def find_or_create_from_raw!(raw_content, overrides = {})
-        parsed = parse_frontmatter(raw_content)
-        fm = parsed[:frontmatter]
-        slug = overrides[:slug] || fm[:slug]
-
-        doc = find_by(slug: slug)
-        if doc
-          doc.update!(
-            title: fm[:title] || doc.title,
-            content: parsed[:content],
-            status: fm[:status] || doc.status,
-            document_type: fm[:type] || fm[:document_type] || doc.document_type,
-            tags: fm[:tags] || doc.tags,
-            metadata: fm[:metadata] || doc.metadata,
-            **overrides.except(:slug)
-          )
-          doc
-        else
-          create_from_raw!(raw_content, overrides)
-        end
-      end
-
       private
 
       def parse_yaml(yaml_string)

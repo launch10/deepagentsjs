@@ -13,12 +13,16 @@ class CreateDocuments < ActiveRecord::Migration[8.0]
       t.jsonb :metadata, default: {}
       t.datetime :last_synced_at
       t.timestamps
+
+      t.index :slug, unique: true
+      t.index :status
+      t.index :document_type
+      t.index :source_type
+      t.index :tags, using: :gin
+      t.index :metadata, using: :gin
+      t.index :last_synced_at
+      t.index [:source_type, :source_id], unique: true
     end
 
-    add_index :documents, :slug, unique: true
-    add_index :documents, :status
-    add_index :documents, :document_type
-    add_index :documents, :source_type
-    add_index :documents, :tags, using: :gin
   end
 end

@@ -19,20 +19,27 @@
 #
 # Indexes
 #
-#  index_documents_on_document_type  (document_type)
-#  index_documents_on_slug           (slug) UNIQUE
-#  index_documents_on_source_type    (source_type)
-#  index_documents_on_status         (status)
-#  index_documents_on_tags           (tags) USING gin
+#  index_documents_on_document_type              (document_type)
+#  index_documents_on_slug                       (slug) UNIQUE
+#  index_documents_on_source_type                (source_type)
+#  index_documents_on_source_type_and_source_id  (source_type,source_id) UNIQUE
+#  index_documents_on_status                     (status)
+#  index_documents_on_tags                       (tags) USING gin
 #
 class Document < ApplicationRecord
   include DocumentConcerns::ChunkSync
   include DocumentConcerns::FrontmatterParsing
+  include DocumentConcerns::SyncableDocument
+
+  DOCUMENT_TYPES = %w[qa]
+  SOURCE_TYPES = %w[google_docs]
 
   has_many :chunks, class_name: 'DocumentChunk', dependent: :destroy
 
   validates :slug, presence: true, uniqueness: true
   validates :status, presence: true, inclusion: { in: %w[draft live] }
+  validates :source_type, inclusion: { in: SOURCE_TYPES }
+  validates :document_type, inclusion: { in: DOCUMENT_TYPES }
 
   scope :live, -> { where(status: 'live') }
   scope :draft, -> { where(status: 'draft') }
