@@ -10,6 +10,7 @@ export const envSchema = z.object({
   REDIS_URL: z.string().min(1).url(),
   RAILS_API_URL: z.string().min(1).url(),
   ANTHROPIC_API_KEY: z.string().min(1),
+  COHERE_API_KEY: z.string().optional(),
   GROQ_API_KEY: z.string().min(1),
   OPENAI_API_KEY: z.string().min(1),
   LANGSMITH_TRACING: z.string().min(1),

@@ -11,11 +11,6 @@ LOCAL_ENV_ONLY = lambda do |request|
 end
 
 Rails.application.routes.draw do
-  constraints ADMIN_ONLY do
-    mount Sidekiq::Web => "/sidekiq"
-    mount Zhong::Web => "/zhong"
-  end
-
   constraints LOCAL_ENV_ONLY do
     namespace :test do
       post "database/truncate", to: "database#truncate"

@@ -1207,7 +1207,8 @@ CREATE TABLE public.template_files (
     updated_at timestamp(6) without time zone NOT NULL,
     shasum character varying,
     file_specification_id integer,
-    content_tsv tsvector
+    content_tsv tsvector,
+    embedding public.vector(1536)
 );
 
 
@@ -1224,7 +1225,8 @@ CREATE TABLE public.website_files (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     shasum character varying,
-    content_tsv tsvector
+    content_tsv tsvector,
+    embedding public.vector(1536)
 );
 
 
@@ -1255,6 +1257,7 @@ CREATE VIEW public.code_files AS
             wf.path,
             wf.content,
             wf.content_tsv,
+            wf.embedding,
             wf.shasum,
             wf.file_specification_id,
             wf.created_at,
@@ -1267,6 +1270,7 @@ CREATE VIEW public.code_files AS
             tf.path,
             tf.content,
             tf.content_tsv,
+            tf.embedding,
             tf.shasum,
             tf.file_specification_id,
             tf.created_at,
@@ -1283,6 +1287,7 @@ CREATE VIEW public.code_files AS
     path,
     content,
     content_tsv,
+    embedding,
     shasum,
     file_specification_id,
     source_type,
@@ -4523,6 +4528,13 @@ CREATE INDEX idx_template_files_content_tsv ON public.template_files USING gin (
 
 
 --
+-- Name: idx_template_files_embedding; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_template_files_embedding ON public.template_files USING ivfflat (embedding public.vector_cosine_ops) WITH (lists='100');
+
+
+--
 -- Name: idx_template_files_path_trgm; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4541,6 +4553,13 @@ CREATE INDEX idx_website_file_histories_content_tsv ON public.website_file_histo
 --
 
 CREATE INDEX idx_website_files_content_tsv ON public.website_files USING gin (content_tsv);
+
+
+--
+-- Name: idx_website_files_embedding; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_website_files_embedding ON public.website_files USING ivfflat (embedding public.vector_cosine_ops) WITH (lists='100');
 
 
 --
@@ -7193,6 +7212,7 @@ SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
 ('20251130121846'),
+('20251129094502'),
 ('20251125163826'),
 ('20251125163744'),
 ('20251125000849'),

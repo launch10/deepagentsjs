@@ -49,6 +49,7 @@
 class WebsiteFile < ApplicationRecord
   include Historiographer::Safe
   historiographer_mode :snapshot_only
+  include Embeddable
 
   belongs_to :website, inverse_of: :website_files
 

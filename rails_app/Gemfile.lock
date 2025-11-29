@@ -219,6 +219,7 @@ GEM
       tzinfo
     ethon (0.17.0)
       ffi (>= 1.15.0)
+    event_stream_parser (1.0.0)
     factory_bot (6.5.5)
       activesupport (>= 6.1.0)
     factory_bot_rails (6.5.0)
@@ -230,6 +231,8 @@ GEM
       faraday-net_http (>= 2.0, < 3.5)
       json
       logger
+    faraday-multipart (1.1.1)
+      multipart-post (~> 2.0)
     faraday-net_http (3.4.2)
       net-http (~> 0.5)
     faraday-retry (2.3.2)
@@ -432,6 +435,7 @@ GEM
       railties (>= 3.0)
     msgpack (1.8.0)
     multi_json (1.17.0)
+    multipart-post (2.4.1)
     mustermann (3.0.4)
       ruby2_keywords (~> 0.0.1)
     mutex_m (0.3.0)
@@ -678,6 +682,17 @@ GEM
       ffi (~> 1.12)
       logger
     ruby2_keywords (0.0.5)
+    ruby_llm (1.9.1)
+      base64
+      event_stream_parser (~> 1)
+      faraday (>= 1.10.0)
+      faraday-multipart (>= 1)
+      faraday-net_http (>= 1)
+      faraday-retry (>= 1)
+      marcel (~> 1.0)
+      ruby_llm-schema (~> 0.2.1)
+      zeitwerk (~> 2)
+    ruby_llm-schema (0.2.5)
     rubyzip (3.0.2)
     securerandom (0.4.1)
     selenium-webdriver (4.35.0)
@@ -896,6 +911,7 @@ DEPENDENCIES
   rswag
   rubocop-rails-omakase
   ruby-oembed (~> 0.18.0)
+  ruby_llm
   selenium-webdriver (>= 4.20.1)
   shoulda-matchers (~> 6.0)
   sidekiq

@@ -21,6 +21,7 @@ gem "money"
 gem "money-rails"
 gem "google-ads-googleads"
 gem "paranoia"
+gem "ruby_llm"
 
 # AWS SDK for R2/S3 uploads
 gem "aws-sdk-s3", "~> 1.0"

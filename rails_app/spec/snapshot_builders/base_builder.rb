@@ -14,4 +14,16 @@ class BaseBuilder
   def build
     raise "build must be implemented by subclass"
   end
+
+  def load_sql(sql_path)
+    config = ActiveRecord::Base.connection_db_config.configuration_hash
+    env = {"PGPASSWORD" => config[:password].to_s}
+    args = ["psql"]
+    args += ["-U", config[:username]] if config[:username]
+    args += ["-h", config[:host] || "localhost"]
+    args += ["-p", config[:port].to_s] if config[:port]
+    args += ["-d", config[:database]]
+    args += ["-f", sql_path.to_s]
+    system(env, args.join(" "))
+  end
 end
