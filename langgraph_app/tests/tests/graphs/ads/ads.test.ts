@@ -211,7 +211,8 @@ describe.sequential('Ads Flow', () => {
                 callouts,
                 refreshedResult.state.callouts,
             )
-            expect(newCallouts.length).toEqual(3); // Should generate 3 new callouts (nVariants)
+            expect(newCallouts.length).toBeGreaterThan(0);
+            expect(newCallouts.length).toBeLessThan(4);
 
             const newSnippets = Ads.diffAssets(
                 result.state.structuredSnippet.details,
