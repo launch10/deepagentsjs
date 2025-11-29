@@ -103,21 +103,29 @@ class MessageProcessor<TGraphState> {
     }
 }
 
-const mergeStructuredOutput = (existing: Ads.Asset[], incoming: string[]): Ads.Asset[] => {
-    const result: Ads.Asset[] = existing;
+const mergeStructuredOutput = (
+    existing: Ads.Asset[],
+    incoming: string[],
+    maxNewAssets: number = Infinity
+): Ads.Asset[] => {
+    const result: Ads.Asset[] = [...existing];
     const existingAssets = new Set(existing.map(asset => asset.text));
+    let addedCount = 0;
     
-    incoming.forEach((text, index) => {
-        // Skip if this text already exists in the current assets
+    for (const text of incoming) {
         if (existingAssets.has(text)) {
-            return;
+            continue;
+        }
+        if (maxNewAssets !== undefined && addedCount >= maxNewAssets) {
+            break;
         }
         result.push({
             text,
             rejected: false,
             locked: false
         });
-    });
+        addedCount++;
+    }
     
     return result;
 };
@@ -150,9 +158,11 @@ export const adsAgent = NodeMiddleware.use({}, async (
 
     const rawData = ((lastMessage.response_metadata?.parsed_blocks as any[] || []).filter((block: any) => block.type === 'structured').map((block: any) => block.parsed).at(-1) || {}) as Partial<AdsGraphState>;
 
+    const allowedKeys = state.refreshContext ?? Ads.AssetKinds;
+
     const structuredData = Object.entries(rawData).reduce((acc, [key, value]) => {
-        if (Array.isArray(value)) {
-            (acc as any)[key] = mergeStructuredOutput(state[key] || [], value);
+        if (Array.isArray(value) && allowedKeys.includes(key as Ads.AssetKind)) {
+            (acc as any)[key] = mergeStructuredOutput((state as any)[key] || [], value);
         }
         return acc;
     }, {} as Partial<AdsGraphState>);
