@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { serve } from '@hono/node-server';
 import { brainstormRoutes } from './app/server/routes/brainstorm';
+import { documentsRoutes } from './app/server/routes/documents';
 import { errorHandler } from './app/server/middleware/errorHandler';
 import { env } from './app/core/env';
 
@@ -24,6 +25,7 @@ app.use('*', cors({
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
 app.route('/api/brainstorm', brainstormRoutes);
+app.route('/api/documents', documentsRoutes);
 
 app.onError(errorHandler);
 

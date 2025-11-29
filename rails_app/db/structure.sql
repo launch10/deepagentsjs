@@ -1573,6 +1573,86 @@ ALTER SEQUENCE public.deploys_id_seq OWNED BY public.deploys.id;
 
 
 --
+-- Name: document_chunks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.document_chunks (
+    id bigint NOT NULL,
+    document_id bigint NOT NULL,
+    question_hash character varying NOT NULL,
+    question text NOT NULL,
+    answer text NOT NULL,
+    content text,
+    section character varying,
+    context jsonb DEFAULT '{}'::jsonb,
+    "position" integer,
+    embedding public.vector(1536),
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: document_chunks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.document_chunks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: document_chunks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.document_chunks_id_seq OWNED BY public.document_chunks.id;
+
+
+--
+-- Name: documents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.documents (
+    id bigint NOT NULL,
+    slug character varying NOT NULL,
+    title character varying,
+    content text,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    document_type character varying,
+    source_type character varying,
+    source_id character varying,
+    source_url character varying,
+    tags jsonb DEFAULT '[]'::jsonb,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    last_synced_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: documents_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.documents_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: documents_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.documents_id_seq OWNED BY public.documents.id;
+
+
+--
 -- Name: domain_request_counts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3304,6 +3384,20 @@ ALTER TABLE ONLY public.deploys ALTER COLUMN id SET DEFAULT nextval('public.depl
 
 
 --
+-- Name: document_chunks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.document_chunks ALTER COLUMN id SET DEFAULT nextval('public.document_chunks_id_seq'::regclass);
+
+
+--
+-- Name: documents id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.documents ALTER COLUMN id SET DEFAULT nextval('public.documents_id_seq'::regclass);
+
+
+--
 -- Name: domain_request_counts id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3916,6 +4010,22 @@ ALTER TABLE ONLY public.deploys
 
 
 --
+-- Name: document_chunks document_chunks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.document_chunks
+    ADD CONSTRAINT document_chunks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: documents documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.documents
+    ADD CONSTRAINT documents_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: domain_request_counts domain_request_counts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4504,6 +4614,13 @@ CREATE INDEX domain_request_counts_2025_12_domain_id_hour_idx ON public.domain_r
 --
 
 CREATE INDEX domain_request_counts_2025_12_domain_id_hour_request_count_idx ON public.domain_request_counts_2025_12 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: idx_document_chunks_embedding; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_document_chunks_embedding ON public.document_chunks USING ivfflat (embedding public.vector_cosine_ops);
 
 
 --
@@ -5764,6 +5881,62 @@ CREATE INDEX index_deploys_on_website_id_and_environment_and_is_preview ON publi
 --
 
 CREATE INDEX index_deploys_on_website_id_and_is_live ON public.deploys USING btree (website_id, is_live);
+
+
+--
+-- Name: index_document_chunks_on_document_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_document_chunks_on_document_id ON public.document_chunks USING btree (document_id);
+
+
+--
+-- Name: index_document_chunks_on_document_id_and_question_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_document_chunks_on_document_id_and_question_hash ON public.document_chunks USING btree (document_id, question_hash);
+
+
+--
+-- Name: index_document_chunks_on_section; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_document_chunks_on_section ON public.document_chunks USING btree (section);
+
+
+--
+-- Name: index_documents_on_document_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_documents_on_document_type ON public.documents USING btree (document_type);
+
+
+--
+-- Name: index_documents_on_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_documents_on_slug ON public.documents USING btree (slug);
+
+
+--
+-- Name: index_documents_on_source_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_documents_on_source_type ON public.documents USING btree (source_type);
+
+
+--
+-- Name: index_documents_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_documents_on_status ON public.documents USING btree (status);
+
+
+--
+-- Name: index_documents_on_tags; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_documents_on_tags ON public.documents USING gin (tags);
 
 
 --
@@ -7165,6 +7338,14 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 
 --
+-- Name: document_chunks fk_rails_99b41ada32; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.document_chunks
+    ADD CONSTRAINT fk_rails_99b41ada32 FOREIGN KEY (document_id) REFERENCES public.documents(id);
+
+
+--
 -- Name: pay_charges fk_rails_b19d32f835; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7212,6 +7393,8 @@ SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
 ('20251130121846'),
+('20251129160020'),
+('20251129155957'),
 ('20251129094502'),
 ('20251125163826'),
 ('20251125163744'),
