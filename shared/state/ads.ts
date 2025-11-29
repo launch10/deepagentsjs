@@ -8,11 +8,11 @@ export type AdsGraphState = Simplify<CoreGraphState & {
     websiteId: PrimaryKeyType;
     brainstorm: Brainstorm.MemoriesType | undefined;
     stage: Ads.StageName | undefined;
-    refreshContext: Ads.AssetKind[] | undefined;
+    refresh: Ads.RefreshContext | undefined;
     headlines: Ads.Headline[] | undefined;
     descriptions: Ads.Description[] | undefined;
-    uniqueFeatures: Ads.UniqueFeature[] | undefined;
-    structuredSnippets: Ads.StructuredSnippet[] | undefined;
+    callouts: Ads.Callout[] | undefined;
+    structuredSnippet: Ads.StructuredSnippet | undefined;
     keywords: Ads.Keyword[] | undefined;
     availableCommands: Ads.CommandName[];
     command: Ads.CommandName | undefined;

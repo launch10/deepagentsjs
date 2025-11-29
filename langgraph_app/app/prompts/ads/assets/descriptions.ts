@@ -1,16 +1,16 @@
 import { type Ads } from "@types";
 import { type AdsGraphState } from "@state";
+import { userPreferencesPrompt } from "./userPreferences";
 
 export const Descriptions: Partial<Ads.AssetPromptMap> = {
     "descriptions": {
-        prompt: (state: AdsGraphState, _config?: any) => {
-            const likedDescriptions = state?.descriptions?.filter((d) => d.locked) || [];
-            const rejectedDescriptions = state?.descriptions?.filter((d) => d.rejected) || [];
-            const provideBackground = (likedDescriptions?.length ?? 0) > 0 || (rejectedDescriptions?.length ?? 0) > 0;
+        prompt: async (state: AdsGraphState, _config?: any) => {
+            const userPrefs = await userPreferencesPrompt(state, "descriptions");
+            const nVariants = state.refresh?.nVariants || 4;
 
             return `
             ## Descriptions
-            Generate 4 compelling descriptions for this business's Google Ads campaign. Descriptions appear below the headlines and provide more detail about the offer.
+            Generate ${nVariants} compelling descriptions for this business's Google Ads campaign. Descriptions appear below the headlines and provide more detail about the offer.
 
             **Guidelines:**
             - Each description must be 90 characters or less (this is a strict Google Ads limit)
@@ -25,7 +25,7 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
             - Include relevant keywords naturally
 
             **Requirements:**
-            - Generate exactly 4 unique descriptions
+            - Generate exactly ${nVariants} unique descriptions
             - Each must be 90 characters or less
             - At least 2 should include a call-to-action (e.g., "Call now", "Get a quote", "Shop today")
             - Make them specific to this business's offerings and benefits
@@ -33,15 +33,7 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
 
             Remember: Google Ads shows up to 2 descriptions at once. They should complement the headlines and give users a reason to click.
 
-            ${
-                provideBackground 
-                    ? `User's preferences:\n` +
-                      (likedDescriptions ? `Liked descriptions:\n${likedDescriptions.map((d: Ads.Description, i: number) => `${i+1}. ${d.text}`).join('\n')}\n` : '') +
-                      (rejectedDescriptions ? `Rejected descriptions (avoid these patterns):\n${rejectedDescriptions.map((d: Ads.Description, i: number) => `${i+1}. ${d.text}`).join('\n')}\n` : '')
-                    : ''
-            }
-
-            ${provideBackground ? 'Always generate net-new, unique headlines (do not repeat ones user previously liked or rejected).' : ''}
+            ${userPrefs}
         `;
         },
         outputFormat: [

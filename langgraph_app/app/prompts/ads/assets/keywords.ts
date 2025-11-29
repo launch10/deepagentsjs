@@ -1,15 +1,16 @@
 import { type Ads } from "@types";
 import { type AdsGraphState } from "@state";
+import { userPreferencesPrompt } from "./userPreferences";
 
 export const Keywords: Partial<Ads.AssetPromptMap> = {
     "keywords": {
-        prompt: (state: AdsGraphState, _config?: any) => {
-            const likedKeywords = state?.keywords?.filter((k) => k.locked);
-            const rejectedKeywords = state?.keywords?.filter((k) => k.rejected);
+        prompt: async (state: AdsGraphState, _config?: any) => {
+            const userPrefs = await userPreferencesPrompt(state, "keywords");
+            const nVariants = state.refresh?.nVariants || 8;
 
             return `
             ## Keywords
-            Generate 20 targeted keywords for this business's Google Ads campaign. Keywords determine when your ads appear in search results.
+            Generate ${nVariants} targeted keywords for this business's Google Ads campaign. Keywords determine when your ads appear in search results.
 
             **Guidelines:**
             - Include a mix of keyword types:
@@ -25,7 +26,7 @@ export const Keywords: Partial<Ads.AssetPromptMap> = {
             - Use natural language phrases (Google handles match types separately)
 
             **Requirements:**
-            - Generate exactly 20 unique keywords
+            - Generate exactly ${nVariants} unique keywords
             - Include 3-5 high-intent transactional keywords
             - Include 3-5 broader awareness keywords
             - Include at least 2 location-based keywords if applicable
@@ -39,11 +40,7 @@ export const Keywords: Partial<Ads.AssetPromptMap> = {
 
             Remember: Quality keywords connect your ads with people actively searching for what you offer. Focus on relevance and intent over volume.
 
-            ## Background:
-            ${likedKeywords?.length ? `The user likes these keywords:\n${likedKeywords.map((k: Ads.Keyword, i: number) => `${i+1}. ${k.text}`).join('\n')}` : 'None provided yet.'}
-            
-            The user DOES NOT LIKE the following keywords (avoid these patterns and similar themes):
-            ${rejectedKeywords?.map((k: Ads.Keyword, i: number) => `${i+1}. ${k.text}`).join('\n') || 'None provided yet.'}
+            ${userPrefs}
         `;
         },
         outputFormat: [
@@ -51,22 +48,6 @@ export const Keywords: Partial<Ads.AssetPromptMap> = {
             "keyword 2",
             "keyword 3",
             "keyword 4",
-            "keyword 5",
-            "keyword 6",
-            "keyword 7",
-            "keyword 8",
-            "keyword 9",
-            "keyword 10",
-            "keyword 11",
-            "keyword 12",
-            "keyword 13",
-            "keyword 14",
-            "keyword 15",
-            "keyword 16",
-            "keyword 17",
-            "keyword 18",
-            "keyword 19",
-            "keyword 20"
         ]
     }
 }

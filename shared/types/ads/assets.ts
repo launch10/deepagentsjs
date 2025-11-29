@@ -18,7 +18,7 @@ export const AssetSchema = z.object({
 export type Asset = z.infer<typeof AssetSchema>;
 export interface Headline extends Asset {}
 export interface Description extends Asset {}
-export interface UniqueFeature extends Asset {}
+export interface Callout extends Asset {}
 export interface StructuredSnippetCategory extends Asset {}
 export interface StructuredSnippetDetail extends Asset {}
 
@@ -65,10 +65,15 @@ export const Stages: StageMap = {
     }
 };
 
-type PromptFn = (state: any, config?: any) => string;
+type PromptFn = (state: any, config?: any) => Promise<string>;
 export interface AssetPromptConfig {
     prompt: PromptFn;
     outputFormat: object;
 }
 
 export type AssetPromptMap = Record<AssetKind, AssetPromptConfig>;
+
+export type RefreshContext = {
+    asset: AssetKind;
+    nVariants: number;
+};

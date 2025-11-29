@@ -1,16 +1,16 @@
 import { type Ads } from "@types";
 import { type AdsGraphState } from "@state";
+import { userPreferencesPrompt } from "./userPreferences";
 
 export const Headlines: Partial<Ads.AssetPromptMap> = {
     "headlines": {
-        prompt: (state: AdsGraphState, _config?: any) => {
-            const likedHeadlines = state?.headlines?.filter((h) => h.locked);
-            const rejectedHeadlines = state?.headlines?.filter((h) => h.rejected);
-            const provideBackground = likedHeadlines?.length > 0 || rejectedHeadlines?.length > 0;
+        prompt: async (state: AdsGraphState, _config?: any): Promise<string> => {
+            const userPrefs = await userPreferencesPrompt(state, "headlines");
+            const nVariants = state.refresh?.nVariants || 6;
 
             return `
             ## Headlines
-            Generate 6 compelling headlines for this business's Google Ads campaign. Headlines are the most prominent part of text ads and appear at the top.
+            Generate ${nVariants} compelling headlines for this business's Google Ads campaign. Headlines are the most prominent part of text ads and appear at the top.
 
             **Guidelines:**
             - Each headline must be 30 characters or less (this is a strict Google Ads limit)
@@ -25,7 +25,7 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
             - Avoid excessive punctuation or ALL CAPS
 
             **Requirements:**
-            - Generate exactly 6 unique headlines
+            - Generate exactly ${nVariants} unique headlines
             - Each must be 30 characters or less
             - Vary the messaging angles to test what resonates
             - Include at least one headline with the business name or brand
@@ -33,15 +33,7 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
 
             Remember: Google Ads shows up to 3 headlines at once, so they should work both independently and together.
 
-            ${
-                provideBackground 
-                    ? `User's preferences. Understand what the user likes and dislikes about the headlines, and adapt your approach accordingly:\n` +
-                      (likedHeadlines ? `Liked headlines:\n${likedHeadlines.map((h: Ads.Headline, i: number) => `${i+1}. ${h.text}`).join('\n')}\n` : '') +
-                      (rejectedHeadlines ? `Rejected headlines (avoid these patterns):\n${rejectedHeadlines.map((h: Ads.Headline, i: number) => `${i+1}. ${h.text}`).join('\n')}\n` : '')
-                    : ''
-            }
-
-            ${provideBackground ? 'Always generate net-new, unique headlines (do not repeat ones user previously liked or rejected).' : ''}
+            ${userPrefs}
         `;
         },
         outputFormat: [

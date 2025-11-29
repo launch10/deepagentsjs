@@ -40,68 +40,6 @@ const dynamicPromptMiddleware = createMiddleware({
     },
 });
 
-
-class MessageProcessor<TGraphState> {
-    message: AIMessage;
-    schema: z.ZodSchema;
-
-    constructor(message: AIMessage, schema: z.ZodSchema) {
-        this.message = message;
-        this.schema = schema;
-    }
-
-    async parse(): Promise<[AIMessage, Partial<TGraphState>]> {
-        const structuredMessage = (await toStructuredMessage(this.message)) as AIMessage;
-        const message = this.extractMessage(structuredMessage);
-        const state = this.extractState(structuredMessage);
-        return [message, state];
-    }
-
-    private extractMessage(structuredMessage: AIMessage): AIMessage {
-        const cleaned = this.cleanMessage(structuredMessage);
-        const responseMetadata = structuredMessage.response_metadata || {};
-        const aiMessage = new AIMessage(cleaned);
-        aiMessage.response_metadata = responseMetadata;
-
-        return aiMessage;
-    }
-
-    private cleanMessage(message: AIMessage): string {
-        const content = message.content as string;
-        if (!content) return '';
-        return content.replace(/```json.*?```/gs, '').trim().replace(/\n{3,}/, "\n\n");
-    }
-
-    private extractState(message: AIMessage): Partial<TGraphState> {
-        const parsedBlocks = message.response_metadata?.parsed_blocks;
-        const parsedData = Array.isArray(parsedBlocks) && parsedBlocks.length > 0 
-            ? parsedBlocks[0]?.parsed 
-            : undefined;
-
-        if (!parsedData) {
-            return {} as Partial<TGraphState>;
-        }
-
-        const validationResult = this.schema.safeParse(parsedData);
-        if (!validationResult.success) {
-            return {} as Partial<TGraphState>;
-        }
-
-        const stateData = Object.entries(validationResult.data).reduce((acc, [key, value]) => {
-            if (Array.isArray(value)) {
-                acc[key] = value.map((text: string) => ({
-                    text,
-                    rejected: false,
-                    locked: false
-                }));
-            }
-            return acc;
-        }, {} as Record<string, any>);
-        
-        return stateData as Partial<TGraphState>;
-    }
-}
-
 const mergeStructuredOutput = (
     existing: Ads.Asset[],
     incoming: string[],
