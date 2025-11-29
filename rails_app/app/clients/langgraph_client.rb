@@ -1,8 +1,13 @@
 class LanggraphClient < ApplicationClient
   BASE_URI = Langgraph.url
 
-  def extract_qa(content:, metadata: {})
-    post('/api/documents/extract-qa', body: { content: content, metadata: metadata })
+  def extract_qa_async(job_run_id:, document_id:, content:, metadata: {})
+    post('/api/documents/extract-qa', body: {
+      job_run_id: job_run_id,
+      document_id: document_id,
+      content: content,
+      metadata: metadata
+    })
   end
 
   private

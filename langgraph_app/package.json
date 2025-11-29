@@ -11,6 +11,8 @@
   },
   "scripts": {
     "dev": "tsx watch ./server.ts",
+    "worker": "tsx ./app/workers/documentExtractionWorker.ts",
+    "worker:dev": "tsx watch ./app/workers/documentExtractionWorker.ts",
     "dev:debug": "NODE_OPTIONS=--inspect-brk tsx ./server.ts",
     "test": "vitest tests/tests --run --no-file-parallelism",
     "test:watch": "vitest",
@@ -50,6 +52,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/wait-on": "^5.3.4",
+    "bullmq": "^5.65.0",
     "change-case": "^5.4.4",
     "chokidar": "^4.0.3",
     "chroma-js": "^3.1.2",

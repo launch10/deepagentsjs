@@ -18,7 +18,7 @@ module GoogleDocs
       files = client.list_files_in_folder(FOLDER_PATHS['FAQs'])
       Rails.logger.info("[GoogleDocs::SyncService] Found #{files.count} documents in FAQs")
 
-      results = { synced: [], skipped: [], failed: [] }
+      results = { queued: [], skipped: [], failed: [] }
 
       files.each do |file|
         result = sync_document(file)
@@ -54,33 +54,31 @@ module GoogleDocs
           google_created_time: metadata[:created_time]
         }
       )
-      binding.pry
 
-      extract_and_sync_chunks(doc)
+      enqueue_extraction(doc)
 
-      Rails.logger.info("[GoogleDocs::SyncService] Synced #{file.name}")
-      { status: :synced, file: file.name, document_id: doc.id }
+      Rails.logger.info("[GoogleDocs::SyncService] Queued extraction for #{file.name}")
+      { status: :queued, file: file.name, document_id: doc.id }
     end
 
     private
 
-    def extract_and_sync_chunks(doc)
+    def enqueue_extraction(doc)
       return if doc.content.blank?
 
-      response = langgraph_client.extract_qa(
+      job_run = JobRun.create_for('GoogleDocs::ExtractQA', {
+        document_id: doc.id,
+        document_title: doc.title
+      })
+
+      job_run.start!
+
+      langgraph_client.extract_qa_async(
+        job_run_id: job_run.id,
+        document_id: doc.id,
         content: doc.content,
         metadata: { title: doc.title }
       )
-
-      pairs = response.pairs.map do |pair|
-        {
-          question: pair.question,
-          answer: pair.answer,
-          section: pair.section
-        }
-      end
-
-      doc.sync_chunks(pairs)
     end
 
     def generate_slug(name)
