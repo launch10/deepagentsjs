@@ -11,6 +11,24 @@ cp .env.test.example .env.test
 pnpm test
 ```
 
+## Running Server
+
+```
+pnpm dev
+```
+
+## Running Workers
+
+```
+pnpm worker
+```
+
+## Running Tests
+
+```
+pnpm test
+```
+
 ### Run Database Schema Generation (For Drizzle)
 
 - We don't manage the database in this application, we manage it in Rails

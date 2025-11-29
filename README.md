@@ -56,12 +56,26 @@ cd rails_app
 bundle exec rails s
 ```
 
+## Running Rails Workers
+
+```bash
+cd rails_app
+bundle exec sidekiq
+```
+
 ## Running Langgraph Backend
 
 ```bash
 cd langgraph_app
 nvm use && pnpm install
 pnpm run dev
+```
+
+## Running Langgraph Workers
+
+```bash
+cd langgraph_app
+pnpm worker
 ```
 
 ## Installation
