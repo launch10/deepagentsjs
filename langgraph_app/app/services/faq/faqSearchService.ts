@@ -25,12 +25,18 @@ export interface FAQSearchResult {
   tags: string[];
   relevanceScore: number;
 }
-
 export class FAQSearchService {
   private embeddingModel: OpenAIEmbeddings;
   private rerankService: CohereRerankService | null = null;
 
   constructor() {
+    if (!env.OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is required");
+    }
+    if (!env.COHERE_API_KEY) {
+      console.warn("COHERE_API_KEY is not set. Reranking will be disabled.");
+    }
+
     this.embeddingModel = new OpenAIEmbeddings({
       openAIApiKey: env.OPENAI_API_KEY,
       modelName: "text-embedding-3-small",
