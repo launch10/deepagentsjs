@@ -5,12 +5,6 @@ import { ResponseTemplates } from "./responseTemplates";
 import { isPseudoMessage } from "../pseudoMessages";
 import { HumanMessage } from "@langchain/core/messages";
 
-export const shouldIncludeFaqTool = (state: AdsGraphState): boolean => {
-    const lastMessage = state.messages?.at(-1);
-    const isRealHumanMessage = lastMessage && HumanMessage.isInstance(lastMessage) && !isPseudoMessage(lastMessage);
-    return Boolean(isRealHumanMessage);
-};
-
 const buildPreviousAssetsContext = (state: AdsGraphState): string => {
     const sections: string[] = [];
 
@@ -44,8 +38,8 @@ const buildPreviousAssetsContext = (state: AdsGraphState): string => {
     if (calloutsContext) sections.push(calloutsContext);
     if (keywordsContext) sections.push(keywordsContext);
 
-    if (state.structuredSnippet) {
-        const { category, details } = state.structuredSnippet;
+    if (state.structuredSnippets) {
+        const { category, details } = state.structuredSnippets;
         const lockedDetails = details?.filter(d => d.locked) || [];
         const rejectedDetails = details?.filter(d => d.rejected) || [];
         

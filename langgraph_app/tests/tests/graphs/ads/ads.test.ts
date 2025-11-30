@@ -134,9 +134,9 @@ describe.sequential('Ads Flow', () => {
                 .execute();
 
             expect(result.state.callouts?.length).toEqual(6);
-            expect(result.state.structuredSnippet).toBeDefined();
-            expect(result.state.structuredSnippet?.category).toBeDefined();
-            expect(result.state.structuredSnippet?.details?.length).toBeGreaterThanOrEqual(3);
+            expect(result.state.structuredSnippets).toBeDefined();
+            expect(result.state.structuredSnippets?.category).toBeDefined();
+            expect(result.state.structuredSnippets?.details?.length).toBeGreaterThanOrEqual(3);
             
             const lastMessage = result.state.messages?.at(-1) as AIMessage;
             const stateData = getStateData(lastMessage);
@@ -149,10 +149,10 @@ describe.sequential('Ads Flow', () => {
             const callouts = stateData.callouts || [];
             expect(callouts.length).toEqual(Ads.DefaultNumAssets.callouts);
 
-            const structuredSnippet = stateData.structuredSnippet;
-            expect(structuredSnippet).toBeDefined();
-            expect(structuredSnippet.category).toBeDefined();
-            expect(structuredSnippet.details?.length).toEqual(Ads.DefaultNumAssets.structured_snippets);
+            const structuredSnippets = stateData.structuredSnippets;
+            expect(structuredSnippets).toBeDefined();
+            expect(structuredSnippets.category).toBeDefined();
+            expect(structuredSnippets.details?.length).toEqual(Ads.DefaultNumAssets.structuredSnippets);
         });
 
         it("refreshes only callouts, when using refresh context", async () => {
@@ -171,7 +171,7 @@ describe.sequential('Ads Flow', () => {
                 throw new Error("Not enough callouts available for testing");
             }
 
-            if (!result.state.structuredSnippet?.details) {
+            if (!result.state.structuredSnippets?.details) {
                 throw new Error("Structured snippet details not available for testing");
             }
 
@@ -196,7 +196,7 @@ describe.sequential('Ads Flow', () => {
                 })
                 .execute();
 
-            if (!refreshedResult.state.structuredSnippet?.details) {
+            if (!refreshedResult.state.structuredSnippets?.details) {
                 throw new Error("Refreshed structured snippet details not available");
             }
 
@@ -212,8 +212,8 @@ describe.sequential('Ads Flow', () => {
             expect(newCallouts.length).toBeLessThan(4);
 
             const newSnippets = Ads.diffAssets(
-                result.state.structuredSnippet.details,
-                refreshedResult.state.structuredSnippet.details,
+                result.state.structuredSnippets.details,
+                refreshedResult.state.structuredSnippets.details,
             )
             expect(newSnippets).toBeDefined();
             expect(Array.isArray(newSnippets)).toBe(true);
@@ -239,7 +239,7 @@ describe.sequential('Ads Flow', () => {
                 throw new Error("Not enough callouts available for testing");
             }
 
-            if (!result.state.structuredSnippet?.details) {
+            if (!result.state.structuredSnippets?.details) {
                 throw new Error("Structured snippet details not available for testing");
             }
 
@@ -249,15 +249,15 @@ describe.sequential('Ads Flow', () => {
                     projectUUID,
                     stage: "highlights",
                     refresh: {
-                        asset: "structured_snippets",
+                        asset: "structuredSnippets",
                         nVariants: 1
                     },
                     callouts: result.state.callouts,
-                    structuredSnippet: result.state.structuredSnippet
+                    structuredSnippets: result.state.structuredSnippets
                 })
                 .execute();
 
-            if (!refreshedResult.state.structuredSnippet?.details) {
+            if (!refreshedResult.state.structuredSnippets?.details) {
                 throw new Error("Refreshed structured snippet details not available");
             }
 
@@ -272,8 +272,8 @@ describe.sequential('Ads Flow', () => {
             expect(newCallouts.length).toEqual(0); // Should generate 0 new callouts (same data)
 
             const newSnippets = Ads.diffAssets(
-                result.state.structuredSnippet.details,
-                refreshedResult.state.structuredSnippet.details,
+                result.state.structuredSnippets.details,
+                refreshedResult.state.structuredSnippets.details,
             )
             expect(newSnippets).toBeDefined();
             expect(Array.isArray(newSnippets)).toBe(true);
@@ -413,8 +413,8 @@ describe.sequential('Ads Flow', () => {
                 .execute();
 
             expect(highlightsResult.state.callouts?.length).toEqual(6);
-            expect(highlightsResult.state.structuredSnippet).toBeDefined();
-            expect(highlightsResult.state.structuredSnippet?.details?.length).toBeGreaterThanOrEqual(3);
+            expect(highlightsResult.state.structuredSnippets).toBeDefined();
+            expect(highlightsResult.state.structuredSnippets?.details?.length).toBeGreaterThanOrEqual(3);
 
             // Verify headlines and descriptions are preserved
             expect(highlightsResult.state.headlines).toEqual(refreshHeadlinesResult.state.headlines);
@@ -442,7 +442,7 @@ describe.sequential('Ads Flow', () => {
             expect(newCallouts.length).toBeGreaterThan(0);
 
             // Verify structured snippets unchanged
-            expect(refreshCalloutsResult.state.structuredSnippet).toEqual(highlightsResult.state.structuredSnippet);
+            expect(refreshCalloutsResult.state.structuredSnippets).toEqual(highlightsResult.state.structuredSnippets);
 
             // Step 5: Navigate to keywords stage
             const keywordsResult = await testGraph<AdsGraphState>()
@@ -460,7 +460,7 @@ describe.sequential('Ads Flow', () => {
             expect(keywordsResult.state.headlines).toEqual(refreshCalloutsResult.state.headlines);
             expect(keywordsResult.state.descriptions).toEqual(refreshCalloutsResult.state.descriptions);
             expect(keywordsResult.state.callouts).toEqual(refreshCalloutsResult.state.callouts);
-            expect(keywordsResult.state.structuredSnippet).toEqual(refreshCalloutsResult.state.structuredSnippet);
+            expect(keywordsResult.state.structuredSnippets).toEqual(refreshCalloutsResult.state.structuredSnippets);
 
             // User locks some keywords
             const keywords = keywordsResult.state.keywords as Ads.Asset[];

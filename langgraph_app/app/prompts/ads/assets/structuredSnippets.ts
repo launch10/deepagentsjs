@@ -2,12 +2,12 @@ import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
 import { userPreferencesPrompt } from "./userPreferences";
 
-export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
-    "structured_snippets": {
+export const StructuredSnippetss: Partial<Ads.AssetPromptMap> = {
+    "structuredSnippets": {
         prompt: async (state: AdsGraphState, _config?: any) => {
-            const snippetCategory = state?.structuredSnippet?.category?.text
-            const userPrefs = await userPreferencesPrompt(state, "structured_snippets");
-            const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structured_snippets;
+            const snippetCategory = state?.structuredSnippets?.category?.text
+            const userPrefs = await userPreferencesPrompt(state, "structuredSnippets");
+            const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structuredSnippets;
 
             return `
             ## Product or Service Offerings (Structured Snippets)
@@ -36,9 +36,9 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
         `;
         },
         outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-            const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structured_snippets;
+            const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structuredSnippets;
             return {
-                structuredSnippet: {
+                structuredSnippets: {
                     category: "Types",
                     details: Array.from({ length: numberOfDetails }, (_, i) => `Detail ${i + 1}`)
                 }

@@ -12,7 +12,7 @@ export type AdsGraphState = Simplify<CoreGraphState & {
     headlines: Ads.Headline[] | undefined;
     descriptions: Ads.Description[] | undefined;
     callouts: Ads.Callout[] | undefined;
-    structuredSnippet: Ads.StructuredSnippet | undefined;
+    structuredSnippets: Ads.StructuredSnippets | undefined;
     keywords: Ads.Keyword[] | undefined;
     availableCommands: Ads.CommandName[];
     command: Ads.CommandName | undefined;

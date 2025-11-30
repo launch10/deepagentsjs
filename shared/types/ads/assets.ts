@@ -3,7 +3,7 @@ import {
     LaunchAdCampaignSubsteps
  } from "../workflow";
 
-export const AssetKinds = ["headlines", "descriptions", "callouts", "structured_snippets", "keywords"] as const;
+export const AssetKinds = ["headlines", "descriptions", "callouts", "structuredSnippets", "keywords"] as const;
 export type AssetKind = typeof AssetKinds[number];
 
 export const StageNames = LaunchAdCampaignSubsteps;
@@ -19,14 +19,14 @@ export type Asset = z.infer<typeof AssetSchema>;
 export interface Headline extends Asset {}
 export interface Description extends Asset {}
 export interface Callout extends Asset {}
-export interface StructuredSnippetCategory extends Asset {}
-export interface StructuredSnippetDetail extends Asset {}
+export interface StructuredSnippetsCategory extends Asset {}
+export interface StructuredSnippetsDetail extends Asset {}
 
-export const StructuredSnippetSchema = z.object({
+export const StructuredSnippetsSchema = z.object({
     category: AssetSchema,
     details: z.array(AssetSchema)
 });
-export type StructuredSnippet = z.infer<typeof StructuredSnippetSchema>;
+export type StructuredSnippets = z.infer<typeof StructuredSnippetsSchema>;
 export interface Keyword extends Asset {}
 
 export type Stage = {
@@ -45,7 +45,7 @@ export const Stages: StageMap = {
     },
     "highlights": {
         stage: "highlights",
-        assets: ["callouts", "structured_snippets"]
+        assets: ["callouts", "structuredSnippets"]
     },
     "keywords": {
         stage: "keywords",
@@ -85,7 +85,7 @@ export const DefaultNumAssets: Record<AssetKind, number> = {
     headlines: 6,
     descriptions: 4,
     callouts: 6,
-    structured_snippets: 3,
+    structuredSnippets: 3,
     keywords: 8
 };
 

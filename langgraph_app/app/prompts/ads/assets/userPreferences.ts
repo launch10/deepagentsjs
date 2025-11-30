@@ -5,8 +5,8 @@ import { Ads } from "@types";
 export const userPreferencesPrompt = async (state: AdsGraphState, asset: Ads.AssetKind) => {
     let assets: Ads.Asset[] | undefined;
 
-    if (asset === "structured_snippets") {
-        const snippet = state.structuredSnippet;
+    if (asset === "structuredSnippets") {
+        const snippet = state.structuredSnippets;
         assets = snippet ? snippet.details satisfies Ads.Asset[] : undefined;
     } else {
         assets = (state[asset] || []) satisfies Ads.Asset[];
