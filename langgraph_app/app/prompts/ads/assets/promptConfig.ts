@@ -3,7 +3,7 @@ import { Callouts } from "./callouts";
 import { Descriptions } from "./descriptions";
 import { Headlines } from "./headlines";
 import { Keywords } from "./keywords";
-import { StructuredSnippetss } from "./structuredSnippetss";
+import { StructuredSnippetss } from "./structuredSnippets";
 
 export const promptConfig: Ads.AssetPromptMap = {
     ...Headlines,
