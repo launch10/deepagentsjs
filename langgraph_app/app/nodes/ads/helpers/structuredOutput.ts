@@ -47,7 +47,7 @@ export const getStructuredData = (state: AdsGraphState, lastMessage: AIMessage) 
         return acc;
     }, {} as Partial<AdsGraphState>);
 
-    return structuredData;
+    return applyImplicitRefresh(state, structuredData);
 }
 
 const mergeStructuredOutput = (
@@ -66,6 +66,60 @@ const mergeStructuredOutput = (
             rejected: false,
             locked: false
         });
+    }
+
+    return result;
+};
+
+const applyImplicitRefresh = (
+    originalState: AdsGraphState,
+    structuredData: Partial<AdsGraphState>
+): Partial<AdsGraphState> => {
+    if (originalState.refresh) {
+        return structuredData;
+    }
+
+    const result = { ...structuredData };
+
+    for (const key of Ads.AssetKinds) {
+        if (key === 'structuredSnippets') {
+            const originalDetails = originalState.structuredSnippets?.details || [];
+            const newDetails = structuredData.structuredSnippets?.details || [];
+            
+            if (originalDetails.length > 0 && newDetails.length > originalDetails.length) {
+                const originalTexts = new Set(originalDetails.map(d => d.text));
+                const hasNewAssets = newDetails.some(d => !originalTexts.has(d.text));
+                
+                if (hasNewAssets && result.structuredSnippets) {
+                    result.structuredSnippets = {
+                        ...result.structuredSnippets,
+                        details: newDetails.map(asset => {
+                            if (originalTexts.has(asset.text) && !asset.locked) {
+                                return { ...asset, rejected: true };
+                            }
+                            return asset;
+                        })
+                    };
+                }
+            }
+        } else {
+            const originalAssets = originalState[key] as Ads.Asset[] | undefined;
+            const newAssets = structuredData[key] as Ads.Asset[] | undefined;
+            
+            if (originalAssets && originalAssets.length > 0 && newAssets && newAssets.length > originalAssets.length) {
+                const originalTexts = new Set(originalAssets.map(a => a.text));
+                const hasNewAssets = newAssets.some(a => !originalTexts.has(a.text));
+                
+                if (hasNewAssets) {
+                    (result as any)[key] = newAssets.map(asset => {
+                        if (originalTexts.has(asset.text) && !asset.locked) {
+                            return { ...asset, rejected: true };
+                        }
+                        return asset;
+                    });
+                }
+            }
+        }
     }
 
     return result;

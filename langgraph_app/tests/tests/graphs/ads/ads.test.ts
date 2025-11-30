@@ -95,11 +95,6 @@ describe.sequential('Ads Flow', () => {
             headlines[0].locked = true;
             headlines[1].locked = true;
             headlines[2].locked = true;
-            [3, 4, 5].forEach(index => {
-                if (headlines[index]) {
-                    headlines[index].rejected = true;
-                }
-            });
 
             const originalDescriptions = result.state.descriptions;
             
@@ -116,15 +111,25 @@ describe.sequential('Ads Flow', () => {
                     descriptions: result.state.descriptions
                 })
                 .execute();
+
+            const originalUnlockedHeadlines = headlines.filter(h => !h.locked);
+            const refreshedUnlockedHeadlines = refreshedResult.state.headlines?.filter(
+                h => originalUnlockedHeadlines.some(orig => orig.text === h.text)
+            );
+            const rejectedHeadlines = refreshedUnlockedHeadlines?.filter(h => h.rejected);
+            // Important: We implicitly reject any headline that wasn't locked
+            expect(refreshedUnlockedHeadlines?.every(h => h.rejected)).toBe(true);
+
+            const lockedHeadlines = refreshedResult.state.headlines?.filter(h => h.locked);
+            expect(lockedHeadlines?.every(h => !h.rejected)).toBe(true);
                 
-            const nonRejectedHeadlines = refreshedResult.state.headlines?.filter(h => !h.rejected);
-            const uniqueNonRejectedCount = new Set(nonRejectedHeadlines?.map(h => h.text)).size;
-            expect(uniqueNonRejectedCount).toEqual(5); // It uses nVariants=2 to generate 2 new headlines, plus the 3 existing locked + 2 new = 5 total
+            const newHeadlines = refreshedResult.state.headlines?.filter(h => !h.rejected && !h.locked);
+            expect(newHeadlines?.length).toEqual(2); // 2 new headlines
 
             expect(refreshedResult.state.descriptions).toEqual(originalDescriptions);
         });
 
-        it.only("specifically refreshes headlines using suggestions from the user", async () => {
+        it("specifically refreshes headlines using suggestions from the user", async () => {
             const result = await testGraph<AdsGraphState>()
                 .withGraph(adsGraph)
                 .withState({
@@ -144,7 +149,19 @@ describe.sequential('Ads Flow', () => {
                 })
                 .execute();
                 
-                debugger;
+            const allHeadlines = refreshedResult.state.headlines || [];
+            const originalHeadlines = result.state.headlines || [];
+            const originalTexts = new Set(originalHeadlines.map(h => h.text));
+            
+            const rejectedHeadlines = allHeadlines.filter(h => h.rejected);
+            const newHeadlines = allHeadlines.filter(h => !h.rejected);
+            
+            expect(originalHeadlines.length).toEqual(6);
+            expect(allHeadlines.length).toEqual(12);
+            expect(rejectedHeadlines.length).toEqual(6);
+            expect(newHeadlines.length).toEqual(6);
+            expect(rejectedHeadlines.every(h => originalTexts.has(h.text))).toBe(true);
+            expect(newHeadlines.every(h => !originalTexts.has(h.text))).toBe(true);
         });
 
         it("automatically populates callouts and structured snippets on highlights stage", async () => {
@@ -202,11 +219,6 @@ describe.sequential('Ads Flow', () => {
             callouts[1].text = `24/7 Support`;
             callouts[0].locked = true;
             callouts[1].locked = true;
-            [2, 3, 4, 5].forEach(index => {
-                if (callouts[index]) {
-                    callouts[index].rejected = true;
-                }
-            });
 
             const refreshedResult = await testGraph<AdsGraphState>()
                 .withGraph(adsGraph)
@@ -226,6 +238,15 @@ describe.sequential('Ads Flow', () => {
             if (!refreshedResult.state.callouts) {
                 throw new Error("Refreshed callouts not available");
             }
+
+            const originalNonLockedCallouts = callouts.filter(c => !c.locked);
+            const refreshedCalloutsFromOriginal = refreshedResult.state.callouts?.filter(
+                c => originalNonLockedCallouts.some(orig => orig.text === c.text)
+            );
+            expect(refreshedCalloutsFromOriginal?.every(c => c.rejected)).toBe(true);
+
+            const lockedCallouts = refreshedResult.state.callouts?.filter(c => c.locked);
+            expect(lockedCallouts?.every(c => !c.rejected)).toBe(true);
 
             const newCallouts = Ads.diffAssets(
                 callouts,
@@ -350,11 +371,6 @@ describe.sequential('Ads Flow', () => {
             keywords[0].locked = true;
             keywords[1].locked = true;
             keywords[2].locked = true;
-            [3, 4, 5, 6, 7].forEach(index => {
-                if (keywords[index]) {
-                    keywords[index].rejected = true;
-                }
-            });
             
             const refreshedResult = await testGraph<AdsGraphState>()
                 .withGraph(adsGraph)
@@ -371,6 +387,15 @@ describe.sequential('Ads Flow', () => {
             if (!refreshedResult.state.keywords) {
                 throw new Error("Refreshed keywords are undefined");
             }
+
+            const originalNonLockedKeywords = keywords.filter(k => !k.locked);
+            const refreshedKeywordsFromOriginal = refreshedResult.state.keywords?.filter(
+                k => originalNonLockedKeywords.some(orig => orig.text === k.text)
+            );
+            expect(refreshedKeywordsFromOriginal?.every(k => k.rejected)).toBe(true);
+
+            const lockedKeywords = refreshedResult.state.keywords?.filter(k => k.locked);
+            expect(lockedKeywords?.every(k => !k.rejected)).toBe(true);
                 
             const newKeywords = Ads.diffAssets(keywords, refreshedResult.state.keywords);
             expect(newKeywords).toBeDefined();
@@ -410,14 +435,12 @@ describe.sequential('Ads Flow', () => {
 
             // User locks some headlines they like
             const headlines = contentResult.state.headlines as Ads.Asset[];
-            headlines[0].locked = true;
-            headlines[1].locked = true;
-            [2, 3, 4, 5].forEach(i => { if (headlines[i]) headlines[i].rejected = true; });
+            headlines[0]!.locked = true;
+            headlines[1]!.locked = true;
 
             // Lock some descriptions
             const descriptions = contentResult.state.descriptions as Ads.Asset[];
-            descriptions[0].locked = true;
-            [1, 2, 3].forEach(i => { if (descriptions[i]) descriptions[i].rejected = true; });
+            descriptions[0]!.locked = true;
 
             // Step 2: Refresh headlines (user wants more options)
             const refreshHeadlinesResult = await testGraph<AdsGraphState>()
@@ -434,6 +457,14 @@ describe.sequential('Ads Flow', () => {
             const newHeadlines = Ads.diffAssets(headlines, refreshHeadlinesResult.state.headlines!);
             expect(newHeadlines.length).toBeGreaterThan(0);
             expect(refreshHeadlinesResult.state.messages?.length).toBeGreaterThan(contentResult.state.messages?.length || 0);
+
+            // Verify non-locked headlines were auto-rejected, but descriptions unchanged
+            const originalNonLockedHeadlines = headlines.filter(h => !h.locked);
+            const rejectedFromOriginal = refreshHeadlinesResult.state.headlines?.filter(
+                h => originalNonLockedHeadlines.some(orig => orig.text === h.text)
+            );
+            expect(rejectedFromOriginal?.every(h => h.rejected)).toBe(true);
+            expect(refreshHeadlinesResult.state.descriptions).toEqual(contentResult.state.descriptions);
 
             // User locks one more headline
             const updatedHeadlines = refreshHeadlinesResult.state.headlines as Ads.Asset[];
@@ -460,9 +491,8 @@ describe.sequential('Ads Flow', () => {
 
             // User locks some callouts
             const callouts = highlightsResult.state.callouts as Ads.Asset[];
-            callouts[0].locked = true;
-            callouts[1].locked = true;
-            [2, 3, 4, 5].forEach(i => { if (callouts[i]) callouts[i].rejected = true; });
+            callouts[0]!.locked = true;
+            callouts[1]!.locked = true;
 
             // Step 4: Refresh callouts
             const refreshCalloutsResult = await testGraph<AdsGraphState>()
@@ -478,6 +508,13 @@ describe.sequential('Ads Flow', () => {
 
             const newCallouts = Ads.diffAssets(callouts, refreshCalloutsResult.state.callouts!);
             expect(newCallouts.length).toBeGreaterThan(0);
+
+            // Verify non-locked callouts were auto-rejected
+            const originalNonLockedCallouts = callouts.filter(c => !c.locked);
+            const rejectedCalloutsFromOriginal = refreshCalloutsResult.state.callouts?.filter(
+                c => originalNonLockedCallouts.some(orig => orig.text === c.text)
+            );
+            expect(rejectedCalloutsFromOriginal?.every(c => c.rejected)).toBe(true);
 
             // Verify structured snippets unchanged
             expect(refreshCalloutsResult.state.structuredSnippets).toEqual(highlightsResult.state.structuredSnippets);
@@ -502,9 +539,8 @@ describe.sequential('Ads Flow', () => {
 
             // User locks some keywords
             const keywords = keywordsResult.state.keywords as Ads.Asset[];
-            keywords[0].locked = true;
-            keywords[1].locked = true;
-            [2, 3, 4, 5, 6, 7].forEach(i => { if (keywords[i]) keywords[i].rejected = true; });
+            keywords[0]!.locked = true;
+            keywords[1]!.locked = true;
 
             // Step 6: Refresh keywords
             const refreshKeywordsResult = await testGraph<AdsGraphState>()
@@ -520,6 +556,13 @@ describe.sequential('Ads Flow', () => {
 
             const newKeywords = Ads.diffAssets(keywords, refreshKeywordsResult.state.keywords!);
             expect(newKeywords.length).toBeGreaterThan(0);
+
+            // Verify non-locked keywords were auto-rejected
+            const originalNonLockedKeywords = keywords.filter(k => !k.locked);
+            const rejectedKeywordsFromOriginal = refreshKeywordsResult.state.keywords?.filter(
+                k => originalNonLockedKeywords.some(orig => orig.text === k.text)
+            );
+            expect(rejectedKeywordsFromOriginal?.every(k => k.rejected)).toBe(true);
 
             // Verify message history has grown throughout the workflow
             expect(refreshKeywordsResult.state.messages?.length).toBeGreaterThan(5);
