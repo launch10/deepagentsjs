@@ -6,6 +6,7 @@
 #  address_line_1      :string
 #  city                :string
 #  country_code        :string
+#  deleted_at          :datetime
 #  latitude            :decimal(10, 6)
 #  location_identifier :string
 #  location_name       :string
@@ -26,12 +27,15 @@
 #
 #  index_ad_location_targets_on_campaign_id          (campaign_id)
 #  index_ad_location_targets_on_criterion_id         ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)))
+#  index_ad_location_targets_on_deleted_at           (deleted_at)
 #  index_ad_location_targets_on_location_identifier  (location_identifier)
 #  index_ad_location_targets_on_platform_settings    (platform_settings) USING gin
 #
 class AdLocationTarget < ApplicationRecord
   include PlatformSettings
   platform_setting :google, :criterion_id
+
+  acts_as_paranoid
 
   belongs_to :campaign
 

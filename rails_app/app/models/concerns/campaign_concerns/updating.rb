@@ -115,28 +115,42 @@ module CampaignConcerns
         @saves_to_perform.each(&:call)
       end
 
-      def queue_deletion(relation, attrs_array)
-        submitted_ids = attrs_array.map { |attrs| attrs[:id] || attrs["id"] }.compact.map(&:to_i)
-        @deletions_to_perform << -> { relation.where.not(id: submitted_ids).delete_all }
+      def queue_soft_deletion(relation, attrs_array)
+        submitted_positions = attrs_array.map { |attrs| attrs.with_indifferent_access[:position] }.compact.map(&:to_i)
+        @deletions_to_perform << -> {
+          relation.where.not(position: submitted_positions).update_all(deleted_at: Time.current)
+        }
       end
 
-      def prepare_headlines(ad, headlines_attrs)
-        queue_deletion(ad.headlines, headlines_attrs)
+      # asset_hashes is an array of headline/description attributes hashes
+      def add_positions(asset_hashes)
+        asset_hashes.each_with_index do |asset, index|
+          asset[:position] = index
+        end
+      end
+
+      def prepare_headlines(ad, headline_attrs)
+        add_positions(headline_attrs)
+        queue_soft_deletion(ad.headlines, headline_attrs)
 
         headlines_to_update = []
-        headlines_to_create = []
         all_headlines = []
-        existing_headlines = ad.headlines.reload.index_by(&:id)
+        existing_headlines = AdHeadline.unscoped.where(ad_id: ad.id).index_by(&:position) # Include soft-deleted records
         ad_group_index = find_ad_group_index(ad.ad_group_id)
         ad_index = find_ad_index(ad.ad_group_id, ad.id)
 
-        headlines_attrs.each_with_index do |attrs, idx|
+        headline_attrs.each_with_index do |attrs, idx|
           path = "ad_groups[#{ad_group_index}].ads[#{ad_index}].headlines[#{idx}]"
 
-          if attrs[:id]
-            headline = existing_headlines[attrs[:id]]
+          if attrs[:position] # use position instead of id
+            headline = existing_headlines[attrs[:position]]
             if headline
-              headline.assign_attributes(text: attrs[:text], position: attrs[:position], platform_settings: attrs[:platform_settings])
+              headline.assign_attributes(
+                text: attrs[:text],
+                position: attrs[:position],
+                platform_settings: attrs[:platform_settings],
+                deleted_at: nil # explicitly set, in case it was soft-deleted
+              )
               headline.skip_position_uniqueness_validation = true
               headlines_to_update << headline
               all_headlines << headline
@@ -150,33 +164,38 @@ module CampaignConcerns
               platform_settings: attrs[:platform_settings]
             )
             new_headline.skip_position_uniqueness_validation = true
-            headlines_to_create << new_headline
+            headlines_to_update << new_headline
             all_headlines << new_headline
             add_to_validation(new_headline, path)
           end
         end
 
         validate_position_uniqueness(all_headlines, "must be unique within ad")
-        batch_upsert_and_insert(AdHeadline, headlines_to_update, headlines_to_create)
+        batch_upsert(AdHeadline, headlines_to_update)
       end
 
       def prepare_descriptions(ad, descriptions_attrs)
-        queue_deletion(ad.descriptions, descriptions_attrs)
+        add_positions(descriptions_attrs)
+        queue_soft_deletion(ad.descriptions, descriptions_attrs)
 
         descriptions_to_update = []
-        descriptions_to_create = []
         all_descriptions = []
-        existing_descriptions = ad.descriptions.reload.index_by(&:id)
+        existing_descriptions = AdDescription.unscoped.where(ad_id: ad.id).index_by(&:position)
         ad_group_index = find_ad_group_index(ad.ad_group_id)
         ad_index = find_ad_index(ad.ad_group_id, ad.id)
 
         descriptions_attrs.each_with_index do |attrs, idx|
           path = "ad_groups[#{ad_group_index}].ads[#{ad_index}].descriptions[#{idx}]"
 
-          if attrs[:id]
-            description = existing_descriptions[attrs[:id]]
+          if attrs[:position]
+            description = existing_descriptions[attrs[:position]]
             if description
-              description.assign_attributes(text: attrs[:text], position: attrs[:position], platform_settings: attrs[:platform_settings])
+              description.assign_attributes(
+                text: attrs[:text],
+                position: attrs[:position],
+                platform_settings: attrs[:platform_settings],
+                deleted_at: nil
+              )
               descriptions_to_update << description
               all_descriptions << description
               add_to_validation(description, path)
@@ -188,31 +207,36 @@ module CampaignConcerns
               position: attrs[:position],
               platform_settings: attrs[:platform_settings]
             )
-            descriptions_to_create << new_description
+            descriptions_to_update << new_description
             all_descriptions << new_description
             add_to_validation(new_description, path)
           end
         end
 
         validate_position_uniqueness(all_descriptions, "must be unique within ad")
-        batch_upsert_and_insert(AdDescription, descriptions_to_update, descriptions_to_create)
+        batch_upsert(AdDescription, descriptions_to_update)
       end
 
       def prepare_callouts(callouts_attrs)
-        queue_deletion(campaign.callouts, callouts_attrs)
+        add_positions(callouts_attrs)
+        queue_soft_deletion(campaign.callouts, callouts_attrs)
 
         callouts_to_update = []
-        callouts_to_create = []
         all_callouts = []
-        existing_callouts = campaign.callouts.reload.index_by(&:id)
+        existing_callouts = AdCallout.unscoped.where(campaign_id: campaign.id).index_by(&:position)
 
         callouts_attrs.each_with_index do |attrs, idx|
           path = "callouts[#{idx}]"
 
-          if attrs[:id]
-            callout = existing_callouts[attrs[:id]]
+          if attrs[:position]
+            callout = existing_callouts[attrs[:position]]
             if callout
-              callout.assign_attributes(text: attrs[:text], position: attrs[:position], platform_settings: attrs[:platform_settings])
+              callout.assign_attributes(
+                text: attrs[:text],
+                position: attrs[:position],
+                platform_settings: attrs[:platform_settings],
+                deleted_at: nil
+              )
               callouts_to_update << callout
               all_callouts << callout
               add_to_validation(callout, path)
@@ -225,14 +249,14 @@ module CampaignConcerns
               campaign_id: campaign.id,
               ad_group_id: campaign.ad_groups.first.id
             )
-            callouts_to_create << new_callout
+            callouts_to_update << new_callout
             all_callouts << new_callout
             add_to_validation(new_callout, path)
           end
         end
 
         validate_position_uniqueness(all_callouts, "must be unique within campaign")
-        batch_upsert_and_insert(AdCallout, callouts_to_update, callouts_to_create)
+        batch_upsert(AdCallout, callouts_to_update)
       end
 
       def prepare_location_targets(location_targets_data)
@@ -289,21 +313,26 @@ module CampaignConcerns
       end
 
       def prepare_keywords(ad_group, keywords_attrs)
-        queue_deletion(ad_group.keywords, keywords_attrs)
+        add_positions(keywords_attrs)
+        queue_soft_deletion(ad_group.keywords, keywords_attrs)
 
         keywords_to_update = []
-        keywords_to_create = []
         all_keywords = []
-        existing_keywords = ad_group.keywords.reload.index_by(&:id)
+        existing_keywords = AdKeyword.unscoped.where(ad_group_id: ad_group.id).index_by(&:position)
         ad_group_index = find_ad_group_index(ad_group.id)
 
         keywords_attrs.each_with_index do |attrs, idx|
           path = "ad_groups[#{ad_group_index}].keywords[#{idx}]"
 
-          if attrs[:id]
-            keyword = existing_keywords[attrs[:id]]
+          if attrs[:position]
+            keyword = existing_keywords[attrs[:position]]
             if keyword
-              keyword.assign_attributes(text: attrs[:text], match_type: attrs[:match_type], position: attrs[:position])
+              keyword.assign_attributes(
+                text: attrs[:text],
+                match_type: attrs[:match_type],
+                position: attrs[:position],
+                deleted_at: nil
+              )
               keywords_to_update << keyword
               all_keywords << keyword
               add_to_validation(keyword, path)
@@ -315,14 +344,14 @@ module CampaignConcerns
               match_type: attrs[:match_type],
               position: attrs[:position]
             )
-            keywords_to_create << new_keyword
+            keywords_to_update << new_keyword
             all_keywords << new_keyword
             add_to_validation(new_keyword, path)
           end
         end
 
         validate_position_uniqueness(all_keywords, "must be unique within ad group")
-        batch_upsert_and_insert(AdKeyword, keywords_to_update, keywords_to_create)
+        batch_upsert(AdKeyword, keywords_to_update)
       end
 
       def validate_position_uniqueness(records, error_message)
@@ -339,16 +368,22 @@ module CampaignConcerns
         end
       end
 
-      def batch_upsert_and_insert(model_class, to_update, to_create)
+      def batch_upsert(model_class, records)
         @saves_to_perform << -> {
-          if to_update.any?
+          return if records.empty?
+
+          new_records = records.select { |r| r.new_record? }
+          existing_records = records.reject { |r| r.new_record? }
+
+          if existing_records.any?
             model_class.upsert_all(
-              to_update.map(&:attributes).map { |attrs| attrs.except("created_at", "updated_at") }
+              existing_records.map(&:attributes).map { |attrs| attrs.except("created_at", "updated_at") }
             )
           end
-          if to_create.any?
+
+          if new_records.any?
             model_class.insert_all(
-              to_create.map { |r| r.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
+              new_records.map { |r| r.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
             )
           end
         }

@@ -3,6 +3,7 @@
 # Table name: ad_languages
 #
 #  id                :bigint           not null, primary key
+#  deleted_at        :datetime
 #  platform_settings :jsonb
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null
@@ -12,12 +13,15 @@
 #
 #  index_ad_languages_on_campaign_id           (campaign_id)
 #  index_ad_languages_on_criterion_id          ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)))
+#  index_ad_languages_on_deleted_at            (deleted_at)
 #  index_ad_languages_on_language_constant_id  ((((platform_settings -> 'google'::text) ->> 'language_constant_id'::text)))
 #  index_ad_languages_on_platform_settings     (platform_settings) USING gin
 #
 class AdLanguage < ApplicationRecord
   include PlatformSettings
   belongs_to :campaign
+
+  acts_as_paranoid
 
   GOOGLE_LANGUAGE_CODES = {
     english: "1000",

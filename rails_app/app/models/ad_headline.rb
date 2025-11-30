@@ -3,6 +3,7 @@
 # Table name: ad_headlines
 #
 #  id                :bigint           not null, primary key
+#  deleted_at        :datetime
 #  platform_settings :jsonb
 #  position          :integer          not null
 #  text              :string           not null
@@ -16,12 +17,15 @@
 #  index_ad_headlines_on_ad_id_and_position  (ad_id,position)
 #  index_ad_headlines_on_asset_id            ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)))
 #  index_ad_headlines_on_created_at          (created_at)
+#  index_ad_headlines_on_deleted_at          (deleted_at)
 #  index_ad_headlines_on_platform_settings   (platform_settings) USING gin
 #  index_ad_headlines_on_position            (position)
 #
 class AdHeadline < ApplicationRecord
   include PlatformSettings
   platform_setting :google, :asset_id
+
+  acts_as_paranoid
 
   belongs_to :ad, class_name: "Ad", inverse_of: :headlines
   has_one :campaign, through: :ad
