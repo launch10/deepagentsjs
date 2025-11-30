@@ -24,6 +24,7 @@ export interface ScorerParams {
   input: string,
   output: unknown,
   useCoT?: boolean,
+  [key: string]: unknown,
 }
 
 const getChoiceScore = (choice: string, choiceScores: Record<string, number>): number | undefined => {
@@ -34,13 +35,12 @@ const getChoiceScore = (choice: string, choiceScores: Record<string, number>): n
 }
 
 export const createScorer = ({prompt, choiceScores, additionalPromptParams = {}}: BuildScorerParams) => {
-  return async ({input, output, useCoT = false}: ScorerParams): Promise<number> => {
+  return async ({input, output, useCoT = false, ...runtimeParams}: ScorerParams): Promise<number> => {
     const llm = getLLM("reasoning")
     const outputSchema = useCoT ? COT_RESPONSE_SCHEMA : PLAIN_RESPONSE_SCHEMA;
-    additionalPromptParams["options"] = choiceScores;
+    const allParams = { ...additionalPromptParams, ...runtimeParams, options: choiceScores };
 
-    // For ollama, we need to decompose structured output to another step
-    const basePrompt = await prompt.format({ input: input, output: JSON.stringify(output), ...additionalPromptParams })
+    const basePrompt = await prompt.format({ input: input, output: JSON.stringify(output), ...allParams })
     const structuredPrompt = basePrompt + await structuredOutputPrompt({schema: outputSchema});
 
     const unstructuredResponse = await llm.invoke(structuredPrompt) as AIMessage

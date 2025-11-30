@@ -477,7 +477,6 @@ describe.sequential('Ads Flow', () => {
                 .withState({
                     ...refreshHeadlinesResult.state,
                     stage: "highlights",
-                    refresh: undefined
                 })
                 .execute();
 
@@ -525,7 +524,6 @@ describe.sequential('Ads Flow', () => {
                 .withState({
                     ...refreshCalloutsResult.state,
                     stage: "keywords",
-                    refresh: undefined
                 })
                 .execute();
 
