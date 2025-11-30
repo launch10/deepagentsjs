@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { serve } from '@hono/node-server';
+import { adsRoutes } from './app/server/routes/ads';
 import { brainstormRoutes } from './app/server/routes/brainstorm';
 import { documentsRoutes } from './app/server/routes/documents';
 import { errorHandler } from './app/server/middleware/errorHandler';
@@ -24,6 +25,7 @@ app.use('*', cors({
 
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
+app.route('/api/ads', adsRoutes);
 app.route('/api/brainstorm', brainstormRoutes);
 app.route('/api/documents', documentsRoutes);
 

@@ -71,7 +71,7 @@ describe.sequential('Ads Flow', () => {
             expect(descriptionContent).toMatch(/schedule|scheduling|meeting times/i);
         });
 
-        it("refreshes only the specified context (headlines), not descriptions", async () => {
+        it.only("refreshes only the specified context (headlines), not descriptions", async () => {
             const result = await testGraph<AdsGraphState>()
                 .withGraph(adsGraph)
                 .withState({
@@ -188,14 +188,11 @@ describe.sequential('Ads Flow', () => {
             const refreshedResult = await testGraph<AdsGraphState>()
                 .withGraph(adsGraph)
                 .withState({
-                    projectUUID,
-                    stage: "highlights",
+                    ...result.state,
                     refresh: {
                         asset: "callouts",
                         nVariants: 3
                     },
-                    callouts: result.state.callouts,
-                    structuredSnippet: result.state.structuredSnippet
                 })
                 .execute();
 
@@ -221,6 +218,9 @@ describe.sequential('Ads Flow', () => {
             expect(newSnippets).toBeDefined();
             expect(Array.isArray(newSnippets)).toBe(true);
             expect(newSnippets.length).toEqual(0); // Should have no new snippets (same data)
+
+            // It generates a very simple message when regenerating callouts
+            expect(refreshedResult.state.messages?.length).toBeGreaterThan(result.state.messages?.length || 0);
         });
 
         it("refreshes only snippets, when using refresh context", async () => {

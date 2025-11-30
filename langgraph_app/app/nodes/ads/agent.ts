@@ -1,9 +1,8 @@
 import { createAgent, createMiddleware } from "langchain";
 import { AIMessage } from "@langchain/core/messages";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { HumanMessage } from "@langchain/core/messages";
 import { getLLM } from "@core";
-import { chooseAdsPrompt } from "@prompts";
+import { chooseAdsPrompt, injectPseudoMessage, filterPseudoMessages } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { adsFaqTool } from "@tools";
 import { type AdsGraphState } from "@state";
@@ -130,9 +129,7 @@ export const adsAgent = NodeMiddleware.use({}, async (
 
     const stateWithMessages = {
         ...state,
-        messages: state.messages?.length 
-            ? state.messages 
-            : [new HumanMessage("Begin")]
+        messages: injectPseudoMessage(state)
     };
 
     const result = await agent.invoke(stateWithMessages as any, config) as unknown as AdsGraphState;
@@ -145,6 +142,6 @@ export const adsAgent = NodeMiddleware.use({}, async (
 
     return {
         ...structuredData,
-        messages: result.messages,
+        messages: filterPseudoMessages(result.messages),
     };
 });

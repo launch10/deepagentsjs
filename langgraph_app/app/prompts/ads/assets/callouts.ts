@@ -32,7 +32,6 @@ export const Callouts: Partial<Ads.AssetPromptMap> = {
         outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
             const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.callouts;
             const callouts = Array.from({ length: nVariants }, (_, i) => `Feature ${i + 1}`);
-            console.log(`nVariants... ${nVariants}`);
             return { callouts };
         }
     }
