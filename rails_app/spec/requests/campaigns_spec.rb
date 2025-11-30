@@ -287,12 +287,10 @@ RSpec.describe "Campaigns API", type: :request do
             expect(ad.headlines.order(:position).pluck(:text)).to eq(["Headline 1", "Headline 2"])
             expect(data["ready_for_next_stage"]).to eq(false)
 
-            expect(data["ad_groups"]).to be_present
-            expect(data["ad_groups"].first["ads"]).to be_present
-            headlines = data["ad_groups"].first["ads"].first["headlines"]
-            expect(headlines.length).to eq(2)
-            expect(headlines[0]).to match(hash_including("id" => a_kind_of(Integer), "text" => "Headline 1", "position" => 0))
-            expect(headlines[1]).to match(hash_including("id" => a_kind_of(Integer), "text" => "Headline 2", "position" => 1))
+            expect(data["headlines"]).to be_present
+            expect(data["headlines"].length).to eq(2)
+            expect(data["headlines"][0]).to match(hash_including("id" => a_kind_of(Integer), "text" => "Headline 1", "position" => 0))
+            expect(data["headlines"][1]).to match(hash_including("id" => a_kind_of(Integer), "text" => "Headline 2", "position" => 1))
           end
         end
 
@@ -327,11 +325,10 @@ RSpec.describe "Campaigns API", type: :request do
             expect(ad.descriptions.count).to eq(2)
             expect(data["ready_for_next_stage"]).to eq(true)
 
-            ad_data = data["ad_groups"].first["ads"].first
-            expect(ad_data["headlines"].length).to eq(3)
-            expect(ad_data["headlines"].all? { |h| h["id"].present? }).to be true
-            expect(ad_data["descriptions"].length).to eq(2)
-            expect(ad_data["descriptions"].all? { |d| d["id"].present? }).to be true
+            expect(data["headlines"].length).to eq(3)
+            expect(data["headlines"].all? { |h| h["id"].present? }).to be true
+            expect(data["descriptions"].length).to eq(2)
+            expect(data["descriptions"].all? { |d| d["id"].present? }).to be true
           end
         end
 
@@ -343,7 +340,7 @@ RSpec.describe "Campaigns API", type: :request do
           let(:id) { content_stage_campaign.id }
 
           let!(:initial_headlines) do
-            content_stage_campaign.headlines
+            content_stage_campaign.headlines.order(:position).to_a
           end
 
           let(:campaign_params) do
@@ -368,10 +365,9 @@ RSpec.describe "Campaigns API", type: :request do
             expect(initial_headlines[1].reload.deleted_at).to be_nil
             expect(initial_headlines[2].reload.deleted_at).to be_present
 
-            headlines = data["ad_groups"].first["ads"].first["headlines"]
-            expect(headlines.length).to eq(2)
-            expect(headlines[0]).to match(hash_including("id" => initial_headlines[0].id, "text" => "Headline 2 Updated", "position" => 0))
-            expect(headlines[1]).to match(hash_including("id" => initial_headlines[1].id, "text" => "Headline 3", "position" => 1))
+            expect(data["headlines"].length).to eq(2)
+            expect(data["headlines"][0]).to match(hash_including("id" => initial_headlines[0].id, "text" => "Headline 2 Updated", "position" => 0))
+            expect(data["headlines"][1]).to match(hash_including("id" => initial_headlines[1].id, "text" => "Headline 3", "position" => 1))
           end
         end
 
@@ -400,11 +396,10 @@ RSpec.describe "Campaigns API", type: :request do
             expect(ad.descriptions.count).to eq(2)
             expect(ad.descriptions.order(:position).pluck(:text)).to eq(["Description 1", "Description 2"])
 
-            descriptions = data["ad_groups"].first["ads"].first["descriptions"]
-            expect(descriptions.length).to eq(2)
-            expect(descriptions.all? { |d| d["id"].present? }).to be true
-            expect(descriptions[0]["text"]).to eq("Description 1")
-            expect(descriptions[1]["text"]).to eq("Description 2")
+            expect(data["descriptions"].length).to eq(2)
+            expect(data["descriptions"].all? { |d| d["id"].present? }).to be true
+            expect(data["descriptions"][0]["text"]).to eq("Description 1")
+            expect(data["descriptions"][1]["text"]).to eq("Description 2")
           end
         end
 
@@ -444,12 +439,11 @@ RSpec.describe "Campaigns API", type: :request do
             expect(initial_descriptions[0].reload.deleted_at).to be_nil
             expect(initial_descriptions[1].reload.deleted_at).to be_nil
 
-            descriptions = data["ad_groups"].first["ads"].first["descriptions"]
-            expect(descriptions.length).to eq(2)
-            expect(descriptions[0]["id"]).to eq(initial_descriptions[0].id)
-            expect(descriptions[0]["text"]).to eq("Description 2 Updated")
-            expect(descriptions[1]["id"]).to eq(initial_descriptions[1].id)
-            expect(descriptions[1]["text"]).to eq("Description 3")
+            expect(data["descriptions"].length).to eq(2)
+            expect(data["descriptions"][0]["id"]).to eq(initial_descriptions[0].id)
+            expect(data["descriptions"][0]["text"]).to eq("Description 2 Updated")
+            expect(data["descriptions"][1]["id"]).to eq(initial_descriptions[1].id)
+            expect(data["descriptions"][1]["text"]).to eq("Description 3")
           end
         end
 
@@ -504,13 +498,12 @@ RSpec.describe "Campaigns API", type: :request do
             expect(initial_content[:descriptions][0].reload.deleted_at).to be_nil
             expect(initial_content[:descriptions][1].reload.deleted_at).to be_nil
 
-            ad_data = data["ad_groups"].first["ads"].first
-            expect(ad_data["headlines"].length).to eq(2)
-            expect(ad_data["headlines"][0]["id"]).to eq(initial_content[:headlines][0].id)
-            expect(ad_data["headlines"][1]["id"]).to eq(initial_content[:headlines][1].id)
-            expect(ad_data["descriptions"].length).to eq(2)
-            expect(ad_data["descriptions"][0]["id"]).to eq(initial_content[:descriptions][0].id)
-            expect(ad_data["descriptions"][1]["id"]).to eq(initial_content[:descriptions][1].id)
+            expect(data["headlines"].length).to eq(2)
+            expect(data["headlines"][0]["id"]).to eq(initial_content[:headlines][0].id)
+            expect(data["headlines"][1]["id"]).to eq(initial_content[:headlines][1].id)
+            expect(data["descriptions"].length).to eq(2)
+            expect(data["descriptions"][0]["id"]).to eq(initial_content[:descriptions][0].id)
+            expect(data["descriptions"][1]["id"]).to eq(initial_content[:descriptions][1].id)
           end
         end
       end
@@ -827,17 +820,16 @@ RSpec.describe "Campaigns API", type: :request do
               expect(ad_group.keywords.order(:position).pluck(:text)).to eq(["running shoes", "athletic footwear"])
               expect(data["ready_for_next_stage"]).to eq(false)
 
-              expect(data["ad_groups"]).to be_present
-              keywords = data["ad_groups"].first["keywords"]
-              expect(keywords.length).to eq(2)
-              expect(keywords[0]["id"]).to be_present
-              expect(keywords[0]["text"]).to eq("running shoes")
-              expect(keywords[0]["match_type"]).to eq("broad")
-              expect(keywords[0]["position"]).to eq(0)
-              expect(keywords[1]["id"]).to be_present
-              expect(keywords[1]["text"]).to eq("athletic footwear")
-              expect(keywords[1]["match_type"]).to eq("phrase")
-              expect(keywords[1]["position"]).to eq(1)
+              expect(data["keywords"]).to be_present
+              expect(data["keywords"].length).to eq(2)
+              expect(data["keywords"][0]["id"]).to be_present
+              expect(data["keywords"][0]["text"]).to eq("running shoes")
+              expect(data["keywords"][0]["match_type"]).to eq("broad")
+              expect(data["keywords"][0]["position"]).to eq(0)
+              expect(data["keywords"][1]["id"]).to be_present
+              expect(data["keywords"][1]["text"]).to eq("athletic footwear")
+              expect(data["keywords"][1]["match_type"]).to eq("phrase")
+              expect(data["keywords"][1]["position"]).to eq(1)
             end
           end
 
@@ -868,10 +860,9 @@ RSpec.describe "Campaigns API", type: :request do
               expect(ad_group.keywords.count).to eq(5)
               expect(data["ready_for_next_stage"]).to eq(true)
 
-              keywords = data["ad_groups"].first["keywords"]
-              expect(keywords.length).to eq(5)
-              expect(keywords.all? { |k| k["id"].present? }).to be true
-              expect(keywords.map { |k| k["match_type"] }).to eq(["broad", "phrase", "exact", "broad", "phrase"])
+              expect(data["keywords"].length).to eq(5)
+              expect(data["keywords"].all? { |k| k["id"].present? }).to be true
+              expect(data["keywords"].map { |k| k["match_type"] }).to eq(["broad", "phrase", "exact", "broad", "phrase"])
             end
           end
 
@@ -912,13 +903,12 @@ RSpec.describe "Campaigns API", type: :request do
               expect(initial_keywords[1].reload.deleted_at).to be_nil
               expect(initial_keywords[2].reload.deleted_at).to be_present
 
-              keywords = data["ad_groups"].first["keywords"]
-              expect(keywords.length).to eq(2)
-              expect(keywords[0]["id"]).to eq(initial_keywords[0].id)
-              expect(keywords[0]["text"]).to eq("keyword 2 updated")
-              expect(keywords[0]["match_type"]).to eq("exact")
-              expect(keywords[1]["id"]).to eq(initial_keywords[1].id)
-              expect(keywords[1]["text"]).to eq("keyword 4")
+              expect(data["keywords"].length).to eq(2)
+              expect(data["keywords"][0]["id"]).to eq(initial_keywords[0].id)
+              expect(data["keywords"][0]["text"]).to eq("keyword 2 updated")
+              expect(data["keywords"][0]["match_type"]).to eq("exact")
+              expect(data["keywords"][1]["id"]).to eq(initial_keywords[1].id)
+              expect(data["keywords"][1]["text"]).to eq("keyword 4")
             end
           end
 

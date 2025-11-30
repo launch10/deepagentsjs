@@ -139,10 +139,12 @@ class API::V1::CampaignsController < API::BaseController
   end
 
   def campaign_json(campaign)
-    # Reload with eager loading to avoid N+1 queries and get fresh data
     campaign = eager_load(campaign)
 
+    ad_group = campaign.ad_groups.first
+    ad = ad_group&.ads&.first
     workflow = campaign.project&.launch_workflow
+
     {
       id: campaign.id,
       name: campaign.name,
@@ -159,46 +161,14 @@ class API::V1::CampaignsController < API::BaseController
       google_advertising_channel_type: campaign.google_advertising_channel_type,
       google_bidding_strategy: campaign.google_bidding_strategy,
       workflow: workflow ? {step: workflow.step, substep: workflow.substep} : nil,
-      ad_groups: campaign.ad_groups.map do |ad_group|
-        {
-          id: ad_group.id,
-          name: ad_group.name,
-          ads: ad_group.ads.map do |ad|
-            {
-              id: ad.id,
-              headlines: ad.headlines.order(:position).map do |headline|
-                {
-                  id: headline.id,
-                  text: headline.text,
-                  position: headline.position
-                }
-              end,
-              descriptions: ad.descriptions.order(:position).map do |description|
-                {
-                  id: description.id,
-                  text: description.text,
-                  position: description.position
-                }
-              end
-            }
-          end,
-          keywords: ad_group.keywords.order(:position).map do |keyword|
-            {
-              id: keyword.id,
-              text: keyword.text,
-              match_type: keyword.match_type,
-              position: keyword.position
-            }
-          end
-        }
-      end,
-      callouts: campaign.callouts.order(:position).map do |callout|
-        {
-          id: callout.id,
-          text: callout.text,
-          position: callout.position
-        }
-      end,
+      ad_group: ad_group ? {
+        id: ad_group.id,
+        name: ad_group.name
+      } : nil,
+      headlines: ad ? ad.headlines.order(:position).map { |h| { id: h.id, text: h.text, position: h.position } } : [],
+      descriptions: ad ? ad.descriptions.order(:position).map { |d| { id: d.id, text: d.text, position: d.position } } : [],
+      keywords: ad_group ? ad_group.keywords.order(:position).map { |k| { id: k.id, text: k.text, match_type: k.match_type, position: k.position } } : [],
+      callouts: campaign.callouts.order(:position).map { |c| { id: c.id, text: c.text, position: c.position } },
       structured_snippet: campaign.structured_snippet ? {
         id: campaign.structured_snippet.id,
         category: campaign.structured_snippet.category,
