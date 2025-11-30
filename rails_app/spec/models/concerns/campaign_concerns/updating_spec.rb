@@ -34,18 +34,8 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
 
     it "soft deletes headlines not in the update by setting deleted_at" do
       campaign.update_idempotently!(
-        ad_groups_attributes: [
-          {
-            id: ad_group.id,
-            ads_attributes: [
-              {
-                id: ad.id,
-                headlines_attributes: [
-                  { text: "Headline 2 Updated" }
-                ]
-              }
-            ]
-          }
+        headlines: [
+          { text: "Headline 2 Updated" }
         ]
       )
 
@@ -65,18 +55,8 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
 
     it "reifies a soft-deleted headline when same position is used" do
       campaign.update_idempotently!(
-        ad_groups_attributes: [
-          {
-            id: ad_group.id,
-            ads_attributes: [
-              {
-                id: ad.id,
-                headlines_attributes: [
-                  { id: headline1.id, text: "Headline 1", position: 0 }
-                ]
-              }
-            ]
-          }
+        headlines: [
+          { text: "Headline 1" }
         ]
       )
 
@@ -86,19 +66,9 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
       expect(headline3.deleted_at).to be_present
 
       campaign.update_idempotently!(
-        ad_groups_attributes: [
-          {
-            id: ad_group.id,
-            ads_attributes: [
-              {
-                id: ad.id,
-                headlines_attributes: [
-                  { id: headline1.id, text: "Headline 1", position: 0 },
-                  { text: "Reified Headline", position: 1 }
-                ]
-              }
-            ]
-          }
+        headlines: [
+          { text: "Headline 1" },
+          { text: "Reified Headline" }
         ]
       )
 
@@ -114,37 +84,17 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
       initial_count = AdHeadline.unscoped.where(ad_id: ad.id).count
 
       campaign.update_idempotently!(
-        ad_groups_attributes: [
-          {
-            id: ad_group.id,
-            ads_attributes: [
-              {
-                id: ad.id,
-                headlines_attributes: []
-              }
-            ]
-          }
-        ]
+        headlines: []
       )
 
       expect(AdHeadline.unscoped.where(ad_id: ad.id).count).to eq(initial_count)
       expect(ad.headlines.count).to eq(0)
 
       campaign.update_idempotently!(
-        ad_groups_attributes: [
-          {
-            id: ad_group.id,
-            ads_attributes: [
-              {
-                id: ad.id,
-                headlines_attributes: [
-                  { text: "New Headline 1", position: 0 },
-                  { text: "New Headline 2", position: 1 },
-                  { text: "New Headline 3", position: 2 }
-                ]
-              }
-            ]
-          }
+        headlines: [
+          { text: "New Headline 1" },
+          { text: "New Headline 2" },
+          { text: "New Headline 3" }
         ]
       )
 
@@ -162,18 +112,8 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
 
     it "soft deletes descriptions not in the update by setting deleted_at" do
       campaign.update_idempotently!(
-        ad_groups_attributes: [
-          {
-            id: ad_group.id,
-            ads_attributes: [
-              {
-                id: ad.id,
-                descriptions_attributes: [
-                  { id: description1.id, text: "Description 1 Updated", position: 0 }
-                ]
-              }
-            ]
-          }
+        descriptions: [
+          { text: "Description 1 Updated" }
         ]
       )
 
@@ -188,17 +128,7 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
 
     it "reifies a soft-deleted description when same position is used" do
       campaign.update_idempotently!(
-        ad_groups_attributes: [
-          {
-            id: ad_group.id,
-            ads_attributes: [
-              {
-                id: ad.id,
-                descriptions_attributes: []
-              }
-            ]
-          }
-        ]
+        descriptions: []
       )
 
       description1.reload
@@ -207,18 +137,8 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
       expect(description2.deleted_at).to be_present
 
       campaign.update_idempotently!(
-        ad_groups_attributes: [
-          {
-            id: ad_group.id,
-            ads_attributes: [
-              {
-                id: ad.id,
-                descriptions_attributes: [
-                  { text: "Reified Description", position: 0 }
-                ]
-              }
-            ]
-          }
+        descriptions: [
+          { text: "Reified Description" }
         ]
       )
 
@@ -234,13 +154,8 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
 
     it "soft deletes keywords not in the update by setting deleted_at" do
       campaign.update_idempotently!(
-        ad_groups_attributes: [
-          {
-            id: ad_group.id,
-            keywords_attributes: [
-              { id: keyword1.id, text: "keyword1", match_type: "broad", position: 0 }
-            ]
-          }
+        keywords: [
+          { text: "keyword1", match_type: "broad" }
         ]
       )
 
@@ -255,12 +170,7 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
 
     it "reifies a soft-deleted keyword when same position is used" do
       campaign.update_idempotently!(
-        ad_groups_attributes: [
-          {
-            id: ad_group.id,
-            keywords_attributes: []
-          }
-        ]
+        keywords: []
       )
 
       keyword1.reload
@@ -269,13 +179,8 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
       expect(keyword2.deleted_at).to be_present
 
       campaign.update_idempotently!(
-        ad_groups_attributes: [
-          {
-            id: ad_group.id,
-            keywords_attributes: [
-              { text: "reified_keyword", match_type: "exact", position: 0 }
-            ]
-          }
+        keywords: [
+          { text: "reified_keyword", match_type: "exact" }
         ]
       )
 
@@ -292,8 +197,8 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
 
     it "soft deletes callouts not in the update by setting deleted_at" do
       campaign.update_idempotently!(
-        callouts_attributes: [
-          { id: callout1.id, text: "Callout 1 Updated", position: 0 }
+        callouts: [
+          { text: "Callout 1 Updated" }
         ]
       )
 
@@ -308,7 +213,7 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
 
     it "reifies a soft-deleted callout when same position is used" do
       campaign.update_idempotently!(
-        callouts_attributes: []
+        callouts: []
       )
 
       callout1.reload
@@ -317,8 +222,8 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
       expect(callout2.deleted_at).to be_present
 
       campaign.update_idempotently!(
-        callouts_attributes: [
-          { text: "Reified Callout", position: 0 }
+        callouts: [
+          { text: "Reified Callout" }
         ]
       )
 
@@ -360,39 +265,43 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
 
       3.times do
         campaign.update_idempotently!(
-          ad_groups_attributes: [
-            {
-              id: ad_group.id,
-              ads_attributes: [
-                {
-                  id: ad.id,
-                  headlines_attributes: headlines.first(5).map.with_index do |h, i|
-                    { id: h.id, text: h.text, position: i }
-                  end
-                }
-              ]
-            }
-          ]
+          headlines: headlines.first(5).map.with_index do |h, i|
+            { text: h.text }
+          end
         )
 
         campaign.update_idempotently!(
-          ad_groups_attributes: [
-            {
-              id: ad_group.id,
-              ads_attributes: [
-                {
-                  id: ad.id,
-                  headlines_attributes: (0..14).map do |i|
-                    { text: "Headline #{i}", position: i }
-                  end
-                }
-              ]
-            }
-          ]
+          headlines: (0..14).map do |i|
+            { text: "Headline #{i}", position: i }
+          end
         )
       end
 
       expect(AdHeadline.unscoped.where(ad_id: ad.id).count).to eq(initial_total)
+    end
+  end
+
+  describe "nested params still work for backwards compatibility" do
+    let!(:headline1) { create(:ad_headline, ad: ad, text: "Headline 1", position: 0) }
+
+    it "accepts the legacy nested _attributes format" do
+      campaign.update_idempotently!(
+        ad_groups_attributes: [
+          {
+            id: ad_group.id,
+            ads_attributes: [
+              {
+                id: ad.id,
+                headlines_attributes: [
+                  { text: "Legacy Format Works" }
+                ]
+              }
+            ]
+          }
+        ]
+      )
+
+      expect(ad.headlines.first.text).to eq("Legacy Format Works")
     end
   end
 end

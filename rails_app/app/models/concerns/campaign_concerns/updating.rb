@@ -2,15 +2,56 @@ module CampaignConcerns
   module Updating
     extend ActiveSupport::Concern
 
+    FLAT_PARAM_KEYS = %i[headlines descriptions keywords callouts structured_snippet].freeze
+
     def update_idempotently!(params)
-      result = IdempotentCampaignUpdater.new(self, params).update
+      # Allow passing in flat params (e.g. headlines, descriptions) for simpler API
+      # Here we map them to the expected Rails format, which will be especially useful
+      # when we support multiple ad groups and ads per campaign
+      normalized_params = normalize_flat_params(params)
+      result = IdempotentCampaignUpdater.new(self, normalized_params).update
       if result.failed?
         raise UpdateValidationError.new(self, result.errors)
       end
       result
     end
 
-    class IdempotentCampaignUpdater
+    private
+
+    def normalize_flat_params(params)
+      params = params.deep_dup.with_indifferent_access
+      return params unless uses_flat_params?(params)
+
+      ad_group = ad_groups.first
+      ad = ad_group&.ads&.first
+
+      normalized = params.except(*FLAT_PARAM_KEYS)
+
+      ad_level_attrs = {}
+      ad_level_attrs[:headlines_attributes] = params[:headlines] if params[:headlines]
+      ad_level_attrs[:descriptions_attributes] = params[:descriptions] if params[:descriptions]
+
+      ad_group_level_attrs = {}
+      ad_group_level_attrs[:keywords_attributes] = params[:keywords] if params[:keywords]
+
+      if ad_level_attrs.any? || ad_group_level_attrs.any?
+        ad_group_attrs = { id: ad_group.id }
+        ad_group_attrs[:ads_attributes] = [{ id: ad.id }.merge(ad_level_attrs)] if ad_level_attrs.any?
+        ad_group_attrs.merge!(ad_group_level_attrs)
+        normalized[:ad_groups_attributes] = [ad_group_attrs]
+      end
+
+      normalized[:callouts_attributes] = params[:callouts] if params[:callouts]
+      normalized[:structured_snippet_attributes] = params[:structured_snippet] if params[:structured_snippet]
+
+      normalized
+    end
+
+    def uses_flat_params?(params)
+      FLAT_PARAM_KEYS.any? { |key| params.key?(key) }
+    end
+
+    class IdempotentCampaignUpdater # rubocop:disable Metrics/ClassLength
       attr_reader :campaign, :params
 
       def initialize(campaign, params = {})
