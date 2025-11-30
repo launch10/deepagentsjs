@@ -117,7 +117,7 @@ module CampaignConcerns
         add_to_validation(campaign, "campaign")
         @saves_to_perform << -> { campaign.save! }
 
-        if location_targets_data.present?
+        if location_targets_data
           prepare_location_targets(location_targets_data)
         end
 
@@ -304,21 +304,37 @@ module CampaignConcerns
       end
 
       def prepare_location_targets(location_targets_data)
-        targets = Array(location_targets_data).map.with_index do |target_data, idx|
-          target = campaign.location_targets.new(target_data)
+        location_attrs_array = Array(location_targets_data)
+        existing_targets = AdLocationTarget.unscoped.where(campaign_id: campaign.id).order(:id).to_a
+
+        targets_to_update = []
+        num_submitted = location_attrs_array.size
+        num_existing = existing_targets.size
+
+        location_attrs_array.each_with_index do |target_data, idx|
           path = "location_targets[#{idx}]"
-          add_to_validation(target, path)
-          target
+
+          if idx < num_existing
+            target = existing_targets[idx]
+            target.assign_attributes(target_data.except(:id, "id"))
+            target.deleted_at = nil
+            targets_to_update << target
+            add_to_validation(target, path)
+          else
+            new_target = AdLocationTarget.new(target_data.except(:id, "id").merge(campaign_id: campaign.id))
+            targets_to_update << new_target
+            add_to_validation(new_target, path)
+          end
         end
 
-        @saves_to_perform << -> {
-          campaign.location_targets.destroy_all
-          if targets.any?
-            AdLocationTarget.insert_all(
-              targets.map { |t| t.attributes.except("id").merge("created_at" => Time.current, "updated_at" => Time.current) }
-            )
-          end
-        }
+        if num_submitted < num_existing
+          ids_to_soft_delete = existing_targets[num_submitted..].map(&:id)
+          @deletions_to_perform << -> {
+            AdLocationTarget.unscoped.where(id: ids_to_soft_delete).update_all(deleted_at: Time.current)
+          }
+        end
+
+        batch_upsert(AdLocationTarget, targets_to_update)
       end
 
       def prepare_ad_schedules(schedule_data)

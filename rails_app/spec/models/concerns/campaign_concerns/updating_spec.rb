@@ -1,6 +1,6 @@
 require 'rails_helper'
 
-RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model do
+RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets", type: :model do
   include PlanHelpers
   include SubscriptionHelpers
   let!(:user) { create(:user) }
@@ -14,6 +14,14 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
   let!(:campaign) do
     result = Campaign.create_campaign!(account, {
       name: "Test Campaign",
+      project_id: project.id,
+      website_id: website.id
+    })
+    result[:campaign]
+  end
+  let!(:campaign2) do
+    result = Campaign.create_campaign!(account, {
+      name: "Test Campaign 2",
       project_id: project.id,
       website_id: website.id
     })
@@ -302,6 +310,145 @@ RSpec.describe CampaignConcerns::Updating, "soft delete behavior", type: :model 
       )
 
       expect(ad.headlines.first.text).to eq("Legacy Format Works")
+    end
+  end
+
+  describe "location_targets id stability" do
+    let!(:location1) do
+      create(:ad_location_target, campaign: campaign, location_name: "United States", country_code: "US",
+        platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/2840" } })
+    end
+    let!(:location2) do
+      create(:ad_location_target, campaign: campaign, location_name: "California", country_code: "US",
+        platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/21137" } })
+    end
+    let!(:location3) do
+      create(:ad_location_target, campaign: campaign2, location_name: "Texas", country_code: "US",
+        platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/21138" } })
+    end
+
+    it "preserves ids when updating location targets with same data" do
+      original_ids = [location1.id, location2.id]
+
+      campaign.update_idempotently!(
+        location_targets: [
+          { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
+          { geo_target_constant: "geoTargetConstants/21137", location_name: "California", country_code: "US", target_type: "geo_location" }
+        ]
+      )
+
+      campaign.reload
+      expect(campaign.location_targets.pluck(:id).sort).to eq(original_ids.sort)
+    end
+
+    it "soft deletes location targets not in the update" do
+      campaign.update_idempotently!(
+        location_targets: [
+          { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" }
+        ]
+      )
+
+      location1.reload
+      location2.reload
+
+      expect(location1.deleted_at).to be_nil
+      expect(location2.deleted_at).to be_present
+      expect(campaign.location_targets.count).to eq(1)
+    end
+
+    it "reifies soft-deleted location targets when needed" do
+      campaign.update_idempotently!(
+        location_targets: [
+          { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" }
+        ]
+      )
+
+      expect(campaign.location_targets.count).to eq(1)
+
+      campaign.update_idempotently!(
+        location_targets: [
+          { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
+          { geo_target_constant: "geoTargetConstants/21137", location_name: "California", country_code: "US", target_type: "geo_location" }
+        ]
+      )
+
+      location2.reload
+      expect(location2.deleted_at).to be_nil
+      expect(campaign.location_targets.count).to eq(2)
+    end
+
+    it "does not affect location targets from other campaigns" do
+      expect {
+        campaign.update_idempotently!(
+          location_targets: [
+            { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
+            { geo_target_constant: "geoTargetConstants/21138", location_name: "Texas", country_code: "US", target_type: "geo_location" },
+            { geo_target_constant: "geoTargetConstants/21139", location_name: "Florida", country_code: "US", target_type: "geo_location" }
+          ]
+        )
+      }.not_to change { campaign2.location_targets.count }
+      last_target = campaign.location_targets.order(:id).last
+      expect(last_target.id).to be > location3.id
+
+      expect {
+        campaign.update_idempotently!(
+          location_targets: []
+        )
+      }.not_to change { campaign2.location_targets.count }
+
+      expect(campaign.location_targets.count).to eq(0)
+      expect(campaign2.location_targets.count).to eq(1)
+
+      expect {
+        campaign.update_idempotently!(
+          location_targets: [
+            { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
+            { geo_target_constant: "geoTargetConstants/21138", location_name: "Texas", country_code: "US", target_type: "geo_location" },
+            { geo_target_constant: "geoTargetConstants/21139", location_name: "Florida", country_code: "US", target_type: "geo_location" }
+          ]
+        )
+      }.not_to change { campaign2.location_targets.count }
+
+      # Even though we keep updating campaign1, we never create new location targets for either campaign
+      last_target = campaign.location_targets.order(:id).last
+      expect(last_target.id).to be > location3.id
+      expect(campaign.location_targets.count).to eq(3)
+      expect(campaign2.location_targets.count).to eq(1)
+    end
+
+    it "does not create new records when reifying existing soft-deleted ones" do
+      initial_count = AdLocationTarget.unscoped.where(campaign_id: campaign.id).count
+
+      campaign.update_idempotently!(location_targets: [])
+
+      expect(AdLocationTarget.unscoped.where(campaign_id: campaign.id).count).to eq(initial_count)
+      expect(campaign.location_targets.count).to eq(0)
+
+      campaign.update_idempotently!(
+        location_targets: [
+          { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
+          { geo_target_constant: "geoTargetConstants/21137", location_name: "California", country_code: "US", target_type: "geo_location" }
+        ]
+      )
+
+      expect(AdLocationTarget.unscoped.where(campaign_id: campaign.id).count).to eq(initial_count)
+      expect(campaign.location_targets.count).to eq(2)
+      expect(campaign.location_targets.pluck(:id)).to match_array([location1.id, location2.id])
+    end
+
+    it "handles adding new locations beyond existing slots" do
+      initial_count = AdLocationTarget.unscoped.where(campaign_id: campaign.id).count
+
+      campaign.update_idempotently!(
+        location_targets: [
+          { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
+          { geo_target_constant: "geoTargetConstants/21137", location_name: "California", country_code: "US", target_type: "geo_location" },
+          { geo_target_constant: "geoTargetConstants/1014221", location_name: "New York", country_code: "US", target_type: "geo_location" }
+        ]
+      )
+
+      expect(campaign.location_targets.count).to eq(3)
+      expect(AdLocationTarget.unscoped.where(campaign_id: campaign.id).count).to eq(initial_count + 1)
     end
   end
 end
