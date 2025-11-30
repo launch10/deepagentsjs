@@ -6,8 +6,8 @@ import {
     currentTopicPrompt,
     remainingTopicsPrompt,
     collectedAnswersPrompt,
-    backgroundPrompt,
 } from "../shared";
+import { processPrompt } from "../../core/process";
 
 export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
@@ -16,18 +16,18 @@ export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGra
     }
     const topic = Brainstorm.getTopic(state.currentTopic as Brainstorm.TopicName);
 
-    const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, background] = await Promise.all([
+    const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, process] = await Promise.all([
         structuredOutputPrompt({ schema: Brainstorm.replySchema }),
         whereWeArePrompt(state, config),
         currentTopicPrompt(state, config),
         remainingTopicsPrompt(state, config),
         collectedAnswersPrompt(state, config),
-        backgroundPrompt(state, config),
+        processPrompt(state, config),
     ]);
 
     return renderPrompt(
         `
-            ${background}
+            ${process}
 
             ${whereWeAre}
 

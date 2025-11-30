@@ -12,7 +12,13 @@ export const getAssetPrompts = async (state: AdsGraphState, config: LangGraphRun
         return `${index + 1}: ${prompt.trim()}`
     }));
 
-    return prompts.join("\n\n");
+    return `
+        <asset_instructions>
+            ${prompts.map((prompt, index) => {
+                return `<instruction index="${index + 1}">${prompt}</instruction>`;
+            }).join("\n")}
+        </asset_instructions>
+    `;
 }
 
 export const getOutputPrompt = async (state: AdsGraphState, config: LangGraphRunnableConfig): Promise<string> => {
@@ -26,29 +32,33 @@ export const getOutputPrompt = async (state: AdsGraphState, config: LangGraphRun
     const isRefreshMode = state.refresh !== undefined;
     const stage = state.stage as Ads.StageName;
     const responseTemplate = ResponseTemplates[stage];
-
-    if (needsIntent) {
-        return `
-        # Example Response Formats
-
-        ## If generating assets (Happy Path):
+    const assetResponse = `
         ${isRefreshMode ? "Here are some fresh suggestions:" : responseTemplate}
 
         \`\`\`json
         ${JSON.stringify(outputFormat, null, 2)}
         \`\`\`
+    `;
 
-        ## If answering questions (Help Path):
-        [2-3 sentence conversational answer - NO JSON block]
-        [IMPORTANT: If answering question: keep it brief, 2-3 sentences only. No JSON block.]
+    if (needsIntent) {
+        return `
+        <example_responses>
+            <asset_generation>
+                ## If generating assets (Happy Path):
+                ${assetResponse}
+            </asset_generation>
+
+            <help_path>
+                ## If answering questions (Help Path):
+                [2-3 sentence conversational answer - NO JSON block]
+                [IMPORTANT: If answering question: keep it brief, 2-3 sentences only. No JSON block.]
+            </help_path>
+        </example_responses>
     ` } else {
         return `
-            # Example response format
-            ${isRefreshMode ? "Here are some fresh suggestions:" : responseTemplate}
-
-            \`\`\`json
-            ${JSON.stringify(outputFormat, null, 2)}
-            \`\`\`
+            <example_response>
+                ${assetResponse}
+            </example_response>
         `;
     }
 }

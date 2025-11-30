@@ -16,11 +16,6 @@ export const AdsAnnotation = Annotation.Root({
     callouts: Annotation<Ads.Callout[] | undefined>(),
     structuredSnippets: Annotation<Ads.StructuredSnippets | undefined>(),
     keywords: Annotation<Ads.Keyword[] | undefined>(),
-    availableCommands: Annotation<Ads.CommandName[]>({
-        default: () => [],
-        reducer: (current, next) => [...next]
-    }),
-    command: Annotation<Ads.CommandName | undefined>(),
     redirect: Annotation<Ads.RedirectType | undefined>(),
 });
 

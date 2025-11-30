@@ -124,6 +124,29 @@ describe.sequential('Ads Flow', () => {
             expect(refreshedResult.state.descriptions).toEqual(originalDescriptions);
         });
 
+        it.only("specifically refreshes headlines using suggestions from the user", async () => {
+            const result = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    projectUUID,
+                    stage: "content",
+                })
+                .execute();
+
+            const refreshedResult = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    ...result.state,
+                    messages: [
+                        ...result.messages,
+                        new HumanMessage("I want more playful, funny headlines")
+                    ]
+                })
+                .execute();
+                
+                debugger;
+        });
+
         it("automatically populates callouts and structured snippets on highlights stage", async () => {
             const result = await testGraph<AdsGraphState>()
                 .withGraph(adsGraph)
@@ -354,6 +377,21 @@ describe.sequential('Ads Flow', () => {
             expect(Array.isArray(newKeywords)).toBe(true);
             expect(newKeywords.length).toEqual(4);
         });
+
+        it("answers questions during settings section", async () => {
+            const result = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    projectUUID,
+                    stage: "settings",
+                    messages: [new HumanMessage(`What happens after this?`)]
+                })
+                .execute();
+
+            const response = result.state.messages.at(-1);
+            expect(response).toBeDefined();
+            expect(response?.content).toBeDefined();
+        })
     });
 
     describe("Full workflow - multi-stage with state persistence", () => {

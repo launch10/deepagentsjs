@@ -1,4 +1,5 @@
 import xmlFormat from 'xml-formatter';
+import { processPrompt } from "./process";
 
 export async function renderPrompt(input: string | Promise<string> | (() => string | Promise<string>)): Promise<string> {
   // Get the string content

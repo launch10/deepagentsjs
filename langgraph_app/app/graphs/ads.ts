@@ -1,6 +1,6 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { AdsAnnotation } from "@annotation";
-import { adsAgent, getBusinessContext } from "@nodes";
+import { adsAgent, getBusinessContext, resetNode } from "@nodes";
 
 /**
  * The main ads graph
@@ -8,7 +8,9 @@ import { adsAgent, getBusinessContext } from "@nodes";
 export const adsGraph = new StateGraph(AdsAnnotation)
       .addNode("getBusinessContext", getBusinessContext)
       .addNode("agent", adsAgent)
+      .addNode("reset", resetNode)
 
       .addEdge(START, "getBusinessContext")
       .addEdge("getBusinessContext", "agent")
-      .addEdge("agent", END)
+      .addEdge("agent", "reset")
+      .addEdge("reset", END)

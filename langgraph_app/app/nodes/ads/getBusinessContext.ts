@@ -7,8 +7,9 @@ import {
     eq 
 } from "@db";
 import { Brainstorm } from "@types";
+import { NodeMiddleware } from "@middleware";
 
-export const getBusinessContext = async (state: AdsGraphState) => {
+export const getBusinessContext = NodeMiddleware.use({}, async (state: AdsGraphState) => {
     if (state.websiteId) {
         return {};
     }
@@ -40,4 +41,4 @@ export const getBusinessContext = async (state: AdsGraphState) => {
         websiteId: result[0]!.websiteId,
         brainstorm: Brainstorm.MemoriesSchema.passthrough().parse(brainstorms[0])
     };
-}
+});

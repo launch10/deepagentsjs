@@ -11,6 +11,7 @@ export interface FAQSearchOptions {
   status?: "live" | "draft";
   rerankTopN?: number;
   rerankThreshold?: number;
+  tags?: string[];
 }
 
 export interface FAQSearchResult {
@@ -53,6 +54,7 @@ export class FAQSearchService {
       status = "live",
       rerankTopN = topK,
       rerankThreshold,
+      tags,
     } = options;
 
     const queryEmbedding = await this.embeddingModel.embedQuery(query);
@@ -61,6 +63,10 @@ export class FAQSearchService {
 
     if (documentType) {
       conditions.push(eq(documents.documentType, documentType));
+    }
+
+    if (tags && tags.length > 0) {
+      conditions.push(inArray(documents.tags, tags));
     }
 
     const candidateResults = await db

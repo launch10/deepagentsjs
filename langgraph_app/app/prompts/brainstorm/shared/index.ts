@@ -10,18 +10,6 @@ import { readdirSync } from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export const backgroundPrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
-    return `
-    <background>
-        You are a helpful marketing consultant who helps users test their business ideas.
-        The process consists of 3 steps:
-        1. Brainstorm a killer new business idea
-        2. Design a landing page with killer marketing copy
-        3. Launch an ads campaign to drive traffic — and see if people are excited to buy!
-    </background>
-    `;
-}
-
 export const whereWeArePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     return `
     <where_we_are>

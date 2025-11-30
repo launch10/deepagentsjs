@@ -4,6 +4,8 @@ import { getAssetPrompts, getOutputPrompt } from "./assets/index";
 import { needsIntentClassification } from "./helpers";
 import { ResponseTemplates } from "./assets/responseTemplates";
 import { previousAssetsContext } from "./helpers/previousAssetsContext";
+import { processPrompt } from "../../core/process";
+import { whereWeArePrompt } from "./whereWeAre";
 
 const buildPreviousAssetsContext = (state: AdsGraphState): string => {
     const sections = previousAssetsContext(state);
@@ -11,12 +13,12 @@ const buildPreviousAssetsContext = (state: AdsGraphState): string => {
     if (!sections.length) return '';
 
     return `
-        # User Preferences from Previous Steps
+    <previous_assets_context>
         The user has already reviewed some assets. Use their preferences to guide new generations:
         ${sections.join('\n\n')}
 
         Generate new assets that complement the approved ones and avoid themes similar to rejected ones.
-    `;
+    </previous_assets_context>`;
 };
 
 const buildIntentSection = (state: AdsGraphState): string => {
@@ -25,16 +27,17 @@ const buildIntentSection = (state: AdsGraphState): string => {
     if (!needsIntent) return '';
     
     return `
-        # Intent Classification
-        First, determine the user's intent from their message:
-        
-        1. **Asset Generation (Happy Path)**: The user wants help creating ad assets (headlines, descriptions, etc.)
-           - Examples: "Help me write headlines", "Generate some descriptions", "Let's get started", "Begin", "Refresh suggestions"
-           - For this path: Generate assets AND include structured JSON data
-        
-        2. **Questions/FAQ (Help Path)**: The user is asking questions about how Google Ads work, seeking clarification, or needs help understanding something
-           - Examples: "How do headlines and descriptions pair together?", "What's the character limit?", "Why do I need multiple headlines?"
-           - For this path: Use the ads_faq tool to get context, then answer conversationally. Do NOT include any JSON data.
+        <intent_classification>
+            First, determine the user's intent from their message:
+            
+            1. **Asset Generation (Happy Path)**: The user wants help creating ad assets (headlines, descriptions, etc.)
+                - Examples: "Help me write headlines", "Generate some descriptions", "Let's get started", "Begin", "Refresh suggestions"
+                - For this path: Generate assets AND include structured JSON data
+            
+            2. **Questions/FAQ (Help Path)**: The user is asking questions about how Google Ads work, seeking clarification, or needs help understanding something
+                - Examples: "How do headlines and descriptions pair together?", "What's the character limit?", "Why do I need multiple headlines?"
+                - For this path: Use the ads_faq tool to get context, then answer conversationally. Do NOT include any JSON data.
+        </intent_classification>
     `;
 };
 
@@ -42,12 +45,15 @@ const buildRefreshSection = (state: AdsGraphState): string => {
     if (!state.refresh) return '';
     
     return `
-        # REFRESH MODE
-        The user clicked the refresh button for ${state.refresh.asset}. 
-        Generate exactly ${state.refresh.nVariants} NEW ${state.refresh.asset}(s).
-        DO NOT summarize, explain, or ask questions - just generate the assets with a brief intro and the JSON block.
-        Ignore any previous conversation context - this is a fresh generation request.
-    `;
+        <refresh_mode>
+            The user clicked the refresh button for ${state.refresh.asset}. 
+
+            Generate exactly ${state.refresh.nVariants} NEW ${state.refresh.asset}(s).
+
+            DO NOT summarize, explain, or ask questions - just generate the assets with a brief intro and the JSON block.
+
+            Ignore any previous conversation context - this is a fresh generation request.
+        </refresh_mode>`;
 };
 
 const buildHelpSection = (state: AdsGraphState): string => {
@@ -56,12 +62,15 @@ const buildHelpSection = (state: AdsGraphState): string => {
     if (!needsIntent) return '';
     
     return `
-        # Help Path: Questions/FAQ
-        If the user is asking questions:
-        1. Use the ads_faq tool to retrieve FAQ context
-        2. Answer their question in 2-3 sentences maximum
-        3. Do NOT include any JSON or structured data
-        4. Keep your answer brief and helpful
+        <help_path>
+            If the user is asking asking questions, as opposed to requesting new assets, 
+            you should: 
+
+            1. Use the faq tool to retrieve FAQ context
+            2. Answer their question in 2-3 sentences maximum
+            3. Do NOT include any JSON or structured data
+            4. Keep your answer brief and helpful
+        </help_path>
     `;
 };
 
@@ -70,22 +79,29 @@ const buildRulesSection = (state: AdsGraphState): string => {
     if (!needsIntent) return '';
     
     return `
-        # Important Rules
-        - NEVER mix the two paths. Either provide structured JSON (happy path) OR plain text answers (help path)
-        - For the happy path, ALWAYS include the introductory text BEFORE the JSON block
-        - For the help path, NEVER include JSON - only conversational text
-        - Always return net-new assets, never duplicate existing headlines, descriptions, etc
+        <important_rules>
+            - NEVER mix the two paths. Either provide structured JSON (happy path) OR plain text answers (help path)
+            - For the happy path, ALWAYS include the introductory text BEFORE the JSON block
+            - For the help path, NEVER include JSON - only conversational text
+            - When providing FAQ answers, keep responses brief and focused (2-3 sentences MAX)
+        </important_rules>
     `;
 };
 
 export const promptBuilder = async (state: AdsGraphState, config: LangGraphRunnableConfig) => {
     if (!state.stage) {
-        throw new Error("Stage is required");
+        throw new Error("Project is required");
     }
     if (!state.brainstorm) {
         throw new Error("Brainstorm is required");
     }
 
+    const [process, whereWeAre, assetPrompts, outputPrompt] = await Promise.all([
+        processPrompt(state, config),
+        whereWeArePrompt(state, config),
+        getAssetPrompts(state, config),
+        getOutputPrompt(state, config)
+    ]);
     const responseTemplate = ResponseTemplates[state.stage];
     const isRefreshMode = state.refresh !== undefined;
     const previousAssetsContext = buildPreviousAssetsContext(state);
@@ -93,34 +109,44 @@ export const promptBuilder = async (state: AdsGraphState, config: LangGraphRunna
     const helpSection = buildHelpSection(state);
     const rulesSection = buildRulesSection(state);
     const intentClassificationSection = buildIntentSection(state);
-    const assetPrompts = await getAssetPrompts(state, config);
-    const outputPrompt = await getOutputPrompt(state, config);
 
     return `
-        You are an expert Google Ads copywriter helping to create compelling ad extensions for a business.
+        ${process}
+
+        ${whereWeAre}
+
+        <role>
+            You are an expert Google Ads copywriter helping to create compelling ad extensions for a business.
+        </role>
+
         ${intentClassificationSection}
 
         ${helpSection}
 
-        # Asset Generation
-        ${needsIntentClassification(state) ? 'If the user wants asset generation, follow these steps:' : 'Generate the following assets:'}
+        <asset_generation_instructions>
+            ${needsIntentClassification(state) ? 'If the user wants asset generation, follow these steps:' : 'Generate the following assets:'}
 
-        1. Generate the following assets for this business's Google Ads campaign:
-        ${assetPrompts}
+                1. Generate the following assets for this business's Google Ads campaign:
+                ${assetPrompts}
 
-        2. Format your response with:
-           - First, a brief introduction (1-2 sentences) ${!isRefreshMode ? `using this template: "${responseTemplate}"` : ''}
-           - Then, a JSON code block with the structured data
+                2. Format your response with:
+                    - First, a brief introduction (1-2 sentences) ${!isRefreshMode ? `using this template: "${responseTemplate}"` : ''}
+                    - Then, a JSON code block with the structured data
+        </asset_generation_instructions>
 
         ${refreshSection}
 
         ${rulesSection}
 
-        # Business Context
-        Idea: ${state.brainstorm.idea}
-        Target Audience: ${state.brainstorm.audience}
-        Solution: ${state.brainstorm.solution}
-        Social Proof: ${state.brainstorm.socialProof}
+        <business_context>
+            Idea: ${state.brainstorm.idea}
+
+            Target Audience: ${state.brainstorm.audience}
+
+            Solution: ${state.brainstorm.solution}
+
+            Social Proof: ${state.brainstorm.socialProof}
+        </business_context>
 
         ${previousAssetsContext}
 
