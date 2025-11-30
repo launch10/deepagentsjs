@@ -440,7 +440,8 @@ CREATE TABLE public.ad_budgets (
     daily_budget_cents integer,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -475,7 +476,8 @@ CREATE TABLE public.ad_callouts (
     "position" integer NOT NULL,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -509,7 +511,8 @@ CREATE TABLE public.ad_descriptions (
     "position" integer NOT NULL,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -542,7 +545,8 @@ CREATE TABLE public.ad_groups (
     name character varying,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -576,7 +580,8 @@ CREATE TABLE public.ad_headlines (
     "position" integer NOT NULL,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -611,7 +616,8 @@ CREATE TABLE public.ad_keywords (
     "position" integer NOT NULL,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -643,7 +649,8 @@ CREATE TABLE public.ad_languages (
     campaign_id bigint,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -689,7 +696,8 @@ CREATE TABLE public.ad_location_targets (
     country_code character varying,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -729,6 +737,7 @@ CREATE TABLE public.ad_schedules (
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone,
     CONSTRAINT valid_end_hour CHECK (((end_hour >= 0) AND (end_hour <= 24))),
     CONSTRAINT valid_end_minute CHECK ((end_minute = ANY (ARRAY[0, 15, 30, 45]))),
     CONSTRAINT valid_start_hour CHECK (((start_hour >= 0) AND (start_hour <= 23))),
@@ -766,7 +775,8 @@ CREATE TABLE public.ad_structured_snippets (
     "values" jsonb DEFAULT '[]'::jsonb NOT NULL,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -801,7 +811,8 @@ CREATE TABLE public.ads (
     display_path_2 character varying,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -815,7 +826,8 @@ CREATE TABLE public.ads_accounts (
     platform character varying NOT NULL,
     platform_settings jsonb DEFAULT '{}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -996,7 +1008,8 @@ CREATE TABLE public.campaigns (
     project_id bigint,
     ads_account_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -4615,6 +4628,13 @@ CREATE INDEX index_ad_budgets_on_campaign_id ON public.ad_budgets USING btree (c
 
 
 --
+-- Name: index_ad_budgets_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_budgets_on_deleted_at ON public.ad_budgets USING btree (deleted_at);
+
+
+--
 -- Name: index_ad_budgets_on_google_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4657,6 +4677,13 @@ CREATE INDEX index_ad_callouts_on_created_at ON public.ad_callouts USING btree (
 
 
 --
+-- Name: index_ad_callouts_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_callouts_on_deleted_at ON public.ad_callouts USING btree (deleted_at);
+
+
+--
 -- Name: index_ad_callouts_on_platform_settings; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4692,6 +4719,13 @@ CREATE INDEX index_ad_descriptions_on_created_at ON public.ad_descriptions USING
 
 
 --
+-- Name: index_ad_descriptions_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_descriptions_on_deleted_at ON public.ad_descriptions USING btree (deleted_at);
+
+
+--
 -- Name: index_ad_descriptions_on_platform_settings; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4724,6 +4758,13 @@ CREATE INDEX index_ad_groups_on_campaign_id_and_name ON public.ad_groups USING b
 --
 
 CREATE INDEX index_ad_groups_on_created_at ON public.ad_groups USING btree (created_at);
+
+
+--
+-- Name: index_ad_groups_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_groups_on_deleted_at ON public.ad_groups USING btree (deleted_at);
 
 
 --
@@ -4776,6 +4817,13 @@ CREATE INDEX index_ad_headlines_on_created_at ON public.ad_headlines USING btree
 
 
 --
+-- Name: index_ad_headlines_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_headlines_on_deleted_at ON public.ad_headlines USING btree (deleted_at);
+
+
+--
 -- Name: index_ad_headlines_on_platform_settings; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4808,6 +4856,13 @@ CREATE INDEX index_ad_keywords_on_created_at ON public.ad_keywords USING btree (
 --
 
 CREATE INDEX index_ad_keywords_on_criterion_id ON public.ad_keywords USING btree ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)));
+
+
+--
+-- Name: index_ad_keywords_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_keywords_on_deleted_at ON public.ad_keywords USING btree (deleted_at);
 
 
 --
@@ -4853,6 +4908,13 @@ CREATE INDEX index_ad_languages_on_criterion_id ON public.ad_languages USING btr
 
 
 --
+-- Name: index_ad_languages_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_languages_on_deleted_at ON public.ad_languages USING btree (deleted_at);
+
+
+--
 -- Name: index_ad_languages_on_language_constant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4878,6 +4940,13 @@ CREATE INDEX index_ad_location_targets_on_campaign_id ON public.ad_location_targ
 --
 
 CREATE INDEX index_ad_location_targets_on_criterion_id ON public.ad_location_targets USING btree ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)));
+
+
+--
+-- Name: index_ad_location_targets_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_location_targets_on_deleted_at ON public.ad_location_targets USING btree (deleted_at);
 
 
 --
@@ -4937,6 +5006,13 @@ CREATE INDEX index_ad_schedules_on_day_of_week ON public.ad_schedules USING btre
 
 
 --
+-- Name: index_ad_schedules_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_schedules_on_deleted_at ON public.ad_schedules USING btree (deleted_at);
+
+
+--
 -- Name: index_ad_schedules_on_platform_settings; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4972,6 +5048,13 @@ CREATE INDEX index_ad_structured_snippets_on_created_at ON public.ad_structured_
 
 
 --
+-- Name: index_ad_structured_snippets_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_deleted_at ON public.ad_structured_snippets USING btree (deleted_at);
+
+
+--
 -- Name: index_ad_structured_snippets_on_platform_settings; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4990,6 +5073,13 @@ CREATE INDEX index_ads_accounts_on_account_id ON public.ads_accounts USING btree
 --
 
 CREATE UNIQUE INDEX index_ads_accounts_on_account_id_and_platform ON public.ads_accounts USING btree (account_id, platform);
+
+
+--
+-- Name: index_ads_accounts_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_accounts_on_deleted_at ON public.ads_accounts USING btree (deleted_at);
 
 
 --
@@ -5025,6 +5115,13 @@ CREATE INDEX index_ads_on_ad_group_id ON public.ads USING btree (ad_group_id);
 --
 
 CREATE INDEX index_ads_on_ad_group_id_and_status ON public.ads USING btree (ad_group_id, status);
+
+
+--
+-- Name: index_ads_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_on_deleted_at ON public.ads USING btree (deleted_at);
 
 
 --
@@ -5123,6 +5220,13 @@ CREATE INDEX index_campaigns_on_ads_account_id ON public.campaigns USING btree (
 --
 
 CREATE INDEX index_campaigns_on_created_at ON public.campaigns USING btree (created_at);
+
+
+--
+-- Name: index_campaigns_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaigns_on_deleted_at ON public.campaigns USING btree (deleted_at);
 
 
 --
@@ -7088,6 +7192,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251130121846'),
 ('20251125163826'),
 ('20251125163744'),
 ('20251125000849'),

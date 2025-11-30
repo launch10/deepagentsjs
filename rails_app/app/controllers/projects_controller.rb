@@ -45,7 +45,7 @@ class ProjectsController < SubscribedController
       location_targets: location_targets.as_json,
       callouts: callouts.as_json,
       structured_snippet: structured_snippet.as_json,
-      ad_schedule: schedule.as_json,
+      ad_schedule: schedule.as_json
     }
     render inertia: "Brainstorm", props: props, layout: "layouts/webcontainer"
   end
