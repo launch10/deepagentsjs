@@ -5,7 +5,7 @@ import { Headlines } from "./headlines";
 import { Keywords } from "./keywords";
 import { StructuredSnippetss } from "./structuredSnippets";
 
-export const promptConfig: Ads.AssetPromptMap = {
+export const AssetPrompts: Ads.AssetPromptMap = {
     ...Headlines,
     ...Descriptions,
     ...Callouts,

@@ -1,5 +1,5 @@
 import { type AdsGraphState } from "@state";
-import { userPreferencesPrompt } from "./userPreferences";
+import { userPreferencesPrompt } from "../userPreferences";
 import { Ads } from "@types";
 
 export const Keywords: Partial<Ads.AssetPromptMap> = {
