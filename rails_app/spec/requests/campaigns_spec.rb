@@ -139,7 +139,7 @@ RSpec.describe "Campaigns API", type: :request do
   path '/api/v1/campaigns/{id}' do
     parameter name: :id, in: :path, type: :integer, description: 'Campaign ID'
 
-    patch 'Updates a campaign (autosave)' do
+    patch 'Updates a campaign (autosave)', focus: true do
       tags 'Campaigns'
       consumes 'application/json'
       produces 'application/json'
@@ -191,22 +191,18 @@ RSpec.describe "Campaigns API", type: :request do
           end
         end
 
-        response '200', 'campaign updated with nested ad group attributes' do
+        response '200', 'campaign updated with flat ad group attributes' do
           schema APISchemas::Campaign.response
           let(:Authorization) { auth_headers_for(user1)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
           let(:id) { campaign1.id }
           let(:campaign_params) do
-            ad_group = campaign1.ad_groups.first
             {
               campaign: {
-                ad_groups_attributes: [
-                  {
-                    id: ad_group.id,
-                    name: "Renamed Ad Group"
-                  }
-                ]
+                ad_group: {
+                  name: "Renamed Ad Group"
+                }
               }
             }
           end
@@ -272,22 +268,11 @@ RSpec.describe "Campaigns API", type: :request do
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
           let(:id) { campaign1.id }
           let(:campaign_params) do
-            ad = campaign1.ad_groups.first.ads.first
             {
               campaign: {
-                ad_groups_attributes: [
-                  {
-                    id: campaign1.ad_groups.first.id,
-                    ads_attributes: [
-                      {
-                        id: ad.id,
-                        headlines_attributes: [
-                          {text: "Headline 1", position: 0},
-                          {text: "Headline 2", position: 1}
-                        ]
-                      }
-                    ]
-                  }
+                headlines: [
+                  {text: "Headline 1"},
+                  {text: "Headline 2"}
                 ]
               }
             }
@@ -318,27 +303,16 @@ RSpec.describe "Campaigns API", type: :request do
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
           let(:id) { campaign1.id }
           let(:campaign_params) do
-            ad = campaign1.ad_groups.first.ads.first
             {
               campaign: {
-                ad_groups_attributes: [
-                  {
-                    id: campaign1.ad_groups.first.id,
-                    ads_attributes: [
-                      {
-                        id: ad.id,
-                        headlines_attributes: [
-                          {text: "Headline 1", position: 0},
-                          {text: "Headline 2", position: 1},
-                          {text: "Headline 3", position: 2}
-                        ],
-                        descriptions_attributes: [
-                          {text: "Description 1", position: 0},
-                          {text: "Description 2", position: 1}
-                        ]
-                      }
-                    ]
-                  }
+                headlines: [
+                  {text: "Headline 1"},
+                  {text: "Headline 2"},
+                  {text: "Headline 3"}
+                ],
+                descriptions: [
+                  {text: "Description 1"},
+                  {text: "Description 2"}
                 ]
               }
             }
@@ -361,7 +335,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
         end
 
-        response '200', 'idempotently replaces headlines - delete and update' do
+        response '200', 'idempotently replaces headlines - soft delete and reify' do
           schema APISchemas::Campaign.response
           let(:Authorization) { auth_headers_for(user1)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
@@ -373,22 +347,11 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           let(:campaign_params) do
-            ad = content_stage_campaign.ad_groups.first.ads.first
             {
               campaign: {
-                ad_groups_attributes: [
-                  {
-                    id: content_stage_campaign.ad_groups.first.id,
-                    ads_attributes: [
-                      {
-                        id: ad.id,
-                        headlines_attributes: [
-                          {id: initial_headlines[1].id, text: "Headline 2 Updated", position: 0},
-                          {text: "Headline 3", position: 1}
-                        ]
-                      }
-                    ]
-                  }
+                headlines: [
+                  {text: "Headline 2 Updated"},
+                  {text: "Headline 3"}
                 ]
               }
             }
@@ -401,14 +364,14 @@ RSpec.describe "Campaigns API", type: :request do
 
             expect(ad.headlines.count).to eq(2)
             expect(ad.headlines.order(:position).pluck(:text)).to eq(["Headline 2 Updated", "Headline 3"])
-            expect(AdHeadline.exists?(initial_headlines[0].id)).to be false
-            expect(AdHeadline.exists?(initial_headlines[1].id)).to be true
-            expect(AdHeadline.exists?(initial_headlines[2].id)).to be false
+            expect(initial_headlines[0].reload.deleted_at).to be_nil
+            expect(initial_headlines[1].reload.deleted_at).to be_nil
+            expect(initial_headlines[2].reload.deleted_at).to be_present
 
             headlines = data["ad_groups"].first["ads"].first["headlines"]
             expect(headlines.length).to eq(2)
-            expect(headlines[0]).to match(hash_including("id" => initial_headlines[1].id, "text" => "Headline 2 Updated", "position" => 0))
-            expect(headlines[1]).to match(hash_including("id" => a_kind_of(Integer), "text" => "Headline 3", "position" => 1))
+            expect(headlines[0]).to match(hash_including("id" => initial_headlines[0].id, "text" => "Headline 2 Updated", "position" => 0))
+            expect(headlines[1]).to match(hash_including("id" => initial_headlines[1].id, "text" => "Headline 3", "position" => 1))
           end
         end
 
@@ -419,22 +382,11 @@ RSpec.describe "Campaigns API", type: :request do
           let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
           let(:id) { campaign1.id }
           let(:campaign_params) do
-            ad = campaign1.ad_groups.first.ads.first
             {
               campaign: {
-                ad_groups_attributes: [
-                  {
-                    id: campaign1.ad_groups.first.id,
-                    ads_attributes: [
-                      {
-                        id: ad.id,
-                        descriptions_attributes: [
-                          {text: "Description 1", position: 0},
-                          {text: "Description 2", position: 1}
-                        ]
-                      }
-                    ]
-                  }
+                descriptions: [
+                  {text: "Description 1"},
+                  {text: "Description 2"}
                 ]
               }
             }
@@ -456,7 +408,7 @@ RSpec.describe "Campaigns API", type: :request do
           end
         end
 
-        response '200', 'idempotently replaces descriptions - delete and update' do
+        response '200', 'idempotently replaces descriptions - soft delete and reify' do
           schema APISchemas::Campaign.response
           let(:Authorization) { auth_headers_for(user1)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
@@ -472,22 +424,11 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           let(:campaign_params) do
-            ad = campaign1.ad_groups.first.ads.first
             {
               campaign: {
-                ad_groups_attributes: [
-                  {
-                    id: campaign1.ad_groups.first.id,
-                    ads_attributes: [
-                      {
-                        id: ad.id,
-                        descriptions_attributes: [
-                          {id: initial_descriptions[1].id, text: "Description 2 Updated", position: 0},
-                          {text: "Description 3", position: 1}
-                        ]
-                      }
-                    ]
-                  }
+                descriptions: [
+                  {text: "Description 2 Updated"},
+                  {text: "Description 3"}
                 ]
               }
             }
@@ -500,13 +441,14 @@ RSpec.describe "Campaigns API", type: :request do
 
             expect(ad.descriptions.count).to eq(2)
             expect(ad.descriptions.order(:position).pluck(:text)).to eq(["Description 2 Updated", "Description 3"])
-            expect(AdDescription.exists?(initial_descriptions[0].id)).to be false
+            expect(initial_descriptions[0].reload.deleted_at).to be_nil
+            expect(initial_descriptions[1].reload.deleted_at).to be_nil
 
             descriptions = data["ad_groups"].first["ads"].first["descriptions"]
             expect(descriptions.length).to eq(2)
-            expect(descriptions[0]["id"]).to eq(initial_descriptions[1].id)
+            expect(descriptions[0]["id"]).to eq(initial_descriptions[0].id)
             expect(descriptions[0]["text"]).to eq("Description 2 Updated")
-            expect(descriptions[1]["id"]).to be_present
+            expect(descriptions[1]["id"]).to eq(initial_descriptions[1].id)
             expect(descriptions[1]["text"]).to eq("Description 3")
           end
         end
@@ -533,26 +475,15 @@ RSpec.describe "Campaigns API", type: :request do
           end
 
           let(:campaign_params) do
-            ad = campaign1.ad_groups.first.ads.first
             {
               campaign: {
-                ad_groups_attributes: [
-                  {
-                    id: campaign1.ad_groups.first.id,
-                    ads_attributes: [
-                      {
-                        id: ad.id,
-                        headlines_attributes: [
-                          {id: initial_content[:headlines][1].id, text: "Headline 2 Updated", position: 0},
-                          {text: "Headline 3", position: 1}
-                        ],
-                        descriptions_attributes: [
-                          {id: initial_content[:descriptions][0].id, text: "Description 1 Updated", position: 0},
-                          {text: "Description 3", position: 1}
-                        ]
-                      }
-                    ]
-                  }
+                headlines: [
+                  {text: "Headline 2 Updated"},
+                  {text: "Headline 3"}
+                ],
+                descriptions: [
+                  {text: "Description 1 Updated"},
+                  {text: "Description 3"}
                 ]
               }
             }
@@ -565,19 +496,21 @@ RSpec.describe "Campaigns API", type: :request do
 
             expect(ad.headlines.count).to eq(2)
             expect(ad.headlines.order(:position).pluck(:text)).to eq(["Headline 2 Updated", "Headline 3"])
-            expect(AdHeadline.exists?(initial_content[:headlines][0].id)).to be false
+            expect(initial_content[:headlines][0].reload.deleted_at).to be_nil
+            expect(initial_content[:headlines][1].reload.deleted_at).to be_nil
 
             expect(ad.descriptions.count).to eq(2)
             expect(ad.descriptions.order(:position).pluck(:text)).to eq(["Description 1 Updated", "Description 3"])
-            expect(AdDescription.exists?(initial_content[:descriptions][1].id)).to be false
+            expect(initial_content[:descriptions][0].reload.deleted_at).to be_nil
+            expect(initial_content[:descriptions][1].reload.deleted_at).to be_nil
 
             ad_data = data["ad_groups"].first["ads"].first
             expect(ad_data["headlines"].length).to eq(2)
-            expect(ad_data["headlines"][0]["id"]).to eq(initial_content[:headlines][1].id)
-            expect(ad_data["headlines"][1]["id"]).to be_present
+            expect(ad_data["headlines"][0]["id"]).to eq(initial_content[:headlines][0].id)
+            expect(ad_data["headlines"][1]["id"]).to eq(initial_content[:headlines][1].id)
             expect(ad_data["descriptions"].length).to eq(2)
             expect(ad_data["descriptions"][0]["id"]).to eq(initial_content[:descriptions][0].id)
-            expect(ad_data["descriptions"][1]["id"]).to be_present
+            expect(ad_data["descriptions"][1]["id"]).to eq(initial_content[:descriptions][1].id)
           end
         end
       end
@@ -595,8 +528,8 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  callouts_attributes: [
-                    {text: "Free Shipping", position: 0}
+                  callouts: [
+                    {text: "Free Shipping"}
                   ]
                 }
               }
@@ -626,9 +559,9 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  callouts_attributes: [
-                    {text: "Free Shipping", position: 0},
-                    {text: "24/7 Support", position: 1}
+                  callouts: [
+                    {text: "Free Shipping"},
+                    {text: "24/7 Support"}
                   ]
                 }
               }
@@ -648,7 +581,7 @@ RSpec.describe "Campaigns API", type: :request do
             end
           end
 
-          response '200', 'idempotently replaces callouts - delete and update' do
+          response '200', 'idempotently replaces callouts - soft delete and reify' do
             schema APISchemas::Campaign.response
             let(:Authorization) { auth_headers_for(user1)['Authorization'] }
             let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
@@ -665,9 +598,9 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  callouts_attributes: [
-                    {id: initial_callouts[1].id, text: "Callout 2 Updated", position: 0},
-                    {text: "Callout 3", position: 1}
+                  callouts: [
+                    {text: "Callout 2 Updated"},
+                    {text: "Callout 3"}
                   ]
                 }
               }
@@ -679,12 +612,13 @@ RSpec.describe "Campaigns API", type: :request do
 
               expect(highlights_campaign.callouts.count).to eq(2)
               expect(highlights_campaign.callouts.order(:position).pluck(:text)).to eq(["Callout 2 Updated", "Callout 3"])
-              expect(AdCallout.exists?(initial_callouts[0].id)).to be false
+              expect(initial_callouts[0].reload.deleted_at).to be_nil
+              expect(initial_callouts[1].reload.deleted_at).to be_nil
 
               expect(data["callouts"].length).to eq(2)
-              expect(data["callouts"][0]["id"]).to eq(initial_callouts[1].id)
+              expect(data["callouts"][0]["id"]).to eq(initial_callouts[0].id)
               expect(data["callouts"][0]["text"]).to eq("Callout 2 Updated")
-              expect(data["callouts"][1]["id"]).to be_present
+              expect(data["callouts"][1]["id"]).to eq(initial_callouts[1].id)
               expect(data["callouts"][1]["text"]).to eq("Callout 3")
             end
           end
@@ -701,9 +635,9 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  callouts_attributes: [
-                    {text: "Free Shipping", position: 0},
-                    {text: "24/7 Support", position: 1}
+                  callouts: [
+                    {text: "Free Shipping"},
+                    {text: "24/7 Support"}
                   ]
                 }
               }
@@ -735,7 +669,7 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  structured_snippet_attributes: {
+                  structured_snippet: {
                     category: "brands",
                     values: ["Nike", "Adidas", "Puma"]
                   }
@@ -771,7 +705,7 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  structured_snippet_attributes: {
+                  structured_snippet: {
                     category: "services",
                     values: ["Consulting", "Design", "Development", "Marketing"]
                   }
@@ -801,11 +735,11 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  callouts_attributes: [
-                    {text: "Free Shipping", position: 0},
-                    {text: "24/7 Support", position: 1}
+                  callouts: [
+                    {text: "Free Shipping"},
+                    {text: "24/7 Support"}
                   ],
-                  structured_snippet_attributes: {
+                  structured_snippet: {
                     category: "brands",
                     values: ["Nike", "Adidas", "Puma"]
                   }
@@ -840,7 +774,7 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  structured_snippet_attributes: {
+                  structured_snippet: {
                     category: "brands",
                     values: ["Nike", "Adidas", "Puma"]
                   }
@@ -874,17 +808,11 @@ RSpec.describe "Campaigns API", type: :request do
             let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
             let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
             let(:campaign_params) do
-              ad_group = keywords_campaign.ad_groups.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: ad_group.id,
-                      keywords_attributes: [
-                        {text: "running shoes", match_type: "broad", position: 0},
-                        {text: "athletic footwear", match_type: "phrase", position: 1}
-                      ]
-                    }
+                  keywords: [
+                    {text: "running shoes", match_type: "broad"},
+                    {text: "athletic footwear", match_type: "phrase"}
                   ]
                 }
               }
@@ -919,20 +847,14 @@ RSpec.describe "Campaigns API", type: :request do
             let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
             let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
             let(:campaign_params) do
-              ad_group = keywords_campaign.ad_groups.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: ad_group.id,
-                      keywords_attributes: [
-                        {text: "running shoes", match_type: "broad", position: 0},
-                        {text: "athletic footwear", match_type: "phrase", position: 1},
-                        {text: "sneakers", match_type: "exact", position: 2},
-                        {text: "sports shoes", match_type: "broad", position: 3},
-                        {text: "training shoes", match_type: "phrase", position: 4}
-                      ]
-                    }
+                  keywords: [
+                    {text: "running shoes", match_type: "broad"},
+                    {text: "athletic footwear", match_type: "phrase"},
+                    {text: "sneakers", match_type: "exact"},
+                    {text: "sports shoes", match_type: "broad"},
+                    {text: "training shoes", match_type: "phrase"}
                   ]
                 }
               }
@@ -953,7 +875,7 @@ RSpec.describe "Campaigns API", type: :request do
             end
           end
 
-          response '200', 'idempotently replaces keywords - delete and update' do
+          response '200', 'idempotently replaces keywords - soft delete and reify' do
             schema APISchemas::Campaign.response
             let(:Authorization) { auth_headers_for(user1)['Authorization'] }
             let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
@@ -969,17 +891,11 @@ RSpec.describe "Campaigns API", type: :request do
             end
 
             let(:campaign_params) do
-              ad_group = keywords_campaign.ad_groups.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: ad_group.id,
-                      keywords_attributes: [
-                        {id: initial_keywords[1].id, text: "keyword 2 updated", match_type: "exact", position: 0},
-                        {text: "keyword 4", match_type: "broad", position: 1}
-                      ]
-                    }
+                  keywords: [
+                    {text: "keyword 2 updated", match_type: "exact"},
+                    {text: "keyword 4", match_type: "broad"}
                   ]
                 }
               }
@@ -992,15 +908,16 @@ RSpec.describe "Campaigns API", type: :request do
 
               expect(ad_group.keywords.count).to eq(2)
               expect(ad_group.keywords.order(:position).pluck(:text)).to eq(["keyword 2 updated", "keyword 4"])
-              expect(AdKeyword.exists?(initial_keywords[0].id)).to be false
-              expect(AdKeyword.exists?(initial_keywords[2].id)).to be false
+              expect(initial_keywords[0].reload.deleted_at).to be_nil
+              expect(initial_keywords[1].reload.deleted_at).to be_nil
+              expect(initial_keywords[2].reload.deleted_at).to be_present
 
               keywords = data["ad_groups"].first["keywords"]
               expect(keywords.length).to eq(2)
-              expect(keywords[0]["id"]).to eq(initial_keywords[1].id)
+              expect(keywords[0]["id"]).to eq(initial_keywords[0].id)
               expect(keywords[0]["text"]).to eq("keyword 2 updated")
               expect(keywords[0]["match_type"]).to eq("exact")
-              expect(keywords[1]["id"]).to be_present
+              expect(keywords[1]["id"]).to eq(initial_keywords[1].id)
               expect(keywords[1]["text"]).to eq("keyword 4")
             end
           end
@@ -1017,20 +934,14 @@ RSpec.describe "Campaigns API", type: :request do
             let!(:initial_structured_snippet) { keywords_campaign.structured_snippet }
 
             let(:campaign_params) do
-              ad_group = keywords_campaign.ad_groups.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: ad_group.id,
-                      keywords_attributes: [
-                        {text: "keyword 1", match_type: "broad", position: 0},
-                        {text: "keyword 2", match_type: "phrase", position: 1},
-                        {text: "keyword 3", match_type: "exact", position: 2},
-                        {text: "keyword 4", match_type: "broad", position: 3},
-                        {text: "keyword 5", match_type: "phrase", position: 4}
-                      ]
-                    }
+                  keywords: [
+                    {text: "keyword 1", match_type: "broad"},
+                    {text: "keyword 2", match_type: "phrase"},
+                    {text: "keyword 3", match_type: "exact"},
+                    {text: "keyword 4", match_type: "broad"},
+                    {text: "keyword 5", match_type: "phrase"}
                   ]
                 }
               }
@@ -2105,21 +2016,10 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'rejects blank headline text' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad = campaign1.ad_groups.first.ads.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: campaign1.ad_groups.first.id,
-                      ads_attributes: [
-                        {
-                          id: ad.id,
-                          headlines_attributes: [
-                            {text: "", position: 0}
-                          ]
-                        }
-                      ]
-                    }
+                  headlines: [
+                    {text: "", position: 0}
                   ]
                 }
               }
@@ -2135,21 +2035,10 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'rejects headline text exceeding 30 characters' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad = campaign1.ad_groups.first.ads.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: campaign1.ad_groups.first.id,
-                      ads_attributes: [
-                        {
-                          id: ad.id,
-                          headlines_attributes: [
-                            {text: "A" * 31, position: 0}
-                          ]
-                        }
-                      ]
-                    }
+                  headlines: [
+                    {text: "A" * 31, position: 0}
                   ]
                 }
               }
@@ -2165,21 +2054,10 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'rejects headline with missing position' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad = campaign1.ad_groups.first.ads.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: campaign1.ad_groups.first.id,
-                      ads_attributes: [
-                        {
-                          id: ad.id,
-                          headlines_attributes: [
-                            {text: "Valid headline"}
-                          ]
-                        }
-                      ]
-                    }
+                  headlines: [
+                    {text: "Valid headline"}
                   ]
                 }
               }
@@ -2197,21 +2075,10 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'rejects blank description text' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad = campaign1.ad_groups.first.ads.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: campaign1.ad_groups.first.id,
-                      ads_attributes: [
-                        {
-                          id: ad.id,
-                          descriptions_attributes: [
-                            {text: "", position: 0}
-                          ]
-                        }
-                      ]
-                    }
+                  descriptions: [
+                    {text: "", position: 0}
                   ]
                 }
               }
@@ -2227,21 +2094,10 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'rejects description text exceeding 90 characters' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad = campaign1.ad_groups.first.ads.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: campaign1.ad_groups.first.id,
-                      ads_attributes: [
-                        {
-                          id: ad.id,
-                          descriptions_attributes: [
-                            {text: "A" * 91, position: 0}
-                          ]
-                        }
-                      ]
-                    }
+                  descriptions: [
+                    {text: "A" * 91, position: 0}
                   ]
                 }
               }
@@ -2257,21 +2113,10 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'rejects description with missing position' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad = campaign1.ad_groups.first.ads.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: campaign1.ad_groups.first.id,
-                      ads_attributes: [
-                        {
-                          id: ad.id,
-                          descriptions_attributes: [
-                            {text: "Valid description"}
-                          ]
-                        }
-                      ]
-                    }
+                  descriptions: [
+                    {text: "Valid description"}
                   ]
                 }
               }
@@ -2291,7 +2136,7 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  callouts_attributes: [
+                  callouts: [
                     {text: "", position: 0}
                   ]
                 }
@@ -2310,7 +2155,7 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  callouts_attributes: [
+                  callouts: [
                     {text: "A" * 26, position: 0}
                   ]
                 }
@@ -2329,7 +2174,7 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  callouts_attributes: [
+                  callouts: [
                     {text: "Valid callout"}
                   ]
                 }
@@ -2348,16 +2193,10 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'rejects blank keyword text' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad_group = campaign1.ad_groups.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: ad_group.id,
-                      keywords_attributes: [
-                        {text: "", match_type: "broad", position: 0}
-                      ]
-                    }
+                  keywords: [
+                    {text: "", match_type: "broad", position: 0}
                   ]
                 }
               }
@@ -2373,16 +2212,10 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'rejects keyword text exceeding 80 characters' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad_group = campaign1.ad_groups.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: ad_group.id,
-                      keywords_attributes: [
-                        {text: "A" * 81, match_type: "broad", position: 0}
-                      ]
-                    }
+                  keywords: [
+                    {text: "A" * 81, match_type: "broad", position: 0}
                   ]
                 }
               }
@@ -2398,16 +2231,10 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'rejects invalid keyword match_type' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad_group = campaign1.ad_groups.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: ad_group.id,
-                      keywords_attributes: [
-                        {text: "valid keyword", match_type: "invalid_type", position: 0}
-                      ]
-                    }
+                  keywords: [
+                    {text: "valid keyword", match_type: "invalid_type", position: 0}
                   ]
                 }
               }
@@ -2423,16 +2250,10 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'rejects keyword with missing match_type' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad_group = campaign1.ad_groups.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: ad_group.id,
-                      keywords_attributes: [
-                        {text: "valid keyword", position: 0}
-                      ]
-                    }
+                  keywords: [
+                    {text: "valid keyword", position: 0}
                   ]
                 }
               }
@@ -2448,16 +2269,10 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'rejects keyword with missing position' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad_group = campaign1.ad_groups.first
               {
                 campaign: {
-                  ad_groups_attributes: [
-                    {
-                      id: ad_group.id,
-                      keywords_attributes: [
-                        {text: "valid keyword", match_type: "broad"}
-                      ]
-                    }
+                  keywords: [
+                    {text: "valid keyword", match_type: "broad"}
                   ]
                 }
               }
@@ -2477,7 +2292,7 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  structured_snippet_attributes: {
+                  structured_snippet: {
                     category: "invalid_category",
                     values: ["Value 1", "Value 2", "Value 3"]
                   }
@@ -2497,7 +2312,7 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  structured_snippet_attributes: {
+                  structured_snippet: {
                     category: "brands",
                     values: ["Value 1", "Value 2"]
                   }
@@ -2517,7 +2332,7 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  structured_snippet_attributes: {
+                  structured_snippet: {
                     category: "brands",
                     values: (1..11).map { |i| "Value #{i}" }
                   }
@@ -2537,7 +2352,7 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
-                  structured_snippet_attributes: {
+                  structured_snippet: {
                     category: "",
                     values: ["Value 1", "Value 2", "Value 3"]
                   }
@@ -2814,34 +2629,22 @@ RSpec.describe "Campaigns API", type: :request do
           response '422', 'returns all validation errors at once' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
-              ad = campaign1.ad_groups.first.ads.first
-              ad_group = campaign1.ad_groups.first
               {
                 campaign: {
                   time_zone: 'Invalid/TimeZone',
-                  ad_groups_attributes: [
-                    {
-                      id: ad_group.id,
-                      ads_attributes: [
-                        {
-                          id: ad.id,
-                          headlines_attributes: [
-                            {text: "", position: 0},
-                            {text: "A" * 31, position: 1},
-                            {text: "Legal headline", position: 2},
-                            {text: "Illegal headline" * 30, position: 3}
-                          ],
-                          descriptions_attributes: [
-                            {text: "", position: 0}
-                          ]
-                        }
-                      ],
-                      keywords_attributes: [
-                        {text: "", match_type: "invalid", position: 0}
-                      ]
-                    }
+                  headlines: [
+                    {text: "", position: 0},
+                    {text: "A" * 31, position: 1},
+                    {text: "Legal headline", position: 2},
+                    {text: "Illegal headline" * 30, position: 3}
                   ],
-                  callouts_attributes: [
+                  descriptions: [
+                    {text: "", position: 0}
+                  ],
+                  keywords: [
+                    {text: "", match_type: "invalid", position: 0}
+                  ],
+                  callouts: [
                     {text: "", position: 0}
                   ]
                 }
@@ -2878,23 +2681,12 @@ RSpec.describe "Campaigns API", type: :request do
             end
 
             let(:campaign_params) do
-              ad = campaign1.ad_groups.first.ads.first
               {
                 campaign: {
                   name: "Updated Campaign Name",
-                  ad_groups_attributes: [
-                    {
-                      id: campaign1.ad_groups.first.id,
-                      ads_attributes: [
-                        {
-                          id: ad.id,
-                          headlines_attributes: [
-                            {id: initial_headlines[0].id, text: "Updated Headline", position: 0},
-                            {text: "", position: 1}
-                          ]
-                        }
-                      ]
-                    }
+                  headlines: [
+                    {id: initial_headlines[0].id, text: "Updated Headline", position: 0},
+                    {text: "", position: 1}
                   ]
                 }
               }

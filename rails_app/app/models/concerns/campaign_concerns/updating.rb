@@ -2,12 +2,9 @@ module CampaignConcerns
   module Updating
     extend ActiveSupport::Concern
 
-    FLAT_PARAM_KEYS = %i[headlines descriptions keywords callouts structured_snippet].freeze
+    FLAT_PARAM_KEYS = %i[headlines descriptions keywords callouts structured_snippet ad_group].freeze
 
     def update_idempotently!(params)
-      # Allow passing in flat params (e.g. headlines, descriptions) for simpler API
-      # Here we map them to the expected Rails format, which will be especially useful
-      # when we support multiple ad groups and ads per campaign
       normalized_params = normalize_flat_params(params)
       result = IdempotentCampaignUpdater.new(self, normalized_params).update
       if result.failed?
@@ -22,8 +19,8 @@ module CampaignConcerns
       params = params.deep_dup.with_indifferent_access
       return params unless uses_flat_params?(params)
 
-      ad_group = ad_groups.first
-      ad = ad_group&.ads&.first
+      ad_group_record = ad_groups.first
+      ad_record = ad_group_record&.ads&.first
 
       normalized = params.except(*FLAT_PARAM_KEYS)
 
@@ -34,9 +31,21 @@ module CampaignConcerns
       ad_group_level_attrs = {}
       ad_group_level_attrs[:keywords_attributes] = params[:keywords] if params[:keywords]
 
+      if params[:ad_group].present?
+        flat_ad_group = params[:ad_group].with_indifferent_access
+        ad_group_level_attrs[:name] = flat_ad_group[:name] if flat_ad_group[:name]
+        ad_group_level_attrs[:keywords_attributes] = flat_ad_group[:keywords_attributes] if flat_ad_group[:keywords_attributes]
+
+        if flat_ad_group[:ad].present?
+          flat_ad = flat_ad_group[:ad].with_indifferent_access
+          ad_level_attrs[:headlines_attributes] = flat_ad[:headlines_attributes] if flat_ad[:headlines_attributes]
+          ad_level_attrs[:descriptions_attributes] = flat_ad[:descriptions_attributes] if flat_ad[:descriptions_attributes]
+        end
+      end
+
       if ad_level_attrs.any? || ad_group_level_attrs.any?
-        ad_group_attrs = { id: ad_group.id }
-        ad_group_attrs[:ads_attributes] = [{ id: ad.id }.merge(ad_level_attrs)] if ad_level_attrs.any?
+        ad_group_attrs = { id: ad_group_record.id }
+        ad_group_attrs[:ads_attributes] = [{ id: ad_record.id }.merge(ad_level_attrs)] if ad_level_attrs.any?
         ad_group_attrs.merge!(ad_group_level_attrs)
         normalized[:ad_groups_attributes] = [ad_group_attrs]
       end
@@ -90,7 +99,7 @@ module CampaignConcerns
       private
 
       def prepare_regular_attrs!
-        regular_params = params.deep_dup
+        regular_params = params.deep_dup.deep_symbolize_keys
         regular_params[:ad_groups_attributes]&.each do |ag_attrs|
           ag_attrs.delete(:keywords_attributes)
           ag_attrs[:ads_attributes]&.each do |ad_attrs|
@@ -118,7 +127,7 @@ module CampaignConcerns
       end
 
       def prepare_idempotent_attrs!
-        idempotent_params = params.deep_dup
+        idempotent_params = params.deep_dup.deep_symbolize_keys
 
         if idempotent_params[:ad_groups_attributes].present?
           idempotent_params[:ad_groups_attributes].each do |ad_group_attrs|
@@ -183,20 +192,18 @@ module CampaignConcerns
         headline_attrs.each_with_index do |attrs, idx|
           path = "ad_groups[#{ad_group_index}].ads[#{ad_index}].headlines[#{idx}]"
 
-          if attrs[:position] # use position instead of id
-            headline = existing_headlines[attrs[:position]]
-            if headline
-              headline.assign_attributes(
-                text: attrs[:text],
-                position: attrs[:position],
-                platform_settings: attrs[:platform_settings],
-                deleted_at: nil # explicitly set, in case it was soft-deleted
-              )
-              headline.skip_position_uniqueness_validation = true
-              headlines_to_update << headline
-              all_headlines << headline
-              add_to_validation(headline, path)
-            end
+          headline = existing_headlines[attrs[:position]]
+          if headline
+            headline.assign_attributes(
+              text: attrs[:text],
+              position: attrs[:position],
+              platform_settings: attrs[:platform_settings],
+              deleted_at: nil
+            )
+            headline.skip_position_uniqueness_validation = true
+            headlines_to_update << headline
+            all_headlines << headline
+            add_to_validation(headline, path)
           else
             new_headline = AdHeadline.new(
               ad_id: ad.id,
@@ -228,19 +235,17 @@ module CampaignConcerns
         descriptions_attrs.each_with_index do |attrs, idx|
           path = "ad_groups[#{ad_group_index}].ads[#{ad_index}].descriptions[#{idx}]"
 
-          if attrs[:position]
-            description = existing_descriptions[attrs[:position]]
-            if description
-              description.assign_attributes(
-                text: attrs[:text],
-                position: attrs[:position],
-                platform_settings: attrs[:platform_settings],
-                deleted_at: nil
-              )
-              descriptions_to_update << description
-              all_descriptions << description
-              add_to_validation(description, path)
-            end
+          description = existing_descriptions[attrs[:position]]
+          if description
+            description.assign_attributes(
+              text: attrs[:text],
+              position: attrs[:position],
+              platform_settings: attrs[:platform_settings],
+              deleted_at: nil
+            )
+            descriptions_to_update << description
+            all_descriptions << description
+            add_to_validation(description, path)
           else
             new_description = AdDescription.new(
               ad_id: ad.id,
@@ -269,19 +274,17 @@ module CampaignConcerns
         callouts_attrs.each_with_index do |attrs, idx|
           path = "callouts[#{idx}]"
 
-          if attrs[:position]
-            callout = existing_callouts[attrs[:position]]
-            if callout
-              callout.assign_attributes(
-                text: attrs[:text],
-                position: attrs[:position],
-                platform_settings: attrs[:platform_settings],
-                deleted_at: nil
-              )
-              callouts_to_update << callout
-              all_callouts << callout
-              add_to_validation(callout, path)
-            end
+          callout = existing_callouts[attrs[:position]]
+          if callout
+            callout.assign_attributes(
+              text: attrs[:text],
+              position: attrs[:position],
+              platform_settings: attrs[:platform_settings],
+              deleted_at: nil
+            )
+            callouts_to_update << callout
+            all_callouts << callout
+            add_to_validation(callout, path)
           else
             new_callout = AdCallout.new(
               text: attrs[:text],
@@ -365,19 +368,17 @@ module CampaignConcerns
         keywords_attrs.each_with_index do |attrs, idx|
           path = "ad_groups[#{ad_group_index}].keywords[#{idx}]"
 
-          if attrs[:position]
-            keyword = existing_keywords[attrs[:position]]
-            if keyword
-              keyword.assign_attributes(
-                text: attrs[:text],
-                match_type: attrs[:match_type],
-                position: attrs[:position],
-                deleted_at: nil
-              )
-              keywords_to_update << keyword
-              all_keywords << keyword
-              add_to_validation(keyword, path)
-            end
+          keyword = existing_keywords[attrs[:position]]
+          if keyword
+            keyword.assign_attributes(
+              text: attrs[:text],
+              match_type: attrs[:match_type],
+              position: attrs[:position],
+              deleted_at: nil
+            )
+            keywords_to_update << keyword
+            all_keywords << keyword
+            add_to_validation(keyword, path)
           else
             new_keyword = AdKeyword.new(
               ad_group_id: ad_group.id,

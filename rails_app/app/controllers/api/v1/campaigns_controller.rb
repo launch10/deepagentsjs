@@ -87,8 +87,27 @@ class API::V1::CampaignsController < API::BaseController
       :daily_budget_cents,
       :google_advertising_channel_type,
       :google_bidding_strategy,
-      location_targets: [:target_type, :location_name, :location_type, :country_code, :targeted, :google_criterion_id, :radius, :radius_units],
+      **flat_attributes,
+      **nested_attributes
+    )
+  end
+
+  def flat_attributes
+    {
       ad_schedules: [:always_on, :start_time, :end_time, :time_zone, { day_of_week: [] }],
+      headlines: [:id, :text, :position],
+      descriptions: [:id, :text, :position],
+      keywords: [:id, :text, :match_type, :position],
+      callouts: [:id, :text, :position],
+      structured_snippet: [:category, :_destroy, { values: [] }],
+      location_targets: [:target_type, :location_name, :location_type, :country_code, :targeted, :google_criterion_id, :radius, :radius_units],
+      ad_group: [:name]
+    }
+  end
+
+  # We support both flat and nested attributes for flexibility
+  def nested_attributes
+    {
       ad_groups_attributes: [
         :id,
         :name,
@@ -101,8 +120,9 @@ class API::V1::CampaignsController < API::BaseController
       ],
       callouts_attributes: [:id, :text, :position],
       structured_snippet_attributes: [:id, :category, :_destroy, { values: [] }]
-    )
+    }
   end
+
 
   def eager_load(campaign)
     Campaign
