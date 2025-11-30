@@ -3,6 +3,7 @@
 # Table name: ad_groups
 #
 #  id                :bigint           not null, primary key
+#  deleted_at        :datetime
 #  name              :string
 #  platform_settings :jsonb
 #  created_at        :datetime         not null
@@ -14,12 +15,15 @@
 #  index_ad_groups_on_campaign_id           (campaign_id)
 #  index_ad_groups_on_campaign_id_and_name  (campaign_id,name)
 #  index_ad_groups_on_created_at            (created_at)
+#  index_ad_groups_on_deleted_at            (deleted_at)
 #  index_ad_groups_on_google_id             ((((platform_settings -> 'google'::text) ->> 'ad_group_id'::text)))
 #  index_ad_groups_on_name                  (name)
 #  index_ad_groups_on_platform_settings     (platform_settings) USING gin
 #
 class AdGroup < ApplicationRecord
   include PlatformSettings
+
+  acts_as_paranoid
 
   belongs_to :campaign
   has_one :ads_account, through: :campaign

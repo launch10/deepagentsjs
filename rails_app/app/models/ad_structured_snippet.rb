@@ -24,6 +24,8 @@ class AdStructuredSnippet < ApplicationRecord
 
   include AdStructuredSnippetConcerns::Categories
 
+  acts_as_paranoid
+
   belongs_to :campaign
 
   validates :category, presence: true

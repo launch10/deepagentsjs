@@ -3,6 +3,7 @@
 # Table name: ad_keywords
 #
 #  id                :bigint           not null, primary key
+#  deleted_at        :datetime
 #  match_type        :string           default("broad"), not null
 #  platform_settings :jsonb
 #  position          :integer          not null
@@ -16,6 +17,7 @@
 #  index_ad_keywords_on_ad_group_id        (ad_group_id)
 #  index_ad_keywords_on_created_at         (created_at)
 #  index_ad_keywords_on_criterion_id       ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)))
+#  index_ad_keywords_on_deleted_at         (deleted_at)
 #  index_ad_keywords_on_match_type         (match_type)
 #  index_ad_keywords_on_platform_settings  (platform_settings) USING gin
 #  index_ad_keywords_on_position           (position)
@@ -23,6 +25,8 @@
 #
 class AdKeyword < ApplicationRecord
   include PlatformSettings
+
+  acts_as_paranoid
 
   belongs_to :ad_group, class_name: "AdGroup", inverse_of: :keywords
   has_one :campaign, through: :ad_group

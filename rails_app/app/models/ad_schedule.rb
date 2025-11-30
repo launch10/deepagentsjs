@@ -6,6 +6,7 @@
 #  always_on         :boolean          default(FALSE)
 #  bid_modifier      :decimal(10, 2)
 #  day_of_week       :string
+#  deleted_at        :datetime
 #  end_hour          :integer
 #  end_minute        :integer
 #  platform_settings :jsonb
@@ -23,6 +24,7 @@
 #  index_ad_schedules_on_created_at                   (created_at)
 #  index_ad_schedules_on_criterion_id                 ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)))
 #  index_ad_schedules_on_day_of_week                  (day_of_week)
+#  index_ad_schedules_on_deleted_at                   (deleted_at)
 #  index_ad_schedules_on_platform_settings            (platform_settings) USING gin
 #
 class AdSchedule < ApplicationRecord
@@ -30,6 +32,8 @@ class AdSchedule < ApplicationRecord
 
   belongs_to :campaign
   has_one :ads_account, through: :campaign
+
+  acts_as_paranoid
 
   platform_setting :google, :criterion_id
 

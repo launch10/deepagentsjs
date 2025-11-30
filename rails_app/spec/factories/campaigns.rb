@@ -3,6 +3,7 @@
 # Table name: campaigns
 #
 #  id                :bigint           not null, primary key
+#  deleted_at        :datetime
 #  end_date          :date
 #  launched_at       :datetime
 #  name              :string
@@ -25,6 +26,7 @@
 #  index_campaigns_on_account_id_and_status  (account_id,status)
 #  index_campaigns_on_ads_account_id         (ads_account_id)
 #  index_campaigns_on_created_at             (created_at)
+#  index_campaigns_on_deleted_at             (deleted_at)
 #  index_campaigns_on_end_date               (end_date)
 #  index_campaigns_on_google_id              ((((platform_settings -> 'google'::text) ->> 'campaign_id'::text)))
 #  index_campaigns_on_launched_at            (launched_at)

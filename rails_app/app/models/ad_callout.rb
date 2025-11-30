@@ -3,6 +3,7 @@
 # Table name: ad_callouts
 #
 #  id                :bigint           not null, primary key
+#  deleted_at        :datetime
 #  platform_settings :jsonb
 #  position          :integer          not null
 #  text              :string           not null
@@ -17,6 +18,7 @@
 #  index_ad_callouts_on_asset_id           ((((platform_settings -> 'google'::text) ->> 'asset_id'::text)))
 #  index_ad_callouts_on_campaign_id        (campaign_id)
 #  index_ad_callouts_on_created_at         (created_at)
+#  index_ad_callouts_on_deleted_at         (deleted_at)
 #  index_ad_callouts_on_platform_settings  (platform_settings) USING gin
 #  index_ad_callouts_on_position           (position)
 #
@@ -28,4 +30,6 @@ class AdCallout < ApplicationRecord
 
   validates :text, presence: true, length: { maximum: 25 }
   validates :position, presence: true
+
+  acts_as_paranoid
 end
