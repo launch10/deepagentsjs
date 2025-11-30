@@ -9,6 +9,19 @@ export type AssetKind = typeof AssetKinds[number];
 export const StageNames = LaunchAdCampaignSubsteps;
 export type StageName = typeof StageNames[number];
 
+export const ContentStages = ["content", "highlights", "keywords"] as const;
+export type ContentStage = typeof ContentStages[number];
+
+export const NonContentStages = StageNames.filter(stage => !ContentStages.includes(stage as ContentStage)) as Exclude<StageName, ContentStage>[];
+export type NonContentStage = typeof NonContentStages[number];
+
+const ContentStagesSet = new Set<string>(ContentStages);
+
+export const isContentStage = (stage: StageName): stage is
+ContentStage => {
+    return ContentStagesSet.has(stage);
+};
+
 export const AssetSchema = z.object({
     text: z.string(),
     rejected: z.boolean(),
