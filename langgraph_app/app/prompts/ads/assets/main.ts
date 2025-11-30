@@ -5,6 +5,78 @@ import { ResponseTemplates } from "./responseTemplates";
 import { isPseudoMessage } from "../pseudoMessages";
 import { HumanMessage } from "@langchain/core/messages";
 
+export const shouldIncludeFaqTool = (state: AdsGraphState): boolean => {
+    const lastMessage = state.messages?.at(-1);
+    const isRealHumanMessage = lastMessage && HumanMessage.isInstance(lastMessage) && !isPseudoMessage(lastMessage);
+    return Boolean(isRealHumanMessage);
+};
+
+const buildPreviousAssetsContext = (state: AdsGraphState): string => {
+    const sections: string[] = [];
+
+    const formatAssetList = (assets: Ads.Asset[] | undefined, label: string) => {
+        if (!assets?.length) return null;
+        
+        const locked = assets.filter(a => a.locked);
+        const rejected = assets.filter(a => a.rejected);
+        
+        if (!locked.length && !rejected.length) return null;
+
+        const lines: string[] = [];
+        if (locked.length) {
+            lines.push(`  Approved ${label}:`);
+            locked.forEach(a => lines.push(`    - "${a.text}"`));
+        }
+        if (rejected.length) {
+            lines.push(`  Rejected ${label} (avoid similar):`);
+            rejected.forEach(a => lines.push(`    - "${a.text}"`));
+        }
+        return lines.join('\n');
+    };
+
+    const headlinesContext = formatAssetList(state.headlines, 'Headlines');
+    const descriptionsContext = formatAssetList(state.descriptions, 'Descriptions');
+    const calloutsContext = formatAssetList(state.callouts, 'Callouts');
+    const keywordsContext = formatAssetList(state.keywords, 'Keywords');
+
+    if (headlinesContext) sections.push(headlinesContext);
+    if (descriptionsContext) sections.push(descriptionsContext);
+    if (calloutsContext) sections.push(calloutsContext);
+    if (keywordsContext) sections.push(keywordsContext);
+
+    if (state.structuredSnippet) {
+        const { category, details } = state.structuredSnippet;
+        const lockedDetails = details?.filter(d => d.locked) || [];
+        const rejectedDetails = details?.filter(d => d.rejected) || [];
+        
+        if (category?.locked || lockedDetails.length || rejectedDetails.length) {
+            const snippetLines: string[] = [];
+            if (category?.locked) {
+                snippetLines.push(`  Approved Snippet Category: "${category.text}"`);
+            }
+            if (lockedDetails.length) {
+                snippetLines.push(`  Approved Snippet Details:`);
+                lockedDetails.forEach(d => snippetLines.push(`    - "${d.text}"`));
+            }
+            if (rejectedDetails.length) {
+                snippetLines.push(`  Rejected Snippet Details (avoid similar):`);
+                rejectedDetails.forEach(d => snippetLines.push(`    - "${d.text}"`));
+            }
+            sections.push(snippetLines.join('\n'));
+        }
+    }
+
+    if (!sections.length) return '';
+
+    return `
+        # User Preferences from Previous Steps
+        The user has already reviewed some assets. Use their preferences to guide new generations:
+${sections.join('\n\n')}
+
+        Generate new assets that complement the approved ones and avoid themes similar to rejected ones.
+    `;
+};
+
 export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunnableConfig) => {
     if (!state.stage) {
         throw new Error("Stage is required");
@@ -40,6 +112,7 @@ export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunn
     const isRealHumanMessage = lastMessage && HumanMessage.isInstance(lastMessage) && !isPseudoMessage(lastMessage);
     const needsIntentClassification = isRealHumanMessage;
     const isRefreshMode = state.refresh !== undefined;
+    const previousAssetsContext = buildPreviousAssetsContext(state);
 
     const intentClassificationSection = needsIntentClassification ? `
         # Intent Classification
@@ -65,10 +138,10 @@ export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunn
     const helpPathSection = needsIntentClassification ? `
         # Help Path: Questions/FAQ
         If the user is asking questions:
-        1. Use the faq tool to retrieve FAQ context
-        2. Answer their question conversationally in 2-4 sentences
+        1. Use the ads_faq tool to retrieve FAQ context
+        2. Answer their question in 2-3 sentences maximum
         3. Do NOT include any JSON or structured data
-        4. Be helpful and encourage them to continue when ready
+        4. Keep your answer brief and helpful
     ` : '';
 
     const importantRulesSection = needsIntentClassification ? `
@@ -82,6 +155,32 @@ export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunn
         - ALWAYS include the introductory text BEFORE the JSON block
         - Always return net-new assets, never duplicate existing headlines, descriptions, etc
     `;
+
+    let responseFormat;
+    if (needsIntentClassification) {
+        responseFormat = `
+        # Example Response Formats
+
+        ## If generating assets (Happy Path):
+        ${isRefreshMode ? "Here are some fresh suggestions:" : responseTemplate}
+
+        \`\`\`json
+        ${JSON.stringify(mergedOutputFormat, null, 2)}
+        \`\`\`
+
+        ## If answering questions (Help Path):
+        [2-3 sentence conversational answer - NO JSON block]
+        [IMPORTANT: If answering question: keep it brief, 2-3 sentences only. No JSON block.]
+    ` } else {
+        responseFormat = `
+            # Example response format
+            ${isRefreshMode ? "Here are some fresh suggestions:" : responseTemplate}
+
+            \`\`\`json
+            ${JSON.stringify(mergedOutputFormat, null, 2)}
+            \`\`\`
+        `;
+    }
 
     return `
         You are an expert Google Ads copywriter helping to create compelling ad extensions for a business.
@@ -110,11 +209,8 @@ export const promptBuilder = async (state: AdsGraphState, config?: LangGraphRunn
         Solution: ${state.brainstorm.solution}
         Social Proof: ${state.brainstorm.socialProof}
 
-        Example response format:
-        ${isRefreshMode ? "Here are some fresh suggestions:" : responseTemplate}
+        ${previousAssetsContext}
 
-        \`\`\`json
-        ${JSON.stringify(mergedOutputFormat, null, 2)}
-        \`\`\`
+        ${responseFormat}
     `.replace(/\n\s*\n/g, '\n\n').trim();
 }

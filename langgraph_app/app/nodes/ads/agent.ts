@@ -2,7 +2,7 @@ import { createAgent, createMiddleware } from "langchain";
 import { AIMessage } from "@langchain/core/messages";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
-import { chooseAdsPrompt, injectPseudoMessage, filterPseudoMessages } from "@prompts";
+import { chooseAdsPrompt, injectPseudoMessage, filterPseudoMessages, shouldIncludeFaqTool } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { adsFaqTool } from "@tools";
 import { type AdsGraphState } from "@state";
@@ -119,7 +119,7 @@ export const adsAgent = NodeMiddleware.use({}, async (
     config?: LangGraphRunnableConfig
   ): Promise<Partial<AdsGraphState>> => {
     const llm = getLLM()
-    const tools = [adsFaqTool];
+    const tools = shouldIncludeFaqTool(state) ? [adsFaqTool] : [];
 
     const agent = await createAgent({
         model: llm,

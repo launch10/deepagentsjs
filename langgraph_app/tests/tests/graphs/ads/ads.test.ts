@@ -71,7 +71,7 @@ describe.sequential('Ads Flow', () => {
             expect(descriptionContent).toMatch(/schedule|scheduling|meeting times/i);
         });
 
-        it.only("refreshes only the specified context (headlines), not descriptions", async () => {
+        it("refreshes only the specified context (headlines), not descriptions", async () => {
             const result = await testGraph<AdsGraphState>()
                 .withGraph(adsGraph)
                 .withState({
@@ -353,6 +353,168 @@ describe.sequential('Ads Flow', () => {
             expect(newKeywords).toBeDefined();
             expect(Array.isArray(newKeywords)).toBe(true);
             expect(newKeywords.length).toEqual(4);
+        });
+    });
+
+    describe("Full workflow - multi-stage with state persistence", () => {
+        it("maintains context across content -> highlights -> keywords stages with refreshes", async () => {
+            // Step 1: Generate initial headlines and descriptions on content stage
+            const contentResult = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    projectUUID,
+                    stage: "content"
+                })
+                .execute();
+
+            expect(contentResult.state.headlines?.length).toEqual(6);
+            expect(contentResult.state.descriptions?.length).toEqual(4);
+
+            // User locks some headlines they like
+            const headlines = contentResult.state.headlines as Ads.Asset[];
+            headlines[0].locked = true;
+            headlines[1].locked = true;
+            [2, 3, 4, 5].forEach(i => { if (headlines[i]) headlines[i].rejected = true; });
+
+            // Lock some descriptions
+            const descriptions = contentResult.state.descriptions as Ads.Asset[];
+            descriptions[0].locked = true;
+            [1, 2, 3].forEach(i => { if (descriptions[i]) descriptions[i].rejected = true; });
+
+            // Step 2: Refresh headlines (user wants more options)
+            const refreshHeadlinesResult = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    ...contentResult.state,
+                    refresh: {
+                        asset: "headlines",
+                        nVariants: 3
+                    }
+                })
+                .execute();
+
+            const newHeadlines = Ads.diffAssets(headlines, refreshHeadlinesResult.state.headlines!);
+            expect(newHeadlines.length).toBeGreaterThan(0);
+            expect(refreshHeadlinesResult.state.messages?.length).toBeGreaterThan(contentResult.state.messages?.length || 0);
+
+            // User locks one more headline
+            const updatedHeadlines = refreshHeadlinesResult.state.headlines as Ads.Asset[];
+            const unlockedHeadline = updatedHeadlines.find(h => !h.locked && !h.rejected);
+            if (unlockedHeadline) unlockedHeadline.locked = true;
+
+            // Step 3: Navigate to highlights stage - pass along locked headlines/descriptions
+            const highlightsResult = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    ...refreshHeadlinesResult.state,
+                    stage: "highlights",
+                    refresh: undefined
+                })
+                .execute();
+
+            expect(highlightsResult.state.callouts?.length).toEqual(6);
+            expect(highlightsResult.state.structuredSnippet).toBeDefined();
+            expect(highlightsResult.state.structuredSnippet?.details?.length).toBeGreaterThanOrEqual(3);
+
+            // Verify headlines and descriptions are preserved
+            expect(highlightsResult.state.headlines).toEqual(refreshHeadlinesResult.state.headlines);
+            expect(highlightsResult.state.descriptions).toEqual(refreshHeadlinesResult.state.descriptions);
+
+            // User locks some callouts
+            const callouts = highlightsResult.state.callouts as Ads.Asset[];
+            callouts[0].locked = true;
+            callouts[1].locked = true;
+            [2, 3, 4, 5].forEach(i => { if (callouts[i]) callouts[i].rejected = true; });
+
+            // Step 4: Refresh callouts
+            const refreshCalloutsResult = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    ...highlightsResult.state,
+                    refresh: {
+                        asset: "callouts",
+                        nVariants: 2
+                    }
+                })
+                .execute();
+
+            const newCallouts = Ads.diffAssets(callouts, refreshCalloutsResult.state.callouts!);
+            expect(newCallouts.length).toBeGreaterThan(0);
+
+            // Verify structured snippets unchanged
+            expect(refreshCalloutsResult.state.structuredSnippet).toEqual(highlightsResult.state.structuredSnippet);
+
+            // Step 5: Navigate to keywords stage
+            const keywordsResult = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    ...refreshCalloutsResult.state,
+                    stage: "keywords",
+                    refresh: undefined
+                })
+                .execute();
+
+            expect(keywordsResult.state.keywords?.length).toEqual(8);
+
+            // Verify all previous assets are preserved
+            expect(keywordsResult.state.headlines).toEqual(refreshCalloutsResult.state.headlines);
+            expect(keywordsResult.state.descriptions).toEqual(refreshCalloutsResult.state.descriptions);
+            expect(keywordsResult.state.callouts).toEqual(refreshCalloutsResult.state.callouts);
+            expect(keywordsResult.state.structuredSnippet).toEqual(refreshCalloutsResult.state.structuredSnippet);
+
+            // User locks some keywords
+            const keywords = keywordsResult.state.keywords as Ads.Asset[];
+            keywords[0].locked = true;
+            keywords[1].locked = true;
+            [2, 3, 4, 5, 6, 7].forEach(i => { if (keywords[i]) keywords[i].rejected = true; });
+
+            // Step 6: Refresh keywords
+            const refreshKeywordsResult = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    ...keywordsResult.state,
+                    refresh: {
+                        asset: "keywords",
+                        nVariants: 3
+                    }
+                })
+                .execute();
+
+            const newKeywords = Ads.diffAssets(keywords, refreshKeywordsResult.state.keywords!);
+            expect(newKeywords.length).toBeGreaterThan(0);
+
+            // Verify message history has grown throughout the workflow
+            expect(refreshKeywordsResult.state.messages?.length).toBeGreaterThan(5);
+
+            // Verify all assets are related to the business context (scheduling tool)
+            const allLockedHeadlines = refreshKeywordsResult.state.headlines?.filter(h => h.locked).map(h => h.text) || [];
+            const allLockedCallouts = refreshKeywordsResult.state.callouts?.filter(c => c.locked).map(c => c.text) || [];
+            const allLockedKeywords = refreshKeywordsResult.state.keywords?.filter(k => k.locked).map(k => k.text) || [];
+
+            const allContent = [...allLockedHeadlines, ...allLockedCallouts, ...allLockedKeywords].join(' ').toLowerCase();
+            // Content should be related to the scheduling tool business context
+            expect(allContent).toMatch(/schedul|meeting|time|calendar|team|coordinat/i);
+
+            const followupQuestionResult = await testGraph<AdsGraphState>()
+                .withGraph(adsGraph)
+                .withState({
+                    ...refreshKeywordsResult.state,
+                    refresh: undefined,
+                    messages: [...refreshKeywordsResult.state.messages!, new HumanMessage(`What makes these keywords effective for a scheduling tool?`)]
+                })
+                .execute();
+            
+            // Verify that no new assets were generated (only Q&A response)
+            expect(followupQuestionResult.state.headlines).toEqual(refreshKeywordsResult.state.headlines);
+            expect(followupQuestionResult.state.callouts).toEqual(refreshKeywordsResult.state.callouts);
+            expect(followupQuestionResult.state.keywords).toEqual(refreshKeywordsResult.state.keywords);
+
+            const lastMessage = followupQuestionResult.state.messages?.at(-1);
+            expect(lastMessage).toBeDefined();
+            expect((lastMessage as AIMessage).content).toMatch(/great question|search intent|specificity|commercial intent/i)
+            
+            // Verify message history has grown
+            expect(followupQuestionResult.state.messages?.length).toBeGreaterThan(refreshKeywordsResult.state.messages?.length);
         });
     });
 
