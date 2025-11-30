@@ -1,4 +1,4 @@
-import { HumanMessage, type BaseMessage } from "@langchain/core/messages";
+import { HumanMessage, type BaseMessage, AIMessage } from "@langchain/core/messages";
 import { type AdsGraphState } from "@state";
 
 const PSEUDO_MESSAGE_PREFIX = "__SYSTEM__";
@@ -13,6 +13,11 @@ export const isPseudoMessage = (msg: BaseMessage): boolean => {
     return content.startsWith(PSEUDO_MESSAGE_PREFIX);
 };
 
+export const lastMessageIsAIMessage = (state: AdsGraphState): boolean => {
+    const lastMessage = state.messages?.at(-1);
+    return !!lastMessage && AIMessage.isInstance(lastMessage);
+};
+
 export const needsPseudoMessage = (state: AdsGraphState): boolean => {
     const hasMessages = (state.messages?.length ?? 0) > 0;
     const isRefresh = state.refresh !== undefined;
@@ -23,9 +28,10 @@ export const getPseudoMessage = (state: AdsGraphState): HumanMessage | null => {
     if (state.refresh) {
         return new HumanMessage(PseudoMessages.REFRESH(state.refresh.asset));
     }
-    if (!state.messages?.length) {
+    if (state.messages?.length === 0 || lastMessageIsAIMessage(state)) {
         return new HumanMessage(PseudoMessages.BEGIN);
     }
+    // This should only fall through in the case where the user sent THEIR OWN message
     return null;
 };
 
