@@ -14,6 +14,12 @@ type RawAIOutput = {
     structuredSnippets?: { category?: string; details?: string[] };
 };
 
+// Core helper to extract structured data from the last agent message.
+// In this workflow, the agent replies with a message + headlines, descriptions, keywords, etc.
+// This function extracts that data and returns it as a structured object.
+//
+// It also determines: Was the last HumanMessage a request to regenerate content? If so,
+// we should mark the previous assets as rejected.
 export const getStructuredData = (state: AdsGraphState, lastMessage: AIMessage) => {
     const rawData = ((lastMessage.response_metadata?.parsed_blocks as any[] || []).filter((block: any) => block.type === 'structured').map((block: any) => block.parsed).at(-1) || {}) as RawAIOutput;
 
