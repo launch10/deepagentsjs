@@ -69,15 +69,15 @@ RSpec.describe "Project Workflows API", type: :request do
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project1_owned.uuid }
         let(:id) { workflow1_owned.id }
-        let(:project_workflow_params) { { project_workflow: { step: "ads", substep: "content" } } }
+        let(:project_workflow_params) { { project_workflow: { step: "ad_campaign", substep: "content" } } }
 
         run_test! do |response|
           data = JSON.parse(response.body)
           workflow1_owned.reload
 
-          expect(workflow1_owned.step).to eq("ads")
+          expect(workflow1_owned.step).to eq("ad_campaign")
           expect(workflow1_owned.substep).to eq("content")
-          expect(data["step"]).to eq("ads")
+          expect(data["step"]).to eq("ad_campaign")
           expect(data["substep"]).to eq("content")
         end
       end
@@ -215,9 +215,9 @@ RSpec.describe "Project Workflows API", type: :request do
           data = JSON.parse(response.body)
           workflow1_owned.reload
 
-          expect(workflow1_owned.step).to eq("ads")
+          expect(workflow1_owned.step).to eq("ad_campaign")
           expect(workflow1_owned.substep).to eq("content")
-          expect(data["step"]).to eq("ads")
+          expect(data["step"]).to eq("ad_campaign")
           expect(data["substep"]).to eq("content")
         end
       end
