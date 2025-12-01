@@ -31,14 +31,14 @@ const choiceScores = {
   "completely missed the point": 0
 };
 
-export interface FollowsUserRequestParams {
+export interface FollowsUserInstructionsParams {
   userRequest: string;
   originalContent: string;
   output: string;
   useCoT?: boolean;
 }
 
-export const FollowsUserRequestScorer = createScorer({ 
+export const FollowsUserInstructionsScorer = createScorer({ 
   prompt: template, 
   choiceScores,
 });

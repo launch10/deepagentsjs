@@ -158,7 +158,13 @@ export const summarizeAndSaveAnswers = async (
   if (!memories) {
     memories = {idea: "", audience: "", solution: "", socialProof: ""};
   }
-  const { memories: updatedMemories, skippedTopics: updatedSkippedTopics } = await saveAnswers(memories, websiteId, skippedTopics);
+  const completeMemories: Record<"idea" | "audience" | "solution" | "socialProof", string | null | undefined> = {
+    idea: memories.idea ?? null,
+    audience: memories.audience ?? null,
+    solution: memories.solution ?? null,
+    socialProof: memories.socialProof ?? null,
+  };
+  const { memories: updatedMemories, skippedTopics: updatedSkippedTopics } = await saveAnswers(completeMemories, websiteId, skippedTopics);
 
   return {
     memories: updatedMemories,

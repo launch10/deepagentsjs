@@ -1,4 +1,4 @@
 export * from "./persuasiveness";
 export * from "./closedQA";
-export * from "./followsUserRequest";
+export * from "./followsUserInstructions";
 export * from "./answersQuestion";

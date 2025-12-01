@@ -10,6 +10,15 @@ import { readdirSync } from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+export const backgroundPrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
+    return `
+    <background>
+        The user is creating a new landing page for their business idea.
+        We are helping them brainstorm and refine their messaging.
+    </background>
+    `;
+}
+
 export const whereWeArePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     return `
     <where_we_are>

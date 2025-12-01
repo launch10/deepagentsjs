@@ -60,7 +60,11 @@ export function substepExists<W extends WorkflowType, S extends StepsFor<W>>(
 }
 
 export function getFirstStep<W extends WorkflowType>(workflowType: W): StepsFor<W> {
-  return getSteps(workflowType)[0];
+  const steps = getSteps(workflowType);
+  if (steps.length === 0) {
+    throw new Error(`No steps found for workflow type: ${workflowType}`);
+  }
+  return steps[0] as StepsFor<W>;
 }
 
 export function getFirstSubstep<W extends WorkflowType, S extends StepsFor<W>>(

@@ -48,11 +48,13 @@ export class CohereRerankService {
       topN: Math.min(topN, documents.length),
     });
 
-    return response.results.map((result) => ({
-      index: result.index,
-      relevanceScore: result.relevanceScore,
-      document: documents[result.index],
-    }));
+    return response.results
+      .filter((result) => documents[result.index] !== undefined)
+      .map((result) => ({
+        index: result.index,
+        relevanceScore: result.relevanceScore,
+        document: documents[result.index]!,
+      }));
   }
 
   async rerankWithThreshold(

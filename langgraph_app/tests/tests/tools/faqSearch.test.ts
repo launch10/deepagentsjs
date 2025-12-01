@@ -5,20 +5,15 @@ import { DatabaseSnapshotter } from '@services';
 import { startPolly, stopPolly } from '@utils';
 import { db } from 'app/db';
 import { documentChunks, documents } from 'app/db/schema';
-import { Polly } from '@pollyjs/core';
 
 describe('FAQ Search Tool', () => {
-    let polly: Polly | null;
-    
     beforeAll(async () => {
         await DatabaseSnapshotter.restoreSnapshot('basic_account', true);
-        polly = await startPolly('faqSearch', 'replay');
+        await startPolly('faqSearch', 'replay');
     }, 30000);
 
     afterAll(async () => {
-        if (polly) {
-            await stopPolly();
-        }
+        await stopPolly();
     });
 
     describe('Database Integration', () => {

@@ -59,7 +59,7 @@ export interface CacheOptions {
   enableCache?: boolean;
 }
 
-export interface RerankOptions {
+export interface EmbeddingRerankOptions {
   enableRerank?: boolean;
   rerankTopN?: number;
   rerankThreshold?: number;
@@ -328,7 +328,7 @@ export class PostgresEmbeddingsService {
   async search(
     query: string,
     topK: number = 5,
-    options?: CacheOptions & RerankOptions
+    options?: CacheOptions & EmbeddingRerankOptions
   ): Promise<EmbeddingResult[]> {
     try {
       // Check cache first if enabled
