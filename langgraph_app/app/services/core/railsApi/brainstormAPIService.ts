@@ -60,7 +60,8 @@ export class BrainstormAPIService extends RailsAPIBase {
    * @returns The created brainstorm
    */
   async create({ threadId, projectUUID, name }: CreateBrainstormParams): Promise<Brainstorm> {
-    const response = await this.client.POST("/api/v1/brainstorms", {
+    const client = await this.getClient();
+    const response = await client.POST("/api/v1/brainstorms", {
       body: {
         brainstorm: {
           thread_id: threadId,
@@ -89,7 +90,8 @@ export class BrainstormAPIService extends RailsAPIBase {
    * @returns The brainstorm
    */
   async get(threadId: ThreadIDType): Promise<Brainstorm> {
-    const response = await this.client.GET("/api/v1/brainstorms/{thread_id}", {
+    const client = await this.getClient();
+    const response = await client.GET("/api/v1/brainstorms/{thread_id}", {
       params: {
         path: { thread_id: threadId },
       },
@@ -116,7 +118,8 @@ export class BrainstormAPIService extends RailsAPIBase {
     threadId: ThreadIDType,
     updates: UpdateBrainstormRequest["brainstorm"]
   ): Promise<Brainstorm> {
-    const response = await this.client.PATCH("/api/v1/brainstorms/{thread_id}", {
+    const client = await this.getClient();
+    const response = await client.PATCH("/api/v1/brainstorms/{thread_id}", {
       params: {
         path: { thread_id: threadId },
       },

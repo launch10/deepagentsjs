@@ -46,7 +46,8 @@ export class DatabaseSnapshotterAPI extends RailsAPIBase {
    * @returns Operation result with status and message
    */
   async truncate(): Promise<DatabaseOperationResult> {
-    const response = await this.client.POST("/test/database/truncate", {});
+    const client = await this.getClient();
+    const response = await client.POST("/test/database/truncate", {});
 
     if (response.error?.errors) {
       throw new Error(`Failed to truncate database: ${response.error.errors.join(", ")}`);
@@ -64,7 +65,8 @@ export class DatabaseSnapshotterAPI extends RailsAPIBase {
    * @returns Array of snapshot names
    */
   async listSnapshots(): Promise<string[]> {
-    const response = await this.client.GET("/test/database/snapshots", {});
+    const client = await this.getClient();
+    const response = await client.GET("/test/database/snapshots", {});
 
     if (!response.data) {
       throw new Error(`Failed to list snapshots: no data returned`);
@@ -83,7 +85,8 @@ export class DatabaseSnapshotterAPI extends RailsAPIBase {
     name: string,
     truncateFirst: boolean = false
   ): Promise<DatabaseOperationResult> {
-    const response = await this.client.POST("/test/database/snapshots", {
+    const client = await this.getClient();
+    const response = await client.POST("/test/database/snapshots", {
       body: {
         snapshot: {
           name,
@@ -113,7 +116,8 @@ export class DatabaseSnapshotterAPI extends RailsAPIBase {
     name: string,
     truncateFirst: boolean = true
   ): Promise<DatabaseOperationResult> {
-    const response = await this.client.POST("/test/database/restore_snapshot", {
+    const client = await this.getClient();
+    const response = await client.POST("/test/database/restore_snapshot", {
       body: {
         snapshot: {
           name,

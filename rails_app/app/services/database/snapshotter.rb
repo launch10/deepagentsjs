@@ -32,7 +32,7 @@ module Database
 
     class << self
       extend Forwardable
-      def_delegators :new, :restore, :dump, :export_tables, :list_snapshots, :truncate
+      def_delegators :new, :restore, :dump, :export_tables, :list_snapshots, :truncate, :reset_all_sequences
     end
 
     # Dumps the database to a file.
@@ -112,6 +112,24 @@ module Database
 
     def truncate
       DatabaseCleaner.clean_with(:truncation)
+    end
+
+    def reset_all_sequences(start_value: 1)
+      connection = ActiveRecord::Base.connection
+
+      sequence_query = <<-SQL
+        SELECT schemaname, sequencename
+        FROM pg_sequences
+        WHERE schemaname = 'public'
+      SQL
+
+      sequences = connection.execute(sequence_query)
+
+      sequences.each do |seq|
+        connection.execute("SELECT setval('#{seq["schemaname"]}.#{seq["sequencename"]}', #{start_value}, false);")
+      end
+
+      puts "Reset #{sequences.count} sequences to #{start_value}"
     end
 
     def export_tables(file, **)
@@ -230,23 +248,24 @@ module Database
     def get_sequence_reset_sql
       connection = ActiveRecord::Base.connection
 
-      # Query to get all sequences and their current values
       sequence_query = <<-SQL
-        SELECT
-          schemaname,
-          sequencename,
-          last_value,
-          increment_by
+        SELECT schemaname, sequencename
         FROM pg_sequences
         WHERE schemaname = 'public'
       SQL
 
       sequences = connection.execute(sequence_query)
 
+      # PostgreSQL setval behavior:
+      # is_called: "Has the sequence been called EVER?"
+      # - setval('seq', 1, false) → next nextval() returns 1
+      # - setval('seq', 1, true) → next nextval() returns 2
       sql_statements = sequences.map do |seq|
-        # Generate a setval statement for each sequence
-        # The third parameter (true) ensures the next value will be correct
-        "SELECT setval('#{seq["schemaname"]}.#{seq["sequencename"]}', #{seq["last_value"] || 1}, true);"
+        seq_name = "#{seq["schemaname"]}.#{seq["sequencename"]}"
+        result = connection.execute("SELECT last_value, is_called FROM #{seq_name}").first
+        last_value = result["last_value"] || 1
+        is_called = result["is_called"] == "t" || result["is_called"] == true
+        "SELECT setval('#{seq_name}', #{last_value}, #{is_called});"
       end
 
       sql_statements.join("\n")

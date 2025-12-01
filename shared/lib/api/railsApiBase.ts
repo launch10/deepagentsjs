@@ -5,10 +5,16 @@ export type Options = {
     baseUrl?: string;
 }
 
+type Client = Awaited<ReturnType<typeof createRailsApiClient>>;
+
 export class RailsAPIBase {
-    client: ReturnType<typeof createRailsApiClient>;
+    private clientPromise: Promise<Client>;
     
     constructor(options: Options) {
-        this.client = createRailsApiClient(options);
+        this.clientPromise = createRailsApiClient(options);
+    }
+
+    protected async getClient(): Promise<Client> {
+        return this.clientPromise;
     }
 }

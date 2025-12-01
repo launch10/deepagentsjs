@@ -1,8 +1,16 @@
 import createClient from "openapi-fetch";
 import type { paths } from "./generated/rails-api";
 import { env, isFrontend, isBackend } from "./env";
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+
+let jwt: typeof import('jsonwebtoken') | null = null;
+let crypto: typeof import('crypto') | null = null;
+
+async function loadBackendModules() {
+  if (isBackend() && !jwt) {
+    jwt = (await import('jsonwebtoken')).default;
+    crypto = await import('crypto');
+  }
+}
 
 export interface RailsApiClientOptions {
   jwt?: string;
@@ -10,11 +18,17 @@ export interface RailsApiClientOptions {
 }
 
 function generateSignature(timestamp: number): string {
+  if (!crypto) {
+    throw new Error('crypto module not loaded - call loadBackendModules first');
+  }
   const secret = env.JWT_SECRET || 'test-secret-key';
   return crypto.createHmac('sha256', secret).update(timestamp.toString()).digest('hex');
 }
 
 const testHeaders = (baseHeaders: Record<string, string>) => {
+  if (!jwt) {
+    throw new Error('jsonwebtoken module not loaded - call loadBackendModules first');
+  }
   const jwtSecret = env.JWT_SECRET || 'test-secret-key';
   const testTimestamp = Date.now();
   
@@ -68,9 +82,12 @@ const headers = (jwtToken?: string) => {
  * @param options - Configuration options for the client
  * @returns A typed openapi-fetch client
  */
-export function createRailsApiClient(options: RailsApiClientOptions) {
+export async function createRailsApiClient(options: RailsApiClientOptions) {
   const { jwt: jwtToken, baseUrl = env.RAILS_API_URL || env.VITE_RAILS_API_URL || "http://localhost:3000" } = options;
   
+  if (isBackend()) {
+    await loadBackendModules();
+  }
 
   const client = createClient<paths>({
     baseUrl,

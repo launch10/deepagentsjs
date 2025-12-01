@@ -13,7 +13,8 @@ export class UploadService extends RailsAPIBase {
       }
 
       async get(params?: GetUploadsRequest): Promise<GetUploadsResponse> {
-          const response = await this.client.GET("/api/v1/uploads", {
+          const client = await this.getClient();
+          const response = await client.GET("/api/v1/uploads", {
               params: {
                   query: params
               }
@@ -35,7 +36,8 @@ export class UploadService extends RailsAPIBase {
       }
 
       async create(options: CreateUploadRequest): Promise<CreateUploadResponse> {
-          const response = await this.client.POST("/api/v1/uploads", {
+          const client = await this.getClient();
+          const response = await client.POST("/api/v1/uploads", {
               body: options,
               bodySerializer: (body) => {
                   const formData = new FormData();
