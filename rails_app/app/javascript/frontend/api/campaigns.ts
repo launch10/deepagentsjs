@@ -10,7 +10,8 @@ export class CampaignService extends RailsAPIBase {
     }
 
     async advance(options: AdvanceCampaignRequest): Promise<AdvanceCampaignResponse> {
-        const response = await this.client.POST("/api/v1/campaigns/{id}/advance", {
+        const client = await this.getClient();
+        const response = await client.POST("/api/v1/campaigns/{id}/advance", {
             params: {
                 path: { id: options.id },
             },

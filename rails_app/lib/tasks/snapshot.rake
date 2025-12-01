@@ -44,8 +44,8 @@ namespace :db do
 
   desc "Restore a snapshot to the test database (test environment only)"
   task :restore_snapshot, [:name, :truncate_first] => :environment do |t, args|
-    unless Rails.env.test?
-      puts "ERROR: This task can only be run in the test environment"
+    unless Rails.env.test? || Rails.env.development?
+      puts "ERROR: This task can only be run in the test or development environment"
       puts "Current environment: #{Rails.env}"
       exit 1
     end
