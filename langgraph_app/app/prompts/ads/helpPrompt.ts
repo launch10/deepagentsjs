@@ -6,10 +6,11 @@ import { whereWeArePrompt } from "./assets/whereWeAre";
 export const helpInstructions = (state: AdsGraphState, config: LangGraphRunnableConfig) => {
     return `
         <help_instructions>
-            1. Use the faq tool to retrieve FAQ context
+            1. Use the faq tool to retrieve FAQ context (if needed)
             2. Answer their question in 2-3 sentences maximum
             3. Do NOT include any JSON or structured data
             4. Keep your answer brief and helpful
+            5. Do not ask for clarification. Include context clues you know about the process.
         </help_instructions>
     `;
 }
