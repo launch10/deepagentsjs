@@ -140,7 +140,7 @@ RSpec.describe "Campaigns API", type: :request do
   path '/api/v1/campaigns/{id}' do
     parameter name: :id, in: :path, type: :integer, description: 'Campaign ID'
 
-    patch 'Updates a campaign (autosave)', focus: true do
+    patch 'Updates a campaign (autosave)' do
       tags 'Campaigns'
       consumes 'application/json'
       produces 'application/json'

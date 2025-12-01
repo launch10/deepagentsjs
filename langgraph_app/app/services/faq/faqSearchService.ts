@@ -65,11 +65,7 @@ export class FAQSearchService {
       conditions.push(eq(documents.documentType, documentType));
     }
 
-    if (tags && tags.length > 0) {
-      conditions.push(inArray(documents.tags, tags));
-    }
-
-    const candidateResults = await db
+    let candidateResults = await db
       .select({
         id: documentChunks.id,
         question: documentChunks.question,
@@ -92,6 +88,12 @@ export class FAQSearchService {
       return [];
     }
 
+    if (tags && tags.length > 0) {
+      candidateResults = candidateResults.filter(r => 
+        (r.tags as string[]).some(tag => tags.includes(tag))
+      );
+    }
+    
     if (!this.rerankService) {
       return candidateResults.slice(0, topK).map(r => ({
         id: r.id,

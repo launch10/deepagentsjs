@@ -40,8 +40,7 @@ module APISchemas
                           type: :object,
                           properties: {
                             id: APISchemas.id_field,
-                            text: {type: :string},
-                            position: {type: :integer}
+                            text: {type: :string}
                           }
                         }
                       },
@@ -50,9 +49,7 @@ module APISchemas
                         items: {
                           type: :object,
                           properties: {
-                            id: APISchemas.id_field,
-                            text: {type: :string},
-                            position: {type: :integer}
+                            text: {type: :string}
                           }
                         }
                       }
@@ -64,10 +61,8 @@ module APISchemas
                   items: {
                     type: :object,
                     properties: {
-                      id: APISchemas.id_field,
                       text: {type: :string},
-                      match_type: {type: :string},
-                      position: {type: :integer}
+                      match_type: {type: :string}
                     }
                   }
                 }
@@ -79,9 +74,7 @@ module APISchemas
             items: {
               type: :object,
               properties: {
-                id: APISchemas.id_field,
-                text: {type: :string},
-                position: {type: :integer}
+                text: {type: :string}
               }
             }
           },
@@ -89,7 +82,6 @@ module APISchemas
             type: :object,
             nullable: true,
             properties: {
-              id: APISchemas.id_field,
               category: {type: :string},
               values: {type: :array, items: {type: :string}}
             }
@@ -130,124 +122,106 @@ module APISchemas
       {
         type: :object,
         properties: {
-          campaign: {
+          name: {type: :string, description: 'Campaign name'},
+          start_date: {type: :string, format: 'date', description: 'Campaign start date'},
+          end_date: {type: :string, format: 'date', description: 'Campaign end date'},
+          time_zone: {type: :string, description: 'Campaign time zone'},
+          daily_budget_cents: {type: :integer, description: 'Daily budget in cents'},
+          google_advertising_channel_type: {type: :string, description: 'Google Ads channel type'},
+          google_bidding_strategy: {type: :string, description: 'Google Ads bidding strategy'},
+          ad_group: {
+            type: :object,
+            description: 'Flat ad group attributes for single ad group campaigns',
+            properties: {
+              name: {type: :string}
+            }
+          },
+          headlines: {
+            type: :array,
+            description: 'Flat headlines array (applied to first ad in first ad group)',
+            items: {
+              type: :object,
+              properties: {
+                id: {type: :integer},
+                text: {type: :string}
+              }
+            }
+          },
+          descriptions: {
+            type: :array,
+            description: 'Flat descriptions array (applied to first ad in first ad group)',
+            items: {
+              type: :object,
+              properties: {
+                id: {type: :integer},
+                text: {type: :string}
+              }
+            }
+          },
+          keywords: {
+            type: :array,
+            description: 'Flat keywords array (applied to first ad group)',
+            items: {
+              type: :object,
+              properties: {
+                id: {type: :integer},
+                text: {type: :string},
+                match_type: {type: :string}
+              }
+            }
+          },
+          callouts: {
+            type: :array,
+            description: 'Campaign callout extensions',
+            items: {
+              type: :object,
+              properties: {
+                id: {type: :integer},
+                text: {type: :string}
+              }
+            }
+          },
+          structured_snippet: {
+            type: :object,
+            description: 'Campaign structured snippet extension',
+            properties: {
+              category: {type: :string},
+              values: {type: :array, items: {type: :string}},
+              _destroy: {type: :boolean}
+            }
+          },
+          location_targets: {
+            type: :array,
+            items: {
+              type: :object,
+              properties: {
+                target_type: {type: :string},
+                location_name: {type: :string},
+                location_type: {type: :string},
+                country_code: {type: :string},
+                targeted: {type: :boolean},
+                google_criterion_id: {type: :string},
+                radius: {type: :number},
+                radius_units: {type: :string}
+              }
+            }
+          },
+          ad_schedules: {
             type: :object,
             properties: {
-              name: {type: :string, description: 'Campaign name'},
-              start_date: {type: :string, format: 'date', description: 'Campaign start date'},
-              end_date: {type: :string, format: 'date', description: 'Campaign end date'},
-              time_zone: {type: :string, description: 'Campaign time zone'},
-              daily_budget_cents: {type: :integer, description: 'Daily budget in cents'},
-              google_advertising_channel_type: {type: :string, description: 'Google Ads channel type'},
-              google_bidding_strategy: {type: :string, description: 'Google Ads bidding strategy'},
-              ad_groups_attributes: {
+              always_on: {type: :boolean, description: 'Whether the campaign runs 24/7'},
+              start_time: {type: :string, description: 'Start time in format like "9:00am"', example: '9:00am'},
+              end_time: {type: :string, description: 'End time in format like "5:00pm"', example: '5:00pm'},
+              time_zone: {type: :string, description: 'IANA time zone', example: 'America/New_York'},
+              day_of_week: {
                 type: :array,
-                items: {
-                  type: :object,
-                  properties: {
-                    id: {type: :integer},
-                    name: {type: :string},
-                    ads_attributes: {
-                      type: :array,
-                      items: {
-                        type: :object,
-                        properties: {
-                          id: {type: :integer},
-                          headlines_attributes: {
-                            type: :array,
-                            items: {
-                              type: :object,
-                              properties: {
-                                id: {type: :integer},
-                                text: {type: :string},
-                                position: {type: :integer}
-                              }
-                            }
-                          },
-                          descriptions_attributes: {
-                            type: :array,
-                            items: {
-                              type: :object,
-                              properties: {
-                                id: {type: :integer},
-                                text: {type: :string},
-                                position: {type: :integer}
-                              }
-                            }
-                          }
-                        }
-                      }
-                    },
-                    keywords_attributes: {
-                      type: :array,
-                      items: {
-                        type: :object,
-                        properties: {
-                          id: {type: :integer},
-                          text: {type: :string},
-                          match_type: {type: :string},
-                          position: {type: :integer}
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              callouts_attributes: {
-                type: :array,
-                items: {
-                  type: :object,
-                  properties: {
-                    id: {type: :integer},
-                    text: {type: :string},
-                    position: {type: :integer}
-                  }
-                }
-              },
-              structured_snippet_attributes: {
-                type: :object,
-                properties: {
-                  id: {type: :integer},
-                  category: {type: :string},
-                  values: {type: :array, items: {type: :string}},
-                  _destroy: {type: :boolean}
-                }
-              },
-              location_targets: {
-                type: :array,
-                items: {
-                  type: :object,
-                  properties: {
-                    target_type: {type: :string},
-                    location_name: {type: :string},
-                    location_type: {type: :string},
-                    country_code: {type: :string},
-                    targeted: {type: :boolean},
-                    google_criterion_id: {type: :string},
-                    radius: {type: :number},
-                    radius_units: {type: :string}
-                  }
-                }
-              },
-              ad_schedules: {
-                type: :object,
-                properties: {
-                  always_on: {type: :boolean, description: 'Whether the campaign runs 24/7'},
-                  start_time: {type: :string, description: 'Start time in format like "9:00am"', example: '9:00am'},
-                  end_time: {type: :string, description: 'End time in format like "5:00pm"', example: '5:00pm'},
-                  time_zone: {type: :string, description: 'IANA time zone', example: 'America/New_York'},
-                  day_of_week: {
-                    type: :array,
-                    items: {type: :string},
-                    description: 'Days when ads should run',
-                    example: ['Monday', 'Tuesday', 'Wednesday']
-                  }
-                }
+                items: {type: :string},
+                description: 'Days when ads should run',
+                example: ['Monday', 'Tuesday', 'Wednesday']
               }
             }
           }
-        },
-        required: ['campaign']
+        }
       }
     end
 

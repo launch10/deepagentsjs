@@ -320,6 +320,8 @@ export interface paths {
                             id: number;
                             /** @description Campaign name */
                             name?: string;
+                            /** @description Thread ID for campaign */
+                            thread_id?: string;
                             /** @description Current campaign stage */
                             stage: string;
                             /** @description Campaign status */
@@ -361,32 +363,20 @@ export interface paths {
                                         /** @description Unique identifier */
                                         id?: number;
                                         text?: string;
-                                        position?: number;
                                     }[];
                                     descriptions?: {
-                                        /** @description Unique identifier */
-                                        id?: number;
                                         text?: string;
-                                        position?: number;
                                     }[];
                                 }[];
                                 keywords?: {
-                                    /** @description Unique identifier */
-                                    id?: number;
                                     text?: string;
                                     match_type?: string;
-                                    position?: number;
                                 }[];
                             }[];
                             callouts?: {
-                                /** @description Unique identifier */
-                                id?: number;
                                 text?: string;
-                                position?: number;
                             }[];
                             structured_snippet?: {
-                                /** @description Unique identifier */
-                                id?: number;
                                 category?: string;
                                 values?: string[];
                             } | null;
@@ -418,6 +408,8 @@ export interface paths {
                             id: number;
                             /** @description Campaign name */
                             name?: string;
+                            /** @description Thread ID for campaign */
+                            thread_id?: string;
                             /** @description Current campaign stage */
                             stage: string;
                             /** @description Campaign status */
@@ -459,32 +451,20 @@ export interface paths {
                                         /** @description Unique identifier */
                                         id?: number;
                                         text?: string;
-                                        position?: number;
                                     }[];
                                     descriptions?: {
-                                        /** @description Unique identifier */
-                                        id?: number;
                                         text?: string;
-                                        position?: number;
                                     }[];
                                 }[];
                                 keywords?: {
-                                    /** @description Unique identifier */
-                                    id?: number;
                                     text?: string;
                                     match_type?: string;
-                                    position?: number;
                                 }[];
                             }[];
                             callouts?: {
-                                /** @description Unique identifier */
-                                id?: number;
                                 text?: string;
-                                position?: number;
                             }[];
                             structured_snippet?: {
-                                /** @description Unique identifier */
-                                id?: number;
                                 category?: string;
                                 values?: string[];
                             } | null;
@@ -569,99 +549,94 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        campaign: {
-                            /** @description Campaign name */
+                        /** @description Campaign name */
+                        name?: string;
+                        /**
+                         * Format: date
+                         * @description Campaign start date
+                         */
+                        start_date?: string;
+                        /**
+                         * Format: date
+                         * @description Campaign end date
+                         */
+                        end_date?: string;
+                        /** @description Campaign time zone */
+                        time_zone?: string;
+                        /** @description Daily budget in cents */
+                        daily_budget_cents?: number;
+                        /** @description Google Ads channel type */
+                        google_advertising_channel_type?: string;
+                        /** @description Google Ads bidding strategy */
+                        google_bidding_strategy?: string;
+                        /** @description Flat ad group attributes for single ad group campaigns */
+                        ad_group?: {
                             name?: string;
+                        };
+                        /** @description Flat headlines array (applied to first ad in first ad group) */
+                        headlines?: {
+                            id?: number;
+                            text?: string;
+                        }[];
+                        /** @description Flat descriptions array (applied to first ad in first ad group) */
+                        descriptions?: {
+                            id?: number;
+                            text?: string;
+                        }[];
+                        /** @description Flat keywords array (applied to first ad group) */
+                        keywords?: {
+                            id?: number;
+                            text?: string;
+                            match_type?: string;
+                        }[];
+                        /** @description Campaign callout extensions */
+                        callouts?: {
+                            id?: number;
+                            text?: string;
+                        }[];
+                        /** @description Campaign structured snippet extension */
+                        structured_snippet?: {
+                            category?: string;
+                            values?: string[];
+                            _destroy?: boolean;
+                        };
+                        location_targets?: {
+                            target_type?: string;
+                            location_name?: string;
+                            location_type?: string;
+                            country_code?: string;
+                            targeted?: boolean;
+                            google_criterion_id?: string;
+                            radius?: number;
+                            radius_units?: string;
+                        }[];
+                        ad_schedules?: {
+                            /** @description Whether the campaign runs 24/7 */
+                            always_on?: boolean;
                             /**
-                             * Format: date
-                             * @description Campaign start date
+                             * @description Start time in format like "9:00am"
+                             * @example 9:00am
                              */
-                            start_date?: string;
+                            start_time?: string;
                             /**
-                             * Format: date
-                             * @description Campaign end date
+                             * @description End time in format like "5:00pm"
+                             * @example 5:00pm
                              */
-                            end_date?: string;
-                            /** @description Campaign time zone */
+                            end_time?: string;
+                            /**
+                             * @description IANA time zone
+                             * @example America/New_York
+                             */
                             time_zone?: string;
-                            /** @description Daily budget in cents */
-                            daily_budget_cents?: number;
-                            /** @description Google Ads channel type */
-                            google_advertising_channel_type?: string;
-                            /** @description Google Ads bidding strategy */
-                            google_bidding_strategy?: string;
-                            ad_groups_attributes?: {
-                                id?: number;
-                                name?: string;
-                                ads_attributes?: {
-                                    id?: number;
-                                    headlines_attributes?: {
-                                        id?: number;
-                                        text?: string;
-                                        position?: number;
-                                    }[];
-                                    descriptions_attributes?: {
-                                        id?: number;
-                                        text?: string;
-                                        position?: number;
-                                    }[];
-                                }[];
-                                keywords_attributes?: {
-                                    id?: number;
-                                    text?: string;
-                                    match_type?: string;
-                                    position?: number;
-                                }[];
-                            }[];
-                            callouts_attributes?: {
-                                id?: number;
-                                text?: string;
-                                position?: number;
-                            }[];
-                            structured_snippet_attributes?: {
-                                id?: number;
-                                category?: string;
-                                values?: string[];
-                                _destroy?: boolean;
-                            };
-                            location_targets?: {
-                                target_type?: string;
-                                location_name?: string;
-                                location_type?: string;
-                                country_code?: string;
-                                targeted?: boolean;
-                                google_criterion_id?: string;
-                                radius?: number;
-                                radius_units?: string;
-                            }[];
-                            ad_schedules?: {
-                                /** @description Whether the campaign runs 24/7 */
-                                always_on?: boolean;
-                                /**
-                                 * @description Start time in format like "9:00am"
-                                 * @example 9:00am
-                                 */
-                                start_time?: string;
-                                /**
-                                 * @description End time in format like "5:00pm"
-                                 * @example 5:00pm
-                                 */
-                                end_time?: string;
-                                /**
-                                 * @description IANA time zone
-                                 * @example America/New_York
-                                 */
-                                time_zone?: string;
-                                /**
-                                 * @description Days when ads should run
-                                 * @example [
-                                 *       "Monday",
-                                 *       "Tuesday",
-                                 *       "Wednesday"
-                                 *     ]
-                                 */
-                                day_of_week?: string[];
-                            };
+                            /**
+                             * @description Days when ads should run
+                             * @example [
+                             *       "Monday",
+                             *       "Tuesday",
+                             *       "Wednesday"
+                             *     ]
+                             */
+                            day_of_week?: string[];
                         };
                     };
                 };
@@ -678,6 +653,8 @@ export interface paths {
                             id: number;
                             /** @description Campaign name */
                             name?: string;
+                            /** @description Thread ID for campaign */
+                            thread_id?: string;
                             /** @description Current campaign stage */
                             stage: string;
                             /** @description Campaign status */
@@ -719,32 +696,20 @@ export interface paths {
                                         /** @description Unique identifier */
                                         id?: number;
                                         text?: string;
-                                        position?: number;
                                     }[];
                                     descriptions?: {
-                                        /** @description Unique identifier */
-                                        id?: number;
                                         text?: string;
-                                        position?: number;
                                     }[];
                                 }[];
                                 keywords?: {
-                                    /** @description Unique identifier */
-                                    id?: number;
                                     text?: string;
                                     match_type?: string;
-                                    position?: number;
                                 }[];
                             }[];
                             callouts?: {
-                                /** @description Unique identifier */
-                                id?: number;
                                 text?: string;
-                                position?: number;
                             }[];
                             structured_snippet?: {
-                                /** @description Unique identifier */
-                                id?: number;
                                 category?: string;
                                 values?: string[];
                             } | null;
