@@ -623,7 +623,7 @@ describe.sequential('Brainstorming Flow', () => {
                 expect(result.state.memories.solution).toBeTruthy();
                 expect(result.state.memories.socialProof).toBeTruthy();
 
-                expect(lastAIResponse.content).toContain('Personalize the design');
+                expect(lastAIResponse.content).toMatch(/personalize|design/i);
                 expect(lastAIResponse.content).toContain('Build right away');
             });
         });

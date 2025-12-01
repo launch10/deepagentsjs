@@ -2121,7 +2121,6 @@ RSpec.describe "Campaigns API", type: :request do
               expect(data.dig("errors", "callouts[0].text")).to include("is too long (maximum is 25 characters)")
             end
           end
-
         end
 
         describe 'Keyword validations' do

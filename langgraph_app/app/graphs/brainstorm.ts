@@ -10,9 +10,9 @@ import { handleCommand } from "@nodes";
 export const brainstormGraph = new StateGraph(BrainstormAnnotation)
       .addNode("createBrainstorm", createBrainstorm)
       .addNode("handleCommand", handleCommand)
-      .addNode("agent", brainstormAgent)
+      .addNode("brainstormAgent", brainstormAgent)
 
       .addEdge(START, "createBrainstorm")
       .addEdge("createBrainstorm", "handleCommand")
-      .addEdge("handleCommand", "agent")
-      .addEdge("agent", END)
+      .addEdge("handleCommand", "brainstormAgent")
+      .addEdge("brainstormAgent", END)
