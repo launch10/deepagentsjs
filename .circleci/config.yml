@@ -54,6 +54,15 @@ jobs:
       - checkout:
           path: ~/project
       - run:
+          name: Install Git LFS and pull files
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y git-lfs
+            cd ~/project
+            git lfs install --force
+            git lfs fetch --all
+            git lfs checkout
+      - run:
           name: Install Ruby in primary container
           command: |
             gpg --keyserver hkp://keyserver.ubuntu.com --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
