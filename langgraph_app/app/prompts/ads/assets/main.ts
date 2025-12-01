@@ -6,6 +6,7 @@ import { ResponseTemplates } from "./assets/responseTemplates";
 import { previousAssetsContext } from "./helpers/previousAssetsContext";
 import { processPrompt } from "../../core/process";
 import { whereWeArePrompt } from "./whereWeAre";
+import { helpInstructions } from "../helpPrompt";
 
 const buildPreviousAssetsContext = (state: AdsGraphState): string => {
     const sections = previousAssetsContext(state);
@@ -36,7 +37,7 @@ const buildIntentSection = (state: AdsGraphState): string => {
             
             2. **Questions/FAQ (Help Path)**: The user is asking questions about how Google Ads work, seeking clarification, or needs help understanding something
                 - Examples: "How do headlines and descriptions pair together?", "What's the character limit?", "Why do I need multiple headlines?"
-                - For this path: Use the ads_faq tool to get context, then answer conversationally. Do NOT include any JSON data.
+                - For this path: Use the faq tool to get context, then answer conversationally. Do NOT include any JSON data.
         </intent_classification>
     `;
 };
@@ -56,21 +57,15 @@ const buildRefreshSection = (state: AdsGraphState): string => {
         </refresh_mode>`;
 };
 
-const buildHelpSection = (state: AdsGraphState): string => {
+const buildHelpSection = (state: AdsGraphState, config: LangGraphRunnableConfig): string => {
     const needsIntent = needsIntentClassification(state);
 
     if (!needsIntent) return '';
     
     return `
-        <help_path>
-            If the user is asking asking questions, as opposed to requesting new assets, 
-            you should: 
+        If the user is asking asking questions, as opposed to requesting new assets, you should follow these instructions:
 
-            1. Use the faq tool to retrieve FAQ context
-            2. Answer their question in 2-3 sentences maximum
-            3. Do NOT include any JSON or structured data
-            4. Keep your answer brief and helpful
-        </help_path>
+        ${helpInstructions(state, config)}
     `;
 };
 
@@ -106,7 +101,7 @@ export const promptBuilder = async (state: AdsGraphState, config: LangGraphRunna
     const isRefreshMode = state.refresh !== undefined;
     const previousAssetsContext = buildPreviousAssetsContext(state);
     const refreshSection = buildRefreshSection(state);
-    const helpSection = buildHelpSection(state);
+    const helpSection = buildHelpSection(state, config);
     const rulesSection = buildRulesSection(state);
     const intentClassificationSection = buildIntentSection(state);
 

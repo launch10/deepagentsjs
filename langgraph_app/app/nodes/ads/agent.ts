@@ -41,7 +41,7 @@ const dynamicPromptMiddleware = createMiddleware({
             ...request,
             systemPrompt,
         });
-        return await toStructuredMessage(result);
+        return await toStructuredMessage(result) as AIMessage;
     },
 });
 
