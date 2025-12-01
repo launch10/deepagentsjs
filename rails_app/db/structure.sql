@@ -775,8 +775,7 @@ CREATE TABLE public.ad_structured_snippets (
     "values" jsonb DEFAULT '[]'::jsonb NOT NULL,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    deleted_at timestamp(6) without time zone
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -2951,7 +2950,8 @@ CREATE TABLE public.website_file_histories (
     history_user_id integer,
     snapshot_id character varying,
     shasum character varying,
-    content_tsv tsvector
+    content_tsv tsvector,
+    embedding public.vector(1536)
 );
 
 
@@ -5235,13 +5235,6 @@ CREATE INDEX index_ad_structured_snippets_on_created_at ON public.ad_structured_
 
 
 --
--- Name: index_ad_structured_snippets_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ad_structured_snippets_on_deleted_at ON public.ad_structured_snippets USING btree (deleted_at);
-
-
---
 -- Name: index_ad_structured_snippets_on_platform_settings; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5963,20 +5956,6 @@ CREATE INDEX index_documents_on_document_type ON public.documents USING btree (d
 
 
 --
--- Name: index_documents_on_last_synced_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_documents_on_last_synced_at ON public.documents USING btree (last_synced_at);
-
-
---
--- Name: index_documents_on_metadata; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_documents_on_metadata ON public.documents USING gin (metadata);
-
-
---
 -- Name: index_documents_on_slug; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6114,13 +6093,6 @@ CREATE INDEX index_icon_query_caches_on_ttl_seconds ON public.icon_query_caches 
 --
 
 CREATE INDEX index_icon_query_caches_on_use_count ON public.icon_query_caches USING btree (use_count);
-
-
---
--- Name: index_job_runs_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_job_runs_on_created_at ON public.job_runs USING btree (created_at);
 
 
 --
@@ -7492,6 +7464,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251201143930'),
 ('20251130121846'),
 ('20251129165029'),
 ('20251129163807'),
