@@ -25,7 +25,7 @@ namespace :embeddings do
       embeddings = EmbeddingService.generate_batch(texts)
       batch.each_with_index do |file, i|
         next unless embeddings[i]
-        vector_literal = "[#{embeddings[i].join(',')}]"
+        vector_literal = "[#{embeddings[i].join(",")}]"
         file.class.where(id: file.id).update_all(["embedding = ?", vector_literal])
       end
       print "."
@@ -39,7 +39,7 @@ namespace :embeddings do
       embeddings = EmbeddingService.generate_batch(texts)
       batch.each_with_index do |file, i|
         next unless embeddings[i]
-        vector_literal = "[#{embeddings[i].join(',')}]"
+        vector_literal = "[#{embeddings[i].join(",")}]"
         file.class.where(id: file.id).update_all(["embedding = ?", vector_literal])
       end
       print "."

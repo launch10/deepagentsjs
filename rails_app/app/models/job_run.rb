@@ -24,51 +24,51 @@ class JobRun < ApplicationRecord
   validates :job_class, presence: true
   validates :status, presence: true, inclusion: { in: STATUSES }
 
-  scope :pending, -> { where(status: 'pending') }
-  scope :running, -> { where(status: 'running') }
-  scope :completed, -> { where(status: 'completed') }
-  scope :failed, -> { where(status: 'failed') }
+  scope :pending, -> { where(status: "pending") }
+  scope :running, -> { where(status: "running") }
+  scope :completed, -> { where(status: "completed") }
+  scope :failed, -> { where(status: "failed") }
   scope :for_job, ->(job_class) { where(job_class: job_class) }
   scope :recent, -> { order(created_at: :desc) }
 
   def self.create_for(job_class, args = {})
     create!(
       job_class: job_class.to_s,
-      status: 'pending',
+      status: "pending",
       job_args: args
     )
   end
 
   def start!
-    update!(status: 'running', started_at: Time.current)
+    update!(status: "running", started_at: Time.current)
   end
 
   def complete!
-    update!(status: 'completed', completed_at: Time.current)
+    update!(status: "completed", completed_at: Time.current)
   end
 
   def fail!(error)
     update!(
-      status: 'failed',
+      status: "failed",
       error_message: error.is_a?(Exception) ? "#{error.class}: #{error.message}" : error.to_s,
       completed_at: Time.current
     )
   end
 
   def pending?
-    status == 'pending'
+    status == "pending"
   end
 
   def running?
-    status == 'running'
+    status == "running"
   end
 
   def completed?
-    status == 'completed'
+    status == "completed"
   end
 
   def failed?
-    status == 'failed'
+    status == "failed"
   end
 
   def duration

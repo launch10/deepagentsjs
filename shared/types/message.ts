@@ -5,6 +5,14 @@ interface RecordWithMessages {
     messages: BaseMessage[];
 }
 
+export const firstHumanMessage = (record: RecordWithMessages): HumanMessage | undefined => {
+  if (!record.messages || record.messages.length === 0) {
+    return undefined;
+  }
+  const humanMessages = record.messages.filter(msg => HumanMessage.isInstance(msg)) as BaseMessage[];
+  return humanMessages.at(0) as HumanMessage;
+};
+
 export const lastHumanMessage = (record: RecordWithMessages): HumanMessage | undefined => {
   if (!record.messages || record.messages.length === 0) {
     return undefined;

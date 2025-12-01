@@ -19,7 +19,7 @@ module GoogleDocs
     end
 
     def self.enqueue_with_tracking
-      job_run = JobRun.create_for(self.name)
+      job_run = JobRun.create_for(name)
       perform_async(job_run.id)
       job_run
     end

@@ -122,7 +122,7 @@ export const summarizeMessages = async (messages: BaseMessage[]): Promise<Partia
 }
 
 export const saveAnswers = async (
-  memories: Record<Brainstorm.ConversationalTopicName, string | undefined | null>,
+  memories: Partial<Record<Brainstorm.ConversationalTopicName, string | undefined | null>>,
   websiteId: number,
   skippedTopics: string[],
 ): Promise<Partial<BrainstormGraphState>> => {
@@ -158,13 +158,7 @@ export const summarizeAndSaveAnswers = async (
   if (!memories) {
     memories = {idea: "", audience: "", solution: "", socialProof: ""};
   }
-  const completeMemories: Record<"idea" | "audience" | "solution" | "socialProof", string | null | undefined> = {
-    idea: memories.idea ?? null,
-    audience: memories.audience ?? null,
-    solution: memories.solution ?? null,
-    socialProof: memories.socialProof ?? null,
-  };
-  const { memories: updatedMemories, skippedTopics: updatedSkippedTopics } = await saveAnswers(completeMemories, websiteId, skippedTopics);
+  const { memories: updatedMemories, skippedTopics: updatedSkippedTopics } = await saveAnswers(memories, websiteId, skippedTopics);
 
   return {
     memories: updatedMemories,

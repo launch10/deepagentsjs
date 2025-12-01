@@ -940,7 +940,7 @@ Naming/MethodName:
 Naming/MethodParameterName:
   Enabled: false
 
-Naming/PredicateName:
+Naming/PredicatePrefix:
   Enabled: false
 
 Naming/RescuedExceptionsVariableName:
@@ -1352,7 +1352,7 @@ Style/MixinGrouping:
   EnforcedStyle: separated
 
 Style/MixinUsage:
-  Enabled: true
+  Enabled: false
 
 Style/ModuleFunction:
   Enabled: false

@@ -34,26 +34,26 @@ class Document < ApplicationRecord
   DOCUMENT_TYPES = %w[faq]
   SOURCE_TYPES = %w[google_docs]
 
-  has_many :chunks, class_name: 'DocumentChunk', dependent: :destroy
+  has_many :chunks, class_name: "DocumentChunk", dependent: :destroy
 
   validates :slug, presence: true, uniqueness: true
   validates :status, presence: true, inclusion: { in: %w[draft live] }
   validates :source_type, inclusion: { in: SOURCE_TYPES }
   validates :document_type, inclusion: { in: DOCUMENT_TYPES }
 
-  scope :live, -> { where(status: 'live') }
-  scope :draft, -> { where(status: 'draft') }
+  scope :live, -> { where(status: "live") }
+  scope :draft, -> { where(status: "draft") }
   scope :by_type, ->(type) { where(document_type: type) }
-  scope :with_tag, ->(tag) { where('tags @> ?', [tag].to_json) }
-  scope :with_any_tag, ->(tags) { where('tags ?| array[:tags]', tags: tags) }
+  scope :with_tag, ->(tag) { where("tags @> ?", [tag].to_json) }
+  scope :with_any_tag, ->(tags) { where("tags ?| array[:tags]", tags: tags) }
   scope :from_source, ->(source) { where(source_type: source) }
 
   def live?
-    status == 'live'
+    status == "live"
   end
 
   def draft?
-    status == 'draft'
+    status == "draft"
   end
 
   def add_tag(tag)

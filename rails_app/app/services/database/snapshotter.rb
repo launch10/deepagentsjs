@@ -32,40 +32,29 @@ module Database
 
     class << self
       extend Forwardable
-      def_delegators :new, :restore, :dump, :list_snapshots, :truncate
+      def_delegators :new, :restore, :dump, :export_tables, :list_snapshots, :truncate
     end
 
     # Dumps the database to a file.
     #
     # @param output_path [String] The path to the output .sql file.
-    # @param options [Array<String>] Extra flags for pg_dump (e.g., ['--clean', '--if-exists'])
+    # @param pg_dump_options [Hash] Options passed to PgDumpFlags (e.g., clean: true, no_owner: true)
     # @return [Result]
-    def dump(output_path, options: [])
+    def dump(output_path, **pg_dump_options)
       # Normalize the output path by replacing hyphens with underscores in filename
       output_path = normalize_snapshot_path(output_path)
-      # Build exclusion flags for system tables
-      exclusions = EXCLUDED_SYSTEM_TABLES.flat_map { |table| ["--exclude-table", table] }
 
-      # First dump the data
-      data_command_args = [
-        "pg_dump",
-        "-U", @config[:username],
-        "-h", @config[:host] || "localhost",
-        "-p", @config[:port].to_s,
-        "--no-password",
-        "--data-only",
-        "--inserts",
-        "--column-inserts",
-        "--disable-triggers", # Disable triggers during restore for faster loading
-        *exclusions,  # Exclude Rails system tables
-        *options,
-        @config[:database]
-      ]
+      default_options = {
+        data_only: true,
+        inserts: true,
+        column_inserts: true,
+        disable_triggers: true,
+        exclude_tables: EXCLUDED_SYSTEM_TABLES
+      }
 
       # Dump data to temp file first
       temp_data_file = "#{output_path}.data.tmp"
-      data_command = Shellwords.join(data_command_args) + " > #{Shellwords.escape(temp_data_file)}"
-      data_result = execute_command(data_command)
+      data_result = pg_dump(temp_data_file, **default_options.merge(pg_dump_options))
 
       return data_result unless data_result.success?
 
@@ -125,6 +114,10 @@ module Database
       DatabaseCleaner.clean_with(:truncation)
     end
 
+    def export_tables(file, **)
+      pg_dump(file, **)
+    end
+
     def delete_test_snapshots
       Test::DatabaseController::SNAPSHOT_DIR.glob("test_snapshot_*.sql").each do |file|
         file.delete if file.exist?
@@ -132,6 +125,23 @@ module Database
     end
 
     private
+
+    def pg_dump(output_path, **)
+      flags = PgDumpFlags.build(**)
+
+      command_args = [
+        "pg_dump",
+        "-U", @config[:username],
+        "-h", @config[:host] || "localhost",
+        "-p", @config[:port].to_s,
+        "--no-password",
+        *flags,
+        @config[:database]
+      ]
+
+      command = Shellwords.join(command_args) + " > #{Shellwords.escape(output_path)}"
+      execute_command(command)
+    end
 
     def ensure_partitions_exist(snapshot_path)
       # Read the snapshot file to identify partition tables referenced

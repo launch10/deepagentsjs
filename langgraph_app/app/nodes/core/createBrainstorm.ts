@@ -3,7 +3,7 @@ import { NodeMiddleware } from "@middleware";
 import { BrainstormAPIService } from "@services";
 import { type BrainstormGraphState } from "@state";
 import { NameProjectService } from "@services";
-import { lastHumanMessage } from "@types";
+import { firstHumanMessage } from "@types";
 
 /**
  * Node that creates a new brainstorm, project, or website
@@ -25,7 +25,7 @@ export const createBrainstorm = NodeMiddleware.use({}, async (
       throw new Error("JWT token is required for API authentication");
     }
 
-    const userRequest = lastHumanMessage(state);
+    const userRequest = firstHumanMessage(state);
     if (!userRequest) {
       throw new Error("User request is required");
     }

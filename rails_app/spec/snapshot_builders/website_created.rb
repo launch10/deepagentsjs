@@ -17,7 +17,7 @@ class WebsiteCreated < BaseBuilder
     project = account.projects.first
     unless project
       data = Brainstorm.create_brainstorm!(account, name: "Test Project", thread_id: SecureRandom.uuid)
-      project = data[:project]
+      data[:project]
 
       brainstorm = data[:brainstorm]
       brainstorm.update!(

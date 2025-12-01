@@ -39,9 +39,9 @@ class DocumentChunk < ApplicationRecord
   before_save :set_content
 
   scope :by_section, ->(section) { where(section: section) }
-  scope :live, -> { joins(:document).where(documents: { status: 'live' }) }
+  scope :live, -> { joins(:document).where(documents: { status: "live" }) }
   scope :for_document_type, ->(type) { joins(:document).where(documents: { document_type: type }) }
-  scope :with_tag, ->(tag) { joins(:document).where('documents.tags @> ?', [tag].to_json) }
+  scope :with_tag, ->(tag) { joins(:document).where("documents.tags @> ?", [tag].to_json) }
 
   delegate :slug, :title, :tags, :document_type, to: :document, prefix: true
 

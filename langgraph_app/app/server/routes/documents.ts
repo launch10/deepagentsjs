@@ -4,7 +4,7 @@ import { documentExtractionQueue } from '../../queues/documentExtraction';
 
 export const documentsRoutes = new Hono();
 
-documentsRoutes.post('/extract-qa', adminAuthMiddleware, async (c) => {
+documentsRoutes.post('/extract-faqs', adminAuthMiddleware, async (c) => {
   const body = await c.req.json();
   const { job_run_id, document_id, content, metadata } = body;
 

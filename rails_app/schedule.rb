@@ -21,7 +21,7 @@ Zhong.schedule do
     end
   end
 
-  category "documents" do
+  category "FAQs" do
     every(30.minutes, "sync google docs") do
       GoogleDocs::IngestWorker.enqueue_with_tracking
     end

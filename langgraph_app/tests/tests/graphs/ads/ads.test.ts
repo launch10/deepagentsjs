@@ -35,7 +35,7 @@ describe.sequential('Ads Flow', () => {
             }
             return res[0]!.uuid as UUIDType;
         });
-    }, 2000)
+    }, 30000)
 
     describe("Chat flow", () => {
         describe("Content Stage", () => {

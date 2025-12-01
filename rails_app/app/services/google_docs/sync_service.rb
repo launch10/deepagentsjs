@@ -4,7 +4,7 @@ module GoogleDocs
     # with the service account: launch10@launch10-479317.iam.gserviceaccount.com
     # as a VIEWER
     FOLDER_PATHS = {
-      'FAQs' => "1F7svsAd9l-Fqt9KtjqrAgRnHXDGZc1WL" # Pull from https://drive.google.com/drive/u/1/folders/1F6pUGR272yRysjuO03OXIib0IZT8ZgiI
+      "FAQs" => "1F7svsAd9l-Fqt9KtjqrAgRnHXDGZc1WL" # Pull from https://drive.google.com/drive/u/1/folders/1F6pUGR272yRysjuO03OXIib0IZT8ZgiI
     }
 
     attr_reader :client, :langgraph_client
@@ -15,7 +15,7 @@ module GoogleDocs
     end
 
     def sync_all
-      files = client.list_files_in_folder(FOLDER_PATHS['FAQs'])
+      files = client.list_files_in_folder(FOLDER_PATHS["FAQs"])
       Rails.logger.info("[GoogleDocs::SyncService] Found #{files.count} documents in FAQs")
 
       results = { queued: [], skipped: [], failed: [] }
@@ -32,11 +32,11 @@ module GoogleDocs
     end
 
     def sync_document(file)
-      doc = Document.find_by(source_type: 'google_docs', source_id: file.id)
+      doc = Document.find_by(source_type: "google_docs", source_id: file.id)
 
-      if doc && doc.last_synced_at && doc.last_synced_at >= file.modified_time
+      if doc&.last_synced_at && doc.last_synced_at >= file.modified_time
         Rails.logger.info("[GoogleDocs::SyncService] Skipping #{file.name} - not modified")
-        return { status: :skipped, file: file.name, reason: 'not_modified' }
+        return { status: :skipped, file: file.name, reason: "not_modified" }
       end
 
       content = client.get_document_content(file.id)
@@ -44,7 +44,7 @@ module GoogleDocs
 
       doc = Document.find_or_create_from_external!(content,
         document_type: "faq",
-        source_type: 'google_docs',
+        source_type: "google_docs",
         source_id: file.id,
         slug: generate_slug(file.name),
         title: file.name,
@@ -52,8 +52,7 @@ module GoogleDocs
         metadata: {
           google_modified_time: metadata[:modified_time],
           google_created_time: metadata[:created_time]
-        }
-      )
+        })
 
       enqueue_extraction(doc)
 
@@ -66,7 +65,7 @@ module GoogleDocs
     def enqueue_extraction(doc)
       return if doc.content.blank?
 
-      job_run = JobRun.create_for('GoogleDocs::ExtractQA', {
+      job_run = JobRun.create_for("GoogleDocs::ExtractQA", {
         document_id: doc.id,
         document_title: doc.title
       })

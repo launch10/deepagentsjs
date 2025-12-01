@@ -123,7 +123,6 @@ class API::V1::CampaignsController < API::BaseController
     }
   end
 
-
   def eager_load(campaign)
     Campaign
       .includes(

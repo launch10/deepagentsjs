@@ -7,9 +7,9 @@ module Webhooks
       document = Document.find(params[:document_id])
 
       case params[:status]
-      when 'success'
+      when "success"
         handle_success(job_run, document, params[:result])
-      when 'failure'
+      when "failure"
         handle_failure(job_run, document, params[:result])
       else
         render json: { error: "Unknown status: #{params[:status]}" }, status: :bad_request
@@ -28,11 +28,11 @@ module Webhooks
     private
 
     def handle_success(job_run, document, result)
-      pairs = (result['pairs'] || []).map do |pair|
+      pairs = (result["pairs"] || []).map do |pair|
         {
-          question: pair['question'],
-          answer: pair['answer'],
-          section: pair['section']
+          question: pair["question"],
+          answer: pair["answer"],
+          section: pair["section"]
         }
       end
 
@@ -43,7 +43,7 @@ module Webhooks
     end
 
     def handle_failure(job_run, document, result)
-      error_message = result&.dig('error') || 'Unknown error'
+      error_message = result&.dig("error") || "Unknown error"
       job_run.fail!(error_message)
 
       Rails.logger.error("[DocumentExtractionWebhook] Failed to process document #{document.id}: #{error_message}")
@@ -51,21 +51,21 @@ module Webhooks
 
     def verify_signature
       payload = request.raw_post
-      signature = request.headers['X-Signature']
+      signature = request.headers["X-Signature"]
 
       unless signature.present?
-        render json: { error: 'Missing signature' }, status: :unauthorized
+        render json: { error: "Missing signature" }, status: :unauthorized
         return
       end
 
       expected_signature = OpenSSL::HMAC.hexdigest(
-        'SHA256',
+        "SHA256",
         Rails.application.credentials.devise_jwt_secret_key!,
         payload
       )
 
       unless ActiveSupport::SecurityUtils.secure_compare(signature, expected_signature)
-        render json: { error: 'Invalid signature' }, status: :unauthorized
+        render json: { error: "Invalid signature" }, status: :unauthorized
       end
     end
   end

@@ -6,7 +6,7 @@ module DocumentConcerns
 
     class_methods do
       def parse_frontmatter(raw_content)
-        raw_content ||= ''
+        raw_content ||= ""
         match = raw_content.match(FRONTMATTER_REGEX)
 
         if match

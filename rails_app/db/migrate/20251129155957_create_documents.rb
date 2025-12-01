@@ -23,6 +23,5 @@ class CreateDocuments < ActiveRecord::Migration[8.0]
       t.index :last_synced_at
       t.index [:source_type, :source_id], unique: true
     end
-
   end
 end

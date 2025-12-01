@@ -45,7 +45,7 @@ namespace :db do
       end
 
       sorted = TopologicalSort.sort(builders)
-      puts "Building #{sorted.length} snapshots in order: #{sorted.join(' -> ')}"
+      puts "Building #{sorted.length} snapshots in order: #{sorted.join(" -> ")}"
       puts
 
       sorted.each do |builder_name|
@@ -79,7 +79,7 @@ namespace :db do
         puts "All builder dependencies:"
         BuilderFinder.builder_config.each_key do |name|
           chain = SnapshotBuilder.dependency_chain(name)
-          puts "  #{name}: #{chain.join(' -> ')}"
+          puts "  #{name}: #{chain.join(" -> ")}"
         end
       end
     end
@@ -241,7 +241,7 @@ class SnapshotBuilder
 
       puts "=== Snapshot Builder ==="
       puts "Builder: #{builder_name}"
-      puts "Base: #{base_snapshot || 'empty'}"
+      puts "Base: #{base_snapshot || "empty"}"
       puts "Output: #{output_name}"
       puts
 
@@ -304,7 +304,7 @@ class TopologicalSort
       builder_names.each do |name|
         config = BuilderFinder.builder_config[name]
         base = config&.dig("base_snapshot")
-        graph[name] = base && builder_names.include?(base) ? [base] : []
+        graph[name] = (base && builder_names.include?(base)) ? [base] : []
       end
 
       sorted = []
@@ -354,8 +354,6 @@ class BuilderFinder
         Object.const_get(class_name)
       elsif Object.const_defined?("SnapshotBuilders::#{class_name}")
         Object.const_get("SnapshotBuilders::#{class_name}")
-      else
-        nil
       end
     end
 

@@ -35,7 +35,7 @@ Rails.application.routes.draw do
   resources :announcements, only: [:index, :show]
 
   namespace :webhooks do
-    post 'document_extraction', to: 'document_extraction#create'
+    post "document_extraction", to: "document_extraction#create"
   end
 
   namespace :action_text do

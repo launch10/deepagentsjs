@@ -27,7 +27,7 @@ module CampaignConcerns
             contextable: campaign,
             thread_id: thread_id,
             project: campaign.project,
-            account: account,
+            account: account
           )
           chat.save!
 
@@ -35,7 +35,7 @@ module CampaignConcerns
             campaign: campaign,
             ad_group: ad_group,
             ad: ad,
-            chat: chat,
+            chat: chat
           }
         end
       end

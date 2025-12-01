@@ -5,7 +5,7 @@ import { adsAgent, getBusinessContext, prepareRefreshNode, resetNode, guardrails
 export const adsGraph = new StateGraph(AdsAnnotation)
       .addNode("getBusinessContext", getBusinessContext)
       .addNode("prepareRefresh", prepareRefreshNode)
-      .addNode("agent", adsAgent)
+      .addNode("adsAgent", adsAgent)
       .addNode("reset", resetNode)
 
       .addConditionalEdges(START, guardrailsNode, {
@@ -13,6 +13,6 @@ export const adsGraph = new StateGraph(AdsAnnotation)
             "__end__": END
       })
       .addEdge("getBusinessContext", "prepareRefresh")
-      .addEdge("prepareRefresh", "agent")
-      .addEdge("agent", "reset")
+      .addEdge("prepareRefresh", "adsAgent")
+      .addEdge("adsAgent", "reset")
       .addEdge("reset", END)

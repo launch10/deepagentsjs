@@ -1,6 +1,6 @@
-require 'google/apis/drive_v3'
-require 'google/apis/docs_v1'
-require 'googleauth'
+require "google/apis/drive_v3"
+require "google/apis/docs_v1"
+require "googleauth"
 
 module GoogleDocs
   class Client
@@ -27,7 +27,7 @@ module GoogleDocs
       loop do
         response = drive_service.list_files(
           q: "'#{folder_id}' in parents and mimeType = 'application/vnd.google-apps.document' and trashed = false",
-          fields: 'nextPageToken, files(id, name, modifiedTime)',
+          fields: "nextPageToken, files(id, name, modifiedTime)",
           page_token: page_token
         )
 
@@ -39,8 +39,8 @@ module GoogleDocs
       files
     end
 
-    def find_folder_by_path(path, base_folder_id: 'root')
-      parts = path.split('/')
+    def find_folder_by_path(path, base_folder_id: "root")
+      parts = path.split("/")
       parent_id = base_folder_id
 
       parts.each do |folder_name|
@@ -58,7 +58,7 @@ module GoogleDocs
     end
 
     def get_document_metadata(doc_id)
-      file = drive_service.get_file(doc_id, fields: 'id, name, modifiedTime, createdTime, webViewLink')
+      file = drive_service.get_file(doc_id, fields: "id, name, modifiedTime, createdTime, webViewLink")
       {
         id: file.id,
         name: file.name,
@@ -86,15 +86,15 @@ module GoogleDocs
     def find_folder_in_parent(folder_name, parent_id)
       response = drive_service.list_files(
         q: "'#{parent_id}' in parents and mimeType = 'application/vnd.google-apps.folder' and name = '#{folder_name}' and trashed = false",
-        fields: 'files(id, name)'
+        fields: "files(id, name)"
       )
       response.files&.first
     end
 
     def extract_text_from_document(doc)
-      return '' unless doc.body&.content
+      return "" unless doc.body&.content
 
-      text = ''
+      text = ""
       doc.body.content.each do |element|
         text += extract_text_from_element(element)
       end
@@ -102,21 +102,21 @@ module GoogleDocs
     end
 
     def extract_text_from_element(element)
-      return '' unless element
+      return "" unless element
 
       if element.paragraph
         extract_text_from_paragraph(element.paragraph)
       elsif element.table
         extract_text_from_table(element.table)
       else
-        ''
+        ""
       end
     end
 
     def extract_text_from_paragraph(paragraph)
-      return '' unless paragraph.elements
+      return "" unless paragraph.elements
 
-      text = ''
+      text = ""
       paragraph.elements.each do |element|
         text += element.text_run.content if element.text_run
       end
@@ -124,9 +124,9 @@ module GoogleDocs
     end
 
     def extract_text_from_table(table)
-      return '' unless table.table_rows
+      return "" unless table.table_rows
 
-      text = ''
+      text = ""
       table.table_rows.each do |row|
         row.table_cells&.each do |cell|
           cell.content&.each do |element|
