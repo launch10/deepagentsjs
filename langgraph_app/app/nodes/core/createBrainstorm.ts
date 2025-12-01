@@ -26,7 +26,6 @@ export const createBrainstorm = NodeMiddleware.use({}, async (
     }
 
     const userRequest = lastHumanMessage(state);
-    debugger;
     if (!userRequest) {
       throw new Error("User request is required");
     }

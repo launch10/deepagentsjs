@@ -1,5 +1,5 @@
 require 'swagger_helper'
-
+require "rails_helper"
 RSpec.describe "Campaigns API", type: :request do
   let!(:user1) { create(:user, name: "User 1") }
   let!(:user2) { create(:user, name: "User 2") }
@@ -150,7 +150,7 @@ RSpec.describe "Campaigns API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
       parameter name: :campaign_params, in: :body, schema: APISchemas::Campaign.params_schema
 
-      let!(:campaign1) do
+      let(:campaign1) do
         result = Campaign.create_campaign!(user1_account, {
           name: "User 1 Campaign",
           project_id: project1.id,
@@ -159,7 +159,7 @@ RSpec.describe "Campaigns API", type: :request do
         result[:campaign]
       end
 
-      let!(:campaign2) do
+      let(:campaign2) do
         result = Campaign.create_campaign!(user2_account, {
           name: "User 2 Campaign",
           project_id: project2.id,
@@ -259,7 +259,7 @@ RSpec.describe "Campaigns API", type: :request do
       end
 
       describe "Content stage" do
-        let!(:content_stage_campaign) { finish_content_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
+        let(:content_stage_campaign) { finish_content_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
         let(:id) { content_stage_campaign.id }
 
         response '200', 'idempotently creates headlines on first update' do
