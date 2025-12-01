@@ -1207,7 +1207,8 @@ CREATE TABLE public.template_files (
     updated_at timestamp(6) without time zone NOT NULL,
     shasum character varying,
     file_specification_id integer,
-    content_tsv tsvector
+    content_tsv tsvector,
+    embedding public.vector(1536)
 );
 
 
@@ -1224,7 +1225,8 @@ CREATE TABLE public.website_files (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     shasum character varying,
-    content_tsv tsvector
+    content_tsv tsvector,
+    embedding public.vector(1536)
 );
 
 
@@ -1255,6 +1257,7 @@ CREATE VIEW public.code_files AS
             wf.path,
             wf.content,
             wf.content_tsv,
+            wf.embedding,
             wf.shasum,
             wf.file_specification_id,
             wf.created_at,
@@ -1267,6 +1270,7 @@ CREATE VIEW public.code_files AS
             tf.path,
             tf.content,
             tf.content_tsv,
+            tf.embedding,
             tf.shasum,
             tf.file_specification_id,
             tf.created_at,
@@ -1283,6 +1287,7 @@ CREATE VIEW public.code_files AS
     path,
     content,
     content_tsv,
+    embedding,
     shasum,
     file_specification_id,
     source_type,
@@ -1568,6 +1573,86 @@ ALTER SEQUENCE public.deploys_id_seq OWNED BY public.deploys.id;
 
 
 --
+-- Name: document_chunks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.document_chunks (
+    id bigint NOT NULL,
+    document_id bigint NOT NULL,
+    question_hash character varying NOT NULL,
+    question text NOT NULL,
+    answer text NOT NULL,
+    content text,
+    section character varying,
+    context jsonb DEFAULT '{}'::jsonb,
+    "position" integer,
+    embedding public.vector(1536),
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: document_chunks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.document_chunks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: document_chunks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.document_chunks_id_seq OWNED BY public.document_chunks.id;
+
+
+--
+-- Name: documents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.documents (
+    id bigint NOT NULL,
+    slug character varying NOT NULL,
+    title character varying,
+    content text,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    document_type character varying,
+    source_type character varying,
+    source_id character varying,
+    source_url character varying,
+    tags jsonb DEFAULT '[]'::jsonb,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    last_synced_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: documents_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.documents_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: documents_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.documents_id_seq OWNED BY public.documents.id;
+
+
+--
 -- Name: domain_request_counts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1826,6 +1911,42 @@ CREATE SEQUENCE public.inbound_webhooks_id_seq
 --
 
 ALTER SEQUENCE public.inbound_webhooks_id_seq OWNED BY public.inbound_webhooks.id;
+
+
+--
+-- Name: job_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.job_runs (
+    id bigint NOT NULL,
+    job_class character varying NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    error_message text,
+    job_args jsonb DEFAULT '{}'::jsonb,
+    started_at timestamp(6) without time zone,
+    completed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: job_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.job_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: job_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.job_runs_id_seq OWNED BY public.job_runs.id;
 
 
 --
@@ -2830,7 +2951,8 @@ CREATE TABLE public.website_file_histories (
     history_user_id integer,
     snapshot_id character varying,
     shasum character varying,
-    content_tsv tsvector
+    content_tsv tsvector,
+    embedding public.vector(1536)
 );
 
 
@@ -3299,6 +3421,20 @@ ALTER TABLE ONLY public.deploys ALTER COLUMN id SET DEFAULT nextval('public.depl
 
 
 --
+-- Name: document_chunks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.document_chunks ALTER COLUMN id SET DEFAULT nextval('public.document_chunks_id_seq'::regclass);
+
+
+--
+-- Name: documents id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.documents ALTER COLUMN id SET DEFAULT nextval('public.documents_id_seq'::regclass);
+
+
+--
 -- Name: domain_request_counts id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3338,6 +3474,13 @@ ALTER TABLE ONLY public.icon_query_caches ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.inbound_webhooks ALTER COLUMN id SET DEFAULT nextval('public.inbound_webhooks_id_seq'::regclass);
+
+
+--
+-- Name: job_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_runs ALTER COLUMN id SET DEFAULT nextval('public.job_runs_id_seq'::regclass);
 
 
 --
@@ -3911,6 +4054,22 @@ ALTER TABLE ONLY public.deploys
 
 
 --
+-- Name: document_chunks document_chunks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.document_chunks
+    ADD CONSTRAINT document_chunks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: documents documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.documents
+    ADD CONSTRAINT documents_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: domain_request_counts domain_request_counts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3988,6 +4147,14 @@ ALTER TABLE ONLY public.icon_query_caches
 
 ALTER TABLE ONLY public.inbound_webhooks
     ADD CONSTRAINT inbound_webhooks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: job_runs job_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_runs
+    ADD CONSTRAINT job_runs_pkey PRIMARY KEY (id);
 
 
 --
@@ -4502,6 +4669,13 @@ CREATE INDEX domain_request_counts_2025_12_domain_id_hour_request_count_idx ON p
 
 
 --
+-- Name: idx_document_chunks_embedding; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_document_chunks_embedding ON public.document_chunks USING ivfflat (embedding public.vector_cosine_ops);
+
+
+--
 -- Name: idx_icon_embeddings_text; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4523,6 +4697,13 @@ CREATE INDEX idx_template_files_content_tsv ON public.template_files USING gin (
 
 
 --
+-- Name: idx_template_files_embedding; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_template_files_embedding ON public.template_files USING ivfflat (embedding public.vector_cosine_ops) WITH (lists='100');
+
+
+--
 -- Name: idx_template_files_path_trgm; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4541,6 +4722,13 @@ CREATE INDEX idx_website_file_histories_content_tsv ON public.website_file_histo
 --
 
 CREATE INDEX idx_website_files_content_tsv ON public.website_files USING gin (content_tsv);
+
+
+--
+-- Name: idx_website_files_embedding; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_website_files_embedding ON public.website_files USING ivfflat (embedding public.vector_cosine_ops) WITH (lists='100');
 
 
 --
@@ -5748,6 +5936,69 @@ CREATE INDEX index_deploys_on_website_id_and_is_live ON public.deploys USING btr
 
 
 --
+-- Name: index_document_chunks_on_document_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_document_chunks_on_document_id ON public.document_chunks USING btree (document_id);
+
+
+--
+-- Name: index_document_chunks_on_document_id_and_question_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_document_chunks_on_document_id_and_question_hash ON public.document_chunks USING btree (document_id, question_hash);
+
+
+--
+-- Name: index_document_chunks_on_section; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_document_chunks_on_section ON public.document_chunks USING btree (section);
+
+
+--
+-- Name: index_documents_on_document_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_documents_on_document_type ON public.documents USING btree (document_type);
+
+
+--
+-- Name: index_documents_on_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_documents_on_slug ON public.documents USING btree (slug);
+
+
+--
+-- Name: index_documents_on_source_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_documents_on_source_type ON public.documents USING btree (source_type);
+
+
+--
+-- Name: index_documents_on_source_type_and_source_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_documents_on_source_type_and_source_id ON public.documents USING btree (source_type, source_id);
+
+
+--
+-- Name: index_documents_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_documents_on_status ON public.documents USING btree (status);
+
+
+--
+-- Name: index_documents_on_tags; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_documents_on_tags ON public.documents USING gin (tags);
+
+
+--
 -- Name: index_domains_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5850,6 +6101,27 @@ CREATE INDEX index_icon_query_caches_on_ttl_seconds ON public.icon_query_caches 
 --
 
 CREATE INDEX index_icon_query_caches_on_use_count ON public.icon_query_caches USING btree (use_count);
+
+
+--
+-- Name: index_job_runs_on_job_class; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_job_class ON public.job_runs USING btree (job_class);
+
+
+--
+-- Name: index_job_runs_on_job_class_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_job_class_and_status ON public.job_runs USING btree (job_class, status);
+
+
+--
+-- Name: index_job_runs_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_status ON public.job_runs USING btree (status);
 
 
 --
@@ -7146,6 +7418,14 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 
 --
+-- Name: document_chunks fk_rails_99b41ada32; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.document_chunks
+    ADD CONSTRAINT fk_rails_99b41ada32 FOREIGN KEY (document_id) REFERENCES public.documents(id);
+
+
+--
 -- Name: pay_charges fk_rails_b19d32f835; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7192,7 +7472,13 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251201143930'),
 ('20251130121846'),
+('20251129165029'),
+('20251129163807'),
+('20251129160020'),
+('20251129155957'),
+('20251129094502'),
 ('20251125163826'),
 ('20251125163744'),
 ('20251125000849'),

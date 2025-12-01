@@ -20,4 +20,10 @@ Zhong.schedule do
       Database::PartitionCleanupWorker.perform_async
     end
   end
+
+  category "FAQs" do
+    every(30.minutes, "sync google docs") do
+      GoogleDocs::IngestWorker.enqueue_with_tracking
+    end
+  end
 end

@@ -185,6 +185,7 @@ GEM
     debug (1.11.0)
       irb (~> 1.10)
       reline (>= 0.3.8)
+    declarative (0.0.20)
     devise-i18n (1.14.0)
       devise (>= 4.9.0)
       rails-i18n
@@ -219,6 +220,7 @@ GEM
       tzinfo
     ethon (0.17.0)
       ffi (>= 1.15.0)
+    event_stream_parser (1.0.0)
     factory_bot (6.5.5)
       activesupport (>= 6.1.0)
     factory_bot_rails (6.5.0)
@@ -230,6 +232,10 @@ GEM
       faraday-net_http (>= 2.0, < 3.5)
       json
       logger
+    faraday-follow_redirects (0.4.0)
+      faraday (>= 1, < 3)
+    faraday-multipart (1.1.1)
+      multipart-post (~> 2.0)
     faraday-net_http (3.4.2)
       net-http (~> 0.5)
     faraday-retry (2.3.2)
@@ -263,6 +269,18 @@ GEM
     google-ads-googleads (36.1.0)
       gapic-common (>= 1.0.1, < 3.0)
       google-protobuf (>= 3.19.4, < 5.0)
+    google-apis-core (1.0.2)
+      addressable (~> 2.8, >= 2.8.7)
+      faraday (~> 2.13)
+      faraday-follow_redirects (~> 0.3)
+      googleauth (~> 1.14)
+      mini_mime (~> 1.1)
+      representable (~> 3.0)
+      retriable (~> 3.1)
+    google-apis-docs_v1 (0.38.0)
+      google-apis-core (>= 0.15.0, < 2.a)
+    google-apis-drive_v3 (0.74.0)
+      google-apis-core (>= 0.15.0, < 2.a)
     google-cloud-env (2.3.1)
       base64 (~> 0.2)
       faraday (>= 1.0, < 3.a)
@@ -432,6 +450,7 @@ GEM
       railties (>= 3.0)
     msgpack (1.8.0)
     multi_json (1.17.0)
+    multipart-post (2.4.1)
     mustermann (3.0.4)
       ruby2_keywords (~> 0.0.1)
     mutex_m (0.3.0)
@@ -598,9 +617,14 @@ GEM
     regexp_parser (2.11.2)
     reline (0.6.2)
       io-console (~> 0.5)
+    representable (3.2.0)
+      declarative (< 0.1.0)
+      trailblazer-option (>= 0.1.1, < 0.2.0)
+      uber (< 0.2.0)
     responders (3.1.1)
       actionpack (>= 5.2)
       railties (>= 5.2)
+    retriable (3.1.2)
     rexml (3.4.1)
     rollbar (3.6.2)
     rotp (6.3.0)
@@ -678,6 +702,17 @@ GEM
       ffi (~> 1.12)
       logger
     ruby2_keywords (0.0.5)
+    ruby_llm (1.9.1)
+      base64
+      event_stream_parser (~> 1)
+      faraday (>= 1.10.0)
+      faraday-multipart (>= 1)
+      faraday-net_http (>= 1)
+      faraday-retry (>= 1)
+      marcel (~> 1.0)
+      ruby_llm-schema (~> 0.2.1)
+      zeitwerk (~> 2)
+    ruby_llm-schema (0.2.5)
     rubyzip (3.0.2)
     securerandom (0.4.1)
     selenium-webdriver (4.35.0)
@@ -763,6 +798,7 @@ GEM
     tilt (2.6.1)
     timecop (0.9.10)
     timeout (0.4.4)
+    trailblazer-option (0.1.2)
     ttfunk (1.8.0)
       bigdecimal (~> 3.1)
     turbo-rails (2.0.16)
@@ -772,6 +808,7 @@ GEM
       ethon (>= 0.9.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
+    uber (0.1.0)
     unicode-display_width (3.1.5)
       unicode-emoji (~> 4.0, >= 4.0.4)
     unicode-emoji (4.0.4)
@@ -852,6 +889,8 @@ DEPENDENCIES
   faker
   flipper
   google-ads-googleads
+  google-apis-docs_v1
+  google-apis-drive_v3
   guard
   guard-rails
   guard-rspec
@@ -896,6 +935,7 @@ DEPENDENCIES
   rswag
   rubocop-rails-omakase
   ruby-oembed (~> 0.18.0)
+  ruby_llm
   selenium-webdriver (>= 4.20.1)
   shoulda-matchers (~> 6.0)
   sidekiq

@@ -5,6 +5,10 @@ import { openai } from "@ai-sdk/openai";
 import { eq, gte, ilike, sql, and, or, getTableName, desc } from "drizzle-orm";
 import type { DB } from "app/db";
 import { env } from "@app";
+import {
+  CohereRerankService,
+  type RerankDocument,
+} from "./cohereRerankService";
 
 import {
   pgTable,
@@ -55,6 +59,12 @@ export interface CacheOptions {
   enableCache?: boolean;
 }
 
+export interface EmbeddingRerankOptions {
+  enableRerank?: boolean;
+  rerankTopN?: number;
+  rerankThreshold?: number;
+}
+
 const getPostgresUrl = (): string => {
   const postgresUrl = env.DATABASE_URL;
   if (!postgresUrl) {
@@ -77,6 +87,7 @@ export class PostgresEmbeddingsService {
   private readonly DEFAULT_MIN_SIMILARITY = 0.25; // Lowered to cache more results
 
   private cacheTable?: PgCacheTable;
+  private rerankService?: CohereRerankService;
 
   constructor({
     db,
@@ -84,12 +95,14 @@ export class PostgresEmbeddingsService {
     cacheTable,
     dimensions = 1536,
     embeddingModel = openai.embedding("text-embedding-3-small"),
+    enableRerank = false,
   }: {
     db: DB;
     table: PgEmbeddingTable;
     cacheTable?: PgCacheTable;
     dimensions?: number;
     embeddingModel?: any;
+    enableRerank?: boolean;
   }) {
     this.db = db;
     this.table = table;
@@ -113,6 +126,10 @@ export class PostgresEmbeddingsService {
         metadataColumnName: "metadata",
       },
     });
+
+    if (enableRerank && env.COHERE_API_KEY) {
+      this.rerankService = new CohereRerankService();
+    }
   }
 
   /**
@@ -311,7 +328,7 @@ export class PostgresEmbeddingsService {
   async search(
     query: string,
     topK: number = 5,
-    options?: CacheOptions
+    options?: CacheOptions & EmbeddingRerankOptions
   ): Promise<EmbeddingResult[]> {
     try {
       // Check cache first if enabled
@@ -401,6 +418,33 @@ export class PostgresEmbeddingsService {
       // 3. Sort by similarity and take top K
       results.sort((a, b) => b.similarity - a.similarity);
       results = results.slice(0, topK);
+
+      // 4. Apply reranking if enabled
+      if (options?.enableRerank && this.rerankService) {
+        const rerankTopN = options.rerankTopN || topK;
+        const documents: RerankDocument[] = results.map((r) => ({
+          text: r.text,
+          metadata: { ...r.metadata, key: r.key, similarity: r.similarity },
+        }));
+
+        const reranked = options.rerankThreshold
+          ? await this.rerankService.rerankWithThreshold(
+              query,
+              documents,
+              options.rerankThreshold,
+              { topN: rerankTopN }
+            )
+          : await this.rerankService.rerank(query, documents, {
+              topN: rerankTopN,
+            });
+
+        results = reranked.map((r) => ({
+          key: r.document.metadata?.key as string,
+          text: r.document.text,
+          metadata: r.document.metadata,
+          similarity: r.relevanceScore,
+        }));
+      }
 
       // Cache results if enabled
       if (options?.enableCache !== false && this.cacheTable) {

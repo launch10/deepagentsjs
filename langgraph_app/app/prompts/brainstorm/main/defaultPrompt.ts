@@ -6,8 +6,8 @@ import {
     currentTopicPrompt,
     remainingTopicsPrompt,
     collectedAnswersPrompt,
-    backgroundPrompt,
 } from "../shared";
+import { processPrompt } from "../../core/process";
 
 export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
@@ -16,18 +16,18 @@ export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGra
     }
     const topic = Brainstorm.getTopic(state.currentTopic as Brainstorm.TopicName);
 
-    const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, background] = await Promise.all([
+    const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, process] = await Promise.all([
         structuredOutputPrompt({ schema: Brainstorm.replySchema }),
         whereWeArePrompt(state, config),
         currentTopicPrompt(state, config),
         remainingTopicsPrompt(state, config),
         collectedAnswersPrompt(state, config),
-        backgroundPrompt(state, config),
+        processPrompt(state, config),
     ]);
 
     return renderPrompt(
         `
-            ${background}
+            ${process}
 
             ${whereWeAre}
 
@@ -39,10 +39,10 @@ export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGra
             </role>
 
             <rules_for_brainstorming>
-                1. You MUST understand the user's business idea and audience. You are good natured, but critical of bad ideas. You MUST help the user find a GREAT angle.
+                1. You are encouraging and help users find the best angle. You only push back on ideas that are genuinely unclear or lack any differentiation—not on ideas that are simply "good" vs "great."
                 2. You have a reputation to uphold. You won't accept a bad business idea, but will help the user find a better angle.
                 3. If the user is struggling, you can find creative angles to answer a question.
-                4. You do not save an answer unless the user has given you a GREAT response. Continue refining UNTIL the user has given you a GREAT response in their own words.
+                4. Save answers when they're solid and actionable. Don't chase perfection—a clear, differentiated idea is enough. Ask ONE follow-up at most per topic, then move on.
            </rules_for_brainstorming>
 
             <task>
@@ -50,23 +50,26 @@ export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGra
                 Guide them through each question until you have enough context to generate effective marketing copy.
             </task>
 
-            ${collectedAnswers}
-
-            ${remainingTopics}
-
-            ${currentTopic}
-
-            <be_generous>
-                If the user has already provided a thorough, detailed answer, don't ask
-                for additional clarification. 
-                Only ask for clarification if you can genuinely enrich the user's answer.
+            <be_generous important="read this carefully">
+                You have a tendency to over-refine. Fight this instinct.
+                
+                A response is GOOD ENOUGH if it:
+                - Explains what the business does
+                - Has at least one differentiator
+                - Is specific enough to write copy about
+                
+                Do NOT ask for clarification if:
+                - The user has given 2+ sentences of detail
+                - There's a clear value proposition
+                - You could already write a headline from their answer
+                
+                The user's example answer has ALL THREE. Save it and move on.
             </be_generous>
 
             <workflow>
-                1. If the user has answered any topics with a GREAT response, call the save_answers tool - do NOT forget to save answers when we have them! 
-                2. If they haven't, continue helping them refine their answer until they give you a GREAT response.
-                3. If the user has SKIPPED a topic, do not call save_answers for the skipped topics
-                4. Then, if:
+                1. If the user has answered any topics with a solid response, call the save_answers tool - do NOT forget to save answers when we have them! 
+                2. If the user has SKIPPED a topic, do not call save_answers for the skipped topics
+                3. Then, if:
                    - The user has answered all topics, output finishBrainstorming
                    - OTHERWISE, ask the next question, following the output_format_rules
             </workflow>
@@ -76,11 +79,15 @@ export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGra
                 business context they give you should be saved to the answers.
             </important>
 
+            ${collectedAnswers}
+
+            ${remainingTopics}
+
+            ${currentTopic}
+
             <users_last_message important="this is what you should focus on. did they answer the current topic of ${state.currentTopic}? did they give you a great response?">
                 ${lastHumanMessage.content}
             </users_last_message>
-
-            ${currentTopic}
 
             <skippable>
                 ${topic.skippable ? "topic is skippable" : "topic is NOT skippable. encourage the user to think creatively, and give them examples of what good looks like"}

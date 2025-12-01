@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM } from "@core";
+import { getLLM, type LLMSkill, type LLMSpeed } from "@core";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { structuredOutputPrompt } from "@prompts";
 import { withStructuredResponse } from "@utils";
@@ -38,7 +38,7 @@ export class NameProjectService {
             throw new Error('User request is required');
         }
         
-        const rawResponse = await this.generateRawProjectName(userRequest, "writing", "fast", config);
+        const rawResponse = await this.generateRawProjectName(userRequest, "writing", "blazing", config);
         const validatedName = this.validateProjectName(rawResponse.projectName);
         const uniqueName = await this.ensureUniqueness(validatedName);
         
@@ -47,8 +47,8 @@ export class NameProjectService {
 
     async generateRawProjectName(
         userRequest: string, 
-        llmSkill: "writing" | "planning" | "coding" | "reasoning" | undefined = "writing", 
-        llmSpeed: "slow" | "fast" | undefined = "fast",
+        llmSkill: LLMSkill | undefined = "writing", 
+        llmSpeed: LLMSpeed | undefined = "blazing",
         config?: LangGraphRunnableConfig
     ): Promise<{ projectName: string }> {
         const llm = getLLM(llmSkill, llmSpeed);

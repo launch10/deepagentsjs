@@ -1,10 +1,13 @@
-puts "Seeding core data..."
-Rake::Task["seeds:core_data"].invoke
-puts "Seeding templates..."
-Rake::Task["seeds:template"].invoke
-puts "Seeding plans..."
-Rake::Task["seeds:plans"].invoke
+require_relative "../spec/snapshot_builders/base_builder"
+require_relative "../spec/snapshot_builders/core_data"
+require_relative "../spec/snapshot_builders/basic_account"
+
+puts "=== Seeding Database ==="
+
+puts "Seeding core data (plans, templates, themes)..."
+CoreData.new.build
+
 puts "Seeding basic account..."
-Rake::Task["seeds:basic_account"].invoke
-puts "Seeding themes..."
-Rake::Task["seeds:themes"].invoke
+BasicAccount.new.build
+
+puts "=== Seeding Complete ==="

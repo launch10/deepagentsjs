@@ -123,7 +123,6 @@ class API::V1::CampaignsController < API::BaseController
     }
   end
 
-
   def eager_load(campaign)
     Campaign
       .includes(
@@ -148,6 +147,7 @@ class API::V1::CampaignsController < API::BaseController
     {
       id: campaign.id,
       name: campaign.name,
+      thread_id: campaign.thread_id,
       stage: campaign.stage,
       status: campaign.status,
       ready_for_next_stage: campaign.ready_for_next_stage?,

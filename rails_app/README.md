@@ -68,6 +68,10 @@ To pull snapshots from Git LFS: `git lfs pull`
 To create a snapshot, run `bin/rails db:snapshot`.
 To load a snapshot, run `bin/rails db:restore_snapshot`.
 
+## Creating Snapshots
+
+We use the `spec/snapshot_builders/` directory to define snapshot builders. Run `bin/rails db:snapshot:build_all` to build all snapshots in dependency order.
+
 ## Creating A Subscribed User
 
 Subscribed endpoints require a user to be subscribed to a plan.

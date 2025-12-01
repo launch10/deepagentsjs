@@ -6,7 +6,7 @@ import { helpMePrompt } from "./main/helpMePrompt";
 import { uiGuidancePrompt } from "./main/uiGuidancePrompt";
 import { finishForMePrompt } from "./main/finishForMePrompt";
 
-export const chooseAgentPrompt = async(inputState: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
+export const chooseBrainstormPrompt = async(inputState: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     const state = await beforeHook(inputState);
     const currentTopicName = state.currentTopic;
     const topic = Brainstorm.getTopic(currentTopicName);

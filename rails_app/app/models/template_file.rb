@@ -26,6 +26,8 @@
 #
 
 class TemplateFile < ApplicationRecord
+  include Embeddable
+
   belongs_to :template
 
   include FileConcerns::Setters

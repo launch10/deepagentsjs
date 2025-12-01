@@ -1,7 +1,7 @@
 class WorkflowConfig
   class << self
     def definition(workflow_type)
-      @configs ||= YAML.load_file(Rails.root.join("config/workflow.yml"))
+      @configs ||= JSON.parse(File.read(Rails.root.join("../shared/exports/workflow.json")))
       @definitions ||= {}
       @definitions[workflow_type] ||= WorkflowDefinition.new(@configs[workflow_type])
     end

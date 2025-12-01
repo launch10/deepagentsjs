@@ -11,11 +11,6 @@ LOCAL_ENV_ONLY = lambda do |request|
 end
 
 Rails.application.routes.draw do
-  constraints ADMIN_ONLY do
-    mount Sidekiq::Web => "/sidekiq"
-    mount Zhong::Web => "/zhong"
-  end
-
   constraints LOCAL_ENV_ONLY do
     namespace :test do
       post "database/truncate", to: "database#truncate"
@@ -38,6 +33,10 @@ Rails.application.routes.draw do
   end
 
   resources :announcements, only: [:index, :show]
+
+  namespace :webhooks do
+    post "document_extraction", to: "document_extraction#create"
+  end
 
   namespace :action_text do
     resources :embeds, only: [:create], constraints: {id: /[^\/]+/} do

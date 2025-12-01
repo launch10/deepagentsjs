@@ -59,6 +59,7 @@ class Campaign < ApplicationRecord
   has_many :ads, through: :ad_groups
   has_one :launch_workflow, -> { where(workflow_type: "launch") }, through: :project, source: :workflows
   has_many :ad_schedules, dependent: :destroy
+  has_one :chat, as: :contextable, class_name: "Chat"
 
   # Ad creative
   has_many :callouts, class_name: "AdCallout", dependent: :destroy
@@ -104,5 +105,9 @@ class Campaign < ApplicationRecord
 
     build_budget if budget.nil?
     budget.update!(daily_budget_cents: amount)
+  end
+
+  def thread_id
+    chat&.thread_id
   end
 end

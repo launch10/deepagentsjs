@@ -15,6 +15,9 @@ const globalAny = global as any;
 if (!globalAny.__pollyManagerInstance) {
     globalAny.__pollyManagerInstance = null;
 }
+if (globalAny.__pollyDisabled === undefined) {
+    globalAny.__pollyDisabled = false;
+}
 
 class PollyManager {
     static get polly(): Polly | null {
@@ -23,6 +26,22 @@ class PollyManager {
     
     static set polly(value: Polly | null) {
         globalAny.__pollyManagerInstance = value;
+    }
+
+    static get disabled(): boolean {
+        return globalAny.__pollyDisabled;
+    }
+
+    static set disabled(value: boolean) {
+        globalAny.__pollyDisabled = value;
+    }
+
+    static disable(): void {
+        PollyManager.disabled = true;
+    }
+
+    static enable(): void {
+        PollyManager.disabled = false;
     }
 
     // Define AI/LLM provider patterns that should use node-specific recordings
@@ -47,7 +66,10 @@ class PollyManager {
         recordingName: string, 
         mode?: 'record' | 'replay' | 'passthrough' | 'stopped',
         configure?: (polly: Polly) => void
-    ): Promise<Polly> {
+    ): Promise<void> {
+        if (PollyManager.disabled) {
+            return;
+        }
         let polly = PollyManager.polly;
         if (!polly) {
             polly = PollyManager.hardStartPolly({
@@ -56,8 +78,7 @@ class PollyManager {
                 configure,
             });
         }
-        PollyManager.setRecordingName(recordingName)
-        return polly;
+        PollyManager.setRecordingName(recordingName);
     }
 
     /**
@@ -71,6 +92,9 @@ class PollyManager {
      * Stops and cleans up the global Polly instance.
      */
     public static async stopPolly(): Promise<void> {
+        if (PollyManager.disabled) {
+            return;
+        }
         if (PollyManager.polly) {
             if (PollyManager.polly.persister) {
                 await PollyManager.polly.persister.persist();
@@ -84,6 +108,9 @@ class PollyManager {
      * Persists all recordings for the active Polly instance.
      */
     public static async persistRecordings(): Promise<void> {
+        if (PollyManager.disabled) {
+            return;
+        }
         await PollyManager.polly?.persister?.persist();
     }
 
@@ -232,4 +259,4 @@ export function mockApiEndpoints(endpoints: Array<{pattern: string | RegExp, res
     });
 }
 
-export const { startPolly, stopPolly, persistRecordings, getPolly } = PollyManager;
+export const { startPolly, stopPolly, persistRecordings, getPolly, disable: disablePolly, enable: enablePolly } = PollyManager;

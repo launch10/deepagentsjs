@@ -1,8 +1,7 @@
-import { AIMessage } from "@langchain/core/messages";
 import { createAgent, createMiddleware } from "langchain";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
-import { chooseAgentPrompt } from "@prompts";
+import { chooseBrainstormPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { saveAnswersTool, finishedTool } from "@tools";
 import {
@@ -14,10 +13,8 @@ import { BrainstormNextStepsService } from "@services";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { lastAIMessage } from "@types";
 
-// This is going to help us dynamically allocate tools and switch the system
-// prompt based on the current topic
-const brainstormMiddleware = createMiddleware({
-    name: "BrainstormMiddleware",
+const dynamicPromptMiddleware = createMiddleware({
+    name: "DynamicPromptMiddleware",
     stateSchema: z.object({
         brainstormId: z.number(),
         websiteId: z.number(),
@@ -32,7 +29,7 @@ const brainstormMiddleware = createMiddleware({
         const state = request.state as BrainstormGraphState;
 
         // Regenerate system prompt with current state
-        const systemPrompt = await chooseAgentPrompt(state, request.runtime);
+        const systemPrompt = await chooseBrainstormPrompt(state, request.runtime);
 
         // Return modified request
         const result = await handler({
@@ -62,7 +59,7 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
     const agent = await createAgent({
         model: llm,
         tools,
-        middleware: [brainstormMiddleware],
+        middleware: [dynamicPromptMiddleware],
     });
     const result = await agent.invoke(state as any, config) as BrainstormGraphState;
     const lastMessage = lastAIMessage(result);

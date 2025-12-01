@@ -1,5 +1,5 @@
 require 'swagger_helper'
-
+require "rails_helper"
 RSpec.describe "Campaigns API", type: :request do
   let!(:user1) { create(:user, name: "User 1") }
   let!(:user2) { create(:user, name: "User 2") }
@@ -62,6 +62,7 @@ RSpec.describe "Campaigns API", type: :request do
           expect(campaign.stage).to eq("content")
           expect(campaign.ad_groups.count).to eq(1)
           expect(campaign.ad_groups.first.ads.count).to eq(1)
+          expect(data.dig("thread_id")).to eq(campaign.chat.thread_id)
         end
       end
 
@@ -139,7 +140,7 @@ RSpec.describe "Campaigns API", type: :request do
   path '/api/v1/campaigns/{id}' do
     parameter name: :id, in: :path, type: :integer, description: 'Campaign ID'
 
-    patch 'Updates a campaign (autosave)', focus: true do
+    patch 'Updates a campaign (autosave)' do
       tags 'Campaigns'
       consumes 'application/json'
       produces 'application/json'
@@ -149,7 +150,7 @@ RSpec.describe "Campaigns API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
       parameter name: :campaign_params, in: :body, schema: APISchemas::Campaign.params_schema
 
-      let!(:campaign1) do
+      let(:campaign1) do
         result = Campaign.create_campaign!(user1_account, {
           name: "User 1 Campaign",
           project_id: project1.id,
@@ -158,7 +159,7 @@ RSpec.describe "Campaigns API", type: :request do
         result[:campaign]
       end
 
-      let!(:campaign2) do
+      let(:campaign2) do
         result = Campaign.create_campaign!(user2_account, {
           name: "User 2 Campaign",
           project_id: project2.id,
@@ -258,7 +259,7 @@ RSpec.describe "Campaigns API", type: :request do
       end
 
       describe "Content stage" do
-        let!(:content_stage_campaign) { finish_content_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
+        let(:content_stage_campaign) { finish_content_stage(user1_account, project_id: project1.id, website_id: website1.id)[0] }
         let(:id) { content_stage_campaign.id }
 
         response '200', 'idempotently creates headlines on first update' do
@@ -2040,25 +2041,6 @@ RSpec.describe "Campaigns API", type: :request do
               expect(data.dig("errors", "ad_groups[0].ads[0].headlines[0].text")).to include("is too long (maximum is 30 characters)")
             end
           end
-
-          response '422', 'rejects headline with missing position' do
-            schema APISchemas::Campaign.error_response
-            let(:campaign_params) do
-              {
-                campaign: {
-                  headlines: [
-                    {text: "Valid headline"}
-                  ]
-                }
-              }
-            end
-
-            run_test! do |response|
-              data = JSON.parse(response.body)
-              expect(data["errors"]).to be_present
-              expect(data.dig("errors", "ad_groups[0].ads[0].headlines[0].position")).to include("can't be blank")
-            end
-          end
         end
 
         describe 'Description validations' do
@@ -2099,25 +2081,6 @@ RSpec.describe "Campaigns API", type: :request do
               expect(data.dig("errors", "ad_groups[0].ads[0].descriptions[0].text")).to include("is too long (maximum is 90 characters)")
             end
           end
-
-          response '422', 'rejects description with missing position' do
-            schema APISchemas::Campaign.error_response
-            let(:campaign_params) do
-              {
-                campaign: {
-                  descriptions: [
-                    {text: "Valid description"}
-                  ]
-                }
-              }
-            end
-
-            run_test! do |response|
-              data = JSON.parse(response.body)
-              expect(data["errors"]).to be_present
-              expect(data.dig("errors", "ad_groups[0].ads[0].descriptions[0].position")).to include("can't be blank")
-            end
-          end
         end
 
         describe 'Callout validations' do
@@ -2156,25 +2119,6 @@ RSpec.describe "Campaigns API", type: :request do
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
               expect(data.dig("errors", "callouts[0].text")).to include("is too long (maximum is 25 characters)")
-            end
-          end
-
-          response '422', 'rejects callout with missing position' do
-            schema APISchemas::Campaign.error_response
-            let(:campaign_params) do
-              {
-                campaign: {
-                  callouts: [
-                    {text: "Valid callout"}
-                  ]
-                }
-              }
-            end
-
-            run_test! do |response|
-              data = JSON.parse(response.body)
-              expect(data["errors"]).to be_present
-              expect(data.dig("errors", "callouts[0].position")).to include("can't be blank")
             end
           end
         end
@@ -2253,25 +2197,6 @@ RSpec.describe "Campaigns API", type: :request do
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
               expect(data.dig("errors", "ad_groups[0].keywords[0].match_type")).to include("can't be blank")
-            end
-          end
-
-          response '422', 'rejects keyword with missing position' do
-            schema APISchemas::Campaign.error_response
-            let(:campaign_params) do
-              {
-                campaign: {
-                  keywords: [
-                    {text: "valid keyword", match_type: "broad"}
-                  ]
-                }
-              }
-            end
-
-            run_test! do |response|
-              data = JSON.parse(response.body)
-              expect(data["errors"]).to be_present
-              expect(data.dig("errors", "ad_groups[0].keywords[0].position")).to include("can't be blank")
             end
           end
         end

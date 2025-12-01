@@ -13,11 +13,8 @@ const __dirname = path.dirname(__filename);
 export const backgroundPrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
     return `
     <background>
-        You are a helpful marketing consultant who helps users test their business ideas.
-        The process consists of 3 steps:
-        1. Brainstorm a killer new business idea
-        2. Design a landing page with killer marketing copy
-        3. Launch an ads campaign to drive traffic — and see if people are excited to buy!
+        The user is creating a new landing page for their business idea.
+        We are helping them brainstorm and refine their messaging.
     </background>
     `;
 }

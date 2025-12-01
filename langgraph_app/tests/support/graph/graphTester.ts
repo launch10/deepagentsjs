@@ -187,9 +187,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
      * Execute the graph up to the target node and return the result
      */
     async execute(): Promise<NodeTestResult<TGraphState>> {
-        if (!this.prompt) {
-            throw new Error("Prompt is required. Use .withPrompt() to set it.");
-        }
         if (!this.graph) {
             throw new Error("Graph is required. Use .withGraph() to set it.");
         }
@@ -208,11 +205,11 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
         }
 
         const initialStateMessages = this.initialState.messages || [];
-        const userMessage = new HumanMessage(this.prompt);
+        const userMessage = this.prompt ? new HumanMessage(this.prompt) : undefined;
         
         const baseState = {
             ...this.initialState,
-            messages: [...initialStateMessages, userMessage],
+            messages: userMessage ? [...initialStateMessages, userMessage] : initialStateMessages,
         };
         
         const initialState: TGraphState = (this.graph.channels?.consoleErrors 

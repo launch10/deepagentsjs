@@ -244,12 +244,18 @@ RSpec.describe Campaign, type: :model do
   end
 
   describe "Creation" do
-    it "creates ad, ad group, and campaign together" do
+    it "creates ad, ad group, campaign, and chat together" do
       campaign, ad_group, ad = create_campaign(account)
+      chat = Chat.find_by(
+        project_id: campaign.project_id,
+        chat_type: "ads",
+        contextable: campaign
+      )
 
       expect(campaign).to be_persisted
       expect(ad_group).to be_persisted
       expect(ad).to be_persisted
+      expect(chat).to be_present
     end
   end
 

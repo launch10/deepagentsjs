@@ -4,6 +4,7 @@
 #
 #  id                :bigint           not null, primary key
 #  category          :string           not null
+#  deleted_at        :datetime
 #  platform_settings :jsonb
 #  values            :jsonb            not null
 #  created_at        :datetime         not null
@@ -16,6 +17,7 @@
 #  index_ad_structured_snippets_on_campaign_id        (campaign_id)
 #  index_ad_structured_snippets_on_category           (category)
 #  index_ad_structured_snippets_on_created_at         (created_at)
+#  index_ad_structured_snippets_on_deleted_at         (deleted_at)
 #  index_ad_structured_snippets_on_platform_settings  (platform_settings) USING gin
 #
 class AdStructuredSnippet < ApplicationRecord
