@@ -21,15 +21,17 @@ module CampaignConcerns
 
           # Create chat for this campaign
           thread_id = UUID7.generate
-          chat = campaign.build_chat(
-            name: "Ad Campaign Chat",
-            chat_type: "ads",
-            contextable: campaign,
-            thread_id: thread_id,
-            project: campaign.project,
-            account: account
-          )
-          chat.save!
+          unless campaign.chat.present?
+            chat = campaign.build_chat(
+              name: "Ad Campaign Chat",
+              chat_type: "ads",
+              contextable: campaign,
+              thread_id: thread_id,
+              project: campaign.project,
+              account: account
+            )
+            chat.save!
+          end
 
           {
             campaign: campaign,
