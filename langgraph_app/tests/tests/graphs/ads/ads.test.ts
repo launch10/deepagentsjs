@@ -456,6 +456,102 @@ describe.sequential('Ads Flow', () => {
                 expect(result.state.messages.length).toEqual(keywordsResult.state.messages.length);
             });
         });
+
+        describe("Launch Stage", () => {
+            it("answers questions during launch section", async () => {
+                const result = await testGraph<AdsGraphState>()
+                    .withGraph(adsGraph)
+                    .withState({
+                        projectUUID,
+                        stage: "launch",
+                        messages: [new HumanMessage(`How long until my ads go live?`)]
+                    })
+                    .execute();
+
+                const response = result.state.messages.at(-1);
+                expect(response).toBeDefined();
+                expect(response?.content).toBeDefined();
+                expect(response!.content).toMatch(/review|approval|live|hour|day|submit/i)
+            });
+
+            it("doesn't generate any assets during launch stage", async () => {
+                const keywordsResult = await testGraph<AdsGraphState>()
+                    .withGraph(adsGraph)
+                    .withState({
+                        projectUUID,
+                        stage: "keywords",
+                    })
+                    .execute();
+                
+                const keywordsMessage = keywordsResult.state.messages.at(-1);
+                expect(keywordsMessage).toBeDefined();
+                
+                const result = await testGraph<AdsGraphState>()
+                    .withGraph(adsGraph)
+                    .withState({
+                        ...keywordsResult.state,
+                        stage: "launch",
+                    })
+                    .execute();
+
+                const response = result.state.messages.at(-1);
+                if (!response) {
+                    throw new Error("No response generated");
+                }
+
+                // It DOES NOT generate a new response
+                expect(response.content).toEqual(keywordsMessage?.content);
+                expect(result.state.messages.length).toEqual(keywordsResult.state.messages.length);
+            });
+        });
+
+        describe("Review Stage", () => {
+            it("answers questions during review section", async () => {
+                const result = await testGraph<AdsGraphState>()
+                    .withGraph(adsGraph)
+                    .withState({
+                        projectUUID,
+                        stage: "review",
+                        messages: [new HumanMessage(`Can I change my ads after they're live?`)]
+                    })
+                    .execute();
+
+                const response = result.state.messages.at(-1);
+                expect(response).toBeDefined();
+                expect(response?.content).toBeDefined();
+                expect(response!.content).toMatch(/change|edit|modify|update|pause|adjust/i)
+            });
+
+            it("doesn't generate any assets during review stage", async () => {
+                const keywordsResult = await testGraph<AdsGraphState>()
+                    .withGraph(adsGraph)
+                    .withState({
+                        projectUUID,
+                        stage: "keywords",
+                    })
+                    .execute();
+                
+                const keywordsMessage = keywordsResult.state.messages.at(-1);
+                expect(keywordsMessage).toBeDefined();
+                
+                const result = await testGraph<AdsGraphState>()
+                    .withGraph(adsGraph)
+                    .withState({
+                        ...keywordsResult.state,
+                        stage: "review",
+                    })
+                    .execute();
+
+                const response = result.state.messages.at(-1);
+                if (!response) {
+                    throw new Error("No response generated");
+                }
+
+                // It DOES NOT generate a new response
+                expect(response.content).toEqual(keywordsMessage?.content);
+                expect(result.state.messages.length).toEqual(keywordsResult.state.messages.length);
+            });
+        });
     });
 
     describe("Full workflow - multi-stage with state persistence", () => {

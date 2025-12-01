@@ -1,9 +1,8 @@
-import { NodeMiddleware } from "@middleware";
 import type { AdsGraphState } from "@state";
 import { HumanMessage } from "@langchain/core/messages";
-import { Ads, type LangGraphRunnableConfig } from "@types";
+import { Ads } from "@types";
 
-export const guardrailsNode = NodeMiddleware.use({}, async (state: AdsGraphState, config: LangGraphRunnableConfig) => {
+export const guardrailsNode = (state: AdsGraphState): "getBusinessContext" | "__end__" => {
     if (!state.stage) {
         throw new Error("Stage is required");
     }
@@ -17,4 +16,4 @@ export const guardrailsNode = NodeMiddleware.use({}, async (state: AdsGraphState
     }
 
     return "__end__";
-});
+};
