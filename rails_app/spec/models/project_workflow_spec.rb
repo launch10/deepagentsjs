@@ -60,23 +60,23 @@ RSpec.describe ProjectWorkflow, type: :model do
       expect(workflow.reload.substep).to be_nil
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("ads")
+      expect(workflow.reload.step).to eq("ad_campaign")
       expect(workflow.reload.substep).to eq("content")
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("ads")
+      expect(workflow.reload.step).to eq("ad_campaign")
       expect(workflow.reload.substep).to eq("highlights")
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("ads")
+      expect(workflow.reload.step).to eq("ad_campaign")
       expect(workflow.reload.substep).to eq("keywords")
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("ads")
+      expect(workflow.reload.step).to eq("ad_campaign")
       expect(workflow.reload.substep).to eq("settings")
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("ads")
+      expect(workflow.reload.step).to eq("ad_campaign")
       expect(workflow.reload.substep).to eq("launch")
 
       workflow.next_step!
@@ -112,29 +112,29 @@ RSpec.describe ProjectWorkflow, type: :model do
       end
 
       it "advances to a valid step with substep" do
-        result = workflow.advance_to(step: "ads", substep: "content")
+        result = workflow.advance_to(step: "ad_campaign", substep: "content")
 
         expect(result).to be true
-        expect(workflow.reload.step).to eq("ads")
+        expect(workflow.reload.step).to eq("ad_campaign")
         expect(workflow.substep).to eq("content")
       end
 
       it "advances through multiple substeps in order" do
-        workflow.advance_to(step: "ads", substep: "content")
+        workflow.advance_to(step: "ad_campaign", substep: "content")
         expect(workflow.substep).to eq("content")
 
-        workflow.advance_to(step: "ads", substep: "highlights")
+        workflow.advance_to(step: "ad_campaign", substep: "highlights")
         expect(workflow.reload.substep).to eq("highlights")
 
-        workflow.advance_to(step: "ads", substep: "keywords")
+        workflow.advance_to(step: "ad_campaign", substep: "keywords")
         expect(workflow.reload.substep).to eq("keywords")
       end
 
       it "defaults to first substep" do
-        result = workflow.advance_to(step: "ads")
+        result = workflow.advance_to(step: "ad_campaign")
 
         expect(result).to be true
-        expect(workflow.reload.step).to eq("ads")
+        expect(workflow.reload.step).to eq("ad_campaign")
         expect(workflow.substep).to eq("content")
       end
     end
@@ -148,10 +148,10 @@ RSpec.describe ProjectWorkflow, type: :model do
       end
 
       it "returns false for non-existent substep" do
-        result = workflow.advance_to(step: "ads", substep: "invalid_substep")
+        result = workflow.advance_to(step: "ad_campaign", substep: "invalid_substep")
 
         expect(result).to be false
-        expect(workflow.reload.step).not_to eq("ads")
+        expect(workflow.reload.step).not_to eq("ad_campaign")
       end
 
       it "does not update the workflow when advancement fails" do
@@ -176,12 +176,12 @@ RSpec.describe ProjectWorkflow, type: :model do
 
       it "returns the next step in sequence" do
         workflow.update(step: "website")
-        expect(WorkflowConfig.next_step("launch", "website")).to eq("ads")
+        expect(WorkflowConfig.next_step("launch", "website")).to eq("ad_campaign")
       end
 
-      it "returns the next step from ads" do
-        workflow.update(step: "ads", substep: "launch")
-        expect(WorkflowConfig.next_step("launch", "ads")).to eq("launch")
+      it "returns the next step from ad_campaign" do
+        workflow.update(step: "ad_campaign", substep: "launch")
+        expect(WorkflowConfig.next_step("launch", "ad_campaign")).to eq("launch")
       end
     end
 
@@ -222,7 +222,7 @@ RSpec.describe ProjectWorkflow, type: :model do
 
   describe "#as_json" do
     before do
-      workflow.update(step: "ads", substep: "content")
+      workflow.update(step: "ad_campaign", substep: "content")
     end
 
     it "returns workflow data as hash" do
@@ -230,7 +230,7 @@ RSpec.describe ProjectWorkflow, type: :model do
 
       expect(json).to be_a(Hash)
       expect(json[:workflow_type]).to eq("launch")
-      expect(json[:step]).to eq("ads")
+      expect(json[:step]).to eq("ad_campaign")
       expect(json[:substep]).to eq("content")
     end
 
@@ -244,7 +244,7 @@ RSpec.describe ProjectWorkflow, type: :model do
     it "includes available steps" do
       json = workflow.as_json
 
-      expect(json[:available_steps]).to eq(%w[brainstorm website ads launch])
+      expect(json[:available_steps]).to eq(%w[brainstorm website ad_campaign launch])
     end
   end
 
@@ -265,7 +265,7 @@ RSpec.describe ProjectWorkflow, type: :model do
       workflow.update(step: "website")
       expect(workflow.send(:calculate_progress)).to eq(25)
 
-      workflow.update(step: "ads")
+      workflow.update(step: "ad_campaign")
       expect(workflow.send(:calculate_progress)).to eq(50)
 
       workflow.update(step: "launch")

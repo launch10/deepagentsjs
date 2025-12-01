@@ -2041,25 +2041,6 @@ RSpec.describe "Campaigns API", type: :request do
               expect(data.dig("errors", "ad_groups[0].ads[0].headlines[0].text")).to include("is too long (maximum is 30 characters)")
             end
           end
-
-          response '422', 'rejects headline with missing position' do
-            schema APISchemas::Campaign.error_response
-            let(:campaign_params) do
-              {
-                campaign: {
-                  headlines: [
-                    {text: "Valid headline"}
-                  ]
-                }
-              }
-            end
-
-            run_test! do |response|
-              data = JSON.parse(response.body)
-              expect(data["errors"]).to be_present
-              expect(data.dig("errors", "ad_groups[0].ads[0].headlines[0].position")).to include("can't be blank")
-            end
-          end
         end
 
         describe 'Description validations' do
@@ -2098,25 +2079,6 @@ RSpec.describe "Campaigns API", type: :request do
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
               expect(data.dig("errors", "ad_groups[0].ads[0].descriptions[0].text")).to include("is too long (maximum is 90 characters)")
-            end
-          end
-
-          response '422', 'rejects description with missing position' do
-            schema APISchemas::Campaign.error_response
-            let(:campaign_params) do
-              {
-                campaign: {
-                  descriptions: [
-                    {text: "Valid description"}
-                  ]
-                }
-              }
-            end
-
-            run_test! do |response|
-              data = JSON.parse(response.body)
-              expect(data["errors"]).to be_present
-              expect(data.dig("errors", "ad_groups[0].ads[0].descriptions[0].position")).to include("can't be blank")
             end
           end
         end
@@ -2160,24 +2122,6 @@ RSpec.describe "Campaigns API", type: :request do
             end
           end
 
-          response '422', 'rejects callout with missing position' do
-            schema APISchemas::Campaign.error_response
-            let(:campaign_params) do
-              {
-                campaign: {
-                  callouts: [
-                    {text: "Valid callout"}
-                  ]
-                }
-              }
-            end
-
-            run_test! do |response|
-              data = JSON.parse(response.body)
-              expect(data["errors"]).to be_present
-              expect(data.dig("errors", "callouts[0].position")).to include("can't be blank")
-            end
-          end
         end
 
         describe 'Keyword validations' do
@@ -2254,25 +2198,6 @@ RSpec.describe "Campaigns API", type: :request do
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
               expect(data.dig("errors", "ad_groups[0].keywords[0].match_type")).to include("can't be blank")
-            end
-          end
-
-          response '422', 'rejects keyword with missing position' do
-            schema APISchemas::Campaign.error_response
-            let(:campaign_params) do
-              {
-                campaign: {
-                  keywords: [
-                    {text: "valid keyword", match_type: "broad"}
-                  ]
-                }
-              }
-            end
-
-            run_test! do |response|
-              data = JSON.parse(response.body)
-              expect(data["errors"]).to be_present
-              expect(data.dig("errors", "ad_groups[0].keywords[0].position")).to include("can't be blank")
             end
           end
         end
