@@ -20,6 +20,8 @@
 
 # Setup Test accounts:
 # https://developers.google.com/google-ads/api/docs/first-call/test-accounts
+
+# So I think i have to set this up separately from the main accoutn (setup using personal Gmail)
 module GoogleAds
   class LaunchCampaignService
     attr_reader :campaign, :client, :errors
