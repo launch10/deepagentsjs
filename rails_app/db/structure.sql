@@ -775,7 +775,8 @@ CREATE TABLE public.ad_structured_snippets (
     "values" jsonb DEFAULT '[]'::jsonb NOT NULL,
     platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -5232,6 +5233,13 @@ CREATE INDEX index_ad_structured_snippets_on_category ON public.ad_structured_sn
 --
 
 CREATE INDEX index_ad_structured_snippets_on_created_at ON public.ad_structured_snippets USING btree (created_at);
+
+
+--
+-- Name: index_ad_structured_snippets_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_structured_snippets_on_deleted_at ON public.ad_structured_snippets USING btree (deleted_at);
 
 
 --

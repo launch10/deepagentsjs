@@ -10,6 +10,10 @@ RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets
     data = Brainstorm.create_brainstorm!(account, name: "Project", thread_id: "thread_id")
     data[:project]
   end
+  let!(:project2) do
+    data = Brainstorm.create_brainstorm!(account, name: "Project 2", thread_id: "thread_id2")
+    data[:project]
+  end
   let!(:website) { project.website }
   let!(:campaign) do
     result = Campaign.create_campaign!(account, {
@@ -22,8 +26,8 @@ RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets
   let!(:campaign2) do
     result = Campaign.create_campaign!(account, {
       name: "Test Campaign 2",
-      project_id: project.id,
-      website_id: website.id
+      project_id: project2.id,
+      website_id: project2.website.id
     })
     result[:campaign]
   end

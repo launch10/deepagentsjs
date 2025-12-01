@@ -5,6 +5,23 @@ module CampaignConcerns
     class_methods do
       def create_campaign!(account, campaign_params)
         transaction do
+          project = Project.find(campaign_params[:project_id])
+
+          # Do not allow project to create multiple campaigns for now
+          if project.campaigns.any?
+            campaign = project.campaigns.first
+            ad_group = campaign.ad_groups.first
+            ad = ad_group.ads.first
+            chat = campaign.chat
+
+            return {
+              campaign: campaign,
+              ad_group: ad_group,
+              ad: ad,
+              chat: chat
+            }
+          end
+
           campaign = account.campaigns.create!(
             name: campaign_params[:name],
             project_id: campaign_params[:project_id],
