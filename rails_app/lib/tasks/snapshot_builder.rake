@@ -110,6 +110,9 @@ namespace :db do
 
         puts "Restoring base snapshot '#{base_snapshot}'..."
         Database::Snapshotter.restore(input_path)
+      else
+        puts "Resetting all sequences to 1..."
+        Database::Snapshotter.reset_all_sequences(start_value: 1)
       end
 
       puts
@@ -275,6 +278,9 @@ class SnapshotBuilder
           puts result.stderr
           exit 1
         end
+      else
+        puts "Resetting all sequences to 1..."
+        Database::Snapshotter.reset_all_sequences(start_value: 1)
       end
 
       puts "Running builder '#{builder_name}'..."
