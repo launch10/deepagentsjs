@@ -56,12 +56,12 @@ jobs:
       - run:
           name: Install Git LFS and pull files
           command: |
+            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
             sudo apt-get update
             sudo apt-get install -y git-lfs
+            git lfs install
             cd ~/project
-            git lfs install --force
-            git lfs fetch --all
-            git lfs checkout
+            git lfs pull
       - run:
           name: Install Ruby in primary container
           command: |
