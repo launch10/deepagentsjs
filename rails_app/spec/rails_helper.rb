@@ -32,11 +32,6 @@ RSpec.configure do |config|
   config.include AccountHelpers, type: :request
   config.include APIHelpers
 
-  # Database cleaner configuration
-  config.before(:suite) do
-    DatabaseCleaner.clean_with(:truncation, reset_ids: true)
-  end
-
   config.before(:each) do
     DatabaseCleaner.strategy = :transaction
   end

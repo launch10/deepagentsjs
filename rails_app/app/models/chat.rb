@@ -28,7 +28,7 @@ class Chat < ApplicationRecord
   belongs_to :project
   belongs_to :contextable, polymorphic: true
 
-  CHAT_TYPES = %w[brainstorm website ads]
+  CHAT_TYPES = ProjectWorkflow.steps_for(:launch) # brainstorm, website, ad_campaign, etc
 
   validates :chat_type, presence: true, inclusion: {in: CHAT_TYPES}
   validates :thread_id, presence: true

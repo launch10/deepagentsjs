@@ -36,6 +36,7 @@ class Project < ApplicationRecord
   has_one :brainstorm, through: :website
   has_many :workflows, class_name: "ProjectWorkflow", dependent: :destroy
   has_one :launch_workflow, -> { where(workflow_type: "launch") }, class_name: "ProjectWorkflow"
+  has_many :chats
 
   # Ads relations
   has_many :campaigns
@@ -66,6 +67,15 @@ class Project < ApplicationRecord
         { ad_groups: { ads: [:headlines, :descriptions] } }
       ]
     )
+  end
+
+  # TODO: Add more logic when we have other workflows user could be in
+  def current_workflow
+    launch_workflow
+  end
+
+  def current_chat
+    current_workflow.chat
   end
 
   private

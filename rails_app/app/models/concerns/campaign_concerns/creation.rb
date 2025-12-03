@@ -41,7 +41,7 @@ module CampaignConcerns
           unless campaign.chat.present?
             chat = campaign.build_chat(
               name: "Ad Campaign Chat",
-              chat_type: "ads",
+              chat_type: "ad_campaign", # Comes from WorkflowConfig
               contextable: campaign,
               thread_id: thread_id,
               project: campaign.project,
