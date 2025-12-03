@@ -38,13 +38,10 @@ const dynamicPromptMiddleware = createMiddleware({
 
         const systemPrompt = await chooseAdsPrompt(state, request.runtime);
 
-        const result = await handler({
+        return await handler({
             ...request,
             systemPrompt,
         });
-        const [message, parsed] = await AdsBridge.toStructuredMessage(result);
-
-        return message;
     },
 });
 
@@ -72,11 +69,11 @@ export const adsAgent = NodeMiddleware.use({}, async (
     if (!lastMessage) {
         throw new Error("Agent did not return an AI message");
     }
-
-    const structuredData = getStructuredData(state, lastMessage);
+    const [message, updates] = await AdsBridge.toStructuredMessage(lastMessage);
+    const mergedAssets = getStructuredData(state, updates as Partial<Ads.Assets>);
 
     return {
-        ...structuredData,
-        messages: filterPseudoMessages(result.messages),
+        ...mergedAssets,
+        messages: filterPseudoMessages(result.messages.slice(0, -1).concat([message])),
     };
 });

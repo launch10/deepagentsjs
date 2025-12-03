@@ -48,7 +48,7 @@ adsRoutes.get('/stream', authMiddleware, async (c) => {
   if (!threadId) {
     return c.json({ error: 'Missing threadId' }, 400);
   }
-
+  
   return AdsAPI.loadHistory(threadId);
 });
 

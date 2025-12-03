@@ -9,6 +9,7 @@ export const AdsAnnotation = Annotation.Root({
     ...BaseAnnotation.spec,
     projectUUID: Annotation<UUIDType>(),
     websiteId: Annotation<PrimaryKeyType>(),
+    campaignId: Annotation<PrimaryKeyType | undefined>(),
     brainstorm: Annotation<Brainstorm.MemoriesType | undefined>(),
     stage: Annotation<Ads.StageName | undefined>(),
     refresh: Annotation<Ads.RefreshContext | undefined>(),
@@ -18,6 +19,7 @@ export const AdsAnnotation = Annotation.Root({
     structuredSnippets: Annotation<Ads.StructuredSnippets | undefined>(),
     keywords: Annotation<Ads.Keyword[] | undefined>(),
     redirect: Annotation<Ads.RedirectType | undefined>(),
+    hasStartedStep: Annotation<Ads.HasStartedStep | undefined>(),
 });
 
 // Just a convenience to ensure the annotation matches the state type

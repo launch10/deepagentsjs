@@ -11,7 +11,7 @@ import { Ads } from "@types";
 //
 // If either of those is NOT met, we should end the conversation
 //
-export const guardrailsNode = (state: AdsGraphState): "getBusinessContext" | "__end__" => {
+export const guardrailsNode = (state: AdsGraphState): "beforeGenerate" | "__end__" => {
     if (!state.stage) {
         throw new Error("Stage is required");
     }
@@ -19,9 +19,30 @@ export const guardrailsNode = (state: AdsGraphState): "getBusinessContext" | "__
     const lastMessage = state.messages?.at(-1);
     const lastMessageIsHumanQuestion = lastMessage && HumanMessage.isInstance(lastMessage);
 
-    if (Ads.isContentStage(state.stage) || lastMessageIsHumanQuestion) {
-        return "getBusinessContext"; // route to the agent
+    if (lastMessageIsHumanQuestion) {
+        return "beforeGenerate";
+    }
+
+    if (Ads.isContentStage(state.stage) && validRequest(state)) {
+        return "beforeGenerate"; // route to the agent
     }
 
     return "__end__"; // end the conversation
 };
+
+const validRequest = (state: AdsGraphState): boolean => {
+    if (!state.stage) {
+        return false;
+    }
+    if (!state.hasStartedStep) {
+        return true;
+    }
+    if (validRefresh(state)) {
+        return true;
+    }
+    return state.hasStartedStep[state.stage] === false;
+}
+
+const validRefresh = (state: AdsGraphState): boolean => {
+    return !!state.refresh;
+}
