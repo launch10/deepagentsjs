@@ -28,6 +28,7 @@ export interface CampaignServiceOptions {
 export interface CreateCampaignParams {
   name: string;
   projectId: PrimaryKeyType;
+  threadId: string;
 }
 
 export class CampaignAPIService extends RailsAPIBase {
@@ -35,14 +36,15 @@ export class CampaignAPIService extends RailsAPIBase {
     super(options);
   }
 
-  async create({ name, projectId }: CreateCampaignParams): Promise<Campaign> {
+  async create({ name, projectId, threadId }: CreateCampaignParams): Promise<Campaign> {
     const client = await this.getClient();
     const response = await client.POST("/api/v1/campaigns", {
       body: {
         campaign: {
           name,
           project_id: projectId,
-        } as any,
+          thread_id: threadId,
+        }
       },
     });
 

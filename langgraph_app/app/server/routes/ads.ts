@@ -49,7 +49,10 @@ adsRoutes.get('/stream', authMiddleware, async (c) => {
     return c.json({ error: 'Missing threadId' }, 400);
   }
   
-  return AdsAPI.loadHistory(threadId);
+  const response = await AdsAPI.loadHistory(threadId);
+  console.log(response);
+  debugger;
+  return response;
 });
 
 adsRoutes.get('/health', (c) => {

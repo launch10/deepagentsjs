@@ -29,6 +29,10 @@ export const createCampaign = NodeMiddleware.use({}, async (
         throw new Error("JWT token is required for API authentication");
     }
 
+    if (!state.threadId) {
+        throw new Error("Thread ID is required");
+    }
+
     const projectResult = await db
         .select({ id: projectsTable.id, name: projectsTable.name })
         .from(projectsTable)
@@ -45,6 +49,7 @@ export const createCampaign = NodeMiddleware.use({}, async (
     const campaign = await apiService.create({
         name: project.name,
         projectId: project.id,
+        threadId: state.threadId,
     });
 
     return {

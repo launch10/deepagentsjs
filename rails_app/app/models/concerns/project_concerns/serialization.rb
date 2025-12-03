@@ -30,9 +30,9 @@ module ProjectConcerns
       project = self
 
       {
-        thread_id: project.current_chat.thread_id,
+        thread_id: project.current_chat&.thread_id,
         project: project.as_json,
-        chat: project.current_chat.as_json,
+        chat: project.current_chat&.as_json,
         workflow: project.current_workflow.as_json,
       }
     end

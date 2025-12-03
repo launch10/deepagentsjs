@@ -303,7 +303,9 @@ export interface paths {
                             /** @description Project ID */
                             project_id: number;
                             /** @description Website ID */
-                            website_id: number;
+                            website_id?: number;
+                            /** @description Thread ID */
+                            thread_id: string;
                         };
                     };
                 };
@@ -397,7 +399,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description campaign created with ad group and ad */
+                /** @description campaign created without website_id (falls back to project website) */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -492,7 +494,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description invalid request - missing website_id */
+                /** @description invalid request - missing thread_id */
                 422: {
                     headers: {
                         [name: string]: unknown;

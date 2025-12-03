@@ -5,8 +5,9 @@ import { adsGraph as uncompiledGraph } from '@graphs';
 import { graphParams } from '@core';
 import { DatabaseSnapshotter } from '@services';
 import { db, projects as projectsTable } from '@db';
-import { type UUIDType, Ads } from '@types';
+import { type UUIDType, Ads, ThreadIDType } from '@types';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
+import { v7 as uuid } from 'uuid';
 
 const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" }); 
 
@@ -19,6 +20,7 @@ const getTextData = (message: AIMessage): string => {
 
 describe.sequential('Ads Flow', () => {
     let projectUUID: UUIDType;
+    let threadId = uuid() as ThreadIDType;
 
     beforeEach(async () => {
         await DatabaseSnapshotter.restoreSnapshot("website_deployed");
@@ -37,6 +39,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "content"
                     })
                     .execute();
@@ -51,6 +54,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "content"
                     })
                     .execute();
@@ -67,6 +71,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         ...result.state,
+                        threadId,
                     })
                     .execute();
                 const updatedHeadlines = invalidRefresh.state.headlines;
@@ -83,6 +88,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "content"
                     })
                     .execute();
@@ -115,6 +121,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "content"
                     })
                     .execute();
@@ -141,6 +148,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "content",
                         refresh: {
                             asset: "headlines",
@@ -173,6 +181,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "content",
                     })
                     .execute();
@@ -210,6 +219,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "highlights"
                     })
                     .execute();
@@ -239,6 +249,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "highlights"
                     })
                     .execute();
@@ -263,6 +274,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         ...result.state,
+                        threadId,
                         refresh: {
                             asset: "callouts",
                             nVariants: 3
@@ -311,6 +323,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "highlights"
                     })
                     .execute();
@@ -329,6 +342,7 @@ describe.sequential('Ads Flow', () => {
                 const refreshedResult = await testGraph<AdsGraphState>()
                     .withGraph(adsGraph)
                     .withState({
+                        ...result.state,
                         projectUUID,
                         stage: "highlights",
                         refresh: {
@@ -370,6 +384,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "keywords"
                     })
                     .execute();
@@ -395,6 +410,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "keywords"
                     })
                     .execute();
@@ -416,7 +432,7 @@ describe.sequential('Ads Flow', () => {
                 const refreshedResult = await testGraph<AdsGraphState>()
                     .withGraph(adsGraph)
                     .withState({
-                        projectUUID,
+                        ...result.state,
                         stage: "keywords",
                         refresh: {
                             asset: "keywords",
@@ -451,6 +467,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "settings",
                         messages: [new HumanMessage(`What happens after this?`)]
                     })
@@ -467,6 +484,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "keywords",
                     })
                     .execute();
@@ -499,6 +517,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "launch",
                         messages: [new HumanMessage(`How long until my ads go live?`)]
                     })
@@ -515,6 +534,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "keywords",
                     })
                     .execute();
@@ -547,6 +567,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "review",
                         messages: [new HumanMessage(`Can I change my ads after they're live?`)]
                     })
@@ -563,6 +584,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "keywords",
                     })
                     .execute();
@@ -597,6 +619,7 @@ describe.sequential('Ads Flow', () => {
                 .withGraph(adsGraph)
                 .withState({
                     projectUUID,
+                    threadId,
                     stage: "content"
                 })
                 .execute();
@@ -774,6 +797,7 @@ describe.sequential('Ads Flow', () => {
                 .withGraph(adsGraph)
                 .withState({
                     projectUUID,
+                    threadId,
                     stage: "content",
                     messages: [new HumanMessage("How will Headlines and Details pair together?")]
                 })
@@ -792,6 +816,7 @@ describe.sequential('Ads Flow', () => {
                 .withGraph(adsGraph)
                 .withState({
                     projectUUID,
+                    threadId,
                     stage: "content",
                     messages: [new HumanMessage("What are descriptions?")]
                 })
@@ -815,6 +840,7 @@ describe.sequential('Ads Flow', () => {
                 .withGraph(adsGraph)
                 .withState({
                     projectUUID,
+                    threadId,
                     stage: "content",
                     messages: [new HumanMessage("Can I see my preferred headlines in the preview?")]
                 })
