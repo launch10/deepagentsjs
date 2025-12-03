@@ -27,15 +27,7 @@ export default function Brainstorm(props: BrainstormProps) {
     let { thread_id, jwt, root_path, langgraph_path } = pageProps.props;
     const urlThreadId = useRef(getUrlThreadId());
 
-    useEffect(() => {
-        if (!jwt || !root_path || !langgraph_path) {
-            return;
-        }
-        if (typeof jwt !== 'string' || typeof root_path !== 'string' || typeof langgraph_path !== 'string') {
-            throw new Error(`Invalid page props: JWT: ${jwt}, Root Path: ${root_path}, Langgraph Path: ${langgraph_path}`);
-        }
-    }, []); // Only run once on page mount
-
+    debugger;
     const url = (new URL("api/brainstorm/stream", langgraph_path)).toString();
     const { messages, sendMessage, status, state, threadId, tools, error, events, isLoadingHistory } =
         useLanggraph<BrainstormLanggraphData>({

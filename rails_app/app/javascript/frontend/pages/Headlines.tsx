@@ -3,7 +3,7 @@ import { type PageProps } from '@inertiajs/core';
 import { usePage } from '@inertiajs/react';
 import { useLanggraph } from 'langgraph-ai-sdk-react';
 import { Wrapper, ChatInput, Message } from '@components/brainstorm';
-import { type AdsBridgeType } from '@shared';
+import { type AdsBridgeType, Ads, type UUIDType } from '@shared';
 
 type HeadlinesProps = {
     thread_id: string;
@@ -47,16 +47,21 @@ export default function Headlines(props: HeadlinesProps) {
             getInitialThreadId: () => urlThreadId.current,
         });
 
+    const hasInitializedStage = useRef(false);
+    
     useEffect(() => {
-        if (urlThreadId.current === threadId) return;
-
-        if (threadId && typeof window !== 'undefined') {
-            const url = new URL(window.location.href);
-            url.pathname = `/brainstorms/${threadId}`;
-            url.search = ''; // Clear any existing query params if you want
-            window.history.pushState({}, '', url.toString());
+        if (hasInitializedStage.current) {
+            return;
         }
-    }, [threadId, urlThreadId]);
+        if (!props.workflow || typeof props.workflow !== 'object' || !('substep' in props.workflow) || typeof props.workflow.substep !== 'string') {
+            return;
+        }
+        hasInitializedStage.current = true;
+        updateState({
+            stage: props.workflow.substep as Ads.StageName,
+            projectUUID: props.project!.uuid as UUIDType,
+        })
+    }, [props.workflow]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -71,14 +76,6 @@ export default function Headlines(props: HeadlinesProps) {
     const [input, setInput] = useState(`Tell me about your business...`);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const handleExampleClick = (text: string) => {
-        setInput(text);
-        setTimeout(() => {
-            inputRef.current?.focus();
-            inputRef.current?.setSelectionRange(text.length, text.length);
-        }, 0);
-    };
-
     if (isLoadingHistory) {
         return (
             <div className="flex items-center justify-center h-screen">
@@ -88,33 +85,32 @@ export default function Headlines(props: HeadlinesProps) {
     }
 
     return (
-        <BrainstormProvider onExampleClick={handleExampleClick}>
-            <Wrapper>
-            <div className="mb-4 p-4 bg-gray-800 rounded">
-                <div className="text-sm text-gray-400 mb-2">State:</div>
-                <pre className="text-xs text-green-400">{JSON.stringify(state, null, 2)}</pre>
-                <div className="text-sm text-gray-400 mb-2">Events:</div>
-                <pre className="text-xs text-green-400">{JSON.stringify(events, null, 2)}</pre>
-            </div>
-            {messages.map((message) => (
-                <Message
-                key={message.id}
-                message={message}
-                status={status}
-                />
-            ))}
-            <div ref={messagesEndRef} />
-            <ChatInput
-                inputRef={inputRef}
-                input={input}
-                onChange={(e) => setInput(e.target.value)}
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    sendMessage(input);
-                    setInput('');
-                }}
+        <Wrapper>
+        <h1>Headlines</h1>
+        <div className="mb-4 p-4 bg-gray-800 rounded">
+            <div className="text-sm text-gray-400 mb-2">State:</div>
+            <pre className="text-xs text-green-400">{JSON.stringify(state, null, 2)}</pre>
+            <div className="text-sm text-gray-400 mb-2">Events:</div>
+            <pre className="text-xs text-green-400">{JSON.stringify(events, null, 2)}</pre>
+        </div>
+        {messages.map((message) => (
+            <Message
+            key={message.id}
+            message={message}
+            status={status}
             />
-            </Wrapper>
-        </BrainstormProvider>
+        ))}
+        <div ref={messagesEndRef} />
+        <ChatInput
+            inputRef={inputRef}
+            input={input}
+            onChange={(e) => setInput(e.target.value)}
+            onSubmit={(e) => {
+                e.preventDefault();
+                sendMessage(input);
+                setInput('');
+            }}
+        />
+        </Wrapper>
     );
 }

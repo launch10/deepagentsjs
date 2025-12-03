@@ -20,20 +20,25 @@ adsRoutes.post('/stream', authMiddleware, async (c) => {
   
   const { messages, threadId, state } = body;
 
-  if (!messages || !threadId) {
-    return c.json({ error: 'Missing required fields: messages, threadId' }, 400);
+  if (!threadId) {
+    return c.json({ error: 'Missing required field: threadId' }, 400);
   }
   let stateObj = state || {};
 
-  return AdsAPI.stream({ 
-    messages,
-    threadId,
-    state: {
+  try {
+    return AdsAPI.stream({ 
+      messages: messages || [],
       threadId,
-      jwt: auth.jwt,
-      ...stateObj,
-    },
-  });
+      state: {
+        threadId,
+        jwt: auth.jwt,
+        ...stateObj,
+      },
+    });
+  } catch (error) {
+    console.error('AdsAPI.stream error:', error);
+    return c.json({ error: 'Stream failed', details: String(error) }, 500);
+  }
 });
 
 adsRoutes.get('/stream', authMiddleware, async (c) => {

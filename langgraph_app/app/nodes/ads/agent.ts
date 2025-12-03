@@ -14,6 +14,7 @@ import z from "zod";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { lastAIMessage, Ads } from "@types";
 import { getTools, getStructuredData } from "./helpers/index";
+import { AdsBridge } from "@annotation";
 
 const dynamicPromptMiddleware = createMiddleware({
     name: "DynamicPromptMiddleware",
@@ -41,7 +42,9 @@ const dynamicPromptMiddleware = createMiddleware({
             ...request,
             systemPrompt,
         });
-        return await toStructuredMessage(result) as AIMessage;
+        const [message, parsed] = await AdsBridge.toStructuredMessage(result);
+
+        return message;
     },
 });
 
