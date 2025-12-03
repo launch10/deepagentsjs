@@ -32,15 +32,24 @@ export type Asset = z.infer<typeof AssetSchema>;
 export interface Headline extends Asset {}
 export interface Description extends Asset {}
 export interface Callout extends Asset {}
+export interface Keyword extends Asset {}
 export interface StructuredSnippetsCategory extends Asset {}
 export interface StructuredSnippetsDetail extends Asset {}
 
 export const StructuredSnippetsSchema = z.object({
-    category: AssetSchema,
+    category: z.string(),
     details: z.array(AssetSchema)
 });
 export type StructuredSnippets = z.infer<typeof StructuredSnippetsSchema>;
-export interface Keyword extends Asset {}
+
+// This is what the LLM will return
+export const StreamedAssetSchema = z.array(z.string());
+export type StreamedAsset = z.infer<typeof StreamedAssetSchema>;
+export const StreamedSnippetsSchema = z.object({
+    category: z.string(),
+    details: StreamedAssetSchema
+}); 
+export type StreamedSnippets = z.infer<typeof StreamedSnippetsSchema>;
 
 export type Stage = {
     stage: StageName;

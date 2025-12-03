@@ -2,9 +2,8 @@ import { Hono } from 'hono';
 import { authMiddleware, type AuthContext } from '../middleware/auth';
 import { adsGraph } from '@graphs';
 import { graphParams } from "@core";
-import { streamLanggraph, fetchLanggraphHistory } from 'langgraph-ai-sdk';
+import { AdsBridge } from '@annotation';
 import { Ads } from '@types';
-import { type AdsLanggraphData } from '@state';
 
 type Variables = {
   auth: AuthContext;
@@ -13,6 +12,7 @@ type Variables = {
 export const adsRoutes = new Hono<{ Variables: Variables }>();
 
 const graph = adsGraph.compile({ ...graphParams, name: 'ads'});
+const AdsAPI = AdsBridge.bind(graph);
 
 adsRoutes.post('/stream', authMiddleware, async (c) => {
   const auth = c.get('auth') as AuthContext;
@@ -25,9 +25,7 @@ adsRoutes.post('/stream', authMiddleware, async (c) => {
   }
   let stateObj = state || {};
 
-  return await streamLanggraph<AdsLanggraphData>({ 
-    graph: graph as any,
-    messageSchema: Ads.structuredMessageSchemas,
+  return AdsAPI.stream({ 
     messages,
     threadId,
     state: {
@@ -46,11 +44,7 @@ adsRoutes.get('/stream', authMiddleware, async (c) => {
     return c.json({ error: 'Missing threadId' }, 400);
   }
 
-  return await fetchLanggraphHistory<AdsLanggraphData>({
-    graph: graph as any,
-    messageSchema: Ads.structuredMessageSchemas,
-    threadId,
-  });
+  return AdsAPI.loadHistory(threadId);
 });
 
 adsRoutes.get('/health', (c) => {

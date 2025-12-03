@@ -74,7 +74,7 @@
     "istextorbinary": "^9.5.0",
     "jsonwebtoken": "^9.0.2",
     "langchain": "^1.0.4",
-    "langgraph-ai-sdk": "^1.0.26",
+    "langgraph-ai-sdk": "^1.0.30",
     "langsmith": "^0.3.25",
     "lodash": "^4.17.21",
     "lucide-react": "^0.544.0",

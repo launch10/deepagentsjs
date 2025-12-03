@@ -1,6 +1,6 @@
 import { Ads, Brainstorm, type UUIDType, type PrimaryKeyType } from "../types";
 import { type CoreGraphState } from "../types/graph";
-import { type LanggraphData, type LanggraphUIMessage } from "langgraph-ai-sdk-types";
+import { type BridgeType } from "langgraph-ai-sdk-types";
 import type { Simplify } from "type-fest";
 
 export type AdsGraphState = Simplify<CoreGraphState & {
@@ -17,10 +17,7 @@ export type AdsGraphState = Simplify<CoreGraphState & {
     redirect: Ads.RedirectType | undefined;
 }>
 
-export type AdsLanggraphData = LanggraphData<
+export type AdsBridgeType = BridgeType<
     AdsGraphState,
-    typeof Ads.structuredMessageSchemas
+    typeof Ads.jsonSchema
 >
-
-// Clean, flattened message type for consumer use
-export type AdsMessage = Simplify<LanggraphUIMessage<AdsLanggraphData>>;
