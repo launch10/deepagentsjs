@@ -27,6 +27,8 @@ module ProjectConcerns
     end
 
     def core_json
+      project = self
+
       {
         thread_id: project.current_chat.thread_id,
         project: project.as_json,
