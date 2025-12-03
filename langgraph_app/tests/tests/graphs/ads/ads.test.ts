@@ -21,7 +21,7 @@ describe.sequential('Ads Flow', () => {
     let projectUUID: UUIDType;
 
     beforeEach(async () => {
-        await DatabaseSnapshotter.restoreSnapshot("after_website_created");
+        await DatabaseSnapshotter.restoreSnapshot("website_deployed");
         projectUUID = await db.select().from(projectsTable).limit(1).execute().then((res) => {
             if (!res[0]) {
                 throw new Error("No projects found");

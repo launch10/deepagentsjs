@@ -86,7 +86,7 @@ const testQuestionAnswering = async (input: { projectUUID: UUIDType; question: s
 
 evalite('Ads', {
     data: async () => {
-        await DatabaseSnapshotter.restoreSnapshot("campaign_created");
+        await DatabaseSnapshotter.restoreSnapshot("website_deployed");
         const projectUUID = await db.select().from(projectsTable).limit(1).execute().then((res) => {
             if (!res[0]) {
                 throw new Error("No projects found");

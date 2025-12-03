@@ -6,6 +6,7 @@ import type { Simplify } from "type-fest";
 export type AdsGraphState = Simplify<CoreGraphState & {
     projectUUID: UUIDType;
     websiteId: PrimaryKeyType;
+    campaignId: PrimaryKeyType | undefined;
     brainstorm: Brainstorm.MemoriesType | undefined;
     stage: Ads.StageName | undefined;
     refresh: Ads.RefreshContext | undefined;
@@ -15,6 +16,7 @@ export type AdsGraphState = Simplify<CoreGraphState & {
     structuredSnippets: Ads.StructuredSnippets | undefined;
     keywords: Ads.Keyword[] | undefined;
     redirect: Ads.RedirectType | undefined;
+    hasStartedStep: Ads.HasStartedStep | undefined;
 }>
 
 export type AdsBridgeType = BridgeType<

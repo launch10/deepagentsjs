@@ -1,83 +1,59 @@
 import { Ads } from "@types";
-import { AIMessage } from "@langchain/core/messages";
 import { type AdsGraphState } from "@state";
 
 const isAssetKind = (value: unknown): value is Ads.AssetKind => {
     return typeof value === 'string' && Ads.AssetKinds.includes(value as Ads.AssetKind);
 };
 
-type RawAIOutput = {
-    headlines?: string[];
-    descriptions?: string[];
-    callouts?: string[];
-    keywords?: string[];
-    structuredSnippets?: { category?: string; details?: string[] };
-};
-
-// Core helper to extract structured data from the last agent message.
-// In this workflow, the agent replies with a message + headlines, descriptions, keywords, etc.
-// This function extracts that data and returns it as a structured object.
-//
-// It also determines: Was the last HumanMessage a request to regenerate content? If so,
-// we should mark the previous assets as rejected.
-export const getStructuredData = (state: AdsGraphState, lastMessage: AIMessage) => {
-    const rawData = ((lastMessage.response_metadata?.parsed_blocks as any[] || []).filter((block: any) => block.type === 'structured').map((block: any) => block.parsed).at(-1) || {}) as RawAIOutput;
-
+export const getStructuredData = (state: AdsGraphState, updates: Partial<Ads.Assets> | undefined): Partial<AdsGraphState> => {
+    if (!updates) {
+        return {};
+    }
     const allowedKeys = (state.refresh?.asset ? [state.refresh.asset] : Ads.AssetKinds) as Ads.AssetKind[];
 
     const structuredData = allowedKeys.reduce((acc, key) => {
         if (!isAssetKind(key)) return acc;
-        const value = rawData[key];
+        const value = updates[key];
         if (value === undefined) return acc;
 
         if (key === 'structuredSnippets') {
-            const snippetValue = value as { category?: string; details?: string[] };
-            acc.structuredSnippets = {
-                category: {
-                    text: snippetValue.category ?? '',
-                    rejected: state.structuredSnippets?.category?.rejected || false,
-                    locked: state.structuredSnippets?.category?.locked || false
-                },
-                details: mergeStructuredSnippets(
-                    state.structuredSnippets,
-                    snippetValue
-                ).details
-            };
-        } else if (Array.isArray(value)) {
-            const existingAssets = state[key] || [];
-            acc[key] = mergeStructuredOutput(
-                existingAssets as Ads.Asset[], 
-                value as string[]
+            const incomingSnippets = value as Ads.StructuredSnippets;
+            acc.structuredSnippets = mergeStructuredSnippets(
+                state.structuredSnippets,
+                incomingSnippets
             );
+        } else {
+            const existingAssets = state[key] || [];
+            const incomingAssets = value as Ads.Asset[];
+            acc[key] = mergeAssets(existingAssets as Ads.Asset[], incomingAssets);
         }
         return acc;
     }, {} as Partial<AdsGraphState>);
 
-    return applyImplicitRefresh(state, structuredData);
+    return applyHumanRefresh(state, structuredData);
 }
 
-const mergeStructuredOutput = (
+const mergeAssets = (
     existing: Ads.Asset[],
-    incoming: string[]
+    incoming: Ads.Asset[]
 ): Ads.Asset[] => {
     const result: Ads.Asset[] = [...existing];
-    const existingAssets = new Set(existing.map(asset => asset.text));
+    const existingTexts = new Set(existing.map(asset => asset.text));
     
-    for (const text of incoming) {
-        if (existingAssets.has(text)) {
+    for (const asset of incoming) {
+        if (existingTexts.has(asset.text)) {
             continue;
         }
-        result.push({
-            text,
-            rejected: false,
-            locked: false
-        });
+        result.push(asset);
     }
 
     return result;
 };
 
-const applyImplicitRefresh = (
+// If human asked for a refresh, we'll only recognize that after the LLM has already
+// interpreted the human message. This is different from the user clicking the refresh
+// button, which generates { refresh: { asset: "headlines" } } -- for example
+const applyHumanRefresh = (
     originalState: AdsGraphState,
     structuredData: Partial<AdsGraphState>
 ): Partial<AdsGraphState> => {
@@ -133,29 +109,17 @@ const applyImplicitRefresh = (
 
 const mergeStructuredSnippets = (
     existing: Ads.StructuredSnippets | undefined,
-    incoming: { category?: string; details?: string[] }
+    incoming: Ads.StructuredSnippets
 ): Ads.StructuredSnippets => {
-    const category: Ads.Asset = existing?.category ?? {
-        text: incoming.category || "Types",
-        rejected: false,
-        locked: false
-    };
-    
-    if (incoming.category && incoming.category !== existing?.category?.text) {
-        category.text = incoming.category;
-    }
+    const category = incoming.category || existing?.category || "";
 
     const existingDetails = existing?.details || [];
     const existingTexts = new Set(existingDetails.map(d => d.text));
     const newDetails: Ads.Asset[] = [...existingDetails];
 
     for (const detail of incoming.details || []) {
-        if (!existingTexts.has(detail)) {
-            newDetails.push({
-                text: detail,
-                rejected: false,
-                locked: false
-            });
+        if (!existingTexts.has(detail.text)) {
+            newDetails.push(detail);
         }
     }
 

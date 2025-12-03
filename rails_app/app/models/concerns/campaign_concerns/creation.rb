@@ -22,10 +22,12 @@ module CampaignConcerns
             }
           end
 
+          website_id = campaign_params.key?(:website_id) ? campaign_params[:website_id] : Website.find_by(project_id: campaign_params[:project_id])&.id
+
           campaign = account.campaigns.create!(
             name: campaign_params[:name],
             project_id: campaign_params[:project_id],
-            website_id: campaign_params[:website_id]
+            website_id: website_id
           )
 
           ad_group = campaign.ad_groups.create!(

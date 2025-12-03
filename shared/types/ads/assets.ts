@@ -103,6 +103,10 @@ export const RefreshContextSchema = z.object({
 
 export type RefreshContext = z.infer<typeof RefreshContextSchema>;
 
+export type HasStartedStep = {
+    [K in StageName]?: boolean;
+};
+
 export const DefaultNumAssets: Record<AssetKind, number> = {
     headlines: 6,
     descriptions: 4,
@@ -115,3 +119,11 @@ export const diffAssets = (original: Asset[], updated: Asset[]): Asset[] => {
     const originalTexts = new Set(original.map(a => a.text));
     return updated.filter(a => !originalTexts.has(a.text));
 };
+
+export type Assets = {
+    headlines: Asset[];
+    descriptions: Asset[];
+    callouts: Asset[];
+    structuredSnippets: StructuredSnippets;
+    keywords: Asset[];
+}

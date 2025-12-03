@@ -40,7 +40,7 @@ const validRequest = (state: AdsGraphState): boolean => {
     if (validRefresh(state)) {
         return true;
     }
-    return state.hasStartedStep[state.stage] === false;
+    return state.hasStartedStep[state.stage] !== true;
 }
 
 const validRefresh = (state: AdsGraphState): boolean => {
