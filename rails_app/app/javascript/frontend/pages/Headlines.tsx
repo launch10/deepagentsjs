@@ -11,22 +11,21 @@ type HeadlinesProps = {
     root_path: string;
     langgraph_path: string;
     jwt: string;
+    workflow?: {
+        substep?: string;
+    };
+    project?: {
+        uuid?: string;
+    };
+    campaign?: {
+        id?: number;
+    } | null;
 } & PageProps;
-
-export function getUrlThreadId() {
-    const path = window.location.href;
-    const match = path.match(/brainstorms\/(.*)/)
-    if (match && match[1]) {
-        return match[1];
-    }
-    return undefined;
-};
 
 export default function Headlines(props: HeadlinesProps) {
     const pageProps = usePage<HeadlinesProps>();
     // Access shared props from Inertia
     let { thread_id, jwt, root_path, langgraph_path } = pageProps.props;
-    const urlThreadId = useRef(getUrlThreadId());
 
     useEffect(() => {
         if (!jwt || !root_path || !langgraph_path) {
@@ -45,24 +44,30 @@ export default function Headlines(props: HeadlinesProps) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${jwt}`,
             },
-            getInitialThreadId: () => urlThreadId.current,
+            getInitialThreadId: () => thread_id,
         });
 
-    const hasInitializedStage = useRef(false);
+    const campaignExists = Boolean(props.campaign?.id);
     
     useEffect(() => {
-        if (hasInitializedStage.current) {
-            return;
-        }
         if (!props.workflow || typeof props.workflow !== 'object' || !('substep' in props.workflow) || typeof props.workflow.substep !== 'string') {
             return;
         }
-        hasInitializedStage.current = true;
+        if (!props.project?.uuid) {
+            return;
+        }
+        if (state.hasStartedStep && props.workflow.substep in state.hasStartedStep && state.hasStartedStep[props.workflow.substep as Ads.StageName] === true) {
+            return;
+        }
+        // Only call update state on initial page load, otherwise campaign will exist
+        if (campaignExists && props.workflow.substep === 'content') {
+            return;
+        }
         updateState({
             stage: props.workflow.substep as Ads.StageName,
-            projectUUID: props.project!.uuid as UUIDType,
+            projectUUID: props.project.uuid as UUIDType,
         })
-    }, [props.workflow]);
+    }, [props.workflow?.substep, state.hasStartedStep]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -87,31 +92,41 @@ export default function Headlines(props: HeadlinesProps) {
 
     return (
         <Wrapper>
-        <h1>Headlines</h1>
-        <div className="mb-4 p-4 bg-gray-800 rounded">
-            <div className="text-sm text-gray-400 mb-2">State:</div>
-            <pre className="text-xs text-green-400">{JSON.stringify(state, null, 2)}</pre>
-            <div className="text-sm text-gray-400 mb-2">Events:</div>
-            <pre className="text-xs text-green-400">{JSON.stringify(events, null, 2)}</pre>
-        </div>
-
-        <h1>Messages</h1>
         {
-            messages[0] && messages[0].blocks.map((b) => <ReactMarkdown key={b.id}>{b.text}</ReactMarkdown>)
+            messages && (
+                <>
+                    <h1>Messages</h1>
+                    {
+                        messages[0] && messages[0].blocks.map((b) => <ReactMarkdown key={b.id}>{b.text}</ReactMarkdown>)
+                    }
+                </>
+            )
         }
         <br />
         <br />
         <br />
-        <h1>Headlines</h1>
         {
-            state.headlines?.map((h) => <ReactMarkdown key={h.text}>{h.text}</ReactMarkdown>)
+            state.headlines && (
+                <>
+                <h1>Headlines</h1>
+                {
+                    state.headlines?.map((h) => <ReactMarkdown key={h.text}>{h.text}</ReactMarkdown>)
+                }
+                </>
+            )
         }
         <br />
         <br />
         <br />
-        <h1>Descriptions</h1>
         {
-            state.descriptions?.map((d) => <ReactMarkdown key={d.text}>{d.text}</ReactMarkdown>)
+            state.descriptions && (
+                <>
+                <h1>Descriptions</h1>
+                {
+                    state.descriptions?.map((d) => <ReactMarkdown key={d.text}>{d.text}</ReactMarkdown>)
+                }
+                </>
+            )
         }
         <div ref={messagesEndRef} />
         <ChatInput
