@@ -5,7 +5,7 @@ import { adsGraph as uncompiledGraph } from '@graphs';
 import { graphParams } from '@core';
 import { DatabaseSnapshotter } from '@services';
 import { db, projects as projectsTable } from '@db';
-import { type UUIDType, Ads, ThreadIDType } from '@types';
+import { type UUIDType, Ads, type ThreadIDType } from '@types';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { v7 as uuid } from 'uuid';
 

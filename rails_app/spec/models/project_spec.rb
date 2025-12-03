@@ -23,6 +23,7 @@
 require "rails_helper"
 RSpec.describe Project, type: :model do
   let!(:account) { create(:account) }
+  let!(:template) { create(:template) }
   let!(:project) do
     data = Brainstorm.create_brainstorm!(account, name: "Project", thread_id: "thread_id")
     data[:project]
