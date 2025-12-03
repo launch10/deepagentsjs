@@ -4,6 +4,7 @@ import { usePage } from '@inertiajs/react';
 import { useLanggraph } from 'langgraph-ai-sdk-react';
 import { Wrapper, ChatInput, Message } from '@components/brainstorm';
 import { type AdsBridgeType, Ads, type UUIDType } from '@shared';
+import ReactMarkdown from 'react-markdown';
 
 type HeadlinesProps = {
     thread_id: string;
@@ -93,13 +94,25 @@ export default function Headlines(props: HeadlinesProps) {
             <div className="text-sm text-gray-400 mb-2">Events:</div>
             <pre className="text-xs text-green-400">{JSON.stringify(events, null, 2)}</pre>
         </div>
-        {messages.map((message) => (
-            <Message
-            key={message.id}
-            message={message}
-            status={status}
-            />
-        ))}
+
+        <h1>Messages</h1>
+        {
+            messages[0] && messages[0].blocks.map((b) => <ReactMarkdown key={b.id}>{b.text}</ReactMarkdown>)
+        }
+        <br />
+        <br />
+        <br />
+        <h1>Headlines</h1>
+        {
+            state.headlines?.map((h) => <ReactMarkdown key={h.text}>{h.text}</ReactMarkdown>)
+        }
+        <br />
+        <br />
+        <br />
+        <h1>Descriptions</h1>
+        {
+            state.descriptions?.map((d) => <ReactMarkdown key={d.text}>{d.text}</ReactMarkdown>)
+        }
         <div ref={messagesEndRef} />
         <ChatInput
             inputRef={inputRef}

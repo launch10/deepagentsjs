@@ -27,7 +27,6 @@ export default function Brainstorm(props: BrainstormProps) {
     let { thread_id, jwt, root_path, langgraph_path } = pageProps.props;
     const urlThreadId = useRef(getUrlThreadId());
 
-    debugger;
     const url = (new URL("api/brainstorm/stream", langgraph_path)).toString();
     const { messages, sendMessage, status, state, threadId, tools, error, events, isLoadingHistory } =
         useLanggraph<BrainstormLanggraphData>({
