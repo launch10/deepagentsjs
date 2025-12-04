@@ -39,8 +39,7 @@ After pulling main, you should always run:
 cp .env.example .env
 nvm use && pnpm install
 bundle install # sync gems
-bundle exec rake db:migrate # sync database
-bundle exec rake seeds:template # sync templates
+bundle exec rake db:migrate db:seed # sync database
 bundle exec rake annotaterb # annotate models
 ```
 
@@ -49,6 +48,10 @@ bundle exec rake annotaterb # annotate models
 We use [Rswag](https://github.com/rswag/rswag) to document our APIs. To add a new API, add a new file to `spec/requests` and run `bin/rake rswag:specs:swaggerize` to generate the documentation.
 
 This allows us to automatically generate Typescript documentation to consume our APIs.
+
+## Documenting Inertia Props
+
+Wea lso use Rswag to document inertia props. To add a new Inertia prop, add a new file to `spec/requests` and run `bin/rake rswag:specs:swaggerize` to generate the documentation.
 
 ## CI
 

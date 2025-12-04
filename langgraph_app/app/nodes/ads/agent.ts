@@ -49,7 +49,7 @@ export const adsAgent = NodeMiddleware.use({}, async (
     state: AdsGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<AdsGraphState>> => {
-    const llm = getLLM()
+    const llm = getLLM().withConfig({ tags: ['notify'] });
     const tools = getTools(state)
 
     const agent = await createAgent({

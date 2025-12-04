@@ -8,7 +8,7 @@ import {
     selectThreadId 
 } from '../stores/brainstormStore';
 
-export function useBrainstormSync() {
+export function useBrainstormChat() {
     const jwt = useBrainstormStore(selectJwt);
     const langgraphPath = useBrainstormStore(selectLanggraphPath);
     const initialThreadId = useBrainstormStore(selectThreadId);

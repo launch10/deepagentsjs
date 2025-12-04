@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Wrapper, ChatInput, Message, BrainstormProvider, BrainstormHydrator } from '@components/brainstorm';
-import { useBrainstormSync } from '../hooks/useBrainstormSync';
+import { useBrainstormChat } from '../hooks/useBrainstormChat';
 import { 
     useBrainstormStore, 
     selectMessages, 
@@ -17,7 +17,7 @@ function BrainstormContent() {
     const project = state.project;
     const isLoadingHistory = useBrainstormStore((s) => s.ui.isLoadingHistory);
 
-    const { sendMessage, updateState } = useBrainstormSync();
+    const { sendMessage, updateState } = useBrainstormChat();
 
     useEffect(() => {
         if (threadId && threadId !== null && typeof window !== 'undefined') {
