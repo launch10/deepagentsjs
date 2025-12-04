@@ -80,6 +80,7 @@
     "remark-gfm": "^4.0.1",
     "shiki": "^3.4.0",
     "swr": "2.2.5",
+    "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.7",
     "type-fest": "^5.2.0",
     "typescript": "^5.8.3",
