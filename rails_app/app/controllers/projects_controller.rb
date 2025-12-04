@@ -5,11 +5,11 @@ class ProjectsController < SubscribedController
     respond_to do |format|
       format.html do
         render inertia: "Brainstorm",
-               props: {
-                thread_id: nil,
-                project: { uuid: nil }
-               },
-               layout: "layouts/webcontainer"
+          props: {
+            thread_id: nil,
+            project: { uuid: nil }
+          },
+          layout: "layouts/webcontainer"
       end
     end
   end
@@ -25,16 +25,16 @@ class ProjectsController < SubscribedController
   WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|
     define_method("campaigns_#{substep}") do
       render inertia: "Campaign",
-             props: @project.to_ad_campaign_json,
-             layout: "layouts/webcontainer"
+        props: @project.to_ad_campaign_json,
+        layout: "layouts/webcontainer"
     end
   end
 
   WorkflowConfig.substeps_for("launch", "launch").each do |substep|
     define_method("launch_#{substep}") do
       render inertia: "Launch",
-             props: @project.to_launch_json,
-             layout: "layouts/webcontainer"
+        props: @project.to_launch_json,
+        layout: "layouts/webcontainer"
     end
   end
 

@@ -3,7 +3,1612 @@
  * Do not make direct changes to the file.
  */
 
-export type paths = Record<string, never>;
+export interface paths {
+    "/api/v1/brainstorms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a brainstorm */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        brainstorm: {
+                            /** @description Optional name for the brainstorm. Defaults to MM/DD/YYYY HH:MM:SS */
+                            name?: string;
+                            /** @description Required thread ID from Langgraph */
+                            thread_id?: string;
+                            /** @description The core idea for the landing page */
+                            idea?: string;
+                            /** @description Target audience for the landing page */
+                            audience?: string;
+                            /** @description The solution being offered */
+                            solution?: string;
+                            /** @description Social proof elements */
+                            social_proof?: string;
+                            /** @description Design preferences */
+                            look_and_feel?: string;
+                            project_attributes?: {
+                                /** @description Optional UUID for the project */
+                                uuid?: string;
+                            };
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description brainstorm created in team account after switching */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
+                            website_id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Brainstorm name */
+                            name: string;
+                            /**
+                             * Format: uuid
+                             * @description UUID identifier
+                             */
+                            thread_id: string;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid request - missing thread_id */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brainstorms/{thread_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Thread ID from Langgraph */
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        /** Retrieves a brainstorm */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Thread ID from Langgraph */
+                    thread_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description brainstorm found in team account after switching */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
+                            website_id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Brainstorm name */
+                            name: string;
+                            /**
+                             * Format: uuid
+                             * @description UUID identifier
+                             */
+                            thread_id: string;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description brainstorm not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Updates a brainstorm */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Thread ID from Langgraph */
+                    thread_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        brainstorm: {
+                            /** @description Optional name for the brainstorm. Defaults to MM/DD/YYYY HH:MM:SS */
+                            name?: string;
+                            /** @description Required thread ID from Langgraph */
+                            thread_id?: string;
+                            /** @description The core idea for the landing page */
+                            idea?: string;
+                            /** @description Target audience for the landing page */
+                            audience?: string;
+                            /** @description The solution being offered */
+                            solution?: string;
+                            /** @description Social proof elements */
+                            social_proof?: string;
+                            /** @description Design preferences */
+                            look_and_feel?: string;
+                            project_attributes?: {
+                                /** @description Optional UUID for the project */
+                                uuid?: string;
+                            };
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description brainstorm updated in team account after switching */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
+                            website_id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Brainstorm name */
+                            name: string;
+                            /**
+                             * Format: uuid
+                             * @description UUID identifier
+                             */
+                            thread_id: string;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description brainstorm not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a campaign */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        campaign: {
+                            /** @description Campaign name */
+                            name?: string;
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Website ID */
+                            website_id?: number;
+                            /** @description Thread ID */
+                            thread_id: string;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description campaign already exists and is returned */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Campaign name */
+                            name?: string;
+                            /** @description Thread ID for campaign */
+                            thread_id?: string;
+                            /** @description Current campaign stage */
+                            stage: string;
+                            /** @description Campaign status */
+                            status: string;
+                            /** @description Whether campaign is ready to advance to next stage */
+                            ready_for_next_stage?: boolean;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Unique identifier */
+                            website_id: number;
+                            /**
+                             * Format: date
+                             * @description Campaign start date
+                             */
+                            start_date?: string | null;
+                            /**
+                             * Format: date
+                             * @description Campaign end date
+                             */
+                            end_date?: string | null;
+                            /** @description Campaign time zone */
+                            time_zone?: string;
+                            /** @description Daily budget in cents */
+                            daily_budget_cents?: number | null;
+                            /** @description Google Ads channel type */
+                            google_advertising_channel_type?: string | null;
+                            /** @description Google Ads bidding strategy */
+                            google_bidding_strategy?: string | null;
+                            ad_groups?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                name?: string;
+                                ads?: {
+                                    /** @description Unique identifier */
+                                    id?: number;
+                                    headlines?: {
+                                        /** @description Unique identifier */
+                                        id?: number;
+                                        text?: string;
+                                    }[];
+                                    descriptions?: {
+                                        text?: string;
+                                    }[];
+                                }[];
+                                keywords?: {
+                                    text?: string;
+                                    match_type?: string;
+                                }[];
+                            }[];
+                            callouts?: {
+                                text?: string;
+                            }[];
+                            structured_snippet?: {
+                                category?: string;
+                                values?: string[];
+                            } | null;
+                            workflow?: {
+                                step?: string;
+                                substep?: string | null;
+                            } | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description campaign created without website_id (falls back to project website) */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Campaign name */
+                            name?: string;
+                            /** @description Thread ID for campaign */
+                            thread_id?: string;
+                            /** @description Current campaign stage */
+                            stage: string;
+                            /** @description Campaign status */
+                            status: string;
+                            /** @description Whether campaign is ready to advance to next stage */
+                            ready_for_next_stage?: boolean;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Unique identifier */
+                            website_id: number;
+                            /**
+                             * Format: date
+                             * @description Campaign start date
+                             */
+                            start_date?: string | null;
+                            /**
+                             * Format: date
+                             * @description Campaign end date
+                             */
+                            end_date?: string | null;
+                            /** @description Campaign time zone */
+                            time_zone?: string;
+                            /** @description Daily budget in cents */
+                            daily_budget_cents?: number | null;
+                            /** @description Google Ads channel type */
+                            google_advertising_channel_type?: string | null;
+                            /** @description Google Ads bidding strategy */
+                            google_bidding_strategy?: string | null;
+                            ad_groups?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                name?: string;
+                                ads?: {
+                                    /** @description Unique identifier */
+                                    id?: number;
+                                    headlines?: {
+                                        /** @description Unique identifier */
+                                        id?: number;
+                                        text?: string;
+                                    }[];
+                                    descriptions?: {
+                                        text?: string;
+                                    }[];
+                                }[];
+                                keywords?: {
+                                    text?: string;
+                                    match_type?: string;
+                                }[];
+                            }[];
+                            callouts?: {
+                                text?: string;
+                            }[];
+                            structured_snippet?: {
+                                category?: string;
+                                values?: string[];
+                            } | null;
+                            workflow?: {
+                                step?: string;
+                                substep?: string | null;
+                            } | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid request - missing thread_id */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Campaign ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Validates campaign updates */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Campaign ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Campaign name */
+                        name?: string;
+                        /**
+                         * Format: date
+                         * @description Campaign start date
+                         */
+                        start_date?: string;
+                        /**
+                         * Format: date
+                         * @description Campaign end date
+                         */
+                        end_date?: string;
+                        /** @description Campaign time zone */
+                        time_zone?: string;
+                        /** @description Daily budget in cents */
+                        daily_budget_cents?: number;
+                        /** @description Google Ads channel type */
+                        google_advertising_channel_type?: string;
+                        /** @description Google Ads bidding strategy */
+                        google_bidding_strategy?: string;
+                        /** @description Flat ad group attributes for single ad group campaigns */
+                        ad_group?: {
+                            name?: string;
+                        };
+                        /** @description Flat headlines array (applied to first ad in first ad group) */
+                        headlines?: {
+                            id?: number;
+                            text?: string;
+                        }[];
+                        /** @description Flat descriptions array (applied to first ad in first ad group) */
+                        descriptions?: {
+                            id?: number;
+                            text?: string;
+                        }[];
+                        /** @description Flat keywords array (applied to first ad group) */
+                        keywords?: {
+                            id?: number;
+                            text?: string;
+                            match_type?: string;
+                        }[];
+                        /** @description Campaign callout extensions */
+                        callouts?: {
+                            id?: number;
+                            text?: string;
+                        }[];
+                        /** @description Campaign structured snippet extension */
+                        structured_snippet?: {
+                            category?: string;
+                            values?: string[];
+                            _destroy?: boolean;
+                        };
+                        location_targets?: {
+                            target_type?: string;
+                            location_name?: string;
+                            location_type?: string;
+                            country_code?: string;
+                            targeted?: boolean;
+                            google_criterion_id?: string;
+                            radius?: number;
+                            radius_units?: string;
+                        }[];
+                        ad_schedules?: {
+                            /** @description Whether the campaign runs 24/7 */
+                            always_on?: boolean;
+                            /**
+                             * @description Start time in format like "9:00am"
+                             * @example 9:00am
+                             */
+                            start_time?: string;
+                            /**
+                             * @description End time in format like "5:00pm"
+                             * @example 5:00pm
+                             */
+                            end_time?: string;
+                            /**
+                             * @description IANA time zone
+                             * @example America/New_York
+                             */
+                            time_zone?: string;
+                            /**
+                             * @description Days when ads should run
+                             * @example [
+                             *       "Monday",
+                             *       "Tuesday",
+                             *       "Wednesday"
+                             *     ]
+                             */
+                            day_of_week?: string[];
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description preserves all previous stage content when updating launch settings */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Campaign name */
+                            name?: string;
+                            /** @description Thread ID for campaign */
+                            thread_id?: string;
+                            /** @description Current campaign stage */
+                            stage: string;
+                            /** @description Campaign status */
+                            status: string;
+                            /** @description Whether campaign is ready to advance to next stage */
+                            ready_for_next_stage?: boolean;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Unique identifier */
+                            website_id: number;
+                            /**
+                             * Format: date
+                             * @description Campaign start date
+                             */
+                            start_date?: string | null;
+                            /**
+                             * Format: date
+                             * @description Campaign end date
+                             */
+                            end_date?: string | null;
+                            /** @description Campaign time zone */
+                            time_zone?: string;
+                            /** @description Daily budget in cents */
+                            daily_budget_cents?: number | null;
+                            /** @description Google Ads channel type */
+                            google_advertising_channel_type?: string | null;
+                            /** @description Google Ads bidding strategy */
+                            google_bidding_strategy?: string | null;
+                            ad_groups?: {
+                                /** @description Unique identifier */
+                                id?: number;
+                                name?: string;
+                                ads?: {
+                                    /** @description Unique identifier */
+                                    id?: number;
+                                    headlines?: {
+                                        /** @description Unique identifier */
+                                        id?: number;
+                                        text?: string;
+                                    }[];
+                                    descriptions?: {
+                                        text?: string;
+                                    }[];
+                                }[];
+                                keywords?: {
+                                    text?: string;
+                                    match_type?: string;
+                                }[];
+                            }[];
+                            callouts?: {
+                                text?: string;
+                            }[];
+                            structured_snippet?: {
+                                category?: string;
+                                values?: string[];
+                            } | null;
+                            workflow?: {
+                                step?: string;
+                                substep?: string | null;
+                            } | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description campaign not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description does not save any changes when validation fails */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/campaigns/{id}/advance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Campaign ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Advances campaign to next stage */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Campaign ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description campaign advanced from launch to review stage */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description New campaign stage after advancement */
+                            stage: string;
+                            /** @description Campaign status */
+                            status: string;
+                            workflow?: {
+                                step?: string;
+                                substep?: string | null;
+                            } | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at?: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at?: string;
+                        };
+                    };
+                };
+                /** @description campaign not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description cannot advance from launch - validation failed (missing fields) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{id}/back": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Campaign ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Steps back to previous stage */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Campaign ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description campaign stepped back to previous stage */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description New campaign stage after advancement */
+                            stage: string;
+                            /** @description Campaign status */
+                            status: string;
+                            workflow?: {
+                                step?: string;
+                                substep?: string | null;
+                            } | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at?: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at?: string;
+                        };
+                    };
+                };
+                /** @description campaign not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_uuid}/workflows/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                project_uuid: string;
+                /** @description Workflow ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Updates a project workflow */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                    /** @description Workflow ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        project_workflow: {
+                            /** @description Step to advance to */
+                            step: string;
+                            /** @description Optional substep to advance to */
+                            substep?: string;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description workflow advanced in team account after switching */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Type of workflow */
+                            workflow_type: string;
+                            /** @description Current step in the workflow */
+                            step: string;
+                            /** @description Current substep in the workflow */
+                            substep?: string | null;
+                            /** @description Progress percentage (0-100) */
+                            progress: number;
+                            /** @description List of available steps in this workflow */
+                            available_steps: string[];
+                        };
+                    };
+                };
+                /** @description project not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description missing step parameter */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/projects/{project_uuid}/workflows/{id}/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                project_uuid: string;
+                /** @description Workflow ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Advances workflow to next step */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                    /** @description Workflow ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description workflow advanced to next step with substep */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Type of workflow */
+                            workflow_type: string;
+                            /** @description Current step in the workflow */
+                            step: string;
+                            /** @description Current substep in the workflow */
+                            substep?: string | null;
+                            /** @description Progress percentage (0-100) */
+                            progress: number;
+                            /** @description List of available steps in this workflow */
+                            available_steps: string[];
+                        };
+                    };
+                };
+                /** @description workflow not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description already at final step */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/test/database/truncate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Truncates the database
+         * @description Truncates all tables in the database. Only available in development/test environments.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description database truncated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example ok */
+                            status: string;
+                            /** @example Operation completed successfully */
+                            message: string;
+                        };
+                    };
+                };
+                /** @description internal server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            errors: string[];
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/test/database/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists available database snapshots
+         * @description Returns a list of all available database snapshot names. Only available in development/test environments.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description snapshots listed successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Array of snapshot names (without .sql extension) */
+                            snapshots: string[];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Creates a database snapshot
+         * @description Creates a new database snapshot with the specified name. Only available in development/test environments.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        snapshot: {
+                            /** @description Name for the snapshot (without .sql extension) */
+                            name: string;
+                            /**
+                             * @description Whether to truncate the database before restoring
+                             * @default false
+                             */
+                            truncate_first?: boolean;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description snapshot created successfully */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example ok */
+                            status: string;
+                            /** @example Operation completed successfully */
+                            message: string;
+                        };
+                    };
+                };
+                /** @description missing required parameters */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            errors: string[];
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/test/database/restore_snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restores a database snapshot
+         * @description Restores the database from a snapshot. Optionally truncates the database before restoring. Only available in development/test environments.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        snapshot: {
+                            /** @description Name for the snapshot (without .sql extension) */
+                            name: string;
+                            /**
+                             * @description Whether to truncate the database before restoring
+                             * @default false
+                             */
+                            truncate_first?: boolean;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description snapshot restored successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example ok */
+                            status: string;
+                            /** @example Operation completed successfully */
+                            message: string;
+                        };
+                    };
+                };
+                /** @description missing required parameters */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            errors: string[];
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/themes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists official themes + themes in account */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description retrieves official + account themes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Theme name */
+                            name: string;
+                            /** @description Theme color palette */
+                            colors: string[];
+                            /** @description Associated theme labels */
+                            theme_labels: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Label name */
+                                name: string;
+                            }[];
+                        }[];
+                    };
+                };
+                /** @description unauthorized - invalid token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Creates theme */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        theme: {
+                            /** @description Theme name */
+                            name: string;
+                            /** @description Theme color palette */
+                            colors: string[];
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description theme created */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Theme name */
+                            name: string;
+                            /** @description Theme color palette */
+                            colors: string[];
+                            /** @description Associated theme labels */
+                            theme_labels: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Label name */
+                                name: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieves uploads */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Filter by website */
+                    website_id?: number;
+                };
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns team account uploads after switching */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Upload UUID */
+                            uuid: string;
+                            /** @description Full size file URL */
+                            url: string;
+                            /** @description Thumbnail URL (images only) */
+                            thumb_url?: string | null;
+                            /** @description Medium size URL (images only) */
+                            medium_url?: string | null;
+                            /**
+                             * @description Media type
+                             * @enum {string}
+                             */
+                            media_type: "image" | "video";
+                            /** @description Whether this upload is a logo */
+                            is_logo: boolean;
+                            /** @description Original filename */
+                            filename: string;
+                            /**
+                             * Format: date-time
+                             * @description Creation timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Last update timestamp
+                             */
+                            updated_at: string;
+                        }[];
+                    };
+                };
+                /** @description website not found when filtering */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Creates an upload */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": Record<string, never>;
+                };
+            };
+            responses: {
+                /** @description creating upload without website */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Upload UUID */
+                            uuid: string;
+                            /** @description Full size file URL */
+                            url: string;
+                            /** @description Thumbnail URL (images only) */
+                            thumb_url?: string | null;
+                            /** @description Medium size URL (images only) */
+                            medium_url?: string | null;
+                            /**
+                             * @description Media type
+                             * @enum {string}
+                             */
+                            media_type: "image" | "video";
+                            /** @description Whether this upload is a logo */
+                            is_logo: boolean;
+                            /** @description Original filename */
+                            filename: string;
+                            /**
+                             * Format: date-time
+                             * @description Creation timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Last update timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description rejects PDF upload */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+}
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: never;

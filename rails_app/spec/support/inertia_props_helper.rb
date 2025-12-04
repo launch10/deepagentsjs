@@ -11,7 +11,7 @@ module InertiaPropsHelper
 
     if errors.any?
       raise RSpec::Expectations::ExpectationNotMetError,
-            "Inertia props do not match schema:\n#{errors.join("\n")}\n\nActual props:\n#{JSON.pretty_generate(props)}"
+        "Inertia props do not match schema:\n#{errors.join("\n")}\n\nActual props:\n#{JSON.pretty_generate(props)}"
     end
 
     true

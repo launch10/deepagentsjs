@@ -23,7 +23,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
       expect(inertia.component).to eq('Brainstorm')
     end
 
-    it 'props conform to BrainstormNew schema', focus: true do
+    it 'props conform to BrainstormNew schema' do
       get onboarding_path
 
       expect_inertia_props_to_match_schema(InertiaSchemas::NewBrainstorm.props_schema)
@@ -36,11 +36,11 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
   let!(:workflow) { create(:project_workflow, project: project, workflow_type: 'launch', step: 'ad_campaign', substep: 'content') }
   let!(:chat) do
     create(:chat,
-           thread_id: SecureRandom.uuid,
-           chat_type: 'ad_campaign',
-           project: project,
-           account: account,
-           contextable: brainstorm)
+      thread_id: SecureRandom.uuid,
+      chat_type: 'ad_campaign',
+      project: project,
+      account: account,
+      contextable: brainstorm)
   end
   describe 'GET /projects/:uuid/brainstorm' do
     before do
