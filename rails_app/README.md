@@ -71,9 +71,26 @@ To pull snapshots from Git LFS: `git lfs pull`
 To create a snapshot, run `bin/rails db:snapshot`.
 To load a snapshot, run `bin/rails db:restore_snapshot`.
 
+# Snapshots
+
+Snapshots are known database states that we want to test against, for example:
+
+1. User exists and is subscribed to a plan
+2. User has finished brainstorming
+3. User has created a website
+4. User has created an ad campaign
+
+We use these for starting from known states in tests in both the rails and langgraph apps.
+
 ## Creating Snapshots
 
 We use the `spec/snapshot_builders/` directory to define snapshot builders. Run `bin/rails db:snapshot:build_all` to build all snapshots in dependency order.
+
+## Loading Snapshots
+
+To load a snapshot, run `bin/rails db:restore_snapshot[SNAPSHOT_NAME]`.
+
+Or from langgraph tests, run `dbSnapshotter.restoreSnapshot("snapshotName")`
 
 ## Creating A Subscribed User
 
