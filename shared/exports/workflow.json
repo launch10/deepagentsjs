@@ -3,55 +3,67 @@
     "steps": [
       {
         "name": "brainstorm",
-        "label": "Brainstorm"
+        "label": "Brainstorm",
+        "order": 1
       },
       {
         "name": "website",
-        "label": "Website"
+        "label": "Website",
+        "order": 2
       },
       {
         "name": "ad_campaign",
         "label": "Ad Campaign",
+        "order": 3,
         "steps": [
           {
             "name": "create",
             "label": "Create",
+            "order": 1,
             "steps": [
               {
                 "name": "content",
-                "label": "Content"
+                "label": "Content",
+                "order": 1
               },
               {
                 "name": "highlights",
-                "label": "Highlights"
+                "label": "Highlights",
+                "order": 2
               }
             ]
           },
           {
             "name": "plan",
             "label": "Plan",
+            "order": 2,
             "steps": [
               {
                 "name": "keywords",
-                "label": "Keywords"
+                "label": "Keywords",
+                "order": 1
               },
               {
                 "name": "settings",
-                "label": "Settings"
+                "label": "Settings",
+                "order": 2
               }
             ]
           },
           {
             "name": "launch",
             "label": "Launch",
+            "order": 3,
             "steps": [
               {
                 "name": "launch",
-                "label": "Launch"
+                "label": "Launch",
+                "order": 1
               },
               {
                 "name": "review",
-                "label": "Review"
+                "label": "Review",
+                "order": 2
               }
             ]
           }
@@ -60,18 +72,22 @@
       {
         "name": "launch",
         "label": "Launch",
+        "order": 4,
         "steps": [
           {
             "name": "settings",
-            "label": "Settings"
+            "label": "Settings",
+            "order": 1
           },
           {
             "name": "review",
-            "label": "Review"
+            "label": "Review",
+            "order": 2
           },
           {
             "name": "deployment",
-            "label": "Deployment"
+            "label": "Deployment",
+            "order": 3
           }
         ]
       }
