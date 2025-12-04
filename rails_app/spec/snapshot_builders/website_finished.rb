@@ -35,7 +35,7 @@ class WebsiteFinished < BaseBuilder
     Core::TestSites.import_to_website(website, "hello-world")
 
     domain = website.domains.first || create(:domain, website: website, account: account, domain: "example.launch10.site")
-    website_url = website.website_urls.first || create(:website_url, website: website, domain: domain, account: account, path: "/bingo?cloudEnv=staging")
+    website_url = website.website_urls.first || create(:website_url, website: website, domain: domain, account: account)
 
 ========
     ExampleWebsites.find("launch-proof").files.reject(&:binary?).each do |file|
