@@ -6,7 +6,7 @@ cd shared
 pnpm run config:export
 
 # Lint Langgraph code
-cd langgraph_app
+cd ../langgraph_app
 if pnpm run lint:fix > /dev/null 2>&1 && pnpm run typecheck > /dev/null 2>&1; then
   echo "✅ Langgraph"
 else
