@@ -47,7 +47,19 @@ module ProjectConcerns
     end
 
     def to_website_json
-      # TODO: implement
+      project = self
+
+      {
+        website: project.website.as_json,
+      }.merge!(core_json)
+    end
+
+    def to_launch_json
+      project = Project.with_launch_relations.find_by(id: id)
+
+      to_ad_campaign_json.merge!({
+        deployment: project.website.respond_to?(:deployment) ? project.website&.deployment&.as_json : nil
+      })
     end
 
     def to_ad_campaign_json

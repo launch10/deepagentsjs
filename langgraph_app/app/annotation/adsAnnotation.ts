@@ -36,6 +36,7 @@ const decorateAssetReducer = (streamed: string[] | undefined, current: Ads.Asset
 
 type StreamedSnippet = { category: string; details: string[] };
 
+// This represents a bridge from Langgraph -> the AI SDK (streaming frontend, helps us create the API)
 export const AdsBridge = createBridge({
     endpoint: "/api/ads/stream",
     stateAnnotation: AdsAnnotation,
