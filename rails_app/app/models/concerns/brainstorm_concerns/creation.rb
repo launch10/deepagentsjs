@@ -12,12 +12,12 @@ module BrainstormConcerns
           # Create project
           existing_project_names = account.projects.where("name ~ ?", "^#{Regexp.escape(name)}-?(\\d+)?$")
 
-          if existing_project_names
-            number = existing_project_names.map { |p| p.name.split("-").last.to_i }.max + 1
+          if existing_project_names.any?
+            number = existing_project_names.map { |p| p.name.split("-").last.to_i || 0 }.max + 1
             name = "#{name}-#{number}"
           end
 
-          project = account.projects.create(
+          project = account.projects.create!(
             name: name,
             uuid: brainstorm_params.dig(:project_attributes, :uuid)
           )
