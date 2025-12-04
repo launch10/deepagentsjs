@@ -35,7 +35,7 @@ class WorkflowConfig
     end
 
     def step_exists?(workflow_type, step)
-      definition(workflow_type).step_names.include?(step)
+      definition(workflow_type).step_names.include?(step.to_s)
     end
 
     def substep_exists?(workflow_type, step, substep)
