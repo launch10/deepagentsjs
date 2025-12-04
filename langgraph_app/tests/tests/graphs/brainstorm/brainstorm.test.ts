@@ -238,14 +238,14 @@ describe.sequential('Brainstorming Flow', () => {
     }, 30000)
 
     describe("Chat flow", () => {
-        it("fails when frontend doesn't send project UUID", async () => {
+        it("uses threadId as projectUUID when not provided", async () => {
             const result = await testGraph<BrainstormGraphState>()
                 .withGraph(brainstormGraph)
                 .withPrompt(`Sorry, what's going on?`)
                 .execute();
 
-            expect(result.state.error).toBeDefined();
-            expect(result.state.error!.message).toContain("Project UUID is required");
+            expect(result.state.projectId).toBeDefined();
+            expect(result.state.error).toBeUndefined();
         });
 
         it("should default to the first question", async () => {

@@ -23,9 +23,9 @@ RSpec.describe "Projects", type: :request do
     sign_in user
   end
 
-  describe "GET /projects/:uuid" do
+  describe "GET /projects/:uuid/brainstorm" do
     it "renders the project show page" do
-      get project_path(project.uuid)
+      get brainstorm_project_path(project.uuid)
 
       expect(response).to have_http_status(:ok)
     end

@@ -119,11 +119,11 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
           workflow.update!(step: 'launch', substep: substep)
         end
 
-        it "renders the launch/#{substep.camelize} component" do
+        it "renders the Launch component" do
           get send("launch_#{substep}_project_path", project.uuid)
 
           expect(response).to have_http_status(:ok)
-          expect(inertia.component).to eq("launch/#{substep.camelize}")
+          expect(inertia.component).to eq("Launch")
         end
 
         it "props conform to Launch::#{substep.camelize} schema" do
