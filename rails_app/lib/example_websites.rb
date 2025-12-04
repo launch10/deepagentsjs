@@ -64,7 +64,7 @@ class ExampleWebsites
 
     def content
       return nil unless exists?
-      File.read(path, encoding: 'UTF-8')
+      File.read(path, encoding: "UTF-8")
     end
 
     BINARY_EXTENSIONS = %w[.lockb .png .jpg .jpeg .gif .ico .woff .woff2 .ttf .eot .pdf .zip .tar .gz].freeze
@@ -74,7 +74,7 @@ class ExampleWebsites
       return false unless exists?
       content = File.read(path, 512)
       return true if content.nil?
-      !content.force_encoding('UTF-8').valid_encoding?
+      !content.force_encoding("UTF-8").valid_encoding?
     rescue ArgumentError
       true
     end

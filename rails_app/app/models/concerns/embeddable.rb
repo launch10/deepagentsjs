@@ -20,6 +20,10 @@ module Embeddable
   end
 
   def enqueue_embedding_generation
-    AI::GenerateEmbeddingWorker.perform_async(self.class.name, id)
+    if Rails.env.production?
+      AI::GenerateEmbeddingWorker.perform_async(self.class.name, id)
+    else
+      AI::GenerateEmbeddingWorker.new.perform(self.class.name, id)
+    end
   end
 end
