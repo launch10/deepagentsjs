@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
-
-type Step = {
-  label: string;
-};
+import type { ProgressStep } from "./header.types";
 
 type HeaderProgressStepperProps = {
   className?: string;
-  steps: Step[];
+  steps: ProgressStep[];
   currentStepIndex: number;
 };
 
