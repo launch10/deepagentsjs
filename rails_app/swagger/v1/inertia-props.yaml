@@ -1,0 +1,905 @@
+---
+openapi: 3.0.1
+info:
+  title: Inertia Page Props
+  version: v1
+  description: Type definitions for Inertia.js page props.
+paths:
+  "/projects/new":
+    get:
+      summary: New page props
+      tags:
+      - Inertia Pages
+      parameters: []
+      responses:
+        '200':
+          description: New page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/NewBrainstormProps"
+  "/projects/{uuid}/brainstorm":
+    get:
+      summary: Brainstorm page props
+      tags:
+      - Inertia Pages
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Brainstorm page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/BrainstormProps"
+  "/projects/{uuid}/website":
+    get:
+      summary: Website page props
+      tags:
+      - Inertia Pages
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Website page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/WebsiteProps"
+  "/projects/{uuid}/campaigns/content":
+    get:
+      summary: Content page props
+      tags:
+      - Inertia Pages - Campaigns
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Content page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CampaignsProps"
+  "/projects/{uuid}/campaigns/highlights":
+    get:
+      summary: Highlights page props
+      tags:
+      - Inertia Pages - Campaigns
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Highlights page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CampaignsProps"
+  "/projects/{uuid}/campaigns/keywords":
+    get:
+      summary: Keywords page props
+      tags:
+      - Inertia Pages - Campaigns
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Keywords page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CampaignsProps"
+  "/projects/{uuid}/campaigns/settings":
+    get:
+      summary: Settings page props
+      tags:
+      - Inertia Pages - Campaigns
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Settings page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CampaignsProps"
+  "/projects/{uuid}/campaigns/launch":
+    get:
+      summary: Launch page props
+      tags:
+      - Inertia Pages - Campaigns
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Launch page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CampaignsProps"
+  "/projects/{uuid}/campaigns/review":
+    get:
+      summary: Review page props
+      tags:
+      - Inertia Pages - Campaigns
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Review page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CampaignsProps"
+  "/projects/{uuid}/launch/settings":
+    get:
+      summary: Settings page props
+      tags:
+      - Inertia Pages - Launch
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Settings page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/LaunchProps"
+  "/projects/{uuid}/launch/review":
+    get:
+      summary: Review page props
+      tags:
+      - Inertia Pages - Launch
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Review page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/LaunchProps"
+  "/projects/{uuid}/launch/deployment":
+    get:
+      summary: Deployment page props
+      tags:
+      - Inertia Pages - Launch
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Deployment page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/LaunchProps"
+components:
+  schemas:
+    NewBrainstormProps:
+      type: object
+      additionalProperties: false
+      properties:
+        root_path:
+          type: string
+          description: Base URL of the application
+        langgraph_path:
+          type: string
+          description: URL of the Langgraph service
+        jwt:
+          type: string
+          description: JWT token for API authentication
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors from session
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                - success
+                - error
+                - info
+              message:
+                type: string
+            required:
+            - type
+            - message
+          description: Flash messages
+        thread_id:
+          type: 'null'
+          description: Langgraph thread ID for the conversation
+        project:
+          type: object
+          additionalProperties: false
+          properties:
+            uuid:
+              type: 'null'
+              description: Project UUID
+          nullable: true
+      required:
+      - root_path
+      - langgraph_path
+      - jwt
+      - thread_id
+    BrainstormProps:
+      type: object
+      additionalProperties: false
+      properties:
+        root_path:
+          type: string
+          description: Base URL of the application
+        langgraph_path:
+          type: string
+          description: URL of the Langgraph service
+        jwt:
+          type: string
+          description: JWT token for API authentication
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors from session
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                - success
+                - error
+                - info
+              message:
+                type: string
+            required:
+            - type
+            - message
+          description: Flash messages
+        thread_id:
+          type: string
+          description: Langgraph thread ID for the conversation
+          nullable: true
+        project:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            uuid:
+              type: string
+              description: Project UUID
+            name:
+              type: string
+            account_id:
+              type: integer
+          nullable: true
+        chat:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            thread_id:
+              type: string
+          nullable: true
+        workflow:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            step:
+              type: string
+              nullable: true
+            substep:
+              type: string
+              nullable: true
+          nullable: true
+        brainstorm:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            idea:
+              type: string
+              nullable: true
+            audience:
+              type: string
+              nullable: true
+            solution:
+              type: string
+              nullable: true
+            social_proof:
+              type: string
+              nullable: true
+            look_and_feel:
+              type: string
+              nullable: true
+            thread_id:
+              type: string
+          nullable: true
+        website:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          nullable: true
+      required:
+      - root_path
+      - langgraph_path
+      - jwt
+      - thread_id
+    WebsiteProps:
+      type: object
+      additionalProperties: false
+      properties:
+        root_path:
+          type: string
+          description: Base URL of the application
+        langgraph_path:
+          type: string
+          description: URL of the Langgraph service
+        jwt:
+          type: string
+          description: JWT token for API authentication
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors from session
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                - success
+                - error
+                - info
+              message:
+                type: string
+            required:
+            - type
+            - message
+          description: Flash messages
+        thread_id:
+          type: string
+          description: Langgraph thread ID for the conversation
+          nullable: true
+        project:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            uuid:
+              type: string
+              description: Project UUID
+            name:
+              type: string
+            account_id:
+              type: integer
+          nullable: true
+        chat:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            thread_id:
+              type: string
+          nullable: true
+        workflow:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            step:
+              type: string
+              nullable: true
+            substep:
+              type: string
+              nullable: true
+          nullable: true
+        website:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          nullable: true
+      required:
+      - root_path
+      - langgraph_path
+      - jwt
+    CampaignsProps:
+      type: object
+      additionalProperties: false
+      properties:
+        root_path:
+          type: string
+          description: Base URL of the application
+        langgraph_path:
+          type: string
+          description: URL of the Langgraph service
+        jwt:
+          type: string
+          description: JWT token for API authentication
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors from session
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                - success
+                - error
+                - info
+              message:
+                type: string
+            required:
+            - type
+            - message
+          description: Flash messages
+        thread_id:
+          type: string
+          description: Langgraph thread ID for the conversation
+          nullable: true
+        project:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            uuid:
+              type: string
+              description: Project UUID
+            name:
+              type: string
+            account_id:
+              type: integer
+          nullable: true
+        chat:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            thread_id:
+              type: string
+          nullable: true
+        workflow:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            step:
+              type: string
+              nullable: true
+            substep:
+              type: string
+              nullable: true
+              description: Current workflow substep
+          nullable: true
+        brainstorm:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          nullable: true
+        website:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+          nullable: true
+        ads_account:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+          nullable: true
+        campaign:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+              description: Campaign ID
+            name:
+              type: string
+          nullable: true
+        ad_group:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+          nullable: true
+        ad:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+          nullable: true
+        headlines:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: integer
+              text:
+                type: string
+          nullable: true
+        descriptions:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: integer
+              text:
+                type: string
+          nullable: true
+        languages:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+          nullable: true
+        keywords:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: integer
+              text:
+                type: string
+          nullable: true
+        location_targets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+          nullable: true
+        callouts:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: integer
+              text:
+                type: string
+          nullable: true
+        structured_snippet:
+          type: object
+          additionalProperties: false
+          properties:
+            category:
+              type: string
+            values:
+              type: array
+              items:
+                type: string
+          nullable: true
+        ad_schedule:
+          type: object
+          additionalProperties: false
+          nullable: true
+      required:
+      - root_path
+      - langgraph_path
+      - jwt
+    LaunchProps:
+      type: object
+      additionalProperties: false
+      properties:
+        root_path:
+          type: string
+          description: Base URL of the application
+        langgraph_path:
+          type: string
+          description: URL of the Langgraph service
+        jwt:
+          type: string
+          description: JWT token for API authentication
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors from session
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                - success
+                - error
+                - info
+              message:
+                type: string
+            required:
+            - type
+            - message
+          description: Flash messages
+        thread_id:
+          type: string
+          description: Langgraph thread ID for the conversation
+          nullable: true
+        project:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            uuid:
+              type: string
+              description: Project UUID
+            name:
+              type: string
+            account_id:
+              type: integer
+          nullable: true
+        chat:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            thread_id:
+              type: string
+          nullable: true
+        workflow:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            step:
+              type: string
+              nullable: true
+            substep:
+              type: string
+              nullable: true
+              description: Current workflow substep
+          nullable: true
+        brainstorm:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          nullable: true
+        website:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+          nullable: true
+        ads_account:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+          nullable: true
+        campaign:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+              description: Campaign ID
+            name:
+              type: string
+          nullable: true
+        ad_group:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+          nullable: true
+        ad:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+          nullable: true
+        headlines:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: integer
+              text:
+                type: string
+          nullable: true
+        descriptions:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: integer
+              text:
+                type: string
+          nullable: true
+        languages:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+          nullable: true
+        keywords:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: integer
+              text:
+                type: string
+          nullable: true
+        location_targets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+          nullable: true
+        callouts:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: integer
+              text:
+                type: string
+          nullable: true
+        structured_snippet:
+          type: object
+          additionalProperties: false
+          properties:
+            category:
+              type: string
+            values:
+              type: array
+              items:
+                type: string
+          nullable: true
+        ad_schedule:
+          type: object
+          additionalProperties: false
+          nullable: true
+        deployment:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+            status:
+              type: string
+          nullable: true
+      required:
+      - root_path
+      - langgraph_path
+      - jwt
+servers:
+- url: https://{defaultHost}
+  variables:
+    defaultHost:
+      default: www.example.com
