@@ -33,26 +33,6 @@ type RoutingState = {
     jwt: string;
     threadId: string | null;
 }
-// type InertiaData = {
-//     rootPath: string;
-//     langgraphPath: string;
-//     jwt: string;
-//     threadId: string | null;
-//     project: BrainstormInertiaProps['project'];
-//     brainstorm: UpdateBrainstormInertiaProps['brainstorm'] | null;
-//     workflow: UpdateBrainstormInertiaProps['workflow'] | null;
-// };
-
-// type GraphData = {
-//     projectUUID: BrainstormGraphState['projectUUID'] | null;
-//     currentTopic: BrainstormGraphState['currentTopic'];
-//     remainingTopics: BrainstormGraphState['remainingTopics'];
-//     skippedTopics: BrainstormGraphState['skippedTopics'];
-//     memories: BrainstormGraphState['memories'] | null;
-//     availableCommands: BrainstormGraphState['availableCommands'];
-//     command: BrainstormGraphState['command'];
-//     placeholderText: BrainstormGraphState['placeholderText'];
-// };
 
 type UIState = {
     redirect: Brainstorm.RedirectType | null;
@@ -74,6 +54,7 @@ interface BrainstormActions {
     setMessages: (messages: MessageWithBlocks<BrainstormLanggraphData>[]) => void;
     setStatus: (status: ChatStatus) => void;
     setIsLoadingHistory: (loading: boolean) => void;
+    setThreadId: (threadId: string | null) => void;
     setRedirect: (redirect: Brainstorm.RedirectType | null) => void;
     clearRedirect: () => void;
     reset: () => void;
@@ -152,11 +133,23 @@ export const useBrainstormStore = create<BrainstormStore>()(
                 if (graphState.skippedTopics !== undefined) {
                     state.brainstorm.skippedTopics = graphState.skippedTopics;
                 }
-                if (graphState.memories !== undefined) {
-                    state.brainstorm.brainstorm ||= {}
-                    Object.entries(graphState.memories).forEach(([key, value]) => {
-                        state.brainstorm.brainstorm[key] = value;
-                    })
+                if (graphState.memories !== undefined && graphState.memories !== null) {
+                    state.brainstorm.brainstorm ||= {};
+                    const brainstorm = state.brainstorm.brainstorm;
+                    const memories = graphState.memories;
+                    
+                    if (memories.idea !== undefined) {
+                        brainstorm.idea = memories.idea;
+                    }
+                    if (memories.audience !== undefined) {
+                        brainstorm.audience = memories.audience;
+                    }
+                    if (memories.solution !== undefined) {
+                        brainstorm.solution = memories.solution;
+                    }
+                    if (memories.socialProof !== undefined) {
+                        brainstorm.social_proof = memories.socialProof;
+                    }
                 }
                 if (graphState.availableCommands !== undefined) {
                     state.brainstorm.availableCommands = graphState.availableCommands;
@@ -188,6 +181,12 @@ export const useBrainstormStore = create<BrainstormStore>()(
         setIsLoadingHistory: (loading) => {
             set((state) => {
                 state.ui.isLoadingHistory = loading;
+            });
+        },
+
+        setThreadId: (threadId) => {
+            set((state) => {
+                state.routing.threadId = threadId;
             });
         },
 

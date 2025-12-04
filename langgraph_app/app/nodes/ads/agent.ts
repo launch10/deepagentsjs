@@ -45,7 +45,6 @@ const dynamicPromptMiddleware = createMiddleware({
     },
 });
 
-
 export const adsAgent = NodeMiddleware.use({}, async (
     state: AdsGraphState,
     config?: LangGraphRunnableConfig

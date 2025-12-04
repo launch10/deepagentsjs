@@ -17,6 +17,7 @@ export function useBrainstormSync() {
     const setMessages = useBrainstormStore((s) => s.setMessages);
     const setStatus = useBrainstormStore((s) => s.setStatus);
     const setIsLoadingHistory = useBrainstormStore((s) => s.setIsLoadingHistory);
+    const setThreadId = useBrainstormStore((s) => s.setThreadId);
 
     const url = langgraphPath 
         ? new URL('api/brainstorm/stream', langgraphPath).toString() 
@@ -56,6 +57,13 @@ export function useBrainstormSync() {
     useEffect(() => {
         setIsLoadingHistory(isLoadingHistory);
     }, [isLoadingHistory, setIsLoadingHistory]);
+
+    useEffect(() => {
+        if (threadId && threadId !== initialThreadId) {
+            console.log(`setting thread id to ${threadId}`);
+            setThreadId(threadId);
+        }
+    }, [threadId, initialThreadId, setThreadId]);
 
     return {
         sendMessage,

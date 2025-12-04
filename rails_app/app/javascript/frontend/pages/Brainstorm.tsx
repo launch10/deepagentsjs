@@ -11,25 +11,22 @@ import {
 
 function BrainstormContent() {
     const messages = useBrainstormStore(selectMessages);
+    const threadId = useBrainstormStore(selectThreadId);
     const status = useBrainstormStore(selectStatus);
     const state = useBrainstormStore(selectBrainstorm);
-    const threadId = useBrainstormStore(selectThreadId);
+    const project = state.project;
     const isLoadingHistory = useBrainstormStore((s) => s.ui.isLoadingHistory);
 
-    const { sendMessage, updateState, threadId: currentThreadId } = useBrainstormSync();
-    const urlThreadId = useRef(threadId);
+    const { sendMessage, updateState } = useBrainstormSync();
 
     useEffect(() => {
-        if (urlThreadId.current === currentThreadId) return;
-
-        if (currentThreadId && typeof window !== 'undefined') {
+        if (threadId && threadId !== null && typeof window !== 'undefined') {
             const url = new URL(window.location.href);
-            url.pathname = `/projects/${currentThreadId}/brainstorm`;
+            url.pathname = `/projects/${threadId}/brainstorm`;
             url.search = '';
             window.history.pushState({}, '', url.toString());
-            urlThreadId.current = currentThreadId;
         }
-    }, [currentThreadId]);
+    }, [threadId]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 

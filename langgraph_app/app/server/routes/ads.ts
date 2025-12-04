@@ -3,7 +3,6 @@ import { authMiddleware, type AuthContext } from '../middleware/auth';
 import { adsGraph } from '@graphs';
 import { graphParams } from "@core";
 import { AdsBridge } from '@annotation';
-import { Ads } from '@types';
 
 type Variables = {
   auth: AuthContext;

@@ -22,7 +22,7 @@ export function BrainstormHydrator({ children }: BrainstormHydratorProps) {
     const clearRedirect = useBrainstormStore((s) => s.clearRedirect);
     const redirect = useBrainstormStore(selectRedirect);
     const isHydrated = useBrainstormStore(selectIsHydrated);
-    const project = useBrainstormStore((s) => s.inertia.project);
+    const project = useBrainstormStore((s) => s.brainstorm.project);
     
     const hasHydratedRef = useRef(false);
 

@@ -38,20 +38,7 @@ export class NameProjectService {
             throw new Error('User request is required');
         }
         
-        const rawResponse = await this.generateRawProjectName(userRequest, "writing", "blazing", config);
-        const validatedName = this.validateProjectName(rawResponse.projectName);
-        const uniqueName = await this.ensureUniqueness(validatedName);
-        
-        return uniqueName;
-    }
-
-    async generateRawProjectName(
-        userRequest: string, 
-        llmSkill: LLMSkill | undefined = "writing", 
-        llmSpeed: LLMSpeed | undefined = "blazing",
-        config?: LangGraphRunnableConfig
-    ): Promise<{ projectName: string }> {
-        const llm = getLLM(llmSkill, llmSpeed);
+        const llm = getLLM("writing", "blazing");
         const schemaPrompt = await structuredOutputPrompt({ schema: projectNameOutputSchema });
         const prompt = await basePrompt.format({ userRequest, schema: schemaPrompt });
 
@@ -59,14 +46,6 @@ export class NameProjectService {
             llm,
             prompt,
             schema: projectNameOutputSchema
-        })
-    }
-
-    validateProjectName(rawName: string): string {
-        return rawName.replace(/^\d+/, '');
-    }
-
-    async ensureUniqueness(validatedName: string): Promise<string> {
-        return validatedName;
+        }).then((response) => response.projectName);
     }
 }
