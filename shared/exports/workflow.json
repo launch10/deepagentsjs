@@ -1,31 +1,80 @@
 {
   "launch": {
-    "steps": {
-      "brainstorm": {
-        "order": 1
+    "steps": [
+      {
+        "name": "brainstorm",
+        "label": "Brainstorm"
       },
-      "website": {
-        "order": 2
+      {
+        "name": "website",
+        "label": "Website"
       },
-      "ad_campaign": {
-        "order": 3,
-        "substeps": [
-          "content",
-          "highlights",
-          "keywords",
-          "settings",
-          "launch",
-          "review"
+      {
+        "name": "ad_campaign",
+        "label": "Ad Campaign",
+        "steps": [
+          {
+            "name": "create",
+            "label": "Create",
+            "steps": [
+              {
+                "name": "content",
+                "label": "Content"
+              },
+              {
+                "name": "highlights",
+                "label": "Highlights"
+              }
+            ]
+          },
+          {
+            "name": "plan",
+            "label": "Plan",
+            "steps": [
+              {
+                "name": "keywords",
+                "label": "Keywords"
+              },
+              {
+                "name": "settings",
+                "label": "Settings"
+              }
+            ]
+          },
+          {
+            "name": "launch",
+            "label": "Launch",
+            "steps": [
+              {
+                "name": "launch",
+                "label": "Launch"
+              },
+              {
+                "name": "review",
+                "label": "Review"
+              }
+            ]
+          }
         ]
       },
-      "launch": {
-        "order": 4,
-        "substeps": [
-          "settings",
-          "review",
-          "deployment"
+      {
+        "name": "launch",
+        "label": "Launch",
+        "steps": [
+          {
+            "name": "settings",
+            "label": "Settings"
+          },
+          {
+            "name": "review",
+            "label": "Review"
+          },
+          {
+            "name": "deployment",
+            "label": "Deployment"
+          }
         ]
       }
-    }
+    ]
   }
 }

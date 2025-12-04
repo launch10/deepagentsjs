@@ -35,7 +35,7 @@ class WorkflowConfig
     end
 
     def step_exists?(workflow_type, step)
-      definition(workflow_type).steps.key?(step)
+      definition(workflow_type).step_names.include?(step)
     end
 
     def substep_exists?(workflow_type, step, substep)
@@ -43,7 +43,7 @@ class WorkflowConfig
     end
 
     def first_step(workflow_type)
-      definition(workflow_type).steps.keys.first.to_s
+      definition(workflow_type).step_names.first.to_s
     end
 
     def first_substep(workflow_type, step = nil)
@@ -61,7 +61,7 @@ class WorkflowConfig
     end
 
     def steps_for(workflow_type)
-      definition(workflow_type).steps.keys.map(&:to_s)
+      definition(workflow_type).step_names
     end
 
     def next_step(workflow_type, current_step)
@@ -112,16 +112,35 @@ class WorkflowConfig
       @config["steps"]
     end
 
-    def next_step(workflow_type, current_step)
-      steps.index(current_step) + 1
+    def step_names
+      @step_names ||= steps.map { |s| s["name"] }
+    end
+
+    def find_step(name)
+      steps.find { |s| s["name"] == name }
     end
 
     def step_order(step_name)
-      steps.dig(step_name, "order")
+      step_names.index(step_name)&.+(1)
     end
 
     def substeps_for(step_name)
-      steps.dig(step_name, "substeps") || []
+      step = find_step(step_name)
+      return [] unless step && step["steps"]
+
+      flatten_steps(step["steps"])
+    end
+
+    private
+
+    def flatten_steps(steps_array)
+      steps_array.flat_map do |step|
+        if step["steps"]
+          flatten_steps(step["steps"])
+        else
+          step["name"]
+        end
+      end
     end
   end
 end
