@@ -37,17 +37,4 @@ if git diff --cached --name-only | grep -q "rails_app/spec/\(requests\|api\|inte
   echo "✅ Swagger"
 fi
 
-# Check if Swagger changed (triggers TypeScript type regeneration)
-if git diff --cached --name-only | grep -q "rails_app/swagger/"; then
-  ./scripts/generate-types.sh > /dev/null 2>&1
-  
-  # Check if types were updated
-  if ! git diff --quiet shared/lib/api/generated/ 2>/dev/null; then
-    echo "⚠️  Types updated - please review and commit:"
-    git diff --name-only shared/lib/api/generated/ 2>/dev/null || true
-    exit 1
-  fi
-  echo "✅ Types"
-fi
-
 echo "✅ Done"

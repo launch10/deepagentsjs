@@ -37,6 +37,10 @@ class ProjectWorkflow < ApplicationRecord
   scope :archived, -> { where(status: "archived") }
   scope :launch, -> { where(workflow_type: "launch") }
 
+  def chat
+    project.chats.find_by(chat_type: step)
+  end
+
   def next_step!
     next_step, next_substep = self.next_step
     unless next_step
@@ -88,6 +92,12 @@ class ProjectWorkflow < ApplicationRecord
       progress: calculate_progress,
       available_steps: WorkflowConfig.steps_for(workflow_type)
     }
+  end
+
+  class << self
+    def steps_for(workflow_type)
+      WorkflowConfig.steps_for(workflow_type.to_s)
+    end
   end
 
   private

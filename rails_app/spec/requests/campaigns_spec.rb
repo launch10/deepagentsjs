@@ -46,7 +46,8 @@ RSpec.describe "Campaigns API", type: :request do
             campaign: {
               name: "Test Campaign",
               project_id: project1.id,
-              website_id: website1.id
+              website_id: website1.id,
+              thread_id: "campaign_thread_123"
             }
           }
         end
@@ -62,7 +63,7 @@ RSpec.describe "Campaigns API", type: :request do
           expect(campaign.stage).to eq("content")
           expect(campaign.ad_groups.count).to eq(1)
           expect(campaign.ad_groups.first.ads.count).to eq(1)
-          expect(data.dig("thread_id")).to eq(campaign.chat.thread_id)
+          expect(data.dig("thread_id")).to eq("campaign_thread_123")
         end
       end
 
@@ -76,7 +77,8 @@ RSpec.describe "Campaigns API", type: :request do
             campaign: {
               name: "Test Campaign",
               project_id: project1.id,
-              website_id: website1.id
+              website_id: website1.id,
+              thread_id: "campaign_thread_123"
             }
           }
         end
@@ -85,7 +87,8 @@ RSpec.describe "Campaigns API", type: :request do
           result = Campaign.create_campaign!(user1_account, {
             name: "Test Campaign",
             project_id: project1.id,
-            website_id: website1.id
+            website_id: website1.id,
+            thread_id: "existing_campaign_thread"
           })
           result[:campaign]
         end
@@ -115,7 +118,28 @@ RSpec.describe "Campaigns API", type: :request do
         run_test!
       end
 
-      response '422', 'invalid request - missing website_id' do
+      response '201', 'campaign created without website_id (falls back to project website)' do
+        schema APISchemas::Campaign.response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:campaign_params) do
+          {
+            campaign: {
+              name: "Test Campaign",
+              project_id: project1.id,
+              thread_id: "campaign_thread_123"
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["website_id"]).to eq(website1.id)
+        end
+      end
+
+      response '422', 'invalid request - missing thread_id' do
         schema APISchemas::Campaign.error_response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
@@ -124,14 +148,15 @@ RSpec.describe "Campaigns API", type: :request do
           {
             campaign: {
               name: "Test Campaign",
-              project_id: project1.id
+              project_id: project1.id,
+              website_id: website1.id
             }
           }
         end
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data["errors"]).to be_present
+          expect(data["errors"]).to include("Missing thread_id")
         end
       end
     end

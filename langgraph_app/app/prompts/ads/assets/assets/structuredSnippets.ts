@@ -5,7 +5,7 @@ import { userPreferencesPrompt } from "../userPreferences";
 export const StructuredSnippetss: Partial<Ads.AssetPromptMap> = {
     "structuredSnippets": {
         prompt: async (state: AdsGraphState, _config?: any) => {
-            const snippetCategory = state?.structuredSnippets?.category?.text
+            const snippetCategory = state?.structuredSnippets?.category
             const userPrefs = await userPreferencesPrompt(state, "structuredSnippets");
             const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structuredSnippets;
 

@@ -1,7 +1,7 @@
 import { Brainstorm, type UUIDType, type PrimaryKeyType } from "../types";
 import { type CoreGraphState } from "../types/graph";
-import { type LanggraphData, type LanggraphUIMessage } from "langgraph-ai-sdk-types";
 import type { Simplify } from "type-fest";
+import { type BridgeType } from "langgraph-ai-sdk-types";
 
 export type BrainstormGraphState = Simplify<CoreGraphState & {
     brainstormId: PrimaryKeyType | undefined;
@@ -16,10 +16,7 @@ export type BrainstormGraphState = Simplify<CoreGraphState & {
     redirect: Brainstorm.RedirectType | undefined;
 }>
 
-export type BrainstormLanggraphData = LanggraphData<
+export type BrainstormBridgeType = BridgeType<
     BrainstormGraphState,
     typeof Brainstorm.structuredMessageSchemas
 >
-
-// Clean, flattened message type for consumer use
-export type BrainstormMessage = Simplify<LanggraphUIMessage<BrainstormLanggraphData>>;

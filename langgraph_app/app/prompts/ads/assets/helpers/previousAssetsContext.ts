@@ -20,10 +20,10 @@ export const previousAssetsContext = (state: AdsGraphState): string[] => {
         const lockedDetails = details?.filter(d => d.locked) || [];
         const rejectedDetails = details?.filter(d => d.rejected) || [];
         
-        if (category?.locked || lockedDetails.length || rejectedDetails.length) {
+        if (category || lockedDetails.length || rejectedDetails.length) {
             const snippetLines: string[] = [];
-            if (category?.locked) {
-                snippetLines.push(`  Approved Snippet Category: "${category.text}"`);
+            if (category) {
+                snippetLines.push(`  Snippet Category: "${category}"`);
             }
             if (lockedDetails.length) {
                 snippetLines.push(`  Approved Snippet Details:`);

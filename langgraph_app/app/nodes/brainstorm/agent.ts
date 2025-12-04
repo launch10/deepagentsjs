@@ -12,6 +12,7 @@ import z from "zod";
 import { BrainstormNextStepsService } from "@services";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { lastAIMessage } from "@types";
+import { BrainstormBridge } from "@annotation";
 
 const dynamicPromptMiddleware = createMiddleware({
     name: "DynamicPromptMiddleware",
@@ -32,12 +33,10 @@ const dynamicPromptMiddleware = createMiddleware({
         const systemPrompt = await chooseBrainstormPrompt(state, request.runtime);
 
         // Return modified request
-        const result = await handler({
+        return await handler({
             ...request,
             systemPrompt,
         });
-
-        return await toStructuredMessage(result as any) as any;
     },
 })
 
@@ -63,17 +62,16 @@ export const brainstormAgent = NodeMiddleware.use({}, async (
     });
     const result = await agent.invoke(state as any, config) as BrainstormGraphState;
     const lastMessage = lastAIMessage(result);
-    const structuredMessage = await toStructuredMessage(lastMessage as any);
-
     if (!lastMessage) {
         throw new Error("Agent did not return an AI message");
     }
 
+    const [message, updates] = await BrainstormBridge.toStructuredMessage(lastMessage);
     const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } = await new BrainstormNextStepsService(state).nextSteps();
 
     let messages = state.messages || [];
-    if (structuredMessage) {
-        messages = [...(messages as any[]), structuredMessage];
+    if (message) {
+        messages = [...(messages as any[]), message];
     }
 
     return {

@@ -2,9 +2,8 @@ import { Hono } from 'hono';
 import { authMiddleware, type AuthContext } from '../middleware/auth';
 import { brainstormGraph } from '@graphs';
 import { graphParams } from "@core";
-import { streamLanggraph, fetchLanggraphHistory } from 'langgraph-ai-sdk';
 import { Brainstorm } from '@types';
-import { type BrainstormLanggraphData } from '@state';
+import { BrainstormBridge } from '@annotation';
 
 type Variables = {
   auth: AuthContext;
@@ -13,6 +12,7 @@ type Variables = {
 export const brainstormRoutes = new Hono<{ Variables: Variables }>();
 
 const graph = brainstormGraph.compile({ ...graphParams, name: 'brainstorm'});
+const BrainstormAPI = BrainstormBridge.bind(graph);
 
 brainstormRoutes.post('/stream', authMiddleware, async (c) => {
   // TODO: Ensure user has access to threadId in auth middleware
@@ -26,10 +26,8 @@ brainstormRoutes.post('/stream', authMiddleware, async (c) => {
   }
   let stateObj = state || {};
 
-  return await streamLanggraph<BrainstormLanggraphData>({ 
-    graph: graph as any,
-    messageSchema: Brainstorm.structuredMessageSchemas,
-    messages,
+  return BrainstormAPI.stream({ 
+    messages: messages || [],
     threadId,
     state: {
       threadId,
@@ -47,11 +45,7 @@ brainstormRoutes.get('/stream', authMiddleware, async (c) => {
     return c.json({ error: 'Missing threadId' }, 400);
   }
 
-  return await fetchLanggraphHistory<BrainstormLanggraphData>({
-    graph: graph as any,
-    messageSchema: Brainstorm.structuredMessageSchemas,
-    threadId,
-  });
+  return BrainstormAPI.loadHistory(threadId);
 });
 
 brainstormRoutes.get('/health', (c) => {

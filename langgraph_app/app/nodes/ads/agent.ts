@@ -14,6 +14,7 @@ import z from "zod";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { lastAIMessage, Ads } from "@types";
 import { getTools, getStructuredData } from "./helpers/index";
+import { AdsBridge } from "@annotation";
 
 const dynamicPromptMiddleware = createMiddleware({
     name: "DynamicPromptMiddleware",
@@ -37,20 +38,18 @@ const dynamicPromptMiddleware = createMiddleware({
 
         const systemPrompt = await chooseAdsPrompt(state, request.runtime);
 
-        const result = await handler({
+        return await handler({
             ...request,
             systemPrompt,
         });
-        return await toStructuredMessage(result) as AIMessage;
     },
 });
-
 
 export const adsAgent = NodeMiddleware.use({}, async (
     state: AdsGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<AdsGraphState>> => {
-    const llm = getLLM()
+    const llm = getLLM().withConfig({ tags: ['notify'] });
     const tools = getTools(state)
 
     const agent = await createAgent({
@@ -69,11 +68,11 @@ export const adsAgent = NodeMiddleware.use({}, async (
     if (!lastMessage) {
         throw new Error("Agent did not return an AI message");
     }
-
-    const structuredData = getStructuredData(state, lastMessage);
+    const [message, updates] = await AdsBridge.toStructuredMessage(lastMessage);
+    const mergedAssets = getStructuredData(state, updates as Partial<Ads.Assets>);
 
     return {
-        ...structuredData,
-        messages: filterPseudoMessages(result.messages),
+        ...mergedAssets,
+        messages: filterPseudoMessages(result.messages.slice(0, -1).concat([message])),
     };
 });

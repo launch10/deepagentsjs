@@ -22,10 +22,13 @@ module CampaignConcerns
             }
           end
 
+          website_id = campaign_params.key?(:website_id) ? campaign_params[:website_id] : Website.find_by(project_id: campaign_params[:project_id])&.id
+          thread_id = campaign_params[:thread_id] || SecureRandom.uuid
+
           campaign = account.campaigns.create!(
             name: campaign_params[:name],
             project_id: campaign_params[:project_id],
-            website_id: campaign_params[:website_id]
+            website_id: website_id
           )
 
           ad_group = campaign.ad_groups.create!(
@@ -37,11 +40,10 @@ module CampaignConcerns
           campaign.launch_workflow.update!(step: "ad_campaign", substep: "content")
 
           # Create chat for this campaign
-          thread_id = UUID7.generate
           unless campaign.chat.present?
             chat = campaign.build_chat(
               name: "Ad Campaign Chat",
-              chat_type: "ads",
+              chat_type: "ad_campaign", # Comes from WorkflowConfig
               contextable: campaign,
               thread_id: thread_id,
               project: campaign.project,

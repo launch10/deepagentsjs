@@ -1,11 +1,12 @@
 import { Ads, Brainstorm, type UUIDType, type PrimaryKeyType } from "../types";
 import { type CoreGraphState } from "../types/graph";
-import { type LanggraphData, type LanggraphUIMessage } from "langgraph-ai-sdk-types";
+import { type BridgeType } from "langgraph-ai-sdk-types";
 import type { Simplify } from "type-fest";
 
 export type AdsGraphState = Simplify<CoreGraphState & {
     projectUUID: UUIDType;
     websiteId: PrimaryKeyType;
+    campaignId: PrimaryKeyType | undefined;
     brainstorm: Brainstorm.MemoriesType | undefined;
     stage: Ads.StageName | undefined;
     refresh: Ads.RefreshContext | undefined;
@@ -15,12 +16,10 @@ export type AdsGraphState = Simplify<CoreGraphState & {
     structuredSnippets: Ads.StructuredSnippets | undefined;
     keywords: Ads.Keyword[] | undefined;
     redirect: Ads.RedirectType | undefined;
+    hasStartedStep: Ads.HasStartedStep | undefined;
 }>
 
-export type AdsLanggraphData = LanggraphData<
+export type AdsBridgeType = BridgeType<
     AdsGraphState,
-    typeof Ads.structuredMessageSchemas
+    typeof Ads.jsonSchema
 >
-
-// Clean, flattened message type for consumer use
-export type AdsMessage = Simplify<LanggraphUIMessage<AdsLanggraphData>>;

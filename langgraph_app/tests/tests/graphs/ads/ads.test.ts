@@ -5,8 +5,9 @@ import { adsGraph as uncompiledGraph } from '@graphs';
 import { graphParams } from '@core';
 import { DatabaseSnapshotter } from '@services';
 import { db, projects as projectsTable } from '@db';
-import { type UUIDType, Ads } from '@types';
+import { type UUIDType, Ads, type ThreadIDType } from '@types';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
+import { v7 as uuid } from 'uuid';
 
 const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" }); 
 
@@ -17,18 +18,12 @@ const getTextData = (message: AIMessage): string => {
         .join('\n') || '';
 }
 
-const getStateData = (message: AIMessage) => {
-    return (message?.response_metadata?.parsed_blocks as any[] || [])
-        .filter((block: any) => block.type === 'structured')
-        .map((block: any) => block.parsed)
-        .at(-1) || {};
-}
-
 describe.sequential('Ads Flow', () => {
     let projectUUID: UUIDType;
+    let threadId = uuid() as ThreadIDType;
 
     beforeEach(async () => {
-        await DatabaseSnapshotter.restoreSnapshot("campaign_created");
+        await DatabaseSnapshotter.restoreSnapshot("website_deployed");
         projectUUID = await db.select().from(projectsTable).limit(1).execute().then((res) => {
             if (!res[0]) {
                 throw new Error("No projects found");
@@ -38,12 +33,62 @@ describe.sequential('Ads Flow', () => {
     }, 30000)
 
     describe("Chat flow", () => {
+        describe("Campaign creation", () => {
+            it("creates campaign", async () => {
+                const result = await testGraph<AdsGraphState>()
+                    .withGraph(adsGraph)
+                    .withState({
+                        projectUUID,
+                        threadId,
+                        stage: "content"
+                    })
+                    .execute();
+
+                expect(result.state.campaignId).toBeDefined();
+            });
+        });
+
+        describe("When step already started, and not refresh: true", () => {
+            it("exits early", async () => {
+                const result = await testGraph<AdsGraphState>()
+                    .withGraph(adsGraph)
+                    .withState({
+                        projectUUID,
+                        threadId,
+                        stage: "content"
+                    })
+                    .execute();
+
+                if (!result.state.headlines || !result.state.descriptions) {
+                    throw new Error("Headlines or descriptions not found");
+                }
+
+                expect(result.state.headlines.length).toEqual(6);
+                expect(result.state.descriptions.length).toEqual(4);
+                expect(result.state.hasStartedStep?.content).toEqual(true);
+
+                const invalidRefresh = await testGraph<AdsGraphState>()
+                    .withGraph(adsGraph)
+                    .withState({
+                        ...result.state,
+                        threadId,
+                    })
+                    .execute();
+                const updatedHeadlines = invalidRefresh.state.headlines;
+                const updatedDescriptions = invalidRefresh.state.descriptions;
+
+                expect(updatedHeadlines).toEqual(result.state.headlines);
+                expect(updatedDescriptions).toEqual(result.state.descriptions);
+            });
+        });
+
         describe("Content Stage", () => {
             it("automatically populates headlines and descriptions", async () => {
                 const result = await testGraph<AdsGraphState>()
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "content"
                     })
                     .execute();
@@ -52,21 +97,20 @@ describe.sequential('Ads Flow', () => {
                 expect(result.state.descriptions?.length).toEqual(4);
                 
                 const lastMessage = result.state.messages?.at(-1) as AIMessage;
-                const stateData = getStateData(lastMessage);
                 const message = getTextData(lastMessage);
 
-                expect(stateData).toBeDefined();
+                expect(result.state.headlines).toBeDefined();
                 expect(message).toMatch(/start building|drafted a few headlines/);
                 expect(message).not.toContain("```json");
 
-                const headlines = stateData.headlines || [];
-                const headlineContent = headlines.join('\n');
+                const headlines = result.state.headlines || [];
+                const headlineContent = headlines.map((h) => h.text).join('\n');
 
                 // Headlines relate to the campaign copy
                 expect(headlineContent).toMatch(/scheduling|schedule/i);
 
-                const descriptions = stateData.descriptions || [];
-                const descriptionContent = descriptions.join('\n');
+                const descriptions = result.state.descriptions || [];
+                const descriptionContent = descriptions.map((d) => d.text).join('\n');
 
                 // Descriptions also relate to the campaign copy
                 expect(descriptionContent).toMatch(/schedule|scheduling|meeting times/i);
@@ -77,6 +121,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "content"
                     })
                     .execute();
@@ -103,6 +148,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "content",
                         refresh: {
                             asset: "headlines",
@@ -135,6 +181,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "content",
                     })
                     .execute();
@@ -172,6 +219,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "highlights"
                     })
                     .execute();
@@ -182,20 +230,18 @@ describe.sequential('Ads Flow', () => {
                 expect(result.state.structuredSnippets?.details?.length).toBeGreaterThanOrEqual(3);
                 
                 const lastMessage = result.state.messages?.at(-1) as AIMessage;
-                const stateData = getStateData(lastMessage);
                 const message = getTextData(lastMessage);
 
-                expect(stateData).toBeDefined();
                 expect(message).toMatch(/unique features|spell out|real estate/i);
                 expect(message).not.toContain("```json");
 
-                const callouts = stateData.callouts || [];
+                const callouts = result.state.callouts || [];
                 expect(callouts.length).toEqual(Ads.DefaultNumAssets.callouts);
 
-                const structuredSnippets = stateData.structuredSnippets;
+                const structuredSnippets = result.state.structuredSnippets;
                 expect(structuredSnippets).toBeDefined();
-                expect(structuredSnippets.category).toBeDefined();
-                expect(structuredSnippets.details?.length).toEqual(Ads.DefaultNumAssets.structuredSnippets);
+                expect(structuredSnippets?.category).toBeDefined();
+                expect(structuredSnippets?.details?.length).toEqual(Ads.DefaultNumAssets.structuredSnippets);
             });
 
             it("refreshes only callouts, when using refresh context", async () => {
@@ -203,6 +249,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "highlights"
                     })
                     .execute();
@@ -227,6 +274,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         ...result.state,
+                        threadId,
                         refresh: {
                             asset: "callouts",
                             nVariants: 3
@@ -275,6 +323,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "highlights"
                     })
                     .execute();
@@ -293,6 +342,7 @@ describe.sequential('Ads Flow', () => {
                 const refreshedResult = await testGraph<AdsGraphState>()
                     .withGraph(adsGraph)
                     .withState({
+                        ...result.state,
                         projectUUID,
                         stage: "highlights",
                         refresh: {
@@ -334,6 +384,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "keywords"
                     })
                     .execute();
@@ -359,6 +410,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "keywords"
                     })
                     .execute();
@@ -380,7 +432,7 @@ describe.sequential('Ads Flow', () => {
                 const refreshedResult = await testGraph<AdsGraphState>()
                     .withGraph(adsGraph)
                     .withState({
-                        projectUUID,
+                        ...result.state,
                         stage: "keywords",
                         refresh: {
                             asset: "keywords",
@@ -415,6 +467,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "settings",
                         messages: [new HumanMessage(`What happens after this?`)]
                     })
@@ -431,6 +484,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "keywords",
                     })
                     .execute();
@@ -463,6 +517,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "launch",
                         messages: [new HumanMessage(`How long until my ads go live?`)]
                     })
@@ -479,6 +534,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "keywords",
                     })
                     .execute();
@@ -511,6 +567,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "review",
                         messages: [new HumanMessage(`Can I change my ads after they're live?`)]
                     })
@@ -527,6 +584,7 @@ describe.sequential('Ads Flow', () => {
                     .withGraph(adsGraph)
                     .withState({
                         projectUUID,
+                        threadId,
                         stage: "keywords",
                     })
                     .execute();
@@ -561,6 +619,7 @@ describe.sequential('Ads Flow', () => {
                 .withGraph(adsGraph)
                 .withState({
                     projectUUID,
+                    threadId,
                     stage: "content"
                 })
                 .execute();
@@ -738,6 +797,7 @@ describe.sequential('Ads Flow', () => {
                 .withGraph(adsGraph)
                 .withState({
                     projectUUID,
+                    threadId,
                     stage: "content",
                     messages: [new HumanMessage("How will Headlines and Details pair together?")]
                 })
@@ -745,11 +805,10 @@ describe.sequential('Ads Flow', () => {
 
             const lastMessage = result.state.messages?.at(-1) as AIMessage;
             const message = getTextData(lastMessage);
-            const stateData = getStateData(lastMessage);
 
             expect(message).toMatch(/google|automatically|combin/i);
-            expect(stateData.headlines).toBeUndefined();
-            expect(stateData.descriptions).toBeUndefined();
+            expect(result.state.headlines).toBeUndefined();
+            expect(result.state.descriptions).toBeUndefined();
         });
 
         it("answers question about what descriptions are without generating content", async () => {
@@ -757,6 +816,7 @@ describe.sequential('Ads Flow', () => {
                 .withGraph(adsGraph)
                 .withState({
                     projectUUID,
+                    threadId,
                     stage: "content",
                     messages: [new HumanMessage("What are descriptions?")]
                 })
@@ -768,12 +828,11 @@ describe.sequential('Ads Flow', () => {
 
             const lastMessage = result.state.messages?.at(-1) as AIMessage;
             const message = getTextData(lastMessage);
-            const stateData = getStateData(lastMessage);
 
             expect(message).toMatch(/90 characters/) // It pulls in context from FAQ 
             expect(message).toMatch(/description|text|headline|ad/i);
-            expect(stateData.headlines).toBeUndefined();
-            expect(stateData.descriptions).toBeUndefined();
+            expect(result.state.headlines).toBeUndefined();
+            expect(result.state.descriptions).toBeUndefined();
         });
 
         it("answers question about seeing preferred headlines in preview without generating content", async () => {
@@ -781,6 +840,7 @@ describe.sequential('Ads Flow', () => {
                 .withGraph(adsGraph)
                 .withState({
                     projectUUID,
+                    threadId,
                     stage: "content",
                     messages: [new HumanMessage("Can I see my preferred headlines in the preview?")]
                 })
@@ -788,11 +848,10 @@ describe.sequential('Ads Flow', () => {
 
             const lastMessage = result.state.messages?.at(-1) as AIMessage;
             const message = getTextData(lastMessage);
-            const stateData = getStateData(lastMessage);
 
             expect(message.length).toBeGreaterThan(20);
-            expect(stateData.headlines).toBeUndefined();
-            expect(stateData.descriptions).toBeUndefined();
+            expect(result.state.headlines).toBeUndefined();
+            expect(result.state.descriptions).toBeUndefined();
         });
     });
 });

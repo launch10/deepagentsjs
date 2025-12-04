@@ -109,9 +109,10 @@ module APISchemas
             properties: {
               name: {type: :string, description: 'Campaign name'},
               project_id: {type: :integer, description: 'Project ID'},
-              website_id: {type: :integer, description: 'Website ID'}
+              website_id: {type: :integer, description: 'Website ID'},
+              thread_id: {type: :string, description: 'Thread ID'}
             },
-            required: %w[project_id website_id]
+            required: %w[project_id thread_id]
           }
         },
         required: ['campaign']

@@ -1,62 +1,32 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { type PageProps } from '@inertiajs/core';
-import { usePage } from '@inertiajs/react';
-import { useLanggraph } from 'langgraph-ai-sdk-react';
-import { Wrapper, ChatInput, Message, BrainstormProvider } from '@components/brainstorm';
-import { type BrainstormLanggraphData } from '@shared';
+import { useEffect, useRef, useState } from 'react';
+import { Wrapper, ChatInput, Message, BrainstormProvider, BrainstormHydrator } from '@components/brainstorm';
+import { useBrainstormChat } from '../hooks/useBrainstormChat';
+import { 
+    useBrainstormStore, 
+    selectMessages, 
+    selectStatus, 
+    selectBrainstorm,
+    selectThreadId,
+} from '../stores/brainstormStore';
 
-type BrainstormProps = {
-    thread_id: string;
-    root_path: string;
-    langgraph_path: string;
-    jwt: string;
-} & PageProps;
+function BrainstormContent() {
+    const messages = useBrainstormStore(selectMessages);
+    const threadId = useBrainstormStore(selectThreadId);
+    const status = useBrainstormStore(selectStatus);
+    const state = useBrainstormStore(selectBrainstorm);
+    const project = state.project;
+    const isLoadingHistory = useBrainstormStore((s) => s.ui.isLoadingHistory);
 
-export function getUrlThreadId() {
-    const path = window.location.href;
-    const match = path.match(/brainstorms\/(.*)/)
-    if (match && match[1]) {
-        return match[1];
-    }
-    return undefined;
-};
-
-export default function Brainstorm(props: BrainstormProps) {
-    const pageProps = usePage<BrainstormProps>();
-    // Access shared props from Inertia
-    let { thread_id, jwt, root_path, langgraph_path } = pageProps.props;
-    const urlThreadId = useRef(getUrlThreadId());
+    const { sendMessage, updateState } = useBrainstormChat();
 
     useEffect(() => {
-        if (!jwt || !root_path || !langgraph_path) {
-            return;
-        }
-        if (typeof jwt !== 'string' || typeof root_path !== 'string' || typeof langgraph_path !== 'string') {
-            throw new Error(`Invalid page props: JWT: ${jwt}, Root Path: ${root_path}, Langgraph Path: ${langgraph_path}`);
-        }
-    }, []); // Only run once on page mount
-
-    const url = (new URL("api/brainstorm/stream", langgraph_path)).toString();
-    const { messages, sendMessage, status, state, threadId, tools, error, events, isLoadingHistory } =
-        useLanggraph<BrainstormLanggraphData>({
-            api: url,
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${jwt}`,
-            },
-            getInitialThreadId: () => urlThreadId.current,
-        });
-
-    useEffect(() => {
-        if (urlThreadId.current === threadId) return;
-
-        if (threadId && typeof window !== 'undefined') {
+        if (threadId && threadId !== null && typeof window !== 'undefined') {
             const url = new URL(window.location.href);
-            url.pathname = `/brainstorms/${threadId}`;
-            url.search = ''; // Clear any existing query params if you want
+            url.pathname = `/projects/${threadId}/brainstorm`;
+            url.search = '';
             window.history.pushState({}, '', url.toString());
         }
-    }, [threadId, urlThreadId]);
+    }, [threadId]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -90,31 +60,37 @@ export default function Brainstorm(props: BrainstormProps) {
     return (
         <BrainstormProvider onExampleClick={handleExampleClick}>
             <Wrapper>
-            <div className="mb-4 p-4 bg-gray-800 rounded">
-                <div className="text-sm text-gray-400 mb-2">State:</div>
-                <pre className="text-xs text-green-400">{JSON.stringify(state, null, 2)}</pre>
-                <div className="text-sm text-gray-400 mb-2">Events:</div>
-                <pre className="text-xs text-green-400">{JSON.stringify(events, null, 2)}</pre>
-            </div>
-            {messages.map((message) => (
-                <Message
-                key={message.id}
-                message={message}
-                status={status}
+                <div className="mb-4 p-4 bg-gray-800 rounded">
+                    <div className="text-sm text-gray-400 mb-2">State:</div>
+                    <pre className="text-xs text-green-400">{JSON.stringify(state, null, 2)}</pre>
+                </div>
+                {messages.map((message) => (
+                    <Message
+                        key={message.id}
+                        message={message}
+                        status={status}
+                    />
+                ))}
+                <div ref={messagesEndRef} />
+                <ChatInput
+                    inputRef={inputRef}
+                    input={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        sendMessage(input);
+                        setInput('');
+                    }}
                 />
-            ))}
-            <div ref={messagesEndRef} />
-            <ChatInput
-                inputRef={inputRef}
-                input={input}
-                onChange={(e) => setInput(e.target.value)}
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    sendMessage(input);
-                    setInput('');
-                }}
-            />
             </Wrapper>
         </BrainstormProvider>
+    );
+}
+
+export default function Brainstorm() {
+    return (
+        <BrainstormHydrator>
+            <BrainstormContent />
+        </BrainstormHydrator>
     );
 }

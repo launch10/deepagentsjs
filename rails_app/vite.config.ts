@@ -22,6 +22,7 @@ export default defineConfig((config) => {
         'throttleit',
         'use-sync-external-store',
       ],
+      exclude: ['langgraph-ai-sdk-react'],
     },
     resolve: {
       conditions: ['browser', 'module', 'import', 'default'],

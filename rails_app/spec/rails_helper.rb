@@ -4,6 +4,7 @@ require_relative '../config/environment'
 
 abort("The Rails environment is running in production mode!") if Rails.env.production?
 require 'rspec/rails'
+require 'inertia_rails/rspec'
 require 'sidekiq/testing'
 require 'database_cleaner/active_record'
 
@@ -32,17 +33,12 @@ RSpec.configure do |config|
   config.include AccountHelpers, type: :request
   config.include APIHelpers
 
-  # Database cleaner configuration
   config.before(:suite) do
-    DatabaseCleaner.clean_with(:truncation, reset_ids: true)
+    DatabaseCleaner.strategy = :truncation
   end
 
   config.before(:each) do
     DatabaseCleaner.strategy = :transaction
-  end
-
-  config.before(:each, js: true) do
-    DatabaseCleaner.strategy = :truncation
   end
 
   config.before(:each) do

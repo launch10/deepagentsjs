@@ -2,9 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware, type AuthContext } from '../middleware/auth';
 import { adsGraph } from '@graphs';
 import { graphParams } from "@core";
-import { streamLanggraph, fetchLanggraphHistory } from 'langgraph-ai-sdk';
-import { Ads } from '@types';
-import { type AdsLanggraphData } from '@state';
+import { AdsBridge } from '@annotation';
 
 type Variables = {
   auth: AuthContext;
@@ -13,6 +11,7 @@ type Variables = {
 export const adsRoutes = new Hono<{ Variables: Variables }>();
 
 const graph = adsGraph.compile({ ...graphParams, name: 'ads'});
+const AdsAPI = AdsBridge.bind(graph);
 
 adsRoutes.post('/stream', authMiddleware, async (c) => {
   const auth = c.get('auth') as AuthContext;
@@ -20,22 +19,25 @@ adsRoutes.post('/stream', authMiddleware, async (c) => {
   
   const { messages, threadId, state } = body;
 
-  if (!messages || !threadId) {
-    return c.json({ error: 'Missing required fields: messages, threadId' }, 400);
+  if (!threadId) {
+    return c.json({ error: 'Missing required field: threadId' }, 400);
   }
   let stateObj = state || {};
 
-  return await streamLanggraph<AdsLanggraphData>({ 
-    graph: graph as any,
-    messageSchema: Ads.structuredMessageSchemas,
-    messages,
-    threadId,
-    state: {
+  try {
+    return AdsAPI.stream({ 
+      messages: messages || [],
       threadId,
-      jwt: auth.jwt,
-      ...stateObj,
-    },
-  });
+      state: {
+        threadId,
+        jwt: auth.jwt,
+        ...stateObj,
+      },
+    });
+  } catch (error) {
+    console.error('AdsAPI.stream error:', error);
+    return c.json({ error: 'Stream failed', details: String(error) }, 500);
+  }
 });
 
 adsRoutes.get('/stream', authMiddleware, async (c) => {
@@ -45,12 +47,8 @@ adsRoutes.get('/stream', authMiddleware, async (c) => {
   if (!threadId) {
     return c.json({ error: 'Missing threadId' }, 400);
   }
-
-  return await fetchLanggraphHistory<AdsLanggraphData>({
-    graph: graph as any,
-    messageSchema: Ads.structuredMessageSchemas,
-    threadId,
-  });
+  
+  return await AdsAPI.loadHistory(threadId);
 });
 
 adsRoutes.get('/health', (c) => {

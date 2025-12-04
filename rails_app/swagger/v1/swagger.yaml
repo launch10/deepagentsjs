@@ -322,7 +322,8 @@ paths:
           type: string
       responses:
         '201':
-          description: campaign created with ad group and ad
+          description: campaign created without website_id (falls back to project
+            website)
           content:
             application/json:
               schema:
@@ -616,7 +617,7 @@ paths:
         '401':
           description: unauthorized - missing token
         '422':
-          description: invalid request - missing website_id
+          description: invalid request - missing thread_id
           content:
             application/json:
               schema:
@@ -656,9 +657,12 @@ paths:
                     website_id:
                       type: integer
                       description: Website ID
+                    thread_id:
+                      type: string
+                      description: Thread ID
                   required:
                   - project_id
-                  - website_id
+                  - thread_id
               required:
               - campaign
   "/api/v1/campaigns/{id}":

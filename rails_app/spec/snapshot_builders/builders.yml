@@ -10,6 +10,10 @@ website_created:
   class: WebsiteCreated
   description: "Creates a website with brainstorm data"
 
+website_deployed:
+  class: WebsiteDeployed
+  description: "Sets workflow to ad_campaign:content without creating campaign"
+
 campaign_created:
   class: CampaignCreated
   description: "Creates a campaign with ad groups and ads"
