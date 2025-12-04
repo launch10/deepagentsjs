@@ -110,8 +110,8 @@ class ProjectWorkflow < ApplicationRecord
     config = WorkflowConfig.definition(workflow_type)
     return 0 unless step.present?
 
-    total_steps = config.steps.count
-    completed = config.steps.keys.index(step) || 0
+    total_steps = config.step_names.count
+    completed = config.step_names.index(step) || 0
 
     (completed.to_f / total_steps * 100).round
   end

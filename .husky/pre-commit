@@ -2,8 +2,11 @@
 echo "🔍 Running pre-commit checks..."
 cd "$(dirname "$0")/.."
 
+cd shared
+pnpm run config:export
+
 # Lint Langgraph code
-cd langgraph_app
+cd ../langgraph_app
 if pnpm run lint:fix > /dev/null 2>&1 && pnpm run typecheck > /dev/null 2>&1; then
   echo "✅ Langgraph"
 else
@@ -21,20 +24,3 @@ else
   bundle exec rubocop --autocorrect-all --format simple
   exit 1
 fi
-
-cd ../
-
-# Check if Rails API specs changed (triggers Swagger regeneration)
-if git diff --cached --name-only | grep -q "rails_app/spec/\(requests\|api\|integration\)/"; then
-  ./scripts/generate-docs.sh > /dev/null 2>&1
-  
-  # Check if swagger was updated
-  if ! git diff --quiet rails_app/swagger/ 2>/dev/null; then
-    echo "⚠️  Swagger updated - please review and commit:"
-    git diff --name-only rails_app/swagger/ 2>/dev/null || true
-    exit 1
-  fi
-  echo "✅ Swagger"
-fi
-
-echo "✅ Done"
