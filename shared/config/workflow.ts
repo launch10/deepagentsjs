@@ -10,6 +10,7 @@ export type StepName = typeof StepNames[number];
 export interface Step {
   name: StepName;
   label: string;
+  order: number;
   steps?: Step[];
 }
 
@@ -22,41 +23,44 @@ export type AdCampaignStep = typeof AdCampaignSteps[number];
 export const workflows: Workflows = {
   launch: {
     steps: [
-      { name: "brainstorm", label: "Brainstorm" },
-      { name: "website", label: "Website" },
-      { name: "ad_campaign", label: "Ad Campaign",
+      { name: "brainstorm", label: "Brainstorm", order: 1 },
+      { name: "website", label: "Website", order: 2 },
+      { name: "ad_campaign", label: "Ad Campaign", order: 3,
         steps: [
           {
             name: "create",
             label: "Create",
+            order: 1,
             steps: [
-              { name: "content", label: "Content" },
-              { name: "highlights", label: "Highlights" }
+              { name: "content", label: "Content", order: 1 },
+              { name: "highlights", label: "Highlights", order: 2 }
             ]
           },
           {
             name: "plan",
             label: "Plan",
+            order: 2,
             steps: [
-              { name: "keywords", label: "Keywords" },
-              { name: "settings", label: "Settings" }
+              { name: "keywords", label: "Keywords", order: 1 },
+              { name: "settings", label: "Settings", order: 2 }
             ]
           },
           {
             name: "launch",
             label: "Launch",
+            order: 3,
             steps: [
-              { name: "launch", label: "Launch" },
-              { name: "review", label: "Review" }
+              { name: "launch", label: "Launch", order: 1 },
+              { name: "review", label: "Review", order: 2 }
             ]
           }
         ]
       },
-      { name: "launch", label: "Launch",
+      { name: "launch", label: "Launch", order: 4,
         steps: [
-          { name: "settings", label: "Settings" },
-          { name: "review", label: "Review" },
-          { name: "deployment", label: "Deployment" }
+          { name: "settings", label: "Settings", order: 1 },
+          { name: "review", label: "Review", order: 2 },
+          { name: "deployment", label: "Deployment", order: 3 }
         ]
       }
     ]
