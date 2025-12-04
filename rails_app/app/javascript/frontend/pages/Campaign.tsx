@@ -1,73 +1,46 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { type PageProps } from '@inertiajs/core';
 import { usePage } from '@inertiajs/react';
 import { useLanggraph } from 'langgraph-ai-sdk-react';
-import { Wrapper, ChatInput, Message } from '@components/brainstorm';
-import { type AdsBridgeType, Ads, type UUIDType } from '@shared';
+import { Wrapper, ChatInput } from '@components/brainstorm';
+import { type AdsBridgeType, Ads, type UUIDType, type InertiaProps } from '@shared';
 import ReactMarkdown from 'react-markdown';
 
-type HeadlinesProps = {
-    thread_id: string;
-    root_path: string;
-    langgraph_path: string;
-    jwt: string;
-    workflow?: {
-        substep?: string;
-    };
-    project?: {
-        uuid?: string;
-    };
-    campaign?: {
-        id?: number;
-    } | null;
-} & PageProps;
+// Every path under campaign actually has the same props, so we can use the same type
+type CampaignProps = InertiaProps.paths['/projects/{uuid}/campaigns/content']['get']['responses']['200']['content']['application/json'];
 
-export default function Headlines(props: HeadlinesProps) {
-    const pageProps = usePage<HeadlinesProps>();
+export default function Campaign(props: CampaignProps) {
+    const pageProps = usePage<CampaignProps>();
     // Access shared props from Inertia
-    let { thread_id, jwt, root_path, langgraph_path } = pageProps.props;
-
-    useEffect(() => {
-        if (!jwt || !root_path || !langgraph_path) {
-            return;
-        }
-        if (typeof jwt !== 'string' || typeof root_path !== 'string' || typeof langgraph_path !== 'string') {
-            throw new Error(`Invalid page props: JWT: ${jwt}, Root Path: ${root_path}, Langgraph Path: ${langgraph_path}`);
-        }
-    }, []); // Only run once on page mount
+    let { thread_id, jwt, langgraph_path, campaign, workflow, project } = pageProps.props;
+    const campaignExists = Boolean(campaign?.id);
 
     const url = (new URL("api/ads/stream", langgraph_path)).toString();
-    const { messages, sendMessage, updateState, status, state, threadId, tools, error, events, isLoadingHistory } =
+    const { 
+        state, 
+        messages, 
+        sendMessage, 
+        updateState, 
+        isLoadingHistory 
+    } =
         useLanggraph<AdsBridgeType>({
             api: url,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${jwt}`,
             },
-            getInitialThreadId: () => thread_id,
+            getInitialThreadId: () => thread_id ? thread_id : undefined,
         });
 
-    const campaignExists = Boolean(props.campaign?.id);
-    
     useEffect(() => {
-        if (!props.workflow || typeof props.workflow !== 'object' || !('substep' in props.workflow) || typeof props.workflow.substep !== 'string') {
-            return;
-        }
-        if (!props.project?.uuid) {
-            return;
-        }
-        if (state.hasStartedStep && props.workflow.substep in state.hasStartedStep && state.hasStartedStep[props.workflow.substep as Ads.StageName] === true) {
-            return;
-        }
-        // Only call update state on initial page load, otherwise campaign will exist
-        if (campaignExists && props.workflow.substep === 'content') {
-            return;
-        }
+        if (!workflow || !workflow.substep || !project?.uuid) return;
+        if (campaignExists && workflow.substep === 'content') return;
+        if (state.hasStartedStep && workflow.substep in state.hasStartedStep && state.hasStartedStep[workflow.substep as Ads.StageName] === true) return;
+
         updateState({
-            stage: props.workflow.substep as Ads.StageName,
-            projectUUID: props.project.uuid as UUIDType,
+            stage: workflow.substep as Ads.StageName,
+            projectUUID: project.uuid as UUIDType,
         })
-    }, [props.workflow?.substep, state.hasStartedStep]);
+    }, [workflow?.substep, state.hasStartedStep]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 

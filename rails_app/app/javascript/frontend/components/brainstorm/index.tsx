@@ -1,4 +1,3 @@
-import type { LanggraphUIMessage } from 'langgraph-ai-sdk-react';
 import type { ChatStatus } from 'ai';
 import type { 
     MessageBlock, 
@@ -6,11 +5,16 @@ import type {
     TextMessageBlock, 
     StructuredMessageBlock, 
     ToolCallMessageBlock,
-    ReasoningMessageBlock
+    ReasoningMessageBlock,
+    InferBridgeData
 } from 'langgraph-ai-sdk-types';
-import type { BrainstormLanggraphData } from '@shared';
+import type { BrainstormBridgeType } from '@shared';
 import React, { createContext, useContext } from 'react';
 import ReactMarkdown from 'react-markdown';
+
+export { BrainstormHydrator } from './BrainstormHydrator';
+
+type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
 
 // Context for handling example clicks and other chat interactions
 interface BrainstormContextType {
@@ -51,7 +55,7 @@ export const Wrapper = (props: {
   );
 };
 
-const BlockRenderer = <T extends BrainstormLanggraphData>({ block }: { block: MessageBlock<T> }) => {
+const BlockRenderer = ({ block }: { block: MessageBlock<BrainstormLanggraphData> }) => {
   const { onExampleClick } = useBrainstormContext();
   
   switch (block.type) {
@@ -68,7 +72,7 @@ const BlockRenderer = <T extends BrainstormLanggraphData>({ block }: { block: Me
     }
     
     case 'structured': {
-      const structuredBlock = block as StructuredMessageBlock<T>;
+      const structuredBlock = block as StructuredMessageBlock<BrainstormLanggraphData>;
       const data = structuredBlock.data;
       
       if (!data || Object.keys(data).length === 0) {
@@ -176,11 +180,11 @@ const BlockRenderer = <T extends BrainstormLanggraphData>({ block }: { block: Me
   }
 };
 
-export const Message = <T extends BrainstormLanggraphData>({
+export const Message = ({
   message,
   status,
 }: {
-  message: MessageWithBlocks<T>;
+  message: MessageWithBlocks<BrainstormLanggraphData>;
   status?: ChatStatus;
 }) => {
   const isUser = message.role === 'user';
@@ -205,7 +209,7 @@ export const Message = <T extends BrainstormLanggraphData>({
         ) : (
           <div className="space-y-3">
             {message.blocks.map((block) => (
-              <BlockRenderer<T> key={block.id} block={block} />
+              <BlockRenderer key={block.id} block={block} />
             ))}
           </div>
         )}
@@ -220,7 +224,7 @@ export const ChatInput = ({
   onChange,
   onSubmit,
 }: {
-  inputRef?: React.RefObject<HTMLInputElement>;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
   input: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
