@@ -4,6 +4,7 @@ import { Website } from "@types";
 import { websiteFiles, websites, eq, and, db } from "@db";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { uniq } from "@utils";
 
 describe("DualBackend", () => {
   let backend: DualBackend;
@@ -67,7 +68,7 @@ describe("DualBackend", () => {
   });
 
   describe("read", () => {
-    it.only("reads a file with line numbers", async () => {
+    it("reads a file with line numbers", async () => {
       const content = await backend.read("/package.json");
       expect(content).toContain("1\t");
     });
@@ -88,7 +89,7 @@ describe("DualBackend", () => {
   });
 
   describe("globInfo", () => {
-    it.only("finds TypeScript files", async () => {
+    it("finds TypeScript files", async () => {
       const files = await backend.globInfo("**/*.tsx");
       expect(files.length).toBeGreaterThan(0);
       expect(files.every((f) => f.path.endsWith(".tsx"))).toBe(true);
@@ -112,7 +113,7 @@ describe("DualBackend", () => {
       expect(results[0]?.text).toBeDefined();
     });
 
-    it("filters by path", async () => {
+    it("filters by path prefix", async () => {
       const results = await backend.grepRaw("import", "/src");
       expect(typeof results).not.toBe("string");
       if (typeof results === "string") return;
@@ -120,6 +121,43 @@ describe("DualBackend", () => {
       if (results.length > 0) {
         expect(results.every((r) => r.path.startsWith("/src"))).toBe(true);
       }
+    });
+
+    it("filters by glob pattern for file extension", async () => {
+      const results = await backend.grepRaw("import", "/", "**/*.tsx");
+      expect(typeof results).not.toBe("string");
+      if (typeof results === "string") return;
+
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((r) => r.path.endsWith(".tsx"))).toBe(true);
+    });
+
+    it("filters by glob pattern for specific directory", async () => {
+      const results = await backend.grepRaw("import", "/", "**/components/**");
+      expect(typeof results).not.toBe("string");
+      if (typeof results === "string") return;
+
+      if (results.length > 0) {
+        expect(results.every((r) => r.path.includes("/components/"))).toBe(true);
+      }
+    });
+
+    it("combines path prefix and glob filtering", async () => {
+      const results = await backend.grepRaw("import", "/src", "**/*.tsx");
+      expect(typeof results).not.toBe("string");
+      if (typeof results === "string") return;
+
+      if (results.length > 0) {
+        expect(results.every((r) => r.path.startsWith("/src") && r.path.endsWith(".tsx"))).toBe(true);
+      }
+    });
+
+    it("returns empty array when glob matches no files", async () => {
+      const results = await backend.grepRaw("import", "/", "**/*.nonexistent");
+      expect(typeof results).not.toBe("string");
+      if (typeof results === "string") return;
+
+      expect(results).toEqual([]);
     });
 
     it("returns error for invalid regex", async () => {
@@ -161,10 +199,10 @@ describe("DualBackend", () => {
 
     it("updates existing file via edit syncs to database", async () => {
       const testPath = "/src/update-test.ts";
-      const initialContent = "const x = 1;";
+      const initialContent = "const x = 1; const y = 2;";
 
       await backend.write(testPath, initialContent);
-      const result = await backend.edit(testPath, "1", "2");
+      const result = await backend.edit(testPath, "const y = 2", "const y = 3");
 
       expect(result.error).toBeUndefined();
       expect(result.occurrences).toBe(1);
@@ -173,7 +211,7 @@ describe("DualBackend", () => {
         path.join(backend.getRootDir(), "src/update-test.ts"),
         "utf-8"
       );
-      expect(fsContent).toBe("const x = 2;");
+      expect(fsContent).toBe("const x = 1; const y = 3;");
 
       const dbFiles = await db
         .select()
@@ -186,7 +224,7 @@ describe("DualBackend", () => {
         );
 
       expect(dbFiles.length).toBe(1);
-      expect(dbFiles[0]?.content).toBe("const x = 2;");
+      expect(dbFiles[0]?.content).toBe("const x = 1; const y = 3;");
     });
   });
 

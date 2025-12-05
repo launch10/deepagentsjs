@@ -15,6 +15,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as os from "os";
 import { snakeCase } from "lodash";
+import micromatch from "micromatch";
 import { WebsiteFilesAPIService } from "@services";
 
 function performStringReplacement(
@@ -124,7 +125,7 @@ export class DualBackend implements BackendProtocol {
 
   async grepRaw(
     pattern: string,
-    path: string = "/",
+    pathPrefix: string = "/",
     glob: string | null = null
   ): Promise<GrepMatch[] | string> {
     try {
@@ -153,20 +154,27 @@ export class DualBackend implements BackendProtocol {
       for (const result of results) {
         if (!result.content || !result.path) continue;
 
+        const pathWithSlash = result.path.startsWith("/")
+          ? result.path
+          : `/${result.path}`;
+
+        if (pathPrefix !== "/" && !pathWithSlash.startsWith(pathPrefix)) {
+          continue;
+        }
+
+        if (glob && !micromatch.isMatch(pathWithSlash, glob)) {
+          continue;
+        }
+
         const lines = result.content.split("\n");
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
           if (line && regex.test(line)) {
-            const pathWithSlash = result.path.startsWith("/")
-              ? result.path
-              : `/${result.path}`;
-            if (path === "/" || pathWithSlash.startsWith(path)) {
-              matches.push({
-                path: pathWithSlash,
-                line: i + 1,
-                text: line,
-              });
-            }
+            matches.push({
+              path: pathWithSlash,
+              line: i + 1,
+              text: line,
+            });
           }
         }
       }
@@ -194,17 +202,13 @@ export class DualBackend implements BackendProtocol {
     const fsResult = await this.fs.write(filePath, content);
     if (fsResult.error) return fsResult;
 
-    const normalizedPath = filePath.startsWith("/")
-      ? filePath.slice(1)
-      : filePath;
-    const now = new Date().toISOString();
     const service = new WebsiteFilesAPIService({ jwt: this.jwt });
     const result = await service.write({
       id: this.getWebsiteId(),
-      files: [{ path: normalizedPath, content }],
+      files: [{ path: filePath, content }],
     });
     
-    return { path: normalizedPath, filesUpdate: fsResult.filesUpdate };
+    return { path: filePath, filesUpdate: fsResult.filesUpdate };
   }
 
   async edit(
