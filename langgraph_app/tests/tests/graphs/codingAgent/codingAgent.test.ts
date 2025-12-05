@@ -91,7 +91,6 @@ describe.sequential("CodingAgent Flow", () => {
         .withPrompt("Create a landing page for this business")
         .execute();
 
-      debugger; // Allow us to pause to look at this... 
       expect(result.error).toBeUndefined();
       expect(result.state.status).toBe("completed");
 
