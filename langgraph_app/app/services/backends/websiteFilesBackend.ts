@@ -192,7 +192,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
       files: [{ path: filePath, content }],
     });
     
-    return { path: filePath, filesUpdate: fsResult.filesUpdate };
+    return { path: filePath, filesUpdate: null };
   }
 
   async edit(
@@ -216,7 +216,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
     return {
       path: filePath,
       occurrences: fsResult.occurrences,
-      filesUpdate: fsResult.filesUpdate,
+      filesUpdate: null,
     };
   }
 }

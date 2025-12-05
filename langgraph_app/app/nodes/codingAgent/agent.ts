@@ -6,6 +6,7 @@ import type { CodingAgentGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { db, websites, eq } from "@db";
 import type { Website } from "@types";
+import { checkpointer } from "@core";
 
 const CODING_AGENT_SYSTEM_PROMPT = `You are an expert landing page developer. You create high-converting landing pages that drive pre-sales signups.
 
@@ -19,7 +20,7 @@ You have access to:
 ## Your Tools
 
 1. **Filesystem tools**: ls, read_file, write_file, edit_file, glob, grep
-2. **Copywriter subagent**: Use the task tool with subagent_type="copywriter" to draft marketing copy before coding each section
+2. **Copywriter subagent**: Use the task tool with subagent_type="copywriter" to draft marketing copy before coding each section (do not create multiple subagents in parallel, as this can cause conflicts)
 
 ## Workflow
 
@@ -35,6 +36,7 @@ You have access to:
 - Use ONLY theme color utilities (bg-primary, text-secondary-foreground, etc.)
 - Never use hardcoded hex colors
 - One component per file, under 150 lines
+- **IMPORTANT**: Only write or edit one file at a time. Do not call write_file or edit_file in parallel - this causes conflicts.
 - Add Posthog tracking to CTAs and signup forms:
   \`\`\`tsx
   onClick={() => posthog.capture('cta_clicked', { section: 'hero' })}
@@ -77,6 +79,7 @@ export function createCodingAgent(
     backend: () => backend,
     subagents: [copywriterSubAgent],
     name: "coding-agent",
+    checkpointer,
   });
 }
 
