@@ -3,19 +3,19 @@ import type { ThreadIDType } from "@types";
 import type { Simplify } from "type-fest";
 
 export type WriteFilesRequest = NonNullable<
-  paths["/api/v1/websites/{thread_id}/files/write"]["post"]["requestBody"]
+  paths["/api/v1/websites/{id}/files/write"]["post"]["requestBody"]
 >["content"]["application/json"];
 
 export type WriteFilesResponse = NonNullable<
-  paths["/api/v1/websites/{thread_id}/files/write"]["post"]["responses"][200]["content"]
+  paths["/api/v1/websites/{id}/files/write"]["post"]["responses"][200]["content"]
 >["application/json"];
 
 export type EditFileRequest = NonNullable<
-  paths["/api/v1/websites/{thread_id}/files/edit"]["patch"]["requestBody"]
+  paths["/api/v1/websites/{id}/files/edit"]["patch"]["requestBody"]
 >["content"]["application/json"];
 
 export type EditFileResponse = NonNullable<
-  paths["/api/v1/websites/{thread_id}/files/edit"]["patch"]["responses"][200]["content"]
+  paths["/api/v1/websites/{id}/files/edit"]["patch"]["responses"][200]["content"]
 >["application/json"];
 
 export interface WebsiteFile {
@@ -28,12 +28,12 @@ export interface WebsiteFile {
 }
 
 export interface WriteFilesParams {
-  threadId: ThreadIDType;
+  id: number;
   files: Array<{ path: string; content: string }>;
 }
 
 export interface EditFileParams {
-  threadId: ThreadIDType;
+  id: number;
   path: string;
   oldString: string;
   newString: string;
@@ -50,11 +50,11 @@ export class WebsiteFilesAPIService extends RailsAPIBase {
     super(options);
   }
 
-  async write({ threadId, files }: WriteFilesParams): Promise<WebsiteFile[]> {
+  async write({ id, files }: WriteFilesParams): Promise<WebsiteFile[]> {
     const client = await this.getClient();
-    const response = await client.POST("/api/v1/websites/{thread_id}/files/write", {
+    const response = await client.POST("/api/v1/websites/{id}/files/write", {
       params: {
-        path: { thread_id: threadId },
+        path: { id },
       },
       body: { files },
     });
@@ -71,16 +71,16 @@ export class WebsiteFilesAPIService extends RailsAPIBase {
   }
 
   async edit({
-    threadId,
+    id,
     path,
     oldString,
     newString,
     replaceAll = false,
   }: EditFileParams): Promise<EditFileResponse> {
     const client = await this.getClient();
-    const response = await client.PATCH("/api/v1/websites/{thread_id}/files/edit", {
+    const response = await client.PATCH("/api/v1/websites/{id}/files/edit", {
       params: {
-        path: { thread_id: threadId },
+        path: { id },
       },
       body: {
         path,

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { DualBackend, DatabaseSnapshotter } from "@services";
-import { db, websiteFiles, websites, eq, and } from "@db";
+import { Website } from "@types";
+import { websiteFiles, websites, eq, and, db } from "@db";
 import * as fs from "fs/promises";
 import * as path from "path";
 
@@ -21,7 +22,10 @@ describe("DualBackend", () => {
     }
     websiteId = website.id;
 
-    backend = await DualBackend.create(website, { database: db });
+    backend = await DualBackend.create({ 
+      website: website as Website.WebsiteType,
+      jwt: "test-jwt"
+    });
   }, 30000);
 
   afterEach(async () => {

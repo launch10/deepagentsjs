@@ -15,6 +15,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as os from "os";
 import { snakeCase } from "lodash";
+import { WebsiteFilesAPIService } from "@services";
 
 function performStringReplacement(
   content: string,
@@ -32,9 +33,9 @@ function performStringReplacement(
   return [content.split(oldString).join(newString), occurrences];
 }
 
-export interface DualBackendConfig {
+export interface CreateBackendParams {
   website: Website.WebsiteType;
-  database?: DB;
+  jwt: string;
 }
 
 export class DualBackend implements BackendProtocol {
@@ -42,15 +43,17 @@ export class DualBackend implements BackendProtocol {
   private website: Website.WebsiteType;
   private database: DB;
   private rootDir: string;
+  private jwt: string;
 
-  constructor(config: DualBackendConfig) {
+  constructor(config: CreateBackendParams) {
     this.website = config.website;
     this.rootDir = this.makeRootDir();
     this.fs = new FilesystemBackend({
       rootDir: this.rootDir,
       virtualMode: true,
     });
-    this.database = config.database ?? db;
+    this.database = db;
+    this.jwt = config.jwt;
   }
 
   makeRootDir(): string {
@@ -59,16 +62,9 @@ export class DualBackend implements BackendProtocol {
   }
 
   static async create(
-    website: Website.WebsiteType,
-    options?: { database?: DB }
+    params: CreateBackendParams,
   ): Promise<DualBackend> {
-    const database = options?.database ?? db;
-
-    const backend = new DualBackend({
-      website,
-      database,
-    });
-
+    const backend = new DualBackend(params);
     await backend.hydrate();
     return backend;
   }
@@ -202,28 +198,13 @@ export class DualBackend implements BackendProtocol {
       ? filePath.slice(1)
       : filePath;
     const now = new Date().toISOString();
-    const contentSha = shasum(content);
-
-    await this.database
-      .insert(websiteFiles)
-      .values({
-        websiteId: this.getWebsiteId(),
-        path: normalizedPath,
-        content,
-        shasum: contentSha,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: [websiteFiles.websiteId, websiteFiles.path],
-        set: {
-          content,
-          shasum: contentSha,
-          updatedAt: now,
-        },
-      });
-
-    return { path: filePath, filesUpdate: null };
+    const service = new WebsiteFilesAPIService({ jwt: this.jwt });
+    const result = await service.write({
+      id: this.getWebsiteId(),
+      files: [{ path: normalizedPath, content }],
+    });
+    
+    return { path: normalizedPath, filesUpdate: fsResult.filesUpdate };
   }
 
   async edit(
@@ -232,54 +213,22 @@ export class DualBackend implements BackendProtocol {
     newString: string,
     replaceAll: boolean = false
   ): Promise<EditResult> {
-    let rawContent: FileData;
-    try {
-      rawContent = await this.fs.readRaw(filePath);
-    } catch (e: any) {
-      return { error: `Error: File '${filePath}' not found` };
-    }
-
-    const content = rawContent.content.join("\n");
-    const result = performStringReplacement(content, oldString, newString, replaceAll);
-
-    if (typeof result === "string") {
-      return { error: result };
-    }
-
-    const [newContent, occurrences] = result;
-    const normalizedPath = filePath.startsWith("/")
-      ? filePath.slice(1)
-      : filePath;
-    const now = new Date().toISOString();
-    const contentSha = shasum(newContent);
-    const resolvedPath = path.join(this.rootDir, normalizedPath);
-
-    await Promise.all([
-      fs.writeFile(resolvedPath, newContent),
-      this.database
-        .insert(websiteFiles)
-        .values({
-          websiteId: this.getWebsiteId(),
-          path: normalizedPath,
-          content: newContent,
-          shasum: contentSha,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: [websiteFiles.websiteId, websiteFiles.path],
-          set: {
-            content: newContent,
-            shasum: contentSha,
-            updatedAt: now,
-          },
-        }),
-    ]);
-
+    const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
+    if (fsResult.error) return fsResult;
+    
+    const service = new WebsiteFilesAPIService({ jwt: this.jwt });
+    const result = await service.edit({
+      id: this.getWebsiteId(),
+      path: filePath,
+      oldString,
+      newString,
+      replaceAll,
+    });
+    
     return {
       path: filePath,
-      occurrences,
-      filesUpdate: null,
+      occurrences: fsResult.occurrences,
+      filesUpdate: fsResult.filesUpdate,
     };
   }
 }

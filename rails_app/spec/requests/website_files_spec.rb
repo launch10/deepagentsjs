@@ -18,9 +18,9 @@ RSpec.describe "Website Files API", type: :request do
   let!(:project1_team) { create(:project, account: user1_team_account, name: "Project in Team Account") }
   let!(:project2_owned) { create(:project, account: user2_owned_account, name: "User 2 Project") }
 
-  let!(:website1_owned) { create(:website, account: user1_owned_account, project: project1_owned, template: template, thread_id: "thread-123") }
-  let!(:website1_team) { create(:website, account: user1_team_account, project: project1_team, template: template, thread_id: "thread-456") }
-  let!(:website2_owned) { create(:website, account: user2_owned_account, project: project2_owned, template: template, thread_id: "thread-789") }
+  let!(:website1_owned) { create(:website, account: user1_owned_account, project: project1_owned, template: template, id: 1) }
+  let!(:website1_team) { create(:website, account: user1_team_account, project: project1_team, template: template, id: 2) }
+  let!(:website2_owned) { create(:website, account: user2_owned_account, project: project2_owned, template: template, id: 3) }
 
   before do
     ensure_plans_exist
@@ -29,8 +29,8 @@ RSpec.describe "Website Files API", type: :request do
     subscribe_account(user2_owned_account, plan_name: 'pro')
   end
 
-  path '/api/v1/websites/{thread_id}/files/write' do
-    parameter name: :thread_id, in: :path, type: :string, description: 'Website thread ID'
+  path '/api/v1/websites/{id}/files/write' do
+    parameter name: :id, in: :path, type: :number, description: 'Website ID'
 
     post 'Creates or updates website files in bulk' do
       tags 'Website Files'
@@ -243,8 +243,8 @@ RSpec.describe "Website Files API", type: :request do
     end
   end
 
-  path '/api/v1/websites/{thread_id}/files/edit' do
-    parameter name: :thread_id, in: :path, type: :string, description: 'Website thread ID'
+  path '/api/v1/websites/{id}/files/edit' do
+    parameter name: :id, in: :path, type: :number, description: 'Website ID'
 
     patch 'Edits a website file by replacing string occurrences' do
       tags 'Website Files'
