@@ -8,7 +8,6 @@ export const codingAgentNode = NodeMiddleware.use({}, async(
   config: LangGraphRunnableConfig,
 ): Promise<Partial<CodingAgentGraphState>> => {
   const agent = createCodingAgent(state);
-
   const contextMessage = `
 ## Brainstorm Context
 - Idea: ${state.brainstorm.idea || "Not provided"}
