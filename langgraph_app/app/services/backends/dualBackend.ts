@@ -8,11 +8,13 @@ import type {
 } from "deepagents";
 import { FilesystemBackend } from "deepagents";
 import { db, websiteFiles, codeFiles, eq, and, sql } from "@db";
+import { Website } from "@types";
 import type { DB } from "@db";
 import { shasum } from "@ext";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as os from "os";
+import { snakeCase } from "lodash";
 
 function performStringReplacement(
   content: string,
@@ -31,39 +33,39 @@ function performStringReplacement(
 }
 
 export interface DualBackendConfig {
-  rootDir: string;
-  websiteId: number;
+  website: Website.WebsiteType;
   database?: DB;
 }
 
 export class DualBackend implements BackendProtocol {
   private fs: FilesystemBackend;
-  private websiteId: number;
+  private website: Website.WebsiteType;
   private database: DB;
   private rootDir: string;
 
   constructor(config: DualBackendConfig) {
-    this.rootDir = config.rootDir;
+    this.website = config.website;
+    this.rootDir = this.makeRootDir();
     this.fs = new FilesystemBackend({
-      rootDir: config.rootDir,
+      rootDir: this.rootDir,
       virtualMode: true,
     });
-    this.websiteId = config.websiteId;
     this.database = config.database ?? db;
   }
 
+  makeRootDir(): string {
+    const name = snakeCase(this.website.name);
+    return `agents/websites/${this.website.accountId}/${name}`;
+  }
+
   static async create(
-    websiteId: number,
-    options?: { database?: DB; rootDir?: string }
+    website: Website.WebsiteType,
+    options?: { database?: DB }
   ): Promise<DualBackend> {
     const database = options?.database ?? db;
-    const rootDir =
-      options?.rootDir ??
-      (await fs.mkdtemp(path.join(os.tmpdir(), `website-${websiteId}-`)));
 
     const backend = new DualBackend({
-      rootDir,
-      websiteId,
+      website,
       database,
     });
 
@@ -76,7 +78,10 @@ export class DualBackend implements BackendProtocol {
   }
 
   getWebsiteId(): number {
-    return this.websiteId;
+    if (!this.website.id) {
+      throw new Error("Website ID is undefined");
+    }
+    return this.website.id;
   }
 
   async hydrate(): Promise<void> {
@@ -86,7 +91,7 @@ export class DualBackend implements BackendProtocol {
         content: codeFiles.content,
       })
       .from(codeFiles)
-      .where(eq(codeFiles.websiteId, this.websiteId));
+      .where(eq(codeFiles.websiteId, this.getWebsiteId()));
 
     for (const file of files) {
       if (!file.path || !file.content) continue;
@@ -141,7 +146,7 @@ export class DualBackend implements BackendProtocol {
         .from(codeFiles)
         .where(
           and(
-            eq(codeFiles.websiteId, this.websiteId),
+            eq(codeFiles.websiteId, this.getWebsiteId()),
             sql`content_tsv @@ to_tsquery('english', ${tsQuery})`
           )
         )
@@ -202,7 +207,7 @@ export class DualBackend implements BackendProtocol {
     await this.database
       .insert(websiteFiles)
       .values({
-        websiteId: this.websiteId,
+        websiteId: this.getWebsiteId(),
         path: normalizedPath,
         content,
         shasum: contentSha,
@@ -254,7 +259,7 @@ export class DualBackend implements BackendProtocol {
       this.database
         .insert(websiteFiles)
         .values({
-          websiteId: this.websiteId,
+          websiteId: this.getWebsiteId(),
           path: normalizedPath,
           content: newContent,
           shasum: contentSha,

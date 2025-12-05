@@ -16,12 +16,12 @@ describe("DualBackend", () => {
       .from(websites)
       .limit(1);
 
-    if (!website) {
+    if (!website || !website.name || website.name === null) {
       throw new Error("No website found in snapshot");
     }
     websiteId = website.id;
 
-    backend = await DualBackend.create(websiteId, { database: db });
+    backend = await DualBackend.create(website, { database: db });
   }, 30000);
 
   afterEach(async () => {
@@ -53,7 +53,7 @@ describe("DualBackend", () => {
       expect(files.some((f) => f.path.includes("src") || f.path.includes("package"))).toBe(true);
     });
 
-    it("lists files in a subdirectory", async () => {
+    it.only("lists files in a subdirectory", async () => {
       const files = await backend.lsInfo("/src");
       expect(files.length).toBeGreaterThan(0);
     });

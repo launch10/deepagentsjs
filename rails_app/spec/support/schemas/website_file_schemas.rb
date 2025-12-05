@@ -50,5 +50,29 @@ module APISchemas
         required: ['files']
       }
     end
+
+    def self.edit_params_schema
+      {
+        type: :object,
+        properties: {
+          path: {type: :string, description: 'File path within the website'},
+          old_string: {type: :string, description: 'String to find and replace'},
+          new_string: {type: :string, description: 'Replacement string'},
+          replace_all: {type: :boolean, description: 'Replace all occurrences (default: false)', default: false}
+        },
+        required: ['path', 'old_string', 'new_string']
+      }
+    end
+
+    def self.edit_response
+      {
+        type: :object,
+        properties: {
+          file: file_object,
+          occurrences: {type: :integer, description: 'Number of replacements made'}
+        },
+        required: ['file', 'occurrences']
+      }
+    end
   end
 end

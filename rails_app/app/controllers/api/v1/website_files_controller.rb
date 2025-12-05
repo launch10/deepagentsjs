@@ -1,4 +1,51 @@
 class API::V1::WebsiteFilesController < API::BaseController
+  def edit
+    website = current_account.websites.find_by(thread_id: params[:thread_id])
+    unless website
+      render json: {errors: ["Website not found"]}, status: :not_found and return
+    end
+
+    path = params[:path]
+    old_string = params[:old_string]
+    new_string = params[:new_string]
+    replace_all = params[:replace_all] == true || params[:replace_all] == "true"
+
+    unless path.present? && old_string.present? && new_string.present?
+      render json: {errors: ["path, old_string, and new_string are required"]}, status: :unprocessable_entity and return
+    end
+
+    normalized_path = path.gsub(/^\//, "")
+    website_file = website.website_files.find_by(path: normalized_path)
+
+    unless website_file
+      render json: {errors: ["File not found: #{normalized_path}"]}, status: :not_found and return
+    end
+
+    content = website_file.content
+    occurrences = content.scan(old_string).length
+
+    if occurrences == 0
+      render json: {errors: ["String not found in file: '#{old_string}'"]}, status: :unprocessable_entity and return
+    end
+
+    if occurrences > 1 && !replace_all
+      render json: {
+        errors: ["String '#{old_string}' appears #{occurrences} times in file. Use replace_all=true to replace all instances, or provide a more specific string with surrounding context."]
+      }, status: :unprocessable_entity and return
+    end
+
+    new_content = content.gsub(old_string, new_string)
+
+    if website_file.update(content: new_content)
+      render json: {
+        file: serialize_file(website_file),
+        occurrences: occurrences
+      }, status: :ok
+    else
+      render json: {errors: website_file.errors.full_messages}, status: :unprocessable_entity
+    end
+  end
+
   def write
     website = current_account.websites.find_by(thread_id: params[:thread_id])
     unless website

@@ -242,4 +242,167 @@ RSpec.describe "Website Files API", type: :request do
       end
     end
   end
+
+  path '/api/v1/websites/{thread_id}/files/edit' do
+    parameter name: :thread_id, in: :path, type: :string, description: 'Website thread ID'
+
+    patch 'Edits a website file by replacing string occurrences' do
+      tags 'Website Files'
+      consumes 'application/json'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+
+      parameter name: :edit_params, in: :body, schema: APISchemas::WebsiteFile.edit_params_schema
+
+      before do
+        switch_account_to(user1_owned_account)
+      end
+
+      response '200', 'file edited successfully' do
+        schema APISchemas::WebsiteFile.edit_response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:thread_id) { "thread-123" }
+        let!(:existing_file) { create(:website_file, website: website1_owned, path: "index.html", content: "<h1>Hello World</h1>") }
+        let(:edit_params) do
+          {
+            path: "/index.html",
+            old_string: "Hello World",
+            new_string: "Goodbye World"
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["file"]["content"]).to eq("<h1>Goodbye World</h1>")
+          expect(data["occurrences"]).to eq(1)
+
+          existing_file.reload
+          expect(existing_file.content).to eq("<h1>Goodbye World</h1>")
+        end
+      end
+
+      response '200', 'replaces all occurrences when replace_all is true' do
+        schema APISchemas::WebsiteFile.edit_response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:thread_id) { "thread-123" }
+        let!(:existing_file) { create(:website_file, website: website1_owned, path: "index.html", content: "<div>foo</div><div>foo</div>") }
+        let(:edit_params) do
+          {
+            path: "/index.html",
+            old_string: "foo",
+            new_string: "bar",
+            replace_all: true
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["file"]["content"]).to eq("<div>bar</div><div>bar</div>")
+          expect(data["occurrences"]).to eq(2)
+        end
+      end
+
+      response '422', 'fails when multiple occurrences without replace_all' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:thread_id) { "thread-123" }
+        let!(:existing_file) { create(:website_file, website: website1_owned, path: "index.html", content: "<div>foo</div><div>foo</div>") }
+        let(:edit_params) do
+          {
+            path: "/index.html",
+            old_string: "foo",
+            new_string: "bar"
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"][0]).to include("appears 2 times")
+        end
+      end
+
+      response '422', 'fails when string not found' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:thread_id) { "thread-123" }
+        let!(:existing_file) { create(:website_file, website: website1_owned, path: "index.html", content: "<h1>Hello</h1>") }
+        let(:edit_params) do
+          {
+            path: "/index.html",
+            old_string: "not found",
+            new_string: "replacement"
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"][0]).to include("String not found")
+        end
+      end
+
+      response '404', 'file not found' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:thread_id) { "thread-123" }
+        let(:edit_params) do
+          {
+            path: "/nonexistent.html",
+            old_string: "foo",
+            new_string: "bar"
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"][0]).to include("File not found")
+        end
+      end
+
+      response '404', 'website not found' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:thread_id) { "nonexistent-thread" }
+        let(:edit_params) do
+          {
+            path: "/index.html",
+            old_string: "foo",
+            new_string: "bar"
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("Website not found")
+        end
+      end
+
+      response '422', 'missing required params' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:thread_id) { "thread-123" }
+        let(:edit_params) do
+          {
+            path: "/index.html"
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("path, old_string, and new_string are required")
+        end
+      end
+    end
+  end
 end
