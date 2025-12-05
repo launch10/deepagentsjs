@@ -7,39 +7,21 @@ import type {
   WriteResult,
 } from "deepagents";
 import { FilesystemBackend } from "deepagents";
-import { db, websiteFiles, codeFiles, eq, and, sql } from "@db";
+import { db, codeFiles, eq, and, sql } from "@db";
 import { Website } from "@types";
 import type { DB } from "@db";
-import { shasum } from "@ext";
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as os from "os";
 import { snakeCase } from "lodash";
 import micromatch from "micromatch";
 import { WebsiteFilesAPIService } from "@services";
-
-function performStringReplacement(
-  content: string,
-  oldString: string,
-  newString: string,
-  replaceAll: boolean
-): string | [string, number] {
-  const occurrences = content.split(oldString).length - 1;
-  if (occurrences === 0) {
-    return `Error: String not found in file: '${oldString}'`;
-  }
-  if (occurrences > 1 && !replaceAll) {
-    return `Error: String '${oldString}' appears ${occurrences} times in file. Use replace_all=True to replace all instances, or provide a more specific string with surrounding context.`;
-  }
-  return [content.split(oldString).join(newString), occurrences];
-}
 
 export interface CreateBackendParams {
   website: Website.WebsiteType;
   jwt: string;
 }
 
-export class DualBackend implements BackendProtocol {
+export class WebsiteFilesBackend implements BackendProtocol {
   private fs: FilesystemBackend;
   private website: Website.WebsiteType;
   private database: DB;
@@ -64,8 +46,8 @@ export class DualBackend implements BackendProtocol {
 
   static async create(
     params: CreateBackendParams,
-  ): Promise<DualBackend> {
-    const backend = new DualBackend(params);
+  ): Promise<WebsiteFilesBackend> {
+    const backend = new WebsiteFilesBackend(params);
     await backend.hydrate();
     return backend;
   }

@@ -1,1 +1,1 @@
-export { DualBackend } from "./dualBackend";
+export { WebsiteFilesBackend } from "./websiteFilesBackend";
