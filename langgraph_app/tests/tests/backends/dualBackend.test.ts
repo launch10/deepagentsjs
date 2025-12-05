@@ -53,21 +53,25 @@ describe("DualBackend", () => {
       expect(files.some((f) => f.path.includes("src") || f.path.includes("package"))).toBe(true);
     });
 
-    it.only("lists files in a subdirectory", async () => {
+    it("lists files in a subdirectory", async () => {
       const files = await backend.lsInfo("/src");
+      const paths = files.map((f) => f.path);
+      expect(paths.some((p) => p.includes("src/App.tsx"))).toBe(true);
+      expect(paths.some((p) => p.includes("src/components"))).toBe(true);
       expect(files.length).toBeGreaterThan(0);
     });
   });
 
   describe("read", () => {
-    it("reads a file with line numbers", async () => {
+    it.only("reads a file with line numbers", async () => {
       const content = await backend.read("/package.json");
       expect(content).toContain("1\t");
     });
 
     it("returns error for non-existent file", async () => {
       const content = await backend.read("/nonexistent.ts");
-      expect(content).toContain("Error");
+      expect(content).toContain("Error reading file");
+      expect(content).toContain("ENOENT");
     });
   });
 
@@ -80,7 +84,7 @@ describe("DualBackend", () => {
   });
 
   describe("globInfo", () => {
-    it("finds TypeScript files", async () => {
+    it.only("finds TypeScript files", async () => {
       const files = await backend.globInfo("**/*.tsx");
       expect(files.length).toBeGreaterThan(0);
       expect(files.every((f) => f.path.endsWith(".tsx"))).toBe(true);
