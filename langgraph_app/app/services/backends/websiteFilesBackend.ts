@@ -72,6 +72,8 @@ export class WebsiteFilesBackend implements BackendProtocol {
       .from(codeFiles)
       .where(eq(codeFiles.websiteId, this.getWebsiteId()));
 
+    await this.cleanup();
+
     for (const file of files) {
       if (!file.path || !file.content) continue;
 
