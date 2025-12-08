@@ -69,7 +69,7 @@
     "cohere-ai": "^7.20.0",
     "cookie": "^1.1.1",
     "date-fns": "^4.1.0",
-    "deepagents": "^1.3.0",
+    "deepagents": "link:/Users/brettshollenberger/programming/business/tools/deepagentsjs",
     "diff": "^7.0.0",
     "dotenv": "^16.6.1",
     "dotenv-expand": "^12.0.3",

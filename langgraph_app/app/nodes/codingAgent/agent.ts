@@ -8,6 +8,7 @@ import { db, websites, eq } from "@db";
 import type { Website } from "@types";
 import { checkpointer } from "@core";
 import { toolRetryMiddleware } from "langchain";
+import { NodeMiddleware } from "@middleware";
 
 const CODING_AGENT_SYSTEM_PROMPT = `You are an expert landing page developer. You create high-converting landing pages that drive pre-sales signups.
 
@@ -95,7 +96,7 @@ export function createCodingAgent(
   });
 }
 
-export async function codingAgentNode(
+export const codingAgentNode = NodeMiddleware.use({}, async(
   state: CodingAgentGraphState,
   config: LangGraphRunnableConfig,
 ): Promise<Partial<CodingAgentGraphState>> {
@@ -168,4 +169,4 @@ Please create a landing page based on this context.
     messages: result.messages,
     status: "completed",
   };
-}
+});

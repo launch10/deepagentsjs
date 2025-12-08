@@ -64,6 +64,7 @@ describe.sequential("CodingAgent Flow", () => {
         .withPrompt("Create a landing page for this business")
         .execute();
 
+      debugger; // Allow us to pause to look at this... 
       expect(result.error).toBeUndefined();
       expect(result.state.status).toBe("completed");
 
@@ -82,7 +83,6 @@ describe.sequential("CodingAgent Flow", () => {
         expect(heroFile.content).toContain("export");
         expect(heroFile.content).toMatch(/function|const/);
       }
-      debugger; // Allow us to pause to look at this... 
     }, 300000);
   });
 });
