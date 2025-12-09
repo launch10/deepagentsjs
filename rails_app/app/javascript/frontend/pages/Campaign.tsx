@@ -1,110 +1,165 @@
-import React, { useEffect, useRef, useState } from "react";
+import AdCampaignChat from "@components/ad-campaign/ad-campaign-chat/ad-campaign-chat";
+import AdCampaignContent from "@components/ad-campaign/ad-campaign-create/ad-campaign-content";
+import AdCampaignHighlights from "@components/ad-campaign/ad-campaign-create/ad-campaign-highlights";
+import type { AdCampaignFormData } from "@components/ad-campaign/ad-campaign-form/ad-campaign-form.schema";
+import { adCampaignSchema } from "@components/ad-campaign/ad-campaign-form/ad-campaign-form.schema";
+import AdCampaignPagination from "@components/ad-campaign/ad-campaign-pagination";
+import AdCampaignPreview from "@components/ad-campaign/ad-campaign-preview";
+import AdCampaignTabSwitcher from "@components/ad-campaign/ad-campaign-tab-switcher";
+import type { AdPreviewType, CampaignProps } from "@components/ad-campaign/ad-campaign.types";
+import Header from "@components/header/header";
+import LogoSpinner from "@components/ui/logo-spinner";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { usePage } from "@inertiajs/react";
+import type { AdsBridgeType } from "@shared";
 import { useLanggraph } from "langgraph-ai-sdk-react";
-import { Wrapper, ChatInput } from "@components/brainstorm";
-import { type AdsBridgeType, Ads, type UUIDType, type InertiaProps } from "@shared";
-import ReactMarkdown from "react-markdown";
+import { useEffect, useState } from "react";
+import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
 
-// Every path under campaign actually has the same props, so we can use the same type
-type CampaignProps =
-  InertiaProps.paths["/projects/{uuid}/campaigns/content"]["get"]["responses"]["200"]["content"]["application/json"];
+const TABS = [
+  { id: "content", label: "Content" },
+  { id: "highlights", label: "Highlights" },
+];
 
-export default function Campaign(props: CampaignProps) {
+export default function Campaign() {
   const pageProps = usePage<CampaignProps>();
-  // Access shared props from Inertia
-  let { thread_id, jwt, langgraph_path, campaign, workflow, project } = pageProps.props;
-  const campaignExists = Boolean(campaign?.id);
+  const [activeTab, setActiveTab] = useState("content");
+  const [isLoading, setIsLoading] = useState(true);
+  const [previewText, setPreviewText] = useState<AdPreviewType>({
+    headline: "",
+    url: "",
+    details: "",
+  });
+
+  const { thread_id, jwt, workflow, langgraph_path } = pageProps.props;
 
   const url = new URL("api/ads/stream", langgraph_path).toString();
-  const { state, messages, sendMessage, updateState, isLoadingHistory } =
-    useLanggraph<AdsBridgeType>({
-      api: url,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwt}`,
-      },
-      getInitialThreadId: () => (thread_id ? thread_id : undefined),
-    });
+  const { state } = useLanggraph<AdsBridgeType>({
+    api: url,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${jwt}`,
+    },
+    getInitialThreadId: () => (thread_id ? thread_id : undefined),
+  });
+
+  const methods = useForm<AdCampaignFormData>({
+    resolver: zodResolver(adCampaignSchema),
+    mode: "onChange",
+    defaultValues: {
+      adGroupName: "Ad Group Name",
+      headlines: [
+        { value: "Headline Option 1", isLocked: false },
+        { value: "Headline Option 2", isLocked: false },
+        { value: "Headline Option 3", isLocked: false },
+      ],
+      descriptions: [
+        { value: "Description Option 1", isLocked: false },
+        { value: "Description Option 2", isLocked: false },
+        { value: "Description Option 3", isLocked: false },
+        { value: "Description Option 4", isLocked: false },
+      ],
+      features: [
+        { value: "Feature Option 1", isLocked: false },
+        { value: "Feature Option 2", isLocked: false },
+        { value: "Feature Option 3", isLocked: false },
+        { value: "Feature Option 4", isLocked: false },
+        { value: "Feature Option 5", isLocked: false },
+        { value: "Feature Option 6", isLocked: false },
+      ],
+    },
+  });
 
   useEffect(() => {
-    if (!workflow || !workflow.substep || !project?.uuid) return;
-    if (campaignExists && workflow.substep === "content") return;
-    if (
-      state.hasStartedStep &&
-      workflow.substep in state.hasStartedStep &&
-      state.hasStartedStep[workflow.substep as Ads.StageName] === true
-    )
-      return;
+    // Populate the form with AI headlines and descriptions
+    if (state && state.headlines) {
+      methods.setValue(
+        "headlines",
+        state.headlines.slice(0, 3).map((h) => ({ value: h.text, isLocked: false }))
+      );
+    }
+    if (state && state.descriptions) {
+      const populatedDescriptions = state.descriptions
+        .slice(0, 2)
+        .map((d) => ({ value: d.text, isLocked: false }));
+      const emptyDescription = { value: "", isLocked: false };
+      methods.setValue("descriptions", [
+        ...populatedDescriptions,
+        emptyDescription,
+        emptyDescription,
+      ]);
+    }
+  }, [state?.headlines, state?.descriptions]);
 
-    updateState({
-      stage: workflow.substep as Ads.StageName,
-      projectUUID: project.uuid as UUIDType,
-    });
-  }, [workflow?.substep, state.hasStartedStep]);
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const watchedHeadlines = useWatch({ control: methods.control, name: "headlines" });
+  const watchedDescriptions = useWatch({ control: methods.control, name: "descriptions" });
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Populate Ad Preview with state values
+    const headlines = watchedHeadlines?.slice(0, 3) ?? [];
+    const previewHeadline = headlines.map((h) => h.value).join(" | ");
+    const previewDescription = watchedDescriptions?.[0]?.value;
 
-  const [input, setInput] = useState(`Tell me about your business...`);
-  const inputRef = useRef<HTMLInputElement>(null);
+    setPreviewText((prev) => ({
+      ...prev,
+      headline: previewHeadline,
+      details: previewDescription,
+    }));
 
-  if (isLoadingHistory) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-gray-500">Loading conversation...</div>
-      </div>
-    );
-  }
+    setIsLoading(false);
+  }, [watchedHeadlines, watchedDescriptions]);
+
+  const { fields: headlinesFields, append: appendHeadlines } = useFieldArray({
+    control: methods.control,
+    name: "headlines",
+  });
+
+  const { fields: descriptionsFields } = useFieldArray({
+    control: methods.control,
+    name: "descriptions",
+  });
+
+  const { fields: featuresFields } = useFieldArray({
+    control: methods.control,
+    name: "features",
+  });
 
   return (
-    <Wrapper>
-      {messages && (
-        <>
-          <h1>Messages</h1>
-          {messages[0] &&
-            messages[0].blocks.map((b) => <ReactMarkdown key={b.id}>{b.text}</ReactMarkdown>)}
-        </>
-      )}
-      <br />
-      <br />
-      <br />
-      {state.headlines && (
-        <>
-          <h1>Headlines</h1>
-          {state.headlines?.map((h) => (
-            <ReactMarkdown key={h.text}>{h.text}</ReactMarkdown>
-          ))}
-        </>
-      )}
-      <br />
-      <br />
-      <br />
-      {state.descriptions && (
-        <>
-          <h1>Descriptions</h1>
-          {state.descriptions?.map((d) => (
-            <ReactMarkdown key={d.text}>{d.text}</ReactMarkdown>
-          ))}
-        </>
-      )}
-      <div ref={messagesEndRef} />
-      <ChatInput
-        inputRef={inputRef}
-        input={input}
-        onChange={(e) => setInput(e.target.value)}
-        onSubmit={(e) => {
-          e.preventDefault();
-          sendMessage(input);
-          setInput("");
-        }}
-      />
-    </Wrapper>
+    <main className="mx-auto container max-w-6xl grid grid-cols-12 gap-10 px-5">
+      <div className="col-span-4">
+        <AdCampaignChat
+          activeStep={(workflow && workflow?.step) || undefined} // TODO: Clean up conditionals
+          activeSubstep={(workflow && workflow?.substep) || undefined} // TODO: Clean up conditionals
+        />
+      </div>
+      <div className="col-span-8">
+        <AdCampaignPreview
+          className="mb-8"
+          {...previewText}
+          // TODO: Populate URL from...somewhere
+        />
+        <AdCampaignTabSwitcher tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
+        {isLoading ? (
+          <div className="border-[#D3D2D0] border border-t-0 rounded-b-2xl bg-white">
+            <div className="flex items-center justify-center p-9">
+              <LogoSpinner />
+            </div>
+          </div>
+        ) : (
+          <FormProvider {...methods}>
+            {activeTab === "content" && (
+              <AdCampaignContent
+                methods={methods}
+                headlinesFields={headlinesFields}
+                descriptionsFields={descriptionsFields}
+                appendHeadlines={appendHeadlines}
+              />
+            )}
+            {activeTab === "highlights" && <AdCampaignHighlights featuresFields={featuresFields} />}
+            <AdCampaignPagination canContinue={false} />
+          </FormProvider>
+        )}
+      </div>
+    </main>
   );
 }

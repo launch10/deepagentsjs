@@ -6,7 +6,7 @@ import { SiteLayout } from "../frontend/layouts/site-layout";
 
 // Import global styles here for Vite to process
 import "virtual:uno.css";
-import "@unocss/reset/tailwind-compat.css";
+// Removed: @unocss/reset/tailwind-compat.css - using Tailwind v4's built-in preflight instead
 import "@styles/index.scss";
 import "@xterm/xterm/css/xterm.css";
 import "react-toastify/dist/ReactToastify.css";
