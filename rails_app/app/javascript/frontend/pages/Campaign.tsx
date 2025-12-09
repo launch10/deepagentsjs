@@ -15,6 +15,7 @@ import type { AdsBridgeType } from "@shared";
 import { useLanggraph } from "langgraph-ai-sdk-react";
 import { useEffect, useState } from "react";
 import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
+import { Ads, type UUIDType } from "@shared";
 
 const TABS = [
   { id: "content", label: "Content" },
@@ -23,6 +24,9 @@ const TABS = [
 
 export default function Campaign() {
   const pageProps = usePage<CampaignProps>();
+  const { thread_id, jwt, langgraph_path, campaign, workflow, project } = pageProps.props;
+  const campaignExists = Boolean(campaign?.id);
+
   const [activeTab, setActiveTab] = useState("content");
   const [isLoading, setIsLoading] = useState(true);
   const [previewText, setPreviewText] = useState<AdPreviewType>({
@@ -31,10 +35,8 @@ export default function Campaign() {
     details: "",
   });
 
-  const { thread_id, jwt, workflow, langgraph_path } = pageProps.props;
-
   const url = new URL("api/ads/stream", langgraph_path).toString();
-  const { state, updateState } = useLanggraph<AdsBridgeType>({
+  const { state, messages, updateState } = useLanggraph<AdsBridgeType>({
     api: url,
     headers: {
       "Content-Type": "application/json",
@@ -42,6 +44,22 @@ export default function Campaign() {
     },
     getInitialThreadId: () => (thread_id ? thread_id : undefined),
   });
+
+  useEffect(() => {
+    if (!workflow || !workflow.substep || !project?.uuid) return;
+    if (campaignExists && workflow.substep === "content") return;
+    if (
+      state.hasStartedStep &&
+      workflow.substep in state.hasStartedStep &&
+      state.hasStartedStep[workflow.substep as Ads.StageName] === true
+    )
+      return;
+
+    updateState({
+      stage: workflow.substep as Ads.StageName,
+      projectUUID: project.uuid as UUIDType,
+    });
+  }, [workflow?.substep, state.hasStartedStep]);
 
   const methods = useForm<AdCampaignFormData>({
     resolver: zodResolver(adCampaignSchema),

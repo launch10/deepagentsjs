@@ -14,6 +14,19 @@ class ProjectsController < SubscribedController
     end
   end
 
+  def show
+    case @project.step
+    when "brainstorm"
+      redirect_to action: "brainstorm"
+    when "website"
+      redirect_to action: "website"
+    when "ad_campaign"
+      redirect_to action: "campaigns_#{@project.substep}"
+    when "launch"
+      redirect_to action: "launch_#{@project.substep}"
+    end
+  end
+
   def brainstorm
     render inertia: "Brainstorm", props: @project.to_brainstorm_json, layout: "layouts/webcontainer"
   end

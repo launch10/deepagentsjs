@@ -93,6 +93,7 @@ export default function AdCampaignChat({
         {!isLoadingHistory && messages ? (
           <div className="space-y-4">
             {messages.map((message, index) => {
+              debugger
               if (message.role === "assistant") {
                 return message.blocks.map((block) => (
                   <AdCampaignChatBotMessage

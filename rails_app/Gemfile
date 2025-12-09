@@ -63,6 +63,7 @@ end
 
 group :development do
   gem "web-console", ">= 4.1.0"
+  gem "launchy"
 end
 
 group :test do
