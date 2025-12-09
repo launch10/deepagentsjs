@@ -1,11 +1,13 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { CodingAgentAnnotation } from "@annotation";
-import { initializeCodingAgent, codingAgentNode } from "@nodes";
+import { buildContext, codingAgentNode, cleanupNode } from "@nodes";
 
 export const codingAgentGraph = new StateGraph(CodingAgentAnnotation)
-  .addNode("initialize", initializeCodingAgent)
+  .addNode("buildContext", buildContext)
   .addNode("codingAgent", codingAgentNode)
+  .addNode("cleanup", cleanupNode)
 
-  .addEdge(START, "initialize")
-  .addEdge("initialize", "codingAgent")
-  .addEdge("codingAgent", END);
+  .addEdge(START, "buildContext")
+  .addEdge("buildContext", "codingAgent")
+  .addEdge("codingAgent", "cleanup")
+  .addEdge("cleanup", END);

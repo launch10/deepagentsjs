@@ -10,11 +10,11 @@ import {
   eq,
 } from "@db";
 import type { Brainstorm, Website } from "@types";
+import { NodeMiddleware } from "@middleware";
 
-export async function initializeCodingAgent(
+export const buildContext = NodeMiddleware.use({}, async (
   state: CodingAgentGraphState,
-  config?: LangGraphRunnableConfig,
-): Promise<Partial<CodingAgentGraphState>> {
+): Promise<Partial<CodingAgentGraphState>> => {
   if (!state.websiteId) {
     throw new Error("websiteId is required");
   }
@@ -80,4 +80,4 @@ export async function initializeCodingAgent(
     images,
     status: "running",
   };
-}
+});

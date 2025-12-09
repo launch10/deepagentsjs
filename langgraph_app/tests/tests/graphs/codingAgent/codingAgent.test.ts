@@ -50,7 +50,7 @@ describe.sequential("CodingAgent Flow", () => {
   });
 
   describe("Context engineering", () => {
-    it.only("properly pulls in theme", async () => {
+    it.only("pulls in theme, images, and brainstorm", async () => {
       const result = await testGraph<CodingAgentGraphState>()
         .withGraph(codingAgentGraph)
         .withState({
@@ -61,7 +61,19 @@ describe.sequential("CodingAgent Flow", () => {
         .withPrompt("Create a landing page for this business")
         .stopAfter("buildContext")
         .execute();
+
+      const hexadecimalRegex = /[A-F|\d]{6,}/;
+      result.state.theme?.colors.forEach((color) => {
+        expect(color).toMatch(hexadecimalRegex);
+      });
+
+      // TODO: Define uploaded images, logos, etc.
+      expect(result.state.brainstorm.idea).toBeDefined();
+      expect(result.state.brainstorm.audience).toBeDefined();
+      expect(result.state.brainstorm.solution).toBeDefined();
+      expect(result.state.brainstorm.socialProof).toBeDefined();
     });
+
   })
 
   describe("Hello World - Generate Landing Page", () => {
