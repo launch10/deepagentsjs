@@ -34,7 +34,7 @@ export default function Campaign() {
   const { thread_id, jwt, workflow, langgraph_path } = pageProps.props;
 
   const url = new URL("api/ads/stream", langgraph_path).toString();
-  const { state } = useLanggraph<AdsBridgeType>({
+  const { state, updateState } = useLanggraph<AdsBridgeType>({
     api: url,
     headers: {
       "Content-Type": "application/json",
@@ -73,10 +73,28 @@ export default function Campaign() {
   useEffect(() => {
     // Populate the form with AI headlines and descriptions
     if (state && state.headlines) {
-      methods.setValue(
-        "headlines",
-        state.headlines.slice(0, 3).map((h) => ({ value: h.text, isLocked: false }))
+      // Only update unlocked fields, preserve locked fields
+      const existingHeadlines = methods.getValues("headlines");
+      const newHeadlines = state.headlines.slice(0, 3);
+
+      const mergedHeadlines = existingHeadlines.map((existing, i) =>
+        existing.isLocked
+          ? existing
+          : {
+              value: newHeadlines[i]?.text ?? "",
+              isLocked: false,
+            }
       );
+
+      // If there were less than 3 headlines previously, pad to always have 3
+      while (mergedHeadlines.length < 3) {
+        mergedHeadlines.push({
+          value: newHeadlines[mergedHeadlines.length]?.text ?? "",
+          isLocked: false,
+        });
+      }
+
+      methods.setValue("headlines", mergedHeadlines);
     }
     if (state && state.descriptions) {
       const populatedDescriptions = state.descriptions
@@ -124,12 +142,26 @@ export default function Campaign() {
     name: "features",
   });
 
+  const handleRefreshSuggestions = (fieldName: "headlines" | "descriptions") => {
+    const numLocked = methods.getValues(fieldName).filter((field) => field.isLocked).length;
+    updateState({
+      refresh: { asset: fieldName, nVariants: 6 - numLocked }, // we want to refresh headlines + we expect 6 minus the number they already liked to be generated
+      headlines: state.headlines, // ensure we pass the content through so the model can know what the user likes
+      descriptions: state.descriptions, // always pass all content, just so the model sees all the user's preferences at once
+    });
+  };
+
+  const handleRefreshAllSuggestions = () => {
+    console.log("refresh all suggestions");
+  };
+
   return (
     <main className="mx-auto container max-w-6xl grid grid-cols-12 gap-10 px-5">
       <div className="col-span-4">
         <AdCampaignChat
           activeStep={(workflow && workflow?.step) || undefined} // TODO: Clean up conditionals
           activeSubstep={(workflow && workflow?.substep) || undefined} // TODO: Clean up conditionals
+          onRefreshSuggestions={handleRefreshAllSuggestions}
         />
       </div>
       <div className="col-span-8">
@@ -153,6 +185,7 @@ export default function Campaign() {
                 headlinesFields={headlinesFields}
                 descriptionsFields={descriptionsFields}
                 appendHeadlines={appendHeadlines}
+                onRefreshSuggestions={handleRefreshSuggestions}
               />
             )}
             {activeTab === "highlights" && <AdCampaignHighlights featuresFields={featuresFields} />}

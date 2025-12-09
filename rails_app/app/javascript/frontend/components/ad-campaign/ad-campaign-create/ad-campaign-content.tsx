@@ -17,11 +17,13 @@ export default function AdCampaignContent({
   appendHeadlines,
   headlinesFields,
   descriptionsFields,
+  onRefreshSuggestions,
 }: {
   methods: UseFormReturn<AdCampaignFormData>;
   appendHeadlines: (value: HeadlineData) => void;
   headlinesFields: FieldArrayWithId<AdCampaignFormData, "headlines", "id">[];
   descriptionsFields: FieldArrayWithId<AdCampaignFormData, "descriptions", "id">[];
+  onRefreshSuggestions: (fieldName: "headlines" | "descriptions") => void;
 }) {
   const {
     register,
@@ -39,15 +41,24 @@ export default function AdCampaignContent({
     fieldName: "headlines" | "descriptions" | "features", // TODO: Move this function into a util
     index: number
   ) => {
-    const isLocked = getValues(fieldName)[index].isLocked;
-    const updatedFields = getValues(fieldName).map((field, i) =>
+    const fields = getValues(fieldName);
+    const isLocked = fields[index].isLocked;
+    // Only perform empty check when attempting to lock (i.e. was unlocked)
+    if (!isLocked && !fields[index].value) {
+      methods.setError(
+        `${fieldName}.${index}.value` as any,
+        {
+          type: "manual",
+          message: "Cannot lock an empty input.",
+        },
+        { shouldFocus: true }
+      );
+      return;
+    }
+    const updatedFields = fields.map((field, i) =>
       i === index ? { ...field, isLocked: !isLocked } : field
     );
     setValue(fieldName, updatedFields);
-  };
-
-  const handleRefreshSuggestions = (fieldName: "headlines" | "descriptions") => {
-    console.log(`Refresh suggestions for ${fieldName}`);
   };
 
   return (
@@ -86,7 +97,7 @@ export default function AdCampaignContent({
               currentCount={methods.getValues("headlines").length}
               maxCount={15}
               error={errors.headlines?.message}
-              onRefreshSuggestions={() => handleRefreshSuggestions("headlines")}
+              onRefreshSuggestions={() => onRefreshSuggestions("headlines")}
             />
             <AdCampaignFieldList
               fieldName="headlines"
@@ -110,7 +121,7 @@ export default function AdCampaignContent({
                     type="button"
                     variant="link"
                     className="text-[#74767A] font-normal"
-                    onClick={() => handleRefreshSuggestions("descriptions")}
+                    onClick={() => onRefreshSuggestions("descriptions")}
                   >
                     <Sparkles /> Refresh Suggestions
                   </Button>

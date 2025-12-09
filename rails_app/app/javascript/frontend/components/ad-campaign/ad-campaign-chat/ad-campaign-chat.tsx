@@ -31,9 +31,11 @@ import AdCampaignChatUserMessage from "./ad-campaign-chat-user-message";
 export default function AdCampaignChat({
   activeStep,
   activeSubstep,
+  onRefreshSuggestions = () => {},
 }: {
   activeStep?: string;
   activeSubstep?: string;
+  onRefreshSuggestions?: () => void;
 }) {
   const pageProps = usePage<CampaignProps>();
   const { thread_id, jwt, langgraph_path } = pageProps.props;
@@ -64,10 +66,6 @@ export default function AdCampaignChat({
   const onSubmit = handleSubmit((data) => {
     sendMessage(data.message);
   });
-
-  const handleRefreshSuggestions = () => {
-    console.log("Refresh suggestions");
-  };
 
   return (
     <Card className="shadow-none bg-background border-[#D3D2D0] rounded-2xl sticky top-24 z-10">
@@ -153,7 +151,7 @@ export default function AdCampaignChat({
         <Button
           variant="link"
           className="text-[#74767A] font-normal self-start"
-          onClick={handleRefreshSuggestions}
+          onClick={onRefreshSuggestions}
         >
           <Sparkles /> Refresh All Suggestions
         </Button>
