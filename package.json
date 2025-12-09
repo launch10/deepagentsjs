@@ -16,7 +16,9 @@
     "test:all": "pnpm run test:rails && pnpm run test:langgraph",
     "lint:rails": "cd rails_app && bundle exec rubocop",
     "lint:langgraph": "cd langgraph_app && pnpm run lint",
-    "lint:all": "pnpm run lint:rails && pnpm run lint:langgraph"
+    "lint:all": "pnpm run lint:rails && pnpm run lint:langgraph",
+    "format": "cd langgraph_app && pnpm run format && cd ../rails_app && pnpm run format",
+    "format:check": "cd langgraph_app && pnpm run format:check && cd ../rails_app && pnpm run format:check"
   },
   "devDependencies": {
     "husky": "^9.1.7"

@@ -21,6 +21,11 @@ rails_app/storage
 langgraph_app/dist
 langgraph_app/app/templates/**/node_modules
 langgraph_app/app/templates/**/dist
+langgraph_app/TODO
+TODO/
+
+# Rails templates (vendored code)
+rails_app/templates
 
 # Atlas
 atlas/dist

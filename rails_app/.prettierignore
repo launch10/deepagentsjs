@@ -1,0 +1,19 @@
+node_modules
+dist
+build
+coverage
+*.min.js
+*.min.css
+pnpm-lock.yaml
+package-lock.json
+
+# Vendored code
+vendor
+templates
+
+# Rails generated
+public/packs
+public/assets
+tmp
+log
+storage
