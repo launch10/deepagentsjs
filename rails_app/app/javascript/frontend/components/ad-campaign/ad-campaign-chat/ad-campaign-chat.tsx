@@ -68,7 +68,7 @@ export default function AdCampaignChat({
   });
 
   return (
-    <Card className="shadow-none bg-background border-[#D3D2D0] rounded-2xl sticky top-24 z-10">
+    <Card className="shadow-none bg-background border-[#D3D2D0] rounded-2xl sticky top-24 z-0">
       <CardHeader>
         <CardTitle className="text-lg font-medium">Ad Campaign</CardTitle>
         <CardDescription className="flex flex-col gap-3">

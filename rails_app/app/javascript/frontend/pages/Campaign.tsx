@@ -7,7 +7,6 @@ import AdCampaignPagination from "@components/ad-campaign/ad-campaign-pagination
 import AdCampaignPreview from "@components/ad-campaign/ad-campaign-preview";
 import AdCampaignTabSwitcher from "@components/ad-campaign/ad-campaign-tab-switcher";
 import type { AdPreviewType, CampaignProps } from "@components/ad-campaign/ad-campaign.types";
-import Header from "@components/header/header";
 import LogoSpinner from "@components/ui/logo-spinner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePage } from "@inertiajs/react";
