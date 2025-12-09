@@ -88,35 +88,15 @@ Start by exploring the existing template structure with ls and glob, then create
 const getMiddlewares = (): AgentMiddleware[] => {
   const fallbacks = getLLMFallbacks("coding", "slow", "paid")
   const modelFallbackMiddleware  = modelFallbackMiddlewareBuilder(...fallbacks)
-  const summarizationMiddleware = summarizationMiddlewareBuilder({
-    model: getLLM("summarization", "fast", "paid"),
-    trigger: { fraction: 0.7 },
-    keep: { messages: 15 },
-  })
-  return [toolRetryMiddleware(), modelFallbackMiddleware, summarizationMiddleware]
+  // const summarizationMiddleware = summarizationMiddlewareBuilder({
+  //   model: getLLM("summarization", "fast", "paid"),
+  //   trigger: { fraction: 0.7 },
+  //   keep: { messages: 15 },
+  // })
+  return [toolRetryMiddleware(), modelFallbackMiddleware]
 }
 
-export function createCodingAgent(
-  backend: WebsiteFilesBackend,
-) {
-  const llm = getLLM("coding", "slow", "paid");
-  const middlewares = getMiddlewares()
-
-  return createDeepAgent({
-    model: llm as any,
-    name: "coding-agent",
-    systemPrompt: CODING_AGENT_SYSTEM_PROMPT,
-    backend: () => backend,
-    subagents: [copywriterSubAgent, coderSubAgent],
-    middleware: middlewares as any,
-    checkpointer: checkpointer as any,
-  });
-}
-
-export const codingAgentNode = NodeMiddleware.use({}, async(
-  state: CodingAgentGraphState,
-  config: LangGraphRunnableConfig,
-): Promise<Partial<CodingAgentGraphState>> => {
+const getBackend = async (state: CodingAgentGraphState) => {
   if (!state.websiteId || !state.jwt) {
     throw new Error("websiteId and jwt are required");
   }
@@ -139,16 +119,32 @@ export const codingAgentNode = NodeMiddleware.use({}, async(
     jwt: state.jwt,
   });
 
-  const agent = createCodingAgent(backend);
+  return backend;
+}
 
-  const graph = (agent as any).graph || (agent as any)._graph;
-  if (graph?.channels?.files) {
-    console.log('files channel type:',
-  graph.channels.files.constructor.name);
-  } else {
-    console.log('channels:', Object.keys(graph?.channels ||
-  {}));
-  }
+export function createCodingAgent(
+  state: CodingAgentGraphState,
+) {
+  const backend = getBackend(state);
+  const llm = getLLM("coding", "slow", "paid");
+  const middlewares = getMiddlewares()
+
+  return createDeepAgent({
+    model: llm as any,
+    name: "coding-agent",
+    systemPrompt: CODING_AGENT_SYSTEM_PROMPT,
+    backend: () => backend as any,
+    subagents: [copywriterSubAgent, coderSubAgent],
+    middleware: middlewares as any,
+    checkpointer: checkpointer as any,
+  });
+}
+
+export const codingAgentNode = NodeMiddleware.use({}, async(
+  state: CodingAgentGraphState,
+  config: LangGraphRunnableConfig,
+): Promise<Partial<CodingAgentGraphState>> => {
+  const agent = createCodingAgent(state);
 
   const contextMessage = `
 ## Brainstorm Context

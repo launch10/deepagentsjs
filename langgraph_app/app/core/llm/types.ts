@@ -243,7 +243,9 @@ export const FakeConfig: ILocalConfig = {
 
 export const Models: Record<LLMName, LLMConfig> = {
   Haiku: HaikuConfig,
+  Haiku3: Haiku3Config,
   Sonnet: SonnetConfig,
+  Opus: OpusConfig,
   Gpt5: Gpt5Config,
   Gpt5Mini: Gpt5MiniConfig,
   GptOss: GptOssConfig,

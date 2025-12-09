@@ -49,6 +49,21 @@ describe.sequential("CodingAgent Flow", () => {
     }
   });
 
+  describe("Context engineering", () => {
+    it.only("properly pulls in theme", async () => {
+      const result = await testGraph<CodingAgentGraphState>()
+        .withGraph(codingAgentGraph)
+        .withState({
+          websiteId,
+          accountId: website.accountId ?? undefined,
+          projectId: website.projectId ?? undefined,
+        })
+        .withPrompt("Create a landing page for this business")
+        .stopAfter("buildContext")
+        .execute();
+    });
+  })
+
   describe("Hello World - Generate Landing Page", () => {
     it("generates a complete landing page from brainstorm context", async () => {
       // Ensure it isn't EXACTLY the generated snapshot??? Where did that come from?
