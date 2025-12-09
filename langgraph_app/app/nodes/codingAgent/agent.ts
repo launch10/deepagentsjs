@@ -99,7 +99,7 @@ export function createCodingAgent(
 export const codingAgentNode = NodeMiddleware.use({}, async(
   state: CodingAgentGraphState,
   config: LangGraphRunnableConfig,
-): Promise<Partial<CodingAgentGraphState>> {
+): Promise<Partial<CodingAgentGraphState>> => {
   if (!state.websiteId || !state.jwt) {
     throw new Error("websiteId and jwt are required");
   }
