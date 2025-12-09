@@ -1,7 +1,8 @@
 import { createInertiaApp } from "@inertiajs/react";
 import { createElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { AppLayout } from "../frontend/layouts/app";
+// import { AppLayout } from '../frontend/layouts/app'
+import { SiteLayout } from "../frontend/layouts/site-layout";
 
 // Import global styles here for Vite to process
 import "virtual:uno.css";
@@ -29,7 +30,7 @@ createInertiaApp({
       console.error(`Missing Inertia page component: '${name}.tsx'`);
     }
 
-    page.default.layout ||= (page) => createElement(AppLayout, null, page);
+    page.default.layout ||= (page) => createElement(SiteLayout, null, page);
 
     return page;
   },

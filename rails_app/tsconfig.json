@@ -19,6 +19,7 @@
       "~/*": ["./app/javascript/frontend/*"],
       "@components/*": ["./app/javascript/frontend/components/*"],
       "@context/*": ["./app/javascript/frontend/context/*"],
+      "@contexts/*": ["./app/javascript/frontend/contexts/*"],
       "@hooks/*": ["./app/javascript/frontend/hooks/*"],
       "@stores/*": ["./app/javascript/frontend/stores/*"],
       "@lib/*": ["./app/javascript/frontend/lib/*"],
