@@ -11,6 +11,9 @@ package-lock.json
 vendor
 templates
 
+# Jumpstart config (formatting breaks gem loading)
+config/jumpstart.yml
+
 # Rails generated
 public/packs
 public/assets
