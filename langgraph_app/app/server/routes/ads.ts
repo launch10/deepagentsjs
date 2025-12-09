@@ -1,8 +1,8 @@
-import { Hono } from 'hono';
-import { authMiddleware, type AuthContext } from '../middleware/auth';
-import { adsGraph } from '@graphs';
+import { Hono } from "hono";
+import { authMiddleware, type AuthContext } from "../middleware/auth";
+import { adsGraph } from "@graphs";
 import { graphParams } from "@core";
-import { AdsBridge } from '@annotation';
+import { AdsBridge } from "@annotation";
 
 type Variables = {
   auth: AuthContext;
@@ -10,22 +10,22 @@ type Variables = {
 
 export const adsRoutes = new Hono<{ Variables: Variables }>();
 
-const graph = adsGraph.compile({ ...graphParams, name: 'ads'});
+const graph = adsGraph.compile({ ...graphParams, name: "ads" });
 const AdsAPI = AdsBridge.bind(graph);
 
-adsRoutes.post('/stream', authMiddleware, async (c) => {
-  const auth = c.get('auth') as AuthContext;
+adsRoutes.post("/stream", authMiddleware, async (c) => {
+  const auth = c.get("auth") as AuthContext;
   const body = await c.req.json();
-  
+
   const { messages, threadId, state } = body;
 
   if (!threadId) {
-    return c.json({ error: 'Missing required field: threadId' }, 400);
+    return c.json({ error: "Missing required field: threadId" }, 400);
   }
   let stateObj = state || {};
 
   try {
-    return AdsAPI.stream({ 
+    return AdsAPI.stream({
       messages: messages || [],
       threadId,
       state: {
@@ -35,26 +35,26 @@ adsRoutes.post('/stream', authMiddleware, async (c) => {
       },
     });
   } catch (error) {
-    console.error('AdsAPI.stream error:', error);
-    return c.json({ error: 'Stream failed', details: String(error) }, 500);
+    console.error("AdsAPI.stream error:", error);
+    return c.json({ error: "Stream failed", details: String(error) }, 500);
   }
 });
 
-adsRoutes.get('/stream', authMiddleware, async (c) => {
-  const auth = c.get('auth') as AuthContext;
-  const threadId = c.req.query('threadId');
+adsRoutes.get("/stream", authMiddleware, async (c) => {
+  const auth = c.get("auth") as AuthContext;
+  const threadId = c.req.query("threadId");
 
   if (!threadId) {
-    return c.json({ error: 'Missing threadId' }, 400);
+    return c.json({ error: "Missing threadId" }, 400);
   }
-  
+
   return await AdsAPI.loadHistory(threadId);
 });
 
-adsRoutes.get('/health', (c) => {
-  return c.json({ 
-    status: 'ok', 
-    graph: 'ads',
-    timestamp: new Date().toISOString() 
+adsRoutes.get("/health", (c) => {
+  return c.json({
+    status: "ok",
+    graph: "ads",
+    timestamp: new Date().toISOString(),
   });
 });

@@ -63,17 +63,11 @@ export default class extends Controller {
         },
 
         onAuthorize: (data, actions) => {
-          return paypalCheckoutInstance.tokenizePayment(
-            data,
-            this.paymentMethod.bind(this)
-          );
+          return paypalCheckoutInstance.tokenizePayment(data, this.paymentMethod.bind(this));
         },
 
         onCancel: (data) => {
-          console.log(
-            "checkout.js payment cancelled",
-            JSON.stringify(data, 0, 2)
-          );
+          console.log("checkout.js payment cancelled", JSON.stringify(data, 0, 2));
         },
 
         onError: (err) => {

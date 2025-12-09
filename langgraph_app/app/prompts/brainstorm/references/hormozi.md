@@ -23,6 +23,7 @@ Maximize top (bigger outcome, more credible), minimize bottom (faster, easier).
 **Value-to-Price Gap**: Show $20K value, charge $3K. Gap makes it feel like stealing.
 
 ## When to Apply
+
 - Solution weak → Apply Value Equation (score each variable)
 - Generic offering → Add Unique Mechanism
 - Underpriced → Show value stack, increase price

@@ -2,9 +2,9 @@ import { type BaseChatModel } from "@langchain/core/language_models/chat_models"
 import { type LLMSkill, type LLMSpeed, type LLMCost } from "./types";
 import { LLMManager } from "./core";
 
-const LLM_SPEED_DEFAULT: LLMSpeed = (process.env.LLM_SPEED === 'fast') ? "fast" : "slow";
-const LLM_COST_DEFAULT: LLMCost = (process.env.LLM_PAID === 'paid') ? "paid" : "free";
-const LLM_SKILL_DEFAULT: LLMSkill = 'writing';
+const LLM_SPEED_DEFAULT: LLMSpeed = process.env.LLM_SPEED === "fast" ? "fast" : "slow";
+const LLM_COST_DEFAULT: LLMCost = process.env.LLM_PAID === "paid" ? "paid" : "free";
+const LLM_SKILL_DEFAULT: LLMSkill = "writing";
 
 /**
  * Get an LLM instance based on the current environment
@@ -29,5 +29,5 @@ export function getLLM(
   llmSpeed: LLMSpeed = LLM_SPEED_DEFAULT,
   llmCost: LLMCost = LLM_COST_DEFAULT
 ): BaseChatModel {
-  return LLMManager.get(llmSkill, llmSpeed, llmCost)
+  return LLMManager.get(llmSkill, llmSpeed, llmCost);
 }

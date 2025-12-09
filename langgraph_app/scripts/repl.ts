@@ -2,25 +2,25 @@
 
 /**
  * Interactive REPL for testing and exploring the codebase
- * 
+ *
  * Usage:
  *   pnpm repl              # Start REPL with default environment
  *   NODE_ENV=test pnpm repl  # Start REPL with test environment
- * 
+ *
  * Available globals:
  *   - All @types exports
  *   - Common services
  *   - Utility functions
  */
 
-import repl from 'node:repl';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import repl from "node:repl";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Import commonly used modules that will be available globally in REPL
-import * as types from '@types';
+import * as types from "@types";
 import * as core from "@core";
-import * as prompts from '@prompts';
+import * as prompts from "@prompts";
 import * as services from "@services";
 import * as nodes from "@nodes";
 import * as tools from "@tools";
@@ -31,21 +31,21 @@ import { env } from "@app";
 // Get current directory for module resolution
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '..');
+const projectRoot = path.resolve(__dirname, "..");
 
 // Utility function to clear console
 const clear = () => console.clear();
 
 // Utility function to pretty print JSON
 const pp = (obj: any, depth: number = 2) => {
-    console.log(JSON.stringify(obj, null, depth));
+  console.log(JSON.stringify(obj, null, depth));
 };
 
 // Utility function to reload a module
 const reload = async (modulePath: string) => {
-    const fullPath = path.resolve(projectRoot, modulePath);
-    delete require.cache[fullPath];
-    return import(fullPath + '?' + Date.now());
+  const fullPath = path.resolve(projectRoot, modulePath);
+  delete require.cache[fullPath];
+  return import(fullPath + "?" + Date.now());
 };
 
 // Start REPL
@@ -53,7 +53,7 @@ console.log(`
 ╔══════════════════════════════════════════════╗
 ║     🚀 LangGraph App Development REPL 🚀      ║
 ╠══════════════════════════════════════════════╣
-║  Environment: ${process.env.NODE_ENV || 'development'}
+║  Environment: ${process.env.NODE_ENV || "development"}
 ║  Project: ${projectRoot}
 ╚══════════════════════════════════════════════╝
 
@@ -85,7 +85,7 @@ Type .exit to quit
 
 // Create help function
 const help = () => {
-    console.log(`
+  console.log(`
 📚 REPL Help
 ============
 
@@ -119,53 +119,53 @@ Tips:
 
 // Create the REPL server
 const server = repl.start({
-    prompt: '> ',
-    useGlobal: true,
-    breakEvalOnSigint: true,
-    preview: false,
+  prompt: "> ",
+  useGlobal: true,
+  breakEvalOnSigint: true,
+  preview: false,
 });
 
 // Add context (globally available variables)
 Object.assign(server.context, {
-    types,
-    prompts,
-    services,
-    core,
-    nodes,
-    tools,
-    graphs,
-    utils,
-    clear,
-    pp,
-    reload,
-    help,
-    projectRoot,
+  types,
+  prompts,
+  services,
+  core,
+  nodes,
+  tools,
+  graphs,
+  utils,
+  clear,
+  pp,
+  reload,
+  help,
+  projectRoot,
 });
 
-server.defineCommand('env', {
-    help: 'Show current environment variables',
-    action: async () => {
-        try {
-            console.log('\n📋 Environment Variables:');
-            console.log('========================');
-            Object.entries(env).forEach(([key, value]) => {
-                // Mask sensitive values
-                if (key.includes('KEY') || key.includes('TOKEN') || key.includes('PASSWORD')) {
-                    console.log(`  ${key}: ***${String(value).slice(-4)}`);
-                } else {
-                    console.log(`  ${key}: ${value}`);
-                }
-            });
-            console.log('');
-        } catch (error) {
-            console.error('Failed to load environment:', error);
+server.defineCommand("env", {
+  help: "Show current environment variables",
+  action: async () => {
+    try {
+      console.log("\n📋 Environment Variables:");
+      console.log("========================");
+      Object.entries(env).forEach(([key, value]) => {
+        // Mask sensitive values
+        if (key.includes("KEY") || key.includes("TOKEN") || key.includes("PASSWORD")) {
+          console.log(`  ${key}: ***${String(value).slice(-4)}`);
+        } else {
+          console.log(`  ${key}: ${value}`);
         }
-        (this as any).displayPrompt();
+      });
+      console.log("");
+    } catch (error) {
+      console.error("Failed to load environment:", error);
     }
+    (this as any).displayPrompt();
+  },
 });
 
 // Handle cleanup
-server.on('exit', () => {
-    console.log('\n👋 Goodbye!\n');
-    process.exit(0);
+server.on("exit", () => {
+  console.log("\n👋 Goodbye!\n");
+  process.exit(0);
 });

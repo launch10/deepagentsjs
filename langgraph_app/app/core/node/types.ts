@@ -6,8 +6,8 @@ import type { CoreGraphState } from "@state";
  * Plus our minimal graph state
  */
 export type NodeFunction<TState extends CoreGraphState> = (
-    state: TState,
-    config: LangGraphRunnableConfig
+  state: TState,
+  config: LangGraphRunnableConfig
 ) => Promise<Partial<TState> | Send[]>;
 
 export type MiddlewareConfigType = Record<string, unknown>;

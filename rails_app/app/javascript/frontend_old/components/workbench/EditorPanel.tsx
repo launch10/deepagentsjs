@@ -1,6 +1,11 @@
-import { useStore } from '@nanostores/react';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelHandle } from 'react-resizable-panels';
+import { useStore } from "@nanostores/react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Panel,
+  PanelGroup,
+  PanelResizeHandle,
+  type ImperativePanelHandle,
+} from "react-resizable-panels";
 import {
   CodeMirrorEditor,
   type EditorDocument,
@@ -8,21 +13,21 @@ import {
   type OnChangeCallback as OnEditorChange,
   type OnSaveCallback as OnEditorSave,
   type OnScrollCallback as OnEditorScroll,
-} from '@components/editor/codemirror/CodeMirrorEditor';
-import { IconButton } from '@components/ui/IconButton';
-import { PanelHeader } from '@components/ui/PanelHeader';
-import { PanelHeaderButton } from '@components/ui/PanelHeaderButton';
-import { shortcutEventEmitter } from '@hooks/index';
-import type { FileMap } from '@stores/files';
-import { themeStore } from '@stores/theme';
-import { workbenchStore } from '@stores/workbench';
-import { classNames } from '@utils/classNames';
-import { WORK_DIR } from '@utils/constants';
-import { renderLogger } from '@utils/logger';
-import { isMobile } from '@utils/mobile';
-import { FileBreadcrumb } from './FileBreadcrumb';
-import { FileTree } from './FileTree';
-import { Terminal, type TerminalRef } from './terminal/Terminal';
+} from "@components/editor/codemirror/CodeMirrorEditor";
+import { IconButton } from "@components/ui/IconButton";
+import { PanelHeader } from "@components/ui/PanelHeader";
+import { PanelHeaderButton } from "@components/ui/PanelHeaderButton";
+import { shortcutEventEmitter } from "@hooks/index";
+import type { FileMap } from "@stores/files";
+import { themeStore } from "@stores/theme";
+import { workbenchStore } from "@stores/workbench";
+import { classNames } from "@utils/classNames";
+import { WORK_DIR } from "@utils/constants";
+import { renderLogger } from "@utils/logger";
+import { isMobile } from "@utils/mobile";
+import { FileBreadcrumb } from "./FileBreadcrumb";
+import { FileTree } from "./FileTree";
+import { Terminal, type TerminalRef } from "./terminal/Terminal";
 
 interface EditorPanelProps {
   files?: FileMap;
@@ -56,7 +61,7 @@ export const EditorPanel = memo(
     onFileSave,
     onFileReset,
   }: EditorPanelProps) => {
-    renderLogger.trace('EditorPanel');
+    renderLogger.trace("EditorPanel");
 
     const theme = useStore(themeStore);
     const showTerminal = useStore(workbenchStore.showTerminal);
@@ -73,7 +78,7 @@ export const EditorPanel = memo(
         return undefined;
       }
 
-      return editorDocument.filePath.split('/');
+      return editorDocument.filePath.split("/");
     }, [editorDocument]);
 
     const activeFileUnsaved = useMemo(() => {
@@ -81,7 +86,7 @@ export const EditorPanel = memo(
     }, [editorDocument, unsavedFiles]);
 
     useEffect(() => {
-      const unsubscribeFromEventEmitter = shortcutEventEmitter.on('toggleTerminal', () => {
+      const unsubscribeFromEventEmitter = shortcutEventEmitter.on("toggleTerminal", () => {
         terminalToggledByShortcut.current = true;
       });
 
@@ -148,7 +153,11 @@ export const EditorPanel = memo(
               <PanelHeader className="overflow-x-auto">
                 {activeFileSegments?.length && (
                   <div className="flex items-center flex-1 text-sm">
-                    <FileBreadcrumb pathSegments={activeFileSegments} files={files} onFileSelect={onFileSelect} />
+                    <FileBreadcrumb
+                      pathSegments={activeFileSegments}
+                      files={files}
+                      onFileSelect={onFileSelect}
+                    />
                     {activeFileUnsaved && (
                       <div className="flex gap-1 ml-auto -mr-1.5">
                         <PanelHeaderButton onClick={onFileSave}>
@@ -206,12 +215,13 @@ export const EditorPanel = memo(
                     <button
                       key={index}
                       className={classNames(
-                        'flex items-center text-sm cursor-pointer gap-1.5 px-3 py-2 h-full whitespace-nowrap rounded-full',
+                        "flex items-center text-sm cursor-pointer gap-1.5 px-3 py-2 h-full whitespace-nowrap rounded-full",
                         {
-                          'bg-bolt-elements-terminals-buttonBackground text-bolt-elements-textPrimary': isActive,
-                          'bg-bolt-elements-background-depth-2 text-bolt-elements-textSecondary hover:bg-bolt-elements-terminals-buttonBackground':
+                          "bg-bolt-elements-terminals-buttonBackground text-bolt-elements-textPrimary":
+                            isActive,
+                          "bg-bolt-elements-background-depth-2 text-bolt-elements-textSecondary hover:bg-bolt-elements-terminals-buttonBackground":
                             !isActive,
-                        },
+                        }
                       )}
                       onClick={() => setActiveTerminal(index)}
                     >
@@ -220,7 +230,9 @@ export const EditorPanel = memo(
                     </button>
                   );
                 })}
-                {terminalCount < MAX_TERMINALS && <IconButton icon="i-ph:plus" size="md" onClick={addTerminal} />}
+                {terminalCount < MAX_TERMINALS && (
+                  <IconButton icon="i-ph:plus" size="md" onClick={addTerminal} />
+                )}
                 <IconButton
                   className="ml-auto"
                   icon="i-ph:caret-down"
@@ -235,7 +247,7 @@ export const EditorPanel = memo(
                 return (
                   <Terminal
                     key={index}
-                    className={classNames('h-full overflow-hidden', {
+                    className={classNames("h-full overflow-hidden", {
                       hidden: !isActive,
                     })}
                     ref={(ref) => {
@@ -252,5 +264,5 @@ export const EditorPanel = memo(
         </Panel>
       </PanelGroup>
     );
-  },
+  }
 );

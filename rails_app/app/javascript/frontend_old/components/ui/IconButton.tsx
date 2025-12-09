@@ -1,7 +1,7 @@
-import { memo } from 'react';
-import { classNames } from '@utils/classNames';
+import { memo } from "react";
+import { classNames } from "@utils/classNames";
 
-type IconSize = 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
+type IconSize = "sm" | "md" | "lg" | "xl" | "xxl";
 
 interface BaseIconButtonProps {
   size?: IconSize;
@@ -28,7 +28,7 @@ type IconButtonProps = IconButtonWithoutChildrenProps | IconButtonWithChildrenPr
 export const IconButton = memo(
   ({
     icon,
-    size = 'xl',
+    size = "xl",
     className,
     iconClassName,
     disabledClassName,
@@ -40,11 +40,11 @@ export const IconButton = memo(
     return (
       <button
         className={classNames(
-          'flex items-center text-bolt-elements-item-contentDefault bg-transparent enabled:hover:text-bolt-elements-item-contentActive rounded-md p-1 enabled:hover:bg-bolt-elements-item-backgroundActive disabled:cursor-not-allowed',
+          "flex items-center text-bolt-elements-item-contentDefault bg-transparent enabled:hover:text-bolt-elements-item-contentActive rounded-md p-1 enabled:hover:bg-bolt-elements-item-backgroundActive disabled:cursor-not-allowed",
           {
-            [classNames('opacity-30', disabledClassName)]: disabled,
+            [classNames("opacity-30", disabledClassName)]: disabled,
           },
-          className,
+          className
         )}
         title={title}
         disabled={disabled}
@@ -56,22 +56,26 @@ export const IconButton = memo(
           onClick?.(event);
         }}
       >
-        {children ? children : <div className={classNames(icon, getIconSize(size), iconClassName)}></div>}
+        {children ? (
+          children
+        ) : (
+          <div className={classNames(icon, getIconSize(size), iconClassName)}></div>
+        )}
       </button>
     );
-  },
+  }
 );
 
 function getIconSize(size: IconSize) {
-  if (size === 'sm') {
-    return 'text-sm';
-  } else if (size === 'md') {
-    return 'text-md';
-  } else if (size === 'lg') {
-    return 'text-lg';
-  } else if (size === 'xl') {
-    return 'text-xl';
+  if (size === "sm") {
+    return "text-sm";
+  } else if (size === "md") {
+    return "text-md";
+  } else if (size === "lg") {
+    return "text-lg";
+  } else if (size === "xl") {
+    return "text-xl";
   } else {
-    return 'text-2xl';
+    return "text-2xl";
   }
 }

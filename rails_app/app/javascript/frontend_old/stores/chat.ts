@@ -1,8 +1,8 @@
-import { map } from 'nanostores';
+import { map } from "nanostores";
 
 export const chatStore = map({
   started: false,
   aborted: false,
   showChat: true,
-  messageCount: 0 
+  messageCount: 0,
 });

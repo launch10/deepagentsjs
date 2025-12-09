@@ -1,21 +1,21 @@
-import { useStore } from '@nanostores/react';
-import { motion, type HTMLMotionProps, type Variants } from 'framer-motion';
-import { computed } from 'nanostores';
-import { memo, useCallback, useEffect } from 'react';
-import { toast } from 'react-toastify';
+import { useStore } from "@nanostores/react";
+import { motion, type HTMLMotionProps, type Variants } from "framer-motion";
+import { computed } from "nanostores";
+import { memo, useCallback, useEffect } from "react";
+import { toast } from "react-toastify";
 import {
   type OnChangeCallback as OnEditorChange,
   type OnScrollCallback as OnEditorScroll,
-} from '@components/editor/codemirror/CodeMirrorEditor';
-import { IconButton } from '@components/ui/IconButton';
-import { PanelHeaderButton } from '@components/ui/PanelHeaderButton';
-import { Slider, type SliderOptions } from '@components/ui/Slider';
-import { workbenchStore, type WorkbenchViewType } from '@stores/workbench';
-import { classNames } from '@utils/classNames';
-import { cubicEasingFn } from '@utils/easings';
-import { renderLogger } from '@utils/logger';
-import { EditorPanel } from './EditorPanel';
-import { Preview } from './Preview';
+} from "@components/editor/codemirror/CodeMirrorEditor";
+import { IconButton } from "@components/ui/IconButton";
+import { PanelHeaderButton } from "@components/ui/PanelHeaderButton";
+import { Slider, type SliderOptions } from "@components/ui/Slider";
+import { workbenchStore, type WorkbenchViewType } from "@stores/workbench";
+import { classNames } from "@utils/classNames";
+import { cubicEasingFn } from "@utils/easings";
+import { renderLogger } from "@utils/logger";
+import { EditorPanel } from "./EditorPanel";
+import { Preview } from "./Preview";
 
 interface WorkspaceProps {
   chatStarted?: boolean;
@@ -26,12 +26,12 @@ const viewTransition = { ease: cubicEasingFn };
 
 const sliderOptions: SliderOptions<WorkbenchViewType> = {
   left: {
-    value: 'code',
-    text: 'Code',
+    value: "code",
+    text: "Code",
   },
   right: {
-    value: 'preview',
-    text: 'Preview',
+    value: "preview",
+    text: "Preview",
   },
 };
 
@@ -44,7 +44,7 @@ const workbenchVariants = {
     },
   },
   open: {
-    width: 'var(--workbench-width)',
+    width: "var(--workbench-width)",
     transition: {
       duration: 0.2,
       ease: cubicEasingFn,
@@ -53,7 +53,7 @@ const workbenchVariants = {
 } satisfies Variants;
 
 export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => {
-  renderLogger.trace('Workbench');
+  renderLogger.trace("Workbench");
 
   const hasPreview = useStore(computed(workbenchStore.previews, (previews) => previews.length > 0));
   const showWorkbench = useStore(workbenchStore.showWorkbench);
@@ -69,7 +69,7 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
 
   useEffect(() => {
     if (hasPreview) {
-      setSelectedView('preview');
+      setSelectedView("preview");
     }
   }, [hasPreview]);
 
@@ -91,7 +91,7 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
 
   const onFileSave = useCallback(() => {
     workbenchStore.saveCurrentDocument().catch(() => {
-      toast.error('Failed to update file content');
+      toast.error("Failed to update file content");
     });
   }, []);
 
@@ -103,25 +103,29 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
     chatStarted && (
       <motion.div
         initial="closed"
-        animate={showWorkbench ? 'open' : 'closed'}
+        animate={showWorkbench ? "open" : "closed"}
         variants={workbenchVariants}
         className="z-workbench"
       >
         <div
           className={classNames(
-            'fixed top-[calc(var(--header-height)+1.5rem)] bottom-6 w-[var(--workbench-inner-width)] mr-4 z-0 transition-[left,width] duration-200 bolt-ease-cubic-bezier',
+            "fixed top-[calc(var(--header-height)+1.5rem)] bottom-6 w-[var(--workbench-inner-width)] mr-4 z-0 transition-[left,width] duration-200 bolt-ease-cubic-bezier",
             {
-              'left-[var(--workbench-left)]': showWorkbench,
-              'left-[100%]': !showWorkbench,
-            },
+              "left-[var(--workbench-left)]": showWorkbench,
+              "left-[100%]": !showWorkbench,
+            }
           )}
         >
           <div className="absolute inset-0 px-6">
             <div className="h-full flex flex-col bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor shadow-sm rounded-lg overflow-hidden">
               <div className="flex items-center px-3 py-2 border-b border-bolt-elements-borderColor">
-                <Slider selected={selectedView} options={sliderOptions} setSelected={setSelectedView} />
+                <Slider
+                  selected={selectedView}
+                  options={sliderOptions}
+                  setSelected={setSelectedView}
+                />
                 <div className="ml-auto" />
-                {selectedView === 'code' && (
+                {selectedView === "code" && (
                   <PanelHeaderButton
                     className="mr-1 text-sm"
                     onClick={() => {
@@ -143,8 +147,8 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
               </div>
               <div className="relative flex-1 overflow-hidden">
                 <View
-                  initial={{ x: selectedView === 'code' ? 0 : '-100%' }}
-                  animate={{ x: selectedView === 'code' ? 0 : '-100%' }}
+                  initial={{ x: selectedView === "code" ? 0 : "-100%" }}
+                  animate={{ x: selectedView === "code" ? 0 : "-100%" }}
                 >
                   <EditorPanel
                     editorDocument={currentDocument}
@@ -160,8 +164,8 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
                   />
                 </View>
                 <View
-                  initial={{ x: selectedView === 'preview' ? 0 : '100%' }}
-                  animate={{ x: selectedView === 'preview' ? 0 : '100%' }}
+                  initial={{ x: selectedView === "preview" ? 0 : "100%" }}
+                  animate={{ x: selectedView === "preview" ? 0 : "100%" }}
                 >
                   <Preview />
                 </View>
@@ -174,7 +178,7 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
   );
 });
 
-interface ViewProps extends HTMLMotionProps<'div'> {
+interface ViewProps extends HTMLMotionProps<"div"> {
   children: JSX.Element;
 }
 

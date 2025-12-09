@@ -1,4 +1,4 @@
-import type { FileType, FileMap } from '@types';
+import type { FileType, FileMap } from "@types";
 
 export function filesToFileMap(files: FileType[]): FileMap {
   return files.reduce((acc, file) => {

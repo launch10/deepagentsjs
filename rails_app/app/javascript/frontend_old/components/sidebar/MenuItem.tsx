@@ -1,6 +1,6 @@
-import * as Dialog from '@radix-ui/react-dialog';
-import { useEffect, useRef, useState } from 'react';
-import { type MenuItem as MenuItem } from '../../types/menu';
+import * as Dialog from "@radix-ui/react-dialog";
+import { useEffect, useRef, useState } from "react";
+import { type MenuItem as MenuItem } from "../../types/menu";
 
 interface MenuItemProps {
   item: MenuItem;
@@ -26,12 +26,12 @@ export function MenuItem({ item, onDelete }: MenuItemProps) {
       setHovering(false);
     }
 
-    hoverRef.current?.addEventListener('mouseenter', mouseEnter);
-    hoverRef.current?.addEventListener('mouseleave', mouseLeave);
+    hoverRef.current?.addEventListener("mouseenter", mouseEnter);
+    hoverRef.current?.addEventListener("mouseleave", mouseLeave);
 
     return () => {
-      hoverRef.current?.removeEventListener('mouseenter', mouseEnter);
-      hoverRef.current?.removeEventListener('mouseleave', mouseLeave);
+      hoverRef.current?.removeEventListener("mouseenter", mouseEnter);
+      hoverRef.current?.removeEventListener("mouseleave", mouseLeave);
     };
   }, []);
 

@@ -1,7 +1,7 @@
-import { useStore } from '@nanostores/react';
-import { chatStore } from '@stores/chat';
-import { workbenchStore } from '@stores/workbench';
-import { classNames } from '@utils/classNames';
+import { useStore } from "@nanostores/react";
+import { chatStore } from "@stores/chat";
+import { workbenchStore } from "@stores/workbench";
+import { classNames } from "@utils/classNames";
 
 interface HeaderActionButtonsProps {}
 
@@ -19,7 +19,7 @@ export function HeaderActionButtons({}: HeaderActionButtonsProps) {
           disabled={!canHideChat}
           onClick={() => {
             if (canHideChat) {
-              chatStore.setKey('showChat', !showChat);
+              chatStore.setKey("showChat", !showChat);
             }
           }}
         >
@@ -30,7 +30,7 @@ export function HeaderActionButtons({}: HeaderActionButtonsProps) {
           active={showWorkbench}
           onClick={() => {
             if (showWorkbench && !showChat) {
-              chatStore.setKey('showChat', true);
+              chatStore.setKey("showChat", true);
             }
 
             workbenchStore.showWorkbench.set(!showWorkbench);
@@ -53,11 +53,12 @@ interface ButtonProps {
 function Button({ active = false, disabled = false, children, onClick }: ButtonProps) {
   return (
     <button
-      className={classNames('flex items-center p-1.5', {
-        'bg-bolt-elements-item-backgroundDefault hover:bg-bolt-elements-item-backgroundActive text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary':
+      className={classNames("flex items-center p-1.5", {
+        "bg-bolt-elements-item-backgroundDefault hover:bg-bolt-elements-item-backgroundActive text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary":
           !active,
-        'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent': active && !disabled,
-        'bg-bolt-elements-item-backgroundDefault text-alpha-gray-20 dark:text-alpha-white-20 cursor-not-allowed':
+        "bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent":
+          active && !disabled,
+        "bg-bolt-elements-item-backgroundDefault text-alpha-gray-20 dark:text-alpha-white-20 cursor-not-allowed":
           disabled,
       })}
       onClick={onClick}

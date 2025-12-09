@@ -2,10 +2,10 @@
 
 Jumpstart Pro includes a generator for handling inbound webhooks. It handles several things:
 
-* Receiving webhooks
-* A process for verifying events came from the service
-* Saving webhooks to the database for handling high volumes
-* Processing webhooks in background jobs
+- Receiving webhooks
+- A process for verifying events came from the service
+- Saving webhooks to the database for handling high volumes
+- Processing webhooks in background jobs
 
 ### Usage
 
@@ -17,8 +17,8 @@ rails g inbound_webhook Zapier
 
 This will generate a couple files:
 
-* `app/controllers/inbound_webhooks/zapier_controller.rb` - handles webhook POST requests, saves and enqueues for processing
-* `app/jobs/inbound_webhooks/zapier_job.rb` - Processes the webhooks
+- `app/controllers/inbound_webhooks/zapier_controller.rb` - handles webhook POST requests, saves and enqueues for processing
+- `app/jobs/inbound_webhooks/zapier_job.rb` - Processes the webhooks
 
 Edit the controller to implement verification to make sure the webhook came from the service. Return a `:bad_request` if verification fails.
 
@@ -46,5 +46,5 @@ Jobs should also be retried automatically when an exception is thrown if you're 
 
 Don't forget to handle webhooks properly:
 
-* Safely handle retries
-* Idempotent jobs to prevent replay attacks and handle duplicates
+- Safely handle retries
+- Idempotent jobs to prevent replay attacks and handle duplicates

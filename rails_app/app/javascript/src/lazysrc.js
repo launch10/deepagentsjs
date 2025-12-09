@@ -5,7 +5,7 @@
 // <iframe data-src="https://youtube.com"></iframe>
 
 document.addEventListener("turbo:load", () => {
-  document.querySelectorAll('[data-src]').forEach((element) =>{
-    element.setAttribute('src', element.getAttribute('data-src'))
-  })
-})
+  document.querySelectorAll("[data-src]").forEach((element) => {
+    element.setAttribute("src", element.getAttribute("data-src"));
+  });
+});

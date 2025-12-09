@@ -1,5 +1,5 @@
 export function getVercelOidcToken() {
-  return '';
+  return "";
 }
 
 export function getContext() {

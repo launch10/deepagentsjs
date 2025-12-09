@@ -4,7 +4,7 @@ import { processPrompt } from "../core/process";
 import { whereWeArePrompt } from "./assets/whereWeAre";
 
 export const helpInstructions = (state: AdsGraphState, config: LangGraphRunnableConfig) => {
-    return `
+  return `
         <help_instructions>
             1. Use the faq tool to retrieve FAQ context (if needed)
             2. Answer their question in 2-3 sentences maximum
@@ -13,17 +13,16 @@ export const helpInstructions = (state: AdsGraphState, config: LangGraphRunnable
             5. Do not ask for clarification. Include context clues you know about the process.
         </help_instructions>
     `;
-}
+};
 
 export const helpPrompt = async (state: AdsGraphState, config: LangGraphRunnableConfig) => {
+  const [process, whereWeAre, instructions] = await Promise.all([
+    processPrompt(state, config),
+    whereWeArePrompt(state, config),
+    helpInstructions(state, config),
+  ]);
 
-    const [process, whereWeAre, instructions] = await Promise.all([
-        processPrompt(state, config),
-        whereWeArePrompt(state, config),
-        helpInstructions(state, config),
-    ]);
-
-    return `
+  return `
         ${process}
 
         ${whereWeAre}
@@ -35,5 +34,5 @@ export const helpPrompt = async (state: AdsGraphState, config: LangGraphRunnable
         <output>
             Output 2-3 sentences maximum, answering the user's question.
         </output>
-    `
-}
+    `;
+};

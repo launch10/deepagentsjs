@@ -1,16 +1,16 @@
-import { DatabaseSnapshotter } from '@services';
-import { db, websites, websiteFiles, eq, and } from '@db';
-import { FileExporter } from './core/fileExporter';
-import { WebsiteRunner } from './core/websiteRunner';
-import { ScenarioSaver } from './scenarios';
-import { watch, FSWatcher } from 'chokidar';
-import { readFileSync } from 'fs';
-import { join, relative } from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { loadScenarioConfig, type ScenarioConfig } from './scenarios';
-import { ScenarioRunner } from './scenarios';
-import { withTimestamps } from '@db';
+import { DatabaseSnapshotter } from "@services";
+import { db, websites, websiteFiles, eq, and } from "@db";
+import { FileExporter } from "./core/fileExporter";
+import { WebsiteRunner } from "./core/websiteRunner";
+import { ScenarioSaver } from "./scenarios";
+import { watch, FSWatcher } from "chokidar";
+import { readFileSync } from "fs";
+import { join, relative } from "path";
+import { exec } from "child_process";
+import { promisify } from "util";
+import { loadScenarioConfig, type ScenarioConfig } from "./scenarios";
+import { ScenarioRunner } from "./scenarios";
+import { withTimestamps } from "@db";
 
 const execAsync = promisify(exec);
 
@@ -19,7 +19,7 @@ export interface WebsiteEditorOptions {
   snapshotName: string;
   autoOpen?: boolean;
   editor?: string;
-  saveMode?: 'snapshot' | 'scenario';
+  saveMode?: "snapshot" | "scenario";
   scenarioName?: string;
   existingScenario?: string; // For editing an existing scenario
 }
@@ -35,7 +35,7 @@ export class WebsiteEditor implements AsyncDisposable {
   private autoOpen: boolean;
   private editor: string;
   private isRunning: boolean = false;
-  private saveMode: 'snapshot' | 'scenario';
+  private saveMode: "snapshot" | "scenario";
   private scenarioName?: string;
   private existingScenario?: string;
   private scenarioSaver?: ScenarioSaver;
@@ -44,8 +44,8 @@ export class WebsiteEditor implements AsyncDisposable {
     this.websiteName = options.websiteName;
     this.snapshotName = options.snapshotName;
     this.autoOpen = options.autoOpen ?? true;
-    this.editor = options.editor ?? 'windsurf'; // Default to Windsurf
-    this.saveMode = options.saveMode ?? 'snapshot';
+    this.editor = options.editor ?? "windsurf"; // Default to Windsurf
+    this.saveMode = options.saveMode ?? "snapshot";
     this.scenarioName = options.scenarioName;
     this.existingScenario = options.existingScenario;
   }
@@ -62,7 +62,7 @@ export class WebsiteEditor implements AsyncDisposable {
     console.log(`   Website: ${this.websiteName}`);
     console.log(`   Snapshot: ${this.snapshotName}`);
     console.log(`   Editor: ${this.editor}`);
-    console.log('=' .repeat(60));
+    console.log("=".repeat(60));
 
     try {
       // 1. Restore snapshot
@@ -73,7 +73,7 @@ export class WebsiteEditor implements AsyncDisposable {
 
       // 3. If editing an existing scenario, apply its modifications first
       if (this.existingScenario) {
-        console.log(`\n📝 Applying existing scenario: ${this.existingScenario}`)
+        console.log(`\n📝 Applying existing scenario: ${this.existingScenario}`);
         await this.applyExistingScenario();
       }
 
@@ -95,27 +95,28 @@ export class WebsiteEditor implements AsyncDisposable {
       this.setupSignalHandlers();
 
       this.isRunning = true;
-      
-      console.log('\n' + '=' .repeat(60));
-      console.log('📝 Editor is ready!');
+
+      console.log("\n" + "=".repeat(60));
+      console.log("📝 Editor is ready!");
       console.log(`   Dev server: ${this.runner?.getUrl()}`);
       console.log(`   Local files: ${this.outputDir}`);
       console.log(`   Save mode: ${this.saveMode}`);
-      if (this.saveMode === 'scenario') {
+      if (this.saveMode === "scenario") {
         console.log(`   Scenario: ${this.scenarioName}`);
         if (this.existingScenario) {
           console.log(`   Editing existing scenario: ${this.existingScenario}`);
         }
       }
-      console.log('\n💡 Make changes in your editor. They will be synced to the database.');
-      console.log(`   Press Ctrl+C to save ${this.saveMode === 'snapshot' ? 'snapshot' : 'scenario'} and exit.`);
-      console.log('=' .repeat(60) + '\n');
+      console.log("\n💡 Make changes in your editor. They will be synced to the database.");
+      console.log(
+        `   Press Ctrl+C to save ${this.saveMode === "snapshot" ? "snapshot" : "scenario"} and exit.`
+      );
+      console.log("=".repeat(60) + "\n");
 
       // Keep the process alive
       await this.waitForShutdown();
-
     } catch (error) {
-      console.error('❌ Failed to start editor:', error);
+      console.error("❌ Failed to start editor:", error);
       await this.cleanup();
       throw error;
     } finally {
@@ -137,11 +138,11 @@ export class WebsiteEditor implements AsyncDisposable {
    */
   private async applyExistingScenario(): Promise<void> {
     if (!this.existingScenario) return;
-    
+
     console.log(`\n📝 Loading existing scenario: ${this.existingScenario}...`);
 
     if (!this.scenarioName) {
-      throw new Error('Scenario name is required when saving scenario');
+      throw new Error("Scenario name is required when saving scenario");
     }
     this.scenarioSaver = new ScenarioSaver(
       this.websiteId!,
@@ -152,27 +153,28 @@ export class WebsiteEditor implements AsyncDisposable {
     // Load before applying modifications, so we track changes vs the original
     // scenario. If we do this AFTER, we'll lose any existing modifications
     await this.scenarioSaver.loadOriginalFiles();
-    
+
     // Create a ScenarioRunner to apply the modifications
     const runner = new ScenarioRunner({
       website: this.websiteName,
       scenario: this.existingScenario,
       snapshot: this.snapshotName,
-      log: true
+      log: true,
     });
-    
+
     // The runner will load the scenario and apply modifications
     // We only need to apply modifications, not run the full scenario
     await runner.setup();
-    
+
     console.log(`✅ Applied modifications from scenario: ${this.existingScenario}`);
   }
-  
+
   /**
    * Load the website ID from the database
    */
   private async loadWebsiteId(): Promise<void> {
-    const [site] = await db.select()
+    const [site] = await db
+      .select()
       .from(websites)
       .where(eq(websites.name, this.websiteName))
       .limit(1);
@@ -211,27 +213,27 @@ export class WebsiteEditor implements AsyncDisposable {
    */
   private async setupFileWatcher(): Promise<void> {
     console.log(`\n👁️  Setting up file watcher...`);
-    
-    const srcDir = join(this.outputDir!, 'src');
-    
+
+    const srcDir = join(this.outputDir!, "src");
+
     this.watcher = watch(srcDir, {
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: {
         stabilityThreshold: 500,
-        pollInterval: 100
-      }
+        pollInterval: 100,
+      },
     });
 
-    this.watcher.on('change', async (filePath: string) => {
+    this.watcher.on("change", async (filePath: string) => {
       await this.handleFileChange(filePath);
     });
 
-    this.watcher.on('add', async (filePath: string) => {
+    this.watcher.on("add", async (filePath: string) => {
       await this.handleFileChange(filePath);
     });
 
-    this.watcher.on('unlink', async (filePath: string) => {
+    this.watcher.on("unlink", async (filePath: string) => {
       await this.handleFileDelete(filePath);
     });
 
@@ -245,35 +247,32 @@ export class WebsiteEditor implements AsyncDisposable {
     try {
       const relativePath = relative(this.outputDir!, filePath);
       console.log(`\n📝 File changed: ${relativePath}`);
-      
+
       // Read the new content
-      const content = readFileSync(filePath, 'utf-8');
-      
+      const content = readFileSync(filePath, "utf-8");
+
       // Check if file exists in database
-      const [existingFile] = await db.select()
+      const [existingFile] = await db
+        .select()
         .from(websiteFiles)
         .where(
-          and(
-            eq(websiteFiles.websiteId, this.websiteId!),
-            eq(websiteFiles.path, relativePath)
-          )
+          and(eq(websiteFiles.websiteId, this.websiteId!), eq(websiteFiles.path, relativePath))
         )
         .limit(1);
 
       if (existingFile) {
         // Update existing file
-        await db.update(websiteFiles)
-          .set({ content })
-          .where(eq(websiteFiles.id, existingFile.id));
+        await db.update(websiteFiles).set({ content }).where(eq(websiteFiles.id, existingFile.id));
         console.log(`   ✅ Updated in database`);
       } else {
         // Create new file
-        await db.insert(websiteFiles)
-          .values(withTimestamps({
+        await db.insert(websiteFiles).values(
+          withTimestamps({
             websiteId: this.websiteId!,
             path: relativePath,
-            content
-          }));
+            content,
+          })
+        );
         console.log(`   ✅ Added to database`);
       }
     } catch (error) {
@@ -288,22 +287,20 @@ export class WebsiteEditor implements AsyncDisposable {
     try {
       const relativePath = relative(this.outputDir!, filePath);
       console.log(`\n🗑️  File deleted: ${relativePath}`);
-      
+
       // Delete the file from the database
-      const result = await db.delete(websiteFiles)
+      const result = await db
+        .delete(websiteFiles)
         .where(
-          and(
-            eq(websiteFiles.websiteId, this.websiteId!),
-            eq(websiteFiles.path, relativePath)
-          )
+          and(eq(websiteFiles.websiteId, this.websiteId!), eq(websiteFiles.path, relativePath))
         );
-      
+
       console.log(`   ✅ Removed from database`);
-      
+
       // Track deletion in scenario saver if in scenario mode
       if (this.scenarioSaver) {
         // Track that this file was deleted by setting empty content
-        this.scenarioSaver.trackModifiedFile(relativePath, '');
+        this.scenarioSaver.trackModifiedFile(relativePath, "");
       }
     } catch (error) {
       console.error(`   ❌ Failed to delete file:`, error);
@@ -315,23 +312,23 @@ export class WebsiteEditor implements AsyncDisposable {
    */
   private async openEditor(): Promise<void> {
     console.log(`\n🎨 Opening ${this.editor}...`);
-    
+
     try {
       // Map common editor names to their CLI commands
       const editorCommands: Record<string, string> = {
-        'windsurf': 'windsurf',
-        'code': 'code',
-        'vscode': 'code',
-        'cursor': 'cursor',
-        'sublime': 'subl',
-        'atom': 'atom',
-        'vim': 'vim',
-        'nvim': 'nvim',
-        'emacs': 'emacs'
+        windsurf: "windsurf",
+        code: "code",
+        vscode: "code",
+        cursor: "cursor",
+        sublime: "subl",
+        atom: "atom",
+        vim: "vim",
+        nvim: "nvim",
+        emacs: "emacs",
       };
 
       const command = editorCommands[this.editor.toLowerCase()] || this.editor;
-      
+
       // Open the output directory in the editor
       await execAsync(`${command} "${this.outputDir}"`);
       console.log(`✅ Editor opened`);
@@ -347,15 +344,17 @@ export class WebsiteEditor implements AsyncDisposable {
   private setupSignalHandlers(): void {
     const shutdown = async (signal: string) => {
       if (!this.isRunning) return;
-      
-      console.log(`\n\n📦 Received ${signal}, saving ${this.saveMode === 'snapshot' ? 'snapshot' : 'scenario'} and shutting down...`);
+
+      console.log(
+        `\n\n📦 Received ${signal}, saving ${this.saveMode === "snapshot" ? "snapshot" : "scenario"} and shutting down...`
+      );
       await this.saveAndCleanup();
       process.exit(0);
     };
 
-    process.on('SIGINT', () => shutdown('SIGINT'));
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGHUP', () => shutdown('SIGHUP'));
+    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGHUP", () => shutdown("SIGHUP"));
   }
 
   /**
@@ -372,19 +371,19 @@ export class WebsiteEditor implements AsyncDisposable {
    */
   private async saveAndCleanup(): Promise<void> {
     this.isRunning = false;
-    
+
     try {
-      console.log(`save mode is... ${this.saveMode}`)
-      if (this.saveMode === 'snapshot') {
+      console.log(`save mode is... ${this.saveMode}`);
+      if (this.saveMode === "snapshot") {
         // Save the current state as a snapshot
         console.log(`💾 Saving snapshot: ${this.snapshotName}...`);
         await DatabaseSnapshotter.createSnapshot(this.snapshotName);
         console.log(`✅ Snapshot saved`);
-      } else if (this.saveMode === 'scenario' && this.scenarioSaver) {
+      } else if (this.saveMode === "scenario" && this.scenarioSaver) {
         // Save scenario to filesystem
         console.log(`💾 Saving scenario: ${this.scenarioName}...`);
         // Include information about the original scenario if editing
-        const description = this.existingScenario 
+        const description = this.existingScenario
           ? `Scenario edited from ${this.existingScenario}`
           : `Scenario created from editing session`;
         await this.scenarioSaver.save(description);
@@ -402,7 +401,7 @@ export class WebsiteEditor implements AsyncDisposable {
    */
   private async cleanup(): Promise<void> {
     console.log(`\n🧹 Cleaning up...`);
-    
+
     // Stop file watcher
     if (this.watcher) {
       await this.watcher.close();

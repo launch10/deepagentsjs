@@ -17,4 +17,5 @@ const template = PromptTemplate.fromTemplate(`
 
 const choiceScores = { Yes: 1, No: 0 };
 
-export const createClosedQAScorer = (criteria: Record<string, unknown>) => createScorer({ prompt: template, choiceScores, additionalPromptParams: { criteria } })
+export const createClosedQAScorer = (criteria: Record<string, unknown>) =>
+  createScorer({ prompt: template, choiceScores, additionalPromptParams: { criteria } });

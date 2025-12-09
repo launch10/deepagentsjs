@@ -1,11 +1,12 @@
-import { WebContainer } from '@webcontainer/api';
-import { WORK_DIR_NAME } from '@lib/utils/constants';
+import { WebContainer } from "@webcontainer/api";
+import { WORK_DIR_NAME } from "@lib/utils/constants";
 
 interface WebContainerContext {
   loaded: boolean;
 }
 
-export const webcontainerContext: WebContainerContext = import.meta.hot?.data.webcontainerContext ?? {
+export const webcontainerContext: WebContainerContext = import.meta.hot?.data
+  .webcontainerContext ?? {
   loaded: false,
 };
 

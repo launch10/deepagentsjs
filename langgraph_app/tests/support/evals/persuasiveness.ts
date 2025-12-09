@@ -23,4 +23,4 @@ const template = PromptTemplate.fromTemplate(`
 `);
 const choiceScores = { excellent: 1, good: 0.75, average: 0.5, poor: 0.25 };
 
-export const PersuasivenessScorer = createScorer({ prompt: template, choiceScores })
+export const PersuasivenessScorer = createScorer({ prompt: template, choiceScores });

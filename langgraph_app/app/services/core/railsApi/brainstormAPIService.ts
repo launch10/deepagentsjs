@@ -34,23 +34,23 @@ export interface Brainstorm {
   account_id: number;
   created_at: string;
   updated_at: string;
-};
+}
 
 export interface BrainstormServiceOptions {
   jwt: string;
 }
 
 export interface CreateBrainstormParams {
-    threadId: ThreadIDType;
-    projectUUID: UUIDType;
-    name?: string;
+  threadId: ThreadIDType;
+  projectUUID: UUIDType;
+  name?: string;
 }
 /**
  * Service for interacting with the Rails Brainstorm API
  */
 export class BrainstormAPIService extends RailsAPIBase {
   constructor(options: Simplify<ConstructorParameters<typeof RailsAPIBase>[0]>) {
-    super(options)
+    super(options);
   }
 
   /**

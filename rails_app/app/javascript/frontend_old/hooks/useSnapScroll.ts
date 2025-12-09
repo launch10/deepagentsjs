@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback } from "react";
 
 export function useSnapScroll() {
   const autoScrollRef = useRef(true);
@@ -35,12 +35,12 @@ export function useSnapScroll() {
         autoScrollRef.current = Math.abs(scrollTop - scrollTarget) <= 10;
       };
 
-      node.addEventListener('scroll', onScrollRef.current);
+      node.addEventListener("scroll", onScrollRef.current);
 
       scrollNodeRef.current = node;
     } else {
       if (onScrollRef.current) {
-        scrollNodeRef.current?.removeEventListener('scroll', onScrollRef.current);
+        scrollNodeRef.current?.removeEventListener("scroll", onScrollRef.current);
       }
 
       scrollNodeRef.current = undefined;

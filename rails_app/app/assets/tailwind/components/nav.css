@@ -12,7 +12,7 @@ nav.menu-component {
     width: 256px;
     max-width: 375px;
 
-    @media (min-width:640px) {
+    @media (min-width: 640px) {
       width: 384px;
     }
   }
@@ -98,7 +98,7 @@ nav.menu-component {
               color: var(--base-text-secondary);
             }
 
-            >span {
+            > span {
               overflow: hidden;
               text-overflow: ellipsis;
               white-space: nowrap;
@@ -263,7 +263,6 @@ nav.menu-component {
   }
 }
 
-
 .vertical-nav .user-profile {
   display: flex;
   align-items: center;
@@ -416,7 +415,6 @@ nav.menu-component {
 }
 
 .left-nav__sub-nav {
-
   > button {
     color: var(--base-text);
     display: flex;

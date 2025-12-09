@@ -4,9 +4,7 @@ import { getLLM } from "@core";
 import { chooseBrainstormPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { saveAnswersTool, finishedTool } from "@tools";
-import {
-  Brainstorm,
-} from '@types';
+import { Brainstorm } from "@types";
 import { type BrainstormGraphState } from "@state";
 import z from "zod";
 import { BrainstormNextStepsService } from "@services";
@@ -15,73 +13,77 @@ import { lastAIMessage } from "@types";
 import { BrainstormBridge } from "@annotation";
 
 const dynamicPromptMiddleware = createMiddleware({
-    name: "DynamicPromptMiddleware",
-    stateSchema: z.object({
-        brainstormId: z.number(),
-        websiteId: z.number(),
-        projectId: z.number(),
-        currentTopic: z.string().optional(),
-        skippedTopics: z.array(z.string()).optional(),
-        redirect: z.string().optional(),
-        availableCommands: z.array(z.string()).default([]),
-        command: z.string().optional()
-    }),
-    wrapModelCall: async (request, handler) => {
-        const state = request.state as BrainstormGraphState;
+  name: "DynamicPromptMiddleware",
+  stateSchema: z.object({
+    brainstormId: z.number(),
+    websiteId: z.number(),
+    projectId: z.number(),
+    currentTopic: z.string().optional(),
+    skippedTopics: z.array(z.string()).optional(),
+    redirect: z.string().optional(),
+    availableCommands: z.array(z.string()).default([]),
+    command: z.string().optional(),
+  }),
+  wrapModelCall: async (request, handler) => {
+    const state = request.state as BrainstormGraphState;
 
-        // Regenerate system prompt with current state
-        const systemPrompt = await chooseBrainstormPrompt(state, request.runtime);
+    // Regenerate system prompt with current state
+    const systemPrompt = await chooseBrainstormPrompt(state, request.runtime);
 
-        // Return modified request
-        return await handler({
-            ...request,
-            systemPrompt,
-        });
-    },
-})
+    // Return modified request
+    return await handler({
+      ...request,
+      systemPrompt,
+    });
+  },
+});
 
 /**
  * Node that asks a question to the user during brainstorming mode
  */
-export const brainstormAgent = NodeMiddleware.use({}, async (
+export const brainstormAgent = NodeMiddleware.use(
+  {},
+  async (
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> => {
     if (!state.websiteId) {
-        throw new Error("websiteId is required");
+      throw new Error("websiteId is required");
     }
 
     // Now invoke agent with updated state
-    const llm = getLLM().withConfig({ tags: ['notify'] })
+    const llm = getLLM().withConfig({ tags: ["notify"] });
     const tools = [saveAnswersTool, finishedTool];
 
     const agent = await createAgent({
-        model: llm,
-        tools,
-        middleware: [dynamicPromptMiddleware],
+      model: llm,
+      tools,
+      middleware: [dynamicPromptMiddleware],
     });
-    const result = await agent.invoke(state as any, config) as BrainstormGraphState;
+    const result = (await agent.invoke(state as any, config)) as BrainstormGraphState;
     const lastMessage = lastAIMessage(result);
     if (!lastMessage) {
-        throw new Error("Agent did not return an AI message");
+      throw new Error("Agent did not return an AI message");
     }
 
     const [message, updates] = await BrainstormBridge.toStructuredMessage(lastMessage);
-    const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } = await new BrainstormNextStepsService(state).nextSteps();
+    const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } =
+      await new BrainstormNextStepsService(state).nextSteps();
 
     let messages = state.messages || [];
     if (message) {
-        messages = [...(messages as any[]), message];
+      messages = [...(messages as any[]), message];
     }
 
     return {
-        redirect: result.redirect as Brainstorm.RedirectType,
-        skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
-        messages,
-        memories,
-        currentTopic,
-        remainingTopics,
-        placeholderText,
-        availableCommands,
+      redirect: result.redirect as Brainstorm.RedirectType,
+      skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
+      messages,
+      memories,
+      currentTopic,
+      remainingTopics,
+      placeholderText,
+      availableCommands,
     };
-});
+  }
+);

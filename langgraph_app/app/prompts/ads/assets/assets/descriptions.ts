@@ -3,12 +3,12 @@ import { type AdsGraphState } from "@state";
 import { userPreferencesPrompt } from "../userPreferences";
 
 export const Descriptions: Partial<Ads.AssetPromptMap> = {
-    "descriptions": {
-        prompt: async (state: AdsGraphState, _config?: any) => {
-            const userPrefs = await userPreferencesPrompt(state, "descriptions");
-            const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.descriptions;
+  descriptions: {
+    prompt: async (state: AdsGraphState, _config?: any) => {
+      const userPrefs = await userPreferencesPrompt(state, "descriptions");
+      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.descriptions;
 
-            return `
+      return `
             ## Descriptions
             Generate ${nVariants} compelling descriptions for this business's Google Ads campaign. Descriptions appear below the headlines and provide more detail about the offer.
 
@@ -35,11 +35,11 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
 
             ${userPrefs}
         `;
-        },
-        outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-            const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.descriptions;
-            const descriptions = Array.from({ length: nVariants }, (_, i) => `Description ${i + 1}`);
-            return { descriptions };
-        }
-    }
-}
+    },
+    outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.descriptions;
+      const descriptions = Array.from({ length: nVariants }, (_, i) => `Description ${i + 1}`);
+      return { descriptions };
+    },
+  },
+};

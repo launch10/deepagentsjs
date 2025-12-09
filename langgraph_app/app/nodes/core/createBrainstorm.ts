@@ -8,7 +8,9 @@ import { firstHumanMessage } from "@types";
 /**
  * Node that creates a new brainstorm, project, or website
  */
-export const createBrainstorm = NodeMiddleware.use({}, async (
+export const createBrainstorm = NodeMiddleware.use(
+  {},
+  async (
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> => {
@@ -30,7 +32,9 @@ export const createBrainstorm = NodeMiddleware.use({}, async (
       throw new Error("User request is required");
     }
 
-    const name = await new NameProjectService().execute({ userRequest: userRequest.content as string });
+    const name = await new NameProjectService().execute({
+      userRequest: userRequest.content as string,
+    });
 
     const apiService = new BrainstormAPIService({ jwt: state.jwt });
     const brainstorm = await apiService.create({
@@ -39,7 +43,7 @@ export const createBrainstorm = NodeMiddleware.use({}, async (
       name,
     });
 
-    return { 
+    return {
       brainstormId: brainstorm.id,
       websiteId: brainstorm.website_id,
       projectId: brainstorm.project_id,

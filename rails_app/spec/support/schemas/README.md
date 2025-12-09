@@ -145,6 +145,7 @@ When adding new API endpoints:
    - For one-off schemas, add to an existing file if related
 
 2. **Follow the naming convention:**
+
    ```ruby
    module ApiSchemas
      module MyResource

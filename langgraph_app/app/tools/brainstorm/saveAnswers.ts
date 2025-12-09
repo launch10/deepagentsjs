@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { type BrainstormGraphState } from "@state";
-import {
-  getCurrentTaskInput,
-  Command,
-} from "@langchain/langgraph";
+import { getCurrentTaskInput, Command } from "@langchain/langgraph";
 import { tool } from "@langchain/core/tools";
 import { Brainstorm } from "@types";
 import { db, brainstorms as brainstormsTable } from "@db";
@@ -24,7 +21,7 @@ export class MessageTagger {
   }
 
   taggableMessages() {
-    return this.messages.filter((m) => typeof m.content === 'string')
+    return this.messages.filter((m) => typeof m.content === "string");
   }
 
   untaggedMessages() {
@@ -44,19 +41,21 @@ export class MessageTagger {
         };
       }
       return message;
-    })
+    });
   }
 
   private messageNotTagged = (message: BaseMessage): boolean => {
-    return !('topics' in (message.additional_kwargs || {}))
-  }
+    return !("topics" in (message.additional_kwargs || {}));
+  };
 }
 
 // 1. Take an array of messages
 // 2. Determine which messages are not yet summarized
 // 3. Summarize them
 // 4. Return the updated, tagged messages + any new memories
-export const summarizeMessages = async (messages: BaseMessage[]): Promise<Partial<BrainstormGraphState>> => {
+export const summarizeMessages = async (
+  messages: BaseMessage[]
+): Promise<Partial<BrainstormGraphState>> => {
   const messageTagger = new MessageTagger(messages);
   const messagesToSave = messageTagger.messagesToSave();
 
@@ -64,7 +63,7 @@ export const summarizeMessages = async (messages: BaseMessage[]): Promise<Partia
 
   // This should maybe be an error?
   if (messagesToSave.length === 0) {
-    return {}
+    return {};
   }
 
   const prompt = `
@@ -99,78 +98,98 @@ export const summarizeMessages = async (messages: BaseMessage[]): Promise<Partia
     </output>
   `;
   const outputSchema = z.object({
-      output: z.array(z.object({
+    output: z.array(
+      z.object({
         topic: z.string(),
         summary: z.string(),
-      })),
+      })
+    ),
   });
   const structured = await getLLM().withStructuredOutput(outputSchema).invoke(prompt);
 
   type Output = z.infer<typeof outputSchema>;
   const output: Output["output"] = structured.output;
-  const updates = output.reduce((acc: Record<Brainstorm.TopicName, string>, item: Output['output'][number]) => {
-    acc[item.topic as Brainstorm.TopicName] = item.summary;
-    return acc;
-  }, {} as Record<Brainstorm.TopicName, string>);
+  const updates = output.reduce(
+    (acc: Record<Brainstorm.TopicName, string>, item: Output["output"][number]) => {
+      acc[item.topic as Brainstorm.TopicName] = item.summary;
+      return acc;
+    },
+    {} as Record<Brainstorm.TopicName, string>
+  );
   const allTopicsCovered = Object.keys(updates);
   const taggedMessages = messageTagger.tagMessages(allTopicsCovered as Brainstorm.TopicName[]);
 
   return {
     memories: updates,
     messages: taggedMessages,
-  }
-}
+  };
+};
 
 export const saveAnswers = async (
   memories: Partial<Record<Brainstorm.ConversationalTopicName, string | undefined | null>>,
   websiteId: number,
-  skippedTopics: string[],
+  skippedTopics: string[]
 ): Promise<Partial<BrainstormGraphState>> => {
-    const insert = withTimestamps(memories);
-    const update = withUpdatedAt(memories);
+  const insert = withTimestamps(memories);
+  const update = withUpdatedAt(memories);
 
-    await db.insert(brainstormsTable).values({
+  await db
+    .insert(brainstormsTable)
+    .values({
       ...insert,
       websiteId,
-    }).onConflictDoUpdate({
+    })
+    .onConflictDoUpdate({
       target: [brainstormsTable.websiteId],
       set: {
         ...update,
-      }
-    }).returning();
+      },
+    })
+    .returning();
 
-    const updatedMemories = await (new BrainstormNextStepsService({ websiteId, skippedTopics: [] })).getMemories();
-    const memoriesWithValues = compactObject(updatedMemories);
-    let updatedSkippedTopics = skippedTopics?.filter((topic) => !memoriesWithValues[topic as Brainstorm.TopicName]) as Brainstorm.TopicName[];
+  const updatedMemories = await new BrainstormNextStepsService({
+    websiteId,
+    skippedTopics: [],
+  }).getMemories();
+  const memoriesWithValues = compactObject(updatedMemories);
+  let updatedSkippedTopics = skippedTopics?.filter(
+    (topic) => !memoriesWithValues[topic as Brainstorm.TopicName]
+  ) as Brainstorm.TopicName[];
 
-    return {
-      memories: updatedMemories,
-      skippedTopics: updatedSkippedTopics,
-    }
-}
+  return {
+    memories: updatedMemories,
+    skippedTopics: updatedSkippedTopics,
+  };
+};
 
 export const summarizeAndSaveAnswers = async (
   messages: BaseMessage[],
   websiteId: number,
-  skippedTopics: string[],
+  skippedTopics: string[]
 ): Promise<Partial<BrainstormGraphState>> => {
   let { memories, messages: taggedMessages } = await summarizeMessages(messages);
   if (!memories) {
-    memories = {idea: "", audience: "", solution: "", socialProof: ""};
+    memories = { idea: "", audience: "", solution: "", socialProof: "" };
   }
-  const { memories: updatedMemories, skippedTopics: updatedSkippedTopics } = await saveAnswers(memories, websiteId, skippedTopics);
+  const { memories: updatedMemories, skippedTopics: updatedSkippedTopics } = await saveAnswers(
+    memories,
+    websiteId,
+    skippedTopics
+  );
 
   return {
     memories: updatedMemories,
     messages: taggedMessages,
     skippedTopics: updatedSkippedTopics,
-  }
-}
+  };
+};
 
-const answersSchema = z.array(z.object({
-  topic: z.enum(Brainstorm.BrainstormTopics),
-  answer: z.string(),
-}))
+const answersSchema = z.array(
+  z.object({
+    topic: z.enum(Brainstorm.BrainstormTopics),
+    answer: z.string(),
+  })
+);
 type Answers = z.infer<typeof answersSchema>;
 
 export const saveAnswersTool = tool(
@@ -179,7 +198,7 @@ export const saveAnswersTool = tool(
     const skippedTopics = getCurrentTaskInput<BrainstormGraphState>(config).skippedTopics || [];
 
     if (!websiteId) {
-        throw new Error("websiteId is required");
+      throw new Error("websiteId is required");
     }
 
     const toolMessage = new ToolMessage({
@@ -201,10 +220,13 @@ export const saveAnswersTool = tool(
       });
     }
 
-    const answersObject = args.answers.reduce((acc, answer) => {
-      acc[answer.topic as Brainstorm.TopicName] = answer.answer;
-      return acc;
-    }, {} as Record<Brainstorm.TopicName, string>);
+    const answersObject = args.answers.reduce(
+      (acc, answer) => {
+        acc[answer.topic as Brainstorm.TopicName] = answer.answer;
+        return acc;
+      },
+      {} as Record<Brainstorm.TopicName, string>
+    );
 
     const stateUpdates = await saveAnswers(answersObject, websiteId, skippedTopics);
 

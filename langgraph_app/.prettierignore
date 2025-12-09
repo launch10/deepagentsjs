@@ -1,0 +1,15 @@
+node_modules
+dist
+build
+coverage
+*.min.js
+*.min.css
+pnpm-lock.yaml
+package-lock.json
+
+# Templates
+app/templates/**/node_modules
+app/templates/**/dist
+
+# Misc
+TODO

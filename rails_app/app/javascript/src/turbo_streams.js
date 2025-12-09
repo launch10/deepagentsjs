@@ -13,20 +13,20 @@
 
 // Remove elements after X milliseconds
 // <%= turbo_stream.remove_later, target: "my-id", after: "2000" %>
-Turbo.StreamActions.remove_later = function() {
+Turbo.StreamActions.remove_later = function () {
   setTimeout(() => {
-    this.targetElements.forEach((element) => element.remove())
-  }, this.getAttribute("after"))
-}
+    this.targetElements.forEach((element) => element.remove());
+  }, this.getAttribute("after"));
+};
 
 // Resets a form
 // <%= turbo_stream.reset_form "new_post"
-Turbo.StreamActions.reset_form = function() {
-  this.targetElements.forEach((element) => element.reset())
-}
+Turbo.StreamActions.reset_form = function () {
+  this.targetElements.forEach((element) => element.reset());
+};
 
 // Scrolls an element into view
 // <%= turbo_stream.scroll_to "comment_1"
-Turbo.StreamActions.scroll_to = function() {
-  this.targetElements.forEach((element) => element.scrollIntoView({behavior: 'smooth'}))
-}
+Turbo.StreamActions.scroll_to = function () {
+  this.targetElements.forEach((element) => element.scrollIntoView({ behavior: "smooth" }));
+};

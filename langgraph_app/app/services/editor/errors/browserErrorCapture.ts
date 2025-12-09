@@ -1,4 +1,4 @@
-import { chromium, type Browser, type Page, type ConsoleMessage } from 'playwright';
+import { chromium, type Browser, type Page, type ConsoleMessage } from "playwright";
 import { type ConsoleError } from "@types";
 
 /**
@@ -19,45 +19,45 @@ export class BrowserErrorCapture {
    */
   async start(): Promise<void> {
     console.log(`Starting browser for ${this.url}`);
-    
+
     // Launch browser
     this.browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     // Create page
     this.page = await this.browser.newPage();
 
     // Set up console listener before navigation
-    this.page.on('console', (msg: ConsoleMessage) => {
-      if (msg.type() === 'error') {
-        this.captureConsoleError(msg, 'error');
-      } else if (msg.type() === 'warning') {
-        this.captureConsoleError(msg, 'warning');
+    this.page.on("console", (msg: ConsoleMessage) => {
+      if (msg.type() === "error") {
+        this.captureConsoleError(msg, "error");
+      } else if (msg.type() === "warning") {
+        this.captureConsoleError(msg, "warning");
       }
     });
 
     // Set up page error listener (for uncaught exceptions)
-    this.page.on('pageerror', (error: Error) => {
+    this.page.on("pageerror", (error: Error) => {
       this.errors.push({
-        type: 'error',
+        type: "error",
         message: error.message,
         stack: error.stack,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
       console.log(`  ✗ Page error: ${error.message}`);
     });
 
     // Set up request failure listener
-    this.page.on('requestfailed', (request) => {
+    this.page.on("requestfailed", (request) => {
       const failure = request.failure();
       if (failure) {
         this.errors.push({
-          type: 'error',
+          type: "error",
           message: `Request failed: ${request.url()} - ${failure.errorText}`,
           location: request.url(),
-          timestamp: new Date()
+          timestamp: new Date(),
         });
         console.log(`  ✗ Request failed: ${request.url()}`);
       }
@@ -66,8 +66,8 @@ export class BrowserErrorCapture {
     // Navigate to the page
     try {
       await this.page.goto(this.url, {
-        waitUntil: 'networkidle',
-        timeout: 30000
+        waitUntil: "networkidle",
+        timeout: 30000,
       });
       console.log(`  ✓ Page loaded: ${this.url}`);
     } catch (error) {
@@ -82,11 +82,11 @@ export class BrowserErrorCapture {
   /**
    * Capture a console error
    */
-  private async captureConsoleError(msg: ConsoleMessage, type: 'error' | 'warning'): Promise<void> {
+  private async captureConsoleError(msg: ConsoleMessage, type: "error" | "warning"): Promise<void> {
     try {
       const location = msg.location();
       const text = msg.text();
-      
+
       // Try to get more detailed error info
       let detailedMessage = text;
       try {
@@ -94,7 +94,7 @@ export class BrowserErrorCapture {
         if (args.length > 0) {
           // Try to get the actual error object
           const firstArg = await args[0]?.jsonValue().catch(() => null);
-          if (firstArg && typeof firstArg === 'object') {
+          if (firstArg && typeof firstArg === "object") {
             detailedMessage = firstArg.message || firstArg.toString() || text;
           }
         }
@@ -105,13 +105,15 @@ export class BrowserErrorCapture {
       const error: ConsoleError = {
         type,
         message: detailedMessage,
-        location: location ? `${location.url}:${location.lineNumber}:${location.columnNumber}` : undefined,
-        timestamp: new Date()
+        location: location
+          ? `${location.url}:${location.lineNumber}:${location.columnNumber}`
+          : undefined,
+        timestamp: new Date(),
       };
 
       this.errors.push(error);
       console.log(`  ✗ Console ${type}: ${detailedMessage}`);
-      
+
       if (location) {
         console.log(`    at ${error.location}`);
       }
@@ -131,7 +133,7 @@ export class BrowserErrorCapture {
       if (expectedCount !== undefined && this.errors.length >= expectedCount) {
         break;
       }
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 
@@ -146,7 +148,7 @@ export class BrowserErrorCapture {
    * Get only JavaScript errors (not warnings)
    */
   getConsoleErrors(): ConsoleError[] {
-    return this.errors.filter(e => e.type === 'error');
+    return this.errors.filter((e) => e.type === "error");
   }
 
   /**
@@ -154,22 +156,27 @@ export class BrowserErrorCapture {
    */
   getErrorReport(): string {
     if (this.errors.length === 0) {
-      return 'No errors detected';
+      return "No errors detected";
     }
 
     const report: string[] = [`Found ${this.errors.length} console errors:\n`];
-    
+
     this.errors.forEach((error, index) => {
       report.push(`${index + 1}. [${error.type.toUpperCase()}] ${error.message}`);
       if (error.location) {
         report.push(`   Location: ${error.location}`);
       }
       if (error.stack) {
-        report.push(`   Stack trace:\n${error.stack.split('\n').map(l => '     ' + l).join('\n')}`);
+        report.push(
+          `   Stack trace:\n${error.stack
+            .split("\n")
+            .map((l) => "     " + l)
+            .join("\n")}`
+        );
       }
     });
 
-    return report.join('\n');
+    return report.join("\n");
   }
 
   /**

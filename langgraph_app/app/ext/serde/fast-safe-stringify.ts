@@ -33,9 +33,7 @@ export function stringify(obj, replacer?, spacer?, options?) {
       res = JSON.stringify(obj, replaceGetterValues(replacer), spacer);
     }
   } catch (_) {
-    return JSON.stringify(
-      "[unable to serialize, circular reference is too complex to analyze]"
-    );
+    return JSON.stringify("[unable to serialize, circular reference is too complex to analyze]");
   } finally {
     while (arr.length !== 0) {
       var part = arr.pop();
@@ -75,18 +73,12 @@ function decirc(val, k, edgeIndex, stack, parent, depth, options) {
       }
     }
 
-    if (
-      typeof options.depthLimit !== "undefined" &&
-      depth > options.depthLimit
-    ) {
+    if (typeof options.depthLimit !== "undefined" && depth > options.depthLimit) {
       setReplace(LIMIT_REPLACE_NODE, val, k, parent);
       return;
     }
 
-    if (
-      typeof options.edgesLimit !== "undefined" &&
-      edgeIndex + 1 > options.edgesLimit
-    ) {
+    if (typeof options.edgesLimit !== "undefined" && edgeIndex + 1 > options.edgesLimit) {
       setReplace(LIMIT_REPLACE_NODE, val, k, parent);
       return;
     }
@@ -133,9 +125,7 @@ function deterministicStringify(obj, replacer, spacer, options) {
       res = JSON.stringify(tmp, replaceGetterValues(replacer), spacer);
     }
   } catch (_) {
-    return JSON.stringify(
-      "[unable to serialize, circular reference is too complex to analyze]"
-    );
+    return JSON.stringify("[unable to serialize, circular reference is too complex to analyze]");
   } finally {
     // Ensure that we restore the object as it was.
     while (arr.length !== 0) {
@@ -168,18 +158,12 @@ function deterministicDecirc(val, k, edgeIndex, stack, parent, depth, options) {
       return;
     }
 
-    if (
-      typeof options.depthLimit !== "undefined" &&
-      depth > options.depthLimit
-    ) {
+    if (typeof options.depthLimit !== "undefined" && depth > options.depthLimit) {
       setReplace(LIMIT_REPLACE_NODE, val, k, parent);
       return;
     }
 
-    if (
-      typeof options.edgesLimit !== "undefined" &&
-      edgeIndex + 1 > options.edgesLimit
-    ) {
+    if (typeof options.edgesLimit !== "undefined" && edgeIndex + 1 > options.edgesLimit) {
       setReplace(LIMIT_REPLACE_NODE, val, k, parent);
       return;
     }

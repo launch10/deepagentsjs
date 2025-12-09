@@ -1,48 +1,48 @@
-import { atom, type WritableAtom } from 'nanostores';
-import { WebContainer } from '@webcontainer/api';
-import { map, type MapStore } from 'nanostores';
-import { createScopedLogger } from '@utils/logger';
-import { unreachable } from '@utils/unreachable';
-import { v4 as uuidv4 } from 'uuid';
-import { 
-  type CodeTask, 
-         CodeTaskAction, 
-         CodeTaskType,
-         type CodeTaskResult,
-        } from '@shared/models/codeTask';
+import { atom, type WritableAtom } from "nanostores";
+import { WebContainer } from "@webcontainer/api";
+import { map, type MapStore } from "nanostores";
+import { createScopedLogger } from "@utils/logger";
+import { unreachable } from "@utils/unreachable";
+import { v4 as uuidv4 } from "uuid";
+import {
+  type CodeTask,
+  CodeTaskAction,
+  CodeTaskType,
+  type CodeTaskResult,
+} from "@shared/models/codeTask";
 
-const logger = createScopedLogger('ActionRunner');
+const logger = createScopedLogger("ActionRunner");
 
-export type ActionStatus = 'pending' | 'running' | 'complete' | 'aborted' | 'failed';
+export type ActionStatus = "pending" | "running" | "complete" | "aborted" | "failed";
 export const HiddenTasks = [CodeTaskType.INSTALL, CodeTaskType.DEV_SERVER];
 
 export type ActionCore = {
   messageId: string;
   task: CodeTask;
   title: string;
-}
+};
 export type BaseActionState = ActionCore & {
   type: CodeTaskType; // CREATE_PAGE, CREATE_SECTION, UPDATE, INSTALL, SHELL
   action: CodeTaskAction; // UPDATE or DELETE
-  status: Exclude<ActionStatus, 'failed'>;
+  status: Exclude<ActionStatus, "failed">;
   hidden: boolean;
   abort: () => void;
   executed: boolean;
   abortSignal: AbortSignal;
 };
 
-export type FailedActionState = Omit<BaseActionState, 'status'> & {
-    status: Extract<ActionStatus, 'failed'>;
-    error: string;
-  };
+export type FailedActionState = Omit<BaseActionState, "status"> & {
+  status: Extract<ActionStatus, "failed">;
+  error: string;
+};
 
 export type ActionState = BaseActionState | FailedActionState;
 
-type BaseActionUpdate = Partial<Pick<BaseActionState, 'status' | 'abort' | 'executed'>>;
+type BaseActionUpdate = Partial<Pick<BaseActionState, "status" | "abort" | "executed">>;
 
 export type ActionStateUpdate =
   | BaseActionUpdate
-  | (Omit<BaseActionUpdate, 'status'> & { status: 'failed'; error: string });
+  | (Omit<BaseActionUpdate, "status"> & { status: "failed"; error: string });
 
 type ActionsMap = MapStore<Record<string, ActionState>>;
 
@@ -81,11 +81,11 @@ export class ActionRunner {
       type: task.type,
       action: task.action,
       hidden: HiddenTasks.includes(task.type),
-      status: 'pending',
+      status: "pending",
       executed: false,
       abort: () => {
         abortController.abort();
-        this.#updateAction(id, { status: 'aborted' });
+        this.#updateAction(id, { status: "aborted" });
       },
       abortSignal: abortController.signal,
     } as ActionState);
@@ -95,7 +95,8 @@ export class ActionRunner {
     const { id } = task;
     const action = this.actions.get()[id];
 
-    if (!action) { // Should not happen if addAction is correct
+    if (!action) {
+      // Should not happen if addAction is correct
       unreachable(`Action ${id} not found even after attempting to add.`);
     }
 
@@ -108,7 +109,7 @@ export class ActionRunner {
         return this.#executeAction(id);
       })
       .catch((error) => {
-        console.error('Action failed:', error);
+        console.error("Action failed:", error);
       });
   }
 
@@ -137,12 +138,12 @@ export class ActionRunner {
 
     // Double check abort status, as it might have been aborted while in queue
     if (action.abortSignal.aborted) {
-        this.#updateAction(id, { status: 'aborted' });
-        logger.info(`Action ${id} (type: ${action.type}) was aborted before execution started.`);
-        return; // Don't proceed with execution
+      this.#updateAction(id, { status: "aborted" });
+      logger.info(`Action ${id} (type: ${action.type}) was aborted before execution started.`);
+      return; // Don't proceed with execution
     }
-    this.#updateAction(id, { ...action, status: 'running' });
-    logger.info('Executing action', action);
+    this.#updateAction(id, { ...action, status: "running" });
+    logger.info("Executing action", action);
 
     try {
       switch (action.type as ActionType) {
@@ -184,9 +185,9 @@ export class ActionRunner {
         // }
       }
 
-      this.#updateAction(id, { status: action.abortSignal.aborted ? 'aborted' : 'complete' });
+      this.#updateAction(id, { status: action.abortSignal.aborted ? "aborted" : "complete" });
     } catch (error) {
-      this.#updateAction(id, { status: 'failed', error: 'Action failed' });
+      this.#updateAction(id, { status: "failed", error: "Action failed" });
 
       // re-throw the error to be caught in the promise chain
       throw error;
@@ -195,39 +196,39 @@ export class ActionRunner {
 
   async #runShellAction(action: ActionState) {
     if (action.type !== CodeTaskType.SHELL) {
-      unreachable('Expected shell action');
+      unreachable("Expected shell action");
     }
 
     const webcontainer = await this.#webcontainer;
 
     logger.debug(`Running shell command:`, action.task.payload?.command);
-    const process = await webcontainer.spawn('bash', ['-c', action.task.payload?.command], {
+    const process = await webcontainer.spawn("bash", ["-c", action.task.payload?.command], {
       env: { npm_config_yes: true },
     });
 
-    action.abortSignal.addEventListener('abort', () => {
+    action.abortSignal.addEventListener("abort", () => {
       process.kill();
     });
 
     // Create a decoder to handle the output stream
-    let outputBuffer = '';
+    let outputBuffer = "";
     // Create a reader for the output stream
     const reader = process.output.getReader();
-    
+
     // Process output in the background
     const outputPromise = (async () => {
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          
+
           // Convert Uint8Array to string if necessary
-          const text = typeof value === 'string' ? value : new TextDecoder().decode(value);
+          const text = typeof value === "string" ? value : new TextDecoder().decode(value);
           outputBuffer += text;
           logger.debug(`[Shell output]: ${text}`);
         }
       } catch (error) {
-        logger.error('Error reading process output:', error);
+        logger.error("Error reading process output:", error);
       } finally {
         reader.releaseLock();
       }
@@ -238,40 +239,40 @@ export class ActionRunner {
       const successPattern = action.task.payload?.successPattern;
       const timeoutMs = action.task.payload?.timeoutMs || 60000;
       let resolved = false;
-    
+
       // Create a promise that resolves when the success pattern is found
-      const successPromise = new Promise(resolve => {
+      const successPromise = new Promise((resolve) => {
         const checkInterval = setInterval(() => {
           if (successPattern && outputBuffer.includes(successPattern)) {
             clearInterval(checkInterval);
             if (!resolved) {
               resolved = true;
-              resolve('success');
+              resolve("success");
             }
           }
         }, 100); // Check every 100ms
-        
+
         // Clean up the interval when the process exits
         process.exit.then(() => {
           clearInterval(checkInterval);
         });
       });
-      
+
       // Create a promise that resolves after the timeout
-      const timeoutPromise = new Promise(resolve => {
+      const timeoutPromise = new Promise((resolve) => {
         setTimeout(() => {
           if (!resolved) {
             resolved = true;
-            resolve('timeout');
+            resolve("timeout");
           }
         }, timeoutMs);
       });
-      
+
       // Wait for either the success pattern or the timeout
       const result = await Promise.race([successPromise, timeoutPromise]);
-      logger.debug(`Long-running process ${result === 'success' ? 'succeeded' : 'timed out'}`);
-      
-      if (result === 'timeout') {
+      logger.debug(`Long-running process ${result === "success" ? "succeeded" : "timed out"}`);
+
+      if (result === "timeout") {
         process.kill();
         // You might want to throw an error here or handle the timeout in some way
       }
@@ -283,7 +284,7 @@ export class ActionRunner {
 
   async #runMountFilesAction(action: ActionState) {
     if (action.type !== CodeTaskType.MOUNT_FILES) {
-      unreachable('Expected mount files action');
+      unreachable("Expected mount files action");
     }
 
     const webcontainer = await this.#webcontainer;
@@ -294,53 +295,61 @@ export class ActionRunner {
 
   async #runInstallAction(action: ActionState) {
     if (action.type !== CodeTaskType.INSTALL) {
-      unreachable('Expected reload action');
+      unreachable("Expected reload action");
     }
 
-    await this.#createAction(CodeTaskType.SHELL, { command: `npm install` }, "Preparing coding environment");
+    await this.#createAction(
+      CodeTaskType.SHELL,
+      { command: `npm install` },
+      "Preparing coding environment"
+    );
   }
 
   async #runDevServerAction(action: ActionState) {
     if (action.type !== CodeTaskType.DEV_SERVER) {
-      unreachable('Expected dev server action');
+      unreachable("Expected dev server action");
     }
 
-    this.#createAction(CodeTaskType.SHELL, { 
-      command: `npm run dev`, 
-      longRunning: true,
-      successPattern: 'ready in',
-      timeoutMs: 30000,
-    }, "Preparing preview");
+    this.#createAction(
+      CodeTaskType.SHELL,
+      {
+        command: `npm run dev`,
+        longRunning: true,
+        successPattern: "ready in",
+        timeoutMs: 30000,
+      },
+      "Preparing preview"
+    );
   }
 
   async #runDeleteAction(action: ActionState) {
     if (action.type !== CodeTaskType.DELETE) {
-      unreachable('Expected delete action');
+      unreachable("Expected delete action");
     }
 
     const webcontainer = await this.#webcontainer;
 
-    const process = await webcontainer.spawn('jsh', ['-c', action.data.content], {
+    const process = await webcontainer.spawn("jsh", ["-c", action.data.content], {
       env: { npm_config_yes: true },
     });
 
-    action.abortSignal.addEventListener('abort', () => {
+    action.abortSignal.addEventListener("abort", () => {
       process.kill();
     });
   }
 
   async #runRenameAction(action: ActionState) {
     if (action.type !== CodeTaskType.RENAME) {
-      unreachable('Expected rename action');
+      unreachable("Expected rename action");
     }
 
     const webcontainer = await this.#webcontainer;
 
-    const process = await webcontainer.spawn('jsh', ['-c', action.data.content], {
+    const process = await webcontainer.spawn("jsh", ["-c", action.data.content], {
       env: { npm_config_yes: true },
     });
 
-    action.abortSignal.addEventListener('abort', () => {
+    action.abortSignal.addEventListener("abort", () => {
       process.kill();
     });
   }
@@ -348,17 +357,21 @@ export class ActionRunner {
   // add dependency always runs npm install <package-name>
   async #runAddDependencyAction(action: ActionState) {
     if (action.type !== CodeTaskType.ADD_DEPENDENCY) {
-      unreachable('Expected add-dependency action');
+      unreachable("Expected add-dependency action");
     }
 
     const webcontainer = await this.#webcontainer;
 
-    // We want this to run 
-    const process = await webcontainer.spawn('npm', ['install', `${action.data.name}@${action.data.version}`, '--save'], {
-      // env: { npm_config_yes: true }, // Likely not needed for npm run dev
-    });
+    // We want this to run
+    const process = await webcontainer.spawn(
+      "npm",
+      ["install", `${action.data.name}@${action.data.version}`, "--save"],
+      {
+        // env: { npm_config_yes: true }, // Likely not needed for npm run dev
+      }
+    );
 
-    action.abortSignal.addEventListener('abort', () => {
+    action.abortSignal.addEventListener("abort", () => {
       process.kill();
     });
 
@@ -367,7 +380,7 @@ export class ActionRunner {
         write(data) {
           logger.debug(data);
         },
-      }),
+      })
     );
 
     const exitCode = await process.exit;
@@ -377,27 +390,27 @@ export class ActionRunner {
 
   getDirname(filePath: string): string {
     // Find the last '/'
-    const lastSlashIndex = filePath.lastIndexOf('/');
-    
+    const lastSlashIndex = filePath.lastIndexOf("/");
+
     // If no slash, or it's the only character (e.g., "/"), return '.'
     if (lastSlashIndex <= 0) {
-      return '.';
+      return ".";
     }
-    
+
     // Return the part before the last slash
     let dir = filePath.substring(0, lastSlashIndex);
-    
+
     // Handle potential root case (e.g. '/foo' -> '/')
-    if (dir === '') return '/';
+    if (dir === "") return "/";
 
     // remove trailing slashes
-    dir = dir.replace(/\/+$/g, '');
+    dir = dir.replace(/\/+$/g, "");
     return dir;
   }
 
   async #runUpdateAction(action: ActionState) {
     if (action.action !== CodeTaskAction.UPDATE) {
-      unreachable('Expected update action');
+      unreachable("Expected update action");
     }
 
     const webcontainer = await this.#webcontainer;
@@ -405,12 +418,12 @@ export class ActionRunner {
 
     // Create folder if it doesn't exist
     const dirname = this.getDirname(filePath as string);
-    if (dirname !== '.') {
+    if (dirname !== ".") {
       try {
         await webcontainer.fs.mkdir(dirname, { recursive: true });
         logger.debug(`Folder created ${dirname}`);
       } catch (error) {
-        logger.error('Failed to create folder\n\n', error);
+        logger.error("Failed to create folder\n\n", error);
       }
     }
 
@@ -418,7 +431,7 @@ export class ActionRunner {
       await webcontainer.fs.writeFile(filePath as string, code as string);
       logger.debug(`File written ${filePath}`);
     } catch (error) {
-      logger.error('Failed to write file\n\n', error);
+      logger.error("Failed to write file\n\n", error);
     }
   }
 
@@ -430,12 +443,12 @@ export class ActionRunner {
       type,
       action: CodeTaskAction.UPDATE,
       payload: data,
-      status: 'pending',
+      status: "pending",
       executed: false,
       abort: () => {
         abortController.abort();
       },
-      abortSignal: abortController.signal
+      abortSignal: abortController.signal,
     } as ActionState;
 
     return action;
@@ -449,5 +462,4 @@ export class ActionRunner {
     this.runAction(action);
     return action;
   }
-
 }

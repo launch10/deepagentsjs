@@ -4,13 +4,13 @@ This file includes notes on major changes that might affect your application and
 
 ### December 23, 2024
 
-* Upgrade to TailwindCSS v4 & import maps
+- Upgrade to TailwindCSS v4 & import maps
   This update removes the Node.js dependency as we've migrated to the `tailwindcss-rails` gem along with `importmap-rails`. This keeps Jumpstart more aligned with Rails defaults and simplifies dependencies even further.
   To continue using live reloading, we recommend `hotwire-spark` or `hotwire-livereload`.
 
 ### December 6, 2024
 
-* [Breaking] Remove Flatpickr. Since Flatpickr isn't accessible to screen readers, we have decided to remove it in favor of the built-in `datetime_local` browser field.
+- [Breaking] Remove Flatpickr. Since Flatpickr isn't accessible to screen readers, we have decided to remove it in favor of the built-in `datetime_local` browser field.
 
 ### November 26, 2024
 
@@ -18,21 +18,21 @@ Turbo Native routes have been moved to `/hotwire` now that Jumpstart iOS and And
 
 ### November 20, 2024
 
-* Removed .nav-link class
+- Removed .nav-link class
 
   The `.nav-link` class is no longer required on links placed within the `_left_nav` or `_right_nav` partials.
   If you are using this class on any links in your navbar you can remove them as the CSS to handle nav links has been updated to style these links appropriately.
 
 ### November 18, 2024
 
-* Refactored to use Hotwire Native.
+- Refactored to use Hotwire Native.
 
   The native authentication form now embeds the normal web auth form.
   API endpoints now support cookies for authentication and native clients no longer need API tokens + cookies to interact with the backend.
 
 ### October 16, 2024
 
-* Added a "configure your own" option for Active Job queue adapter and simplified the supported list to Async, SolidQueue and Sidekiq.
+- Added a "configure your own" option for Active Job queue adapter and simplified the supported list to Async, SolidQueue and Sidekiq.
 
   To use another queue adapter, select the "configure your own" option and add the queue adapter to your environments.
 
@@ -40,7 +40,7 @@ Turbo Native routes have been moved to `/hotwire` now that Jumpstart iOS and And
 
 ### September 23, 2024
 
-* Redis has been removed in favor of SolidCable, SolidCache, and SolidQueue in Rails 8.
+- Redis has been removed in favor of SolidCable, SolidCache, and SolidQueue in Rails 8.
 
 ### June 3, 2024
 
@@ -71,9 +71,9 @@ We've also introduced UI components for modals, slideovers and tabs to make it e
 
 We've made a few gems optional, but still integrated in Jumpstart Pro:
 
-* ActsAsTenant
-* Oj
-* Whenever
+- ActsAsTenant
+- Oj
+- Whenever
 
 If you wish to continue using the gems, enable them in the Jumpstart Pro config at `http://localhost:3000/jumpstart#dependencies`
 
@@ -126,12 +126,12 @@ We've removed Webpacker, but you can use webpack with jsbundling-rails if you wo
 
 Use `bin/dev` to run the Rails server along with the CSS & JS watchers in development.
 
-* TailwindCSS has been moved to `app/assets/application.tailwind.css`
-* `tailwind.config.js` has been moved to the root
-* Sass has been removed and CSS is now processed through postcss only (using the Tailwind CLI)
-* Javascript packs are defined in `esbuild.config.js`
-* Assets are compiled and output to the `app/assets/builds` directory and served by the asset pipeline.
-* Webpacker pack tags have been replaced with asset pipeline tags
+- TailwindCSS has been moved to `app/assets/application.tailwind.css`
+- `tailwind.config.js` has been moved to the root
+- Sass has been removed and CSS is now processed through postcss only (using the Tailwind CLI)
+- Javascript packs are defined in `esbuild.config.js`
+- Assets are compiled and output to the `app/assets/builds` directory and served by the asset pipeline.
+- Webpacker pack tags have been replaced with asset pipeline tags
 
 ### September 4, 2021 - Pay 3 upgrade
 
@@ -140,6 +140,7 @@ The Pay 3.0 upgrade migrates data from the Account model to the new Pay::Custome
 You can skip this if you aren't using payments in your app yet.
 
 To upgrade, you'll want to do a few things:
+
 1. Review `20210805001857_upgrade_to_pay_v3.rb`. This migration handles all the data migration to the new tables.
 2. Test the migration against your local database. Sync your production database locally to test against it.
 3. Test `rails pay:payment_methods:sync_default` in development to make sure it successfully syncs the default payment method for each customer.
