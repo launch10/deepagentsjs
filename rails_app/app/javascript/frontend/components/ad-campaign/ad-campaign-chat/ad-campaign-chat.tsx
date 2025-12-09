@@ -17,10 +17,10 @@ import { Separator } from "@components/ui/separator";
 import { Spinner } from "@components/ui/spinner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePage } from "@inertiajs/react";
-import { cn } from "@lib/utils";
 import { workflow as adCampaignWorkflow, type AdsBridgeType } from "@shared";
 import { useLanggraph } from "langgraph-ai-sdk-react";
 import { ArrowUp, FilePlus, Sparkles } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import z from "zod";
 import AdCampaignStep from "../ad-campaign-step";
@@ -37,6 +37,7 @@ export default function AdCampaignChat({
   activeSubstep?: string;
   onRefreshSuggestions?: () => void;
 }) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const pageProps = usePage<CampaignProps>();
   const { thread_id, jwt, langgraph_path } = pageProps.props;
 
@@ -54,18 +55,29 @@ export default function AdCampaignChat({
     (step) => step.name === "ad_campaign"
   )?.steps;
 
+  const messageSchema = z.object({ message: z.string().min(1, "Message is required") }).required();
+
   const {
     control,
     handleSubmit,
     formState: { isValid },
   } = useForm<AdCampaignChatFormType>({
     defaultValues: { message: "" },
-    resolver: zodResolver(z.object({ message: z.string().min(1, "Message is required") })),
+    resolver: zodResolver(messageSchema),
+    mode: "onChange",
   });
 
   const onSubmit = handleSubmit((data) => {
     sendMessage(data.message);
   });
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   return (
     <Card className="shadow-none bg-background border-[#D3D2D0] rounded-2xl sticky top-24 z-0">
@@ -91,7 +103,7 @@ export default function AdCampaignChat({
       <Separator className="bg-[#D3D2D0]" />
       <CardContent>
         {!isLoadingHistory && messages ? (
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[30vh] overflow-y-auto">
             {messages.map((message, index) => {
               if (message.role === "assistant") {
                 return message.blocks.map((block) => (
@@ -112,6 +124,7 @@ export default function AdCampaignChat({
               }
               return null;
             })}
+            <div ref={messagesEndRef} />
           </div>
         ) : (
           <Spinner />
@@ -128,7 +141,6 @@ export default function AdCampaignChat({
                   placeholder="Ask me for changes..."
                   {...field}
                   aria-invalid={!!fieldState.error}
-                  className={cn(fieldState.error && "border-destructive")}
                 />
               )}
             />
