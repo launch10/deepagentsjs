@@ -16,9 +16,7 @@ export interface Project {
 export type UnknownProjectType = APIProject | Project;
 export type MaybeProjectArray = UnknownProjectType | UnknownProjectType[];
 
-export function isAPIProject(
-  project: UnknownProjectType
-): project is APIProject {
+export function isAPIProject(project: UnknownProjectType): project is APIProject {
   return "thread_id" in project;
 }
 

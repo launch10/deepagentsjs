@@ -21,6 +21,8 @@
     "eval": "NODE_ENV=test evalite watch",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
     "lint:fix": "npm run lint -- --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc",
     "repo:size": "sh scripts/repo-size.sh",
     "preview": "pnpm run build && pnpm run start",
@@ -122,6 +124,7 @@
     "chalk": "^5.6.2",
     "commander": "^14.0.0",
     "eslint": "^9",
+    "eslint-config-prettier": "^10.1.8",
     "evalite": "^0.11.6",
     "expect-type": "^1.2.2",
     "fast-glob": "^3.3.3",
@@ -130,6 +133,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.2.3",
     "node-fetch": "^3.3.2",
+    "prettier": "^3.7.4",
     "type-fest": "^5.2.0",
     "typescript": "^5.5.4",
     "typescript-eslint": "^8.46.0",
@@ -137,5 +141,14 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4",
     "wait-on": "^9.0.1"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,mts,cts}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,jsx,json,md,css,html,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }

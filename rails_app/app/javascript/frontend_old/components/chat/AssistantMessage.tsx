@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { Markdown } from './Markdown';
+import { memo } from "react";
+import { Markdown } from "./Markdown";
 
 interface AssistantMessageProps {
   content: string;
@@ -9,7 +9,9 @@ interface AssistantMessageProps {
 export const AssistantMessage = memo(({ content, showChanges = false }: AssistantMessageProps) => {
   return (
     <div className="overflow-hidden w-full">
-      <Markdown html showChanges={showChanges}>{content}</Markdown>
+      <Markdown html showChanges={showChanges}>
+        {content}
+      </Markdown>
     </div>
   );
 });

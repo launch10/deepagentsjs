@@ -4,10 +4,7 @@ import { stringify } from "./fast-safe-stringify";
 
 function isLangChainSerializedObject(value: Record<string, unknown>) {
   return (
-    value !== null &&
-    value.lc === 1 &&
-    value.type === "constructor" &&
-    Array.isArray(value.id)
+    value !== null && value.lc === 1 && value.type === "constructor" && Array.isArray(value.id)
   );
 }
 
@@ -22,9 +19,7 @@ function isLangChainSerializedObject(value: Record<string, unknown>) {
 async function _reviver(value: any): Promise<any> {
   if (value && typeof value === "object") {
     if (Array.isArray(value)) {
-      const revivedArray = await Promise.all(
-        value.map((item) => _reviver(item))
-      );
+      const revivedArray = await Promise.all(value.map((item) => _reviver(item)));
       return revivedArray;
     } else {
       const revivedObj: any = {};
@@ -60,9 +55,7 @@ async function _reviver(value: any): Promise<any> {
               return revivedObj;
           }
           if (revivedObj.method) {
-            return (constructor as any)[revivedObj.method](
-              ...(revivedObj.args || [])
-            );
+            return (constructor as any)[revivedObj.method](...(revivedObj.args || []));
           } else {
             return new (constructor as any)(...(revivedObj.args || []));
           }
@@ -108,7 +101,9 @@ function _default(obj: any): any {
   } else if (obj instanceof RegExp) {
     return _encodeConstructorArgs(RegExp, undefined, [obj.source, obj.flags]);
   } else if (obj instanceof Error) {
-    return _encodeConstructorArgs(obj.constructor as new (...args: any[]) => any, undefined, [obj.message]);
+    return _encodeConstructorArgs(obj.constructor as new (...args: any[]) => any, undefined, [
+      obj.message,
+    ]);
     // TODO: Remove special case
   } else if (obj?.lg_name === "Send") {
     return {
@@ -147,9 +142,7 @@ export class JsonPlusSerializer implements SerializerProtocol {
     if (type === "bytes") {
       return typeof data === "string" ? new TextEncoder().encode(data) : data;
     } else if (type === "json") {
-      return this._loads(
-        typeof data === "string" ? data : new TextDecoder().decode(data)
-      );
+      return this._loads(typeof data === "string" ? data : new TextDecoder().decode(data));
     } else {
       throw new Error(`Unknown serialization type: ${type}`);
     }

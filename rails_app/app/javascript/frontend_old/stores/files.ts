@@ -1,26 +1,26 @@
-import type { PathWatcherEvent, WebContainer } from '@webcontainer/api';
-import { getEncoding } from 'istextorbinary';
-import { map, type MapStore } from 'nanostores';
-import { Buffer } from 'node:buffer';
-import * as nodePath from 'node:path';
-import { bufferWatchEvents } from '@lib/utils/buffer';
-import { WORK_DIR } from '@lib/utils/constants';
-import { computeFileModifications } from '@lib/utils/diff';
-import { createScopedLogger } from '@lib/utils/logger';
-import { unreachable } from '@lib/utils/unreachable';
+import type { PathWatcherEvent, WebContainer } from "@webcontainer/api";
+import { getEncoding } from "istextorbinary";
+import { map, type MapStore } from "nanostores";
+import { Buffer } from "node:buffer";
+import * as nodePath from "node:path";
+import { bufferWatchEvents } from "@lib/utils/buffer";
+import { WORK_DIR } from "@lib/utils/constants";
+import { computeFileModifications } from "@lib/utils/diff";
+import { createScopedLogger } from "@lib/utils/logger";
+import { unreachable } from "@lib/utils/unreachable";
 
-const logger = createScopedLogger('FilesStore');
+const logger = createScopedLogger("FilesStore");
 
-const utf8TextDecoder = new TextDecoder('utf8', { fatal: true });
+const utf8TextDecoder = new TextDecoder("utf8", { fatal: true });
 
 export interface File {
-  type: 'file';
+  type: "file";
   content: string;
   isBinary: boolean;
 }
 
 export interface Folder {
-  type: 'folder';
+  type: "folder";
 }
 
 type Dirent = File | Folder;
@@ -65,7 +65,7 @@ export class FilesStore {
   getFile(filePath: string) {
     const dirent = this.files.get()[filePath];
 
-    if (dirent?.type !== 'file') {
+    if (dirent?.type !== "file") {
       return undefined;
     }
 
@@ -93,7 +93,7 @@ export class FilesStore {
       const oldContent = this.getFile(filePath)?.content;
 
       if (!oldContent) {
-        unreachable('Expected content to be defined');
+        unreachable("Expected content to be defined");
       }
 
       await webcontainer.fs.writeFile(relativePath, content);
@@ -103,11 +103,11 @@ export class FilesStore {
       }
 
       // we immediately update the file and don't rely on the `change` event coming from the watcher
-      this.files.setKey(filePath, { type: 'file', content, isBinary: false });
+      this.files.setKey(filePath, { type: "file", content, isBinary: false });
 
-      logger.info('File updated');
+      logger.info("File updated");
     } catch (error) {
-      logger.error('Failed to update file content\n\n', error);
+      logger.error("Failed to update file content\n\n", error);
 
       throw error;
     }
@@ -117,8 +117,8 @@ export class FilesStore {
     const webcontainer = await this.#webcontainer;
 
     webcontainer.internal.watchPaths(
-      { include: [`${WORK_DIR}/**`], exclude: ['**/node_modules', '.git'], includeContent: true },
-      bufferWatchEvents(100, this.#processEventBuffer.bind(this)),
+      { include: [`${WORK_DIR}/**`], exclude: ["**/node_modules", ".git"], includeContent: true },
+      bufferWatchEvents(100, this.#processEventBuffer.bind(this))
     );
   }
 
@@ -127,15 +127,15 @@ export class FilesStore {
 
     for (const { type, path, buffer } of watchEvents) {
       // remove any trailing slashes
-      const sanitizedPath = path.replace(/\/+$/g, '');
+      const sanitizedPath = path.replace(/\/+$/g, "");
 
       switch (type) {
-        case 'add_dir': {
+        case "add_dir": {
           // we intentionally add a trailing slash so we can distinguish files from folders in the file tree
-          this.files.setKey(sanitizedPath, { type: 'folder' });
+          this.files.setKey(sanitizedPath, { type: "folder" });
           break;
         }
-        case 'remove_dir': {
+        case "remove_dir": {
           this.files.setKey(sanitizedPath, undefined);
 
           for (const [direntPath] of Object.entries(this.files)) {
@@ -146,13 +146,13 @@ export class FilesStore {
 
           break;
         }
-        case 'add_file':
-        case 'change': {
-          if (type === 'add_file') {
+        case "add_file":
+        case "change": {
+          if (type === "add_file") {
             this.#size++;
           }
 
-          let content = '';
+          let content = "";
 
           /**
            * @note This check is purely for the editor. The way we detect this is not
@@ -166,16 +166,16 @@ export class FilesStore {
             content = this.#decodeFileContent(buffer);
           }
 
-          this.files.setKey(sanitizedPath, { type: 'file', content, isBinary });
+          this.files.setKey(sanitizedPath, { type: "file", content, isBinary });
 
           break;
         }
-        case 'remove_file': {
+        case "remove_file": {
           this.#size--;
           this.files.setKey(sanitizedPath, undefined);
           break;
         }
-        case 'update_directory': {
+        case "update_directory": {
           // we don't care about these events
           break;
         }
@@ -185,13 +185,13 @@ export class FilesStore {
 
   #decodeFileContent(buffer?: Uint8Array) {
     if (!buffer || buffer.byteLength === 0) {
-      return '';
+      return "";
     }
 
     try {
       return utf8TextDecoder.decode(buffer);
     } catch (error) {
-      return '';
+      return "";
     }
   }
 }
@@ -201,7 +201,7 @@ function isBinaryFile(buffer: Uint8Array | undefined) {
     return false;
   }
 
-  return getEncoding(convertToBuffer(buffer), { chunkLength: 100 }) === 'binary';
+  return getEncoding(convertToBuffer(buffer), { chunkLength: 100 }) === "binary";
 }
 
 /**

@@ -3,12 +3,12 @@ import { type AdsGraphState } from "@state";
 import { userPreferencesPrompt } from "../userPreferences";
 
 export const Callouts: Partial<Ads.AssetPromptMap> = {
-    "callouts": {
-        prompt: async (state: AdsGraphState, _config?: any) => {
-            const userPrefs = await userPreferencesPrompt(state, "callouts");
-            const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.callouts;
+  callouts: {
+    prompt: async (state: AdsGraphState, _config?: any) => {
+      const userPrefs = await userPreferencesPrompt(state, "callouts");
+      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.callouts;
 
-            return `
+      return `
             ## Unique Features (Callouts)
             Generate ${nVariants} unique selling points that highlight why customers should choose this business. These appear as callout extensions in Google Ads.
 
@@ -28,11 +28,11 @@ export const Callouts: Partial<Ads.AssetPromptMap> = {
 
             ${userPrefs}
         `;
-        },
-        outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-            const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.callouts;
-            const callouts = Array.from({ length: nVariants }, (_, i) => `Feature ${i + 1}`);
-            return { callouts };
-        }
-    }
-}
+    },
+    outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.callouts;
+      const callouts = Array.from({ length: nVariants }, (_, i) => `Feature ${i + 1}`);
+      return { callouts };
+    },
+  },
+};

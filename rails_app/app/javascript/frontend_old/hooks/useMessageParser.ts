@@ -1,11 +1,11 @@
-import { data } from '@remix-run/react';
-import type { Message } from 'ai';
-import { useCallback, useState } from 'react';
-import { StreamingMessageParser } from '~/lib/runtime/message-parser';
-import { workbenchStore } from '~/lib/stores/workbench';
-import { createScopedLogger } from '~/lib/utils/logger';
+import { data } from "@remix-run/react";
+import type { Message } from "ai";
+import { useCallback, useState } from "react";
+import { StreamingMessageParser } from "~/lib/runtime/message-parser";
+import { workbenchStore } from "~/lib/stores/workbench";
+import { createScopedLogger } from "~/lib/utils/logger";
 
-const logger = createScopedLogger('useMessageParser');
+const logger = createScopedLogger("useMessageParser");
 
 const messageParser = new StreamingMessageParser({
   callbacks: {
@@ -22,12 +22,12 @@ const messageParser = new StreamingMessageParser({
     //   workbenchStore.installDependencies(data);
     // },
     onWriteOpen: (data: ActionCallbackData) => {
-      logger.info('onWriteOpen', JSON.stringify(data));
+      logger.info("onWriteOpen", JSON.stringify(data));
 
       workbenchStore.addAction(data);
     },
     onWriteClose: (data: ActionCallbackData) => {
-      logger.info('onWriteClose', JSON.stringify(data));
+      logger.info("onWriteClose", JSON.stringify(data));
 
       workbenchStore.runAction(data);
     },
@@ -63,12 +63,12 @@ export function useMessageParser() {
     }
 
     for (const [index, message] of messages.entries()) {
-      if (message.role === 'assistant') {
+      if (message.role === "assistant") {
         const newParsedContent = messageParser.parse(message.id, message.content);
 
         setParsedMessages((prevParsed) => ({
           ...prevParsed,
-          [index]: !reset ? (prevParsed[index] || '') + newParsedContent : newParsedContent,
+          [index]: !reset ? (prevParsed[index] || "") + newParsedContent : newParsedContent,
         }));
       }
     }

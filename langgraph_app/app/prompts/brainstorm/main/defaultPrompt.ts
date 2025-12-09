@@ -2,31 +2,35 @@ import { type BrainstormGraphState } from "@state";
 import { Brainstorm, type LangGraphRunnableConfig, isHumanMessage } from "@types";
 import { structuredOutputPrompt, renderPrompt } from "@prompts";
 import {
-    whereWeArePrompt,
-    currentTopicPrompt,
-    remainingTopicsPrompt,
-    collectedAnswersPrompt,
+  whereWeArePrompt,
+  currentTopicPrompt,
+  remainingTopicsPrompt,
+  collectedAnswersPrompt,
 } from "../shared";
 import { processPrompt } from "../../core/process";
 
-export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
-    const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
-    if (!lastHumanMessage) {
-        throw new Error("No human message found");
-    }
-    const topic = Brainstorm.getTopic(state.currentTopic as Brainstorm.TopicName);
+export const defaultPrompt = async (
+  state: BrainstormGraphState,
+  config?: LangGraphRunnableConfig
+) => {
+  const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
+  if (!lastHumanMessage) {
+    throw new Error("No human message found");
+  }
+  const topic = Brainstorm.getTopic(state.currentTopic as Brainstorm.TopicName);
 
-    const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, process] = await Promise.all([
-        structuredOutputPrompt({ schema: Brainstorm.replySchema }),
-        whereWeArePrompt(state, config),
-        currentTopicPrompt(state, config),
-        remainingTopicsPrompt(state, config),
-        collectedAnswersPrompt(state, config),
-        processPrompt(state, config),
+  const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, process] =
+    await Promise.all([
+      structuredOutputPrompt({ schema: Brainstorm.replySchema }),
+      whereWeArePrompt(state, config),
+      currentTopicPrompt(state, config),
+      remainingTopicsPrompt(state, config),
+      collectedAnswersPrompt(state, config),
+      processPrompt(state, config),
     ]);
 
-    return renderPrompt(
-        `
+  return renderPrompt(
+    `
             ${process}
 
             ${whereWeAre}
@@ -111,5 +115,5 @@ export const defaultPrompt = async(state: BrainstormGraphState, config?: LangGra
 
             ${outputInstructions}
         `
-    );
-}
+  );
+};

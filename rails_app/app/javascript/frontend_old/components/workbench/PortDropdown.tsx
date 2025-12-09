@@ -1,6 +1,6 @@
-import { memo, useEffect, useRef } from 'react';
-import { IconButton } from '@components/ui/IconButton';
-import type { PreviewInfo } from '@stores/previews';
+import { memo, useEffect, useRef } from "react";
+import { IconButton } from "@components/ui/IconButton";
+import type { PreviewInfo } from "@stores/previews";
 
 interface PortDropdownProps {
   activePreviewIndex: number;
@@ -36,13 +36,13 @@ export const PortDropdown = memo(
       };
 
       if (isDropdownOpen) {
-        window.addEventListener('mousedown', handleClickOutside);
+        window.addEventListener("mousedown", handleClickOutside);
       } else {
-        window.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener("mousedown", handleClickOutside);
       }
 
       return () => {
-        window.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener("mousedown", handleClickOutside);
       };
     }, [isDropdownOpen]);
 
@@ -67,8 +67,8 @@ export const PortDropdown = memo(
                 <span
                   className={
                     activePreviewIndex === preview.index
-                      ? 'text-bolt-elements-item-contentAccent'
-                      : 'text-bolt-elements-item-contentDefault group-hover:text-bolt-elements-item-contentActive'
+                      ? "text-bolt-elements-item-contentAccent"
+                      : "text-bolt-elements-item-contentDefault group-hover:text-bolt-elements-item-contentActive"
                   }
                 >
                   {preview.port}
@@ -79,5 +79,5 @@ export const PortDropdown = memo(
         )}
       </div>
     );
-  },
+  }
 );

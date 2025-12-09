@@ -4,15 +4,15 @@ import type { ValueOf } from "type-fest";
 
 // LLM Providers
 export const LLMProviders = ["anthropic", "ollama", "openai", "groq", "google", "fake"] as const;
-export type LLMProvider = typeof LLMProviders[number];
+export type LLMProvider = (typeof LLMProviders)[number];
 
 // LLM Speeds
 export const LLMSpeeds = ["fast", "slow", "blazing"] as const;
-export type LLMSpeed = typeof LLMSpeeds[number];
+export type LLMSpeed = (typeof LLMSpeeds)[number];
 
 // LLM Costs
 export const LLMCosts = ["free", "paid"] as const;
-export type LLMCost = typeof LLMCosts[number];
+export type LLMCost = (typeof LLMCosts)[number];
 
 // https://replicate.com/anthropic/claude-4.5-sonnet
 export interface LLMAttributes {
@@ -26,15 +26,15 @@ export interface LLMAttributes {
 
 // LLM Model Names
 export const LLMNames = {
-    Haiku: "claude-haiku-4-5" as const,
-    Sonnet: "claude-sonnet-4-5" as const,
-    Gpt5: "gpt-5" as const,
-    Gpt5Mini: "gpt-5-mini" as const,
-    GptOss: "gpt-oss:20b" as const,
-    GeminiFlash: "gemini-1.5-flash-latest" as const,
-    GroqGptOss120b: "openai/gpt-oss-120b" as const,
-    Fake: "fake" as const, // For testing
-}
+  Haiku: "claude-haiku-4-5" as const,
+  Sonnet: "claude-sonnet-4-5" as const,
+  Gpt5: "gpt-5" as const,
+  Gpt5Mini: "gpt-5-mini" as const,
+  GptOss: "gpt-oss:20b" as const,
+  GeminiFlash: "gemini-1.5-flash-latest" as const,
+  GroqGptOss120b: "openai/gpt-oss-120b" as const,
+  Fake: "fake" as const, // For testing
+};
 
 export type LLMName = keyof typeof LLMNames;
 export type LLMModelCard = ValueOf<typeof LLMNames>;
@@ -44,16 +44,16 @@ export const EstimatedLLMAttributes: Record<LLMName, LLMAttributes> = {
     tokensPerSecond: 40,
     contextTokens: 1_000_000,
     completionTokens: 64_000,
-    costIn: 3.00,
-    costOut: 15.00,
+    costIn: 3.0,
+    costOut: 15.0,
     timeToFirstToken: 1100,
   },
   Haiku: {
     tokensPerSecond: 90,
     contextTokens: 200_000,
     completionTokens: 64_000,
-    costIn: 1.00,
-    costOut: 5.00,
+    costIn: 1.0,
+    costOut: 5.0,
     timeToFirstToken: 650,
   },
   Gpt5: {
@@ -61,7 +61,7 @@ export const EstimatedLLMAttributes: Record<LLMName, LLMAttributes> = {
     contextTokens: 400_000,
     completionTokens: 128_000,
     costIn: 1.25,
-    costOut: 10.00,
+    costOut: 10.0,
     timeToFirstToken: 1200,
   },
   Gpt5Mini: {
@@ -69,7 +69,7 @@ export const EstimatedLLMAttributes: Record<LLMName, LLMAttributes> = {
     contextTokens: 400_000,
     completionTokens: 128_000,
     costIn: 0.25,
-    costOut: 2.00,
+    costOut: 2.0,
     timeToFirstToken: 1200,
   },
   GptOss: {
@@ -77,15 +77,15 @@ export const EstimatedLLMAttributes: Record<LLMName, LLMAttributes> = {
     contextTokens: 400_000,
     completionTokens: 128_000,
     costIn: 1.25,
-    costOut: 10.00,
+    costOut: 10.0,
     timeToFirstToken: 1200,
   },
   GeminiFlash: {
     tokensPerSecond: 170,
     contextTokens: 1_000_000,
     completionTokens: 128_000,
-    costIn: 0.30,
-    costOut: 2.50,
+    costIn: 0.3,
+    costOut: 2.5,
     timeToFirstToken: 900,
   },
   GroqGptOss120b: {
@@ -93,18 +93,18 @@ export const EstimatedLLMAttributes: Record<LLMName, LLMAttributes> = {
     contextTokens: 400_000,
     completionTokens: 128_000,
     costIn: 1.25,
-    costOut: 10.00,
+    costOut: 10.0,
     timeToFirstToken: 1200,
   },
   Fake: {
     tokensPerSecond: 10_000,
     contextTokens: 400_000,
     completionTokens: 128_000,
-    costIn: 0.00,
-    costOut: 0.00,
+    costIn: 0.0,
+    costOut: 0.0,
     timeToFirstToken: 0,
   },
-}
+};
 
 // Temperature
 export const temperatureSchema = z.number().min(0).max(1);
@@ -112,7 +112,7 @@ export type Temperature = z.infer<typeof temperatureSchema>;
 
 // LLM Skills
 export const LLMSkills = ["planning", "writing", "coding", "reasoning"] as const;
-export type LLMSkill = typeof LLMSkills[number];
+export type LLMSkill = (typeof LLMSkills)[number];
 
 // Base Config Interfaces
 export interface ILLMConfig {
@@ -146,15 +146,15 @@ export interface LLMsConfig {
 }
 
 export interface LLMAppConfig {
-  "free": {
-    "blazing": LLMsConfig;
-    "fast": LLMsConfig;
-    "slow": LLMsConfig;
+  free: {
+    blazing: LLMsConfig;
+    fast: LLMsConfig;
+    slow: LLMsConfig;
   };
-  "paid": {
-    "blazing": LLMsConfig;
-    "fast": LLMsConfig;
-    "slow": LLMsConfig;
+  paid: {
+    blazing: LLMsConfig;
+    fast: LLMsConfig;
+    slow: LLMsConfig;
   };
 }
 
@@ -171,7 +171,7 @@ export const HaikuConfig: IAPIConfig = {
   temperature: 0,
   maxTokens: 180_000,
   apiKey: anthropicApiKey,
-}
+};
 
 export const SonnetConfig: IAPIConfig = {
   type: "api",
@@ -181,7 +181,7 @@ export const SonnetConfig: IAPIConfig = {
   temperature: 0,
   maxTokens: 180_000,
   apiKey: anthropicApiKey,
-}
+};
 
 export const GroqGptOss120bConfig: IAPIConfig = {
   type: "api",
@@ -191,7 +191,7 @@ export const GroqGptOss120bConfig: IAPIConfig = {
   temperature: 0,
   maxTokens: 128_000,
   apiKey: groqApiKey,
-}
+};
 
 export const Gpt5Config: IAPIConfig = {
   type: "api",
@@ -201,7 +201,7 @@ export const Gpt5Config: IAPIConfig = {
   temperature: 0,
   maxTokens: 128_000,
   apiKey: openaiApiKey,
-}
+};
 
 export const Gpt5MiniConfig: IAPIConfig = {
   type: "api",
@@ -211,7 +211,7 @@ export const Gpt5MiniConfig: IAPIConfig = {
   temperature: 0,
   maxTokens: 128_000,
   apiKey: openaiApiKey,
-}
+};
 
 export const GptOssConfig: ILocalConfig = {
   type: "local",
@@ -220,7 +220,7 @@ export const GptOssConfig: ILocalConfig = {
   modelCard: LLMNames.GptOss,
   temperature: 0,
   maxTokens: 128_000,
-}
+};
 
 export const GeminiFlashConfig: IAPIConfig = {
   type: "api",
@@ -230,7 +230,7 @@ export const GeminiFlashConfig: IAPIConfig = {
   maxTokens: 1_000_000,
   apiKey: googleApiKey,
   temperature: 0,
-}
+};
 
 export const FakeConfig: ILocalConfig = {
   type: "local",
@@ -239,7 +239,7 @@ export const FakeConfig: ILocalConfig = {
   modelCard: LLMNames.Fake,
   temperature: 0,
   maxTokens: 128_000,
-}
+};
 
 export const Models: Record<LLMName, LLMConfig> = {
   Haiku: HaikuConfig,
@@ -250,4 +250,4 @@ export const Models: Record<LLMName, LLMConfig> = {
   GeminiFlash: GeminiFlashConfig,
   GroqGptOss120b: GroqGptOss120bConfig,
   Fake: FakeConfig,
-}
+};

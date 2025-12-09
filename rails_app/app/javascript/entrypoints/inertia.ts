@@ -22,12 +22,9 @@ const appName = "Launch10";
 createInertiaApp({
   title: (title) => (title ? `${title} - ${appName}` : appName),
   resolve: (name) => {
-    const pages = import.meta.glob<ResolvedComponent>(
-      "../frontend/pages/**/*.tsx",
-      {
-        eager: true,
-      }
-    );
+    const pages = import.meta.glob<ResolvedComponent>("../frontend/pages/**/*.tsx", {
+      eager: true,
+    });
     const page = pages[`../frontend/pages/${name}.tsx`];
     if (!page) {
       console.error(`Missing Inertia page component: '${name}.tsx'`);

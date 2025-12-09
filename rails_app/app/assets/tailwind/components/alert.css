@@ -3,7 +3,9 @@
   background: var(--base-bg-base);
   color: var(--base-text-secondary);
   padding: 16px;
-  box-shadow: 0px 1px 2px -1px rgba(0, 0, 0, 0.10), 0px 1px 3px 0px rgba(0, 0, 0, 0.10);
+  box-shadow:
+    0px 1px 2px -1px rgba(0, 0, 0, 0.1),
+    0px 1px 3px 0px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   font-size: 14px;
@@ -16,7 +18,8 @@
     flex-shrink: 0;
   }
 
-  h4 a, p a {
+  h4 a,
+  p a {
     display: inline;
     margin-right: 0px;
   }
@@ -85,7 +88,6 @@
   &.alert-error {
     background: var(--bg-danger-secondary);
     color: var(--text-on-danger-secondary);
-
 
     svg {
       color: var(--icon-on-danger-secondary);

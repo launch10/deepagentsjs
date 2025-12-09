@@ -3,19 +3,21 @@ import { type AdsGraphState } from "@state";
 import { userPreferencesPrompt } from "../userPreferences";
 
 export const StructuredSnippetss: Partial<Ads.AssetPromptMap> = {
-    "structuredSnippets": {
-        prompt: async (state: AdsGraphState, _config?: any) => {
-            const snippetCategory = state?.structuredSnippets?.category
-            const userPrefs = await userPreferencesPrompt(state, "structuredSnippets");
-            const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structuredSnippets;
+  structuredSnippets: {
+    prompt: async (state: AdsGraphState, _config?: any) => {
+      const snippetCategory = state?.structuredSnippets?.category;
+      const userPrefs = await userPreferencesPrompt(state, "structuredSnippets");
+      const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structuredSnippets;
 
-            return `
+      return `
             ## Product or Service Offerings (Structured Snippets)
             Generate a category header and ${numberOfDetails} specific examples of what this business offers. These appear as structured snippet extensions in Google Ads.
 
             **Category Header:**
             ${
-                snippetCategory ? snippetCategory : `Choose ONE header that best describes what you're listing (e.g., "Types", "Services", "Amenities", "Products", "Styles", "Brands", "Courses", "Destinations")`
+              snippetCategory
+                ? snippetCategory
+                : `Choose ONE header that best describes what you're listing (e.g., "Types", "Services", "Amenities", "Products", "Styles", "Brands", "Courses", "Destinations")`
             }
 
             **Details (Values):**
@@ -34,15 +36,15 @@ export const StructuredSnippetss: Partial<Ads.AssetPromptMap> = {
 
             ${userPrefs}
         `;
+    },
+    outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+      const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structuredSnippets;
+      return {
+        structuredSnippets: {
+          category: "Types",
+          details: Array.from({ length: numberOfDetails }, (_, i) => `Detail ${i + 1}`),
         },
-        outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-            const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structuredSnippets;
-            return {
-                structuredSnippets: {
-                    category: "Types",
-                    details: Array.from({ length: numberOfDetails }, (_, i) => `Detail ${i + 1}`)
-                }
-            };
-        }
-    }
-}
+      };
+    },
+  },
+};

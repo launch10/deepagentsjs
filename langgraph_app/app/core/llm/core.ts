@@ -10,40 +10,40 @@ import {
 } from "./types";
 
 export const coreLLMConfig: LLMAppConfig = {
-  "free": {
-    "blazing": {
+  free: {
+    blazing: {
       planning: GptOssConfig,
       writing: GptOssConfig,
       coding: GptOssConfig,
       reasoning: GptOssConfig,
     },
-    "fast": {
+    fast: {
       planning: GptOssConfig,
       writing: GptOssConfig,
       coding: GptOssConfig,
       reasoning: GptOssConfig,
     },
-    "slow": {
+    slow: {
       planning: GptOssConfig,
       writing: GptOssConfig,
       coding: GptOssConfig,
       reasoning: GptOssConfig,
     },
   },
-  "paid": {
-    "blazing": {
+  paid: {
+    blazing: {
       planning: GroqGptOss120bConfig,
       writing: GroqGptOss120bConfig,
       coding: GroqGptOss120bConfig,
       reasoning: GroqGptOss120bConfig,
     },
-    "fast": {
+    fast: {
       planning: SonnetConfig,
       writing: HaikuConfig,
       coding: HaikuConfig,
       reasoning: HaikuConfig,
     },
-    "slow": {
+    slow: {
       planning: SonnetConfig,
       writing: HaikuConfig,
       coding: SonnetConfig,

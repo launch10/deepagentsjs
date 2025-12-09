@@ -24,7 +24,7 @@ const choiceScores = {
   "mostly answered": 0.8,
   "partially answered": 0.5,
   "tangentially related": 0.25,
-  "did not answer": 0
+  "did not answer": 0,
 };
 
 export interface AnswersQuestionParams {
@@ -33,7 +33,7 @@ export interface AnswersQuestionParams {
   useCoT?: boolean;
 }
 
-export const AnswersQuestionScorer = createScorer({ 
-  prompt: template, 
+export const AnswersQuestionScorer = createScorer({
+  prompt: template,
   choiceScores,
 });

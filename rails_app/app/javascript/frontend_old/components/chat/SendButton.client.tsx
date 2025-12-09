@@ -1,4 +1,4 @@
-import { AnimatePresence, cubicBezier, motion } from 'framer-motion';
+import { AnimatePresence, cubicBezier, motion } from "framer-motion";
 
 interface SendButtonProps {
   show: boolean;
@@ -24,7 +24,11 @@ export function SendButton({ show, isStreaming, onClick }: SendButtonProps) {
           }}
         >
           <div className="text-lg">
-            {!isStreaming ? <div className="i-ph:arrow-right"></div> : <div className="i-ph:stop-circle-bold"></div>}
+            {!isStreaming ? (
+              <div className="i-ph:arrow-right"></div>
+            ) : (
+              <div className="i-ph:stop-circle-bold"></div>
+            )}
           </div>
         </motion.button>
       ) : null}

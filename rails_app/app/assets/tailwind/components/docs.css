@@ -6,7 +6,9 @@
 .docs-body {
   height: 100%;
   overflow-x: hidden;
-  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-family:
+    ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
   font-weight: 400;
   line-height: 1.5;
 }
@@ -127,33 +129,32 @@
     }
   }
 
-  >h3,
-  >h4,
-  >h5 {
+  > h3,
+  > h4,
+  > h5 {
     margin-top: 16px;
   }
 
-  >h2~p,
-  >h3~p,
-  >h4~p,
-  >h5~p {
+  > h2 ~ p,
+  > h3 ~ p,
+  > h4 ~ p,
+  > h5 ~ p {
     margin-top: 20px;
   }
 
-  >h2+p,
-  >h3+p,
-  >h4+p,
-  >h5+p {
+  > h2 + p,
+  > h3 + p,
+  > h4 + p,
+  > h5 + p {
     margin-top: 16px;
   }
 
-  >h2:first-of-type {
+  > h2:first-of-type {
     margin: 0px;
   }
 
-  >h2:not(:first-of-type) {
+  > h2:not(:first-of-type) {
     margin: 32px 0px 0px 0px;
-
   }
 
   section {

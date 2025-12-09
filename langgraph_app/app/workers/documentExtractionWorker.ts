@@ -1,22 +1,24 @@
-import { Worker, Job } from 'bullmq';
-import { z } from 'zod';
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import { createRedisConnection } from '../queues/connection';
-import type { DocumentExtractionJobData } from '../queues/documentExtraction';
-import { WebhookService } from '../services/webhooks';
-import { getLLM } from '@core';
-import { withStructuredResponse } from '@utils';
-import { structuredOutputPrompt } from '@prompts';
+import { Worker, Job } from "bullmq";
+import { z } from "zod";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { createRedisConnection } from "../queues/connection";
+import type { DocumentExtractionJobData } from "../queues/documentExtraction";
+import { WebhookService } from "../services/webhooks";
+import { getLLM } from "@core";
+import { withStructuredResponse } from "@utils";
+import { structuredOutputPrompt } from "@prompts";
 
 const qaExtractionSchema = z.object({
-  pairs: z.array(z.object({
-    question: z.string().describe('The question being asked'),
-    answer: z.string().describe('The answer to the question'),
-    section: z.string().optional().describe('The section or category this Q&A belongs to'),
-  }))
+  pairs: z.array(
+    z.object({
+      question: z.string().describe("The question being asked"),
+      answer: z.string().describe("The answer to the question"),
+      section: z.string().optional().describe("The section or category this Q&A belongs to"),
+    })
+  ),
 });
 
-type QAPair = z.infer<typeof qaExtractionSchema>['pairs'][number];
+type QAPair = z.infer<typeof qaExtractionSchema>["pairs"][number];
 type QAExtractionResult = z.infer<typeof qaExtractionSchema>;
 
 const QA_EXTRACTION_PROMPT = `You are an expert at extracting question and answer pairs from documentation.
@@ -42,7 +44,7 @@ const CHUNK_OVERLAP = 500;
 const textSplitter = new RecursiveCharacterTextSplitter({
   chunkSize: CHUNK_SIZE,
   chunkOverlap: CHUNK_OVERLAP,
-  separators: ['\nQuestion:', '\n\n', '\n', ' ', ''],
+  separators: ["\nQuestion:", "\n\n", "\n", " ", ""],
 });
 
 async function splitContent(content: string): Promise<string[]> {
@@ -57,7 +59,7 @@ async function extractQAFromChunk(
   schemaPrompt: string,
   metadata?: Record<string, unknown>
 ): Promise<QAPair[]> {
-  const llm = getLLM('writing', 'fast');
+  const llm = getLLM("writing", "fast");
 
   const prompt = `${QA_EXTRACTION_PROMPT}
 
@@ -67,15 +69,15 @@ ${schemaPrompt}
 ${chunk}
 </chunk>
 
-${metadata?.title ? `Document title: ${metadata.title}` : ''}
+${metadata?.title ? `Document title: ${metadata.title}` : ""}
 
 Extract all complete Q&A pairs from this chunk.`;
 
-  const result = await withStructuredResponse({
+  const result = (await withStructuredResponse({
     llm,
     prompt,
-    schema: qaExtractionSchema
-  }) as QAExtractionResult;
+    schema: qaExtractionSchema,
+  })) as QAExtractionResult;
 
   return result.pairs;
 }
@@ -110,10 +112,10 @@ async function processDocumentExtraction(job: Job<DocumentExtractionJobData>) {
   );
 
   const successfulPairs = results
-    .filter((r): r is PromiseFulfilledResult<QAPair[]> => r.status === 'fulfilled')
-    .flatMap(r => r.value);
+    .filter((r): r is PromiseFulfilledResult<QAPair[]> => r.status === "fulfilled")
+    .flatMap((r) => r.value);
 
-  const failedCount = results.filter(r => r.status === 'rejected').length;
+  const failedCount = results.filter((r) => r.status === "rejected").length;
   if (failedCount > 0) {
     console.warn(`[Worker] ${failedCount}/${chunks.length} chunks failed`);
   }
@@ -124,7 +126,7 @@ async function processDocumentExtraction(job: Job<DocumentExtractionJobData>) {
   await WebhookService.sendWebhook({
     job_run_id,
     document_id,
-    status: 'success',
+    status: "success",
     result: { pairs: dedupedPairs },
   });
 
@@ -134,7 +136,7 @@ async function processDocumentExtraction(job: Job<DocumentExtractionJobData>) {
 const connection = createRedisConnection();
 
 export const documentExtractionWorker = new Worker<DocumentExtractionJobData>(
-  'document-extraction',
+  "document-extraction",
   processDocumentExtraction,
   {
     connection,
@@ -143,37 +145,37 @@ export const documentExtractionWorker = new Worker<DocumentExtractionJobData>(
   }
 );
 
-documentExtractionWorker.on('completed', (job) => {
+documentExtractionWorker.on("completed", (job) => {
   console.log(`[Worker] Job ${job.id} completed`);
 });
 
-documentExtractionWorker.on('failed', async (job, err) => {
+documentExtractionWorker.on("failed", async (job, err) => {
   console.error(`[Worker] Job ${job?.id} failed:`, err.message);
 
   if (job && job.attemptsMade >= (job.opts.attempts || 1)) {
     await WebhookService.sendWebhook({
       job_run_id: job.data.job_run_id,
       document_id: job.data.document_id,
-      status: 'failure',
+      status: "failure",
       result: { error: err.message },
     });
   }
 });
 
-documentExtractionWorker.on('error', (err) => {
-  console.error('[Worker] Error:', err);
+documentExtractionWorker.on("error", (err) => {
+  console.error("[Worker] Error:", err);
 });
 
-process.on('SIGINT', async () => {
-  console.log('[Worker] Shutting down...');
+process.on("SIGINT", async () => {
+  console.log("[Worker] Shutting down...");
   await documentExtractionWorker.close();
   process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
-  console.log('[Worker] Shutting down...');
+process.on("SIGTERM", async () => {
+  console.log("[Worker] Shutting down...");
   await documentExtractionWorker.close();
   process.exit(0);
 });
 
-console.log('[Worker] Document extraction worker started');
+console.log("[Worker] Document extraction worker started");

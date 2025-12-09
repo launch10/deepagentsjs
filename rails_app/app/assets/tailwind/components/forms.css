@@ -9,7 +9,9 @@
   }
 }
 
-.form-control, trix-editor, trix-toolbar {
+.form-control,
+trix-editor,
+trix-toolbar {
   background: var(--base-bg-low);
   border: 1px solid var(--base-border-tertiary);
   border-radius: 6px;
@@ -219,7 +221,7 @@ form.inline {
   gap: 8px;
 
   input[type="checkbox"],
-  input[type='radio'] {
+  input[type="radio"] {
     margin-top: 4px;
   }
 
@@ -324,7 +326,8 @@ form.inline {
       width: 50px;
       content: "";
       border-radius: 24px;
-      transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+      transition-property:
+        color, background-color, border-color, text-decoration-color, fill, stroke;
       transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
       transition-duration: 200ms;
     }
@@ -363,9 +366,9 @@ form.inline {
     opacity: 0;
   }
 
-  &:has( .form-checkbox:checked) label,
-  &:has( [type="checkbox"]:checked) label,
-  &:has( [type="radio"]:checked) label {
+  &:has(.form-checkbox:checked) label,
+  &:has([type="checkbox"]:checked) label,
+  &:has([type="radio"]:checked) label {
     &::before {
       background: var(--bg-primary);
     }
@@ -398,7 +401,8 @@ form.inline {
       width: 50px;
       content: "";
       border-radius: 24px;
-      transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+      transition-property:
+        color, background-color, border-color, text-decoration-color, fill, stroke;
       transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
       transition-duration: 200ms;
     }
@@ -428,7 +432,7 @@ form.inline {
 .form-checkbox,
 [type="checkbox"],
 .form-radio,
-[type='radio'] {
+[type="radio"] {
   background-color: var(--base-bg-base);
   border: 1px solid var(--base-border-secondary);
   cursor: pointer;
@@ -512,7 +516,10 @@ form.inline {
     font-weight: 600;
     text-align: center;
     line-height: 20px;
-    transition: ease 0.3s background, ease 0.3s transform, ease 0.2s color;
+    transition:
+      ease 0.3s background,
+      ease 0.3s transform,
+      ease 0.2s color;
   }
 }
 
@@ -530,21 +537,24 @@ form.inline {
     font-weight: 600;
     text-align: center;
     line-height: 20px;
-    transition: ease 0.3s background, ease 0.3s transform, ease 0.2s color;
+    transition:
+      ease 0.3s background,
+      ease 0.3s transform,
+      ease 0.2s color;
   }
 }
 
 /* Hotwire Combobox */
 :root {
-  --hw-active-bg-color: #F3F4F6;
-  --hw-border-color: #D1D5DB;
-  --hw-component-bg-color: #FFFFFF;
-  --hw-group-color: #57595C;
-  --hw-group-bg-color: #FFFFFF;
-  --hw-invalid-color: #EF4444;
-  --hw-dialog-label-color: #1D1D1D;
-  --hw-focus-color: #2563EB;
-  --hw-option-bg-color: #FFFFFF;
+  --hw-active-bg-color: #f3f4f6;
+  --hw-border-color: #d1d5db;
+  --hw-component-bg-color: #ffffff;
+  --hw-group-color: #57595c;
+  --hw-group-bg-color: #ffffff;
+  --hw-invalid-color: #ef4444;
+  --hw-dialog-label-color: #1d1d1d;
+  --hw-focus-color: #2563eb;
+  --hw-option-bg-color: #ffffff;
 
   --hw-border-radius: 0.375rem;
   --hw-border-width--slim: 1px;
@@ -602,7 +612,8 @@ form.inline {
   padding: 0;
   position: relative;
 
-  &, * {
+  &,
+  * {
     box-sizing: border-box;
   }
 }
@@ -611,7 +622,8 @@ form.inline {
   background-color: var(--hw-component-bg-color);
   border: var(--hw-border-width--slim) solid var(--hw-border-color);
   border-radius: var(--hw-border-radius);
-  padding: var(--hw-padding--slim) calc(var(--hw-handle-width) + var(--hw-padding--slimmer)) var(--hw-padding--slim) var(--hw-padding--thick);
+  padding: var(--hw-padding--slim) calc(var(--hw-handle-width) + var(--hw-padding--slimmer))
+    var(--hw-padding--slim) var(--hw-padding--thick);
   position: relative;
   /* width: var(--hw-combobox-width); */
 
@@ -656,7 +668,7 @@ form.inline {
   background-repeat: no-repeat;
   background-size: var(--hw-handle-width);
   bottom: 0;
-  content: '';
+  content: "";
   left: 0;
   position: absolute;
   right: 0;

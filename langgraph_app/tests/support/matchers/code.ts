@@ -1,6 +1,6 @@
-import { expect } from 'vitest';
+import { expect } from "vitest";
 
-declare module 'vitest' {
+declare module "vitest" {
   interface Assertion<T = any> {
     toEqualCode(expected: string): T;
     toMatchCode(expected: string): T;
@@ -13,9 +13,9 @@ declare module 'vitest' {
 
 const normalizeCode = (str: string): string => {
   return str
-    .replace(/\s+/g, ' ')              // Normalize all whitespace to single spaces
-    .replace(/\s*([{}()[\],;:])\s*/g, '$1') // Remove spaces around brackets, parens, etc.
-    .replace(/;\s*}/g, ';}')           // Normalize semicolon before closing brace
+    .replace(/\s+/g, " ") // Normalize all whitespace to single spaces
+    .replace(/\s*([{}()[\],;:])\s*/g, "$1") // Remove spaces around brackets, parens, etc.
+    .replace(/;\s*}/g, ";}") // Normalize semicolon before closing brace
     .trim();
 };
 
@@ -66,5 +66,5 @@ expect.extend({
 });
 
 export function expectCodeMatch(actual: string, expected: string): void {
-  expect(actual, 'Code strings should match (ignoring whitespace)').toEqualCode(expected);
+  expect(actual, "Code strings should match (ignoring whitespace)").toEqualCode(expected);
 }

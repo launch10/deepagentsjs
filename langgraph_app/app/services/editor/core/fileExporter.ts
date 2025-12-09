@@ -1,8 +1,8 @@
-import { codeFiles, db, eq } from '@db';
-import { writeFile, mkdir, rm } from 'fs/promises';
-import { join, dirname } from 'path';
-import { tmpdir } from 'os';
-import { existsSync } from 'fs';
+import { codeFiles, db, eq } from "@db";
+import { writeFile, mkdir, rm } from "fs/promises";
+import { join, dirname } from "path";
+import { tmpdir } from "os";
+import { existsSync } from "fs";
 
 /**
  * Exports website files from database to an isolated directory
@@ -19,13 +19,18 @@ export class FileExporter implements AsyncDisposable {
   async [Symbol.asyncDispose](): Promise<void> {
     try {
       // Add a small delay to ensure processes have released files
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       // Try to remove the directory with retries
       let retries = 3;
       while (retries > 0) {
         try {
-          await rm(this.outputDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+          await rm(this.outputDir, {
+            recursive: true,
+            force: true,
+            maxRetries: 3,
+            retryDelay: 100,
+          });
           break;
         } catch (err: any) {
           retries--;
@@ -33,7 +38,7 @@ export class FileExporter implements AsyncDisposable {
             console.warn(`Warning: Could not fully clean up ${this.outputDir}: ${err.message}`);
             // Don't throw - we don't want cleanup failures to break tests
           } else {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 500));
           }
         }
       }
@@ -47,12 +52,9 @@ export class FileExporter implements AsyncDisposable {
    */
   async export(): Promise<string> {
     console.log(`Exporting website ${this.websiteId} to ${this.outputDir}`);
-    
+
     // Get all files for this website
-    const files = await db
-      .select()
-      .from(codeFiles)
-      .where(eq(codeFiles.websiteId, this.websiteId));
+    const files = await db.select().from(codeFiles).where(eq(codeFiles.websiteId, this.websiteId));
 
     if (files.length === 0) {
       throw new Error(`No files found for website ${this.websiteId}`);
@@ -67,14 +69,14 @@ export class FileExporter implements AsyncDisposable {
     for (const file of files) {
       const filePath = join(this.outputDir, file.path!);
       const fileDir = dirname(filePath);
-      
+
       // Create directory structure if needed
       if (!existsSync(fileDir)) {
         await mkdir(fileDir, { recursive: true });
       }
-      
+
       // Write file content
-      await writeFile(filePath, file.content || '');
+      await writeFile(filePath, file.content || "");
       console.log(`  ✓ Exported ${file.path}`);
     }
 

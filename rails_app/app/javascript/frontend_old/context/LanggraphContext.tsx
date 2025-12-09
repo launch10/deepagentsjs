@@ -7,11 +7,7 @@ import { createClient } from "@lib/utils/client";
 import { LIMIT_PARAM, OFFSET_PARAM } from "@lib/constants";
 import { redirectToThreadId } from "@hooks/useThreadId";
 import { useStream } from "@langchain/langgraph-sdk/react";
-import {
-  type GraphState,
-  type App as AppState,
-  type CodeTasksState,
-} from "@shared/state/graph";
+import { type GraphState, type App as AppState, type CodeTasksState } from "@shared/state/graph";
 import { useQueryParams } from "@hooks/useQueryParams";
 import { pageStore } from "@stores/page";
 import axios from "axios";
@@ -47,15 +43,9 @@ type LanggraphContextType = {
   getMessagesMetadata: (message: any) => any;
 };
 
-const LanggraphContext = React.createContext<LanggraphContextType | undefined>(
-  undefined
-);
+const LanggraphContext = React.createContext<LanggraphContextType | undefined>(undefined);
 
-export function LanggraphProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}): React.ReactElement {
+export function LanggraphProvider({ children }: { children: React.ReactNode }): React.ReactElement {
   const { jwt, accountId, rootPath, threadId, pageId } = useStore(pageStore);
   const [chatHasStarted, setChatHasStarted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -67,9 +57,7 @@ export function LanggraphProvider({
   const [projectHasBeenNamed, setProjectHasBeenNamed] = React.useState(false);
   const [events, setEvents] = React.useState<BackendEvent[]>([]);
 
-  const [messageIdToTags, setMessageIdToTags] = React.useState<
-    Record<string, Set<string>>
-  >({});
+  const [messageIdToTags, setMessageIdToTags] = React.useState<Record<string, Set<string>>>({});
 
   const handleLangChainEvent = React.useCallback((eventData: any) => {
     if (eventData.event === "on_chat_model_stream") {
@@ -202,14 +190,11 @@ export function LanggraphProvider({
     return augmented.filter(
       (message) =>
         message.type === "human" ||
-        ((message.tags || []).length > 0 &&
-          (message.tags || []).includes("notify"))
+        ((message.tags || []).length > 0 && (message.tags || []).includes("notify"))
     );
   }, [stream.messages, messageIdToTags]);
 
-  const appState: AppState | undefined = stream.values?.app as
-    | AppState
-    | undefined;
+  const appState: AppState | undefined = stream.values?.app as AppState | undefined;
   // const codeTasks = (appState?.codeTasks || {notify: [], queue: [], completedTasks: []}) as CodeTasksState;
   const codeTasks = (
     chatHasStarted
@@ -252,19 +237,13 @@ export function LanggraphProvider({
     getMessagesMetadata: stream.getMessagesMetadata,
   };
 
-  return (
-    <LanggraphContext.Provider value={contextValue}>
-      {children}
-    </LanggraphContext.Provider>
-  );
+  return <LanggraphContext.Provider value={contextValue}>{children}</LanggraphContext.Provider>;
 }
 
 export function useLanggraphContext() {
   const context = React.useContext(LanggraphContext);
   if (!context) {
-    throw new Error(
-      "useLanggraphContext must be used within a LanggraphProvider"
-    );
+    throw new Error("useLanggraphContext must be used within a LanggraphProvider");
   }
   return context;
 }

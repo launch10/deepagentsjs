@@ -21,11 +21,11 @@ PreCommit:
   RuboCop:
     enabled: true
     required: true
-    command: ['bundle', 'exec', 'rubocop', '-f', 'simple']
+    command: ["bundle", "exec", "rubocop", "-f", "simple"]
   ErbLint:
     enabled: true
     required: true
-    command: ['bundle', 'exec', 'erblint', '--lint-all']
+    command: ["bundle", "exec", "erblint", "--lint-all"]
 #  RustyWind:
 #    enabled: true
 #    required: true

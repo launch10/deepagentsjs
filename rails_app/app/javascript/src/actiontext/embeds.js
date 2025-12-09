@@ -1,27 +1,29 @@
 Trix.config.textAttributes.inlineCode = {
   tagName: "code",
-  inheritable: true
-}
+  inheritable: true,
+};
 
 class EmbedController {
   constructor(element) {
-    this.patterns = undefined
-    this.element = element
-    this.editor = element.editor
-    this.toolbar = element.toolbarElement
+    this.patterns = undefined;
+    this.element = element;
+    this.editor = element.editor;
+    this.toolbar = element.toolbarElement;
 
-    this.injectHTML()
+    this.injectHTML();
 
-    this.hrefElement = this.toolbar.querySelector("[data-trix-input][name='href']")
-    this.embedContainerElement = this.toolbar.querySelector("[data-behavior='embed_container']")
-    this.embedElement = this.toolbar.querySelector("[data-behavior='embed_url']")
+    this.hrefElement = this.toolbar.querySelector("[data-trix-input][name='href']");
+    this.embedContainerElement = this.toolbar.querySelector("[data-behavior='embed_container']");
+    this.embedElement = this.toolbar.querySelector("[data-behavior='embed_url']");
 
-    this.reset()
-    this.installEventHandlers()
+    this.reset();
+    this.installEventHandlers();
   }
 
   injectHTML() {
-    this.toolbar.querySelector('[data-trix-dialog="href"]').insertAdjacentHTML('beforeend', `
+    this.toolbar.querySelector('[data-trix-dialog="href"]').insertAdjacentHTML(
+      "beforeend",
+      `
         <div data-behavior="embed_container">
           <div class="link_to_embed link_to_embed--new">
             <span>Embed media from this site?</span>
@@ -30,46 +32,47 @@ class EmbedController {
               </div>
           </div>
         </div>
-    `)
+    `
+    );
   }
 
   installEventHandlers() {
-    this.hrefElement.addEventListener("input", this.didInput.bind(this))
-    this.hrefElement.addEventListener("focusin", this.didInput.bind(this))
-    this.embedElement.addEventListener("click", this.embed.bind(this))
+    this.hrefElement.addEventListener("input", this.didInput.bind(this));
+    this.hrefElement.addEventListener("focusin", this.didInput.bind(this));
+    this.embedElement.addEventListener("click", this.embed.bind(this));
   }
 
   didInput(event) {
-    let value = event.target.value.trim()
+    let value = event.target.value.trim();
 
     // Load patterns from server so we can dynamically update them
     if (this.patterns === undefined) {
-      this.loadPatterns(value)
+      this.loadPatterns(value);
 
-    // When patterns are loaded, we can just fetch the embed code
+      // When patterns are loaded, we can just fetch the embed code
     } else if (this.match(value)) {
-      this.fetch(value)
+      this.fetch(value);
 
-    // No embed code, just reset the form
+      // No embed code, just reset the form
     } else {
-      this.reset()
+      this.reset();
     }
   }
 
   async loadPatterns(value) {
-    const response = await fetch("/action_text/embeds/patterns.json")
+    const response = await fetch("/action_text/embeds/patterns.json");
     if (response.ok) {
-      const patterns = await response.json()
-      this.patterns = patterns.map(pattern => new RegExp(pattern.source, pattern.options))
+      const patterns = await response.json();
+      this.patterns = patterns.map((pattern) => new RegExp(pattern.source, pattern.options));
       if (this.match(value)) {
-        this.fetch(value)
+        this.fetch(value);
       }
     }
   }
 
   // Checks if a url matches an embed code format
   match(value) {
-    return this.patterns.some(regex => regex.test(value))
+    return this.patterns.some((regex) => regex.test(value));
   }
 
   async fetch(value) {
@@ -77,75 +80,77 @@ class EmbedController {
       method: "POST",
       headers: {
         "X-CSRF-Token": this.csrfToken,
-      }
-    })
+      },
+    });
     if (response.ok) {
-      this.showEmbed(await response.json())
+      this.showEmbed(await response.json());
     } else {
-      this.reset()
+      this.reset();
     }
   }
 
   embed(event) {
-    if (this.currentEmbed == null) { return }
+    if (this.currentEmbed == null) {
+      return;
+    }
 
-    let attachment = new Trix.Attachment(this.currentEmbed)
-    this.editor.insertAttachment(attachment)
-    this.element.focus()
+    let attachment = new Trix.Attachment(this.currentEmbed);
+    this.editor.insertAttachment(attachment);
+    this.element.focus();
   }
 
   showEmbed(embed) {
-    this.currentEmbed = embed
-    this.embedContainerElement.style.display = "block"
+    this.currentEmbed = embed;
+    this.embedContainerElement.style.display = "block";
   }
 
   reset() {
-    this.embedContainerElement.style.display = "none"
-    this.currentEmbed = null
+    this.embedContainerElement.style.display = "none";
+    this.currentEmbed = null;
   }
 
   get csrfToken() {
-    return document.querySelector("[name='csrf-token']").content
+    return document.querySelector("[name='csrf-token']").content;
   }
 }
 
 class InlineCode {
   constructor(element) {
-    this.element = element
-    this.editor = element.editor
-    this.toolbar = element.toolbarElement
+    this.element = element;
+    this.editor = element.editor;
+    this.toolbar = element.toolbarElement;
 
-    this.installEventHandlers()
+    this.installEventHandlers();
   }
 
   installEventHandlers() {
-    const blockCodeButton = this.toolbar.querySelector("[data-trix-attribute=code]")
-    const inlineCodeButton = blockCodeButton.cloneNode(true)
+    const blockCodeButton = this.toolbar.querySelector("[data-trix-attribute=code]");
+    const inlineCodeButton = blockCodeButton.cloneNode(true);
 
-    inlineCodeButton.hidden = true
-    inlineCodeButton.dataset.trixAttribute = "inlineCode"
-    blockCodeButton.insertAdjacentElement("afterend", inlineCodeButton)
+    inlineCodeButton.hidden = true;
+    inlineCodeButton.dataset.trixAttribute = "inlineCode";
+    blockCodeButton.insertAdjacentElement("afterend", inlineCodeButton);
 
-    this.element.addEventListener("trix-selection-change", _ => {
-      const type = this.getCodeFormattingType()
-      blockCodeButton.hidden = type == "inline"
-      inlineCodeButton.hidden = type == "block"
-    })
+    this.element.addEventListener("trix-selection-change", (_) => {
+      const type = this.getCodeFormattingType();
+      blockCodeButton.hidden = type == "inline";
+      inlineCodeButton.hidden = type == "block";
+    });
   }
 
   getCodeFormattingType() {
-    if (this.editor.attributeIsActive("code")) return "block"
-    if (this.editor.attributeIsActive("inlineCode")) return "inline"
+    if (this.editor.attributeIsActive("code")) return "block";
+    if (this.editor.attributeIsActive("inlineCode")) return "inline";
 
-    const range = this.editor.getSelectedRange()
-    if (range[0] == range[1]) return "block"
+    const range = this.editor.getSelectedRange();
+    if (range[0] == range[1]) return "block";
 
-    const text = this.editor.getSelectedDocument().toString().trim()
-    return /\n/.test(text) ? "block" : "inline"
+    const text = this.editor.getSelectedDocument().toString().trim();
+    return /\n/.test(text) ? "block" : "inline";
   }
 }
 
-document.addEventListener("trix-initialize", function(event) {
-  new EmbedController(event.target)
-  new InlineCode(event.target)
-})
+document.addEventListener("trix-initialize", function (event) {
+  new EmbedController(event.target);
+  new InlineCode(event.target);
+});

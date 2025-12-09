@@ -1,20 +1,20 @@
 import { type BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { env } from "@app";
 import { LLMTestResponder } from "./test";
-import { ChatAnthropic } from "@langchain/anthropic"; 
+import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatOllama } from "@langchain/ollama";
 import { ChatGroq } from "@langchain/groq";
 import { ChatOpenAI } from "@langchain/openai";
-import { 
-    type LLMAppConfig, 
-    type LLMConfig, 
-    type LLMSkill, 
-    type LLMSpeed, 
-    type LLMCost, 
-    type LLMName, 
-    type IAPIConfig,
-    type ILocalConfig,
-    Models 
+import {
+  type LLMAppConfig,
+  type LLMConfig,
+  type LLMSkill,
+  type LLMSpeed,
+  type LLMCost,
+  type LLMName,
+  type IAPIConfig,
+  type ILocalConfig,
+  Models,
 } from "./types";
 
 export class LLMManagerFactory {
@@ -40,13 +40,18 @@ export class LLMManagerFactory {
   }
 
   llmIsConfigured(name: LLMName): boolean {
-    let model = Models[name]
+    let model = Models[name];
     if (!model) {
-        return false;
+      return false;
     }
-    
+
     if (model.type == "api") {
-        return 'apiKey' in model && !!model.apiKey && typeof model.apiKey === 'string' && model.apiKey.length > 0;
+      return (
+        "apiKey" in model &&
+        !!model.apiKey &&
+        typeof model.apiKey === "string" &&
+        model.apiKey.length > 0
+      );
     }
 
     return true;
@@ -54,7 +59,12 @@ export class LLMManagerFactory {
 
   apiConfigured(config: LLMConfig): config is IAPIConfig {
     const name = config.model;
-    return Models[name].type === "api" && !!Models[name].apiKey && typeof Models[name].apiKey === 'string' && Models[name].apiKey.length > 0;
+    return (
+      Models[name].type === "api" &&
+      !!Models[name].apiKey &&
+      typeof Models[name].apiKey === "string" &&
+      Models[name].apiKey.length > 0
+    );
   }
 
   localConfigured(config: LLMConfig): config is ILocalConfig {
@@ -71,7 +81,9 @@ export class LLMManagerFactory {
 
     const config: LLMConfig | undefined = speedConfig[llmSkill];
     if (!config) {
-      throw new Error(`LLM configuration not found for skill '${llmSkill}' within tier '${llmCost}' and speed '${llmSpeed}'.`);
+      throw new Error(
+        `LLM configuration not found for skill '${llmSkill}' within tier '${llmCost}' and speed '${llmSpeed}'.`
+      );
     }
 
     let modelInstance: BaseChatModel;
@@ -128,7 +140,7 @@ export class LLMManagerFactory {
   }
 
   configureFixtures(...args: Parameters<typeof LLMTestResponder.configure>) {
-    this.testMode()
+    this.testMode();
     LLMTestResponder.configure(...args);
   }
 

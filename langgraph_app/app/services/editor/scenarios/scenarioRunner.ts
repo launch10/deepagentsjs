@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { DatabaseSnapshotter } from '@services';
+import { DatabaseSnapshotter } from "@services";
 import { ErrorExporter } from "@services";
 import { existsSync, readFileSync, writeFileSync, statSync, readdirSync, unlinkSync } from "fs";
 import { join } from "path";
-import { db, websiteFiles, websites, eq, sql } from '@db';
-import type { WebsiteFileType, ConsoleError } from '@types';
-import { loadScenarioConfig, loadScenarioModifications } from './scenarioSaver';
-import { withTimestamps } from '@db';
+import { db, websiteFiles, websites, eq, sql } from "@db";
+import type { WebsiteFileType, ConsoleError } from "@types";
+import { loadScenarioConfig, loadScenarioModifications } from "./scenarioSaver";
+import { withTimestamps } from "@db";
 
 // File modification schema for inline modifications
 export const fileModificationSchema = z.object({
@@ -47,24 +47,24 @@ export class ScenarioRunner {
     this.modifications = options.modifications || [];
     this.force = options.force || false;
     this.shouldLog = options.log || false;
-    
+
     // Set scenario directory and errors file path
     if (this.scenario) {
-      this.scenarioDir = join(process.cwd(), 'tests', 'scenarios', this.website, this.scenario);
-      this.errorsFile = join(this.scenarioDir, 'errors.json');
+      this.scenarioDir = join(process.cwd(), "tests", "scenarios", this.website, this.scenario);
+      this.errorsFile = join(this.scenarioDir, "errors.json");
     } else {
       // For inline scenarios, use a temp location
-      this.scenarioDir = '';
-      this.errorsFile = '';
+      this.scenarioDir = "";
+      this.errorsFile = "";
     }
   }
 
   get errors(): ConsoleError[] {
-    return this._errors.filter(e => e.type === 'error');
+    return this._errors.filter((e) => e.type === "error");
   }
 
   get warnings(): ConsoleError[] {
-    return this._errors.filter(e => e.type === 'warning');
+    return this._errors.filter((e) => e.type === "warning");
   }
 
   private log(message: string): void {
@@ -85,10 +85,7 @@ export class ScenarioRunner {
 
     this.log(`restoring snapshot: ${this.snapshot}`);
 
-    const [site] = await db.select()
-      .from(websites)
-      .where(eq(websites.name, this.website))
-      .limit(1);
+    const [site] = await db.select().from(websites).where(eq(websites.name, this.website)).limit(1);
 
     this.websiteId = site?.id;
 
@@ -108,7 +105,7 @@ export class ScenarioRunner {
    */
   private async loadScenarioFromFilesystem(): Promise<void> {
     const config = await loadScenarioConfig(this.website, this.scenario!);
-    
+
     if (!config) {
       throw new Error(`Scenario not found: ${this.website}/${this.scenario}`);
     }
@@ -119,13 +116,20 @@ export class ScenarioRunner {
     }
 
     // Get last modified time of config
-    const configPath = join(process.cwd(), 'tests', 'scenarios', this.website, this.scenario!, 'config.json');
+    const configPath = join(
+      process.cwd(),
+      "tests",
+      "scenarios",
+      this.website,
+      this.scenario!,
+      "config.json"
+    );
     const stats = statSync(configPath);
     this.configLastModified = stats.mtime;
 
     // Load modifications from filesystem
     const fsModifications = await loadScenarioModifications(this.website, this.scenario!);
-    
+
     // Convert filesystem modifications to our format
     const convertedMods: FileModificationType[] = [];
     for (const entry of fsModifications) {
@@ -134,14 +138,14 @@ export class ScenarioRunner {
           path: entry.path,
           searchPattern: mod.searchPattern,
           replacement: mod.replacement,
-          description: mod.description
+          description: mod.description,
         });
       }
     }
 
     // Merge with any inline modifications
     this.modifications = [...convertedMods, ...this.modifications];
-    
+
     this.log(`Loaded scenario: ${this.scenario} with ${convertedMods.length} modifications`);
   }
 
@@ -154,33 +158,33 @@ export class ScenarioRunner {
     }
 
     if (!existsSync(this.errorsFile)) {
-      this.log('Errors file does not exist, will record new errors...');
+      this.log("Errors file does not exist, will record new errors...");
       return false;
     }
 
     // Check if any modifications are newer than the errors file
     const errorsStats = statSync(this.errorsFile);
-    const configPath = join(this.scenarioDir, 'config.json');
-    
+    const configPath = join(this.scenarioDir, "config.json");
+
     if (existsSync(configPath)) {
       const configStats = statSync(configPath);
       if (configStats.mtime > errorsStats.mtime) {
-        this.log('Config is newer than errors cache, invalidating...');
+        this.log("Config is newer than errors cache, invalidating...");
         return false;
       }
     }
 
     // Check modification files
-    const modificationsDir = join(this.scenarioDir, 'modifications');
+    const modificationsDir = join(this.scenarioDir, "modifications");
     if (existsSync(modificationsDir)) {
       const checkModificationTimes = (dir: string): boolean => {
         const items = readdirSync(dir, { withFileTypes: true });
-        
+
         for (const item of items) {
           const fullPath = join(dir, item.name);
           if (item.isDirectory()) {
             if (!checkModificationTimes(fullPath)) return false;
-          } else if (item.name.endsWith('.json')) {
+          } else if (item.name.endsWith(".json")) {
             const modStats = statSync(fullPath);
             if (modStats.mtime > errorsStats.mtime) {
               this.log(`Modification ${item.name} is newer than errors cache, invalidating...`);
@@ -190,7 +194,7 @@ export class ScenarioRunner {
         }
         return true;
       };
-      
+
       if (!checkModificationTimes(modificationsDir)) {
         return false;
       }
@@ -203,21 +207,21 @@ export class ScenarioRunner {
     // Check if we have cached errors and not forcing re-record
     if (!this.force && this.isErrorsCacheValid()) {
       return this.loadCachedErrors();
-    } else { 
+    } else {
       return await this.recordErrors();
     }
   }
 
-  protected loadCachedErrors(): this { 
+  protected loadCachedErrors(): this {
     this.log(`📂 Loading errors from cache: ${this.errorsFile}`);
-    const cached = JSON.parse(readFileSync(this.errorsFile, 'utf-8'));
-    
+    const cached = JSON.parse(readFileSync(this.errorsFile, "utf-8"));
+
     // Convert dates back from strings
     this._errors = cached.errors.map((error: any) => ({
       ...error,
-      timestamp: new Date(error.timestamp)
+      timestamp: new Date(error.timestamp),
     }));
-    
+
     this.log(`✅ Loaded ${this.errors.length} cached error(s)`);
     return this;
   }
@@ -225,14 +229,14 @@ export class ScenarioRunner {
   protected async recordErrors(): Promise<this> {
     // Run fresh scenario
     this.log(`🎬 Recording new errors for website ${this.website}...`);
-    
+
     // Run website and capture errors using await using for proper cleanup
     await using exporter = new ErrorExporter(this.websiteId!);
     this._errors = await exporter.run();
-    
+
     // Save to cache
     this.saveErrorsToCache();
-    
+
     this.log(`✅ Recorded ${this.errors.length} error(s)`);
     return this;
   }
@@ -250,42 +254,48 @@ export class ScenarioRunner {
    */
   public async applyModifications(): Promise<void> {
     this.log(`📝 Applying ${this.modifications!.length} modification(s)...`);
-    
-    const files = await db.select().from(websiteFiles).where(eq(websiteFiles.websiteId, this.websiteId!));
-    const fileMap: Map<string, Pick<WebsiteFileType, 'path' | 'content' | 'websiteId'>> = new Map(files.map((file) => [file.path, file]));
-    const allUpdates: Partial<string>[] = []
+
+    const files = await db
+      .select()
+      .from(websiteFiles)
+      .where(eq(websiteFiles.websiteId, this.websiteId!));
+    const fileMap: Map<string, Pick<WebsiteFileType, "path" | "content" | "websiteId">> = new Map(
+      files.map((file) => [file.path, file])
+    );
+    const allUpdates: Partial<string>[] = [];
 
     for (const mod of this.modifications!) {
       this.log(`  - Modifying ${mod.path}`);
       let file = fileMap.get(mod.path); // the file ALREADY exists for this website
-      
+
       if (!file) {
         // create a new file with empty content
-        const [newFile] = await db.insert(websiteFiles)
-          .values(withTimestamps({
-            websiteId: this.websiteId!,
-            path: mod.path,
-            content: ''
-          }))
+        const [newFile] = await db
+          .insert(websiteFiles)
+          .values(
+            withTimestamps({
+              websiteId: this.websiteId!,
+              path: mod.path,
+              content: "",
+            })
+          )
           .returning()
           .execute();
-        file = newFile as Pick<WebsiteFileType, 'path' | 'content' | 'websiteId'>;
-        fileMap.set(mod.path, {...file, content: ''});
+        file = newFile as Pick<WebsiteFileType, "path" | "content" | "websiteId">;
+        fileMap.set(mod.path, { ...file, content: "" });
       }
-      
+
       const updatedContent = await this.applyFileModification(mod, file);
-      fileMap.set(mod.path, {...file, content: updatedContent});
+      fileMap.set(mod.path, { ...file, content: updatedContent });
       allUpdates.push(mod.path);
     }
 
     const uniqueUpdates = [...new Set(allUpdates)];
     const filesToUpdate = uniqueUpdates
-      .map(path => fileMap.get(path))
-      .filter(
-        (f): f is Pick<WebsiteFileType, 'path' | 'content' | 'websiteId'> => !!f
-      );
+      .map((path) => fileMap.get(path))
+      .filter((f): f is Pick<WebsiteFileType, "path" | "content" | "websiteId"> => !!f);
 
-    const updatedFiles = filesToUpdate.map(file =>
+    const updatedFiles = filesToUpdate.map((file) =>
       withTimestamps({
         websiteId: file.websiteId,
         path: file.path,
@@ -307,16 +317,19 @@ export class ScenarioRunner {
   /**
    * Apply a file modification
    */
-  protected async applyFileModification(mod: FileModificationType, file: Pick<WebsiteFileType, 'content'>): Promise<string> {
+  protected async applyFileModification(
+    mod: FileModificationType,
+    file: Pick<WebsiteFileType, "content">
+  ): Promise<string> {
     let newContent = file.content;
-    
-    // Special case: if searching for empty string and current content is empty, 
+
+    // Special case: if searching for empty string and current content is empty,
     // just return the replacement (this is a new file)
-    if (mod.searchPattern === '' && newContent === '') {
+    if (mod.searchPattern === "" && newContent === "") {
       return mod.replacement;
     }
-    
-    if (typeof mod.searchPattern === 'string') {
+
+    if (typeof mod.searchPattern === "string") {
       newContent = newContent.replace(mod.searchPattern, mod.replacement);
     } else {
       newContent = newContent.replace(mod.searchPattern, mod.replacement);
@@ -332,16 +345,16 @@ export class ScenarioRunner {
     if (!this.scenario || !this.errorsFile) {
       return; // Don't cache inline scenarios
     }
-    
+
     const errorsData = {
       websiteId: this.websiteId,
       website: this.website,
       snapshot: this.snapshot,
       scenario: this.scenario,
       errors: this.errors,
-      recordedAt: new Date().toISOString()
+      recordedAt: new Date().toISOString(),
     };
-    
+
     writeFileSync(this.errorsFile, JSON.stringify(errorsData, null, 2));
     this.log(`💾 Saved errors to: ${this.errorsFile}`);
   }
@@ -352,7 +365,6 @@ export class ScenarioRunner {
   getConsoleErrors(): ConsoleError[] {
     return this.errors;
   }
-
 }
 
 /**

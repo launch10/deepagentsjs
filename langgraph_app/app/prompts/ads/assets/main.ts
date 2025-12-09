@@ -9,25 +9,25 @@ import { whereWeArePrompt } from "./whereWeAre";
 import { helpInstructions } from "../helpPrompt";
 
 const buildPreviousAssetsContext = (state: AdsGraphState): string => {
-    const sections = previousAssetsContext(state);
-    
-    if (!sections.length) return '';
+  const sections = previousAssetsContext(state);
 
-    return `
+  if (!sections.length) return "";
+
+  return `
     <previous_assets_context>
         The user has already reviewed some assets. Use their preferences to guide new generations:
-        ${sections.join('\n\n')}
+        ${sections.join("\n\n")}
 
         Generate new assets that complement the approved ones and avoid themes similar to rejected ones.
     </previous_assets_context>`;
 };
 
 const buildIntentSection = (state: AdsGraphState): string => {
-    const needsIntent = needsIntentClassification(state);
+  const needsIntent = needsIntentClassification(state);
 
-    if (!needsIntent) return '';
-    
-    return `
+  if (!needsIntent) return "";
+
+  return `
         <intent_classification>
             First, determine the user's intent from their message:
             
@@ -43,9 +43,9 @@ const buildIntentSection = (state: AdsGraphState): string => {
 };
 
 const buildRefreshSection = (state: AdsGraphState): string => {
-    if (!state.refresh) return '';
-    
-    return `
+  if (!state.refresh) return "";
+
+  return `
         <refresh_mode>
             The user clicked the refresh button for ${state.refresh.asset}. 
 
@@ -58,11 +58,11 @@ const buildRefreshSection = (state: AdsGraphState): string => {
 };
 
 const buildHelpSection = (state: AdsGraphState, config: LangGraphRunnableConfig): string => {
-    const needsIntent = needsIntentClassification(state);
+  const needsIntent = needsIntentClassification(state);
 
-    if (!needsIntent) return '';
-    
-    return `
+  if (!needsIntent) return "";
+
+  return `
         If the user is asking asking questions, as opposed to requesting new assets, you should follow these instructions:
 
         ${helpInstructions(state, config)}
@@ -70,10 +70,10 @@ const buildHelpSection = (state: AdsGraphState, config: LangGraphRunnableConfig)
 };
 
 const buildRulesSection = (state: AdsGraphState): string => {
-    const needsIntent = needsIntentClassification(state);
-    if (!needsIntent) return '';
-    
-    return `
+  const needsIntent = needsIntentClassification(state);
+  if (!needsIntent) return "";
+
+  return `
         <important_rules>
             - NEVER mix the two paths. Either provide structured JSON (happy path) OR plain text answers (help path)
             - For the happy path, ALWAYS include the introductory text BEFORE the JSON block
@@ -84,28 +84,28 @@ const buildRulesSection = (state: AdsGraphState): string => {
 };
 
 export const promptBuilder = async (state: AdsGraphState, config: LangGraphRunnableConfig) => {
-    if (!state.stage) {
-        throw new Error("Project is required");
-    }
-    if (!state.brainstorm) {
-        throw new Error("Brainstorm is required");
-    }
+  if (!state.stage) {
+    throw new Error("Project is required");
+  }
+  if (!state.brainstorm) {
+    throw new Error("Brainstorm is required");
+  }
 
-    const [process, whereWeAre, assetPrompts, outputPrompt] = await Promise.all([
-        processPrompt(state, config),
-        whereWeArePrompt(state, config),
-        getAssetPrompts(state, config),
-        getOutputPrompt(state, config)
-    ]);
-    const responseTemplate = ResponseTemplates[state.stage];
-    const isRefreshMode = state.refresh !== undefined;
-    const previousAssetsContext = buildPreviousAssetsContext(state);
-    const refreshSection = buildRefreshSection(state);
-    const helpSection = buildHelpSection(state, config);
-    const rulesSection = buildRulesSection(state);
-    const intentClassificationSection = buildIntentSection(state);
+  const [process, whereWeAre, assetPrompts, outputPrompt] = await Promise.all([
+    processPrompt(state, config),
+    whereWeArePrompt(state, config),
+    getAssetPrompts(state, config),
+    getOutputPrompt(state, config),
+  ]);
+  const responseTemplate = ResponseTemplates[state.stage];
+  const isRefreshMode = state.refresh !== undefined;
+  const previousAssetsContext = buildPreviousAssetsContext(state);
+  const refreshSection = buildRefreshSection(state);
+  const helpSection = buildHelpSection(state, config);
+  const rulesSection = buildRulesSection(state);
+  const intentClassificationSection = buildIntentSection(state);
 
-    return `
+  return `
         ${process}
 
         ${whereWeAre}
@@ -119,13 +119,13 @@ export const promptBuilder = async (state: AdsGraphState, config: LangGraphRunna
         ${helpSection}
 
         <asset_generation_instructions>
-            ${needsIntentClassification(state) ? 'If the user wants asset generation, follow these steps:' : 'Generate the following assets:'}
+            ${needsIntentClassification(state) ? "If the user wants asset generation, follow these steps:" : "Generate the following assets:"}
 
                 1. Generate the following assets for this business's Google Ads campaign:
                 ${assetPrompts}
 
                 2. Format your response with:
-                    - First, a brief introduction (1-2 sentences) ${!isRefreshMode ? `using this template: "${responseTemplate}"` : ''}
+                    - First, a brief introduction (1-2 sentences) ${!isRefreshMode ? `using this template: "${responseTemplate}"` : ""}
                     - Then, a JSON code block with the structured data
         </asset_generation_instructions>
 
@@ -146,5 +146,7 @@ export const promptBuilder = async (state: AdsGraphState, config: LangGraphRunna
         ${previousAssetsContext}
 
         ${outputPrompt}
-    `.replace(/\n\s*\n/g, '\n\n').trim();
-}
+    `
+    .replace(/\n\s*\n/g, "\n\n")
+    .trim();
+};

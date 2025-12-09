@@ -1,8 +1,8 @@
-import { motion } from 'framer-motion';
-import { memo } from 'react';
-import { classNames } from '@utils/classNames';
-import { cubicEasingFn } from '@utils/easings';
-import { genericMemo } from '@utils/react';
+import { motion } from "framer-motion";
+import { memo } from "react";
+import { classNames } from "@utils/classNames";
+import { cubicEasingFn } from "@utils/easings";
+import { genericMemo } from "@utils/react";
 
 interface SliderOption<T> {
   value: T;
@@ -28,7 +28,10 @@ export const Slider = genericMemo(<T,>({ selected, options, setSelected }: Slide
       <SliderButton selected={isLeftSelected} setSelected={() => setSelected?.(options.left.value)}>
         {options.left.text}
       </SliderButton>
-      <SliderButton selected={!isLeftSelected} setSelected={() => setSelected?.(options.right.value)}>
+      <SliderButton
+        selected={!isLeftSelected}
+        setSelected={() => setSelected?.(options.right.value)}
+      >
         {options.right.text}
       </SliderButton>
     </div>
@@ -46,10 +49,10 @@ const SliderButton = memo(({ selected, children, setSelected }: SliderButtonProp
     <button
       onClick={setSelected}
       className={classNames(
-        'bg-transparent text-sm px-2.5 py-0.5 rounded-full relative',
+        "bg-transparent text-sm px-2.5 py-0.5 rounded-full relative",
         selected
-          ? 'text-bolt-elements-item-contentAccent'
-          : 'text-bolt-elements-item-contentDefault hover:text-bolt-elements-item-contentActive',
+          ? "text-bolt-elements-item-contentAccent"
+          : "text-bolt-elements-item-contentDefault hover:text-bolt-elements-item-contentActive"
       )}
     >
       <span className="relative z-10">{children}</span>

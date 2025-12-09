@@ -1,8 +1,16 @@
 /* Hotwire's version of data-disable-with */
-button                  .when-disabled { display: none; }
-button[disabled]        .when-disabled { display: initial; }
-button                  .when-enabled { display: initial; }
-button[disabled]        .when-enabled { display: none; }
+button .when-disabled {
+  display: none;
+}
+button[disabled] .when-disabled {
+  display: initial;
+}
+button .when-enabled {
+  display: initial;
+}
+button[disabled] .when-enabled {
+  display: none;
+}
 
 .btn {
   display: inline-flex;

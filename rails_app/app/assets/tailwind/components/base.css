@@ -41,10 +41,10 @@ ol {
 .table {
   width: 100%;
 
-  th, td {
+  th,
+  td {
     vertical-align: top;
   }
-
 }
 
 .table-responsive {

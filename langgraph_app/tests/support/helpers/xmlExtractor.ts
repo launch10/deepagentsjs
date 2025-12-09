@@ -1,6 +1,6 @@
 /**
  * XML Extraction Helpers for Tests
- * 
+ *
  * Utilities to extract specific XML tags and their content from strings,
  * making it easier to assert against specific parts of XML output.
  */
@@ -26,47 +26,43 @@ export function extractXmlTag(
   tagName: string,
   options: ExtractOptions = {}
 ): string | null {
-  const {
-    includeTag = true,
-    normalizeWhitespace = true,
-    all = false
-  } = options;
+  const { includeTag = true, normalizeWhitespace = true, all = false } = options;
 
   // Create regex pattern for the tag
   // This handles both self-closing tags and tags with content
   const selfClosingPattern = `<${tagName}(?:\\s+[^>]*)?\\s*/>`;
   const withContentPattern = `<${tagName}(?:\\s+[^>]*)?>(.*?)</${tagName}>`;
-  const pattern = new RegExp(`(${selfClosingPattern}|${withContentPattern})`, 'gs');
-  
+  const pattern = new RegExp(`(${selfClosingPattern}|${withContentPattern})`, "gs");
+
   const matches = Array.from(xml.matchAll(pattern));
-  
+
   if (matches.length === 0) {
     return null;
   }
 
   const processMatch = (match: RegExpMatchArray): string => {
     let result: string;
-    
+
     if (includeTag) {
       result = match[0]; // Full match including tags
     } else {
       // Extract just the content (group 2 is the content from withContentPattern)
-      result = match[2] || ''; // Empty string for self-closing tags
+      result = match[2] || ""; // Empty string for self-closing tags
     }
-    
+
     if (normalizeWhitespace) {
       result = result
-        .replace(/>\s+</g, '><') // Remove whitespace between tags
-        .replace(/\s+/g, ' ')    // Collapse multiple spaces to single space
+        .replace(/>\s+</g, "><") // Remove whitespace between tags
+        .replace(/\s+/g, " ") // Collapse multiple spaces to single space
         .trim();
     }
-    
+
     return result;
   };
 
   if (all) {
     // Return all matches as a concatenated string
-    return matches.map(processMatch).join('\n');
+    return matches.map(processMatch).join("\n");
   } else {
     // Return first match only
     if (!matches[0]) {
@@ -89,11 +85,11 @@ export function extractXmlTags(
   options: ExtractOptions = {}
 ): Record<string, string | null> {
   const result: Record<string, string | null> = {};
-  
+
   for (const tagName of tagNames) {
     result[tagName] = extractXmlTag(xml, tagName, options);
   }
-  
+
   return result;
 }
 
@@ -109,26 +105,26 @@ export function extractNestedXmlTag(
   path: string,
   options: ExtractOptions = {}
 ): string | null {
-  const tags = path.split('.');
+  const tags = path.split(".");
   let currentContent = xml;
-  
+
   for (let i = 0; i < tags.length; i++) {
     const tag = tags[i]!;
     const isLastTag = i === tags.length - 1;
-    
+
     // For all tags except the last, we want to include the tag to search within it
     const extracted = extractXmlTag(currentContent, tag, {
       ...options,
-      includeTag: isLastTag ? options.includeTag : true
+      includeTag: isLastTag ? options.includeTag : true,
     });
-    
+
     if (!extracted) {
       return null;
     }
-    
+
     currentContent = extracted;
   }
-  
+
   return currentContent;
 }
 
@@ -140,25 +136,25 @@ export function extractNestedXmlTag(
  */
 export function parseSimpleXml(xml: string): Record<string, any> {
   const result: Record<string, any> = {};
-  
+
   // Remove XML declaration if present
-  const cleanXml = xml.replace(/<\?xml[^>]*\?>/g, '').trim();
-  
+  const cleanXml = xml.replace(/<\?xml[^>]*\?>/g, "").trim();
+
   // Function to parse XML recursively
   const parseXmlString = (xmlStr: string): Record<string, any> => {
     const obj: Record<string, any> = {};
-    
+
     // Match all tags at the current level
     const tagRegex = /<([\w-]+)(?:\s+[^>]*)?>([^<]*(?:<(?!\/\1>).)*?)<\/\1>/gs;
     let match;
-    
+
     while ((match = tagRegex.exec(xmlStr)) !== null) {
       const [, tagName, content] = match;
       if (!tagName || !content) {
         continue;
       }
       const trimmedContent = content.trim();
-      
+
       // Check if content contains nested tags
       if (/<[\w-]+[^>]*>/.test(trimmedContent)) {
         // Recursively parse nested content
@@ -168,10 +164,10 @@ export function parseSimpleXml(xml: string): Record<string, any> {
         obj[tagName] = trimmedContent;
       }
     }
-    
+
     return obj;
   };
-  
+
   // If the XML starts with a root tag, parse it
   const rootMatch = cleanXml.match(/^<([\w-]+)(?:\s+[^>]*)?>(.+)<\/\1>$/s);
   if (rootMatch) {
@@ -184,7 +180,7 @@ export function parseSimpleXml(xml: string): Record<string, any> {
     // Parse without a root tag
     return parseXmlString(cleanXml);
   }
-  
+
   return result;
 }
 
@@ -201,12 +197,12 @@ export function xmlTagContains(
   expectedContent: string | RegExp
 ): boolean {
   const extracted = extractXmlTag(xml, tagName, { includeTag: false });
-  
+
   if (!extracted) {
     return false;
   }
-  
-  if (typeof expectedContent === 'string') {
+
+  if (typeof expectedContent === "string") {
     return extracted.includes(expectedContent);
   } else {
     return expectedContent.test(extracted);
@@ -220,9 +216,9 @@ export function xmlTagContains(
  */
 export function extractTextContent(xml: string): string {
   // First remove all tags
-  let text = xml.replace(/<[^>]*>/g, ' ');
+  let text = xml.replace(/<[^>]*>/g, " ");
   // Then normalize whitespace while preserving word boundaries
-  text = text.replace(/\s+/g, ' ');
+  text = text.replace(/\s+/g, " ");
   return text.trim();
 }
 
@@ -232,27 +228,24 @@ export function extractTextContent(xml: string): string {
  * @param tagName The tag name to extract attributes from
  * @returns Object with attribute names as keys and values
  */
-export function extractXmlAttributes(
-  xml: string,
-  tagName: string
-): Record<string, string> | null {
-  const tagPattern = new RegExp(`<${tagName}([^>]*)>`, 's');
+export function extractXmlAttributes(xml: string, tagName: string): Record<string, string> | null {
+  const tagPattern = new RegExp(`<${tagName}([^>]*)>`, "s");
   const match = xml.match(tagPattern);
-  
+
   if (!match || !match[1]) {
     return null;
   }
-  
+
   const attributes: Record<string, string> = {};
   const attrPattern = /(\w+)=["']([^"']*)["']/g;
   let attrMatch;
-  
+
   while ((attrMatch = attrPattern.exec(match[1])) !== null) {
     if (!attrMatch[1] || !attrMatch[2]) {
       continue;
     }
     attributes[attrMatch[1]] = attrMatch[2];
   }
-  
+
   return Object.keys(attributes).length > 0 ? attributes : null;
 }

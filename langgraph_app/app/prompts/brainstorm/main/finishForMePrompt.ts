@@ -5,35 +5,37 @@ import { Brainstorm, type LangGraphRunnableConfig, isHumanMessage } from "@types
 import { renderPrompt } from "@prompts";
 import { arrayDifference } from "@utils";
 import {
-    whereWeArePrompt,
-    collectedAnswersPrompt,
-    backgroundPrompt,
-    getHelpTemplates,
+  whereWeArePrompt,
+  collectedAnswersPrompt,
+  backgroundPrompt,
+  getHelpTemplates,
 } from "../shared";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export const finishForMePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
-    const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
-    if (!lastHumanMessage) {
-        throw new Error("No human message found");
-    }
-    const topics = arrayDifference(
-        state.remainingTopics.concat(state.skippedTopics),
-        ['lookAndFeel']
-    ) satisfies Brainstorm.TopicName[];
+export const finishForMePrompt = async (
+  state: BrainstormGraphState,
+  config?: LangGraphRunnableConfig
+) => {
+  const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
+  if (!lastHumanMessage) {
+    throw new Error("No human message found");
+  }
+  const topics = arrayDifference(state.remainingTopics.concat(state.skippedTopics), [
+    "lookAndFeel",
+  ]) satisfies Brainstorm.TopicName[];
 
-    const [whereWeAre, collectedAnswers, background, topicSpecificHelp] = await Promise.all([
-        whereWeArePrompt(state, config),
-        collectedAnswersPrompt(state, config),
-        backgroundPrompt(state, config),
-        getHelpTemplates(topics),
-    ]);
+  const [whereWeAre, collectedAnswers, background, topicSpecificHelp] = await Promise.all([
+    whereWeArePrompt(state, config),
+    collectedAnswersPrompt(state, config),
+    backgroundPrompt(state, config),
+    getHelpTemplates(topics),
+  ]);
 
-    return renderPrompt(
-        `
+  return renderPrompt(
+    `
             ${background}
 
             ${whereWeAre}
@@ -72,5 +74,5 @@ export const finishForMePrompt = async(state: BrainstormGraphState, config?: Lan
                 Do not output any text. Call the save_answers tool with the answers you have created for the skipped topics.
             </output_format_rules>
         `
-    );
-}
+  );
+};

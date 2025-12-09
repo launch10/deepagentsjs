@@ -42,7 +42,9 @@
 
 .nav-container {
   background: var(--base-bg-low);
-  box-shadow: 0px 4px 6px -1px rgba(16, 24, 40, 0.10), 0px 2px 4px -2px rgba(16, 24, 40, 0.10);
+  box-shadow:
+    0px 4px 6px -1px rgba(16, 24, 40, 0.1),
+    0px 2px 4px -2px rgba(16, 24, 40, 0.1);
   position: absolute;
   top: 100%;
   left: 0;
@@ -60,7 +62,7 @@
     position: static;
   }
 
-  >nav {
+  > nav {
     align-items: start;
     display: flex;
     flex-direction: column;
@@ -133,7 +135,7 @@ section nav form button {
 .top-nav__sub-nav {
   width: 100%;
 
-  >button {
+  > button {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -160,12 +162,12 @@ section nav form button {
         outline-offset: 2px;
       }
 
-      >svg {
+      > svg {
         transform: rotate(180deg);
       }
     }
 
-    >svg {
+    > svg {
       height: 20px;
       width: 20px;
       margin-left: 4px;
@@ -175,7 +177,9 @@ section nav form button {
 
 .top-nav__sub-nav-dropdown {
   @media (min-width: 1024px) {
-    box-shadow: 0px 4px 6px -1px rgba(16, 24, 40, 0.10), 0px 2px 4px -2px rgba(16, 24, 40, 0.10);
+    box-shadow:
+      0px 4px 6px -1px rgba(16, 24, 40, 0.1),
+      0px 2px 4px -2px rgba(16, 24, 40, 0.1);
     margin-top: 12px;
     position: absolute;
     top: 100%;
@@ -207,12 +211,12 @@ section nav form button {
           padding: 32px 48px 32px 32px;
         }
 
-        >*+* {
+        > * + * {
           margin-top: 4px;
         }
       }
 
-      >h6 {
+      > h6 {
         text-transform: capitalize;
         color: var(--base-text-secondary);
         font-size: 14px;
@@ -225,7 +229,7 @@ section nav form button {
         }
       }
 
-      >h6:not(:first-child) {
+      > h6:not(:first-child) {
         margin-top: 16px;
       }
 
@@ -256,7 +260,7 @@ section nav form button {
           }
         }
 
-        >div {
+        > div {
           margin-left: 16px;
 
           h6 {
@@ -308,8 +312,7 @@ section nav form button {
   }
 
   @media (min-width: 1024px) {
-    >button {
-
+    > button {
       border-radius: 4px;
       padding: 8px;
 

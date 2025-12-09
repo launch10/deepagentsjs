@@ -1,13 +1,7 @@
 {
   "compilerOptions": {
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ESNext"
-    ],
-    "types": [
-      "vite/client",
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "types": ["vite/client"],
     "isolatedModules": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
@@ -37,20 +31,11 @@
       "@styles/*": ["./app/javascript/frontend/styles/*"],
       "@webcontainer/*": ["./app/javascript/frontend/webcontainer/*"],
       "@shared": ["../shared/index.ts"],
-      "@pages/*": ["./app/javascript/frontend/pages/*"],
+      "@pages/*": ["./app/javascript/frontend/pages/*"]
     },
     "noEmit": true,
     "incremental": true
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "vite.config.ts",
-    "postcss.config.js"
-  ],
-  "exclude": [
-    "node_modules",
-    "public",
-    "vendor"
-  ]
+  "include": ["**/*.ts", "**/*.tsx", "vite.config.ts", "postcss.config.js"],
+  "exclude": ["node_modules", "public", "vendor"]
 }

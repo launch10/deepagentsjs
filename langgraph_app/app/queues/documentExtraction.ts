@@ -1,5 +1,5 @@
-import { Queue } from 'bullmq';
-import { queueConnection } from './connection';
+import { Queue } from "bullmq";
+import { queueConnection } from "./connection";
 
 export interface DocumentExtractionJobData {
   job_run_id: number;
@@ -11,12 +11,12 @@ export interface DocumentExtractionJobData {
   };
 }
 
-export const documentExtractionQueue = new Queue<DocumentExtractionJobData>('document-extraction', {
+export const documentExtractionQueue = new Queue<DocumentExtractionJobData>("document-extraction", {
   connection: queueConnection,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
-      type: 'exponential',
+      type: "exponential",
       delay: 2000,
     },
     removeOnComplete: {
@@ -29,6 +29,6 @@ export const documentExtractionQueue = new Queue<DocumentExtractionJobData>('doc
   },
 });
 
-documentExtractionQueue.on('error', (error) => {
-  console.error('[DocumentExtractionQueue] Error:', error);
+documentExtractionQueue.on("error", (error) => {
+  console.error("[DocumentExtractionQueue] Error:", error);
 });

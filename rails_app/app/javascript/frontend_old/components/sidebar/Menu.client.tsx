@@ -1,29 +1,35 @@
-import axios from 'axios';
-import { router } from '@inertiajs/react'; 
-import { motion, type Variants } from 'framer-motion';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Dialog, DialogButton, DialogDescription, DialogRoot, DialogTitle } from '@components/ui/Dialog';
-import { ThemeSwitch } from '@components/ui/ThemeSwitch';
-import { cubicEasingFn } from '@utils/easings';
-import { MenuItem } from './MenuItem';
-import { binDates } from './date-binning';
-import { useLanggraphContext } from '@context/LanggraphContext';
-import { type MenuItemType } from '@types/menu';
-import { useMemo } from 'react';
-import { useStore } from '@nanostores/react';
-import { projectStore } from '@stores/project';
-import { pageStore } from '@stores/page';
-import { type Project } from '@types/project';
-import { toast } from 'react-toastify';
-import { createScopedLogger } from '@utils/logger';
+import axios from "axios";
+import { router } from "@inertiajs/react";
+import { motion, type Variants } from "framer-motion";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Dialog,
+  DialogButton,
+  DialogDescription,
+  DialogRoot,
+  DialogTitle,
+} from "@components/ui/Dialog";
+import { ThemeSwitch } from "@components/ui/ThemeSwitch";
+import { cubicEasingFn } from "@utils/easings";
+import { MenuItem } from "./MenuItem";
+import { binDates } from "./date-binning";
+import { useLanggraphContext } from "@context/LanggraphContext";
+import { type MenuItemType } from "@types/menu";
+import { useMemo } from "react";
+import { useStore } from "@nanostores/react";
+import { projectStore } from "@stores/project";
+import { pageStore } from "@stores/page";
+import { type Project } from "@types/project";
+import { toast } from "react-toastify";
+import { createScopedLogger } from "@utils/logger";
 
-const logger = createScopedLogger('Menu');
+const logger = createScopedLogger("Menu");
 
 const menuVariants = {
   closed: {
     opacity: 0,
-    visibility: 'hidden',
-    left: '-150px',
+    visibility: "hidden",
+    left: "-150px",
     transition: {
       duration: 0.2,
       ease: cubicEasingFn,
@@ -31,7 +37,7 @@ const menuVariants = {
   },
   open: {
     opacity: 1,
-    visibility: 'initial',
+    visibility: "initial",
     left: 0,
     transition: {
       duration: 0.2,
@@ -45,10 +51,10 @@ export function Menu() {
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
   const [open, setOpen] = useState(false);
   const [dialogContent, setDialogContent] = useState<DialogContent>(null);
-  const projects = useStore(projectStore.projects)
+  const projects = useStore(projectStore.projects);
   const { rootPath, threadId } = useStore(pageStore);
 
-  useMemo(() => { 
+  useMemo(() => {
     const menuItems: MenuItemType[] = projects.map((project: Project) => {
       return {
         id: project.id,
@@ -65,24 +71,27 @@ export function Menu() {
   const deleteItem = useCallback(async (event: React.UIEvent, item: MenuItemType) => {
     event.preventDefault();
 
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
 
-    const response = await axios.delete(`${rootPath}/projects/${item.threadId}`, {
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        'X-CSRF-Token': token,
-      },
-    }).then(() => {
-      if (threadId === item.threadId) {
-        // hard page navigation to clear the stores
-        // window.location.pathname = '/';
-        router.visit('/');
-      }
-    }).catch((error) => {
-      toast.error('Failed to delete conversation');
-      logger.error(error);
-    })
+    const response = await axios
+      .delete(`${rootPath}/projects/${item.threadId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-CSRF-Token": token,
+        },
+      })
+      .then(() => {
+        if (threadId === item.threadId) {
+          // hard page navigation to clear the stores
+          // window.location.pathname = '/';
+          router.visit("/");
+        }
+      })
+      .catch((error) => {
+        toast.error("Failed to delete conversation");
+        logger.error(error);
+      });
 
     projectStore.remove(item.threadId);
   }, []);
@@ -106,15 +115,18 @@ export function Menu() {
         setOpen(true);
       }
 
-      if (menuRef.current && event.clientX > menuRef.current.getBoundingClientRect().right + exitThreshold) {
+      if (
+        menuRef.current &&
+        event.clientX > menuRef.current.getBoundingClientRect().right + exitThreshold
+      ) {
         setOpen(false);
       }
     }
 
-    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener("mousemove", onMouseMove);
 
     return () => {
-      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener("mousemove", onMouseMove);
     };
   }, []);
 
@@ -122,7 +134,7 @@ export function Menu() {
     <motion.div
       ref={menuRef}
       initial="closed"
-      animate={open ? 'open' : 'closed'}
+      animate={open ? "open" : "closed"}
       variants={menuVariants}
       className="flex flex-col side-menu fixed top-0 w-[350px] h-full bg-bolt-elements-background-depth-2 border-r rounded-r-3xl border-bolt-elements-borderColor z-sidebar shadow-xl shadow-bolt-elements-sidebar-dropdownShadow text-sm"
     >
@@ -138,9 +150,13 @@ export function Menu() {
             Start new chat
           </a>
         </div>
-        <div className="text-bolt-elements-textPrimary font-medium pl-6 pr-5 my-2">Your Projects</div>
+        <div className="text-bolt-elements-textPrimary font-medium pl-6 pr-5 my-2">
+          Your Projects
+        </div>
         <div className="flex-1 overflow-scroll pl-4 pr-5 pb-5">
-          {menuItems.length === 0 && <div className="pl-2 text-bolt-elements-textTertiary">No previous projects</div>}
+          {menuItems.length === 0 && (
+            <div className="pl-2 text-bolt-elements-textTertiary">No previous projects</div>
+          )}
           <DialogRoot open={dialogContent !== null}>
             {binDates(menuItems).map(({ category, items }) => (
               <div key={category} className="mt-4 first:mt-0 space-y-1">
@@ -148,12 +164,16 @@ export function Menu() {
                   {category}
                 </div>
                 {items.map((item) => (
-                  <MenuItem key={item.threadId} item={item} onDelete={() => setDialogContent({ type: 'delete', item })} />
+                  <MenuItem
+                    key={item.threadId}
+                    item={item}
+                    onDelete={() => setDialogContent({ type: "delete", item })}
+                  />
                 ))}
               </div>
             ))}
             <Dialog onBackdrop={closeDialog} onClose={closeDialog}>
-              {dialogContent?.type === 'delete' && (
+              {dialogContent?.type === "delete" && (
                 <>
                   <DialogTitle>Delete Chat?</DialogTitle>
                   <DialogDescription asChild>

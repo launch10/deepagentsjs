@@ -1,9 +1,9 @@
-import React from 'react';
+import React from "react";
 export interface JWT {
-    exp: number;
-    iat: number;
-    jti: string;
-    sub: string;
+  exp: number;
+  iat: number;
+  jti: string;
+  sub: string;
 }
 
 export const JWTContext = React.createContext<JWT | null>(null);

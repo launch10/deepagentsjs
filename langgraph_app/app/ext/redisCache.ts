@@ -26,12 +26,12 @@ export class RedisCache<V = unknown> {
         if (cached && cached.enc && cached.val) {
           try {
             let valData: Uint8Array | string;
-            if (cached.enc === 'json' && typeof cached.val === 'string') {
-              valData = new Uint8Array(Buffer.from(cached.val, 'base64'));
+            if (cached.enc === "json" && typeof cached.val === "string") {
+              valData = new Uint8Array(Buffer.from(cached.val, "base64"));
             } else {
               valData = cached.val;
             }
-            
+
             const value = await this.serde.loadsTyped(cached.enc, valData);
             foundValues.push({ key, value });
           } catch (e) {
@@ -46,15 +46,13 @@ export class RedisCache<V = unknown> {
     return foundValues;
   }
 
-  async set(
-    pairs: { key: string; value: V; ttl?: number }[]
-  ): Promise<void> {
+  async set(pairs: { key: string; value: V; ttl?: number }[]): Promise<void> {
     if (!pairs.length) return;
 
     for (const { key, value, ttl } of pairs) {
       try {
         const [enc, val] = await this.serde.dumpsTyped(value);
-        const valStr = val instanceof Uint8Array ? Buffer.from(val).toString('base64') : val;
+        const valStr = val instanceof Uint8Array ? Buffer.from(val).toString("base64") : val;
         await this.client.hset(key, { enc, val: valStr });
 
         if (ttl != null && ttl > 0) {
@@ -66,7 +64,7 @@ export class RedisCache<V = unknown> {
     }
   }
 
-  async query(pattern: string = '*'): Promise<string[]> {
+  async query(pattern: string = "*"): Promise<string[]> {
     const keys: string[] = [];
 
     const stream = this.client.scanStream({
@@ -78,11 +76,11 @@ export class RedisCache<V = unknown> {
       stream.on("data", (batch) => {
         keys.push(...batch);
       });
-      
+
       stream.on("end", () => {
         resolve(keys);
       });
-      
+
       stream.on("error", (err) => {
         reject(err);
       });
@@ -108,7 +106,7 @@ export class RedisCache<V = unknown> {
         keysToDelete = [];
       }
     });
-    
+
     await new Promise<void>((resolve, reject) => {
       stream.on("end", async () => {
         if (keysToDelete.length > 0) {
@@ -134,7 +132,7 @@ export class RedisCache<V = unknown> {
     await this.client.quit();
   }
 
-  async keys(pattern: string = '*'): Promise<string[]> {
+  async keys(pattern: string = "*"): Promise<string[]> {
     return this.client.keys(pattern);
   }
 }

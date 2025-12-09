@@ -11,7 +11,7 @@
     margin-left: 32px;
   }
 
-  a[data-tabs-target="tab"]{
+  a[data-tabs-target="tab"] {
     display: inline-flex;
     padding-bottom: 16px;
     justify-content: center;
@@ -37,10 +37,10 @@
       color: var(--base-text-secondary);
     }
 
-    &[data-active="true"]{
+    &[data-active="true"] {
       border-bottom: 2px solid var(--border-primary-hover);
       color: var(--text-primary);
-      
+
       &:hover {
         color: var(--text-primary-hover);
         border-bottom: 2px solid var(--border-primary-hover);

@@ -43,10 +43,7 @@
     }
   },
   "image": "heroku/ruby",
-  "addons": [
-    "heroku-postgresql",
-    "scheduler"
-  ],
+  "addons": ["heroku-postgresql", "scheduler"],
   "buildpacks": [
     { "url": "https://github.com/heroku/heroku-buildpack-apt.git" },
     { "url": "https://github.com/brandoncc/heroku-buildpack-vips" },

@@ -1,5 +1,5 @@
-import { format, isAfter, isThisWeek, isThisYear, isToday, isYesterday, subDays } from 'date-fns';
-import type { MenuItem } from '~/types/thread';
+import { format, isAfter, isThisWeek, isThisYear, isToday, isYesterday, subDays } from "date-fns";
+import type { MenuItem } from "~/types/thread";
 
 type Bin = { category: string; items: MenuItem[] };
 
@@ -31,29 +31,29 @@ export function binDates(_list: MenuItem[]) {
 
 function dateCategory(date: Date) {
   if (isToday(date)) {
-    return 'Today';
+    return "Today";
   }
 
   if (isYesterday(date)) {
-    return 'Yesterday';
+    return "Yesterday";
   }
 
   if (isThisWeek(date)) {
     // e.g., "Monday"
-    return format(date, 'eeee');
+    return format(date, "eeee");
   }
 
   const thirtyDaysAgo = subDays(new Date(), 30);
 
   if (isAfter(date, thirtyDaysAgo)) {
-    return 'Last 30 Days';
+    return "Last 30 Days";
   }
 
   if (isThisYear(date)) {
     // e.g., "July"
-    return format(date, 'MMMM');
+    return format(date, "MMMM");
   }
 
   // e.g., "July 2023"
-  return format(date, 'MMMM yyyy');
+  return format(date, "MMMM yyyy");
 }

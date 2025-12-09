@@ -44,7 +44,7 @@ export class CampaignAPIService extends RailsAPIBase {
           name,
           project_id: projectId,
           thread_id: threadId,
-        }
+        },
       },
     });
 

@@ -5,17 +5,9 @@ import { openai } from "@ai-sdk/openai";
 import { eq, gte, ilike, sql, and, or, getTableName, desc } from "drizzle-orm";
 import type { DB } from "app/db";
 import { env } from "@app";
-import {
-  CohereRerankService,
-  type RerankDocument,
-} from "./cohereRerankService";
+import { CohereRerankService, type RerankDocument } from "./cohereRerankService";
 
-import {
-  pgTable,
-  type PgColumn,
-  type PgTableFn,
-  type AnyPgColumn,
-} from "drizzle-orm/pg-core";
+import { pgTable, type PgColumn, type PgTableFn, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { type AnyPgTable } from "drizzle-orm/pg-core";
 
 export interface PgTableWithEmbeddingColumns extends AnyPgTable {
@@ -166,10 +158,7 @@ export class PostgresEmbeddingsService {
   /**
    * Check if we have a valid cached result for the query
    */
-  async checkCache(
-    query: string,
-    requestedTopK: number
-  ): Promise<EmbeddingResult[] | null> {
+  async checkCache(query: string, requestedTopK: number): Promise<EmbeddingResult[] | null> {
     if (!this.cacheTable) {
       return null;
     }
@@ -239,10 +228,7 @@ export class PostgresEmbeddingsService {
     const minSimilarity = options?.minSimilarity || this.DEFAULT_MIN_SIMILARITY;
 
     // Only cache if we have results and they meet the minimum similarity threshold
-    if (
-      results.length > 0 &&
-      results.every((r) => r.similarity >= minSimilarity)
-    ) {
+    if (results.length > 0 && results.every((r) => r.similarity >= minSimilarity)) {
       const now = new Date().toISOString();
       const queryLower = query.toLowerCase();
 
@@ -287,13 +273,7 @@ export class PostgresEmbeddingsService {
 
   // Helper function to calculate cosine similarity between two vectors
   private cosineSimilarity(vecA: number[], vecB: number[]): number {
-    if (
-      !vecA ||
-      !vecB ||
-      vecA.length === 0 ||
-      vecB.length === 0 ||
-      vecA.length !== vecB.length
-    ) {
+    if (!vecA || !vecB || vecA.length === 0 || vecB.length === 0 || vecA.length !== vecB.length) {
       return -1; // Indicates dissimilarity or invalid input
     }
 
@@ -342,9 +322,7 @@ export class PostgresEmbeddingsService {
       let results: EmbeddingResult[] = [];
 
       // Get query embedding
-      const queryEmbedding = await this.vectorStore.embeddings.embedQuery(
-        query
-      );
+      const queryEmbedding = await this.vectorStore.embeddings.embedQuery(query);
 
       // Try exact text match using ILIKE, also fetch embedding
       const exactMatchesData = await this.db
@@ -355,12 +333,7 @@ export class PostgresEmbeddingsService {
           embedding: this.table.embedding, // Select the embedding column
         })
         .from(this.table)
-        .where(
-          or(
-            ilike(this.table.text, `%${query}%`),
-            ilike(this.table.key, `%${query}%`)
-          )
-        )
+        .where(or(ilike(this.table.text, `%${query}%`), ilike(this.table.key, `%${query}%`)))
         .limit(topK);
 
       // Get semantic search results using direct Drizzle query with pgvector operator
@@ -378,9 +351,7 @@ export class PostgresEmbeddingsService {
         })
         .from(this.table)
         // Order by negative inner product (ascending, so most similar/least negative come first)
-        .orderBy(
-          sql`${this.table.embedding} <#> ${JSON.stringify(queryEmbedding)}`
-        )
+        .orderBy(sql`${this.table.embedding} <#> ${JSON.stringify(queryEmbedding)}`)
         .limit(topK);
 
       const semanticResults = semanticMatchesData.map((match) => ({
@@ -411,9 +382,7 @@ export class PostgresEmbeddingsService {
       results.push(...exactMatchesWithSimilarity);
 
       // 2. Add semantic results that aren't exact matches
-      results.push(
-        ...semanticResults.filter((result) => !exactMatchKeys.has(result.key))
-      );
+      results.push(...semanticResults.filter((result) => !exactMatchKeys.has(result.key)));
 
       // 3. Sort by similarity and take top K
       results.sort((a, b) => b.similarity - a.similarity);
@@ -486,10 +455,7 @@ export class PostgresEmbeddingsService {
 
       return results;
     } catch (error) {
-      console.error(
-        `Error in multi-query search for ${this.tableName}:`,
-        error
-      );
+      console.error(`Error in multi-query search for ${this.tableName}:`, error);
       throw error;
     }
   }
@@ -516,10 +482,7 @@ export class PostgresEmbeddingsService {
       }
       return existingKeys;
     } catch (error) {
-      console.error(
-        "Error fetching existing document IDs from iconEmbeddings table:",
-        error
-      );
+      console.error("Error fetching existing document IDs from iconEmbeddings table:", error);
       throw error;
     }
   }

@@ -1,5 +1,5 @@
-import { Redis } from 'ioredis';
-import { env } from '@core';
+import { Redis } from "ioredis";
+import { env } from "@core";
 
 export const createRedisConnection = () => {
   const connection = new Redis(env.REDIS_URL, {

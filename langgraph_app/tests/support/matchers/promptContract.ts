@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 interface FormatParser {
   canParse(content: string): boolean;
@@ -8,10 +8,12 @@ interface FormatParser {
 class JsonParser implements FormatParser {
   canParse(content: string): boolean {
     const trimmed = content.trim();
-    return (trimmed.startsWith('{') && trimmed.endsWith('}')) || 
-           (trimmed.startsWith('[') && trimmed.endsWith(']'));
+    return (
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))
+    );
   }
-  
+
   parse(content: string): unknown {
     try {
       return JSON.parse(content);
@@ -24,27 +26,27 @@ class JsonParser implements FormatParser {
 class XmlParser implements FormatParser {
   canParse(content: string): boolean {
     const trimmed = content.trim();
-    return trimmed.startsWith('<') && trimmed.includes('</');
+    return trimmed.startsWith("<") && trimmed.includes("</");
   }
-  
+
   parse(content: string): unknown {
     const result: Record<string, any> = {};
-    
+
     const elementRegex = /<(\w+)(?:\s[^>]*)?>([^<]*(?:<(?!\1)[^<]*)*)<\/\1>/g;
     let match;
-    
+
     while ((match = elementRegex.exec(content)) !== null) {
       const [, tagName, value] = match;
       if (!tagName || !value) {
         continue;
       }
       const trimmedValue = value.trim();
-      
+
       if (!result[tagName]) {
         result[tagName] = [];
       }
-      
-      if (trimmedValue.startsWith('{') || trimmedValue.startsWith('[')) {
+
+      if (trimmedValue.startsWith("{") || trimmedValue.startsWith("[")) {
         try {
           result[tagName].push(JSON.parse(trimmedValue));
         } catch {
@@ -54,136 +56,133 @@ class XmlParser implements FormatParser {
         result[tagName].push(trimmedValue);
       }
     }
-    
-    Object.keys(result).forEach(key => {
+
+    Object.keys(result).forEach((key) => {
       if (result[key].length === 1) {
         result[key] = result[key][0];
       }
     });
-    
+
     return result;
   }
 }
 
 class PipeParser implements FormatParser {
   canParse(content: string): boolean {
-    const lines = content.trim().split('\n');
-    if (lines.length > 1 && !!(lines[0])) {
-      return lines[0].includes('|');
+    const lines = content.trim().split("\n");
+    if (lines.length > 1 && !!lines[0]) {
+      return lines[0].includes("|");
     }
     return false;
   }
-  
+
   parse(content: string): unknown {
-    const lines = content.trim().split('\n');
-    let firstLine = lines[0] || '';
-    const headers = firstLine.split('|').map(h => h.trim());
-    
-    const rows = lines.slice(1).map(line => {
-      const values = line.split('|').map(v => v.trim());
+    const lines = content.trim().split("\n");
+    let firstLine = lines[0] || "";
+    const headers = firstLine.split("|").map((h) => h.trim());
+
+    const rows = lines.slice(1).map((line) => {
+      const values = line.split("|").map((v) => v.trim());
       const obj: Record<string, any> = {};
-      
+
       headers.forEach((header, i) => {
-        const value = values[i] || '';
-        
-        if (!isNaN(Number(value)) && value !== '') {
+        const value = values[i] || "";
+
+        if (!isNaN(Number(value)) && value !== "") {
           obj[header] = Number(value);
-        } else if (value.startsWith('{') || value.startsWith('[')) {
+        } else if (value.startsWith("{") || value.startsWith("[")) {
           try {
             obj[header] = JSON.parse(value);
           } catch {
             obj[header] = value;
           }
-        } else if (value === 'null') {
+        } else if (value === "null") {
           obj[header] = null;
-        } else if (value === '' || value === 'undefined') {
+        } else if (value === "" || value === "undefined") {
           obj[header] = undefined;
         } else {
           obj[header] = value;
         }
       });
-      
+
       return obj;
     });
-    
+
     return rows;
   }
 }
 
 class FormatDetector {
-  private parsers: FormatParser[] = [
-    new JsonParser(),
-    new PipeParser(),
-    new XmlParser()
-  ];
-  
+  private parsers: FormatParser[] = [new JsonParser(), new PipeParser(), new XmlParser()];
+
   parse(content: string): unknown {
     for (const parser of this.parsers) {
       if (parser.canParse(content)) {
         return parser.parse(content);
       }
     }
-    
-    throw new Error(
-      `Could not detect format for content:\n${content.slice(0, 100)}...`
-    );
+
+    throw new Error(`Could not detect format for content:\n${content.slice(0, 100)}...`);
   }
 }
 
 class SectionAssertion<T = unknown> {
   private content: string;
   private detector = new FormatDetector();
-  
-  constructor(private prompt: string, private sectionName: string) {
+
+  constructor(
+    private prompt: string,
+    private sectionName: string
+  ) {
     this.content = this.extractSection(sectionName);
   }
-  
+
   toMatchContract<S>(contract: z.ZodSchema<S>): S {
     let parsed: unknown;
-    
+
     try {
       parsed = this.detector.parse(this.content);
     } catch (e) {
       throw new Error(
         `Failed to parse section '${this.sectionName}': ${e instanceof Error ? e.message : String(e)}\n` +
-        `Content: ${this.content.slice(0, 200)}...`
+          `Content: ${this.content.slice(0, 200)}...`
       );
     }
-    
+
     const result = contract.safeParse(parsed);
-    
+
     if (!result.success) {
-      const errors = result.error.issues.map(issue => 
-        `  - ${issue.path.join('.')}: ${issue.message}`
-      ).join('\n');
-      
+      const errors = result.error.issues
+        .map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
+        .join("\n");
+
       throw new Error(
         `Section '${this.sectionName}' failed contract validation:\n${errors}\n\n` +
-        `Parsed data: ${JSON.stringify(parsed, null, 2)}`
+          `Parsed data: ${JSON.stringify(parsed, null, 2)}`
       );
     }
-    
+
     return result.data;
   }
-  
+
   toHaveNoNulls(allowedPaths: string[] = []): this {
     const parsed = this.detector.parse(this.content);
     const nulls = this.findNullsAndUndefineds(parsed);
-    
-    const disallowed = nulls.filter(path => 
-      !allowedPaths.some(allowed => path.startsWith(allowed))
+
+    const disallowed = nulls.filter(
+      (path) => !allowedPaths.some((allowed) => path.startsWith(allowed))
     );
-    
+
     if (disallowed.length > 0) {
       throw new Error(
         `Section '${this.sectionName}' has unexpected nulls/undefined at:\n` +
-        disallowed.map(p => `  - ${p}`).join('\n')
+          disallowed.map((p) => `  - ${p}`).join("\n")
       );
     }
-    
+
     return this;
   }
-  
+
   toBeValidFormat(): this {
     try {
       this.detector.parse(this.content);
@@ -192,65 +191,65 @@ class SectionAssertion<T = unknown> {
         `Section '${this.sectionName}' is not in a valid format: ${e instanceof Error ? e.message : String(e)}`
       );
     }
-    
+
     return this;
   }
-  
+
   private extractSection(name: string): string {
-    const regex = new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, 'i');
+    const regex = new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, "i");
     const match = this.prompt.match(regex);
-    
+
     if (!match) {
       throw new Error(
         `Section '${name}' not found in prompt.\n` +
-        `Available sections: ${this.findAvailableSections().join(', ')}`
+          `Available sections: ${this.findAvailableSections().join(", ")}`
       );
     }
-    
+
     let content = match[1];
     if (!content) {
       throw new Error(
         `Section '${name}' not found in prompt.\n` +
-        `Available sections: ${this.findAvailableSections().join(', ')}`
+          `Available sections: ${this.findAvailableSections().join(", ")}`
       );
     }
     return content.trim();
   }
-  
+
   private findAvailableSections(): string[] {
     const regex = /<(\w+)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi;
     const sections = new Set<string>();
     let match;
-    
+
     while ((match = regex.exec(this.prompt)) !== null) {
       if (!match || !match[1]) {
         continue;
       }
       sections.add(match[1]);
     }
-    
+
     return Array.from(sections);
   }
-  
-  private findNullsAndUndefineds(obj: any, path = ''): string[] {
+
+  private findNullsAndUndefineds(obj: any, path = ""): string[] {
     const issues: string[] = [];
-    
+
     if (obj === null || obj === undefined) {
       issues.push(path);
       return issues;
     }
-    
-    if (typeof obj === 'string' && (obj === 'null' || obj === 'undefined')) {
+
+    if (typeof obj === "string" && (obj === "null" || obj === "undefined")) {
       issues.push(`${path} (string value "${obj}")`);
     }
-    
-    if (typeof obj === 'object' && !Array.isArray(obj)) {
+
+    if (typeof obj === "object" && !Array.isArray(obj)) {
       for (const [key, value] of Object.entries(obj)) {
         const newPath = path ? `${path}.${key}` : key;
-        
+
         if (value === null || value === undefined) {
           issues.push(newPath);
-        } else if (typeof value === 'object') {
+        } else if (typeof value === "object") {
           issues.push(...this.findNullsAndUndefineds(value, newPath));
         }
       }
@@ -259,12 +258,12 @@ class SectionAssertion<T = unknown> {
         const newPath = `${path}[${index}]`;
         if (item === null || item === undefined) {
           issues.push(newPath);
-        } else if (typeof item === 'object') {
+        } else if (typeof item === "object") {
           issues.push(...this.findNullsAndUndefineds(item, newPath));
         }
       });
     }
-    
+
     return issues;
   }
 }
@@ -275,48 +274,49 @@ export function expectSection(prompt: string, sectionName: string) {
 
 export function expectPromptHasSections(prompt: string, ...sections: string[]): void {
   const missing: string[] = [];
-  
+
   for (const section of sections) {
-    const regex = new RegExp(`<${section}[^>]*>[\\s\\S]*?</${section}>`, 'i');
+    const regex = new RegExp(`<${section}[^>]*>[\\s\\S]*?</${section}>`, "i");
     if (!regex.test(prompt)) {
       missing.push(section);
     }
   }
-  
+
   if (missing.length > 0) {
-    const available = prompt.match(/<(\w+)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi)
-      ?.map(tag => tag.match(/<(\w+)/)?.[1])
-      .filter(Boolean) || [];
-    
+    const available =
+      prompt
+        .match(/<(\w+)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi)
+        ?.map((tag) => tag.match(/<(\w+)/)?.[1])
+        .filter(Boolean) || [];
+
     throw new Error(
-      `Missing required sections: ${missing.join(', ')}\n` +
-      `Available sections: ${available.join(', ')}`
+      `Missing required sections: ${missing.join(", ")}\n` +
+        `Available sections: ${available.join(", ")}`
     );
   }
 }
 
 export function expectNoStringifiedNulls(prompt: string): void {
   const issues: string[] = [];
-  
+
   const patterns = [
     { pattern: /[^a-zA-Z]undefined[^a-zA-Z]/g, description: 'string "undefined"' },
     { pattern: /:\s*"null"/g, description: 'string "null" as value' },
-    { pattern: /\{\s*\}/g, description: 'empty object {}' },
-    { pattern: /null\./g, description: 'null.property access' },
-    { pattern: /undefined\./g, description: 'undefined.property access' },
-    { pattern: /\[object Object\]/g, description: '[object Object]' },
+    { pattern: /\{\s*\}/g, description: "empty object {}" },
+    { pattern: /null\./g, description: "null.property access" },
+    { pattern: /undefined\./g, description: "undefined.property access" },
+    { pattern: /\[object Object\]/g, description: "[object Object]" },
   ];
-  
+
   for (const { pattern, description } of patterns) {
     if (pattern.test(prompt)) {
       issues.push(description);
     }
   }
-  
+
   if (issues.length > 0) {
     throw new Error(
-      `Found stringified nulls/undefined in prompt:\n` +
-      issues.map(i => `  - ${i}`).join('\n')
+      `Found stringified nulls/undefined in prompt:\n` + issues.map((i) => `  - ${i}`).join("\n")
     );
   }
 }

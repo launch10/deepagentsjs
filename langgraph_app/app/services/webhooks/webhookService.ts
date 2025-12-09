@@ -1,10 +1,10 @@
-import { env } from '@core';
-import crypto from 'crypto';
+import { env } from "@core";
+import crypto from "crypto";
 
 export interface WebhookPayload {
   job_run_id: number;
   document_id: number;
-  status: 'success' | 'failure';
+  status: "success" | "failure";
   result?: {
     pairs?: Array<{
       question: string;
@@ -16,8 +16,8 @@ export interface WebhookPayload {
 }
 
 export class WebhookService {
-  private static readonly WEBHOOK_PATH = '/webhooks/document_extraction';
-  
+  private static readonly WEBHOOK_PATH = "/webhooks/document_extraction";
+
   static async sendWebhook(payload: WebhookPayload): Promise<void> {
     const url = `${env.RAILS_API_URL}${this.WEBHOOK_PATH}`;
     const body = JSON.stringify(payload);
@@ -26,10 +26,10 @@ export class WebhookService {
     console.log(`[WebhookService] Sending webhook to ${url}`);
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Signature': signature,
+        "Content-Type": "application/json",
+        "X-Signature": signature,
       },
       body,
     });
@@ -43,9 +43,6 @@ export class WebhookService {
   }
 
   private static generateSignature(payload: string): string {
-    return crypto
-      .createHmac('sha256', env.JWT_SECRET)
-      .update(payload)
-      .digest('hex');
+    return crypto.createHmac("sha256", env.JWT_SECRET).update(payload).digest("hex");
   }
 }

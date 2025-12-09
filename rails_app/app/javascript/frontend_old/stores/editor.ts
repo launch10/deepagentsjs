@@ -1,6 +1,9 @@
-import { atom, computed, map, type MapStore, type WritableAtom } from 'nanostores';
-import type { EditorDocument, ScrollPosition } from '~/components/editor/codemirror/CodeMirrorEditor';
-import type { FileMap, FilesStore } from './files';
+import { atom, computed, map, type MapStore, type WritableAtom } from "nanostores";
+import type {
+  EditorDocument,
+  ScrollPosition,
+} from "~/components/editor/codemirror/CodeMirrorEditor";
+import type { FileMap, FilesStore } from "./files";
 
 export type EditorDocuments = Record<string, EditorDocument>;
 
@@ -36,7 +39,7 @@ export class EditorStore {
       Object.fromEntries<EditorDocument>(
         Object.entries(files)
           .map(([filePath, dirent]) => {
-            if (dirent === undefined || dirent.type === 'folder') {
+            if (dirent === undefined || dirent.type === "folder") {
               return undefined;
             }
 
@@ -51,8 +54,8 @@ export class EditorStore {
               },
             ] as [string, EditorDocument];
           })
-          .filter(Boolean) as Array<[string, EditorDocument]>,
-      ),
+          .filter(Boolean) as Array<[string, EditorDocument]>
+      )
     );
   }
 

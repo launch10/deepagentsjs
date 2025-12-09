@@ -1,16 +1,26 @@
-import { atom, map, type MapStore, type ReadableAtom, type WritableAtom, onMount } from 'nanostores';
-import type { EditorDocument, ScrollPosition } from '@components/editor/codemirror/CodeMirrorEditor';
-import { ActionRunner, type ActionStatus } from '@runtime/action-runner';
-import { webcontainer } from '@webcontainer/index';
-import type { ITerminal } from '@types/terminal';
-import { unreachable } from '@lib/utils/unreachable';
-import { EditorStore } from './editor';
-import { FilesStore, type FileMap } from './files';
-import { PreviewsStore } from './previews';
-import { TerminalStore } from './terminal';
-import { type ActionCore } from '@runtime/action-runner';
-import { v4 as uuidv4 } from 'uuid';
-import { CodeTaskType, TaskStatus, type CodeTask } from '../shared/models/codeTask';
+import {
+  atom,
+  map,
+  type MapStore,
+  type ReadableAtom,
+  type WritableAtom,
+  onMount,
+} from "nanostores";
+import type {
+  EditorDocument,
+  ScrollPosition,
+} from "@components/editor/codemirror/CodeMirrorEditor";
+import { ActionRunner, type ActionStatus } from "@runtime/action-runner";
+import { webcontainer } from "@webcontainer/index";
+import type { ITerminal } from "@types/terminal";
+import { unreachable } from "@lib/utils/unreachable";
+import { EditorStore } from "./editor";
+import { FilesStore, type FileMap } from "./files";
+import { PreviewsStore } from "./previews";
+import { TerminalStore } from "./terminal";
+import { type ActionCore } from "@runtime/action-runner";
+import { v4 as uuidv4 } from "uuid";
+import { CodeTaskType, TaskStatus, type CodeTask } from "../shared/models/codeTask";
 export interface ArtifactState {
   id: string;
   title: string;
@@ -18,13 +28,13 @@ export interface ArtifactState {
   runner: ActionRunner;
 }
 
-export type ArtifactUpdateState = Pick<ArtifactState, 'title' | 'closed'>;
-export type ArtifactLoadingState = 'loading' | 'complete';
+export type ArtifactUpdateState = Pick<ArtifactState, "title" | "closed">;
+export type ArtifactLoadingState = "loading" | "complete";
 
 type Artifacts = MapStore<Record<string, ArtifactState>>;
 type ArtifactStateMap = MapStore<Record<string, ArtifactLoadingState>>;
 
-export type WorkbenchViewType = 'code' | 'preview';
+export type WorkbenchViewType = "code" | "preview";
 
 export class WorkbenchStore {
   #previewsStore = new PreviewsStore(webcontainer);
@@ -35,8 +45,9 @@ export class WorkbenchStore {
   artifacts: Artifacts = import.meta.hot?.data.artifacts ?? map({});
 
   showWorkbench: WritableAtom<boolean> = import.meta.hot?.data.showWorkbench ?? atom(false);
-  currentView: WritableAtom<WorkbenchViewType> = import.meta.hot?.data.currentView ?? atom('code');
-  unsavedFiles: WritableAtom<Set<string>> = import.meta.hot?.data.unsavedFiles ?? atom(new Set<string>());
+  currentView: WritableAtom<WorkbenchViewType> = import.meta.hot?.data.currentView ?? atom("code");
+  unsavedFiles: WritableAtom<Set<string>> =
+    import.meta.hot?.data.unsavedFiles ?? atom(new Set<string>());
   modifiedFiles = new Set<string>();
   artifactIdList: string[] = [];
 
@@ -98,7 +109,7 @@ export class WorkbenchStore {
     if (this.#filesStore.filesCount > 0 && this.currentDocument.get() === undefined) {
       // we find the first file and select it
       for (const [filePath, dirent] of Object.entries(files)) {
-        if (dirent?.type === 'file') {
+        if (dirent?.type === "file") {
           this.setSelectedFile(filePath);
           break;
         }
@@ -244,7 +255,7 @@ export class WorkbenchStore {
     const artifact = this.#getArtifact(messageId);
 
     if (!artifact) {
-      unreachable('Artifact not found');
+      unreachable("Artifact not found");
     }
 
     this.artifacts.setKey(messageId, { ...artifact, closed: true });
@@ -264,7 +275,7 @@ export class WorkbenchStore {
     const artifact = this.#getArtifact(messageId);
 
     if (!artifact) {
-      unreachable('Artifact not found');
+      unreachable("Artifact not found");
     }
 
     const task: CodeTask = {
@@ -281,7 +292,7 @@ export class WorkbenchStore {
     const artifact = this.#getArtifact(messageId);
 
     if (!artifact) {
-      unreachable('Artifact not found');
+      unreachable("Artifact not found");
     }
 
     if (this.devServerRunning.get()) {
@@ -305,7 +316,7 @@ export class WorkbenchStore {
     const artifact = this.#getArtifact(messageId);
 
     if (!artifact) {
-      unreachable('Artifact not found');
+      unreachable("Artifact not found");
     }
 
     artifact.runner.setActionStatus(actionId, status);
@@ -317,7 +328,7 @@ export class WorkbenchStore {
     const artifact = this.#getArtifact(messageId);
 
     if (!artifact) {
-      unreachable('Artifact not found');
+      unreachable("Artifact not found");
     }
 
     artifact.runner.addAction(data.task);
@@ -327,10 +338,10 @@ export class WorkbenchStore {
     const { messageId } = data;
 
     const artifact = this.#getArtifact(messageId);
-    const artifacts = this.artifacts
+    const artifacts = this.artifacts;
 
     if (!artifact) {
-      unreachable('Artifact not found');
+      unreachable("Artifact not found");
     }
 
     artifact.runner.runAction(data.task);
