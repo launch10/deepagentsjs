@@ -1,4 +1,4 @@
-import { map } from 'nanostores';
+import { map } from "nanostores";
 
 // Define an interface for the page store's state
 export interface PageState {

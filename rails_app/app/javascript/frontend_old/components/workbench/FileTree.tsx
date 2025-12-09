@@ -1,9 +1,9 @@
-import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { FileMap } from '@stores/files';
-import { classNames } from '@utils/classNames';
-import { createScopedLogger, renderLogger } from '@utils/logger';
+import { memo, useEffect, useMemo, useState, type ReactNode } from "react";
+import type { FileMap } from "@stores/files";
+import { classNames } from "@utils/classNames";
+import { createScopedLogger, renderLogger } from "@utils/logger";
 
-const logger = createScopedLogger('FileTree');
+const logger = createScopedLogger("FileTree");
 
 const NODE_PADDING_LEFT = 8;
 const DEFAULT_HIDDEN_FILES = [/\/node_modules\//, /\/\.next/, /\/\.astro/];
@@ -34,9 +34,12 @@ export const FileTree = memo(
     className,
     unsavedFiles,
   }: Props) => {
-    renderLogger.trace('FileTree');
+    renderLogger.trace("FileTree");
 
-    const computedHiddenFiles = useMemo(() => [...DEFAULT_HIDDEN_FILES, ...(hiddenFiles ?? [])], [hiddenFiles]);
+    const computedHiddenFiles = useMemo(
+      () => [...DEFAULT_HIDDEN_FILES, ...(hiddenFiles ?? [])],
+      [hiddenFiles]
+    );
 
     const fileList = useMemo(() => {
       return buildFileList(files, rootFolder, hideRoot, computedHiddenFiles);
@@ -44,13 +47,15 @@ export const FileTree = memo(
 
     const [collapsedFolders, setCollapsedFolders] = useState(() => {
       return collapsed
-        ? new Set(fileList.filter((item) => item.kind === 'folder').map((item) => item.fullPath))
+        ? new Set(fileList.filter((item) => item.kind === "folder").map((item) => item.fullPath))
         : new Set<string>();
     });
 
     useEffect(() => {
       if (collapsed) {
-        setCollapsedFolders(new Set(fileList.filter((item) => item.kind === 'folder').map((item) => item.fullPath)));
+        setCollapsedFolders(
+          new Set(fileList.filter((item) => item.kind === "folder").map((item) => item.fullPath))
+        );
         return;
       }
 
@@ -58,7 +63,7 @@ export const FileTree = memo(
         const newCollapsed = new Set<string>();
 
         for (const folder of fileList) {
-          if (folder.kind === 'folder' && prevCollapsed.has(folder.fullPath)) {
+          if (folder.kind === "folder" && prevCollapsed.has(folder.fullPath)) {
             newCollapsed.add(folder.fullPath);
           }
         }
@@ -111,10 +116,10 @@ export const FileTree = memo(
     };
 
     return (
-      <div className={classNames('text-sm', className)}>
+      <div className={classNames("text-sm", className)}>
         {filteredFileList.map((fileOrFolder) => {
           switch (fileOrFolder.kind) {
-            case 'file': {
+            case "file": {
               return (
                 <File
                   key={fileOrFolder.id}
@@ -127,7 +132,7 @@ export const FileTree = memo(
                 />
               );
             }
-            case 'folder': {
+            case "folder": {
               return (
                 <Folder
                   key={fileOrFolder.id}
@@ -147,7 +152,7 @@ export const FileTree = memo(
         })}
       </div>
     );
-  },
+  }
 );
 
 export default FileTree;
@@ -162,15 +167,15 @@ interface FolderProps {
 function Folder({ folder: { depth, name }, collapsed, selected = false, onClick }: FolderProps) {
   return (
     <NodeButton
-      className={classNames('group', {
-        'bg-transparent text-bolt-elements-item-contentDefault hover:text-bolt-elements-item-contentActive hover:bg-bolt-elements-item-backgroundActive':
+      className={classNames("group", {
+        "bg-transparent text-bolt-elements-item-contentDefault hover:text-bolt-elements-item-contentActive hover:bg-bolt-elements-item-backgroundActive":
           !selected,
-        'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent': selected,
+        "bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent": selected,
       })}
       depth={depth}
       iconClasses={classNames({
-        'i-ph:caret-right scale-98': collapsed,
-        'i-ph:caret-down scale-98': !collapsed,
+        "i-ph:caret-right scale-98": collapsed,
+        "i-ph:caret-down scale-98": !collapsed,
       })}
       onClick={onClick}
     >
@@ -189,19 +194,20 @@ interface FileProps {
 function File({ file: { depth, name }, onClick, selected, unsavedChanges = false }: FileProps) {
   return (
     <NodeButton
-      className={classNames('group', {
-        'bg-transparent hover:bg-bolt-elements-item-backgroundActive text-bolt-elements-item-contentDefault': !selected,
-        'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent': selected,
+      className={classNames("group", {
+        "bg-transparent hover:bg-bolt-elements-item-backgroundActive text-bolt-elements-item-contentDefault":
+          !selected,
+        "bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent": selected,
       })}
       depth={depth}
-      iconClasses={classNames('i-ph:file-duotone scale-98', {
-        'group-hover:text-bolt-elements-item-contentActive': !selected,
+      iconClasses={classNames("i-ph:file-duotone scale-98", {
+        "group-hover:text-bolt-elements-item-contentActive": !selected,
       })}
       onClick={onClick}
     >
       <div
-        className={classNames('flex items-center', {
-          'group-hover:text-bolt-elements-item-contentActive': !selected,
+        className={classNames("flex items-center", {
+          "group-hover:text-bolt-elements-item-contentActive": !selected,
         })}
       >
         <div className="flex-1 truncate pr-2">{name}</div>
@@ -223,13 +229,13 @@ function NodeButton({ depth, iconClasses, onClick, className, children }: Button
   return (
     <button
       className={classNames(
-        'flex items-center gap-1.5 w-full pr-2 border-2 border-transparent text-faded py-0.5',
-        className,
+        "flex items-center gap-1.5 w-full pr-2 border-2 border-transparent text-faded py-0.5",
+        className
       )}
       style={{ paddingLeft: `${6 + depth * NODE_PADDING_LEFT}px` }}
       onClick={() => onClick?.()}
     >
-      <div className={classNames('scale-120 shrink-0', iconClasses)}></div>
+      <div className={classNames("scale-120 shrink-0", iconClasses)}></div>
       <div className="truncate w-full text-left">{children}</div>
     </button>
   );
@@ -245,38 +251,38 @@ interface BaseNode {
 }
 
 interface FileNode extends BaseNode {
-  kind: 'file';
+  kind: "file";
 }
 
 interface FolderNode extends BaseNode {
-  kind: 'folder';
+  kind: "folder";
 }
 
 function buildFileList(
   files: FileMap,
-  rootFolder = '/',
+  rootFolder = "/",
   hideRoot: boolean,
-  hiddenFiles: Array<string | RegExp>,
+  hiddenFiles: Array<string | RegExp>
 ): Node[] {
   const folderPaths = new Set<string>();
   const fileList: Node[] = [];
 
   let defaultDepth = 0;
 
-  if (rootFolder === '/' && !hideRoot) {
+  if (rootFolder === "/" && !hideRoot) {
     defaultDepth = 1;
-    fileList.push({ kind: 'folder', name: '/', depth: 0, id: 0, fullPath: '/' });
+    fileList.push({ kind: "folder", name: "/", depth: 0, id: 0, fullPath: "/" });
   }
 
   for (const [filePath, dirent] of Object.entries(files)) {
-    const segments = filePath.split('/').filter((segment) => segment);
+    const segments = filePath.split("/").filter((segment) => segment);
     const fileName = segments.at(-1);
 
     if (!fileName || isHiddenFile(filePath, fileName, hiddenFiles)) {
       continue;
     }
 
-    let currentPath = '';
+    let currentPath = "";
 
     let i = 0;
     let depth = 0;
@@ -290,9 +296,9 @@ function buildFileList(
         continue;
       }
 
-      if (i === segments.length - 1 && dirent?.type === 'file') {
+      if (i === segments.length - 1 && dirent?.type === "file") {
         fileList.push({
-          kind: 'file',
+          kind: "file",
           id: fileList.length,
           name,
           fullPath,
@@ -302,7 +308,7 @@ function buildFileList(
         folderPaths.add(fullPath);
 
         fileList.push({
-          kind: 'folder',
+          kind: "folder",
           id: fileList.length,
           name,
           fullPath,
@@ -320,7 +326,7 @@ function buildFileList(
 
 function isHiddenFile(filePath: string, fileName: string, hiddenFiles: Array<string | RegExp>) {
   return hiddenFiles.some((pathOrRegex) => {
-    if (typeof pathOrRegex === 'string') {
+    if (typeof pathOrRegex === "string") {
       return fileName === pathOrRegex;
     }
 
@@ -342,7 +348,7 @@ function isHiddenFile(filePath: string, fileName: string, hiddenFiles: Array<str
  * @returns A new array of nodes sorted in depth-first order.
  */
 function sortFileList(rootFolder: string, nodeList: Node[], hideRoot: boolean): Node[] {
-  logger.trace('sortFileList');
+  logger.trace("sortFileList");
 
   const nodeMap = new Map<string, Node>();
   const childrenMap = new Map<string, Node[]>();
@@ -353,9 +359,9 @@ function sortFileList(rootFolder: string, nodeList: Node[], hideRoot: boolean): 
   for (const node of nodeList) {
     nodeMap.set(node.fullPath, node);
 
-    const parentPath = node.fullPath.slice(0, node.fullPath.lastIndexOf('/'));
+    const parentPath = node.fullPath.slice(0, node.fullPath.lastIndexOf("/"));
 
-    if (parentPath !== rootFolder.slice(0, rootFolder.lastIndexOf('/'))) {
+    if (parentPath !== rootFolder.slice(0, rootFolder.lastIndexOf("/"))) {
       if (!childrenMap.has(parentPath)) {
         childrenMap.set(parentPath, []);
       }
@@ -377,7 +383,7 @@ function sortFileList(rootFolder: string, nodeList: Node[], hideRoot: boolean): 
 
     if (children) {
       for (const child of children) {
-        if (child.kind === 'folder') {
+        if (child.kind === "folder") {
           depthFirstTraversal(child.fullPath);
         } else {
           sortedList.push(child);
@@ -402,8 +408,8 @@ function sortFileList(rootFolder: string, nodeList: Node[], hideRoot: boolean): 
 
 function compareNodes(a: Node, b: Node): number {
   if (a.kind !== b.kind) {
-    return a.kind === 'folder' ? -1 : 1;
+    return a.kind === "folder" ? -1 : 1;
   }
 
-  return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+  return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
 }

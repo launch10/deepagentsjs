@@ -1,73 +1,64 @@
-import { useEffect } from 'react';
-import { useLanggraph } from 'langgraph-ai-sdk-react';
-import type { BrainstormBridgeType } from '@shared';
-import { 
-    useBrainstormStore, 
-    selectJwt, 
-    selectLanggraphPath, 
-    selectThreadId 
-} from '../stores/brainstormStore';
+import { useEffect } from "react";
+import { useLanggraph } from "langgraph-ai-sdk-react";
+import type { BrainstormBridgeType } from "@shared";
+import {
+  useBrainstormStore,
+  selectJwt,
+  selectLanggraphPath,
+  selectThreadId,
+} from "../stores/brainstormStore";
 
 export function useBrainstormChat() {
-    const jwt = useBrainstormStore(selectJwt);
-    const langgraphPath = useBrainstormStore(selectLanggraphPath);
-    const initialThreadId = useBrainstormStore(selectThreadId);
-    
-    const updateFromGraph = useBrainstormStore((s) => s.updateFromGraph);
-    const setMessages = useBrainstormStore((s) => s.setMessages);
-    const setStatus = useBrainstormStore((s) => s.setStatus);
-    const setIsLoadingHistory = useBrainstormStore((s) => s.setIsLoadingHistory);
-    const setThreadId = useBrainstormStore((s) => s.setThreadId);
+  const jwt = useBrainstormStore(selectJwt);
+  const langgraphPath = useBrainstormStore(selectLanggraphPath);
+  const initialThreadId = useBrainstormStore(selectThreadId);
 
-    const url = langgraphPath 
-        ? new URL('api/brainstorm/stream', langgraphPath).toString() 
-        : '';
+  const updateFromGraph = useBrainstormStore((s) => s.updateFromGraph);
+  const setMessages = useBrainstormStore((s) => s.setMessages);
+  const setStatus = useBrainstormStore((s) => s.setStatus);
+  const setIsLoadingHistory = useBrainstormStore((s) => s.setIsLoadingHistory);
+  const setThreadId = useBrainstormStore((s) => s.setThreadId);
 
-    const { 
-        messages, 
-        sendMessage, 
-        updateState,
-        status, 
-        state, 
-        threadId, 
-        isLoadingHistory 
-    } = useLanggraph<BrainstormBridgeType>({
-        api: url,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${jwt}`,
-        },
-        getInitialThreadId: () => initialThreadId || undefined,
+  const url = langgraphPath ? new URL("api/brainstorm/stream", langgraphPath).toString() : "";
+
+  const { messages, sendMessage, updateState, status, state, threadId, isLoadingHistory } =
+    useLanggraph<BrainstormBridgeType>({
+      api: url,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      getInitialThreadId: () => initialThreadId || undefined,
     });
 
-    useEffect(() => {
-        if (state) {
-            updateFromGraph(state);
-        }
-    }, [state, updateFromGraph]);
+  useEffect(() => {
+    if (state) {
+      updateFromGraph(state);
+    }
+  }, [state, updateFromGraph]);
 
-    useEffect(() => {
-        setMessages(messages);
-    }, [messages, setMessages]);
+  useEffect(() => {
+    setMessages(messages);
+  }, [messages, setMessages]);
 
-    useEffect(() => {
-        setStatus(status);
-    }, [status, setStatus]);
+  useEffect(() => {
+    setStatus(status);
+  }, [status, setStatus]);
 
-    useEffect(() => {
-        setIsLoadingHistory(isLoadingHistory);
-    }, [isLoadingHistory, setIsLoadingHistory]);
+  useEffect(() => {
+    setIsLoadingHistory(isLoadingHistory);
+  }, [isLoadingHistory, setIsLoadingHistory]);
 
-    useEffect(() => {
-        if (threadId && threadId !== initialThreadId) {
-            console.log(`setting thread id to ${threadId}`);
-            setThreadId(threadId);
-        }
-    }, [threadId, initialThreadId, setThreadId]);
+  useEffect(() => {
+    if (threadId && threadId !== initialThreadId) {
+      console.log(`setting thread id to ${threadId}`);
+      setThreadId(threadId);
+    }
+  }, [threadId, initialThreadId, setThreadId]);
 
-    return {
-        sendMessage,
-        threadId,
-        updateState,
-    };
+  return {
+    sendMessage,
+    threadId,
+    updateState,
+  };
 }

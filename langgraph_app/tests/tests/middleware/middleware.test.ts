@@ -1,24 +1,24 @@
-import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
-import { MemorySaver, Send } from '@langchain/langgraph';
-import { ErrorReporters } from '@core';
-import { getNodeContext, NodeMiddleware, NodeMiddlewareFactory, NodeCache } from '@core';
+import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from "vitest";
+import { MemorySaver, Send } from "@langchain/langgraph";
+import { ErrorReporters } from "@core";
+import { getNodeContext, NodeMiddleware, NodeMiddlewareFactory, NodeCache } from "@core";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { StateGraph } from "@langchain/langgraph";
 import { Annotation } from "@langchain/langgraph";
 import { getLLM, LLMManager } from "@core";
 import { kebabCase } from "change-case";
-import * as fs from 'fs';
-import * as path from 'path';
-import { testGraph } from '@support';
-import { BaseAnnotation } from 'app/annotation/base';
+import * as fs from "fs";
+import * as path from "path";
+import { testGraph } from "@support";
+import { BaseAnnotation } from "app/annotation/base";
 
 const getNodeName = () => {
-    const context = getNodeContext();
-    if (!context) throw new Error('No context found');
-    return context.name;
+  const context = getNodeContext();
+  if (!context) throw new Error("No context found");
+  return context.name;
 };
 
-describe('Node Core', () => {
+describe("Node Core", () => {
   // These are the only tests in the application where we actually want
   // to test the NodeCache middleware, otherwise we want to use Polly/fixtures
   beforeAll(async () => {
@@ -30,90 +30,92 @@ describe('Node Core', () => {
   });
 
   afterEach(async () => {
-      LLMManager.resetTestResponses();
-      await NodeCache.clear();
-  })
+    LLMManager.resetTestResponses();
+    await NodeCache.clear();
+  });
 
-  describe('Middlewares', () => {
-    it('applies middlewares in order of addMiddleware calls', async () => {
+  describe("Middlewares", () => {
+    it("applies middlewares in order of addMiddleware calls", async () => {
       const executionOrder: string[] = [];
 
       const middlewareA = (node: any) => {
         return async (state: any, config: LangGraphRunnableConfig) => {
-          executionOrder.push('A-before');
+          executionOrder.push("A-before");
           const result = await node(state, config);
-          executionOrder.push('A-after');
+          executionOrder.push("A-after");
           return result;
         };
       };
 
       const middlewareB = (node: any) => {
         return async (state: any, config: LangGraphRunnableConfig) => {
-          executionOrder.push('B-before');
+          executionOrder.push("B-before");
           const result = await node(state, config);
-          executionOrder.push('B-after');
+          executionOrder.push("B-after");
           return result;
         };
       };
 
       const middlewareC = (node: any) => {
         return async (state: any, config: LangGraphRunnableConfig) => {
-          executionOrder.push('C-before');
+          executionOrder.push("C-before");
           const result = await node(state, config);
-          executionOrder.push('C-after');
+          executionOrder.push("C-after");
           return result;
         };
       };
 
       const testMiddleware = new NodeMiddlewareFactory()
-        .addMiddleware('A', middlewareA)
-        .addMiddleware('C', middlewareC)
-        .addMiddleware('B', middlewareB)
+        .addMiddleware("A", middlewareA)
+        .addMiddleware("C", middlewareC)
+        .addMiddleware("B", middlewareB);
 
-      const node = testMiddleware.use(
-        {},
-        async (state: any, config: LangGraphRunnableConfig) => {
-          executionOrder.push('node');
-          return {};
-        }
-      );
+      const node = testMiddleware.use({}, async (state: any, config: LangGraphRunnableConfig) => {
+        executionOrder.push("node");
+        return {};
+      });
 
       const graph = new StateGraph(Annotation.Root({}))
-        .addNode('testNode', node)
-        .addEdge('__start__', 'testNode')
-        .addEdge('testNode', '__end__')
+        .addNode("testNode", node)
+        .addEdge("__start__", "testNode")
+        .addEdge("testNode", "__end__")
         .compile();
 
       await graph.invoke({});
 
-      expect(executionOrder).toEqual(['A-before', 'C-before', 'B-before', 'node', 'B-after', 'C-after', 'A-after']);
+      expect(executionOrder).toEqual([
+        "A-before",
+        "C-before",
+        "B-before",
+        "node",
+        "B-after",
+        "C-after",
+        "A-after",
+      ]);
     });
 
-    it('decorates context', async () => {
+    it("decorates context", async () => {
       let nodeName: string | undefined;
 
-      const node = NodeMiddleware.use(
-        {},
-        async  (state: any, config: LangGraphRunnableConfig) => {
-            nodeName = getNodeName();
-            return {};
-        }
-      );
+      const node = NodeMiddleware.use({}, async (state: any, config: LangGraphRunnableConfig) => {
+        nodeName = getNodeName();
+        return {};
+      });
 
-      const graph = new StateGraph(Annotation.Root({ }))
-        .addNode('fancyPantsNode', node)
+      const graph = new StateGraph(Annotation.Root({}))
+        .addNode("fancyPantsNode", node)
         .addEdge("__start__", "fancyPantsNode")
         .addEdge("fancyPantsNode", "__end__")
         .compile();
 
       await graph.invoke({});
-        
-      expect(nodeName).toBe('fancyPantsNode');
+
+      expect(nodeName).toBe("fancyPantsNode");
     });
 
-    it('decorates notifications', async () => {
-      let graphName = 'test-graph';
-      let nodeName = 'notificationNode';      
+    it("decorates notifications", async () => {
+      let graphName = "test-graph";
+      let nodeName = "notificationNode";
 
       LLMManager.configureFixtures({
         [graphName]: {
@@ -122,27 +124,27 @@ describe('Node Core', () => {
       });
 
       const node = NodeMiddleware.use(
-        { notifications: { taskName: 'Any Task Name I Want' } },
+        { notifications: { taskName: "Any Task Name I Want" } },
         async (state: any, config: LangGraphRunnableConfig) => {
-          const output = await getLLM().invoke("Hello")
-          return {}
+          const output = await getLLM().invoke("Hello");
+          return {};
         }
-      )
+      );
 
-      const graph = new StateGraph(Annotation.Root({ }))
-        .addNode('notificationNode', node)
+      const graph = new StateGraph(Annotation.Root({}))
+        .addNode("notificationNode", node)
         .addEdge("__start__", "notificationNode")
         .addEdge("notificationNode", "__end__")
         .compile({ name: graphName });
 
-      const stream = await graph.stream({}, { 
+      const stream = await graph.stream({}, {
         context: {
           graphName: graphName,
         },
-        streamMode: ['custom'] 
+        streamMode: ["custom"],
       } as any);
 
-      let collectedEvents = []
+      let collectedEvents = [];
       for await (const chunk of stream) {
         const chunkArray = chunk as [string, any];
         let kind: string;
@@ -174,124 +176,132 @@ describe('Node Core', () => {
     });
 
     describe("Error Handling", () => {
-        it('bubbles up errors by default', async () => {
-          let nodeName: string | undefined;
-          let Rollbar = { log: (error: Error) => console.log(error), error: (error: Error) => console.warn(error) }
-          let calls = {errorNode: 0, downStreamNode: 0};
+      it("bubbles up errors by default", async () => {
+        let nodeName: string | undefined;
+        let Rollbar = {
+          log: (error: Error) => console.log(error),
+          error: (error: Error) => console.warn(error),
+        };
+        let calls = { errorNode: 0, downStreamNode: 0 };
 
-          const spy = vi.spyOn(console, 'error');
-          const rollbarSpy = vi.spyOn(Rollbar, 'error');
+        const spy = vi.spyOn(console, "error");
+        const rollbarSpy = vi.spyOn(Rollbar, "error");
 
-          ErrorReporters.addReporter('console')
-                        .addReporter('rollbar', Rollbar.error);
-            
-          const errorNode = NodeMiddleware.use(
-            {},
-            async (state: any, config: LangGraphRunnableConfig) => {
-                calls['errorNode']++;
-                nodeName = getNodeName();
-                throw new Error('Test error');
-            }
-          )
+        ErrorReporters.addReporter("console").addReporter("rollbar", Rollbar.error);
 
-          const downStreamNode = NodeMiddleware.use(
-            {},
-            async (state: any, config: LangGraphRunnableConfig) => {
-                calls['downStreamNode']++;
-                nodeName = getNodeName();
-                throw new Error('Test error');
-            }
-          )
+        const errorNode = NodeMiddleware.use(
+          {},
+          async (state: any, config: LangGraphRunnableConfig) => {
+            calls["errorNode"]++;
+            nodeName = getNodeName();
+            throw new Error("Test error");
+          }
+        );
 
-          const graph = new StateGraph(Annotation.Root({ error: Annotation<{ message: string, node: string } | undefined>() }))
-            .addNode('errorNode', errorNode)
-            .addNode('downStreamNode', downStreamNode)
-            .addEdge("__start__", "errorNode")
-            .addEdge("errorNode", "downStreamNode")
-            .addEdge("downStreamNode", "__end__")
-            .compile();
+        const downStreamNode = NodeMiddleware.use(
+          {},
+          async (state: any, config: LangGraphRunnableConfig) => {
+            calls["downStreamNode"]++;
+            nodeName = getNodeName();
+            throw new Error("Test error");
+          }
+        );
 
-          const state = await graph.invoke({});
-          expect(state.error).toEqual({
-            message: 'Test error',
-            node: 'errorNode'
-          })
-          expect(calls).toEqual({
-            errorNode: 1,
-            downStreamNode: 0
-          })
+        const graph = new StateGraph(
+          Annotation.Root({ error: Annotation<{ message: string; node: string } | undefined>() })
+        )
+          .addNode("errorNode", errorNode)
+          .addNode("downStreamNode", downStreamNode)
+          .addEdge("__start__", "errorNode")
+          .addEdge("errorNode", "downStreamNode")
+          .addEdge("downStreamNode", "__end__")
+          .compile();
 
-          expect(spy).toHaveBeenCalled();
-          expect(spy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
-
-          expect(rollbarSpy).toHaveBeenCalled();
-          expect(rollbarSpy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
-
-          expect(nodeName).toBe('errorNode');
+        const state = await graph.invoke({});
+        expect(state.error).toEqual({
+          message: "Test error",
+          node: "errorNode",
+        });
+        expect(calls).toEqual({
+          errorNode: 1,
+          downStreamNode: 0,
         });
 
-        it('throws when behavior is throw', async () => {
-          let nodeName: string | undefined;
-          let Rollbar = { log: (error: Error) => console.log(error), error: (error: Error) => console.warn(error) }
-          let calls = {errorNode: 0, downStreamNode: 0};
+        expect(spy).toHaveBeenCalled();
+        expect(spy).toHaveBeenCalledWith(expect.objectContaining({ message: "Test error" }));
 
-          const spy = vi.spyOn(console, 'error');
-          const rollbarSpy = vi.spyOn(Rollbar, 'error');
+        expect(rollbarSpy).toHaveBeenCalled();
+        expect(rollbarSpy).toHaveBeenCalledWith(expect.objectContaining({ message: "Test error" }));
 
-          ErrorReporters.addReporter('console')
-                        .addReporter('rollbar', Rollbar.error);
-            
-          const errorNode = NodeMiddleware.use(
-            { error: { behavior: 'throw' } },
-            async (state: any, config: LangGraphRunnableConfig) => {
-                calls['errorNode']++;
-                nodeName = getNodeName();
-                throw new Error('Test error');
-            }
-          )
+        expect(nodeName).toBe("errorNode");
+      });
 
-          const downStreamNode = NodeMiddleware.use(
-            {},
-            async (_: any, _config: LangGraphRunnableConfig) => {
-                calls['downStreamNode']++;
-                nodeName = getNodeName();
-                return {}
-            }
-          )
+      it("throws when behavior is throw", async () => {
+        let nodeName: string | undefined;
+        let Rollbar = {
+          log: (error: Error) => console.log(error),
+          error: (error: Error) => console.warn(error),
+        };
+        let calls = { errorNode: 0, downStreamNode: 0 };
 
-          const graph = new StateGraph(Annotation.Root({ error: Annotation<{ message: string, node: string } | undefined>() }))
-            .addNode('errorNode', errorNode)
-            .addNode('downStreamNode', downStreamNode)
-            .addEdge("__start__", "errorNode")
-            .addEdge("errorNode", "downStreamNode")
-            .addEdge("downStreamNode", "__end__")
-            .compile();
+        const spy = vi.spyOn(console, "error");
+        const rollbarSpy = vi.spyOn(Rollbar, "error");
 
-          await expect(graph.invoke({})).rejects.toThrow('Test error');
+        ErrorReporters.addReporter("console").addReporter("rollbar", Rollbar.error);
 
-          expect(calls).toEqual({
-            errorNode: 1,
-            downStreamNode: 0
-          })
+        const errorNode = NodeMiddleware.use(
+          { error: { behavior: "throw" } },
+          async (state: any, config: LangGraphRunnableConfig) => {
+            calls["errorNode"]++;
+            nodeName = getNodeName();
+            throw new Error("Test error");
+          }
+        );
 
-          expect(spy).toHaveBeenCalled();
-          expect(spy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
+        const downStreamNode = NodeMiddleware.use(
+          {},
+          async (_: any, _config: LangGraphRunnableConfig) => {
+            calls["downStreamNode"]++;
+            nodeName = getNodeName();
+            return {};
+          }
+        );
 
-          expect(rollbarSpy).toHaveBeenCalled();
-          expect(rollbarSpy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Test error' }));
+        const graph = new StateGraph(
+          Annotation.Root({ error: Annotation<{ message: string; node: string } | undefined>() })
+        )
+          .addNode("errorNode", errorNode)
+          .addNode("downStreamNode", downStreamNode)
+          .addEdge("__start__", "errorNode")
+          .addEdge("errorNode", "downStreamNode")
+          .addEdge("downStreamNode", "__end__")
+          .compile();
 
-          expect(nodeName).toBe('errorNode');
+        await expect(graph.invoke({})).rejects.toThrow("Test error");
+
+        expect(calls).toEqual({
+          errorNode: 1,
+          downStreamNode: 0,
         });
+
+        expect(spy).toHaveBeenCalled();
+        expect(spy).toHaveBeenCalledWith(expect.objectContaining({ message: "Test error" }));
+
+        expect(rollbarSpy).toHaveBeenCalled();
+        expect(rollbarSpy).toHaveBeenCalledWith(expect.objectContaining({ message: "Test error" }));
+
+        expect(nodeName).toBe("errorNode");
+      });
     });
 
-    describe('Polly HTTP Recording', () => {
+    describe("Polly HTTP Recording", () => {
       const getRecordingPath = (nodeName: string) => {
-        const recordingsDir = path.join(process.cwd(), 'tests', 'recordings');
+        const recordingsDir = path.join(process.cwd(), "tests", "recordings");
         const dirs = fs.readdirSync(recordingsDir);
-        const recordingFile = dirs.find(dir => {
-          return dir.startsWith(kebabCase(nodeName))
+        const recordingFile = dirs.find((dir) => {
+          return dir.startsWith(kebabCase(nodeName));
         });
-        return recordingFile ? path.join(recordingsDir, recordingFile, 'recording.har') : null;
+        return recordingFile ? path.join(recordingsDir, recordingFile, "recording.har") : null;
       };
 
       const cleanupRecording = (nodeName: string) => {
@@ -302,19 +312,16 @@ describe('Node Core', () => {
       };
 
       // Skip for speed, but technically this is a valid test
-      it.skip('records and replays HTTP requests', async () => {
-        let graphName = 'polly-test-graph';
-        let nodeName = 'polly-node';
+      it.skip("records and replays HTTP requests", async () => {
+        let graphName = "polly-test-graph";
+        let nodeName = "polly-node";
 
         cleanupRecording(nodeName);
 
-        const node = NodeMiddleware.use(
-          { },
-          async (state: any, config: LangGraphRunnableConfig) => {
-            const output = await getLLM().invoke("Test prompt");
-            return { result: output.content };
-          }
-        );
+        const node = NodeMiddleware.use({}, async (state: any, config: LangGraphRunnableConfig) => {
+          const output = await getLLM().invoke("Test prompt");
+          return { result: output.content };
+        });
 
         const graph = new StateGraph(Annotation.Root({ result: Annotation<string | undefined>() }))
           .addNode(nodeName, node)
@@ -332,14 +339,14 @@ describe('Node Core', () => {
         expect(recordingPath).not.toBeNull();
         expect(fs.existsSync(recordingPath!)).toBe(true);
 
-        const recordingContent = fs.readFileSync(recordingPath!, 'utf-8');
+        const recordingContent = fs.readFileSync(recordingPath!, "utf-8");
         const recording = JSON.parse(recordingContent);
         expect(recording.log.entries.length).toBeGreaterThan(0);
       });
 
-      it('does not hit polly when LLM Manager has fixtures configured', async () => {
-        let graphName = 'no-polly-graph';
-        let nodeName = 'noPollyNode';
+      it("does not hit polly when LLM Manager has fixtures configured", async () => {
+        let graphName = "no-polly-graph";
+        let nodeName = "noPollyNode";
 
         cleanupRecording(nodeName);
 
@@ -349,13 +356,10 @@ describe('Node Core', () => {
           },
         });
 
-        const node = NodeMiddleware.use(
-          { },
-          async (state: any, config: LangGraphRunnableConfig) => {
-            const output = await getLLM().invoke("Test prompt");
-            return { result: output.content };
-          }
-        );
+        const node = NodeMiddleware.use({}, async (state: any, config: LangGraphRunnableConfig) => {
+          const output = await getLLM().invoke("Test prompt");
+          return { result: output.content };
+        });
 
         const graph = new StateGraph(Annotation.Root({ result: Annotation<string | undefined>() }))
           .addNode(nodeName, node)
@@ -376,94 +380,94 @@ describe('Node Core', () => {
       });
     });
 
-    describe('Interrupts', () => {
-      it('stops execution after the specified node', async () => {
+    describe("Interrupts", () => {
+      it("stops execution after the specified node", async () => {
         const StateAnnotation = Annotation.Root({
           ...BaseAnnotation.spec,
           completed: Annotation<string[]>({
-            reducer: (state: string[] = [], update: string[]) => [...state, ...update]
-          })
+            reducer: (state: string[] = [], update: string[]) => [...state, ...update],
+          }),
         });
 
         const node1 = NodeMiddleware.use(
           {},
           async (state: any, config: LangGraphRunnableConfig) => {
-            return { completed: ['node1'] };
+            return { completed: ["node1"] };
           }
         );
 
         const node2 = NodeMiddleware.use(
           {},
           async (state: any, config: LangGraphRunnableConfig) => {
-            return { completed: [...state.completed, 'node2'] };
+            return { completed: [...state.completed, "node2"] };
           }
         );
 
         const node3 = NodeMiddleware.use(
           {},
           async (state: any, config: LangGraphRunnableConfig) => {
-            return { completed: [...state.completed, 'node3'] };
+            return { completed: [...state.completed, "node3"] };
           }
         );
 
         const graph = new StateGraph(StateAnnotation)
-          .addNode('firstNode', node1)
-          .addNode('secondNode', node2)
-          .addNode('thirdNode', node3)
-          .addEdge('__start__', 'firstNode')
-          .addEdge('firstNode', 'secondNode')
-          .addEdge('secondNode', 'thirdNode')
-          .addEdge('thirdNode', '__end__')
+          .addNode("firstNode", node1)
+          .addNode("secondNode", node2)
+          .addNode("thirdNode", node3)
+          .addEdge("__start__", "firstNode")
+          .addEdge("firstNode", "secondNode")
+          .addEdge("secondNode", "thirdNode")
+          .addEdge("thirdNode", "__end__")
           .compile({ checkpointer: new MemorySaver() });
 
         type StateType = typeof StateAnnotation.State;
         const result = await testGraph<StateType>()
           .withGraph(graph)
-          .withPrompt('Test interrupt')
-          .stopAfter('secondNode')
+          .withPrompt("Test interrupt")
+          .stopAfter("secondNode")
           .execute();
 
-        expect(result.state.completed).toEqual(['node1', 'node2']);
+        expect(result.state.completed).toEqual(["node1", "node2"]);
       });
 
-      it('interrupts correctly even when graph completes all nodes', async () => {
+      it("interrupts correctly even when graph completes all nodes", async () => {
         const StateAnnotation = Annotation.Root({
           ...BaseAnnotation.spec,
           steps: Annotation<string[]>({
-            reducer: (state: string[] = [], update: string[]) => [...state, ...update]
-          })
+            reducer: (state: string[] = [], update: string[]) => [...state, ...update],
+          }),
         });
 
         const node1 = NodeMiddleware.use(
           {},
           async (state: any, config: LangGraphRunnableConfig) => {
-            return { steps: ['step1'] };
+            return { steps: ["step1"] };
           }
         );
 
         const node2 = NodeMiddleware.use(
           {},
           async (state: any, config: LangGraphRunnableConfig) => {
-            return { steps: [...state.steps, 'step2'] };
+            return { steps: [...state.steps, "step2"] };
           }
         );
 
         const graph = new StateGraph(StateAnnotation)
-          .addNode('a', node1)
-          .addNode('b', node2)
-          .addEdge('__start__', 'a')
-          .addEdge('a', 'b')
-          .addEdge('b', '__end__')
+          .addNode("a", node1)
+          .addNode("b", node2)
+          .addEdge("__start__", "a")
+          .addEdge("a", "b")
+          .addEdge("b", "__end__")
           .compile({ checkpointer: new MemorySaver() });
 
         type StateType = typeof StateAnnotation.State;
         const result = await testGraph<StateType>()
           .withGraph(graph)
-          .withPrompt('Test')
-          .stopAfter('b')
+          .withPrompt("Test")
+          .stopAfter("b")
           .execute();
 
-        expect(result.state.steps).toEqual(['step1', 'step2']);
+        expect(result.state.steps).toEqual(["step1", "step2"]);
       });
     });
 
@@ -472,7 +476,7 @@ describe('Node Core', () => {
     //   NodeCache.clear();
 
     //   let executionCount = 0;
-      
+
     //   const StateAnnotation = Annotation.Root({
     //     userId: Annotation<string>,
     //     query: Annotation<string>,

@@ -1,5 +1,5 @@
 export const whereWeArePrompt = (state: any, config: any) => {
-    return `
+  return `
         <where_we_are>
             Users have already completed:
                 1. Brainstorming

@@ -16,8 +16,14 @@ import { type Message, isHumanMessage } from "@types";
  * chatHistory({ messages })
  * ```
  */
-export async function chatHistoryPrompt({ messages, limit }: { messages: Message[], limit?: number }): Promise<string> {
-  const allowedMessages = messages.filter((m) => typeof m.content === 'string')
+export async function chatHistoryPrompt({
+  messages,
+  limit,
+}: {
+  messages: Message[];
+  limit?: number;
+}): Promise<string> {
+  const allowedMessages = messages.filter((m) => typeof m.content === "string");
   let countExtraMessages = allowedMessages.length - (limit || 0);
   let filteredMessages = limit ? allowedMessages.slice(-limit) : allowedMessages;
   let messageElements = filteredMessages?.map((message) => {
@@ -29,7 +35,7 @@ export async function chatHistoryPrompt({ messages, limit }: { messages: Message
   if (countExtraMessages > 0) {
     messageElements.unshift(`\n  <message>... ${countExtraMessages} more messages...</message>`);
   }
-  
+
   // Don't use renderPrompt here - xml-formatter can reorder elements
-  return `<chat-history>${messageElements.join('')}\n</chat-history>`;
+  return `<chat-history>${messageElements.join("")}\n</chat-history>`;
 }

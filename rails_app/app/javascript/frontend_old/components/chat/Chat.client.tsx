@@ -1,134 +1,146 @@
-import { useStore } from '@nanostores/react';
-import { useAnimate } from 'framer-motion';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { cssTransition, toast, ToastContainer } from 'react-toastify';
-import { usePromptEnhancer, useShortcuts, useSnapScroll } from '@hooks/index';
-import { chatStore } from '@stores/chat';
-import { workbenchStore } from '@stores/workbench';
-import { fileModificationsToHTML } from '@utils/diff';
-import { cubicEasingFn } from '@utils/easings';
-import { createScopedLogger, renderLogger } from '@utils/logger';
-import { BaseChat } from './BaseChat';
-import { useLanggraphContext, type BackendEvent } from '@context/LanggraphContext';
-import { BaseMessage } from '@langchain/core/messages';
-import { CodeTaskAction, CodeTaskType, TaskStatus } from '@shared/models/codeTask';
-import type { CodeTask } from '@shared/models/codeTask';
-import type { FileData, FileMap } from '@shared/models/file';
-import type { ActionCore } from '@runtime/action-runner';
-import { convertFileMapToFileSystemTree, toFileMap } from '@webcontainer/file-system-utils';
-import { pageStore } from '@stores/page';
+import { useStore } from "@nanostores/react";
+import { useAnimate } from "framer-motion";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { cssTransition, toast, ToastContainer } from "react-toastify";
+import { usePromptEnhancer, useShortcuts, useSnapScroll } from "@hooks/index";
+import { chatStore } from "@stores/chat";
+import { workbenchStore } from "@stores/workbench";
+import { fileModificationsToHTML } from "@utils/diff";
+import { cubicEasingFn } from "@utils/easings";
+import { createScopedLogger, renderLogger } from "@utils/logger";
+import { BaseChat } from "./BaseChat";
+import { useLanggraphContext, type BackendEvent } from "@context/LanggraphContext";
+import { BaseMessage } from "@langchain/core/messages";
+import { CodeTaskAction, CodeTaskType, TaskStatus } from "@shared/models/codeTask";
+import type { CodeTask } from "@shared/models/codeTask";
+import type { FileData, FileMap } from "@shared/models/file";
+import type { ActionCore } from "@runtime/action-runner";
+import { convertFileMapToFileSystemTree, toFileMap } from "@webcontainer/file-system-utils";
+import { pageStore } from "@stores/page";
 
 const toastAnimation = cssTransition({
-  enter: 'animated fadeInRight',
-  exit: 'animated fadeOutRight',
+  enter: "animated fadeInRight",
+  exit: "animated fadeOutRight",
 });
 
-const logger = createScopedLogger('Chat');
+const logger = createScopedLogger("Chat");
 
 const buildAction = (task: CodeTask, messageId: string): ActionCore => {
-    return {
-        title: task.title,
-        task,
-        messageId,
-    };
+  return {
+    title: task.title,
+    task,
+    messageId,
+  };
 };
 
 const callbacks = {
-    onThreadChanged: (messageId: string) => {
-      logger.info('onThreadChanged', messageId);
-      workbenchStore.showWorkbench.set(true);
-    },
-    onMessageStart: (messageId: string) => {
-      logger.info('onMessageStart', messageId);
-      workbenchStore.addArtifact({
+  onThreadChanged: (messageId: string) => {
+    logger.info("onThreadChanged", messageId);
+    workbenchStore.showWorkbench.set(true);
+  },
+  onMessageStart: (messageId: string) => {
+    logger.info("onMessageStart", messageId);
+    workbenchStore.addArtifact({
+      messageId,
+      name: typeof messageId === "string" ? messageId.substr(0, 20) : "New Artifact",
+    });
+  },
+  onMessageEnd: (messageId: string) => {
+    logger.info("onMessageEnd", messageId);
+    workbenchStore.runDevServer(messageId);
+    workbenchStore.closeArtifact(messageId);
+  },
+  mountFiles: async (fileMap: FileMap, messageId: string) => {
+    if (!fileMap || Object.keys(fileMap).length === 0) {
+      logger.info("mountFiles: No files to mount");
+      return;
+    }
+    if (!messageId) {
+      logger.error("mountFiles: messageId is undefined");
+      return;
+    }
+    try {
+      const fileSystemTree = convertFileMapToFileSystemTree(fileMap);
+      logger.info(
+        "mountFiles: Converted FileMap to FileSystemTree for messageId:",
         messageId,
-        name: typeof messageId === 'string' ? messageId.substr(0, 20) : 'New Artifact',
-      });
-    },
-    onMessageEnd: (messageId: string) => {
-      logger.info('onMessageEnd', messageId);
-      workbenchStore.runDevServer(messageId);
-      workbenchStore.closeArtifact(messageId);
-    },
-    mountFiles: async (fileMap: FileMap, messageId: string) => {
-      if (!fileMap || Object.keys(fileMap).length === 0) {
-        logger.info('mountFiles: No files to mount');
-        return;
-      }
-      if (!messageId) {
-        logger.error('mountFiles: messageId is undefined');
-        return;
-      }
-      try {
-        const fileSystemTree = convertFileMapToFileSystemTree(fileMap);
-        logger.info('mountFiles: Converted FileMap to FileSystemTree for messageId:', messageId, fileSystemTree);
+        fileSystemTree
+      );
 
-        const mountTask: CodeTask = {
-          id: `${messageId}:mountFiles`,
-          title: "Loading template",
-          type: CodeTaskType.MOUNT_FILES,
-          status: TaskStatus.PENDING, 
-          action: CodeTaskAction.UPDATE, 
-          payload: { files: fileSystemTree }, 
-        };
+      const mountTask: CodeTask = {
+        id: `${messageId}:mountFiles`,
+        title: "Loading template",
+        type: CodeTaskType.MOUNT_FILES,
+        status: TaskStatus.PENDING,
+        action: CodeTaskAction.UPDATE,
+        payload: { files: fileSystemTree },
+      };
 
-        const action = buildAction(mountTask, messageId);
-        await workbenchStore.addAction(action); 
-        await workbenchStore.runAction(action);
-        logger.info('mountFiles: MOUNT_FILES action dispatched via workbenchStore for messageId:', messageId, action);
+      const action = buildAction(mountTask, messageId);
+      await workbenchStore.addAction(action);
+      await workbenchStore.runAction(action);
+      logger.info(
+        "mountFiles: MOUNT_FILES action dispatched via workbenchStore for messageId:",
+        messageId,
+        action
+      );
 
-        workbenchStore.installDependencies(messageId);
-      } catch (error) {
-        logger.error('mountFiles: Error processing or dispatching mount task for messageId:', messageId, error);
-      }
-    },
-    onCodeTask: (task: CodeTask, messageId: string) => {
-      logger.info('onCodeTask', JSON.stringify(buildAction(task, messageId)));
+      workbenchStore.installDependencies(messageId);
+    } catch (error) {
+      logger.error(
+        "mountFiles: Error processing or dispatching mount task for messageId:",
+        messageId,
+        error
+      );
+    }
+  },
+  onCodeTask: (task: CodeTask, messageId: string) => {
+    logger.info("onCodeTask", JSON.stringify(buildAction(task, messageId)));
 
-      workbenchStore.addAction(buildAction(task, messageId));
-      workbenchStore.runAction(buildAction(task, messageId));
-    },
-    onUpdateFile: (task: CodeTask, messageId: string) => {
-      logger.info('onWriteOpen', JSON.stringify(buildAction(task, messageId)));
+    workbenchStore.addAction(buildAction(task, messageId));
+    workbenchStore.runAction(buildAction(task, messageId));
+  },
+  onUpdateFile: (task: CodeTask, messageId: string) => {
+    logger.info("onWriteOpen", JSON.stringify(buildAction(task, messageId)));
 
-      workbenchStore.addAction(buildAction(task, messageId));
-      workbenchStore.runAction(buildAction(task, messageId));
-    },
-    onDeleteFile: (task: CodeTask, messageId: string) => {
-      logger.info('onWriteClose', JSON.stringify(buildAction(task, messageId)));
+    workbenchStore.addAction(buildAction(task, messageId));
+    workbenchStore.runAction(buildAction(task, messageId));
+  },
+  onDeleteFile: (task: CodeTask, messageId: string) => {
+    logger.info("onWriteClose", JSON.stringify(buildAction(task, messageId)));
 
-      workbenchStore.runAction(buildAction(task, messageId));
-    },
-    onRenameFile: (task: CodeTask, messageId: string) => {
-      logger.info('onRenameFile', JSON.stringify(buildAction(task, messageId)));
+    workbenchStore.runAction(buildAction(task, messageId));
+  },
+  onRenameFile: (task: CodeTask, messageId: string) => {
+    logger.info("onRenameFile", JSON.stringify(buildAction(task, messageId)));
 
-      workbenchStore.addAction(buildAction(task, messageId));
-    },
-    onAddDependency: (task: CodeTask, messageId: string) => {
-      logger.info('onAddDependency', JSON.stringify(task));
+    workbenchStore.addAction(buildAction(task, messageId));
+  },
+  onAddDependency: (task: CodeTask, messageId: string) => {
+    logger.info("onAddDependency", JSON.stringify(task));
 
-      workbenchStore.addAction(buildAction(task, messageId));
-    },
-    onRemoveDependency: (task: CodeTask, messageId: string) => {
-      logger.info('onRemoveDependency', JSON.stringify(task));
+    workbenchStore.addAction(buildAction(task, messageId));
+  },
+  onRemoveDependency: (task: CodeTask, messageId: string) => {
+    logger.info("onRemoveDependency", JSON.stringify(task));
 
-      workbenchStore.addAction(buildAction(task, messageId));
-    },
-    onBackendTaskStart: (task: CodeTask, messageId: string) => {
-      logger.info('onBackendTaskStart', JSON.stringify(task));
+    workbenchStore.addAction(buildAction(task, messageId));
+  },
+  onBackendTaskStart: (task: CodeTask, messageId: string) => {
+    logger.info("onBackendTaskStart", JSON.stringify(task));
 
-      workbenchStore.addAction(buildAction(task, messageId));
-      workbenchStore.setActionStatus(messageId, task.id, 'running');
-    },
-    onBackendTaskComplete: (task: CodeTask, messageId: string) => {
-      logger.info('onBackendTaskComplete', JSON.stringify(task));
+    workbenchStore.addAction(buildAction(task, messageId));
+    workbenchStore.setActionStatus(messageId, task.id, "running");
+  },
+  onBackendTaskComplete: (task: CodeTask, messageId: string) => {
+    logger.info("onBackendTaskComplete", JSON.stringify(task));
 
-      workbenchStore.setActionStatus(messageId, task.id, 'complete');
-    },
+    workbenchStore.setActionStatus(messageId, task.id, "complete");
+  },
 };
 
 export function Chat() {
-  renderLogger.trace('Chat');
+  renderLogger.trace("Chat");
 
   return (
     <>
@@ -146,11 +158,13 @@ export function Chat() {
            * @todo Handle more types if we need them. This may require extra color themes.
            */
           switch (type) {
-            case 'success': {
+            case "success": {
               return <div className="i-ph:check-bold text-bolt-elements-icon-success text-2xl" />;
             }
-            case 'error': {
-              return <div className="i-ph:warning-circle-bold text-bolt-elements-icon-error text-2xl" />;
+            case "error": {
+              return (
+                <div className="i-ph:warning-circle-bold text-bolt-elements-icon-error text-2xl" />
+              );
             }
           }
 
@@ -177,7 +191,7 @@ export const ChatImpl = () => {
   const { isLoading, messages, codeTasks, submit, stop, events } = useLanggraphContext();
   const { threadId: currentThreadId, pageId } = useStore(pageStore);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
   const workbenchClosed = workbenchStore.showWorkbench.get() === false;
   const enhancingPrompt = false;
   const promptEnhanced = false;
@@ -201,10 +215,10 @@ export const ChatImpl = () => {
     callbacks.onThreadChanged(currentThreadId);
   }, [currentThreadId]);
 
-  const humanMessages = messages.filter((m) => m.type == 'human');
+  const humanMessages = messages.filter((m) => m.type == "human");
   const mostRecentHumanMessage = humanMessages[humanMessages.length - 1];
   const isFirstMessage = humanMessages.length == 1;
-  const isReloadedThread = (pageId === currentThreadId);
+  const isReloadedThread = pageId === currentThreadId;
 
   useEffect(() => {
     events.forEach((event: BackendEvent) => {
@@ -219,20 +233,19 @@ export const ChatImpl = () => {
 
       const messageId = mostRecentHumanMessage.id as string;
 
-      if (event.event === 'NOTIFY_TASK_START') {
+      if (event.event === "NOTIFY_TASK_START") {
         const task = event.task;
         callbacks.onBackendTaskStart(task, messageId);
       }
 
-      if (event.event === 'NOTIFY_TASK_COMPLETE') {
+      if (event.event === "NOTIFY_TASK_COMPLETE") {
         const task = event.task;
         callbacks.onBackendTaskComplete(task, messageId);
       }
 
-      setProcessedEvents(prev => ({ ...prev, [eventId]: true }));
+      setProcessedEvents((prev) => ({ ...prev, [eventId]: true }));
     });
   }, [events]);
-
 
   useEffect(() => {
     if (!currentThreadId) return;
@@ -244,26 +257,27 @@ export const ChatImpl = () => {
       setFilesLoading(true);
       try {
         const response = await fetch(`/projects/${currentThreadId}/files`);
-        
+
         if (!response.ok) {
-          throw new Error(`Failed to fetch project files: ${response.status} ${response.statusText}`);
+          throw new Error(
+            `Failed to fetch project files: ${response.status} ${response.statusText}`
+          );
         }
-        
-        const files = await response.json() as FileData[];
-        const fileMap: FileMap = toFileMap(files); 
-        callbacks.mountFiles(fileMap, mostRecentHumanMessage.id as string)
+
+        const files = (await response.json()) as FileData[];
+        const fileMap: FileMap = toFileMap(files);
+        callbacks.mountFiles(fileMap, mostRecentHumanMessage.id as string);
         setFilesLoaded(true);
         setFilesLoading(false);
 
-        logger.info('Project files loaded successfully');
+        logger.info("Project files loaded successfully");
         return files;
       } catch (error) {
-        logger.error('Failed to fetch project files:', error);
+        logger.error("Failed to fetch project files:", error);
         return null;
       }
     }
     getProjectFiles();
-
   }, [currentThreadId, isReloadedThread, mostRecentHumanMessage, filesLoaded, filesLoading]);
 
   // When human message is added, add artifact for actions to run against
@@ -278,7 +292,7 @@ export const ChatImpl = () => {
   }, [mostRecentHumanMessage, isLoading, filesLoaded]);
 
   useEffect(() => {
-    chatStore.setKey('started', messages.length > 0);
+    chatStore.setKey("started", messages.length > 0);
   }, [messages]);
 
   useEffect(() => {
@@ -289,15 +303,15 @@ export const ChatImpl = () => {
         }
 
         switch (task.action) {
-            case CodeTaskAction.UPDATE:
-                callbacks.onUpdateFile(task, mostRecentHumanMessage.id as string);
-                break;
-            case CodeTaskAction.DELETE:
-                callbacks.onDeleteFile(task, mostRecentHumanMessage.id as string);
-                break;
-            default:
-                console.warn('Completed code task is missing type or path:', task);
-                break;
+          case CodeTaskAction.UPDATE:
+            callbacks.onUpdateFile(task, mostRecentHumanMessage.id as string);
+            break;
+          case CodeTaskAction.DELETE:
+            callbacks.onDeleteFile(task, mostRecentHumanMessage.id as string);
+            break;
+          default:
+            console.warn("Completed code task is missing type or path:", task);
+            break;
         }
       });
     }
@@ -305,7 +319,7 @@ export const ChatImpl = () => {
 
   const abort = useCallback(() => {
     if (stop) stop();
-    chatStore.setKey('aborted', true);
+    chatStore.setKey("aborted", true);
     workbenchStore.abortAllActions();
   }, [stop]);
 
@@ -313,10 +327,10 @@ export const ChatImpl = () => {
     const textarea = textareaRef.current;
 
     if (textarea) {
-      textarea.style.height = 'auto';
+      textarea.style.height = "auto";
       const scrollHeight = textarea.scrollHeight;
       textarea.style.height = `${Math.min(scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
-      textarea.style.overflowY = scrollHeight > TEXTAREA_MAX_HEIGHT ? 'auto' : 'hidden';
+      textarea.style.overflowY = scrollHeight > TEXTAREA_MAX_HEIGHT ? "auto" : "hidden";
     }
   }, [inputValue, textareaRef, TEXTAREA_MAX_HEIGHT]);
 
@@ -326,11 +340,11 @@ export const ChatImpl = () => {
     }
 
     await Promise.all([
-      animate('#examples', { opacity: 0, display: 'none' }, { duration: 0.1 }),
-      animate('#intro', { opacity: 0, flex: 1 }, { duration: 0.2, ease: cubicEasingFn }),
+      animate("#examples", { opacity: 0, display: "none" }, { duration: 0.1 }),
+      animate("#intro", { opacity: 0, flex: 1 }, { duration: 0.2, ease: cubicEasingFn }),
     ]);
 
-    chatStore.setKey('started', true);
+    chatStore.setKey("started", true);
   }, []);
 
   const sendMessage = async (_event: React.UIEvent, messageInputText?: string) => {
@@ -342,7 +356,7 @@ export const ChatImpl = () => {
 
     await workbenchStore.saveAllFiles();
     const fileModifications = workbenchStore.getFileModifications();
-    chatStore.setKey('aborted', false);
+    chatStore.setKey("aborted", false);
     runAnimation();
 
     let messageToSend = currentInput;
@@ -356,7 +370,7 @@ export const ChatImpl = () => {
       submit(messageToSend);
     }
 
-    setInputValue('');
+    setInputValue("");
     // resetEnhancer();
     textareaRef.current?.blur();
   };
@@ -364,7 +378,7 @@ export const ChatImpl = () => {
   const [messageRef, scrollRef] = useSnapScroll();
 
   const handleLocalInputChange = (e: React.ChangeEvent<HTMLTextAreaElement> | string) => {
-    const newValue = typeof e === 'string' ? e : e.target.value;
+    const newValue = typeof e === "string" ? e : e.target.value;
     setInputValue(newValue);
   };
 
@@ -387,9 +401,9 @@ export const ChatImpl = () => {
       enhancePrompt={() => {
         enhancePrompt(inputValue, (newEnhancedInput) => {
           setInputValue(newEnhancedInput);
-          requestAnimationFrame(() => { 
-            textareaRef.current?.focus(); 
-            textareaRef.current?.scrollIntoView({ block: 'end' });
+          requestAnimationFrame(() => {
+            textareaRef.current?.focus();
+            textareaRef.current?.scrollIntoView({ block: "end" });
           });
         });
       }}

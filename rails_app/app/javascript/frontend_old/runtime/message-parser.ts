@@ -1,7 +1,7 @@
-// import { ActionType, 
-//           type BoltAction, 
-//           type ParserCallbacks, 
-//           type ActionCallbackData, 
+// import { ActionType,
+//           type BoltAction,
+//           type ParserCallbacks,
+//           type ActionCallbackData,
 //         } from './types';
 // import type { BoltArtifactData } from '~/types/artifact';
 // import { createScopedLogger } from '~/utils/logger';
@@ -51,7 +51,7 @@
 
 // export class StreamingMessageParser {
 //   #messages = new Map<string, MessageState>();
-  
+
 //   // Tag processing configuration
 //   #tagConfigs: Record<string, TagConfig> = {
 //     [WRITE_OPEN_TAG]: {
@@ -248,8 +248,8 @@
 //   #handleInsideTag(state: MessageState, input: string, position: number, messageId: string): { output: string; nextPosition: number; shouldBreak: boolean } {
 //     if (state.currentTag === CODE_CLOSE_TAG) {
 //       return this.#handleCodeClose(state, input, position, messageId);
-//     } 
-    
+//     }
+
 //     // Unified handler for all other tag types
 //     const config = this.#tagConfigs[state.currentTag!];
 //     if (config) {
@@ -261,9 +261,9 @@
 
 //   // Generic handler for all tag types except code
 //   #handleGenericTag(
-//     state: MessageState, 
-//     input: string, 
-//     position: number, 
+//     state: MessageState,
+//     input: string,
+//     position: number,
 //     messageId: string,
 //     config: TagConfig
 //   ): { output: string; nextPosition: number; shouldBreak: boolean } {
@@ -278,19 +278,19 @@
 //       // Extract all configured attributes
 //       const data: Record<string, any> = { messageId };
 //       let action: BoltAction = {data: {}} as BoltAction;
-      
+
 //       // Extract attributes from tag
 //       config.attributes.forEach(attr => {
 //         action.data[attr] = this.#extractAttribute(thisTag, attr) || '';
 //       });
-      
+
 //       // Extract content if needed
 //       if (config.hasContent) {
 //         action.data.content = this.#normalizeContent(
 //           this.#extractContent(thisTag, config.openTag) || ''
 //         );
 //       }
-      
+
 //       // Call the appropriate callback
 //       data.action = action;
 //       data.type = this.#normalizeActionName(state.currentTag || '');
@@ -301,7 +301,7 @@
 //       config.callback(this._options.callbacks, data);
 //       return this.#handleTagClose(state, input, position, messageId);
 //     }
-    
+
 //     return { output: '', nextPosition: position + 1, shouldBreak: false };
 //   }
 
@@ -309,9 +309,9 @@
 //     const possibleTags = [WRITE_OPEN_TAG, DEPENDENCY_OPEN_TAG, CODE_CLOSE_TAG, RENAME_OPEN_TAG, DELETE_OPEN_TAG];
 //     state.potentialTag += input[position];
 //     state.potentialTag = state.potentialTag.trim();
-    
+
 //     const matchingTags = possibleTags.filter(tag => tag.startsWith(state.potentialTag));
-    
+
 //     // If we found an exact match for a tag
 //     if (matchingTags.length === 1 && state.potentialTag === matchingTags[0]) {
 //       // Handle the specific tag
@@ -320,7 +320,7 @@
 //       if (matchingTags[0] === CODE_CLOSE_TAG) {
 //         return this.#handleCodeClose(state, input, position, messageId);
 //       }
-      
+
 //       // Call the open callback for this tag
 //       const config = this.#tagConfigs[state.currentTag];
 //       if (config) {
@@ -333,12 +333,12 @@
 //         config.openCallback(this._options.callbacks, data);
 //       }
 //     }
-    
+
 //     // Not a special tag, just return the current character
-//     return { 
-//       output: '', 
-//       nextPosition: position + 1, 
-//       shouldBreak: false 
+//     return {
+//       output: '',
+//       nextPosition: position + 1,
+//       shouldBreak: false
 //     };
 //   }
 

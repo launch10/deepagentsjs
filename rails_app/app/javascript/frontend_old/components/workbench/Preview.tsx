@@ -1,8 +1,8 @@
-import { useStore } from '@nanostores/react';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { IconButton } from '@components/ui/IconButton';
-import { workbenchStore } from '@stores/workbench';
-import { PortDropdown } from './PortDropdown';
+import { useStore } from "@nanostores/react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { IconButton } from "@components/ui/IconButton";
+import { workbenchStore } from "@stores/workbench";
+import { PortDropdown } from "./PortDropdown";
 
 export const Preview = memo(() => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -13,12 +13,12 @@ export const Preview = memo(() => {
   const previews = useStore(workbenchStore.previews);
   const activePreview = previews[activePreviewIndex];
 
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState("");
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();
 
   useEffect(() => {
     if (!activePreview) {
-      setUrl('');
+      setUrl("");
       setIframeUrl(undefined);
 
       return;
@@ -41,19 +41,19 @@ export const Preview = memo(() => {
       if (value === baseUrl) {
         return true;
       } else if (value.startsWith(baseUrl)) {
-        return ['/', '?', '#'].includes(value.charAt(baseUrl.length));
+        return ["/", "?", "#"].includes(value.charAt(baseUrl.length));
       }
 
       return false;
     },
-    [activePreview],
+    [activePreview]
   );
 
   const findMinPortIndex = useCallback(
     (minIndex: number, preview: { port: number }, index: number, array: { port: number }[]) => {
       return preview.port < array[minIndex].port ? index : minIndex;
     },
-    [],
+    []
   );
 
   // when previews change, display the lowest port if user hasn't selected a preview
@@ -74,7 +74,10 @@ export const Preview = memo(() => {
   return (
     <div className="w-full h-full flex flex-col">
       {isPortDropdownOpen && (
-        <div className="z-iframe-overlay w-full h-full absolute" onClick={() => setIsPortDropdownOpen(false)} />
+        <div
+          className="z-iframe-overlay w-full h-full absolute"
+          onClick={() => setIsPortDropdownOpen(false)}
+        />
       )}
       <div className="bg-bolt-elements-background-depth-2 p-2 flex items-center gap-1.5">
         <IconButton icon="i-ph:arrow-clockwise" onClick={reloadPreview} />
@@ -91,7 +94,7 @@ export const Preview = memo(() => {
               setUrl(event.target.value);
             }}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && validateUrl(url)) {
+              if (event.key === "Enter" && validateUrl(url)) {
                 setIframeUrl(url);
 
                 if (inputRef.current) {
@@ -116,7 +119,9 @@ export const Preview = memo(() => {
         {activePreview ? (
           <iframe ref={iframeRef} className="border-none w-full h-full bg-white" src={iframeUrl} />
         ) : (
-          <div className="flex w-full h-full justify-center items-center bg-white">No preview available</div>
+          <div className="flex w-full h-full justify-center items-center bg-white">
+            No preview available
+          </div>
         )}
       </div>
     </div>

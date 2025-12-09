@@ -15,7 +15,7 @@ type ClassNamesArg = undefined | string | Record<string, boolean> | ClassNamesAr
  * should be included in the final class.
  */
 export function classNames(...args: ClassNamesArg[]): string {
-  let classes = '';
+  let classes = "";
 
   for (const arg of args) {
     classes = appendClass(classes, parseValue(arg));
@@ -25,19 +25,19 @@ export function classNames(...args: ClassNamesArg[]): string {
 }
 
 function parseValue(arg: ClassNamesArg) {
-  if (typeof arg === 'string' || typeof arg === 'number') {
+  if (typeof arg === "string" || typeof arg === "number") {
     return arg;
   }
 
-  if (typeof arg !== 'object') {
-    return '';
+  if (typeof arg !== "object") {
+    return "";
   }
 
   if (Array.isArray(arg)) {
     return classNames(...arg);
   }
 
-  let classes = '';
+  let classes = "";
 
   for (const key in arg) {
     if (arg[key]) {
@@ -54,7 +54,7 @@ function appendClass(value: string, newClass: string | undefined) {
   }
 
   if (value) {
-    return value + ' ' + newClass;
+    return value + " " + newClass;
   }
 
   return value + newClass;

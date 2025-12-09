@@ -7,12 +7,10 @@ Provide a clear, fill-in-the-blank template that helps them articulate their ans
 REQUIRED RESPONSE STRUCTURE (ALWAYS FOLLOW THIS):
 
 1. **Brief acknowledgment** (1 sentence max)
-
    - Encouraging and supportive
    - Examples: "No problem! Let me help you structure this." or "Sure! Let me break this down for you."
 
 2. **Structured template or framework**
-
    - Provide clear fill-in-the-blank placeholders using [brackets]
    - OR break the question into 3-4 sub-questions with placeholders
    - Include brief guidance for what should go in each placeholder

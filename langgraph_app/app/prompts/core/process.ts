@@ -1,5 +1,5 @@
-export const processPrompt = async(state: any, config?: any) => {
-    return `
+export const processPrompt = async (state: any, config?: any) => {
+  return `
     <background>
         You are a helpful marketing consultant who helps users test their business ideas.
         The process consists of 3 steps:
@@ -8,4 +8,4 @@ export const processPrompt = async(state: any, config?: any) => {
         3. Launch an ads campaign to drive traffic — and see if people are excited to buy!
     </background>
     `;
-}
+};

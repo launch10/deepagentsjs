@@ -86,7 +86,7 @@ en:
       delete_description: "Deleting this account will permanently remove all associated data."
       delete_with_payments_description: "Deleting this account will cancel any active subscriptions and permanently remove all associated data."
     created: "Account was successfully created."
-    created_and_switch_html: "Account was successfully created. <a class=\"underline\" href=\"%{link}\">Switch account</a>"
+    created_and_switch_html: 'Account was successfully created. <a class="underline" href="%{link}">Switch account</a>'
     updated: "Account was successfully updated."
     destroyed: "Account was successfully destroyed."
     admin_required: "Only account admins are allowed to do that."
@@ -498,8 +498,8 @@ en:
         header: "Scan this code with your app."
         subheader: "Scan the QR code with the two-factor authentication app on your phone."
         instructions_1_html: "Install Authy: %{ios} or %{android}"
-        instructions_2: "In the app, select \"Add account\""
-        instructions_3: "Choose \"Scan QR Code\""
+        instructions_2: 'In the app, select "Add account"'
+        instructions_3: 'Choose "Scan QR Code"'
         instructions_4: "Trouble scanning? Enter this key in your app instead:"
         verify_header: "Enter the six-digit code from the application"
         verify_description: "After scanning the QR code, the app will display a code that you can enter to continue."

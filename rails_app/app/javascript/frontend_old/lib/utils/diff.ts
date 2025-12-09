@@ -1,14 +1,14 @@
-import { createTwoFilesPatch } from 'diff';
-import type { FileMap } from '~/lib/stores/files';
-import { MODIFICATIONS_TAG_NAME } from './constants';
+import { createTwoFilesPatch } from "diff";
+import type { FileMap } from "~/lib/stores/files";
+import { MODIFICATIONS_TAG_NAME } from "./constants";
 
 export const modificationsRegex = new RegExp(
   `^<${MODIFICATIONS_TAG_NAME}>[\\s\\S]*?<\\/${MODIFICATIONS_TAG_NAME}>\\s+`,
-  'g',
+  "g"
 );
 
 interface ModifiedFile {
-  type: 'diff' | 'file';
+  type: "diff" | "file";
   content: string;
 }
 
@@ -22,7 +22,7 @@ export function computeFileModifications(files: FileMap, modifiedFiles: Map<stri
   for (const [filePath, originalContent] of modifiedFiles) {
     const file = files[filePath];
 
-    if (file?.type !== 'file') {
+    if (file?.type !== "file") {
       continue;
     }
 
@@ -37,10 +37,10 @@ export function computeFileModifications(files: FileMap, modifiedFiles: Map<stri
 
     if (unifiedDiff.length > file.content.length) {
       // if there are lots of changes we simply grab the current file content since it's smaller than the diff
-      modifications[filePath] = { type: 'file', content: file.content };
+      modifications[filePath] = { type: "file", content: file.content };
     } else {
       // otherwise we use the diff since it's smaller
-      modifications[filePath] = { type: 'diff', content: unifiedDiff };
+      modifications[filePath] = { type: "diff", content: unifiedDiff };
     }
   }
 
@@ -68,7 +68,7 @@ export function diffFiles(fileName: string, oldFileContent: string, newFileConte
     unifiedDiff = unifiedDiff.slice(headerEndIndex + patchHeaderEnd.length);
   }
 
-  if (unifiedDiff === '') {
+  if (unifiedDiff === "") {
     return undefined;
   }
 
@@ -104,5 +104,5 @@ export function fileModificationsToHTML(modifications: FileModifications) {
 
   result.push(`</${MODIFICATIONS_TAG_NAME}>`);
 
-  return result.join('\n');
+  return result.join("\n");
 }

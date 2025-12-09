@@ -38,7 +38,7 @@ export interface DatabaseOperationResult {
  */
 export class DatabaseSnapshotterAPI extends RailsAPIBase {
   constructor(options: Simplify<ConstructorParameters<typeof RailsAPIBase>[0]>) {
-    super(options)
+    super(options);
   }
 
   /**
@@ -139,5 +139,5 @@ export class DatabaseSnapshotterAPI extends RailsAPIBase {
 }
 
 export const DatabaseSnapshotter = new DatabaseSnapshotterAPI({
-    jwt: "test-jwt",
+  jwt: "test-jwt",
 });

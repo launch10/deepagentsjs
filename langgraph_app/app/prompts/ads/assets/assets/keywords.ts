@@ -3,12 +3,12 @@ import { userPreferencesPrompt } from "../userPreferences";
 import { Ads } from "@types";
 
 export const Keywords: Partial<Ads.AssetPromptMap> = {
-    "keywords": {
-        prompt: async (state: AdsGraphState, _config?: any) => {
-            const userPrefs = await userPreferencesPrompt(state, "keywords");
-            const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.keywords;
+  keywords: {
+    prompt: async (state: AdsGraphState, _config?: any) => {
+      const userPrefs = await userPreferencesPrompt(state, "keywords");
+      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.keywords;
 
-            return `
+      return `
             ## Keywords
             Generate ${nVariants} targeted keywords for this business's Google Ads campaign. Keywords determine when your ads appear in search results.
 
@@ -42,11 +42,11 @@ export const Keywords: Partial<Ads.AssetPromptMap> = {
 
             ${userPrefs}
         `;
-        },
-        outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-            const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.keywords;
-            const keywords = Array.from({ length: nVariants }, (_, i) => `Keyword ${i + 1}`);
-            return { keywords };
-        }
-    }
-}
+    },
+    outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.keywords;
+      const keywords = Array.from({ length: nVariants }, (_, i) => `Keyword ${i + 1}`);
+      return { keywords };
+    },
+  },
+};

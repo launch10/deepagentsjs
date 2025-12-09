@@ -24,11 +24,11 @@ Available options:
 `);
 
 const choiceScores = {
-  "strongly follows": 1, 
-  "nearly follows": 0.9, 
+  "strongly follows": 1,
+  "nearly follows": 0.9,
   "good try": 0.75,
-  "missed key points": 0.5, 
-  "completely missed the point": 0
+  "missed key points": 0.5,
+  "completely missed the point": 0,
 };
 
 export interface FollowsUserInstructionsParams {
@@ -38,7 +38,7 @@ export interface FollowsUserInstructionsParams {
   useCoT?: boolean;
 }
 
-export const FollowsUserInstructionsScorer = createScorer({ 
-  prompt: template, 
+export const FollowsUserInstructionsScorer = createScorer({
+  prompt: template,
   choiceScores,
 });

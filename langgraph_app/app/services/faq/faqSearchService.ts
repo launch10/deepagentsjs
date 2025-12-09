@@ -89,13 +89,13 @@ export class FAQSearchService {
     }
 
     if (tags && tags.length > 0) {
-      candidateResults = candidateResults.filter(r => 
-        (r.tags as string[]).some(tag => tags.includes(tag))
+      candidateResults = candidateResults.filter((r) =>
+        (r.tags as string[]).some((tag) => tags.includes(tag))
       );
     }
-    
+
     if (!this.rerankService) {
-      return candidateResults.slice(0, topK).map(r => ({
+      return candidateResults.slice(0, topK).map((r) => ({
         id: r.id,
         question: r.question,
         answer: r.answer,
@@ -108,7 +108,7 @@ export class FAQSearchService {
       }));
     }
 
-    const rerankDocs: RerankDocument[] = candidateResults.map(r => ({
+    const rerankDocs: RerankDocument[] = candidateResults.map((r) => ({
       text: r.content || `${r.question}\n\n${r.answer}`,
       metadata: {
         id: r.id,
@@ -123,10 +123,12 @@ export class FAQSearchService {
     }));
 
     const reranked = rerankThreshold
-      ? await this.rerankService.rerankWithThreshold(query, rerankDocs, rerankThreshold, { topN: rerankTopN })
+      ? await this.rerankService.rerankWithThreshold(query, rerankDocs, rerankThreshold, {
+          topN: rerankTopN,
+        })
       : await this.rerankService.rerank(query, rerankDocs, { topN: rerankTopN });
 
-    return reranked.map(r => ({
+    return reranked.map((r) => ({
       id: r.document.metadata?.id as number,
       question: r.document.metadata?.question as string,
       answer: r.document.metadata?.answer as string,
@@ -145,7 +147,10 @@ export class FAQSearchService {
     }
 
     return results
-      .map((r, i) => `[${i + 1}] Q: ${r.question}\nA: ${r.answer}${r.section ? `\n(Section: ${r.section})` : ""}`)
+      .map(
+        (r, i) =>
+          `[${i + 1}] Q: ${r.question}\nA: ${r.answer}${r.section ? `\n(Section: ${r.section})` : ""}`
+      )
       .join("\n\n");
   }
 }

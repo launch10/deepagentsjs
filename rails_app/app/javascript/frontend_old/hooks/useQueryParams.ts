@@ -1,5 +1,5 @@
-import { usePage, router } from '@inertiajs/react'; // Or your specific Inertia adapter
-import { useCallback, useMemo } from 'react';
+import { usePage, router } from "@inertiajs/react"; // Or your specific Inertia adapter
+import { useCallback, useMemo } from "react";
 
 /**
  * Helper function to convert a URLSearchParams instance into a plain object.
@@ -58,7 +58,7 @@ export function useQueryParams() {
 
       let newSearchData = {};
 
-      if (typeof newParamsOrFn === 'function') {
+      if (typeof newParamsOrFn === "function") {
         // Create a mutable copy for the updater function
         const mutableSearchParams = new URLSearchParams(currentSearchParams);
         const resultFromFn = newParamsOrFn(mutableSearchParams);
@@ -70,8 +70,8 @@ export function useQueryParams() {
       }
 
       const mergedVisitOptions = {
-        replace: true,        // Replace history entry, common for filter changes
-        preserveState: true,  // Preserve local component state
+        replace: true, // Replace history entry, common for filter changes
+        preserveState: true, // Preserve local component state
         preserveScroll: true, // Preserve scroll position
         ...visitOptionsOverrides, // Allow user to override defaults
       };

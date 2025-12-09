@@ -3,12 +3,12 @@ import { type AdsGraphState } from "@state";
 import { userPreferencesPrompt } from "../userPreferences";
 
 export const Headlines: Partial<Ads.AssetPromptMap> = {
-    "headlines": {
-        prompt: async (state: AdsGraphState, _config?: any): Promise<string> => {
-            const userPrefs = await userPreferencesPrompt(state, "headlines");
-            const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.headlines;
+  headlines: {
+    prompt: async (state: AdsGraphState, _config?: any): Promise<string> => {
+      const userPrefs = await userPreferencesPrompt(state, "headlines");
+      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.headlines;
 
-            return `
+      return `
             ## Headlines
             Generate ${nVariants} compelling headlines for this business's Google Ads campaign. Headlines are the most prominent part of text ads and appear at the top.
 
@@ -35,11 +35,11 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
 
             ${userPrefs}
         `;
-        },
-        outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-            const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.headlines;
-            const headlines = Array.from({ length: nVariants }, (_, i) => `Headline ${i + 1}`);
-            return { headlines };
-        },
-    }
-}
+    },
+    outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.headlines;
+      const headlines = Array.from({ length: nVariants }, (_, i) => `Headline ${i + 1}`);
+      return { headlines };
+    },
+  },
+};

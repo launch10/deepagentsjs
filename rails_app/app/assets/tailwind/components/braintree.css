@@ -9,39 +9,38 @@
 /* =========================================================================
    Headings
    ========================================================================= */
-:is(.dark .braintree-placeholder,
-.braintree-heading) {
+:is(.dark .braintree-placeholder, .braintree-heading) {
   color: #d4d4d4;
 }
 :is(.dark .braintree-icon--bordered) {
-  background: #FFFFFF;
-  border: 1px solid #BBBBBB;
+  background: #ffffff;
+  border: 1px solid #bbbbbb;
 }
 /* =========================================================================
    Upper Container
    ========================================================================= */
 :is(.dark .braintree-upper-container:before) {
-  background-color: #FAFAFA;
-  border: 1px solid #B5B5B5;
+  background-color: #fafafa;
+  border: 1px solid #b5b5b5;
 }
 /* =========================================================================
    Payment Options
    ========================================================================= */
 :is(.dark .braintree-option) {
   background-color: #171717;
-  border-color: #B5B5B5;
+  border-color: #b5b5b5;
 }
 :is(.dark .braintree-option:hover) {
   background: #404040;
 }
 :is(.dark .braintree-option.braintree-disabled) {
-  background: #EAEAEA;
+  background: #eaeaea;
 }
 :is(.dark .braintree-option.braintree-disabled .braintree-option__label) {
   color: #787878;
 }
 :is(.dark .braintree-option.braintree-disabled .braintree-option__disabled-message span) {
-  border-bottom: 1px solid #B5B5B5;
+  border-bottom: 1px solid #b5b5b5;
 }
 :is(.dark .braintree-option .braintree-option__label) {
   color: #d4d4d4;
@@ -69,41 +68,43 @@
    ========================================================================= */
 :is(.dark .braintree-sheet) {
   background-color: #171717;
-  border: 1px solid #B5B5B5;
+  border: 1px solid #b5b5b5;
 }
 :is(.dark .braintree-sheet--has-error .braintree-sheet) {
-  border: 2px solid #CA2A2A;
+  border: 2px solid #ca2a2a;
 }
 :is(.dark .braintree-sheet--has-error .braintree-methods--edit .braintree-method) {
-  border-left: 2px solid #CA2A2A;
-  border-right: 2px solid #CA2A2A;
+  border-left: 2px solid #ca2a2a;
+  border-right: 2px solid #ca2a2a;
 }
 :is(.dark .braintree-sheet--has-error .braintree-methods--edit .braintree-method:first-child) {
-  border-top: 2px solid #CA2A2A;
+  border-top: 2px solid #ca2a2a;
 }
 :is(.dark .braintree-sheet--has-error .braintree-methods--edit .braintree-method:last-child) {
-  border-bottom: 2px solid #CA2A2A;
+  border-bottom: 2px solid #ca2a2a;
 }
 :is(.dark .braintree-sheet--has-error .braintree-sheet__error) {
-  color: #CA2A2A;
+  color: #ca2a2a;
 }
 :is(.dark .braintree-sheet--has-error .braintree-sheet__error .braintree-sheet__error-icon use) {
-  fill: #CA2A2A;
+  fill: #ca2a2a;
 }
 :is(.dark .braintree-sheet--has-error .braintree-sheet__error .braintree-sheet__error-text) {
-  color: #CA2A2A;
+  color: #ca2a2a;
 }
-:is(.dark .braintree-show-methods .braintree-sheet--active.braintree-sheet--has-error .braintree-sheet) {
-  border-color: #CA2A2A;
+:is(
+  .dark .braintree-show-methods .braintree-sheet--active.braintree-sheet--has-error .braintree-sheet
+) {
+  border-color: #ca2a2a;
 }
 :is(.dark .braintree-show-methods .braintree-sheet--active .braintree-sheet) {
   border-color: #219653;
 }
 :is(.dark .braintree-sheet__header) {
-  border-bottom: 1px solid #B5B5B5;
+  border-bottom: 1px solid #b5b5b5;
 }
 :is(.dark .braintree-sheet__header .braintree-sheet__text) {
-  color: #FFFFFF;
+  color: #ffffff;
 }
 /* =========================================================================
    Input Forms
@@ -112,61 +113,98 @@
   background-color: #171717;
 }
 :is(.dark .braintree-sheet__content--form .braintree-form__field-group .braintree-form__label) {
-  color: #FFFFFF;
+  color: #ffffff;
 }
-:is(.dark .braintree-sheet__content--form .braintree-form__field-group .braintree-form__descriptor) {
-  color: #FFFFFF;
+:is(
+  .dark .braintree-sheet__content--form .braintree-form__field-group .braintree-form__descriptor
+) {
+  color: #ffffff;
 }
 /* =========================================================================
    Payment Methods
    ========================================================================= */
 :is(.dark .braintree-method) {
   background-color: white;
-  border-color: #B5B5B5;
+  border-color: #b5b5b5;
 }
 :is(.dark .braintree-method .braintree-method__label) {
   color: #000000;
 }
 :is(.dark .braintree-method .braintree-method__icon) {
-  background-color: #FAFAFA;
-  fill: #FAFAFA;
+  background-color: #fafafa;
+  fill: #fafafa;
 }
 :is(.dark .braintree-methods--active:not(.braintree-methods--edit) .braintree-method--active) {
   border-color: #219653;
 }
-:is(.dark .braintree-methods--active:not(.braintree-methods--edit) .braintree-method--active .braintree-method__check) {
+:is(
+  .dark
+    .braintree-methods--active:not(.braintree-methods--edit)
+    .braintree-method--active
+    .braintree-method__check
+) {
   background-color: #219653;
 }
-:is(.dark .braintree-methods--active:not(.braintree-methods--edit) .braintree-method--active .braintree-method__icon) {
+:is(
+  .dark
+    .braintree-methods--active:not(.braintree-methods--edit)
+    .braintree-method--active
+    .braintree-method__icon
+) {
   fill: white;
 }
 :is(.dark .braintree-method__delete-container .braintree-method__delete) {
-  background-color: #EC493A;
+  background-color: #ec493a;
 }
 :is(.dark .braintree-method__delete-container .braintree-method__delete:hover) {
   background-color: #c62213;
 }
 :is(.dark .braintree-delete-confirmation) {
-  background: #FAFAFA !important;
+  background: #fafafa !important;
   color: #606060;
 }
-:is(.dark .braintree-delete-confirmation .braintree-delete-confirmation__button-container .braintree-delete-confirmation__button) {
-  border-top: 1px solid #B5B5B5;
-  background: #FAFAFA;
-  color: #C4C4C4;
+:is(
+  .dark
+    .braintree-delete-confirmation
+    .braintree-delete-confirmation__button-container
+    .braintree-delete-confirmation__button
+) {
+  border-top: 1px solid #b5b5b5;
+  background: #fafafa;
+  color: #c4c4c4;
 }
-:is(.dark .braintree-delete-confirmation .braintree-delete-confirmation__button-container [data-braintree-id="delete-confirmation__yes"]) {
+:is(
+  .dark
+    .braintree-delete-confirmation
+    .braintree-delete-confirmation__button-container
+    [data-braintree-id="delete-confirmation__yes"]
+) {
   color: white;
-  background: #EC493A;
+  background: #ec493a;
   border-left: solid 1px #b5b5b5;
 }
-:is(.dark .braintree-delete-confirmation .braintree-delete-confirmation__button-container [data-braintree-id="delete-confirmation__yes"]:hover) {
+:is(
+  .dark
+    .braintree-delete-confirmation
+    .braintree-delete-confirmation__button-container
+    [data-braintree-id="delete-confirmation__yes"]:hover
+) {
   background: #c62213;
 }
-:is(.dark .braintree-delete-confirmation .braintree-delete-confirmation__button-container [data-braintree-id="delete-confirmation__no"]) {
+:is(
+  .dark
+    .braintree-delete-confirmation
+    .braintree-delete-confirmation__button-container
+    [data-braintree-id="delete-confirmation__no"]
+) {
   color: #666666;
 }
-:is(.dark .braintree-delete-confirmation .braintree-delete-confirmation__button-container [data-braintree-id="delete-confirmation__no"]:hover) {
+:is(
+  .dark
+    .braintree-delete-confirmation
+    .braintree-delete-confirmation__button-container
+    [data-braintree-id="delete-confirmation__no"]:hover
+) {
   background: #efefef;
 }
 :is(.dark .braintree-large-button) {
@@ -180,7 +218,7 @@
   border-color: black;
 }
 :is(.dark .braintree-large-button span) {
-  border-bottom: 1px solid #B5B5B5;
+  border-bottom: 1px solid #b5b5b5;
 }
 /* =========================================================================
    Dropin Visibility States

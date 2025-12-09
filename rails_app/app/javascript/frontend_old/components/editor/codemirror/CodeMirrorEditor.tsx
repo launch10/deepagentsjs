@@ -1,8 +1,15 @@
-import { acceptCompletion, autocompletion, closeBrackets } from '@codemirror/autocomplete';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { bracketMatching, foldGutter, indentOnInput, indentUnit } from '@codemirror/language';
-import { searchKeymap } from '@codemirror/search';
-import { Compartment, EditorSelection, EditorState, StateEffect, StateField, type Extension } from '@codemirror/state';
+import { acceptCompletion, autocompletion, closeBrackets } from "@codemirror/autocomplete";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { bracketMatching, foldGutter, indentOnInput, indentUnit } from "@codemirror/language";
+import { searchKeymap } from "@codemirror/search";
+import {
+  Compartment,
+  EditorSelection,
+  EditorState,
+  StateEffect,
+  StateField,
+  type Extension,
+} from "@codemirror/state";
 import {
   drawSelection,
   dropCursor,
@@ -15,18 +22,18 @@ import {
   showTooltip,
   tooltips,
   type Tooltip,
-} from '@codemirror/view';
-import { memo, useEffect, useRef, useState } from 'react';
-import type { Theme } from '@types/theme';
-import { classNames } from '@utils/classNames';
-import { debounce } from '@utils/debounce';
-import { createScopedLogger, renderLogger } from '@utils/logger';
-import { BinaryContent } from './BinaryContent';
-import { getTheme, reconfigureTheme } from './cm-theme';
-import { indentKeyBinding } from './indent';
-import { getLanguage } from './languages';
+} from "@codemirror/view";
+import { memo, useEffect, useRef, useState } from "react";
+import type { Theme } from "@types/theme";
+import { classNames } from "@utils/classNames";
+import { debounce } from "@utils/debounce";
+import { createScopedLogger, renderLogger } from "@utils/logger";
+import { BinaryContent } from "./BinaryContent";
+import { getTheme, reconfigureTheme } from "./cm-theme";
+import { indentKeyBinding } from "./indent";
+import { getLanguage } from "./languages";
 
-const logger = createScopedLogger('CodeMirrorEditor');
+const logger = createScopedLogger("CodeMirrorEditor");
 
 export interface EditorDocument {
   value: string;
@@ -128,9 +135,9 @@ export const CodeMirrorEditor = memo(
     onSave,
     theme,
     settings,
-    className = '',
+    className = "",
   }: Props) => {
-    renderLogger.trace('CodeMirrorEditor');
+    renderLogger.trace("CodeMirrorEditor");
 
     const [languageCompartment] = useState(new Compartment());
 
@@ -171,9 +178,14 @@ export const CodeMirrorEditor = memo(
 
           const selectionChanged =
             newSelection !== previousSelection &&
-            (newSelection === undefined || previousSelection === undefined || !newSelection.eq(previousSelection));
+            (newSelection === undefined ||
+              previousSelection === undefined ||
+              !newSelection.eq(previousSelection));
 
-          if (docRef.current && (transactions.some((transaction) => transaction.docChanged) || selectionChanged)) {
+          if (
+            docRef.current &&
+            (transactions.some((transaction) => transaction.docChanged) || selectionChanged)
+          ) {
             onUpdate({
               selection: view.state.selection,
               content: view.state.doc.toString(),
@@ -212,7 +224,7 @@ export const CodeMirrorEditor = memo(
       const theme = themeRef.current!;
 
       if (!doc) {
-        const state = newEditorState('', theme, settings, onScrollRef, debounceScroll, onSaveRef, [
+        const state = newEditorState("", theme, settings, onScrollRef, debounceScroll, onSaveRef, [
           languageCompartment.of([]),
         ]);
 
@@ -227,8 +239,8 @@ export const CodeMirrorEditor = memo(
         return;
       }
 
-      if (doc.filePath === '') {
-        logger.warn('File path should not be empty');
+      if (doc.filePath === "") {
+        logger.warn("File path should not be empty");
       }
 
       let state = editorStates.get(doc.filePath);
@@ -249,22 +261,22 @@ export const CodeMirrorEditor = memo(
         editable,
         languageCompartment,
         autoFocusOnDocumentChange,
-        doc as TextEditorDocument,
+        doc as TextEditorDocument
       );
     }, [doc?.value, editable, doc?.filePath, autoFocusOnDocumentChange]);
 
     return (
-      <div className={classNames('relative h-full', className)}>
+      <div className={classNames("relative h-full", className)}>
         {doc?.isBinary && <BinaryContent />}
         <div className="h-full overflow-hidden" ref={containerRef} />
       </div>
     );
-  },
+  }
 );
 
 export default CodeMirrorEditor;
 
-CodeMirrorEditor.displayName = 'CodeMirrorEditor';
+CodeMirrorEditor.displayName = "CodeMirrorEditor";
 
 function newEditorState(
   content: string,
@@ -273,7 +285,7 @@ function newEditorState(
   onScrollRef: MutableRefObject<OnScrollCallback | undefined>,
   debounceScroll: number,
   onFileSaveRef: MutableRefObject<OnSaveCallback | undefined>,
-  extensions: Extension[],
+  extensions: Extension[]
 ) {
   return EditorState.create({
     doc: content,
@@ -289,7 +301,7 @@ function newEditorState(
         keydown: (event, view) => {
           if (view.state.readOnly) {
             view.dispatch({
-              effects: [readOnlyTooltipStateEffect.of(event.key !== 'Escape')],
+              effects: [readOnlyTooltipStateEffect.of(event.key !== "Escape")],
             });
 
             return true;
@@ -304,9 +316,9 @@ function newEditorState(
         ...defaultKeymap,
         ...historyKeymap,
         ...searchKeymap,
-        { key: 'Tab', run: acceptCompletion },
+        { key: "Tab", run: acceptCompletion },
         {
-          key: 'Mod-s',
+          key: "Mod-s",
           preventDefault: true,
           run: () => {
             onFileSaveRef.current?.();
@@ -315,12 +327,12 @@ function newEditorState(
         },
         indentKeyBinding,
       ]),
-      indentUnit.of('\t'),
+      indentUnit.of("\t"),
       autocompletion({
         closeOnBlur: false,
       }),
       tooltips({
-        position: 'absolute',
+        position: "absolute",
         parent: document.body,
         tooltipSpace: (view) => {
           const rect = view.dom.getBoundingClientRect();
@@ -348,9 +360,9 @@ function newEditorState(
       highlightActiveLine(),
       foldGutter({
         markerDOM: (open) => {
-          const icon = document.createElement('div');
+          const icon = document.createElement("div");
 
-          icon.className = `fold-icon ${open ? 'i-ph-caret-down-bold' : 'i-ph-caret-right-bold'}`;
+          icon.className = `fold-icon ${open ? "i-ph-caret-down-bold" : "i-ph-caret-right-bold"}`;
 
           return icon;
         },
@@ -366,7 +378,7 @@ function setNoDocument(view: EditorView) {
     changes: {
       from: 0,
       to: view.state.doc.length,
-      insert: '',
+      insert: "",
     },
   });
 
@@ -379,7 +391,7 @@ function setEditorDocument(
   editable: boolean,
   languageCompartment: Compartment,
   autoFocus: boolean,
-  doc: TextEditorDocument,
+  doc: TextEditorDocument
 ) {
   if (doc.value !== view.state.doc.toString()) {
     view.dispatch({
@@ -417,11 +429,11 @@ function setEditorDocument(
         if (needsScrolling) {
           // we have to wait until the scroll position was changed before we can set the focus
           view.scrollDOM.addEventListener(
-            'scroll',
+            "scroll",
             () => {
               view.focus();
             },
-            { once: true },
+            { once: true }
           );
         } else {
           // if the scroll position is still the same we can focus immediately
@@ -450,9 +462,9 @@ function getReadOnlyTooltip(state: EditorState) {
         strictSide: true,
         arrow: true,
         create: () => {
-          const divElement = document.createElement('div');
-          divElement.className = 'cm-readonly-tooltip';
-          divElement.textContent = 'Cannot edit file while AI response is being generated';
+          const divElement = document.createElement("div");
+          divElement.className = "cm-readonly-tooltip";
+          divElement.textContent = "Cannot edit file while AI response is being generated";
 
           return { dom: divElement };
         },

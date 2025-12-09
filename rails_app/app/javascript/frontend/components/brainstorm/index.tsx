@@ -1,18 +1,18 @@
-import type { ChatStatus } from 'ai';
-import type { 
-    MessageBlock, 
-    MessageWithBlocks,
-    TextMessageBlock, 
-    StructuredMessageBlock, 
-    ToolCallMessageBlock,
-    ReasoningMessageBlock,
-    InferBridgeData
-} from 'langgraph-ai-sdk-types';
-import type { BrainstormBridgeType } from '@shared';
-import React, { createContext, useContext } from 'react';
-import ReactMarkdown from 'react-markdown';
+import type { ChatStatus } from "ai";
+import type {
+  MessageBlock,
+  MessageWithBlocks,
+  TextMessageBlock,
+  StructuredMessageBlock,
+  ToolCallMessageBlock,
+  ReasoningMessageBlock,
+  InferBridgeData,
+} from "langgraph-ai-sdk-types";
+import type { BrainstormBridgeType } from "@shared";
+import React, { createContext, useContext } from "react";
+import ReactMarkdown from "react-markdown";
 
-export { BrainstormHydrator } from './BrainstormHydrator';
+export { BrainstormHydrator } from "./BrainstormHydrator";
 
 type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
 
@@ -26,42 +26,36 @@ const BrainstormContext = createContext<BrainstormContextType | undefined>(undef
 export const useBrainstormContext = () => {
   const context = useContext(BrainstormContext);
   if (!context) {
-    throw new Error('useBrainstormContext must be used within BrainstormProvider');
+    throw new Error("useBrainstormContext must be used within BrainstormProvider");
   }
   return context;
 };
 
-export const BrainstormProvider = ({ 
-  children, 
-  onExampleClick 
-}: { 
+export const BrainstormProvider = ({
+  children,
+  onExampleClick,
+}: {
   children: React.ReactNode;
   onExampleClick?: (text: string) => void;
 }) => {
   return (
-    <BrainstormContext.Provider value={{ onExampleClick }}>
-      {children}
-    </BrainstormContext.Provider>
+    <BrainstormContext.Provider value={{ onExampleClick }}>{children}</BrainstormContext.Provider>
   );
 };
 
-export const Wrapper = (props: {
-  children: React.ReactNode;
-}) => {
+export const Wrapper = (props: { children: React.ReactNode }) => {
   return (
-    <div className="flex flex-col w-full max-w-2xl py-24 mx-auto stretch">
-      {props.children}
-    </div>
+    <div className="flex flex-col w-full max-w-2xl py-24 mx-auto stretch">{props.children}</div>
   );
 };
 
 const BlockRenderer = ({ block }: { block: MessageBlock<BrainstormLanggraphData> }) => {
   const { onExampleClick } = useBrainstormContext();
-  
+
   switch (block.type) {
-    case 'text': {
+    case "text": {
       const textBlock = block as TextMessageBlock;
-      if (!textBlock.text || textBlock.text.trim() === '') {
+      if (!textBlock.text || textBlock.text.trim() === "") {
         return null;
       }
       return (
@@ -70,11 +64,11 @@ const BlockRenderer = ({ block }: { block: MessageBlock<BrainstormLanggraphData>
         </div>
       );
     }
-    
-    case 'structured': {
+
+    case "structured": {
       const structuredBlock = block as StructuredMessageBlock<BrainstormLanggraphData>;
       const data = structuredBlock.data;
-      
+
       if (!data || Object.keys(data).length === 0) {
         return null;
       }
@@ -82,12 +76,12 @@ const BlockRenderer = ({ block }: { block: MessageBlock<BrainstormLanggraphData>
       if (data.type === "reply") {
         return (
           <div className="space-y-3">
-            {'text' in data && (
+            {"text" in data && (
               <div className="prose prose-sm prose-invert max-w-none font-medium">
                 <ReactMarkdown>{String(data.text)}</ReactMarkdown>
               </div>
             )}
-            {'examples' in data && Array.isArray(data.examples) && (
+            {"examples" in data && Array.isArray(data.examples) && (
               <div className="space-y-2 mt-3">
                 <div className="text-xs font-semibold text-blue-300 mb-2">Sample Answers:</div>
                 {data.examples.map((item: any, i: number) => (
@@ -102,7 +96,7 @@ const BlockRenderer = ({ block }: { block: MessageBlock<BrainstormLanggraphData>
                 ))}
               </div>
             )}
-            {'conclusion' in data && (
+            {"conclusion" in data && (
               <div className="mt-3 pt-3 border-t border-gray-500">
                 <div className="prose prose-sm prose-invert max-w-none italic opacity-90">
                   <ReactMarkdown>{String(data.conclusion)}</ReactMarkdown>
@@ -114,12 +108,12 @@ const BlockRenderer = ({ block }: { block: MessageBlock<BrainstormLanggraphData>
       } else if (data.type === "helpMe") {
         return (
           <div className="space-y-3">
-            {'text' in data && (
+            {"text" in data && (
               <div className="prose prose-sm prose-invert max-w-none font-medium">
                 <ReactMarkdown>{String(data.text)}</ReactMarkdown>
               </div>
             )}
-            {'examples' in data && Array.isArray(data.examples) && (
+            {"examples" in data && Array.isArray(data.examples) && (
               <div className="space-y-2 mt-3">
                 <div className="text-xs font-semibold text-blue-300 mb-2">Sample Answers:</div>
                 {data.examples.map((item: any, i: number) => (
@@ -134,7 +128,7 @@ const BlockRenderer = ({ block }: { block: MessageBlock<BrainstormLanggraphData>
                 ))}
               </div>
             )}
-            {'template' in data && (
+            {"template" in data && (
               <div className="mt-3 pt-3 border-t border-gray-500">
                 <div className="prose prose-sm prose-invert max-w-none italic opacity-90">
                   <ReactMarkdown>{String(data.template)}</ReactMarkdown>
@@ -144,28 +138,32 @@ const BlockRenderer = ({ block }: { block: MessageBlock<BrainstormLanggraphData>
           </div>
         );
       }
-      
+
       return null;
     }
-    
-    case 'tool_call': {
+
+    case "tool_call": {
       const toolBlock = block as ToolCallMessageBlock;
       return (
         <div className="text-xs p-3 bg-gray-700 rounded border border-gray-600">
           <div className="flex items-center gap-2 mb-2">
-            <div className={`w-2 h-2 rounded-full ${
-              toolBlock.state === 'complete' ? 'bg-green-500' :
-              toolBlock.state === 'error' ? 'bg-red-500' :
-              'bg-yellow-500'
-            }`} />
+            <div
+              className={`w-2 h-2 rounded-full ${
+                toolBlock.state === "complete"
+                  ? "bg-green-500"
+                  : toolBlock.state === "error"
+                    ? "bg-red-500"
+                    : "bg-yellow-500"
+              }`}
+            />
             <span className="font-semibold">🔧 {toolBlock.toolName}</span>
             <span className="text-gray-400">({toolBlock.state})</span>
           </div>
         </div>
       );
     }
-    
-    case 'reasoning': {
+
+    case "reasoning": {
       const reasoningBlock = block as ReasoningMessageBlock;
       return (
         <div className="text-xs p-3 bg-blue-900/30 rounded border border-blue-700 italic">
@@ -174,7 +172,7 @@ const BlockRenderer = ({ block }: { block: MessageBlock<BrainstormLanggraphData>
         </div>
       );
     }
-    
+
     default:
       return null;
   }
@@ -187,24 +185,31 @@ export const Message = ({
   message: MessageWithBlocks<BrainstormLanggraphData>;
   status?: ChatStatus;
 }) => {
-  const isUser = message.role === 'user';
+  const isUser = message.role === "user";
   const hasNoBlocks = message.blocks.length === 0;
-  const isLoading = (status === 'submitted' || status === 'streaming') && hasNoBlocks;
-  
+  const isLoading = (status === "submitted" || status === "streaming") && hasNoBlocks;
+
   return (
-    <div className={`flex w-full mb-4 ${
-      isUser ? 'justify-end' : 'justify-start'
-    }`}>
-      <div className={`max-w-[75%] rounded-lg p-4 ${
-        isUser
-          ? 'bg-blue-800 text-white'
-          : 'bg-gray-600 text-white'
-      }`}>
+    <div className={`flex w-full mb-4 ${isUser ? "justify-end" : "justify-start"}`}>
+      <div
+        className={`max-w-[75%] rounded-lg p-4 ${
+          isUser ? "bg-blue-800 text-white" : "bg-gray-600 text-white"
+        }`}
+      >
         {isLoading ? (
           <div className="flex items-center gap-1">
-            <span className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-            <span className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-            <span className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+            <span
+              className="w-2 h-2 bg-white rounded-full animate-bounce"
+              style={{ animationDelay: "0ms" }}
+            ></span>
+            <span
+              className="w-2 h-2 bg-white rounded-full animate-bounce"
+              style={{ animationDelay: "150ms" }}
+            ></span>
+            <span
+              className="w-2 h-2 bg-white rounded-full animate-bounce"
+              style={{ animationDelay: "300ms" }}
+            ></span>
           </div>
         ) : (
           <div className="space-y-3">
@@ -238,7 +243,7 @@ export const ChatInput = ({
         placeholder="Say something..."
         onChange={onChange}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
+          if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             onSubmit(e as any);
           }

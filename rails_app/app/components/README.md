@@ -56,15 +56,17 @@ end
 
 Users can provide a value to a slot using `component.capture_for(name)`
 
-* For `renders_one` slots, this will set the value (overriding previous values).
-* For `renders_many` slots, this will append the value to the array.
+- For `renders_one` slots, this will set the value (overriding previous values).
+- For `renders_many` slots, this will append the value to the array.
 
 Capture a simple value:
+
 ```erb
 <%= component.capture_for :panel, "Value" %>
 ```
 
 Capture HTML with a block:
+
 ```erb
 <%= component.capture_for :panel do %>
   Value
@@ -72,6 +74,7 @@ Capture HTML with a block:
 ```
 
 Captures for `renders_many` will be added to an array:
+
 ```erb
 <%= component.capture_for :items, "1" %>
 <%= component.capture_for :items, "2" %>

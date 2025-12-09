@@ -1,6 +1,4 @@
-import { 
-    renderPrompt,
-} from "@prompts";
+import { renderPrompt } from "@prompts";
 import { StructuredTool } from "@langchain/core/tools";
 
 type ToolMap = Record<string, StructuredTool>;
@@ -8,22 +6,21 @@ export interface ToolsPromptProps {
   tools: StructuredTool[] | ToolMap;
 }
 
-export const toolsPrompt = async ({ 
-    tools,
-}: ToolsPromptProps): Promise<string> => {
-    if (!tools) {
-        throw new Error('tools is required');
-    }
-    let toolsArray;
+export const toolsPrompt = async ({ tools }: ToolsPromptProps): Promise<string> => {
+  if (!tools) {
+    throw new Error("tools is required");
+  }
+  let toolsArray;
 
-    if (!Array.isArray(tools)) {
-        toolsArray = Object.values(tools).sort((a, b) => a.name.localeCompare(b.name));
-    } else {
-        toolsArray = tools;
-    }
+  if (!Array.isArray(tools)) {
+    toolsArray = Object.values(tools).sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    toolsArray = tools;
+  }
 
-    const toolInstructions = toolsArray.map(tool => {
-        return `
+  const toolInstructions = toolsArray
+    .map((tool) => {
+      return `
             <important>
                 You have ${toolsArray.length} tools available:
             </important>
@@ -34,9 +31,10 @@ export const toolsPrompt = async ({
               <schema>${tool.schema}</schema>
             </tool>
         `;
-    }).join('\n');
+    })
+    .join("\n");
 
-    return renderPrompt(`
+  return renderPrompt(`
         <tools>
             ${toolInstructions}
         </tools>

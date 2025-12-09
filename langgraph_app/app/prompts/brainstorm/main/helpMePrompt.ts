@@ -3,36 +3,47 @@ import { Brainstorm, type LangGraphRunnableConfig, isHumanMessage } from "@types
 import { structuredOutputPrompt, renderPrompt } from "@prompts";
 import { lastHumanMessage } from "@types";
 import {
-    whereWeArePrompt,
-    currentTopicPrompt,
-    remainingTopicsPrompt,
-    collectedAnswersPrompt,
-    backgroundPrompt,
-    getHelpTemplates,
+  whereWeArePrompt,
+  currentTopicPrompt,
+  remainingTopicsPrompt,
+  collectedAnswersPrompt,
+  backgroundPrompt,
+  getHelpTemplates,
 } from "../shared";
 
-export const helpMePrompt = async(state: BrainstormGraphState, config?: LangGraphRunnableConfig) => {
-    const message = lastHumanMessage(state);
-    if (!message) {
-        throw new Error("No human message found");
-    }
+export const helpMePrompt = async (
+  state: BrainstormGraphState,
+  config?: LangGraphRunnableConfig
+) => {
+  const message = lastHumanMessage(state);
+  if (!message) {
+    throw new Error("No human message found");
+  }
 
-    if (!state.currentTopic) {
-        throw new Error("No current topic found");
-    }
+  if (!state.currentTopic) {
+    throw new Error("No current topic found");
+  }
 
-    const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, background, topicSpecificHelp] = await Promise.all([
-        structuredOutputPrompt({ schema: Brainstorm.helpMeSchema }),
-        whereWeArePrompt(state, config),
-        currentTopicPrompt(state, config),
-        remainingTopicsPrompt(state, config),
-        collectedAnswersPrompt(state, config),
-        backgroundPrompt(state, config),
-        getHelpTemplates([state.currentTopic]),
-    ]);
+  const [
+    outputInstructions,
+    whereWeAre,
+    currentTopic,
+    remainingTopics,
+    collectedAnswers,
+    background,
+    topicSpecificHelp,
+  ] = await Promise.all([
+    structuredOutputPrompt({ schema: Brainstorm.helpMeSchema }),
+    whereWeArePrompt(state, config),
+    currentTopicPrompt(state, config),
+    remainingTopicsPrompt(state, config),
+    collectedAnswersPrompt(state, config),
+    backgroundPrompt(state, config),
+    getHelpTemplates([state.currentTopic]),
+  ]);
 
-    return renderPrompt(
-        `
+  return renderPrompt(
+    `
             ${background}
 
             ${whereWeAre}
@@ -124,5 +135,5 @@ export const helpMePrompt = async(state: BrainstormGraphState, config?: LangGrap
 
             ${outputInstructions}
         `
-    );
-}
+  );
+};

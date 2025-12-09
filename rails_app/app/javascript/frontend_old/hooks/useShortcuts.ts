@@ -1,6 +1,6 @@
-import { useStore } from '@nanostores/react';
-import { useEffect } from 'react';
-import { shortcutsStore, type Shortcuts } from '@stores/settings';
+import { useStore } from "@nanostores/react";
+import { useEffect } from "react";
+import { shortcutsStore, type Shortcuts } from "@stores/settings";
 
 class ShortcutEventEmitter {
   #emitter = new EventTarget();
@@ -50,10 +50,10 @@ export function useShortcuts(): void {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [shortcuts]);
 }

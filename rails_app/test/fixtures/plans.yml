@@ -102,7 +102,7 @@ enterprise:
   amount: 2500
   interval: month
   hidden: false
-  contact_url: 'mailto:user@example.com'
+  contact_url: "mailto:user@example.com"
   stripe_id: enterprise
   braintree_id: enterprise
   fake_processor_id: enterprise

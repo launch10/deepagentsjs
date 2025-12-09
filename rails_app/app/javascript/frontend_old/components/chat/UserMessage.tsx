@@ -1,5 +1,5 @@
-import { modificationsRegex } from '@utils/diff';
-import { Markdown } from './Markdown';
+import { modificationsRegex } from "@utils/diff";
+import { Markdown } from "./Markdown";
 
 interface UserMessageProps {
   content: string;
@@ -14,5 +14,5 @@ export function UserMessage({ content }: UserMessageProps) {
 }
 
 function sanitizeUserMessage(content: string) {
-  return content.replace(modificationsRegex, '').trim();
+  return content.replace(modificationsRegex, "").trim();
 }

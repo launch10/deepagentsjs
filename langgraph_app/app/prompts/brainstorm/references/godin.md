@@ -15,6 +15,7 @@
 **Enemy-Based**: Unite tribe around common enemy (practice/belief, not competitor). Creates clarity + emotional engagement.
 
 ## When to Apply
+
 - Audience too broad → Smallest Viable Audience
 - Generic positioning → Purple Cow
 - Copying competitors → Find new category (#1 somewhere)

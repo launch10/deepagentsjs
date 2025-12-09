@@ -47,12 +47,11 @@ export type TestEnv = z.infer<typeof testEnvSchema>;
 export type RuntimeEnv = Env | TestEnv;
 
 export const isCI = () => {
-  return (process.env.CI === "true") || (process.env.CI === "1");
+  return process.env.CI === "true" || process.env.CI === "1";
 };
 
 export const env = ((): RuntimeEnv => {
-  const isTestEnv =
-    process.env.NODE_ENV === "test" || process.env.VITEST === "true";
+  const isTestEnv = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
   const isCIEnv = isCI();
   const envFile = isCIEnv ? ".env.ci" : isTestEnv ? ".env.test" : ".env";
 

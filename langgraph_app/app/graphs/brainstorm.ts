@@ -8,11 +8,11 @@ import { handleCommand } from "@nodes";
  * The main brainstorm graph
  */
 export const brainstormGraph = new StateGraph(BrainstormAnnotation)
-      .addNode("createBrainstorm", createBrainstorm)
-      .addNode("handleCommand", handleCommand)
-      .addNode("brainstormAgent", brainstormAgent)
+  .addNode("createBrainstorm", createBrainstorm)
+  .addNode("handleCommand", handleCommand)
+  .addNode("brainstormAgent", brainstormAgent)
 
-      .addEdge(START, "createBrainstorm")
-      .addEdge("createBrainstorm", "handleCommand")
-      .addEdge("handleCommand", "brainstormAgent")
-      .addEdge("brainstormAgent", END)
+  .addEdge(START, "createBrainstorm")
+  .addEdge("createBrainstorm", "handleCommand")
+  .addEdge("handleCommand", "brainstormAgent")
+  .addEdge("brainstormAgent", END);
