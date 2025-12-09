@@ -421,3 +421,23 @@ Signup forms: onSubmit={() => posthog.capture('signup_completed')}
 - **Multi-page**: Start with IndexPage only
 - **Nav/Footer**: Template-provided initially
 - **Tests/smoketests**: Future enhancement
+
+## Available Middlewares
+
+| ⏺                                | Middleware                                                                                | Use Case |
+| -------------------------------- | ----------------------------------------------------------------------------------------- | -------- |
+| toolRetryMiddleware              | Automatically retries failed tool calls with configurable backoff and exception filtering |
+| modelRetryMiddleware             | Automatically retries failed model calls with exponential backoff                         |
+| toolCallLimitMiddleware          | Enforces tool call limits at thread/run levels for cost control                           |
+| modelCallLimitMiddleware         | Limits model API calls to prevent excessive usage and costs                               |
+| modelFallbackMiddleware          | Provides automatic fallback to alternative models on errors                               |
+| humanInTheLoopMiddleware         | Intercepts tool calls for human approval before execution                                 |
+| summarizationMiddleware          | Automatically summarizes conversation history when approaching token limits               |
+| dynamicSystemPromptMiddleware    | Sets system prompts dynamically based on agent state                                      |
+| llmToolSelectorMiddleware        | Uses an LLM to filter relevant tools, reducing token usage                                |
+| piiMiddleware                    | Detects and handles PII (email, credit card, IP, etc.) with block/redact/mask strategies  |
+| contextEditingMiddleware         | Prunes older tool results to manage context window size                                   |
+| todoListMiddleware               | Adds todo list management capabilities for tracking multi-step tasks                      |
+| toolEmulatorMiddleware           | Emulates tools using an LLM instead of executing them (testing)                           |
+| openAIModerationMiddleware       | Moderates content using OpenAI's moderation endpoint                                      |
+| anthropicPromptCachingMiddleware | Enables Anthropic's prompt caching for cost optimization                                  |
