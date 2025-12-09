@@ -1,4 +1,4 @@
-export { getLLM } from "./llm";
+export * from "./llm";
 export { LLMManager } from "./core";
 export { LLMTestResponder } from "./test";
 

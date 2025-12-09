@@ -1,5 +1,5 @@
 import { createDeepAgent } from "deepagents";
-import { getLLM } from "@core";
+import { getLLM, getLLMFallbacks } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { copywriterSubAgent, coderSubAgent } from "./subagents";
 import type { CodingAgentGraphState } from "@annotation";
@@ -7,7 +7,12 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { db, websites, eq } from "@db";
 import type { Website } from "@types";
 import { checkpointer } from "@core";
-import { toolRetryMiddleware } from "langchain";
+import { 
+  toolRetryMiddleware, 
+  modelFallbackMiddleware as modelFallbackMiddlewareBuilder, 
+  summarizationMiddleware as summarizationMiddlewareBuilder ,
+  type AgentMiddleware
+} from "langchain";
 import { NodeMiddleware } from "@middleware";
 
 const CODING_AGENT_SYSTEM_PROMPT = `You are an expert landing page developer. You create high-converting landing pages that drive pre-sales signups.
@@ -80,19 +85,31 @@ Available CSS classes:
 
 Start by exploring the existing template structure with ls and glob, then create the landing page sections.`;
 
+const getMiddlewares = (): AgentMiddleware[] => {
+  const fallbacks = getLLMFallbacks("coding", "slow", "paid")
+  const modelFallbackMiddleware  = modelFallbackMiddlewareBuilder(...fallbacks)
+  const summarizationMiddleware = summarizationMiddlewareBuilder({
+    model: getLLM("summarization", "fast", "paid"),
+    trigger: { fraction: 0.7 },
+    keep: { messages: 15 },
+  })
+  return [toolRetryMiddleware(), modelFallbackMiddleware, summarizationMiddleware]
+}
+
 export function createCodingAgent(
   backend: WebsiteFilesBackend,
 ) {
   const llm = getLLM("coding", "slow", "paid");
+  const middlewares = getMiddlewares()
 
   return createDeepAgent({
-    model: llm,
+    model: llm as any,
+    name: "coding-agent",
     systemPrompt: CODING_AGENT_SYSTEM_PROMPT,
     backend: () => backend,
     subagents: [copywriterSubAgent, coderSubAgent],
-    middleware: [toolRetryMiddleware()],
-    name: "coding-agent",
-    checkpointer,
+    middleware: middlewares as any,
+    checkpointer: checkpointer as any,
   });
 }
 
@@ -163,7 +180,7 @@ Please create a landing page based on this context.
   );
 
   // right... it's supposed to happen here... okay that's not with using. maybe we use finally?
-  // await backend.cleanup();
+  await backend.cleanup();
 
   return {
     messages: result.messages,
