@@ -8,12 +8,18 @@ export const pool: Pool = (() => {
     throw new Error("DATABASE_URL is not set");
   }
 
-  return new Pool({
+  const newPool = new Pool({
     connectionString: postgresUri,
-    max: 10, // Set reasonable max connections
+    max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
   });
+
+  newPool.on("error", (err) => {
+    console.error("Unexpected pool error:", err);
+  });
+
+  return newPool;
 })();
 
 export async function cleanupPool(): Promise<void> {

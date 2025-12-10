@@ -74,9 +74,12 @@ export const adsAgent = NodeMiddleware.use(
     const [message, updates] = await AdsBridge.toStructuredMessage(lastMessage);
     const mergedAssets = getStructuredData(state, updates as Partial<Ads.Assets>);
 
+    const allMessages = result.messages.slice(0, -1).concat([message]);
+    const filtered = filterPseudoMessages(allMessages);
+
     return {
       ...mergedAssets,
-      messages: filterPseudoMessages(result.messages.slice(0, -1).concat([message])),
+      messages: filtered,
     };
   }
 );

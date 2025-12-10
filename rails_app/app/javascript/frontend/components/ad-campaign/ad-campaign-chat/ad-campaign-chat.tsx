@@ -1,4 +1,5 @@
 import { Button } from "@components/ui/button";
+import { useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -16,15 +17,14 @@ import {
 import { Separator } from "@components/ui/separator";
 import { Spinner } from "@components/ui/spinner";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usePage } from "@inertiajs/react";
 import { cn } from "@lib/utils";
-import { workflow as adCampaignWorkflow, type AdsBridgeType } from "@shared";
-import { useLanggraph } from "langgraph-ai-sdk-react";
+import { workflow as adCampaignWorkflow } from "@shared";
+import { useLanggraphContext } from "@contexts/langgraph-context";
 import { ArrowUp, FilePlus, Sparkles } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import z from "zod";
 import AdCampaignStep from "../ad-campaign-step";
-import type { AdCampaignChatFormType, CampaignProps } from "../ad-campaign.types";
+import type { AdCampaignChatFormType } from "../ad-campaign.types";
 import AdCampaignChatBotMessage from "./ad-campaign-chat-bot-message";
 import AdCampaignChatUserMessage from "./ad-campaign-chat-user-message";
 
@@ -37,18 +37,7 @@ export default function AdCampaignChat({
   activeSubstep?: string;
   onRefreshSuggestions?: () => void;
 }) {
-  const pageProps = usePage<CampaignProps>();
-  const { thread_id, jwt, langgraph_path } = pageProps.props;
-
-  const url = new URL("api/ads/stream", langgraph_path).toString();
-  const { messages, isLoadingHistory, sendMessage } = useLanggraph<AdsBridgeType>({
-    api: url,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${jwt}`,
-    },
-    getInitialThreadId: () => (thread_id ? thread_id : undefined),
-  });
+  const { messages, isLoadingHistory, sendMessage } = useLanggraphContext();
 
   const adCampaignSteps = adCampaignWorkflow.launch.steps.find(
     (step) => step.name === "ad_campaign"
@@ -82,7 +71,6 @@ export default function AdCampaignChat({
               subSteps={step.steps?.map((subStep) => ({
                 label: subStep.label,
                 isSubStepActive: subStep.name === activeSubstep,
-                // TODO: isSubStepCompleted
               }))}
             />
           ))}
@@ -93,7 +81,6 @@ export default function AdCampaignChat({
         {!isLoadingHistory && messages ? (
           <div className="space-y-4">
             {messages.map((message, index) => {
-              debugger
               if (message.role === "assistant") {
                 return message.blocks.map((block) => (
                   <AdCampaignChatBotMessage

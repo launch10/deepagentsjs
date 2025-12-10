@@ -19,7 +19,7 @@ brainstormRoutes.post("/stream", authMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
   const body = await c.req.json();
 
-  const { messages, threadId, state } = body;
+  const { message , threadId, state } = body;
 
   if (!messages || !threadId) {
     return c.json({ error: "Missing required fields: messages, threadId" }, 400);

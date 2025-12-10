@@ -7,15 +7,14 @@ import AdCampaignPagination from "@components/ad-campaign/ad-campaign-pagination
 import AdCampaignPreview from "@components/ad-campaign/ad-campaign-preview";
 import AdCampaignTabSwitcher from "@components/ad-campaign/ad-campaign-tab-switcher";
 import type { AdPreviewType, CampaignProps } from "@components/ad-campaign/ad-campaign.types";
-import Header from "@components/header/header";
 import LogoSpinner from "@components/ui/logo-spinner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePage } from "@inertiajs/react";
-import type { AdsBridgeType } from "@shared";
-import { useLanggraph } from "langgraph-ai-sdk-react";
+import { LanggraphProvider } from "@contexts/langgraph-context";
 import { useEffect, useState } from "react";
 import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Ads, type UUIDType } from "@shared";
+import CampaignInner from "./CampaignInner";
 
 const TABS = [
   { id: "content", label: "Content" },
@@ -23,194 +22,9 @@ const TABS = [
 ];
 
 export default function Campaign() {
-  const pageProps = usePage<CampaignProps>();
-  const { thread_id, jwt, langgraph_path, campaign, workflow, project } = pageProps.props;
-  const campaignExists = Boolean(campaign?.id);
-
-  const [activeTab, setActiveTab] = useState("content");
-  const [isLoading, setIsLoading] = useState(true);
-  const [previewText, setPreviewText] = useState<AdPreviewType>({
-    headline: "",
-    url: "",
-    details: "",
-  });
-
-  const url = new URL("api/ads/stream", langgraph_path).toString();
-  const { state, messages, updateState } = useLanggraph<AdsBridgeType>({
-    api: url,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${jwt}`,
-    },
-    getInitialThreadId: () => (thread_id ? thread_id : undefined),
-  });
-
-  useEffect(() => {
-    if (!workflow || !workflow.substep || !project?.uuid) return;
-    if (campaignExists && workflow.substep === "content") return;
-    if (
-      state.hasStartedStep &&
-      workflow.substep in state.hasStartedStep &&
-      state.hasStartedStep[workflow.substep as Ads.StageName] === true
-    )
-      return;
-
-    updateState({
-      stage: workflow.substep as Ads.StageName,
-      projectUUID: project.uuid as UUIDType,
-    });
-  }, [workflow?.substep, state.hasStartedStep]);
-
-  const methods = useForm<AdCampaignFormData>({
-    resolver: zodResolver(adCampaignSchema),
-    mode: "onChange",
-    defaultValues: {
-      adGroupName: "Ad Group Name",
-      headlines: [
-        { value: "Headline Option 1", isLocked: false },
-        { value: "Headline Option 2", isLocked: false },
-        { value: "Headline Option 3", isLocked: false },
-      ],
-      descriptions: [
-        { value: "Description Option 1", isLocked: false },
-        { value: "Description Option 2", isLocked: false },
-        { value: "Description Option 3", isLocked: false },
-        { value: "Description Option 4", isLocked: false },
-      ],
-      features: [
-        { value: "Feature Option 1", isLocked: false },
-        { value: "Feature Option 2", isLocked: false },
-        { value: "Feature Option 3", isLocked: false },
-        { value: "Feature Option 4", isLocked: false },
-        { value: "Feature Option 5", isLocked: false },
-        { value: "Feature Option 6", isLocked: false },
-      ],
-    },
-  });
-
-  useEffect(() => {
-    // Populate the form with AI headlines and descriptions
-    if (state && state.headlines) {
-      // Only update unlocked fields, preserve locked fields
-      const existingHeadlines = methods.getValues("headlines");
-      const newHeadlines = state.headlines.slice(0, 3);
-
-      const mergedHeadlines = existingHeadlines.map((existing, i) =>
-        existing.isLocked
-          ? existing
-          : {
-              value: newHeadlines[i]?.text ?? "",
-              isLocked: false,
-            }
-      );
-
-      // If there were less than 3 headlines previously, pad to always have 3
-      while (mergedHeadlines.length < 3) {
-        mergedHeadlines.push({
-          value: newHeadlines[mergedHeadlines.length]?.text ?? "",
-          isLocked: false,
-        });
-      }
-
-      methods.setValue("headlines", mergedHeadlines);
-    }
-    if (state && state.descriptions) {
-      const populatedDescriptions = state.descriptions
-        .slice(0, 2)
-        .map((d) => ({ value: d.text, isLocked: false }));
-      const emptyDescription = { value: "", isLocked: false };
-      methods.setValue("descriptions", [
-        ...populatedDescriptions,
-        emptyDescription,
-        emptyDescription,
-      ]);
-    }
-  }, [state?.headlines, state?.descriptions]);
-
-  const watchedHeadlines = useWatch({ control: methods.control, name: "headlines" });
-  const watchedDescriptions = useWatch({ control: methods.control, name: "descriptions" });
-
-  useEffect(() => {
-    // Populate Ad Preview with state values
-    const headlines = watchedHeadlines?.slice(0, 3) ?? [];
-    const previewHeadline = headlines.map((h) => h.value).join(" | ");
-    const previewDescription = watchedDescriptions?.[0]?.value;
-
-    setPreviewText((prev) => ({
-      ...prev,
-      headline: previewHeadline,
-      details: previewDescription,
-    }));
-
-    setIsLoading(false);
-  }, [watchedHeadlines, watchedDescriptions]);
-
-  const { fields: headlinesFields, append: appendHeadlines } = useFieldArray({
-    control: methods.control,
-    name: "headlines",
-  });
-
-  const { fields: descriptionsFields } = useFieldArray({
-    control: methods.control,
-    name: "descriptions",
-  });
-
-  const { fields: featuresFields } = useFieldArray({
-    control: methods.control,
-    name: "features",
-  });
-
-  const handleRefreshSuggestions = (fieldName: "headlines" | "descriptions") => {
-    const numLocked = methods.getValues(fieldName).filter((field) => field.isLocked).length;
-    updateState({
-      refresh: { asset: fieldName, nVariants: 6 - numLocked }, // we want to refresh headlines + we expect 6 minus the number they already liked to be generated
-      headlines: state.headlines, // ensure we pass the content through so the model can know what the user likes
-      descriptions: state.descriptions, // always pass all content, just so the model sees all the user's preferences at once
-    });
-  };
-
-  const handleRefreshAllSuggestions = () => {
-    console.log("refresh all suggestions");
-  };
-
   return (
-    <main className="mx-auto container max-w-6xl grid grid-cols-12 gap-10 px-5">
-      <div className="col-span-4">
-        <AdCampaignChat
-          activeStep={(workflow && workflow?.step) || undefined} // TODO: Clean up conditionals
-          activeSubstep={(workflow && workflow?.substep) || undefined} // TODO: Clean up conditionals
-          onRefreshSuggestions={handleRefreshAllSuggestions}
-        />
-      </div>
-      <div className="col-span-8">
-        <AdCampaignPreview
-          className="mb-8"
-          {...previewText}
-          // TODO: Populate URL from...somewhere
-        />
-        <AdCampaignTabSwitcher tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
-        {isLoading ? (
-          <div className="border-[#D3D2D0] border border-t-0 rounded-b-2xl bg-white">
-            <div className="flex items-center justify-center p-9">
-              <LogoSpinner />
-            </div>
-          </div>
-        ) : (
-          <FormProvider {...methods}>
-            {activeTab === "content" && (
-              <AdCampaignContent
-                methods={methods}
-                headlinesFields={headlinesFields}
-                descriptionsFields={descriptionsFields}
-                appendHeadlines={appendHeadlines}
-                onRefreshSuggestions={handleRefreshSuggestions}
-              />
-            )}
-            {activeTab === "highlights" && <AdCampaignHighlights featuresFields={featuresFields} />}
-            <AdCampaignPagination canContinue={false} />
-          </FormProvider>
-        )}
-      </div>
-    </main>
+    <LanggraphProvider>
+      <CampaignInner tabs={TABS} />
+    </LanggraphProvider>
   );
 }
