@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { usePage } from "@inertiajs/react";
-import { Workflow } from "@shared";
+import { workflow } from "@shared";
 import type { ProgressStep } from "@components/header/header.types";
 
 interface WorkflowProgressContextType {
@@ -9,16 +9,12 @@ interface WorkflowProgressContextType {
   setCurrentStepIndex: (index: number) => void;
 }
 
-const WorkflowProgressContext = createContext<
-  WorkflowProgressContextType | undefined
->(undefined);
+const WorkflowProgressContext = createContext<WorkflowProgressContextType | undefined>(undefined);
 
 export const useWorkflowProgress = () => {
   const context = useContext(WorkflowProgressContext);
   if (!context) {
-    throw new Error(
-      "useWorkflowProgress must be used within WorkflowProgressProvider"
-    );
+    throw new Error("useWorkflowProgress must be used within WorkflowProgressProvider");
   }
   return context;
 };
@@ -47,9 +43,7 @@ export const WorkflowProgressProvider = ({
       const workflow = props.workflow as { step?: string };
       if (workflow.step) {
         const stepIndex = steps.findIndex(
-          (s) =>
-            s.label.toLowerCase().replace(/\s+/g, "_") ===
-            workflow.step?.toLowerCase()
+          (s) => s.label.toLowerCase().replace(/\s+/g, "_") === workflow.step?.toLowerCase()
         );
         if (stepIndex >= 0) {
           return stepIndex;
@@ -60,21 +54,16 @@ export const WorkflowProgressProvider = ({
     // Try to determine from URL pathname
     if (typeof window !== "undefined") {
       const pathname = window.location.pathname;
-      const workflowSteps = Workflow.getSteps("launch");
+      const workflowSteps = workflow.launch.steps.map((s) => s.name);
 
       // Check if URL contains step names
       for (let i = 0; i < workflowSteps.length; i++) {
         const stepName = workflowSteps[i];
         const stepLabel = steps.find(
-          (s) =>
-            s.label.toLowerCase().replace(/\s+/g, "_") ===
-            stepName.toLowerCase()
+          (s) => s.label.toLowerCase().replace(/\s+/g, "_") === stepName.toLowerCase()
         )?.label;
 
-        if (
-          stepLabel &&
-          pathname.toLowerCase().includes(stepName.toLowerCase())
-        ) {
+        if (stepLabel && pathname.toLowerCase().includes(stepName.toLowerCase())) {
           return i;
         }
       }
@@ -91,14 +80,10 @@ export const WorkflowProgressProvider = ({
       const workflow = props.workflow as { step?: string };
       if (workflow.step) {
         const stepIndex = steps.findIndex(
-          (s) =>
-            s.label.toLowerCase().replace(/\s+/g, "_") ===
-            workflow.step?.toLowerCase()
+          (s) => s.label.toLowerCase().replace(/\s+/g, "_") === workflow.step?.toLowerCase()
         );
         if (stepIndex >= 0) {
-          setCurrentStepIndex((prev) =>
-            prev !== stepIndex ? stepIndex : prev
-          );
+          setCurrentStepIndex((prev) => (prev !== stepIndex ? stepIndex : prev));
         }
       }
     }
@@ -114,8 +99,6 @@ export const WorkflowProgressProvider = ({
   );
 
   return (
-    <WorkflowProgressContext.Provider value={value}>
-      {children}
-    </WorkflowProgressContext.Provider>
+    <WorkflowProgressContext.Provider value={value}>{children}</WorkflowProgressContext.Provider>
   );
 };
