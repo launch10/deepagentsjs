@@ -26,14 +26,14 @@ export default function AdCampaignFieldList({
       {fields.map((field, index) => (
         <Controller
           key={field.id}
-          name={`${fieldName}.${index}.value`}
+          name={`${fieldName}.${index}.text`}
           control={control}
           render={({ field: controllerField, fieldState }) => (
             <Field>
               <InputLockable
                 placeholder={placeholder}
                 {...controllerField}
-                isLocked={field.isLocked}
+                isLocked={field.locked}
                 onLockToggle={() => onLockToggle(fieldName, index)}
               />
               <div className="flex">

@@ -11,7 +11,7 @@ import LogoSpinner from "@components/ui/logo-spinner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePage } from "@inertiajs/react";
 import { useLanggraphContext } from "@contexts/langgraph-context";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Ads, type UUIDType } from "@shared";
 
@@ -48,7 +48,7 @@ export default function CampaignInner({ tabs }: CampaignInnerProps) {
       stage: workflow.substep as Ads.StageName,
       projectUUID: project.uuid as UUIDType,
     });
-  }, [workflow?.substep, state.hasStartedStep]);
+  }, [workflow?.substep]);
 
   const methods = useForm<AdCampaignFormData>({
     resolver: zodResolver(adCampaignSchema),
@@ -56,55 +56,37 @@ export default function CampaignInner({ tabs }: CampaignInnerProps) {
     defaultValues: {
       adGroupName: "Ad Group Name",
       headlines: [
-        { value: "Headline Option 1", isLocked: false },
-        { value: "Headline Option 2", isLocked: false },
-        { value: "Headline Option 3", isLocked: false },
+        { text: "Headline Option 1", locked: false, rejected: false },
+        { text: "Headline Option 2", locked: false, rejected: false },
+        { text: "Headline Option 3", locked: false, rejected: false },
       ],
       descriptions: [
-        { value: "Description Option 1", isLocked: false },
-        { value: "Description Option 2", isLocked: false },
-        { value: "Description Option 3", isLocked: false },
-        { value: "Description Option 4", isLocked: false },
+        { text: "Description Option 1", locked: false, rejected: false },
+        { text: "Description Option 2", locked: false, rejected: false },
+        { text: "Description Option 3", locked: false, rejected: false },
+        { text: "Description Option 4", locked: false, rejected: false },
       ],
       features: [
-        { value: "Feature Option 1", isLocked: false },
-        { value: "Feature Option 2", isLocked: false },
-        { value: "Feature Option 3", isLocked: false },
-        { value: "Feature Option 4", isLocked: false },
-        { value: "Feature Option 5", isLocked: false },
-        { value: "Feature Option 6", isLocked: false },
+        { text: "Feature Option 1", locked: false, rejected: false },
+        { text: "Feature Option 2", locked: false, rejected: false },
+        { text: "Feature Option 3", locked: false, rejected: false },
+        { text: "Feature Option 4", locked: false, rejected: false },
+        { text: "Feature Option 5", locked: false, rejected: false },
+        { text: "Feature Option 6", locked: false, rejected: false },
       ],
     },
   });
 
   useEffect(() => {
     if (state && state.headlines) {
-      const existingHeadlines = methods.getValues("headlines");
-      const newHeadlines = state.headlines.slice(0, 3);
-
-      const mergedHeadlines = existingHeadlines.map((existing, i) =>
-        existing.isLocked
-          ? existing
-          : {
-              value: newHeadlines[i]?.text ?? "",
-              isLocked: false,
-            }
-      );
-
-      while (mergedHeadlines.length < 3) {
-        mergedHeadlines.push({
-          value: newHeadlines[mergedHeadlines.length]?.text ?? "",
-          isLocked: false,
-        });
-      }
-
-      methods.setValue("headlines", mergedHeadlines);
+      const headlines = state.headlines.filter((h) => h.rejected !== true)
+      methods.setValue("headlines", headlines);
     }
     if (state && state.descriptions) {
       const populatedDescriptions = state.descriptions
         .slice(0, 2)
-        .map((d) => ({ value: d.text, isLocked: false }));
-      const emptyDescription = { value: "", isLocked: false };
+        .filter((d) => d.rejected !== true);
+      const emptyDescription = { text: "", locked: false, rejected: false };
       methods.setValue("descriptions", [
         ...populatedDescriptions,
         emptyDescription,
@@ -118,8 +100,8 @@ export default function CampaignInner({ tabs }: CampaignInnerProps) {
 
   useEffect(() => {
     const headlines = watchedHeadlines?.slice(0, 3) ?? [];
-    const previewHeadline = headlines.map((h) => h.value).join(" | ");
-    const previewDescription = watchedDescriptions?.[0]?.value;
+    const previewHeadline = headlines.map((h) => h.text).join(" | ");
+    const previewDescription = watchedDescriptions?.[0]?.text;
 
     setPreviewText((prev) => ({
       ...prev,
@@ -146,7 +128,7 @@ export default function CampaignInner({ tabs }: CampaignInnerProps) {
   });
 
   const handleRefreshSuggestions = (fieldName: "headlines" | "descriptions") => {
-    const numLocked = methods.getValues(fieldName).filter((field) => field.isLocked).length;
+    const numLocked = methods.getValues(fieldName).filter((field) => field.locked).length;
     updateState({
       refresh: { asset: fieldName, nVariants: 6 - numLocked },
       headlines: state.headlines,

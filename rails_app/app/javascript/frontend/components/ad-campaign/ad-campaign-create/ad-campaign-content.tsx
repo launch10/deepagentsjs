@@ -11,6 +11,7 @@ import { Field, FieldGroup, FieldLabel, FieldSet } from "@components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/input-group";
 import { Info, Sparkles } from "lucide-react";
 import { useFormContext, type FieldArrayWithId, type UseFormReturn } from "react-hook-form";
+import { Ads } from "@shared";
 
 export default function AdCampaignContent({
   methods,
@@ -20,7 +21,7 @@ export default function AdCampaignContent({
   onRefreshSuggestions,
 }: {
   methods: UseFormReturn<AdCampaignFormData>;
-  appendHeadlines: (value: HeadlineData) => void;
+  appendHeadlines: (value: Ads.Headline) => void;
   headlinesFields: FieldArrayWithId<AdCampaignFormData, "headlines", "id">[];
   descriptionsFields: FieldArrayWithId<AdCampaignFormData, "descriptions", "id">[];
   onRefreshSuggestions: (fieldName: "headlines" | "descriptions") => void;
@@ -34,7 +35,7 @@ export default function AdCampaignContent({
   } = useFormContext<AdCampaignFormData>();
 
   const handleAddHeadline = (value: string) => {
-    appendHeadlines({ value, isLocked: false });
+    appendHeadlines({ text: value, locked: false, rejected: false });
   };
 
   const handleLockToggle = (
@@ -42,11 +43,11 @@ export default function AdCampaignContent({
     index: number
   ) => {
     const fields = getValues(fieldName);
-    const isLocked = fields[index].isLocked;
+    const isLocked = fields[index].locked;
     // Only perform empty check when attempting to lock (i.e. was unlocked)
-    if (!isLocked && !fields[index].value) {
+    if (!isLocked && !fields[index].text) {
       methods.setError(
-        `${fieldName}.${index}.value` as any,
+        `${fieldName}.${index}.text` as any,
         {
           type: "manual",
           message: "Cannot lock an empty input.",
@@ -56,7 +57,7 @@ export default function AdCampaignContent({
       return;
     }
     const updatedFields = fields.map((field, i) =>
-      i === index ? { ...field, isLocked: !isLocked } : field
+      i === index ? { ...field, locked: !isLocked } : field
     );
     setValue(fieldName, updatedFields);
   };

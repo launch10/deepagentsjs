@@ -15,9 +15,9 @@ export default function AdCampaignHighlights({
   const { control, getValues, setValue } = useFormContext<AdCampaignFormData>();
 
   const handleLockToggle = (index: number) => {
-    const isLocked = getValues("features")[index].isLocked;
+    const isLocked = getValues("features")[index].locked;
     const updatedFields = getValues("features").map((field, i) =>
-      i === index ? { ...field, isLocked: !isLocked } : field
+      i === index ? { ...field, locked: !isLocked } : field
     );
     setValue("features", updatedFields);
   };

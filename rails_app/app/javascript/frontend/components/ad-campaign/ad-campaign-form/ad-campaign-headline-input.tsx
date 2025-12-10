@@ -37,7 +37,7 @@ export default function AdCampaignHeadlineInput({
       return;
     }
 
-    const result = headlineSchema.shape.value.safeParse(trimmed);
+    const result = headlineSchema.shape.text.safeParse(trimmed);
     if (!result.success) {
       setError(result.error.errors[0]?.message ?? "Invalid headline");
       return;

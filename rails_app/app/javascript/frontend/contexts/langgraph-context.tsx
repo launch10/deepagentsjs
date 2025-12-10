@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext } from "react";
 import { usePage } from "@inertiajs/react";
 import { useLanggraph } from "langgraph-ai-sdk-react";
 import type { AdsBridgeType } from "@shared";
@@ -36,8 +36,5 @@ export const LanggraphProvider = ({ children }: LanggraphProviderProps) => {
     getInitialThreadId: () => (thread_id ? thread_id : undefined),
   });
 
-  console.log("LanggraphProvider", langgraph.state?.headlines?.map((h) => h?.text));
-  const value = useMemo(() => langgraph, [langgraph]);
-
-  return <LanggraphContext.Provider value={value}>{children}</LanggraphContext.Provider>;
+  return <LanggraphContext.Provider value={langgraph}>{children}</LanggraphContext.Provider>;
 };
