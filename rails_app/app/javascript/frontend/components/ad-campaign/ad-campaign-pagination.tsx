@@ -12,7 +12,7 @@ export default function AdCampaignPagination({
     <div
       className={twMerge(
         "sticky bottom-0 mt-3",
-        "bg-background flex justify-between items-center border-t border-[#E2E1E0] py-4 px-6 shadow-[9px_-16px_26.1px_1px_#74767A12]",
+        "bg-background flex justify-between items-center border-t border-neutral-200 py-4 px-6 shadow-[9px_-16px_26.1px_1px_#74767A12]",
         className
       )}
     >

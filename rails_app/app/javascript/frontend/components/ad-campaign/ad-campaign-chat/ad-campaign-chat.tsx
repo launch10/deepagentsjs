@@ -80,7 +80,7 @@ export default function AdCampaignChat({
   }, [messages]);
 
   return (
-    <Card className="shadow-none bg-background border-[#D3D2D0] rounded-2xl sticky top-24 z-0">
+    <Card className="shadow-none bg-background border-neutral-300 rounded-2xl sticky top-24 z-0">
       <CardHeader>
         <CardTitle className="text-lg font-medium">Ad Campaign</CardTitle>
         <CardDescription className="flex flex-col gap-3">
@@ -100,7 +100,7 @@ export default function AdCampaignChat({
           ))}
         </CardDescription>
       </CardHeader>
-      <Separator className="bg-[#D3D2D0]" />
+      <Separator className="bg-neutral-300" />
       <CardContent>
         {!isLoadingHistory && messages ? (
           <div className="space-y-4 max-h-[30vh] overflow-y-auto">
@@ -151,7 +151,7 @@ export default function AdCampaignChat({
               <InputGroupButton
                 size="icon-sm"
                 variant="destructive"
-                className="rounded-full bg-[#DF6D4A]"
+                className="rounded-full bg-secondary-500"
                 type="submit"
                 disabled={!isValid}
               >
@@ -162,7 +162,7 @@ export default function AdCampaignChat({
         </form>
         <Button
           variant="link"
-          className="text-[#74767A] font-normal self-start"
+          className="text-base-400 font-normal self-start"
           onClick={onRefreshSuggestions}
         >
           <Sparkles /> Refresh All Suggestions

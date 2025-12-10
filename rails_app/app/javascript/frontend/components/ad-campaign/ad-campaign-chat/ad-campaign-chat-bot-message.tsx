@@ -8,6 +8,6 @@ export default function AdCampaignChatBotMessage({
   message: string;
 }) {
   return (
-    <div className={twMerge("text-xs", state === "inactive" && "text-[#96989B]")}>{message}</div>
+    <div className={twMerge("text-xs", state === "inactive" && "text-base-300")}>{message}</div>
   );
 }

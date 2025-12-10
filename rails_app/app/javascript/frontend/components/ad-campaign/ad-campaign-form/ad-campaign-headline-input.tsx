@@ -54,8 +54,8 @@ export default function AdCampaignHeadlineInput({
     <Field>
       <FieldLabel className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <span className="font-semibold">Headlines</span>
-          <Info size={12} className="text-[#96989B]" />
+          <span className="font-semibold text-base-600">Headlines</span>
+          <Info size={12} className="text-base-300" />
           {/* TODO: Add "You need to select at least 3 headlines" error message */}
         </div>
         <div className="flex items-center gap-2">
@@ -94,7 +94,7 @@ export default function AdCampaignHeadlineInput({
       </InputGroup>
       <div className="flex items-center">
         {displayError && <FieldError errors={[{ message: displayError }]} />}
-        <div className="text-right text-sm text-[#8B8B8B] ml-auto">{value.length}/30</div>
+        <div className="text-right text-sm text-base-300 ml-auto">{value.length}/30</div>
       </div>
     </Field>
   );
