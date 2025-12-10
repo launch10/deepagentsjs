@@ -5,8 +5,6 @@ import { createRoot } from "react-dom/client";
 import { SiteLayout } from "../frontend/layouts/site-layout";
 
 // Import global styles here for Vite to process
-import "virtual:uno.css";
-import "@unocss/reset/tailwind-compat.css";
 import "@styles/index.scss";
 import "@xterm/xterm/css/xterm.css";
 import "react-toastify/dist/ReactToastify.css";

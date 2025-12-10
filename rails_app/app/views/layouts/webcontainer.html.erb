@@ -24,7 +24,7 @@
     </script>
 
   </head>
-  <body data-controller="theme bridge--menu-button <%= "bridge--notification-token" if user_signed_in? %>" data-theme-preference-value="<%= current_user&.theme %>">
+  <body data-controller="theme bridge--menu-button <%= "bridge--notification-token" if user_signed_in? %>" data-theme-preference-value="<%= current_user&.theme %>" class="bg-background">
     <%= yield %>
   </body>
 </html>
