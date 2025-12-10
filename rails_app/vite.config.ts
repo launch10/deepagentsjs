@@ -1,4 +1,3 @@
-import UnoCSS from "unocss/vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, type ViteDevServer } from "vite";
@@ -39,7 +38,6 @@ export default defineConfig((config) => {
       react(),
       tailwindcss(),
       RubyPlugin(),
-      UnoCSS(),
       tsconfigPaths(),
       chrome129IssuePlugin(),
       config.mode === "production" && optimizeCssModules({ apply: "build" }),
