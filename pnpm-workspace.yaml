@@ -4,3 +4,5 @@ packages:
   - "langgraph_app/app/lib/shared"
   - "rails_app"
   - "shared"
+  - "packages/*"
+  - "packages/*/packages/*"
