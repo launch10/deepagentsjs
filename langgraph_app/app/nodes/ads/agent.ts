@@ -9,7 +9,7 @@ import { type AdsGraphState } from "@state";
 import z from "zod";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { lastAIMessage, Ads } from "@types";
-import { getTools, getStructuredData } from "./helpers/index";
+import { getTools } from "./helpers/index";
 import { AdsBridge } from "@annotation";
 
 const dynamicPromptMiddleware = createMiddleware({
@@ -72,11 +72,16 @@ export const adsAgent = NodeMiddleware.use(
       throw new Error("Agent did not return an AI message");
     }
     const [message, updates] = await AdsBridge.toStructuredMessage(lastMessage);
-    const mergedAssets = getStructuredData(state, updates as Partial<Ads.Assets>);
+    const mergedAssets = Ads.removeRejected(
+      Ads.mergeStructuredData(state, updates!)
+    )
+
+    const allMessages = result.messages.slice(0, -1).concat([message]);
+    const filtered = filterPseudoMessages(allMessages);
 
     return {
       ...mergedAssets,
-      messages: filterPseudoMessages(result.messages.slice(0, -1).concat([message])),
+      messages: filtered,
     };
   }
 );

@@ -74,8 +74,21 @@ class Project < ApplicationRecord
     launch_workflow
   end
 
+  def step
+    current_workflow.step
+  end
+
+  def substep
+    current_workflow.substep
+  end
+
   def current_chat
     current_workflow.chat
+  end
+
+  def open
+    url = Rails.application.routes.url_helpers.project_url(uuid, host: ENV.fetch("APP_HOST", "localhost:3000"))
+    Launchy.open(url)
   end
 
   private

@@ -1,7 +1,7 @@
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
-import { pool } from "./postgres";
+import { env } from "./env";
 
-export const checkpointer = new PostgresSaver(pool);
+export const checkpointer = PostgresSaver.fromConnString(env.DATABASE_URL);
 try {
   await checkpointer.setup();
 } catch (e) {

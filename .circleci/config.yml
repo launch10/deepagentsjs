@@ -54,6 +54,12 @@ jobs:
       - checkout:
           path: ~/project
       - run:
+          name: Initialize submodules
+          command: |
+            cd ~/project
+            git submodule sync
+            git submodule update --init --recursive
+      - run:
           name: Install Git LFS and pull files
           command: |
             curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
@@ -164,6 +170,12 @@ jobs:
     steps:
       - checkout:
           path: ~/project
+      - run:
+          name: Initialize submodules
+          command: |
+            cd ~/project
+            git submodule sync
+            git submodule update --init --recursive
       - run:
           name: Install PostgreSQL 16 client
           command: |

@@ -1,0 +1,58 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+
+import HeaderProgressStepper from "@components/header/header-progress-stepper";
+
+const meta = {
+  title: "Header/Progress Stepper",
+  component: HeaderProgressStepper,
+  tags: ["autodocs"],
+  parameters: {
+    layout: "centered",
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ width: "600px" }}>
+        <Story />
+      </div>
+    ),
+  ],
+  args: {},
+} satisfies Meta<typeof HeaderProgressStepper>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const defaultSteps = [
+  { label: "Brainstorm" },
+  { label: "Landing Page" },
+  { label: "Ad Campaign" },
+  { label: "Launch" },
+];
+
+export const AtBrainstorm: Story = {
+  args: {
+    steps: defaultSteps,
+    currentStepIndex: 0,
+  },
+};
+
+export const AtLandingPage: Story = {
+  args: {
+    steps: defaultSteps,
+    currentStepIndex: 1,
+  },
+};
+
+export const AtAdCampaign: Story = {
+  args: {
+    steps: defaultSteps,
+    currentStepIndex: 2,
+  },
+};
+
+export const AtLaunch: Story = {
+  args: {
+    steps: defaultSteps,
+    currentStepIndex: 3,
+  },
+};

@@ -408,6 +408,10 @@ GEM
       thor (~> 1.3)
       zeitwerk (>= 2.6.18, < 3.0)
     language_server-protocol (3.17.0.5)
+    launchy (3.1.1)
+      addressable (~> 2.8)
+      childprocess (~> 5.0)
+      logger (~> 1.6)
     lint_roller (1.1.0)
     listen (3.9.0)
       rb-fsevent (~> 0.10, >= 0.10.3)
@@ -904,6 +908,7 @@ DEPENDENCIES
   jbuilder!
   jumpstart!
   kamal (>= 2.0.0.rc2)
+  launchy
   local_time (~> 3.0)
   madmin (~> 2.0)
   mailbin (~> 1.0)

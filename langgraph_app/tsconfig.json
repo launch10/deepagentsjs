@@ -48,6 +48,7 @@
       "@state": ["../shared/state/index.ts"],
       "@types": ["../shared/types/index.ts"],
       "@shared/*": ["./app/lib/shared/*"],
+      "@helpers": ["../shared/helpers/index.ts"],
       "@db": ["app/db/index.ts"],
       "@core": ["./app/core/index.ts"],
       "@services": ["./app/services/index.ts"],

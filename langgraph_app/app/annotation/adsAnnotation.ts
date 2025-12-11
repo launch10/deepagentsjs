@@ -25,38 +25,11 @@ export const AdsAnnotation = Annotation.Root({
 // Just a convenience to ensure the annotation matches the state type
 type _Assertion = Expect<Equal<AdsGraphState, typeof AdsAnnotation.State>>;
 
-const decorateAssetReducer = (streamed: string[] | undefined, current: Ads.Asset[] | undefined) => {
-  const existing = current ?? [];
-  const existingTexts = new Set(existing.map((h) => h.text));
-  const newAssets = (streamed || [])
-    .filter((text) => !existingTexts.has(text))
-    .map((text) => ({ text, rejected: false, locked: false }));
-  return [...existing, ...newAssets];
-};
-
-type StreamedSnippet = { category: string; details: string[] };
-
 // This represents a bridge from Langgraph -> the AI SDK (streaming frontend, helps us create the API)
 export const AdsBridge = createBridge({
   endpoint: "/api/ads/stream",
-  stateAnnotation: AdsAnnotation,
+  stateAnnotation: AdsAnnotation as any,
   messageSchema: Ads.jsonSchema,
   jsonTarget: "state",
-  reducers: {
-    headlines: decorateAssetReducer,
-    descriptions: decorateAssetReducer,
-    callouts: decorateAssetReducer,
-    keywords: decorateAssetReducer,
-    structuredSnippets: (
-      streamed: StreamedSnippet | undefined,
-      current: Ads.StructuredSnippets | undefined
-    ): Ads.StructuredSnippets => {
-      const existing = current ?? ({ category: "", details: [] } satisfies Ads.StructuredSnippets);
-      const existingTexts = new Set(existing.details.map((h) => h.text));
-      const newAssets = (streamed || { category: "", details: [] }).details
-        .filter((text) => !existingTexts.has(text))
-        .map((text) => ({ text, rejected: false, locked: false }));
-      return { ...existing, details: [...existing.details, ...newAssets] };
-    },
-  },
+  transforms: Ads.StreamingTransforms,
 });

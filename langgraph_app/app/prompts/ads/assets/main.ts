@@ -1,4 +1,4 @@
-import { type LangGraphRunnableConfig, Ads } from "@types";
+import { type LangGraphRunnableConfig, Ads, isHumanMessage } from "@types";
 import { type AdsGraphState } from "@state";
 import { getAssetPrompts, getOutputPrompt } from "./assets/index";
 import { needsIntentClassification } from "./helpers";
@@ -7,6 +7,13 @@ import { previousAssetsContext } from "./helpers/previousAssetsContext";
 import { processPrompt } from "../../core/process";
 import { whereWeArePrompt } from "./whereWeAre";
 import { helpInstructions } from "../helpPrompt";
+import { HumanMessage } from "@langchain/core/messages";
+import { isPseudoMessage } from "../pseudoMessages";
+
+const isRealHumanMessage = (state: AdsGraphState): boolean => {
+  const lastMessage = state.messages?.at(-1);
+  return !!lastMessage && HumanMessage.isInstance(lastMessage) && !isPseudoMessage(lastMessage);
+};
 
 const buildPreviousAssetsContext = (state: AdsGraphState): string => {
   const sections = previousAssetsContext(state);
@@ -99,6 +106,16 @@ export const promptBuilder = async (state: AdsGraphState, config: LangGraphRunna
   ]);
   const responseTemplate = ResponseTemplates[state.stage];
   const isRefreshMode = state.refresh !== undefined;
+  const humanAskedQuestion = isRealHumanMessage(state);
+  let messageInstruction;
+  if (humanAskedQuestion){
+    messageInstruction = `- First, reply to the user's message. Always include a brief 1-2 sentences before the JSON block.`;
+  } else if (isRefreshMode) {
+    messageInstruction = `- Just output structured JSON data, no text.`;
+  } else {
+    messageInstruction = `- First, a brief introduction (1-2 sentences) using this template: "${responseTemplate}"`;
+  }
+
   const previousAssetsContext = buildPreviousAssetsContext(state);
   const refreshSection = buildRefreshSection(state);
   const helpSection = buildHelpSection(state, config);
@@ -125,7 +142,7 @@ export const promptBuilder = async (state: AdsGraphState, config: LangGraphRunna
                 ${assetPrompts}
 
                 2. Format your response with:
-                    - First, a brief introduction (1-2 sentences) ${!isRefreshMode ? `using this template: "${responseTemplate}"` : ""}
+                    ${messageInstruction}
                     - Then, a JSON code block with the structured data
         </asset_generation_instructions>
 

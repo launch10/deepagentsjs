@@ -9,18 +9,26 @@ import {
   guardrailsNode,
 } from "@nodes";
 import { type AdsGraphState } from "@state";
-import { Ads } from "@types";
+import { NodeMiddleware } from "@middleware";
+import type { Ads, LangGraphRunnableConfig } from "@types";
 
-const beforeGenerateNode = (state: AdsGraphState): Partial<AdsGraphState> => {
+const beforeGenerateNode = NodeMiddleware.use({}, async (state: AdsGraphState, config: LangGraphRunnableConfig) => {
   if (!state.stage) {
     throw new Error("Stage is required");
   }
   const hasStartedStep = state.hasStartedStep || {};
   hasStartedStep[state.stage] = true;
   return { hasStartedStep };
-};
+});
+
+const prepareNode = async (state: AdsGraphState) => {
+  return {
+    error: undefined,
+  }
+}
 
 export const adsGraph = new StateGraph(AdsAnnotation)
+  .addNode("prepare", prepareNode)
   .addNode("createCampaign", createCampaign)
   .addNode("beforeGenerate", beforeGenerateNode)
   .addNode("getBusinessContext", getBusinessContext)
@@ -28,10 +36,11 @@ export const adsGraph = new StateGraph(AdsAnnotation)
   .addNode("adsAgent", adsAgent)
   .addNode("reset", resetNode)
 
-  .addEdge(START, "createCampaign")
+  .addEdge(START, "prepare")
+  .addEdge("prepare", "createCampaign")
   .addConditionalEdges("createCampaign", guardrailsNode, {
-    beforeGenerate: "beforeGenerate",
-    __end__: END,
+    "beforeGenerate": "beforeGenerate",
+    "__end__": END
   })
   .addEdge("beforeGenerate", "getBusinessContext")
   .addEdge("getBusinessContext", "prepareRefresh")
