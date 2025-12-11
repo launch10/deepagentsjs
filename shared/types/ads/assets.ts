@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { uuidSchema } from "../core";
 import { 
     Workflow
  } from "../workflow";
@@ -23,6 +24,7 @@ ContentStage => {
 };
 
 export const AssetSchema = z.object({
+    id: uuidSchema,
     text: z.string(),
     rejected: z.boolean(),
     locked: z.boolean()

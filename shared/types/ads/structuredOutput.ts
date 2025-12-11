@@ -1,12 +1,15 @@
 import * as Ads from "./assets";
 import { type AdsGraphState } from "../../state";
 import type { Simplify } from "type-fest";
+import { generateUUID } from "../core";
 
 const isAssetKind = (value: unknown): value is Ads.AssetKind => {
   return typeof value === "string" && Ads.AssetKinds.includes(value as Ads.AssetKind);
 };
 
-const toAsset = (text: string): Ads.Asset => ({ text, rejected: false, locked: false });
+const toAsset = (text: string): Ads.Asset => (
+  { id: generateUUID(), text, rejected: false, locked: false }
+);
 const toAssets = (texts: string[]): Ads.Asset[] => texts.map(toAsset);
 
 type StreamedSnippet = { category: string; details: string[] };
@@ -16,7 +19,7 @@ export const Transforms = {
   descriptions: toAssets,
   callouts: toAssets,
   keywords: toAssets,
-  structuredSnippets: (streamed: StreamedSnippet | undefined) => {
+  structuredSnippets: (streamed: StreamedSnippet | undefined): Ads.StructuredSnippets => {
     if (!streamed?.details || !streamed?.category) {
       throw new Error("Didn't receive proper snippet")
     }

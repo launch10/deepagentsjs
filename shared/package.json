@@ -14,6 +14,7 @@
     "fast-json-stable-stringify": "^2.1.0",
     "langgraph-ai-sdk-react": "workspace:*",
     "langgraph-ai-sdk-types": "workspace:*",
+    "lodash": "^4.17.21",
     "openapi-fetch": "^0.15.0",
     "uuid": "^11.1.0",
     "zod": "^3.25.76",
@@ -31,6 +32,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.26",
     "@types/uuid": "^10.0.0",
+    "@types/lodash": "^4.17.21",
     "openapi-typescript": "^7.10.1",
     "type-fest": "^5.3.1",
     "typescript": "^5.9.3"
