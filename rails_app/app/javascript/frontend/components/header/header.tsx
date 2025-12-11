@@ -2,7 +2,6 @@ import HeaderUser from "./header-user";
 import HeaderProgressStepper from "./header-progress-stepper";
 import { Rocket } from "lucide-react";
 import { useWorkflowProgress } from "@contexts/workflow-progress-context";
-import { Workflow } from "@shared";
 
 export default function Header() {
   const { steps, currentStepIndex } = useWorkflowProgress();

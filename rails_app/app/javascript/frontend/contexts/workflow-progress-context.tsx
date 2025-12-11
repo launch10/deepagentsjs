@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState, useMemo } from "react";
-import { usePage } from "@inertiajs/react";
-import { workflow } from "@shared";
 import type { ProgressStep } from "@components/header/header.types";
+import type { PageProps } from "@inertiajs/core";
+import { usePage } from "@inertiajs/react";
+import { Workflow } from "@shared";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 interface WorkflowProgressContextType {
   currentStepIndex: number;
@@ -21,80 +22,49 @@ export const useWorkflowProgress = () => {
 
 interface WorkflowProgressProviderProps {
   children: React.ReactNode;
-  steps: ProgressStep[];
   initialStepIndex?: number;
 }
 
+const getStepsFromProps = (pageProps: PageProps): ProgressStep[] => {
+  const workflow = Workflow.Workflow["workflow"];
+  const workflowType = ((pageProps.workflow as { workflow_type?: string })?.workflow_type ||
+    "launch") as keyof typeof workflow;
+  const configSteps = workflow[workflowType]?.steps;
+  return (
+    configSteps?.map((step) => ({ label: step.label, order: step.order })) ||
+    workflow.launch.steps.map((step) => ({
+      label: step.label,
+      order: step.order,
+    }))
+  );
+};
+
+const findStepIndex = (steps: ProgressStep[], stepName: string): number => {
+  return steps.findIndex(
+    (s) => s.label.toLowerCase().replace(/\s+/g, "_") === stepName.toLowerCase()
+  );
+};
+
 export const WorkflowProgressProvider = ({
   children,
-  steps,
-  initialStepIndex,
+  initialStepIndex = 0,
 }: WorkflowProgressProviderProps) => {
   const page = usePage();
-  const [currentStepIndex, setCurrentStepIndex] = useState<number>(() => {
-    // If initialStepIndex is provided, use it
-    if (initialStepIndex !== undefined) {
-      return initialStepIndex;
-    }
+  const props = page.props;
+  console.log({ props });
+  const workflowObj = props.workflow as { workflow_type?: string; step?: string } | undefined;
+  const steps = useMemo(() => getStepsFromProps(props), [props]);
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(initialStepIndex);
 
-    // Try to determine from page props (workflow step)
-    const props = page.props as Record<string, unknown>;
-    if (props.workflow && typeof props.workflow === "object") {
-      const workflow = props.workflow as { step?: string };
-      if (workflow.step) {
-        const stepIndex = steps.findIndex(
-          (s) => s.label.toLowerCase().replace(/\s+/g, "_") === workflow.step?.toLowerCase()
-        );
-        if (stepIndex >= 0) {
-          return stepIndex;
-        }
-      }
-    }
-
-    // Try to determine from URL pathname
-    if (typeof window !== "undefined") {
-      const pathname = window.location.pathname;
-      const workflowSteps = workflow.launch.steps.map((s) => s.name);
-
-      // Check if URL contains step names
-      for (let i = 0; i < workflowSteps.length; i++) {
-        const stepName = workflowSteps[i];
-        const stepLabel = steps.find(
-          (s) => s.label.toLowerCase().replace(/\s+/g, "_") === stepName.toLowerCase()
-        )?.label;
-
-        if (stepLabel && pathname.toLowerCase().includes(stepName.toLowerCase())) {
-          return i;
-        }
-      }
-    }
-
-    // Default to first step
-    return 0;
-  });
-
-  // Update step index when URL or props change
   useEffect(() => {
-    const props = page.props as Record<string, unknown>;
-    if (props.workflow && typeof props.workflow === "object") {
-      const workflow = props.workflow as { step?: string };
-      if (workflow.step) {
-        const stepIndex = steps.findIndex(
-          (s) => s.label.toLowerCase().replace(/\s+/g, "_") === workflow.step?.toLowerCase()
-        );
-        if (stepIndex >= 0) {
-          setCurrentStepIndex((prev) => (prev !== stepIndex ? stepIndex : prev));
-        }
-      }
+    if (workflowObj?.step) {
+      const index = findStepIndex(steps, workflowObj.step);
+      if (index >= 0) setCurrentStepIndex(index);
     }
-  }, [page.props, steps]);
+  }, [workflowObj?.step]);
 
   const value = useMemo(
-    () => ({
-      currentStepIndex,
-      steps,
-      setCurrentStepIndex,
-    }),
+    () => ({ currentStepIndex, steps, setCurrentStepIndex }),
     [currentStepIndex, steps]
   );
 
