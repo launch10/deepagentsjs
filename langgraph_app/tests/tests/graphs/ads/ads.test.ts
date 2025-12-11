@@ -122,6 +122,9 @@ describe.sequential("Ads Flow", () => {
 
         // Descriptions also relate to the campaign copy
         expect(descriptionContent).toMatch(/schedule|scheduling|meeting times/i);
+
+        expect(headlines.every((h) => !!h.id)).toBe(true)
+        expect(descriptions.every((h) => !!h.id)).toBe(true)
       });
 
       it("refreshes only the specified context (headlines), not descriptions", async () => {
@@ -184,6 +187,14 @@ describe.sequential("Ads Flow", () => {
         expect(newHeadlines?.length).toEqual(2); // 2 new headlines
 
         expect(refreshedResult.state.descriptions).toEqual(originalDescriptions);
+
+        const originalHeadlines = headlines.filter((h) => h.locked);
+        const refreshedHeadlines = refreshedResult.state.headlines
+        // Doesn't change id
+        originalHeadlines.forEach((originalHeadline, index) => {
+          expect(originalHeadline.id).toEqual(refreshedHeadlines?.at(index)!.id)
+        })
+        expect(refreshedHeadlines?.every((h) => !!h.id)).toBe(true)
       });
 
       // user request | user asks | asks via chat | auto-reject headlines

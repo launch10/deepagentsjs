@@ -31,5 +31,5 @@ export const AdsBridge = createBridge({
   stateAnnotation: AdsAnnotation as any,
   messageSchema: Ads.jsonSchema,
   jsonTarget: "state",
-  transforms: Ads.Transforms,
+  transforms: Ads.StreamingTransforms,
 });

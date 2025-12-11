@@ -984,6 +984,9 @@ importers:
       langgraph-ai-sdk-types:
         specifier: workspace:*
         version: link:../packages/langgraph-ai-sdk/packages/langgraph-ai-sdk-types
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
       openapi-fetch:
         specifier: ^0.15.0
         version: 0.15.0
@@ -1000,6 +1003,9 @@ importers:
       '@types/jsonwebtoken':
         specifier: ^9.0.10
         version: 9.0.10
+      '@types/lodash':
+        specifier: ^4.17.21
+        version: 4.17.21
       '@types/node':
         specifier: ^20.19.26
         version: 20.19.26
@@ -15527,7 +15533,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.13.2)
+      retry-axios: 2.6.0(axios@1.13.2(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -17607,7 +17613,7 @@ snapshots:
 
   ret@0.5.0: {}
 
-  retry-axios@2.6.0(axios@1.13.2):
+  retry-axios@2.6.0(axios@1.13.2(debug@4.4.3)):
     dependencies:
       axios: 1.13.2(debug@4.4.3)
 

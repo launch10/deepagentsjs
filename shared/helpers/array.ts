@@ -4,6 +4,7 @@ import minBy from "lodash/minBy";
 import maxBy from "lodash/maxBy";
 import find from "lodash/find";
 import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
 import difference from "lodash/difference";
 export {
   keyBy,
@@ -13,5 +14,6 @@ export {
   find as findBy,
   find as detect,
   uniq,
+  uniqBy,
   difference as arrayDifference,
 };

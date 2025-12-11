@@ -13,8 +13,7 @@ import { usePage } from "@inertiajs/react";
 import { useLanggraphContext } from "@contexts/langgraph-context";
 import { useEffect, useRef, useState } from "react";
 import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
-import { Ads, type UUIDType } from "@shared";
-
+import { Ads, type UUIDType, keyBy, generateUUID } from "@shared";
 interface CampaignInnerProps {
   tabs: { id: string; label: string }[];
 }
@@ -25,14 +24,15 @@ export default function CampaignInner({ tabs }: CampaignInnerProps) {
   const campaignExists = Boolean(campaign?.id);
 
   const [activeTab, setActiveTab] = useState("content");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialPageLoad, setIsInitialPageLoad] = useState(true);
   const [previewText, setPreviewText] = useState<AdPreviewType>({
     headline: "",
     url: "",
     details: "",
   });
 
-  const { state, updateState, setState } = useLanggraphContext();
+  const { state, updateState, status } = useLanggraphContext();
+  const isLoading = (status !== "ready");
 
   useEffect(() => {
     if (!workflow || !workflow.substep || !project?.uuid) return;
@@ -111,7 +111,9 @@ export default function CampaignInner({ tabs }: CampaignInnerProps) {
       details: previewDescription,
     }));
 
-    setIsLoading(false);
+    if (isInitialPageLoad) {
+      setIsInitialPageLoad(false);
+    }
   }, [watchedHeadlines, watchedDescriptions]);
 
   const { fields: headlinesFields, append: appendHeadlines } = useFieldArray({
@@ -131,12 +133,15 @@ export default function CampaignInner({ tabs }: CampaignInnerProps) {
 
   const handleRefreshSuggestions = (fieldName: "headlines" | "descriptions") => {
     const lockedAssets = methods.getValues(fieldName).filter((field) => field.locked);
+    const lockedAssetsByText = keyBy(lockedAssets, "text")
     const numLocked = lockedAssets.length;
     let stateChanges = {}
     stateChanges[fieldName] = state[fieldName]?.map((asset) => {
+      const isLocked = !!lockedAssetsByText[asset.text]
       return {
         ...asset,
-        rejected: !asset.locked
+        locked: isLocked,
+        rejected: !isLocked
       }
     })
 
@@ -162,7 +167,7 @@ export default function CampaignInner({ tabs }: CampaignInnerProps) {
       <div className="col-span-8">
         <AdCampaignPreview className="mb-8" {...previewText} />
         <AdCampaignTabSwitcher tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-        {isLoading ? (
+        {isInitialPageLoad ? (
           <div className="border-[#D3D2D0] border border-t-0 rounded-b-2xl bg-white">
             <div className="flex items-center justify-center p-9">
               <LogoSpinner />

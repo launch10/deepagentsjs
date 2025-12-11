@@ -34,7 +34,7 @@ export const LanggraphProvider = ({ children }: LanggraphProviderProps) => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${jwt}`,
     },
-    merge: Ads.MergeReducer,
+    merge: Ads.MergeReducer as any,
     getInitialThreadId: () => (thread_id ? thread_id : undefined),
   });
 

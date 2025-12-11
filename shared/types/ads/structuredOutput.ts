@@ -1,7 +1,8 @@
 import * as Ads from "./assets";
 import { type AdsGraphState } from "../../state";
 import type { Simplify } from "type-fest";
-import { generateUUID } from "../core";
+import { generateUUID, } from "../core";
+import { uniqBy } from "../../helpers"
 
 const isAssetKind = (value: unknown): value is Ads.AssetKind => {
   return typeof value === "string" && Ads.AssetKinds.includes(value as Ads.AssetKind);
@@ -14,7 +15,7 @@ const toAssets = (texts: string[]): Ads.Asset[] => texts.map(toAsset);
 
 type StreamedSnippet = { category: string; details: string[] };
 
-export const Transforms = {
+export const StreamingTransforms = {
   headlines: toAssets,
   descriptions: toAssets,
   callouts: toAssets,
@@ -31,12 +32,12 @@ export const Transforms = {
 }
 
 export type TransformsType = {
-  [K in keyof typeof Transforms]: ReturnType<typeof Transforms[K]>
+  [K in keyof typeof StreamingTransforms]: ReturnType<typeof StreamingTransforms[K]>
 }
 
 const mergeAssets = <T extends Ads.Asset>(incoming: T[], current: T[] | undefined): T[] => {
-  const kept = (current || [])
-  return [...kept, ...incoming];
+  const kept = (current || []).filter((c) => c.locked) // Since we know we're merging, it's now safe to filter out existing headlines that aren't locked
+  return uniqBy([...kept, ...incoming], "id");
 };
 
 const mergeStructuredSnippets = (
