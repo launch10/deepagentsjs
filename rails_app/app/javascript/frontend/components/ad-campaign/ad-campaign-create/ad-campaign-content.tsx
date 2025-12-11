@@ -12,6 +12,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/inp
 import { Info, Sparkles } from "lucide-react";
 import { useFormContext, type FieldArrayWithId, type UseFormReturn } from "react-hook-form";
 import { Ads } from "@shared";
+import { Label } from "@components/ui/label";
 
 export default function AdCampaignContent({
   methods,
@@ -63,20 +64,20 @@ export default function AdCampaignContent({
   };
 
   return (
-    <div className="border-[#D3D2D0] border border-t-0 rounded-b-2xl bg-white">
+    <div className="border border-neutral-300 border-t-0 rounded-b-2xl bg-white">
       <div className="p-9 flex flex-col gap-6">
         <h2 className="text-lg font-semibold">Content</h2>
-        <p className="text-sm text-[#74767A]">
+        <p className="text-sm text-base-400">
           Content is the core of your ad. Think of billboard headlines. They describe the problem
           your business solves, and encourage users to click to learn more.
         </p>
         <FieldSet>
           <FieldGroup className="grid grid-cols-2">
             <Field>
-              <label className="flex items-center gap-2">
+              <Label className="flex items-center gap-2 text-base-600">
                 <span className="font-semibold">Ad Group Name</span>
-                <Info size={12} className="text-[#96989B]" />
-              </label>
+                <Info size={12} className="text-base-300" />
+              </Label>
               <InputGroup>
                 <InputGroupInput
                   placeholder="Ad Group Name"
@@ -114,14 +115,14 @@ export default function AdCampaignContent({
               <FieldLabel className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">Descriptions</span>
-                  <Info size={12} className="text-[#96989B]" />
+                  <Info size={12} className="text-base-300" />
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">Select 2-4</Badge>
                   <Button
                     type="button"
                     variant="link"
-                    className="text-[#74767A] font-normal"
+                    className="text-base-400 font-normal"
                     onClick={() => onRefreshSuggestions("descriptions")}
                   >
                     <Sparkles /> Refresh Suggestions

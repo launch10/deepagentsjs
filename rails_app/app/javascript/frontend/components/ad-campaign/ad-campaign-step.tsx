@@ -18,7 +18,7 @@ export default function AdCampaignStep({
     <div className="flex flex-col gap-2">
       <div className="flex gap-2 items-center">
         <AdCampaignStepNumber step={step} isActive={isActive} />
-        <span className="text-primary">{stepName}</span>
+        <span className="text-base-600">{stepName}</span>
       </div>
       {isActive && (
         <ul className="list-none ml-6">
