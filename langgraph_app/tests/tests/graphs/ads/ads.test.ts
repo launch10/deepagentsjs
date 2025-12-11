@@ -84,12 +84,13 @@ describe.sequential("Ads Flow", () => {
         const updatedHeadlines = invalidRefresh.state.headlines;
         const updatedDescriptions = invalidRefresh.state.descriptions;
 
+        expect(updatedHeadlines!.length).toEqual(result.state.headlines.length)
         expect(updatedHeadlines).toEqual(result.state.headlines);
         expect(updatedDescriptions).toEqual(result.state.descriptions);
       });
     });
 
-    describe("Content Stage", () => {
+   describe("Content Stage", () => {
       it("automatically populates headlines and descriptions", async () => {
         const result = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
@@ -185,6 +186,7 @@ describe.sequential("Ads Flow", () => {
         expect(refreshedResult.state.descriptions).toEqual(originalDescriptions);
       });
 
+      // user request | user asks | asks via chat | auto-reject headlines
       it("specifically refreshes headlines using suggestions from the user", async () => {
         const result = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
@@ -214,10 +216,9 @@ describe.sequential("Ads Flow", () => {
         const newHeadlines = allHeadlines.filter((h) => !h.rejected);
 
         expect(originalHeadlines.length).toEqual(6);
-        expect(allHeadlines.length).toEqual(12);
-        expect(rejectedHeadlines.length).toEqual(6);
+        expect(allHeadlines.length).toEqual(6);
+        expect(rejectedHeadlines.length).toEqual(0); // We just remove them
         expect(newHeadlines.length).toEqual(6);
-        expect(rejectedHeadlines.every((h) => originalTexts.has(h.text))).toBe(true);
         expect(newHeadlines.every((h) => !originalTexts.has(h.text))).toBe(true);
       });
     });

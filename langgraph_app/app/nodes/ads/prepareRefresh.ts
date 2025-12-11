@@ -19,7 +19,7 @@ export const prepareRefreshNode = NodeMiddleware.use(
           details: state.structuredSnippets.details.map((asset) => ({
             ...asset,
             rejected: asset.locked ? asset.rejected : true,
-          })),
+          }))
         };
       }
     } else {
@@ -28,7 +28,7 @@ export const prepareRefreshNode = NodeMiddleware.use(
         result[assetKey] = existingAssets.map((asset) => ({
           ...asset,
           rejected: asset.locked ? asset.rejected : true,
-        })) as any;
+        }))
       }
     }
 

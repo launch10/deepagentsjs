@@ -13,7 +13,6 @@ import { NodeMiddleware } from "@middleware";
 import type { Ads, LangGraphRunnableConfig } from "@types";
 
 const beforeGenerateNode = NodeMiddleware.use({}, async (state: AdsGraphState, config: LangGraphRunnableConfig) => {
-  console.log(`starting beforeGenerateNode for ${state.stage}`);
   if (!state.stage) {
     throw new Error("Stage is required");
   }
@@ -40,10 +39,9 @@ export const adsGraph = new StateGraph(AdsAnnotation)
   .addEdge(START, "prepare")
   .addEdge("prepare", "createCampaign")
   .addConditionalEdges("createCampaign", guardrailsNode, {
-    beforeGenerate: "beforeGenerate",
-    __end__: END
+    "beforeGenerate": "beforeGenerate",
+    "__end__": END
   })
-  .addEdge("createCampaign", "beforeGenerate")
   .addEdge("beforeGenerate", "getBusinessContext")
   .addEdge("getBusinessContext", "prepareRefresh")
   .addEdge("prepareRefresh", "adsAgent")

@@ -16,7 +16,15 @@ export const Transforms = {
   descriptions: toAssets,
   callouts: toAssets,
   keywords: toAssets,
-  structuredSnippets: (streamed: StreamedSnippet | undefined) => streamed,
+  structuredSnippets: (streamed: StreamedSnippet | undefined) => {
+    if (!streamed?.details || !streamed?.category) {
+      throw new Error("Didn't receive proper snippet")
+    }
+    return {
+      category: streamed.category,
+      details: toAssets(streamed.details)
+    }
+  },
 }
 
 export type TransformsType = {
@@ -55,6 +63,17 @@ export const MergeReducer = {
   structuredSnippets: mergeStructuredSnippets,
 }
 
+export const removeRejected = (state: Partial<TransformsType>) => {
+  return (Object.keys(state) as (keyof TransformsType)[]).reduce((obj, key) => {
+    if (key === "structuredSnippets") {
+      obj[key] = state[key]
+    } else {
+      obj[key] = state[key]?.filter((asset) => !asset.rejected)
+    }
+    return obj;
+  }, {} as Partial<TransformsType>);
+}
+
 export const mergeStructuredData = (
   state: AdsGraphState,
   updates: TransformsType
@@ -72,8 +91,8 @@ export const mergeStructuredData = (
     if (value === undefined) return acc;
 
     if (key === "structuredSnippets") {
-      const incomingSnippets = value as StreamedSnippet;
-      acc.structuredSnippets = mergeStructuredSnippets(state.structuredSnippets, incomingSnippets);
+      const incomingSnippets = value as Ads.StructuredSnippets;
+      acc.structuredSnippets = mergeStructuredSnippets(incomingSnippets, state.structuredSnippets);
     } else {
       const existingAssets = state[key] || [];
       const incomingAssets = value as Ads.Asset[];

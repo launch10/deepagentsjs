@@ -72,7 +72,9 @@ export const adsAgent = NodeMiddleware.use(
       throw new Error("Agent did not return an AI message");
     }
     const [message, updates] = await AdsBridge.toStructuredMessage(lastMessage);
-    const mergedAssets = Ads.mergeStructuredData(state, updates);
+    const mergedAssets = Ads.removeRejected(
+      Ads.mergeStructuredData(state, updates!)
+    )
 
     const allMessages = result.messages.slice(0, -1).concat([message]);
     const filtered = filterPseudoMessages(allMessages);
