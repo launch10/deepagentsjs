@@ -4,14 +4,14 @@ import { adsGraph } from "@graphs";
 import { graphParams } from "@core";
 import { AdsBridge } from "@annotation";
 import { env } from "@core";
-import pkg from 'pg';
-import { PostgresSaver } from '@langchain/langgraph-checkpoint-postgres';
+import pkg from "pg";
+import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 
 const { Pool } = pkg;
-const connectionString = env.DATABASE_URL || 'postgresql://localhost/langgraph_backend_test';
+const connectionString = env.DATABASE_URL || "postgresql://localhost/langgraph_backend_test";
 
 const pool = new Pool({
-  connectionString
+  connectionString,
 });
 
 type Variables = {
@@ -22,7 +22,7 @@ export const adsRoutes = new Hono<{ Variables: Variables }>();
 
 const checkpointer = new PostgresSaver(pool);
 const graph = adsGraph.compile({ checkpointer, name: "ads" });
-const AdsAPI = AdsBridge.bind(graph);
+const AdsAPI = AdsBridge.bind(graph as any);
 
 adsRoutes.post("/stream", authMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;

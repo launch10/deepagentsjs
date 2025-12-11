@@ -135,7 +135,8 @@ const applyHumanRefresh = (
             ...result.structuredSnippets,
             details: newDetails.map((detail) => {
               return {
-                text: detail,
+                id: detail.id,
+                text: detail.text,
                 rejected: false,
                 locked: false,
               }
