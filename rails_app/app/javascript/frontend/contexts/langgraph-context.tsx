@@ -3,6 +3,7 @@ import { usePage } from "@inertiajs/react";
 import { useLanggraph } from "langgraph-ai-sdk-react";
 import type { AdsBridgeType } from "@shared";
 import type { CampaignProps } from "@components/ad-campaign/ad-campaign.types";
+import { Ads } from "@shared";
 
 type LanggraphReturnType = ReturnType<typeof useLanggraph<AdsBridgeType>>;
 
@@ -33,6 +34,7 @@ export const LanggraphProvider = ({ children }: LanggraphProviderProps) => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${jwt}`,
     },
+    merge: Ads.MergeReducer,
     getInitialThreadId: () => (thread_id ? thread_id : undefined),
   });
 

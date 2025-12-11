@@ -32,7 +32,7 @@ export default function CampaignInner({ tabs }: CampaignInnerProps) {
     details: "",
   });
 
-  const { state, updateState } = useLanggraphContext();
+  const { state, updateState, setState } = useLanggraphContext();
 
   useEffect(() => {
     if (!workflow || !workflow.substep || !project?.uuid) return;
@@ -79,6 +79,8 @@ export default function CampaignInner({ tabs }: CampaignInnerProps) {
 
   useEffect(() => {
     if (state && state.headlines) {
+      // console.log(`watching headlines`)
+      // console.log(state.headlines)
       const headlines = state.headlines.filter((h) => h.rejected !== true)
       methods.setValue("headlines", headlines);
     }
@@ -128,11 +130,19 @@ export default function CampaignInner({ tabs }: CampaignInnerProps) {
   });
 
   const handleRefreshSuggestions = (fieldName: "headlines" | "descriptions") => {
-    const numLocked = methods.getValues(fieldName).filter((field) => field.locked).length;
+    const lockedAssets = methods.getValues(fieldName).filter((field) => field.locked);
+    const numLocked = lockedAssets.length;
+    let stateChanges = {}
+    stateChanges[fieldName] = state[fieldName]?.map((asset) => {
+      return {
+        ...asset,
+        rejected: !asset.locked
+      }
+    })
+
     updateState({
       refresh: { asset: fieldName, nVariants: 6 - numLocked },
-      headlines: state.headlines,
-      descriptions: state.descriptions,
+      ...stateChanges,
     });
   };
 

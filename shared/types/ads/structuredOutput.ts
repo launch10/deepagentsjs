@@ -1,14 +1,64 @@
-import { Ads } from "@types";
-import { type AdsGraphState } from "@state";
+import * as Ads from "./assets";
+import { type AdsGraphState } from "../../state";
+import type { Simplify } from "type-fest";
 
 const isAssetKind = (value: unknown): value is Ads.AssetKind => {
   return typeof value === "string" && Ads.AssetKinds.includes(value as Ads.AssetKind);
 };
 
-export const getStructuredData = (
+const toAsset = (text: string): Ads.Asset => ({ text, rejected: false, locked: false });
+const toAssets = (texts: string[]): Ads.Asset[] => texts.map(toAsset);
+
+type StreamedSnippet = { category: string; details: string[] };
+
+export const Transforms = {
+  headlines: toAssets,
+  descriptions: toAssets,
+  callouts: toAssets,
+  keywords: toAssets,
+  structuredSnippets: (streamed: StreamedSnippet | undefined) => streamed,
+}
+
+export type TransformsType = {
+  [K in keyof typeof Transforms]: ReturnType<typeof Transforms[K]>
+}
+
+const mergeAssets = <T extends Ads.Asset>(incoming: T[], current: T[] | undefined): T[] => {
+  const kept = (current || [])
+  return [...kept, ...incoming];
+};
+
+const mergeStructuredSnippets = (
+  incoming: Ads.StructuredSnippets,
+  current: Ads.StructuredSnippets | undefined,
+): Ads.StructuredSnippets => {
+  const category = incoming.category || current?.category || "";
+
+  const existingDetails = current?.details || [];
+  const existingTexts = new Set(existingDetails.map((d) => d.text));
+  const newDetails: Ads.Asset[] = [...existingDetails];
+
+  for (const detail of incoming.details || []) {
+    if (!existingTexts.has(detail.text)) {
+      newDetails.push(detail);
+    }
+  }
+
+  return { category, details: newDetails };
+};
+ 
+export const MergeReducer = {
+  headlines: mergeAssets<Ads.Headline>,
+  descriptions: mergeAssets<Ads.Description>,
+  callouts: mergeAssets<Ads.Callout>,
+  keywords: mergeAssets<Ads.Keyword>,
+  structuredSnippets: mergeStructuredSnippets,
+}
+
+export const mergeStructuredData = (
   state: AdsGraphState,
-  updates: Partial<Ads.Assets> | undefined
-): Partial<AdsGraphState> => {
+  updates: TransformsType
+): Simplify<Partial<TransformsType>> => {
   if (!updates) {
     return {};
   }
@@ -22,31 +72,17 @@ export const getStructuredData = (
     if (value === undefined) return acc;
 
     if (key === "structuredSnippets") {
-      const incomingSnippets = value as Ads.StructuredSnippets;
+      const incomingSnippets = value as StreamedSnippet;
       acc.structuredSnippets = mergeStructuredSnippets(state.structuredSnippets, incomingSnippets);
     } else {
       const existingAssets = state[key] || [];
       const incomingAssets = value as Ads.Asset[];
-      acc[key] = mergeAssets(existingAssets as Ads.Asset[], incomingAssets);
+      acc[key] = mergeAssets(incomingAssets, existingAssets);
     }
     return acc;
-  }, {} as Partial<AdsGraphState>);
+  }, {} as Partial<TransformsType>);
 
   return applyHumanRefresh(state, structuredData);
-};
-
-const mergeAssets = (existing: Ads.Asset[], incoming: Ads.Asset[]): Ads.Asset[] => {
-  const result: Ads.Asset[] = [...existing];
-  const existingTexts = new Set(existing.map((asset) => asset.text));
-
-  for (const asset of incoming) {
-    if (existingTexts.has(asset.text)) {
-      continue;
-    }
-    result.push(asset);
-  }
-
-  return result;
 };
 
 // If human asked for a refresh, we'll only recognize that after the LLM has already
@@ -54,8 +90,8 @@ const mergeAssets = (existing: Ads.Asset[], incoming: Ads.Asset[]): Ads.Asset[] 
 // button, which generates { refresh: { asset: "headlines" } } -- for example
 const applyHumanRefresh = (
   originalState: AdsGraphState,
-  structuredData: Partial<AdsGraphState>
-): Partial<AdsGraphState> => {
+  structuredData: Partial<TransformsType>
+): Partial<TransformsType> => {
   if (originalState.refresh) {
     return structuredData;
   }
@@ -74,12 +110,13 @@ const applyHumanRefresh = (
         if (hasNewAssets && result.structuredSnippets) {
           result.structuredSnippets = {
             ...result.structuredSnippets,
-            details: newDetails.map((asset) => {
-              if (originalTexts.has(asset.text) && !asset.locked) {
-                return { ...asset, rejected: true };
+            details: newDetails.map((detail) => {
+              return {
+                text: detail,
+                rejected: false,
+                locked: false,
               }
-              return asset;
-            }),
+            })
           };
         }
       }
@@ -109,23 +146,4 @@ const applyHumanRefresh = (
   }
 
   return result;
-};
-
-const mergeStructuredSnippets = (
-  existing: Ads.StructuredSnippets | undefined,
-  incoming: Ads.StructuredSnippets
-): Ads.StructuredSnippets => {
-  const category = incoming.category || existing?.category || "";
-
-  const existingDetails = existing?.details || [];
-  const existingTexts = new Set(existingDetails.map((d) => d.text));
-  const newDetails: Ads.Asset[] = [...existingDetails];
-
-  for (const detail of incoming.details || []) {
-    if (!existingTexts.has(detail.text)) {
-      newDetails.push(detail);
-    }
-  }
-
-  return { category, details: newDetails };
 };
