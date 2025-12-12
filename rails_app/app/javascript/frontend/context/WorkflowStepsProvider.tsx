@@ -9,7 +9,7 @@ const WorkflowStepsContext = createContext<WorkflowStepsStoreApi | null>(null);
 
 interface WorkflowStepsProviderProps {
   children: ReactNode;
-  workflow: { step?: string | null; substep?: string | null } | null | undefined;
+  workflow: { page?: string | null; substep?: string | null } | null | undefined;
   projectUUID: string | null | undefined;
 }
 
@@ -20,8 +20,8 @@ export function WorkflowStepsProvider({
 }: WorkflowStepsProviderProps) {
   const [store] = useState(() =>
     createWorkflowStore({
-      step: (workflow?.step as Workflow.StepName) ?? null,
-      substep: (workflow?.substep as Workflow.AdCampaignStep) ?? null,
+      page: (workflow?.page as Workflow.WorkflowPage) ?? null,
+      substep: (workflow?.substep as Workflow.SubstepName) ?? null,
       projectUUID: projectUUID ?? null,
     })
   );
@@ -46,8 +46,11 @@ export function useWorkflowSteps<T>(selector: (state: WorkflowStepsStore) => T):
 }
 
 export const selectSteps = (s: WorkflowStepsStore) => s.steps;
+export const selectPages = selectSteps;
+export const selectPage = (s: WorkflowStepsStore) => s.page;
 export const selectStep = (s: WorkflowStepsStore) => s.step;
 export const selectSubstep = (s: WorkflowStepsStore) => s.substep;
+export const selectPageNumber = (s: WorkflowStepsStore) => s.pageNumber;
 export const selectStepNumber = (s: WorkflowStepsStore) => s.stepNumber;
 export const selectSubstepNumber = (s: WorkflowStepsStore) => s.substepNumber;
 export const selectSetSubstep = (s: WorkflowStepsStore) => s.setSubstep;

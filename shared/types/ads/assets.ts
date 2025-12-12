@@ -5,7 +5,7 @@ import * as  Workflow from "../workflow";
 export const AssetKinds = ["headlines", "descriptions", "callouts", "structuredSnippets", "keywords"] as const;
 export type AssetKind = typeof AssetKinds[number];
 
-export const StageNames = Workflow.AdCampaignSteps;
+export const StageNames = Workflow.SubstepNames;
 export type StageName = typeof StageNames[number];
 
 export const ContentStages = ["content", "highlights", "keywords"] as const;

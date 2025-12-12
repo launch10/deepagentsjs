@@ -1,33 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
-import { useWorkflowSteps, selectStepNumber, selectSteps } from "@context/WorkflowStepsProvider";
+import { useWorkflowSteps, selectPageNumber, selectPages } from "@context/WorkflowStepsProvider";
 
 type HeaderProgressStepperProps = {
   className?: string;
 };
 
 export default function HeaderProgressStepper({ className }: HeaderProgressStepperProps) {
-  const steps = useWorkflowSteps(selectSteps);
-  const currentStepNumber = useWorkflowSteps(selectStepNumber);
-  if (!steps || !currentStepNumber) {
-    return;
-  }
-
+  const pages = useWorkflowSteps(selectPages);
+  const currentPageNumber = useWorkflowSteps(selectPageNumber);
   const activeLabelRef = useRef<HTMLSpanElement | null>(null);
   const [progressWidth, setProgressWidth] = useState(0);
 
   useEffect(() => {
-    if (!activeLabelRef.current) return;
-    if (currentStepNumber < steps.length - 1) {
-      // Steps align to middle of text
+    if (!activeLabelRef.current || currentPageNumber == null || !pages) return;
+    if (currentPageNumber < pages.length - 1) {
       setProgressWidth(
         activeLabelRef.current.offsetWidth / 2 + activeLabelRef.current.offsetLeft + 8
       );
     } else {
-      // Last step alignts to end of bar
       setProgressWidth(activeLabelRef.current.offsetWidth + activeLabelRef.current.offsetLeft);
     }
-  }, [activeLabelRef.current]);
+  }, [activeLabelRef.current, currentPageNumber, pages]);
+
+  if (!pages || currentPageNumber == null) {
+    return null;
+  }
 
   return (
     <div className={twMerge("w-full", className)}>
@@ -42,9 +40,9 @@ export default function HeaderProgressStepper({ className }: HeaderProgressStepp
         </div>
       </div>
       <div className="flex justify-between mt-2 relative">
-        {steps.map((step, index) => {
-          const isCurrent = index === currentStepNumber;
-          const isUpcoming = index > currentStepNumber;
+        {pages.map((page, index) => {
+          const isCurrent = index === currentPageNumber;
+          const isUpcoming = index > currentPageNumber;
           return (
             <span
               key={index}
@@ -59,7 +57,7 @@ export default function HeaderProgressStepper({ className }: HeaderProgressStepp
                 }
               }}
             >
-              {step.label}
+              {page.label}
             </span>
           );
         })}
