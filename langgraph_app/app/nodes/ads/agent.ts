@@ -20,7 +20,7 @@ const dynamicPromptMiddleware = createMiddleware({
       websiteId: z.number(),
       brainstorm: z.any(),
       stage: z.string(),
-      refresh: Ads.RefreshContextSchema.optional(),
+      refresh: Ads.RefreshCommandSchema.optional(),
       headlines: z.array(Ads.AssetSchema),
       descriptions: z.array(Ads.AssetSchema),
       uniqueFeatures: z.array(Ads.AssetSchema),

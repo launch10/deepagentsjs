@@ -161,10 +161,7 @@ describe.sequential("Ads Flow", () => {
             projectUUID,
             threadId,
             stage: "content",
-            refresh: {
-              asset: "headlines",
-              nVariants: 2,
-            },
+            refresh: [{ asset: "headlines", nVariants: 2 }],
             headlines: result.state.headlines,
             descriptions: result.state.descriptions,
           })
@@ -195,6 +192,66 @@ describe.sequential("Ads Flow", () => {
           expect(originalHeadline.id).toEqual(refreshedHeadlines?.at(index)!.id)
         })
         expect(refreshedHeadlines?.every((h) => !!h.id)).toBe(true)
+      });
+
+      it("refreshes all assets for content stage (headlines + descriptions) using refreshAllCommand", async () => {
+        const result = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            projectUUID,
+            threadId,
+            stage: "content",
+          })
+          .execute();
+
+        expect(result.state.headlines?.length).toEqual(6);
+        expect(result.state.descriptions?.length).toEqual(4);
+
+        const headlines = result.state.headlines as Ads.Asset[];
+        const descriptions = result.state.descriptions as Ads.Asset[];
+
+        headlines[0]!.locked = true;
+        headlines[1]!.locked = true;
+        descriptions[0]!.locked = true;
+
+        const refreshedResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            ...result.state,
+            refresh: Ads.refreshAllCommand("content"),
+          })
+          .execute();
+
+        const originalUnlockedHeadlines = headlines.filter((h) => !h.locked);
+        const refreshedHeadlinesFromOriginal = refreshedResult.state.headlines?.filter((h) =>
+          originalUnlockedHeadlines.some((orig) => orig.text === h.text)
+        );
+        expect(refreshedHeadlinesFromOriginal?.every((h) => h.rejected)).toBe(true);
+
+        const lockedHeadlines = refreshedResult.state.headlines?.filter((h) => h.locked);
+        expect(lockedHeadlines?.every((h) => !h.rejected)).toBe(true);
+        expect(lockedHeadlines?.length).toEqual(2);
+
+        const newHeadlines = refreshedResult.state.headlines?.filter(
+          (h) => !h.rejected && !h.locked
+        );
+        expect(newHeadlines?.length).toEqual(Ads.DefaultNumAssets.headlines);
+
+        const originalUnlockedDescriptions = descriptions.filter((d) => !d.locked);
+        const refreshedDescriptionsFromOriginal = refreshedResult.state.descriptions?.filter((d) =>
+          originalUnlockedDescriptions.some((orig) => orig.text === d.text)
+        );
+        expect(refreshedDescriptionsFromOriginal?.every((d) => d.rejected)).toBe(true);
+
+        const lockedDescriptions = refreshedResult.state.descriptions?.filter((d) => d.locked);
+        expect(lockedDescriptions?.every((d) => !d.rejected)).toBe(true);
+        expect(lockedDescriptions?.length).toEqual(1);
+
+        const newDescriptions = refreshedResult.state.descriptions?.filter(
+          (d) => !d.rejected && !d.locked
+        );
+        expect(newDescriptions?.length).toEqual(Ads.DefaultNumAssets.descriptions);
+        debugger;
       });
 
       // user request | user asks | asks via chat | auto-reject headlines
@@ -298,10 +355,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             ...result.state,
             threadId,
-            refresh: {
-              asset: "callouts",
-              nVariants: 3,
-            },
+            refresh: [{ asset: "callouts", nVariants: 3 }],
           })
           .execute();
 
@@ -367,10 +421,7 @@ describe.sequential("Ads Flow", () => {
             ...result.state,
             projectUUID,
             stage: "highlights",
-            refresh: {
-              asset: "structuredSnippets",
-              nVariants: 1,
-            },
+            refresh: [{ asset: "structuredSnippets", nVariants: 1 }],
             callouts: result.state.callouts,
             structuredSnippets: result.state.structuredSnippets,
           })
@@ -453,10 +504,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             ...result.state,
             stage: "keywords",
-            refresh: {
-              asset: "keywords",
-              nVariants: 4,
-            },
+            refresh: [{ asset: "keywords", nVariants: 4 }],
             keywords: result.state.keywords,
           })
           .execute();
@@ -662,10 +710,7 @@ describe.sequential("Ads Flow", () => {
         .withGraph(adsGraph)
         .withState({
           ...contentResult.state,
-          refresh: {
-            asset: "headlines",
-            nVariants: 3,
-          },
+          refresh: [{ asset: "headlines", nVariants: 3 }],
         })
         .execute();
 
@@ -717,10 +762,7 @@ describe.sequential("Ads Flow", () => {
         .withGraph(adsGraph)
         .withState({
           ...highlightsResult.state,
-          refresh: {
-            asset: "callouts",
-            nVariants: 2,
-          },
+          refresh: [{ asset: "callouts", nVariants: 2 }],
         })
         .execute();
 
@@ -768,10 +810,7 @@ describe.sequential("Ads Flow", () => {
         .withGraph(adsGraph)
         .withState({
           ...keywordsResult.state,
-          refresh: {
-            asset: "keywords",
-            nVariants: 3,
-          },
+          refresh: [{ asset: "keywords", nVariants: 3 }],
         })
         .execute();
 

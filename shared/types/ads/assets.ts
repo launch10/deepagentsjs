@@ -91,19 +91,6 @@ export const assetsForStage = (stage: StageName): AssetKind[] => {
     return Stages[stage]?.assets ?? [];
 };
 
-export type RefreshCommand = { refresh: { asset: AssetKind, nVariants: number}[] }
-
-export const refreshAllCommand = (stage: StageName): RefreshCommand => {
-    const assetsToRefresh = assetsForStage(stage);
-    const refresh = assetsToRefresh.map((asset) => {
-        return {
-            asset: asset,
-            nVariants: DefaultNumAssets[asset],
-        }
-    })
-    return { refresh }
-}
-
 type PromptFn = (state: any, config?: any) => Promise<string>;
 type OutputFormatFn = (state: any, config?: any) => Promise<string[] | object>;
 export interface AssetPromptConfig {
@@ -120,6 +107,10 @@ export const RefreshContextSchema = z.object({
 
 export type RefreshContext = z.infer<typeof RefreshContextSchema>;
 
+export const RefreshCommandSchema = z.array(RefreshContextSchema);
+
+export type RefreshCommand = z.infer<typeof RefreshCommandSchema>;
+
 export type HasStartedStep = {
     [K in StageName]?: boolean;
 };
@@ -131,6 +122,20 @@ export const DefaultNumAssets: Record<AssetKind, number> = {
     structuredSnippets: 3,
     keywords: 8
 };
+
+export const refreshAllCommand = (stage: StageName): RefreshCommand => {
+    const assetsToRefresh = assetsForStage(stage);
+    return assetsToRefresh.map((asset) => ({
+        asset: asset,
+        nVariants: DefaultNumAssets[asset],
+    }));
+}
+
+export const getNVariantsForAsset = (refresh: RefreshCommand | undefined, asset: AssetKind): number | undefined => {
+    if (!refresh?.length) return undefined;
+    const found = refresh.find((r) => r.asset === asset);
+    return found?.nVariants;
+}
 
 export const diffAssets = (original: Asset[], updated: Asset[]): Asset[] => {
     const originalTexts = new Set(original.map(a => a.text));

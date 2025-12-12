@@ -6,7 +6,7 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
   headlines: {
     prompt: async (state: AdsGraphState, _config?: any): Promise<string> => {
       const userPrefs = await userPreferencesPrompt(state, "headlines");
-      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.headlines;
+      const nVariants = Ads.getNVariantsForAsset(state.refresh, "headlines") ?? Ads.DefaultNumAssets.headlines;
 
       return `
             ## Headlines
@@ -37,7 +37,7 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.headlines;
+      const nVariants = Ads.getNVariantsForAsset(state.refresh, "headlines") ?? Ads.DefaultNumAssets.headlines;
       const headlines = Array.from({ length: nVariants }, (_, i) => `Headline ${i + 1}`);
       return { headlines };
     },

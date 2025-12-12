@@ -20,13 +20,14 @@ export const lastMessageIsAIMessage = (state: AdsGraphState): boolean => {
 
 export const needsPseudoMessage = (state: AdsGraphState): boolean => {
   const hasMessages = (state.messages?.length ?? 0) > 0;
-  const isRefresh = state.refresh !== undefined;
+  const isRefresh = !!state.refresh?.length;
   return !hasMessages || isRefresh;
 };
 
 export const getPseudoMessage = (state: AdsGraphState): HumanMessage | null => {
-  if (state.refresh) {
-    return new HumanMessage(PseudoMessages.REFRESH(state.refresh.asset));
+  if (state.refresh?.length) {
+    const assetNames = state.refresh.map((r) => r.asset).join(" and ");
+    return new HumanMessage(PseudoMessages.REFRESH(assetNames));
   }
   if (state.messages?.length === 0 || lastMessageIsAIMessage(state)) {
     return new HumanMessage(PseudoMessages.BEGIN);

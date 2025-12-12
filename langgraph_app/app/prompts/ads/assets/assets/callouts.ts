@@ -6,7 +6,7 @@ export const Callouts: Partial<Ads.AssetPromptMap> = {
   callouts: {
     prompt: async (state: AdsGraphState, _config?: any) => {
       const userPrefs = await userPreferencesPrompt(state, "callouts");
-      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.callouts;
+      const nVariants = Ads.getNVariantsForAsset(state.refresh, "callouts") ?? Ads.DefaultNumAssets.callouts;
 
       return `
             ## Unique Features (Callouts)
@@ -30,7 +30,7 @@ export const Callouts: Partial<Ads.AssetPromptMap> = {
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-      const nVariants = state.refresh?.nVariants || Ads.DefaultNumAssets.callouts;
+      const nVariants = Ads.getNVariantsForAsset(state.refresh, "callouts") ?? Ads.DefaultNumAssets.callouts;
       const callouts = Array.from({ length: nVariants }, (_, i) => `Feature ${i + 1}`);
       return { callouts };
     },

@@ -50,13 +50,17 @@ const buildIntentSection = (state: AdsGraphState): string => {
 };
 
 const buildRefreshSection = (state: AdsGraphState): string => {
-  if (!state.refresh) return "";
+  if (!state.refresh?.length) return "";
+
+  const assetDescriptions = state.refresh
+    .map((r) => `${r.nVariants} NEW ${r.asset}`)
+    .join(" and ");
 
   return `
         <refresh_mode>
-            The user clicked the refresh button for ${state.refresh.asset}. 
+            The user clicked the refresh button. 
 
-            Generate exactly ${state.refresh.nVariants} NEW ${state.refresh.asset}(s).
+            Generate exactly ${assetDescriptions}.
 
             DO NOT summarize, explain, or ask questions - just generate the assets with a brief intro and the JSON block.
 
@@ -105,7 +109,7 @@ export const promptBuilder = async (state: AdsGraphState, config: LangGraphRunna
     getOutputPrompt(state, config),
   ]);
   const responseTemplate = ResponseTemplates[state.stage];
-  const isRefreshMode = state.refresh !== undefined;
+  const isRefreshMode = !!state.refresh?.length;
   const humanAskedQuestion = isRealHumanMessage(state);
   let messageInstruction;
   if (humanAskedQuestion){

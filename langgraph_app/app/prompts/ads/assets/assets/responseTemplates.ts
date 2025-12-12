@@ -1,6 +1,6 @@
 import { type Ads } from "@types";
 
-export const ResponseTemplates: Record<Ads.StageName, string> = {
+export const ResponseTemplates: Partial<Record<Ads.StageName, string>> = {
   content: `Let's start building your ad! I drafted a few headlines and descriptions that meet Google's requirements.
 
 Google will mix and match them to find what performs best. We can tailor them together to make them feel just right for you.`,

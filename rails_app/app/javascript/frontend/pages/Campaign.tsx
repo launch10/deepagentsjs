@@ -3,27 +3,11 @@ import AdCampaignTabSwitcher from "@components/ads/AdCampaignTabSwitcher";
 import LogoSpinner from "@components/ui/logo-spinner";
 import { useAdsChatIsLoadingHistory } from "@hooks/useAdsChat";
 import AdPreview from "@components/ads/AdPreview";
-import ContentForm from "@components/ads/Forms/ContentForm";
-import HighlightsForm from "@components/ads/Forms/HighlightsForm";
+import AdsForm from "@components/ads/Forms/AdsForm";
 import Footer from "@components/ads/Footer";
-import {
-  useWorkflowSteps,
-  selectSubstep,
-  selectSetSubstep,
-  selectStep,
-} from "@context/WorkflowStepsProvider";
-import { Workflow } from "@shared";
-
-const FORMS: Partial<Record<Workflow.AdCampaignStep, React.ComponentType>> = {
-  content: ContentForm,
-  highlights: HighlightsForm,
-};
 
 export default function Campaign() {
-  const substep = useWorkflowSteps(selectSubstep);
   const isLoadingHistory = useAdsChatIsLoadingHistory();
-
-  const FormComponent = substep ? FORMS[substep] : null;
 
   return (
     <main className="mx-auto container max-w-6xl grid grid-cols-12 gap-10 px-5">
@@ -41,7 +25,7 @@ export default function Campaign() {
           </div>
         ) : (
           <>
-            {FormComponent && <FormComponent />}
+            <AdsForm />
             <Footer />
           </>
         )}
