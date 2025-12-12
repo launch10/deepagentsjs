@@ -11,6 +11,8 @@ import { Controller, useForm } from "react-hook-form";
 import z from "zod";
 import { useAdsChatActions } from "@hooks/useAdsChat";
 import type { AdCampaignChatFormType } from "../../ad-campaign.types";
+import { useWorkflowSteps, selectSubstep } from "~/context/WorkflowStepsProvider";
+import { Ads } from "@shared";
 
 const messageSchema = z.object({ message: z.string().min(1, "Message is required") }).required();
 
@@ -78,12 +80,14 @@ export function AdsChatInputView({ onSubmit, onRefreshSuggestions = () => {} }: 
   );
 }
 
-interface AdsChatInputProps {
-  onRefreshSuggestions?: () => void;
-}
+export default function AdsChatInput() {
+  const { sendMessage, updateState } = useAdsChatActions();
+  const substep = useWorkflowSteps(selectSubstep)
 
-export default function AdsChatInput({ onRefreshSuggestions = () => {} }: AdsChatInputProps) {
-  const { sendMessage } = useAdsChatActions();
+  const onRefreshSuggestions = () => {
+    const refresh = Ads.refreshAllCommand(substep as Ads.StageName)
+    updateState(refresh)
+  }
 
   return (
     <AdsChatInputView

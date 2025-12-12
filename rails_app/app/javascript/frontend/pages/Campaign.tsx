@@ -21,8 +21,6 @@ const FORMS: Partial<Record<Workflow.AdCampaignStep, React.ComponentType>> = {
 
 export default function Campaign() {
   const substep = useWorkflowSteps(selectSubstep);
-  const step = useWorkflowSteps(selectStep);
-  const setSubstep = useWorkflowSteps(selectSetSubstep)!;
   const isLoadingHistory = useAdsChatIsLoadingHistory();
 
   const FormComponent = substep ? FORMS[substep] : null;

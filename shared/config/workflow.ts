@@ -105,7 +105,7 @@ export function isTabGroupName(name: string | null | undefined): name is TabGrou
   return typeof name === "string" && tabGroupNames.includes(name as TabGroupName);
 }
 
-const substepToStepMap: Record<SubstepName, AdCampaignStepName> = {
+const substepToStepMap: Partial<Record<SubstepName, AdCampaignStepName>> = {
   content: "create",
   highlights: "create",
   keywords: "plan",

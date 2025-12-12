@@ -60,7 +60,7 @@ export type StageMap = {
     [key in StageName]: Stage;
 }
 
-export const Stages: StageMap = {
+export const Stages: Partial<StageMap> = {
     "content": {
         stage: "content",
         assets: ["headlines", "descriptions"]
@@ -86,6 +86,23 @@ export const Stages: StageMap = {
         assets: []
     }
 };
+
+export const assetsForStage = (stage: StageName): AssetKind[] => {
+    return Stages[stage]?.assets ?? [];
+};
+
+export type RefreshCommand = { refresh: { asset: AssetKind, nVariants: number}[] }
+
+export const refreshAllCommand = (stage: StageName): RefreshCommand => {
+    const assetsToRefresh = assetsForStage(stage);
+    const refresh = assetsToRefresh.map((asset) => {
+        return {
+            asset: asset,
+            nVariants: DefaultNumAssets[asset],
+        }
+    })
+    return { refresh }
+}
 
 type PromptFn = (state: any, config?: any) => Promise<string>;
 type OutputFormatFn = (state: any, config?: any) => Promise<string[] | object>;
