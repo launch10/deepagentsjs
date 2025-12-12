@@ -47,7 +47,7 @@ export default function DescriptionsForm() {
   useFormRegistration("content", methods);
 
   const handleLockToggle = (
-    fieldName: "headlines" | "descriptions" | "features",
+    fieldName: "headlines" | "descriptions" | "features" | "callouts",
     index: number
   ) => {
     if (fieldName !== "descriptions") return;
@@ -108,7 +108,7 @@ export default function DescriptionsForm() {
               type="button"
               variant="link"
               className="text-base-400 font-normal"
-              onClick={onRefreshSuggestions}
+              onClick={handleRefreshDescriptions}
             >
               <Sparkles /> Refresh Suggestions
             </Button>

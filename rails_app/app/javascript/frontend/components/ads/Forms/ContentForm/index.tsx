@@ -2,17 +2,12 @@ import { Field, FieldGroup, FieldSet } from "@components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/input-group";
 import { Label } from "@components/ui/label";
 import { Info, Sparkles } from "lucide-react";
-import HeadlinesForm from "./forms/HeadlinesForm";
-import DescriptionsForm from "./forms/DescriptionsForm";
-import { useEffect } from "react";
-import { useFormRegistry, selectSetFormFocused } from "@stores/formRegistry";
+import HeadlinesForm from "./HeadlinesForm";
+import DescriptionsForm from "./DescriptionsForm";
+import { useStageInit } from "@hooks/useStageInit";
 
-export default function ContentPage() {
-  const setFormFocused = useFormRegistry(selectSetFormFocused);
-
-  useEffect(() => {
-    setFormFocused("content");
-  }, [setFormFocused]);
+export default function ContentForm() {
+  useStageInit("content");
 
   return (
     <div className="border border-neutral-300 border-t-0 rounded-b-2xl bg-white">

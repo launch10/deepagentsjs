@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { uuidSchema } from "../core";
-import { 
-    Workflow
- } from "../workflow";
+import * as  Workflow from "../workflow";
 
 export const AssetKinds = ["headlines", "descriptions", "callouts", "structuredSnippets", "keywords"] as const;
 export type AssetKind = typeof AssetKinds[number];

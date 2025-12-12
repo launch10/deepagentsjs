@@ -1,41 +1,37 @@
 import { Button } from "@components/ui/button";
 import { twMerge } from "tailwind-merge";
+import { useFormRegistry, selectValidateParent } from "@stores/formRegistry";
 import {
-  useFormRegistry,
-  selectFocusedForm,
-  selectValidateParent,
-  selectValidateAll,
-} from "@stores/formRegistry";
-import { useAdsChatState } from "@hooks/useAdsChat";
+  useWorkflowSteps,
+  selectSubstep,
+  selectContinue,
+  selectBack,
+  selectCanGoBack,
+} from "@providers/WorkflowStepsProvider";
 
 interface FooterProps {
   className?: string;
-  onBack?: () => void;
-  onContinue?: (data: { headlines: any[]; descriptions: any[] }) => void;
 }
 
-export default function Footer({ className, onBack, onContinue }: FooterProps) {
-  const focusedForm = useFormRegistry(selectFocusedForm);
+export default function Footer({ className }: FooterProps) {
   const validateParent = useFormRegistry(selectValidateParent);
-  const validateAll = useFormRegistry(selectValidateAll);
-  const headlines = useAdsChatState("headlines");
-  const descriptions = useAdsChatState("descriptions");
+
+  const substep = useWorkflowSteps(selectSubstep);
+  const workflowContinue = useWorkflowSteps(selectContinue);
+  const workflowBack = useWorkflowSteps(selectBack);
+  const canGoBack = useWorkflowSteps(selectCanGoBack);
 
   const handleContinue = async () => {
-    let isValid = false;
+    if (!substep) return;
 
-    if (focusedForm) {
-      isValid = await validateParent(focusedForm);
-    } else {
-      isValid = await validateAll();
-    }
-
+    const isValid = await validateParent(substep);
     if (!isValid) return;
 
-    onContinue?.({
-      headlines: headlines || [],
-      descriptions: descriptions || [],
-    });
+    workflowContinue();
+  };
+
+  const handleBack = () => {
+    workflowBack();
   };
 
   return (
@@ -46,7 +42,7 @@ export default function Footer({ className, onBack, onContinue }: FooterProps) {
         className
       )}
     >
-      <Button variant="link" onClick={onBack}>
+      <Button variant="link" onClick={handleBack} disabled={!canGoBack()}>
         Previous Step
       </Button>
       <Button onClick={handleContinue}>Continue</Button>

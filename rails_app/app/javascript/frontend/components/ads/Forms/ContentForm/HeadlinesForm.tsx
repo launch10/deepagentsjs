@@ -58,7 +58,7 @@ export default function HeadlinesForm() {
   };
 
   const handleLockToggle = (
-    fieldName: "headlines" | "descriptions" | "features",
+    fieldName: "headlines" | "descriptions" | "features" | "callouts",
     index: number
   ) => {
     if (fieldName !== "headlines") return;
