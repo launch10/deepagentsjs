@@ -1,10 +1,10 @@
-import AdCampaignFieldList from "@components/ad-campaign/ad-campaign-form/ad-campaign-field-list";
+import AdCampaignFieldList from "@components/ads/ad-campaign-form/ad-campaign-field-list";
 import type {
   AdCampaignFormData,
   DescriptionData,
   HeadlineData,
-} from "@components/ad-campaign/ad-campaign-form/ad-campaign-form.schema";
-import AdCampaignHeadlineInput from "@components/ad-campaign/ad-campaign-form/ad-campaign-headline-input";
+} from "@components/ads/ad-campaign-form/ad-campaign-form.schema";
+import AdCampaignHeadlineInput from "@components/ads/ad-campaign-form/ad-campaign-headline-input";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@components/ui/field";

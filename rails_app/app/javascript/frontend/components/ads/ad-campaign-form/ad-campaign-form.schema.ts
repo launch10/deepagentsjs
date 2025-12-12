@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Ads } from "@shared"
+import { Ads } from "@shared";
 
 export const headlineSchema = Ads.AssetSchema;
 

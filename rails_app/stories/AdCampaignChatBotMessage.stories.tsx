@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import AdCampaignChatBotMessage from "@components/ad-campaign/ad-campaign-chat/ad-campaign-chat-bot-message";
+import AdCampaignChatBotMessage from "~/components/ad-campaign/Sidebar/AdsChat/AIMessage";
 
 const meta = {
   title: "Ad Campaign/Components/Chat/Bot Message",

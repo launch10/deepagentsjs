@@ -1,5 +1,5 @@
-import AdCampaignFieldList from "@components/ad-campaign/ad-campaign-form/ad-campaign-field-list";
-import type { AdCampaignFormData } from "@components/ad-campaign/ad-campaign-form/ad-campaign-form.schema";
+import AdCampaignFieldList from "@components/ads/ad-campaign-form/ad-campaign-field-list";
+import type { AdCampaignFormData } from "@components/ads/ad-campaign-form/ad-campaign-form.schema";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@components/ui/field";

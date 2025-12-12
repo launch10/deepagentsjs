@@ -1,6 +1,6 @@
 import { twMerge } from "tailwind-merge";
 
-export default function AdCampaignChatBotMessage({
+export default function AIMessage({
   state = "active",
   message = "",
 }: {

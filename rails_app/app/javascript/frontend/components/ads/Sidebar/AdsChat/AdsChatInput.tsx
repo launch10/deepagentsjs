@@ -1,0 +1,80 @@
+import { Button } from "@components/ui/button";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from "@components/ui/input-group";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowUp, FilePlus, Sparkles } from "lucide-react";
+import { Controller, useForm } from "react-hook-form";
+import z from "zod";
+import { useAdsChatActions } from "@hooks/useAdsChat";
+import type { AdCampaignChatFormType } from "../../ad-campaign.types";
+
+const messageSchema = z.object({ message: z.string().min(1, "Message is required") }).required();
+
+interface AdsChatInputProps {
+  onRefreshSuggestions?: () => void;
+}
+
+export default function AdsChatInput({ onRefreshSuggestions = () => {} }: AdsChatInputProps) {
+  const { sendMessage } = useAdsChatActions();
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isValid },
+  } = useForm<AdCampaignChatFormType>({
+    defaultValues: { message: "" },
+    resolver: zodResolver(messageSchema),
+    mode: "onChange",
+  });
+
+  const onSubmit = handleSubmit((data) => {
+    sendMessage(data.message);
+    reset();
+  });
+
+  return (
+    <div className="flex-col gap-2 w-full">
+      <form onSubmit={onSubmit} className="w-full">
+        <InputGroup className="bg-white rounded-2xl">
+          <Controller
+            control={control}
+            name="message"
+            render={({ field, fieldState }) => (
+              <InputGroupTextarea
+                placeholder="Ask me for changes..."
+                {...field}
+                aria-invalid={!!fieldState.error}
+              />
+            )}
+          />
+          <InputGroupAddon align="block-end" className="flex justify-between">
+            <InputGroupButton size="icon-sm">
+              <FilePlus />
+            </InputGroupButton>
+            <InputGroupButton
+              size="icon-sm"
+              variant="destructive"
+              className="rounded-full bg-secondary-500"
+              type="submit"
+              disabled={!isValid}
+            >
+              <ArrowUp />
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
+      </form>
+      <Button
+        variant="link"
+        className="text-base-400 font-normal self-start"
+        onClick={onRefreshSuggestions}
+      >
+        <Sparkles /> Refresh All Suggestions
+      </Button>
+    </div>
+  );
+}
