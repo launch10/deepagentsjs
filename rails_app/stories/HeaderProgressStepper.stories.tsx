@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
-import HeaderProgressStepper from "@components/header/header-progress-stepper";
+import { HeaderProgressStepperView } from "@components/header/HeaderProgressStepper";
 
 const meta = {
   title: "Header/Progress Stepper",
-  component: HeaderProgressStepper,
+  component: HeaderProgressStepperView,
   tags: ["autodocs"],
   parameters: {
     layout: "centered",
@@ -16,8 +15,7 @@ const meta = {
       </div>
     ),
   ],
-  args: {},
-} satisfies Meta<typeof HeaderProgressStepper>;
+} satisfies Meta<typeof HeaderProgressStepperView>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

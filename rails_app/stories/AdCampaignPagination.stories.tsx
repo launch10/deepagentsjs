@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import AdCampaignPagination from "@components/ad-campaign/ad-campaign-pagination";
+import AdCampaignPagination from "@components/ads/ad-campaign-pagination";
 
 const meta = {
   title: "Ad Campaign/Components/Pagination",

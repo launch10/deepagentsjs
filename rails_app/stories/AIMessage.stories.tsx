@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import AdCampaignChatBotMessage from "~/components/ad-campaign/Sidebar/AdsChat/AIMessage";
+import AIMessage from "@components/ads/Sidebar/AdsChat/AIMessage";
 
 const meta = {
   title: "Ad Campaign/Components/Chat/Bot Message",
-  component: AdCampaignChatBotMessage,
+  component: AIMessage,
   tags: ["autodocs"],
   parameters: {
     layout: "centered",
@@ -17,7 +17,7 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof AdCampaignChatBotMessage>;
+} satisfies Meta<typeof AIMessage>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

@@ -25,7 +25,13 @@ export type WorkflowPage = typeof WorkflowPages[number];
 export const AdCampaignStepNames = ["create", "plan", "launch"] as const;
 export type AdCampaignStepName = typeof AdCampaignStepNames[number];
 
-export const SubstepNames = ["content", "highlights", "keywords", "settings", "launch", "review"] as const;
+export const AdCampaignSubstepNames = ["content", "highlights", "keywords", "settings", "launch", "review"] as const;
+export type AdCampaignSubstepName = typeof AdCampaignSubstepNames[number];
+
+export const LaunchSubstepNames = ["settings", "review", "deployment"] as const;
+export type LaunchSubstepName = typeof LaunchSubstepNames[number];
+
+export const SubstepNames = [...AdCampaignSubstepNames, "deployment"] as const;
 export type SubstepName = typeof SubstepNames[number];
 
 export const workflows = {

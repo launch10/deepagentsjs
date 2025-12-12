@@ -1,31 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import { useWorkflowSteps, selectPageNumber, selectPages } from "@context/WorkflowStepsProvider";
+import { Workflow } from "@shared";
 
-type HeaderProgressStepperProps = {
+export type HeaderProgressStepperViewProps = {
+  steps: readonly Workflow.Step[] | { label: string }[];
+  currentStepIndex: number;
   className?: string;
 };
 
-export default function HeaderProgressStepper({ className }: HeaderProgressStepperProps) {
-  const pages = useWorkflowSteps(selectPages);
-  const currentPageNumber = useWorkflowSteps(selectPageNumber);
+export function HeaderProgressStepperView({ steps, currentStepIndex, className }: HeaderProgressStepperViewProps) {
   const activeLabelRef = useRef<HTMLSpanElement | null>(null);
   const [progressWidth, setProgressWidth] = useState(0);
 
   useEffect(() => {
-    if (!activeLabelRef.current || currentPageNumber == null || !pages) return;
-    if (currentPageNumber < pages.length - 1) {
+    if (!activeLabelRef.current) return;
+    if (currentStepIndex < steps.length - 1) {
       setProgressWidth(
         activeLabelRef.current.offsetWidth / 2 + activeLabelRef.current.offsetLeft + 8
       );
     } else {
       setProgressWidth(activeLabelRef.current.offsetWidth + activeLabelRef.current.offsetLeft);
     }
-  }, [activeLabelRef.current, currentPageNumber, pages]);
-
-  if (!pages || currentPageNumber == null) {
-    return null;
-  }
+  }, [activeLabelRef.current, currentStepIndex, steps]);
 
   return (
     <div className={twMerge("w-full", className)}>
@@ -40,9 +37,9 @@ export default function HeaderProgressStepper({ className }: HeaderProgressStepp
         </div>
       </div>
       <div className="flex justify-between mt-2 relative">
-        {pages.map((page, index) => {
-          const isCurrent = index === currentPageNumber;
-          const isUpcoming = index > currentPageNumber;
+        {steps.map((step, index) => {
+          const isCurrent = index === currentStepIndex;
+          const isUpcoming = index > currentStepIndex;
           return (
             <span
               key={index}
@@ -57,11 +54,32 @@ export default function HeaderProgressStepper({ className }: HeaderProgressStepp
                 }
               }}
             >
-              {page.label}
+              {step.label}
             </span>
           );
         })}
       </div>
     </div>
+  );
+}
+
+type HeaderProgressStepperProps = {
+  className?: string;
+};
+
+export default function HeaderProgressStepper({ className }: HeaderProgressStepperProps) {
+  const pages = useWorkflowSteps(selectPages);
+  const currentPageNumber = useWorkflowSteps(selectPageNumber);
+
+  if (!pages || currentPageNumber == null) {
+    return null;
+  }
+
+  return (
+    <HeaderProgressStepperView
+      steps={pages}
+      currentStepIndex={currentPageNumber}
+      className={className}
+    />
   );
 }

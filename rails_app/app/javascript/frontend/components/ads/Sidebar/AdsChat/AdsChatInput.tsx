@@ -14,13 +14,12 @@ import type { AdCampaignChatFormType } from "../../ad-campaign.types";
 
 const messageSchema = z.object({ message: z.string().min(1, "Message is required") }).required();
 
-interface AdsChatInputProps {
+export interface AdsChatInputViewProps {
+  onSubmit: (message: string) => void;
   onRefreshSuggestions?: () => void;
 }
 
-export default function AdsChatInput({ onRefreshSuggestions = () => {} }: AdsChatInputProps) {
-  const { sendMessage } = useAdsChatActions();
-
+export function AdsChatInputView({ onSubmit, onRefreshSuggestions = () => {} }: AdsChatInputViewProps) {
   const {
     control,
     handleSubmit,
@@ -32,14 +31,14 @@ export default function AdsChatInput({ onRefreshSuggestions = () => {} }: AdsCha
     mode: "onChange",
   });
 
-  const onSubmit = handleSubmit((data) => {
-    sendMessage(data.message);
+  const handleFormSubmit = handleSubmit((data) => {
+    onSubmit(data.message);
     reset();
   });
 
   return (
     <div className="flex-col gap-2 w-full">
-      <form onSubmit={onSubmit} className="w-full">
+      <form onSubmit={handleFormSubmit} className="w-full">
         <InputGroup className="bg-white rounded-2xl">
           <Controller
             control={control}
@@ -76,5 +75,20 @@ export default function AdsChatInput({ onRefreshSuggestions = () => {} }: AdsCha
         <Sparkles /> Refresh All Suggestions
       </Button>
     </div>
+  );
+}
+
+interface AdsChatInputProps {
+  onRefreshSuggestions?: () => void;
+}
+
+export default function AdsChatInput({ onRefreshSuggestions = () => {} }: AdsChatInputProps) {
+  const { sendMessage } = useAdsChatActions();
+
+  return (
+    <AdsChatInputView
+      onSubmit={sendMessage}
+      onRefreshSuggestions={onRefreshSuggestions}
+    />
   );
 }

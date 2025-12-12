@@ -2,7 +2,7 @@ import { createStore } from "zustand";
 import { Workflow } from "@shared";
 
 const WORKFLOW_STEPS = Workflow.workflows.launch.steps;
-const SUBSTEP_ORDER = Workflow.SubstepNames;
+const AD_CAMPAIGN_SUBSTEP_ORDER = Workflow.AdCampaignSubstepNames;
 
 export type WorkflowStepsState = {
   steps: Readonly<Workflow.Step[]>;
@@ -30,7 +30,7 @@ function getSubstepFromUrl(): Workflow.SubstepName | null {
   const path = window.location.pathname;
   const match = path.match(/\/campaigns\/(\w+)$/);
   const substep = match?.[1];
-  return substep && SUBSTEP_ORDER.includes(substep as Workflow.SubstepName)
+  return substep && AD_CAMPAIGN_SUBSTEP_ORDER.includes(substep as Workflow.AdCampaignSubstepName)
     ? (substep as Workflow.SubstepName)
     : null;
 }
@@ -97,8 +97,8 @@ export const createWorkflowStore = (
 
     continue: () => {
       const { substep, projectUUID } = get();
-      const currentIndex = substep ? SUBSTEP_ORDER.indexOf(substep) : -1;
-      const nextSubstep = SUBSTEP_ORDER[currentIndex + 1];
+      const currentIndex = substep ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName) : -1;
+      const nextSubstep = AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex + 1];
       if (nextSubstep) {
         const step = Workflow.deriveStep(nextSubstep);
         const stepNumber = findStepIndex(step);
@@ -110,8 +110,8 @@ export const createWorkflowStore = (
 
     back: () => {
       const { substep, projectUUID } = get();
-      const currentIndex = substep ? SUBSTEP_ORDER.indexOf(substep) : -1;
-      const prevSubstep = SUBSTEP_ORDER[currentIndex - 1];
+      const currentIndex = substep ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName) : -1;
+      const prevSubstep = AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex - 1];
       if (prevSubstep) {
         const step = Workflow.deriveStep(prevSubstep);
         const stepNumber = findStepIndex(step);
@@ -123,14 +123,14 @@ export const createWorkflowStore = (
 
     canGoBack: () => {
       const { substep } = get();
-      const currentIndex = substep ? SUBSTEP_ORDER.indexOf(substep) : -1;
+      const currentIndex = substep ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName) : -1;
       return currentIndex > 0;
     },
 
     canGoForward: () => {
       const { substep } = get();
-      const currentIndex = substep ? SUBSTEP_ORDER.indexOf(substep) : -1;
-      return currentIndex < SUBSTEP_ORDER.length - 1;
+      const currentIndex = substep ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName) : -1;
+      return currentIndex < AD_CAMPAIGN_SUBSTEP_ORDER.length - 1;
     },
   }));
 };

@@ -1,18 +1,18 @@
 import { CardTitle, CardDescription, CardHeader } from "@components/ui/card";
 import AdCampaignStep from "../ad-campaign-step";
-import { workflow as adCampaignWorkflow } from "@shared";
+import { Workflow } from "@shared";
+import { useWorkflowSteps, selectStep, selectSubstep } from "@context/WorkflowStepsProvider";
 
-export default function WorkflowBuddy({
-  activeStep,
-  activeSubstep,
-}: {
-  activeStep?: string;
-  activeSubstep?: string;
-}) {
-  const adCampaignSteps = adCampaignWorkflow.launch.steps.find(
-    (step) => step.name === "ad_campaign"
-  )?.steps;
+const adCampaignSteps = Workflow.workflows.launch.steps.find(
+  (step) => step.name === "ad_campaign"
+)?.steps;
 
+export type WorkflowBuddyViewProps = {
+  activeStep?: string | null;
+  activeSubstep?: string | null;
+};
+
+export function WorkflowBuddyView({ activeStep, activeSubstep }: WorkflowBuddyViewProps) {
   return (
     <CardHeader>
       <CardTitle className="text-lg font-medium">Ad Campaign</CardTitle>
@@ -33,4 +33,11 @@ export default function WorkflowBuddy({
       </CardDescription>
     </CardHeader>
   );
+}
+
+export default function WorkflowBuddy() {
+  const activeStep = useWorkflowSteps(selectStep);
+  const activeSubstep = useWorkflowSteps(selectSubstep);
+
+  return <WorkflowBuddyView activeStep={activeStep} activeSubstep={activeSubstep} />;
 }

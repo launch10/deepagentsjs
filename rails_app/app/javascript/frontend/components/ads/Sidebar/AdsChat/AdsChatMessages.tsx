@@ -4,16 +4,24 @@ import { useAdsChatMessages, useAdsChatIsLoadingHistory } from "@hooks/useAdsCha
 import AIMessage from "./AIMessage";
 import HumanMessage from "./HumanMessage";
 
-export default function AdsChatMessages() {
-  const messages = useAdsChatMessages();
-  const isLoadingHistory = useAdsChatIsLoadingHistory();
+type Message = {
+  role: "assistant" | "user";
+  blocks: { id: string; type: string; text?: string }[];
+};
+
+export type AdsChatMessagesViewProps = {
+  messages: Message[];
+  isLoading?: boolean;
+};
+
+export function AdsChatMessagesView({ messages, isLoading = false }: AdsChatMessagesViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  if (isLoadingHistory) {
+  if (isLoading) {
     return <Spinner />;
   }
 
@@ -42,4 +50,11 @@ export default function AdsChatMessages() {
       <div ref={messagesEndRef} />
     </div>
   );
+}
+
+export default function AdsChatMessages() {
+  const messages = useAdsChatMessages();
+  const isLoadingHistory = useAdsChatIsLoadingHistory();
+
+  return <AdsChatMessagesView messages={messages} isLoading={isLoadingHistory} />;
 }

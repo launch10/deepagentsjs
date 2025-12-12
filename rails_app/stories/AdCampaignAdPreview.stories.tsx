@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import AdCampaignPreview from "@components/ad-campaign/ad-campaign-preview";
+import AdCampaignPreview from "@components/ads/ad-campaign-preview";
 
 const meta = {
   title: "Ad Campaign/Components/Ad Preview",
