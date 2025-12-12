@@ -2,7 +2,7 @@ import { Button } from "@components/ui/button";
 import { twMerge } from "tailwind-merge";
 import {
   useFormRegistry,
-  selectFocusedParent,
+  selectFocusedForm,
   selectValidateParent,
   selectValidateAll,
 } from "@stores/formRegistry";
@@ -15,7 +15,7 @@ interface FooterProps {
 }
 
 export default function Footer({ className, onBack, onContinue }: FooterProps) {
-  const focusedParent = useFormRegistry(selectFocusedParent);
+  const focusedForm = useFormRegistry(selectFocusedForm);
   const validateParent = useFormRegistry(selectValidateParent);
   const validateAll = useFormRegistry(selectValidateAll);
   const headlines = useAdsChatState("headlines");
@@ -24,8 +24,8 @@ export default function Footer({ className, onBack, onContinue }: FooterProps) {
   const handleContinue = async () => {
     let isValid = false;
 
-    if (focusedParent) {
-      isValid = await validateParent(focusedParent);
+    if (focusedForm) {
+      isValid = await validateParent(focusedForm);
     } else {
       isValid = await validateAll();
     }

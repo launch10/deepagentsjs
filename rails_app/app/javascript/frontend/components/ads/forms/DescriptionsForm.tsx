@@ -8,8 +8,7 @@ import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
 import AdCampaignFieldList from "@components/ads/ad-campaign-form/ad-campaign-field-list";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
-import { useFormRegistry, selectSetFocusedParent } from "@stores/formRegistry";
-import { Ads } from "@shared";
+import { Ads, keyBy } from "@shared";
 import { Info, Sparkles } from "lucide-react";
 
 const descriptionsFormSchema = z.object({
@@ -18,14 +17,9 @@ const descriptionsFormSchema = z.object({
 
 type DescriptionsFormData = z.infer<typeof descriptionsFormSchema>;
 
-interface DescriptionsFormProps {
-  onRefreshSuggestions: () => void;
-}
-
-export default function DescriptionsForm({ onRefreshSuggestions }: DescriptionsFormProps) {
+export default function DescriptionsForm() {
   const descriptions = useAdsChatState("descriptions");
-  const { setState } = useAdsChatActions();
-  const setFocusedParent = useFormRegistry(selectSetFocusedParent);
+  const { setState, updateState } = useAdsChatActions();
 
   const methods = useForm<DescriptionsFormData>({
     resolver: zodResolver(descriptionsFormSchema) as any,
@@ -47,7 +41,10 @@ export default function DescriptionsForm({ onRefreshSuggestions }: DescriptionsF
     }
   }, [descriptions, methods]);
 
-  useFormRegistration("content", methods, "descriptions.0.text");
+  // Attach our methods to the parent "content" form
+  // This allows other parts of our codebase (e.g. Footer)
+  // to simply call validate on all "content" pieces
+  useFormRegistration("content", methods);
 
   const handleLockToggle = (
     fieldName: "headlines" | "descriptions" | "features",
@@ -77,8 +74,28 @@ export default function DescriptionsForm({ onRefreshSuggestions }: DescriptionsF
     setState({ descriptions: updatedLanggraph });
   };
 
+  const handleRefreshDescriptions = () => {
+    const lockedDescriptions = descriptions?.filter((d) => d.locked) || [];
+    const lockedByText = keyBy(lockedDescriptions, "text");
+    const numLocked = lockedDescriptions.length;
+
+    const updatedDescriptions = descriptions?.map((d) => ({
+      ...d,
+      locked: !!lockedByText[d.text],
+      rejected: !lockedByText[d.text],
+    }));
+
+    updateState({
+      refresh: {
+        asset: "descriptions",
+        nVariants: Ads.DefaultNumAssets["descriptions"] - numLocked,
+      },
+      descriptions: updatedDescriptions,
+    });
+  };
+
   return (
-    <FieldGroup onFocus={() => setFocusedParent("content")}>
+    <FieldGroup>
       <Field>
         <FieldLabel className="flex justify-between items-center">
           <div className="flex items-center gap-2">

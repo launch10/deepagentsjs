@@ -4,47 +4,15 @@ import { Label } from "@components/ui/label";
 import { Info, Sparkles } from "lucide-react";
 import HeadlinesForm from "./forms/HeadlinesForm";
 import DescriptionsForm from "./forms/DescriptionsForm";
-import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
-import { keyBy } from "@shared";
+import { useEffect } from "react";
+import { useFormRegistry, selectSetFormFocused } from "@stores/formRegistry";
 
 export default function ContentPage() {
-  const headlines = useAdsChatState("headlines");
-  const descriptions = useAdsChatState("descriptions");
-  const { updateState } = useAdsChatActions();
+  const setFormFocused = useFormRegistry(selectSetFormFocused);
 
-  const handleRefreshHeadlines = () => {
-    const lockedHeadlines = headlines?.filter((h) => h.locked) || [];
-    const lockedByText = keyBy(lockedHeadlines, "text");
-    const numLocked = lockedHeadlines.length;
-
-    const updatedHeadlines = headlines?.map((h) => ({
-      ...h,
-      locked: !!lockedByText[h.text],
-      rejected: !lockedByText[h.text],
-    }));
-
-    updateState({
-      refresh: { asset: "headlines", nVariants: 6 - numLocked },
-      headlines: updatedHeadlines,
-    });
-  };
-
-  const handleRefreshDescriptions = () => {
-    const lockedDescriptions = descriptions?.filter((d) => d.locked) || [];
-    const lockedByText = keyBy(lockedDescriptions, "text");
-    const numLocked = lockedDescriptions.length;
-
-    const updatedDescriptions = descriptions?.map((d) => ({
-      ...d,
-      locked: !!lockedByText[d.text],
-      rejected: !lockedByText[d.text],
-    }));
-
-    updateState({
-      refresh: { asset: "descriptions", nVariants: 6 - numLocked },
-      descriptions: updatedDescriptions,
-    });
-  };
+  useEffect(() => {
+    setFormFocused("content");
+  }, [setFormFocused]);
 
   return (
     <div className="border border-neutral-300 border-t-0 rounded-b-2xl bg-white">
@@ -69,8 +37,8 @@ export default function ContentPage() {
               </InputGroup>
             </Field>
           </FieldGroup>
-          <HeadlinesForm onRefreshSuggestions={handleRefreshHeadlines} />
-          <DescriptionsForm onRefreshSuggestions={handleRefreshDescriptions} />
+          <HeadlinesForm />
+          <DescriptionsForm />
         </FieldSet>
       </div>
     </div>

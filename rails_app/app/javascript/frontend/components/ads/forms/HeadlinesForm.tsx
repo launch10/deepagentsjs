@@ -7,8 +7,7 @@ import AdCampaignHeadlineInput from "@components/ads/ad-campaign-form/ad-campaig
 import AdCampaignFieldList from "@components/ads/ad-campaign-form/ad-campaign-field-list";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
-import { useFormRegistry, selectSetFocusedParent } from "@stores/formRegistry";
-import { Ads, generateUUID } from "@shared";
+import { Ads, generateUUID, keyBy } from "@shared";
 
 const headlinesFormSchema = z.object({
   headlines: z
@@ -19,14 +18,9 @@ const headlinesFormSchema = z.object({
 
 type HeadlinesFormData = z.infer<typeof headlinesFormSchema>;
 
-interface HeadlinesFormProps {
-  onRefreshSuggestions: () => void;
-}
-
-export default function HeadlinesForm({ onRefreshSuggestions }: HeadlinesFormProps) {
+export default function HeadlinesForm() {
   const headlines = useAdsChatState("headlines");
-  const { setState } = useAdsChatActions();
-  const setFocusedParent = useFormRegistry(selectSetFocusedParent);
+  const { setState, updateState } = useAdsChatActions();
 
   const methods = useForm<HeadlinesFormData>({
     resolver: zodResolver(headlinesFormSchema) as any,
@@ -48,7 +42,7 @@ export default function HeadlinesForm({ onRefreshSuggestions }: HeadlinesFormPro
     }
   }, [headlines, methods]);
 
-  useFormRegistration("content", methods, "headlines.0.text");
+  useFormRegistration("content", methods);
 
   const handleAddHeadline = (value: string) => {
     const newHeadline: Ads.Headline = {
@@ -91,14 +85,31 @@ export default function HeadlinesForm({ onRefreshSuggestions }: HeadlinesFormPro
     setState({ headlines: updatedLanggraph });
   };
 
+  const handleRefreshHeadlines = () => {
+    const lockedHeadlines = headlines?.filter((h) => h.locked) || [];
+    const lockedByText = keyBy(lockedHeadlines, "text");
+    const numLocked = lockedHeadlines.length;
+
+    const updatedHeadlines = headlines?.map((h) => ({
+      ...h,
+      locked: !!lockedByText[h.text],
+      rejected: !lockedByText[h.text],
+    }));
+
+    updateState({
+      refresh: { asset: "headlines", nVariants: Ads.DefaultNumAssets["headlines"] - numLocked },
+      headlines: updatedHeadlines,
+    });
+  };
+
   return (
-    <FieldGroup onFocus={() => setFocusedParent("content")}>
+    <FieldGroup>
       <AdCampaignHeadlineInput
         onAdd={handleAddHeadline}
         currentCount={fields.length}
         maxCount={15}
         error={methods.formState.errors.headlines?.message}
-        onRefreshSuggestions={onRefreshSuggestions}
+        onRefreshSuggestions={handleRefreshHeadlines}
       />
       <AdCampaignFieldList
         fieldName="headlines"

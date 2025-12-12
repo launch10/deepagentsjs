@@ -2,17 +2,16 @@ import { create } from "zustand";
 
 type FormHandle = {
   validate: () => Promise<boolean>;
-  focus: () => void;
 };
 
 type FormRegistryState = {
   parents: Record<string, FormHandle[]>;
-  focusedParent: string | null;
+  focusedForm: string | null;
 };
 
 type FormRegistryActions = {
   register: (parent: string, handle: FormHandle) => () => void;
-  setFocusedParent: (id: string | null) => void;
+  setFormFocused: (id: string | null) => void;
   validateParent: (parentId: string) => Promise<boolean>;
   validateAll: () => Promise<boolean>;
 };
@@ -21,7 +20,7 @@ type FormRegistryStore = FormRegistryState & FormRegistryActions;
 
 export const useFormRegistry = create<FormRegistryStore>((set, get) => ({
   parents: {},
-  focusedParent: null,
+  focusedForm: null,
 
   register: (parent, handle) => {
     set((s) => ({
@@ -41,7 +40,7 @@ export const useFormRegistry = create<FormRegistryStore>((set, get) => ({
     };
   },
 
-  setFocusedParent: (id) => set({ focusedParent: id }),
+  setFormFocused: (id) => set({ focusedForm: id }),
 
   validateParent: async (parentId) => {
     const handles = get().parents[parentId] || [];
@@ -56,8 +55,8 @@ export const useFormRegistry = create<FormRegistryStore>((set, get) => ({
   },
 }));
 
-export const selectFocusedParent = (s: FormRegistryStore) => s.focusedParent;
+export const selectFocusedForm = (s: FormRegistryStore) => s.focusedForm;
 export const selectValidateParent = (s: FormRegistryStore) => s.validateParent;
 export const selectValidateAll = (s: FormRegistryStore) => s.validateAll;
 export const selectRegister = (s: FormRegistryStore) => s.register;
-export const selectSetFocusedParent = (s: FormRegistryStore) => s.setFocusedParent;
+export const selectSetFormFocused = (s: FormRegistryStore) => s.setFormFocused;
