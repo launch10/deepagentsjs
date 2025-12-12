@@ -1,3 +1,5 @@
+import { number } from "zod";
+
 export const WorkflowTypes = ["launch"] as const;
 export type WorkflowType = typeof WorkflowTypes[number];
 
@@ -17,6 +19,8 @@ export interface Step {
 export type Workflow = { steps: Step[] };
 export type Workflows = Record<WorkflowType, Workflow>;
 
+export const WorkflowSteps = ["brainstorm", "website", "campaign"];
+export type WorkflowStep = typeof WorkflowSteps[number];
 export const AdCampaignSteps = ["content", "highlights", "keywords", "settings", "launch", "review"] as const;
 export type AdCampaignStep = typeof AdCampaignSteps[number];
 

@@ -7,7 +7,7 @@ import {
   selectContinue,
   selectBack,
   selectCanGoBack,
-} from "@providers/WorkflowStepsProvider";
+} from "@context/WorkflowStepsProvider";
 
 interface FooterProps {
   className?: string;

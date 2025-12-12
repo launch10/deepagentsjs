@@ -4,8 +4,11 @@ import { Workflow } from "@shared";
 const SUBSTEP_ORDER = Workflow.AdCampaignSteps;
 
 export type WorkflowStepsState = {
-  step: Workflow.StepName | null;
+  steps: Readonly<Workflow.WorkflowStep[]>; // hardcode for now
+  step: Workflow.WorkflowStep; // these all need to be thought out for future workflows
   substep: Workflow.AdCampaignStep | null;
+  stepNumber: number;
+  substepNumber: number | null;
   projectUUID: string | null;
 };
 
@@ -35,11 +38,31 @@ function pushUrl(projectUUID: string | null, substep: Workflow.AdCampaignStep) {
   }
 }
 
-export const createWorkflowStore = (initialState: Partial<WorkflowStepsState>) =>
-  createStore<WorkflowStepsStore>((set, get) => ({
-    step: initialState.step ?? null,
-    substep: getSubstepFromUrl() ?? initialState.substep ?? "content",
+const findStepIndex = (step: Workflow.WorkflowStep): number => {
+  return Workflow.WorkflowSteps.findIndex((s) => s == step);
+};
+
+const findSubstepIndex = (substep: Workflow.AdCampaignStep | null): number | null => {
+  if (!substep) return null;
+  return Workflow.AdCampaignSteps.findIndex((s) => s == substep) || null;
+};
+
+export const createWorkflowStore = (
+  initialState: Pick<WorkflowStepsState, "step" | "substep" | "projectUUID">
+) => {
+  const step = initialState.step;
+  const substep = initialState.substep ?? null;
+  const stepNumber = findStepIndex(step);
+  const substepNumber = findSubstepIndex(substep);
+
+  return createStore<WorkflowStepsStore>((set, get) => ({
+    name: "launch",
+    steps: Workflow.WorkflowSteps,
+    step: step,
+    substep: substep,
     projectUUID: initialState.projectUUID ?? null,
+    stepNumber: stepNumber,
+    substepNumber: substepNumber,
 
     setSubstep: (substep) => {
       set({ substep });
@@ -57,8 +80,9 @@ export const createWorkflowStore = (initialState: Partial<WorkflowStepsState>) =
       const { substep, projectUUID } = get();
       const currentIndex = substep ? SUBSTEP_ORDER.indexOf(substep) : -1;
       const nextSubstep = SUBSTEP_ORDER[currentIndex + 1];
+      const substepNumber = findSubstepIndex(nextSubstep);
       if (nextSubstep) {
-        set({ substep: nextSubstep });
+        set({ substep: nextSubstep, substepNumber: substepNumber });
         pushUrl(projectUUID, nextSubstep);
       }
     },
@@ -67,8 +91,9 @@ export const createWorkflowStore = (initialState: Partial<WorkflowStepsState>) =
       const { substep, projectUUID } = get();
       const currentIndex = substep ? SUBSTEP_ORDER.indexOf(substep) : -1;
       const prevSubstep = SUBSTEP_ORDER[currentIndex - 1];
+      const substepNumber = findSubstepIndex(prevSubstep);
       if (prevSubstep) {
-        set({ substep: prevSubstep });
+        set({ substep: prevSubstep, substepNumber: substepNumber });
         pushUrl(projectUUID, prevSubstep);
       }
     },
@@ -85,3 +110,4 @@ export const createWorkflowStore = (initialState: Partial<WorkflowStepsState>) =
       return currentIndex < SUBSTEP_ORDER.length - 1;
     },
   }));
+};

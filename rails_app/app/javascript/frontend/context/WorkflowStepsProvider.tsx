@@ -37,16 +37,19 @@ export function WorkflowStepsProvider({
   return <WorkflowStepsContext.Provider value={store}>{children}</WorkflowStepsContext.Provider>;
 }
 
-export function useWorkflowSteps<T>(selector: (state: WorkflowStepsStore) => T): T {
+export function useWorkflowSteps<T>(selector: (state: WorkflowStepsStore) => T): T | undefined {
   const store = useContext(WorkflowStepsContext);
   if (!store) {
-    throw new Error("useWorkflowSteps must be used within WorkflowStepsProvider");
+    return undefined;
   }
   return useStore(store, selector);
 }
 
-export const selectSubstep = (s: WorkflowStepsStore) => s.substep;
+export const selectSteps = (s: WorkflowStepsStore) => s.steps;
 export const selectStep = (s: WorkflowStepsStore) => s.step;
+export const selectSubstep = (s: WorkflowStepsStore) => s.substep;
+export const selectStepNumber = (s: WorkflowStepsStore) => s.stepNumber;
+export const selectSubstepNumber = (s: WorkflowStepsStore) => s.substepNumber;
 export const selectSetSubstep = (s: WorkflowStepsStore) => s.setSubstep;
 export const selectContinue = (s: WorkflowStepsStore) => s.continue;
 export const selectBack = (s: WorkflowStepsStore) => s.back;

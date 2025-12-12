@@ -14,7 +14,7 @@ import {
   selectSubstep,
   selectSetSubstep,
   selectStep,
-} from "@providers/WorkflowStepsProvider";
+} from "@context/WorkflowStepsProvider";
 import { Workflow } from "@shared";
 
 const TABS = [

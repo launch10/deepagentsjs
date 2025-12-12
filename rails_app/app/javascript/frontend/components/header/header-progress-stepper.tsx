@@ -1,35 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
-import type { ProgressStep } from "./header.types";
+import { useWorkflowSteps, selectStepNumber, selectSteps } from "@context/WorkflowStepsProvider";
 
 type HeaderProgressStepperProps = {
   className?: string;
-  steps: ProgressStep[];
-  currentStepIndex: number;
 };
 
-export default function HeaderProgressStepper({
-  className,
-  steps,
-  currentStepIndex,
-}: HeaderProgressStepperProps) {
+export default function HeaderProgressStepper({ className }: HeaderProgressStepperProps) {
+  const currentStepNumber = useWorkflowSteps(selectStepNumber);
+  const steps = useWorkflowSteps(selectSteps);
   const activeLabelRef = useRef<HTMLSpanElement | null>(null);
   const [progressWidth, setProgressWidth] = useState(0);
 
   useEffect(() => {
     if (!activeLabelRef.current) return;
-    if (currentStepIndex < steps.length - 1) {
+    if (currentStepNumber < steps.length - 1) {
       // Steps align to middle of text
       setProgressWidth(
-        activeLabelRef.current.offsetWidth / 2 +
-          activeLabelRef.current.offsetLeft +
-          8
+        activeLabelRef.current.offsetWidth / 2 + activeLabelRef.current.offsetLeft + 8
       );
     } else {
       // Last step alignts to end of bar
-      setProgressWidth(
-        activeLabelRef.current.offsetWidth + activeLabelRef.current.offsetLeft
-      );
+      setProgressWidth(activeLabelRef.current.offsetWidth + activeLabelRef.current.offsetLeft);
     }
   }, [activeLabelRef.current]);
 
@@ -47,8 +39,8 @@ export default function HeaderProgressStepper({
       </div>
       <div className="flex justify-between mt-2 relative">
         {steps.map((step, index) => {
-          const isCurrent = index === currentStepIndex;
-          const isUpcoming = index > currentStepIndex;
+          const isCurrent = index === currentStepNumber;
+          const isUpcoming = index > currentStepNumber;
           return (
             <span
               key={index}
@@ -63,7 +55,7 @@ export default function HeaderProgressStepper({
                 }
               }}
             >
-              {step.label}
+              {step}
             </span>
           );
         })}
