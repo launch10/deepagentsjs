@@ -21,7 +21,6 @@ export default function CalloutsForm() {
   const callouts = useAdsChatState("callouts");
   const { setState, updateState } = useAdsChatActions();
 
-  console.log(`yo`);
   const methods = useForm<CalloutsFormData>({
     resolver: zodResolver(calloutsFormSchema) as any,
     mode: "onChange",
@@ -35,8 +34,6 @@ export default function CalloutsForm() {
     name: "callouts",
   });
 
-  console.log(`callouts`);
-  console.log(callouts);
   useEffect(() => {
     if (callouts?.length) {
       const filtered = callouts.filter((c) => !c.rejected);

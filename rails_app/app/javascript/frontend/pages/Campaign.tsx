@@ -65,11 +65,8 @@ function CampaignContent() {
 }
 
 export default function Campaign() {
-  const { workflow, project } = usePage<CampaignProps>().props;
 
   return (
-    <WorkflowStepsProvider workflow={workflow} projectUUID={project?.uuid ?? null}>
       <CampaignContent />
-    </WorkflowStepsProvider>
   );
 }

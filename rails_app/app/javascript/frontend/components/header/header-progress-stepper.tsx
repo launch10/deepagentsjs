@@ -7,8 +7,12 @@ type HeaderProgressStepperProps = {
 };
 
 export default function HeaderProgressStepper({ className }: HeaderProgressStepperProps) {
-  const currentStepNumber = useWorkflowSteps(selectStepNumber);
   const steps = useWorkflowSteps(selectSteps);
+  const currentStepNumber = useWorkflowSteps(selectStepNumber);
+  if (!steps || !currentStepNumber) {
+    return;
+  }
+
   const activeLabelRef = useRef<HTMLSpanElement | null>(null);
   const [progressWidth, setProgressWidth] = useState(0);
 
@@ -55,7 +59,7 @@ export default function HeaderProgressStepper({ className }: HeaderProgressStepp
                 }
               }}
             >
-              {step}
+              {step.label}
             </span>
           );
         })}

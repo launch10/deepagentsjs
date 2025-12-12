@@ -17,9 +17,9 @@ export default function Footer({ className }: FooterProps) {
   const validateParent = useFormRegistry(selectValidateParent);
 
   const substep = useWorkflowSteps(selectSubstep);
-  const workflowContinue = useWorkflowSteps(selectContinue);
-  const workflowBack = useWorkflowSteps(selectBack);
-  const canGoBack = useWorkflowSteps(selectCanGoBack);
+  const workflowContinue = useWorkflowSteps(selectContinue)!;
+  const workflowBack = useWorkflowSteps(selectBack)!;
+  const canGoBack = useWorkflowSteps(selectCanGoBack)!;
 
   const handleContinue = async () => {
     if (!substep) return;

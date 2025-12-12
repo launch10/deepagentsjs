@@ -1,11 +1,13 @@
 import { createStore } from "zustand";
 import { Workflow } from "@shared";
 
+const WORKFLOW_STEPS = Workflow.workflows.launch.steps;
+
 const SUBSTEP_ORDER = Workflow.AdCampaignSteps;
 
 export type WorkflowStepsState = {
-  steps: Readonly<Workflow.WorkflowStep[]>; // hardcode for now
-  step: Workflow.WorkflowStep; // these all need to be thought out for future workflows
+  steps: Readonly<Workflow.Step[]>;
+  step: Workflow.StepName | null;
   substep: Workflow.AdCampaignStep | null;
   stepNumber: number;
   substepNumber: number | null;
@@ -38,8 +40,9 @@ function pushUrl(projectUUID: string | null, substep: Workflow.AdCampaignStep) {
   }
 }
 
-const findStepIndex = (step: Workflow.WorkflowStep): number => {
-  return Workflow.WorkflowSteps.findIndex((s) => s == step);
+const findStepIndex = (step: Workflow.StepName | null): number => {
+  if (!step) return -1;
+  return WORKFLOW_STEPS.findIndex((s) => s.name === step);
 };
 
 const findSubstepIndex = (substep: Workflow.AdCampaignStep | null): number | null => {
@@ -57,7 +60,7 @@ export const createWorkflowStore = (
 
   return createStore<WorkflowStepsStore>((set, get) => ({
     name: "launch",
-    steps: Workflow.WorkflowSteps,
+    steps: WORKFLOW_STEPS,
     step: step,
     substep: substep,
     projectUUID: initialState.projectUUID ?? null,
