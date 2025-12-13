@@ -8,7 +8,8 @@ import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
 import AdCampaignFieldList from "@components/ads/ad-campaign-form/ad-campaign-field-list";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
-import { Ads, keyBy } from "@shared";
+import { Ads } from "@shared";
+import { createRefreshHandler } from "../../utils/refreshAssets";
 import { Info, Sparkles } from "lucide-react";
 
 const calloutsFormSchema = z.object({
@@ -70,23 +71,7 @@ export default function CalloutsForm() {
   };
 
   const handleRefreshCallouts = () => {
-    const lockedCallouts = callouts?.filter((c) => c.locked) || [];
-    const lockedByText = keyBy(lockedCallouts, "text");
-    const numLocked = lockedCallouts.length;
-
-    const updatedCallouts = callouts?.map((c) => ({
-      ...c,
-      locked: !!lockedByText[c.text],
-      rejected: !lockedByText[c.text],
-    }));
-
-    updateState({
-      refresh: {
-        asset: "callouts",
-        nVariants: Ads.DefaultNumAssets["callouts"] - numLocked,
-      },
-      callouts: updatedCallouts,
-    });
+    createRefreshHandler("callouts", callouts, updateState);
   };
 
   return (

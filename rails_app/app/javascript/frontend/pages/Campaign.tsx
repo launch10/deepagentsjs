@@ -4,7 +4,7 @@ import LogoSpinner from "@components/ui/logo-spinner";
 import { useAdsChatIsLoadingHistory } from "@hooks/useAdsChat";
 import AdPreview from "@components/ads/AdPreview";
 import AdsForm from "@components/ads/Forms/AdsForm";
-import Footer from "@components/ads/Footer";
+import AdCampaignPagination from "@components/ads/AdCampaignPagination";
 
 export default function Campaign() {
   const isLoadingHistory = useAdsChatIsLoadingHistory();
@@ -26,7 +26,7 @@ export default function Campaign() {
         ) : (
           <>
             <AdsForm />
-            <Footer />
+            <AdCampaignPagination />
           </>
         )}
       </div>

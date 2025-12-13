@@ -7,19 +7,25 @@ import {
   selectContinue,
   selectBack,
   selectCanGoBack,
+  selectCanGoForward,
 } from "@context/WorkflowStepsProvider";
 
-interface FooterProps {
+interface AdCampaignPaginationProps {
   className?: string;
+  handleBack: () => void;
+  handleContinue: () => void;
+  canGoBack: boolean;
+  canGoForward: boolean;
 }
 
-export default function Footer({ className }: FooterProps) {
+export default function AdCampaignPagination({ className }: { className?: string }) {
   const validateParent = useFormRegistry(selectValidateParent);
 
   const substep = useWorkflowSteps(selectSubstep);
   const workflowContinue = useWorkflowSteps(selectContinue)!;
   const workflowBack = useWorkflowSteps(selectBack)!;
   const canGoBack = useWorkflowSteps(selectCanGoBack)!;
+  const canGoForward = useWorkflowSteps(selectCanGoForward) || true;
 
   const handleContinue = async () => {
     if (!substep) return;
@@ -35,6 +41,18 @@ export default function Footer({ className }: FooterProps) {
   };
 
   return (
+    <AdCampaignPaginationView 
+      className={className}
+      handleBack={handleBack}
+      handleContinue={handleContinue}
+      canGoBack={canGoBack}
+      canGoForward={canGoForward}
+    />
+  );
+}
+
+export function AdCampaignPaginationView({ className, handleBack, handleContinue, canGoBack, canGoForward }: AdCampaignPaginationProps) {
+  return (
     <div
       className={twMerge(
         "sticky bottom-0 mt-3",
@@ -42,10 +60,10 @@ export default function Footer({ className }: FooterProps) {
         className
       )}
     >
-      <Button variant="link" onClick={handleBack} disabled={!canGoBack()}>
+      <Button variant="link" onClick={handleBack} disabled={!canGoBack}>
         Previous Step
       </Button>
-      <Button onClick={handleContinue}>Continue</Button>
+      <Button onClick={handleContinue} disabled={!canGoForward}>Continue</Button>
     </div>
   );
 }

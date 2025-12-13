@@ -7,7 +7,8 @@ import AdCampaignHeadlineInput from "@components/ads/ad-campaign-form/ad-campaig
 import AdCampaignFieldList from "@components/ads/ad-campaign-form/ad-campaign-field-list";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
-import { Ads, generateUUID, keyBy } from "@shared";
+import { Ads, generateUUID } from "@shared";
+import { createRefreshHandler } from "../../utils/refreshAssets";
 
 const headlinesFormSchema = z.object({
   headlines: z
@@ -86,20 +87,7 @@ export default function HeadlinesForm() {
   };
 
   const handleRefreshHeadlines = () => {
-    const lockedHeadlines = headlines?.filter((h) => h.locked) || [];
-    const lockedByText = keyBy(lockedHeadlines, "text");
-    const numLocked = lockedHeadlines.length;
-
-    const updatedHeadlines = headlines?.map((h) => ({
-      ...h,
-      locked: !!lockedByText[h.text],
-      rejected: !lockedByText[h.text],
-    }));
-
-    updateState({
-      refresh: { asset: "headlines", nVariants: Ads.DefaultNumAssets["headlines"] - numLocked },
-      headlines: updatedHeadlines,
-    });
+    createRefreshHandler("headlines", headlines, updateState);
   };
 
   return (

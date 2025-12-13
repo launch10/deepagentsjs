@@ -8,7 +8,8 @@ import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
 import AdCampaignFieldList from "@components/ads/ad-campaign-form/ad-campaign-field-list";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
-import { Ads, keyBy } from "@shared";
+import { Ads } from "@shared";
+import { createRefreshHandler } from "../../utils/refreshAssets";
 import { Info, Sparkles } from "lucide-react";
 
 const descriptionsFormSchema = z.object({
@@ -75,23 +76,7 @@ export default function DescriptionsForm() {
   };
 
   const handleRefreshDescriptions = () => {
-    const lockedDescriptions = descriptions?.filter((d) => d.locked) || [];
-    const lockedByText = keyBy(lockedDescriptions, "text");
-    const numLocked = lockedDescriptions.length;
-
-    const updatedDescriptions = descriptions?.map((d) => ({
-      ...d,
-      locked: !!lockedByText[d.text],
-      rejected: !lockedByText[d.text],
-    }));
-
-    updateState({
-      refresh: {
-        asset: "descriptions",
-        nVariants: Ads.DefaultNumAssets["descriptions"] - numLocked,
-      },
-      descriptions: updatedDescriptions,
-    });
+    createRefreshHandler("descriptions", descriptions, updateState);
   };
 
   return (
