@@ -1,6 +1,6 @@
 import { Button } from "@components/ui/button";
 import { twMerge } from "tailwind-merge";
-import { useFormRegistry, selectValidateParent } from "@stores/formRegistry";
+import { useFormRegistry, selectValidate } from "@stores/formRegistry";
 import {
   useWorkflowSteps,
   selectSubstep,
@@ -19,7 +19,7 @@ interface AdCampaignPaginationProps {
 }
 
 export default function AdCampaignPagination({ className }: { className?: string }) {
-  const validateParent = useFormRegistry(selectValidateParent);
+  const validateForm = useFormRegistry(selectValidate);
 
   const substep = useWorkflowSteps(selectSubstep);
   const workflowContinue = useWorkflowSteps(selectContinue)!;
@@ -30,7 +30,7 @@ export default function AdCampaignPagination({ className }: { className?: string
   const handleContinue = async () => {
     if (!substep) return;
 
-    const isValid = await validateParent(substep);
+    const isValid = await validateForm(substep);
     if (!isValid) return;
 
     workflowContinue();

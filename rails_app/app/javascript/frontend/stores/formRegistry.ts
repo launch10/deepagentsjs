@@ -5,51 +5,44 @@ type FormHandle = {
 };
 
 type FormRegistryState = {
-  parents: Record<string, FormHandle[]>;
+  formNames: Record<string, FormHandle[]>;
 };
 
 type FormRegistryActions = {
-  register: (parent: string, handle: FormHandle) => () => void;
-  validateParent: (parentId: string) => Promise<boolean>;
-  validateAll: () => Promise<boolean>;
+  register: (formName: string, handle: FormHandle) => () => void;
+  validate: (formName: string) => Promise<boolean>;
 };
 
 type FormRegistryStore = FormRegistryState & FormRegistryActions;
 
 export const useFormRegistry = create<FormRegistryStore>((set, get) => ({
-  parents: {},
+  formNames: {},
 
-  register: (parent, handle) => {
+  register: (formName, handle) => {
     set((s) => ({
-      parents: {
-        ...s.parents,
-        [parent]: [...(s.parents[parent] || []), handle],
+      formNames: {
+        ...s.formNames,
+        [formName]: [...(s.formNames[formName] || []), handle],
       },
     }));
 
     return () => {
       set((s) => ({
-        parents: {
-          ...s.parents,
-          [parent]: s.parents[parent]?.filter((h) => h !== handle) || [],
+        formNames: {
+          ...s.formNames,
+          [formName]: s.formNames[formName]?.filter((h) => h !== handle) || [],
         },
       }));
     };
   },
 
-  validateParent: async (parentId) => {
-    const handles = get().parents[parentId] || [];
-    const results = await Promise.all(handles.map((h) => h.validate()));
+  validate: async (formName) => {
+    const subforms = get().formNames[formName] || [];
+    const results = await Promise.all(subforms.map((h) => h.validate()));
     return results.every(Boolean);
   },
 
-  validateAll: async () => {
-    const allHandles = Object.values(get().parents).flat();
-    const results = await Promise.all(allHandles.map((h) => h.validate()));
-    return results.every(Boolean);
-  },
 }));
 
-export const selectValidateParent = (s: FormRegistryStore) => s.validateParent;
-export const selectValidateAll = (s: FormRegistryStore) => s.validateAll;
+export const selectValidate = (s: FormRegistryStore) => s.validate;
 export const selectRegister = (s: FormRegistryStore) => s.register;
