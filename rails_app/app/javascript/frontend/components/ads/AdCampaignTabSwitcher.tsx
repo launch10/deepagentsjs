@@ -14,8 +14,13 @@ export default function AdCampaignTabSwitcher() {
   const availableSubsteps = Workflow.findTabs(step);
 
   const setActiveTab = async (tabName: Workflow.SubstepName) => {
-    const isValid = await validateForm(step);
-    if (!isValid) return;
+    const selectedTabIsGreaterThanCurrentTab = availableSubsteps.findIndex((substep) => substep.name === tabName) > availableSubsteps.findIndex((substep) => substep.name === activeTab);
+
+    // You're allowed to go back to previous tabs, but not forward without validating
+    if (selectedTabIsGreaterThanCurrentTab) {
+      const isValid = await validateForm(step);
+      if (!isValid) return;
+    }
 
     setSubstep(tabName);
   };
