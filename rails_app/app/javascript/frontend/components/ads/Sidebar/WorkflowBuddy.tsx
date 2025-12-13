@@ -1,5 +1,5 @@
 import { CardTitle, CardDescription, CardHeader } from "@components/ui/card";
-import AdCampaignStep from "../ad-campaign-step";
+import AdCampaignStep from "../AdCampaignStep";
 import { Workflow } from "@shared";
 import { useWorkflowSteps, selectStep, selectSubstep } from "@context/WorkflowStepsProvider";
 

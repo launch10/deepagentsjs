@@ -2,7 +2,7 @@ import InputLockable from "@components/forms/input-lockable";
 import { Field, FieldError } from "@components/ui/field";
 import type { Control, FieldArrayWithId } from "react-hook-form";
 import { Controller } from "react-hook-form";
-import type { AdCampaignFormData } from "./ad-campaign-form.schema";
+import type { AdCampaignFormData } from "./AdCampaignForm.schema";
 
 interface AdCampaignFieldListProps {
   fieldName: "headlines" | "descriptions" | "features" | "callouts";

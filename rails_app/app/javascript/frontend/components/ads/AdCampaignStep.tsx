@@ -1,5 +1,5 @@
-import AdCampaignStepNumber from "./ad-campaign-step-number";
-import AdCampaignSubstep from "./ad-campaign-substep";
+import AdCampaignStepNumber from "./AdCampaignStepNumber";
+import AdCampaignSubstep from "./AdCampaignSubstep";
 
 import type { SubStepType } from "./ad-campaign.types";
 

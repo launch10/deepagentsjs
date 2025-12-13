@@ -9,7 +9,7 @@ import {
 } from "@components/ui/input-group";
 import { Info, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { headlineSchema } from "./ad-campaign-form.schema";
+import { headlineSchema } from "../shared/AdCampaignForm.schema";
 
 interface AdCampaignHeadlineInputProps {
   onAdd: (value: string) => void;
