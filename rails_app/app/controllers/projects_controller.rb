@@ -44,6 +44,9 @@ class ProjectsController < SubscribedController
         # Don't use update! here because it will raise an exception if the update fails.
         @campaign.update(stage: substep)
       end
+      if @campaign.reload.stage != substep
+        redirect_to action: "campaigns_#{@campaign.stage}" and return
+      end
 
       render inertia: "Campaign",
         props: @project.to_ad_campaign_json,
