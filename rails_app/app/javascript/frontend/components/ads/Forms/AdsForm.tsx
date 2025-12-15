@@ -1,6 +1,7 @@
 import { Workflow } from "@shared";
 import ContentForm from "./ContentForm";
 import HighlightsForm from "./HighlightsForm";
+import KeywordsForm from "./KeywordsForm";
 import {
   useWorkflowSteps,
   selectSubstep,
@@ -9,6 +10,7 @@ import {
 const FORMS: Partial<Record<Workflow.AdCampaignSubstepName, React.ComponentType>> = {
   content: ContentForm,
   highlights: HighlightsForm,
+  keywords: KeywordsForm,
 };
 
 export default function AdsForm() {

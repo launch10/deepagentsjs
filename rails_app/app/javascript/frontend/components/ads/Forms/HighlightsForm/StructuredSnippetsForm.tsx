@@ -48,13 +48,21 @@ export default function StructuredSnippetsForm() {
     name: "details",
   });
 
+  const category = structuredSnippets?.category;
+  const details = structuredSnippets?.details;
+
   useEffect(() => {
-    if (structuredSnippets) {
-      methods.setValue("category", structuredSnippets.category || "");
-      const filtered = structuredSnippets.details?.filter((d) => !d.rejected) || [];
+    if (category) {
+      methods.setValue("category", category);
+    }
+  }, [category]);
+
+  useEffect(() => {
+    if (details?.length) {
+      const filtered = details.filter((d) => !d.rejected);
       methods.setValue("details", filtered);
     }
-  }, [structuredSnippets]);
+  }, [details]);
 
   useFormRegistration("highlights", methods);
 

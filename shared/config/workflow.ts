@@ -38,7 +38,7 @@ export const workflows = {
   launch: {
     steps: [
       { name: "brainstorm", label: "Brainstorm", order: 1 },
-      { name: "website", label: "Website", order: 2 },
+      { name: "website", label: "Landing Page", order: 2 },
       { name: "ad_campaign", label: "Ad Campaign", order: 3,
         steps: [
           {
@@ -55,7 +55,7 @@ export const workflows = {
             label: "Plan",
             order: 2,
             steps: [
-              { name: "keywords", label: "Keywords", order: 1 },
+              { name: "keywords", label: "Keyword Targeting", order: 1 },
               { name: "settings", label: "Settings", order: 2 }
             ]
           },
