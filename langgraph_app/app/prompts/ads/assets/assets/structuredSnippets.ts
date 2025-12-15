@@ -2,6 +2,14 @@ import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
 import { userPreferencesPrompt } from "../userPreferences";
 
+const categoryList = Ads.StructuredSnippetCategoryKeys.map(
+  (key) => `"${Ads.StructuredSnippetCategories[key].key}"`
+).join(", ");
+
+const categoryExamples = Ads.StructuredSnippetCategoryKeys.slice(0, 3)
+  .map((key) => `- ${Ads.StructuredSnippetCategories[key].examples}`)
+  .join("\n              ");
+
 export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
   structuredSnippets: {
     prompt: async (state: AdsGraphState, _config?: any) => {
@@ -17,15 +25,13 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
             ${
               snippetCategory
                 ? snippetCategory
-                : `Choose ONE header that best describes what you're listing (e.g., "Types", "Services", "Amenities", "Products", "Styles", "Brands", "Courses", "Destinations")`
+                : `Choose ONE header that best describes what you're listing (e.g., ${categoryList})`
             }
 
             **Details (Values):**
             List ${numberOfDetails} specific offerings under that category header.
             - Examples: 
-              - Types: "Web Design", "SEO", "Content Marketing"
-              - Amenities: "Free WiFi", "Free Parking", "Included Breakfast", "Spa Services"
-              - Services: "Emergency Repairs", "Annual Maintenance", "Free Estimates"
+              ${categoryExamples}
 
             **Requirements:**
             - Choose an appropriate category header

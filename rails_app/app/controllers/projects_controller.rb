@@ -43,9 +43,10 @@ class ProjectsController < SubscribedController
         # before the page they're trying to go to. We'll just stay on the same page.
         # Don't use update! here because it will raise an exception if the update fails.
         @campaign.update(stage: substep)
-      end
-      if @campaign.reload.stage != substep
-        redirect_to action: "campaigns_#{@campaign.stage}" and return
+
+        if @campaign.reload.stage != substep
+          redirect_to action: "campaigns_#{@campaign.stage}" and return
+        end
       end
 
       render inertia: "Campaign",

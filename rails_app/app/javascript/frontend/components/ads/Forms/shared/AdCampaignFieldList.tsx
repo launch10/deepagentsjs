@@ -5,11 +5,11 @@ import { Controller } from "react-hook-form";
 import type { AdCampaignFormData } from "./AdCampaignForm.schema";
 
 interface AdCampaignFieldListProps {
-  fieldName: "headlines" | "descriptions" | "features" | "callouts";
+  fieldName: "headlines" | "descriptions" | "features" | "callouts" | "details";
   fields: FieldArrayWithId<AdCampaignFormData, "headlines" | "descriptions" | "features", "id">[];
   control: Control<AdCampaignFormData>;
   onLockToggle: (
-    fieldName: "headlines" | "descriptions" | "features" | "callouts",
+    fieldName: "headlines" | "descriptions" | "features" | "callouts" | "details",
     index: number
   ) => void;
   placeholder: string;

@@ -17,7 +17,6 @@ export function useStageInit(stage: Workflow.AdCampaignSubstepName) {
   const hasStartedStep = useAdsChatState("hasStartedStep")?.[stage];
 
   const maybeInitializeStage = useEffectEvent(() => {
-    if (isUndefined(hasStartedStep)) return;
     if (hasStartedStep && Ads.stageLoadedSuccessfully(assets, stage)) return;
     if (!project?.uuid) return;
 
