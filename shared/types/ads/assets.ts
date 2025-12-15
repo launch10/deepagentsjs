@@ -149,3 +149,13 @@ export type Assets = {
     structuredSnippets: StructuredSnippets;
     keywords: Asset[];
 }
+
+export const stageLoadedSuccessfully = (state: Partial<Assets>, stage: StageName): boolean => {
+    const assets = assetsForStage(stage);
+    return assets.every((asset) => {
+        if (asset === "structuredSnippets") {
+            return state[asset]?.details.length;
+        }
+        return state[asset]?.length;
+    })
+}
