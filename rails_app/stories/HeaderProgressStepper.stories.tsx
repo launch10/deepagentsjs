@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { HeaderProgressStepperView } from "@components/header/HeaderProgressStepper";
+import { HeaderProgressStepperView } from "@components/Header/HeaderProgressStepper";
 
 const meta = {
   title: "Header/Progress Stepper",

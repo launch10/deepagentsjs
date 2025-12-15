@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import { usePage } from "@inertiajs/react";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
-import type { CampaignProps } from "~/components/ads/Sidebar/WorkflowBuddy/ad-campaign.types";
+import type { CampaignProps } from "@components/ads/Sidebar/WorkflowBuddy/ad-campaign.types";
 import { Workflow, type UUIDType } from "@shared";
 
-export function useStageInit(stage: Workflow.AdCampaignStep) {
+export function useStageInit(stage: Workflow.AdCampaignSubstepName) {
   const { project } = usePage<CampaignProps>().props;
   const { updateState } = useAdsChatActions();
   const hasStartedStep = useAdsChatState("hasStartedStep");

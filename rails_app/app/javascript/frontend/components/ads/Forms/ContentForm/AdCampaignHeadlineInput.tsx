@@ -1,12 +1,6 @@
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldError, FieldLabel } from "@components/ui/field";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@components/ui/input-group";
 import { Info, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { headlineSchema } from "../shared/AdCampaignForm.schema";
@@ -51,7 +45,7 @@ export default function AdCampaignHeadlineInput({
   const displayError = error || externalError;
 
   return (
-    <Field>
+    <Field className="gap-2">
       <FieldLabel className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-base-600">Headlines</span>
@@ -70,8 +64,8 @@ export default function AdCampaignHeadlineInput({
           </Button>
         </div>
       </FieldLabel>
-      <InputGroup>
-        <InputGroupInput
+      <div className="flex border border-neutral-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring">
+        <input
           placeholder="Enter headline"
           value={value}
           onChange={(e) => {
@@ -85,13 +79,16 @@ export default function AdCampaignHeadlineInput({
             }
           }}
           aria-invalid={!!displayError}
+          className="flex-1 h-10 px-4 text-xs placeholder:text-neutral-400 outline-none bg-transparent border-none shadow-none"
         />
-        <InputGroupAddon align="inline-end">
-          <InputGroupButton type="button" variant="secondary" onClick={handleAdd}>
-            <Plus /> Add
-          </InputGroupButton>
-        </InputGroupAddon>
-      </InputGroup>
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="flex items-center gap-2 h-10 px-3 bg-background border-l border-neutral-300 text-sm text-base-500 hover:bg-neutral-100"
+        >
+          <Plus size={16} /> Add
+        </button>
+      </div>
       <div className="flex items-center">
         {displayError && <FieldError errors={[{ message: displayError }]} />}
         <div className="text-right text-xs text-[#8b8b8b] ml-auto">{value.length}/30</div>

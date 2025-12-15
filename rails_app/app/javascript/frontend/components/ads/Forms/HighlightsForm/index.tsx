@@ -8,7 +8,7 @@ export default function HighlightsForm() {
 
   return (
     <div className="border border-neutral-300 border-t-0 rounded-b-2xl bg-white">
-      <div className="p-9 flex flex-col gap-6">
+      <div className="py-8 pl-9 pr-[97px] flex flex-col gap-6">
         <h2 className="text-lg font-semibold">Highlights</h2>
         <p className="text-sm text-base-400">
           Highlights add useful information to your ads, like a phone number, location, specific

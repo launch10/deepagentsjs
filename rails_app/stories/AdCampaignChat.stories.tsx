@@ -1,6 +1,35 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { mocked } from "storybook/test";
 import AdsChat from "@components/ads/Sidebar/AdsChat";
-import { withMockAdsChat, mockAdsChatStates, sampleMessages } from "./decorators/withMockAdsChat";
+import { useAdsChat } from "@hooks/useAdsChat";
+
+const sampleMessages = [
+  {
+    role: "assistant" as const,
+    blocks: [{ id: "1", type: "text", text: "Hello! How can I help you with your ad campaign today?" }],
+  },
+  {
+    role: "user" as const,
+    blocks: [{ id: "2", type: "text", text: "I need help writing better headlines" }],
+  },
+  {
+    role: "assistant" as const,
+    blocks: [{ id: "3", type: "text", text: "I'd be happy to help! Let me suggest some headline improvements." }],
+  },
+];
+
+const baseMockSnapshot = {
+  messages: [],
+  state: {},
+  status: "ready" as const,
+  isLoading: false,
+  isLoadingHistory: false,
+  threadId: "storybook-thread",
+  sendMessage: () => {},
+  updateState: () => {},
+  setState: () => {},
+  stop: () => {},
+};
 
 const meta = {
   title: "Ad Campaign/Components/Chat",
@@ -22,35 +51,64 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  decorators: [withMockAdsChat(mockAdsChatStates.withMessages)],
+  beforeEach: () => {
+    mocked(useAdsChat).mockImplementation((selector) => {
+      const snapshot = { ...baseMockSnapshot, messages: sampleMessages };
+      return selector ? selector(snapshot as any) : snapshot;
+    });
+  },
 };
 
 export const Empty: Story = {
-  decorators: [withMockAdsChat(mockAdsChatStates.empty)],
+  beforeEach: () => {
+    mocked(useAdsChat).mockImplementation((selector) => {
+      const snapshot = { ...baseMockSnapshot };
+      return selector ? selector(snapshot as any) : snapshot;
+    });
+  },
 };
 
 export const Loading: Story = {
-  decorators: [withMockAdsChat(mockAdsChatStates.loading)],
+  beforeEach: () => {
+    mocked(useAdsChat).mockImplementation((selector) => {
+      const snapshot = { ...baseMockSnapshot, isLoading: true, status: "streaming" as const };
+      return selector ? selector(snapshot as any) : snapshot;
+    });
+  },
 };
 
 export const LoadingHistory: Story = {
-  decorators: [withMockAdsChat(mockAdsChatStates.loadingHistory)],
+  beforeEach: () => {
+    mocked(useAdsChat).mockImplementation((selector) => {
+      const snapshot = { ...baseMockSnapshot, isLoadingHistory: true };
+      return selector ? selector(snapshot as any) : snapshot;
+    });
+  },
 };
 
 export const Streaming: Story = {
-  decorators: [withMockAdsChat(mockAdsChatStates.streaming)],
+  beforeEach: () => {
+    mocked(useAdsChat).mockImplementation((selector) => {
+      const snapshot = { ...baseMockSnapshot, messages: sampleMessages, isLoading: true, status: "streaming" as const };
+      return selector ? selector(snapshot as any) : snapshot;
+    });
+  },
 };
 
 export const LongConversation: Story = {
-  decorators: [
-    withMockAdsChat({
-      messages: [
-        ...sampleMessages,
-        { role: "user", blocks: [{ id: "4", type: "text", text: "Can you make them more punchy?" }] },
-        { role: "assistant", blocks: [{ id: "5", type: "text", text: "Absolutely! Here are some punchier versions..." }] },
-        { role: "user", blocks: [{ id: "6", type: "text", text: "Perfect, let's go with the second one" }] },
-        { role: "assistant", blocks: [{ id: "7", type: "text", text: "Great choice! I've updated your headline." }] },
-      ],
-    }),
-  ],
+  beforeEach: () => {
+    mocked(useAdsChat).mockImplementation((selector) => {
+      const snapshot = {
+        ...baseMockSnapshot,
+        messages: [
+          ...sampleMessages,
+          { role: "user" as const, blocks: [{ id: "4", type: "text", text: "Can you make them more punchy?" }] },
+          { role: "assistant" as const, blocks: [{ id: "5", type: "text", text: "Absolutely! Here are some punchier versions..." }] },
+          { role: "user" as const, blocks: [{ id: "6", type: "text", text: "Perfect, let's go with the second one" }] },
+          { role: "assistant" as const, blocks: [{ id: "7", type: "text", text: "Great choice! I've updated your headline." }] },
+        ],
+      };
+      return selector ? selector(snapshot as any) : snapshot;
+    });
+  },
 };

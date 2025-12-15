@@ -18,7 +18,7 @@ export default function AdPreview({ className }: { className?: string }) {
   return (
     <div
       className={twMerge(
-        "w-full bg-white rounded-2xl py-8 px-10 relative overflow-hidden",
+        "w-full bg-white rounded-xl py-8 pl-10 pr-16 relative overflow-hidden",
         className
       )}
     >
@@ -26,7 +26,7 @@ export default function AdPreview({ className }: { className?: string }) {
         className="absolute inset-0 rounded-2xl border border-neutral-200/50 pointer-events-none"
         style={{ backgroundImage: "linear-gradient(180deg, rgba(237, 237, 236, 0.2) 0%, rgba(237, 237, 236, 0) 100%)" }}
       />
-      <div className="absolute top-6 right-8 text-base-400 text-sm z-10">Ad Preview</div>
+      <div className="absolute top-6 right-8 text-base-400 text-sm">Ad Preview</div>
       <div className="max-w-[calc(100%-100px)]">
         <div className="flex flex-col mb-2 gap-2">
           {!previewHeadline ? (
