@@ -33,8 +33,8 @@ export default function AdCampaignTabSwitcher() {
           type="button"
           onClick={() => setActiveTab(substep.name)} 
           className={twMerge(
-            "flex-1 py-3 text-base-400 border-b border-b-neutral-300 bg-background",
-            activeTab === substep.name && "border-b-yellow-700 text-base-600 bg-accent-yellow-100"
+            "flex-1 py-2 text-sm text-base-400 border-b-2 border-b-neutral-300 bg-background",
+            activeTab === substep.name && "border-b-accent-yellow-700 text-accent-yellow-800 bg-accent-yellow-100"
           )}
         >
           {substep.label}

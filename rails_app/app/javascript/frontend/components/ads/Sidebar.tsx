@@ -11,7 +11,7 @@ export default function AdsSidebar({
   activeSubstep?: string;
 }) {
   return (
-    <Card className="shadow-none bg-background border-neutral-300 rounded-2xl sticky top-24 z-0">
+    <Card className="shadow-[0px_0px_8px_4px_rgba(167,165,161,0.08)] bg-background border-neutral-300 rounded-2xl sticky top-24 z-0 w-[288px] py-0 gap-0">
       <WorkflowBuddy activeStep={activeStep} activeSubstep={activeSubstep} />
       <Separator className="bg-neutral-300" />
       <AdsChat />

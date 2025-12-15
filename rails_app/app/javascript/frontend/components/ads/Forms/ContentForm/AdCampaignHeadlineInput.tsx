@@ -94,7 +94,7 @@ export default function AdCampaignHeadlineInput({
       </InputGroup>
       <div className="flex items-center">
         {displayError && <FieldError errors={[{ message: displayError }]} />}
-        <div className="text-right text-sm text-base-300 ml-auto">{value.length}/30</div>
+        <div className="text-right text-xs text-[#8b8b8b] ml-auto">{value.length}/30</div>
       </div>
     </Field>
   );

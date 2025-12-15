@@ -21,7 +21,7 @@ export default function AdCampaignStep({
         <span className="text-base-600">{stepName}</span>
       </div>
       {isActive && (
-        <ul className="list-none ml-6">
+        <ul className="list-none ml-7 flex flex-col gap-2">
           {subSteps?.map((subStep, index) => (
             <AdCampaignSubstep key={index} subStep={subStep} />
           ))}

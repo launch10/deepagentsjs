@@ -39,15 +39,16 @@ export function AdsChatInputView({ onSubmit, onRefreshSuggestions = () => {} }: 
   });
 
   return (
-    <div className="flex-col gap-2 w-full">
+    <div className="flex flex-col gap-1 w-full">
       <form onSubmit={handleFormSubmit} className="w-full">
-        <InputGroup className="bg-white rounded-2xl">
+        <InputGroup className="bg-white rounded-2xl border border-neutral-300">
           <Controller
             control={control}
             name="message"
             render={({ field, fieldState }) => (
               <InputGroupTextarea
                 placeholder="Ask me for changes..."
+                className="min-h-[40px] text-xs"
                 {...field}
                 aria-invalid={!!fieldState.error}
               />
@@ -55,26 +56,26 @@ export function AdsChatInputView({ onSubmit, onRefreshSuggestions = () => {} }: 
           />
           <InputGroupAddon align="block-end" className="flex justify-between">
             <InputGroupButton size="icon-sm">
-              <FilePlus />
+              <FilePlus className="size-4" />
             </InputGroupButton>
             <InputGroupButton
               size="icon-sm"
               variant="destructive"
-              className="rounded-full bg-secondary-500"
+              className="rounded-full bg-secondary-500 size-6"
               type="submit"
               disabled={!isValid}
             >
-              <ArrowUp />
+              <ArrowUp className="size-4" />
             </InputGroupButton>
           </InputGroupAddon>
         </InputGroup>
       </form>
       <Button
         variant="link"
-        className="text-base-400 font-normal self-start"
+        className="text-base-400 font-normal text-xs px-0 py-1 h-auto justify-start gap-1"
         onClick={onRefreshSuggestions}
       >
-        <Sparkles /> Refresh All Suggestions
+        <Sparkles className="size-3.5" /> Refresh All Suggestions
       </Button>
     </div>
   );

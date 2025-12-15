@@ -18,27 +18,33 @@ export default function AdPreview({ className }: { className?: string }) {
   return (
     <div
       className={twMerge(
-        "w-full bg-linear-to-b from-neutral-50 to-white rounded-md border border-neutral-100 py-8 px-10 relative",
+        "w-full bg-white rounded-2xl py-8 px-10 relative overflow-hidden",
         className
       )}
     >
-      <div className="absolute top-6 right-8 text-base-400 text-sm">Ad Preview</div>
-      <div className="flex flex-col mb-2 gap-1">
-        {!previewHeadline ? (
-          <Skeleton className="w-52 h-6" />
-        ) : (
-          <h2 className="text-lg font-semibold text-primary-500">{previewHeadline}</h2>
-        )}
-        <Skeleton className="w-32 h-4" />
-      </div>
-      <div className="flex flex-col gap-3">
-        <div className="text-sm text-base-400">
-          {!previewDescription ? <Skeleton className="w-full h-12" /> : previewDescription}
+      <div 
+        className="absolute inset-0 rounded-2xl border border-neutral-200/50 pointer-events-none"
+        style={{ backgroundImage: "linear-gradient(180deg, rgba(237, 237, 236, 0.2) 0%, rgba(237, 237, 236, 0) 100%)" }}
+      />
+      <div className="absolute top-6 right-8 text-base-400 text-sm z-10">Ad Preview</div>
+      <div className="max-w-[calc(100%-100px)]">
+        <div className="flex flex-col mb-2 gap-2">
+          {!previewHeadline ? (
+            <Skeleton className="w-52 h-6" />
+          ) : (
+            <h2 className="text-xl font-medium text-primary-500 font-roboto break-words">{previewHeadline}</h2>
+          )}
+          <Skeleton className="w-32 h-4 text-success-700" />
         </div>
-        <div className="flex gap-4">
-          <span className="text-sm text-primary-500">Book Now</span>
-          <span className="text-sm text-primary-500">Learn More</span>
-          <span className="text-sm text-primary-500">Photos Shoots</span>
+        <div className="flex flex-col gap-3">
+          <div className="text-sm text-base-400 leading-[18px] break-words">
+            {!previewDescription ? <Skeleton className="w-full h-12" /> : previewDescription}
+          </div>
+          <div className="flex gap-6 flex-wrap">
+            <span className="text-sm text-primary-500">Book Now</span>
+            <span className="text-sm text-primary-500">Learn More</span>
+            <span className="text-sm text-primary-500">Photo Shoots</span>
+          </div>
         </div>
       </div>
     </div>

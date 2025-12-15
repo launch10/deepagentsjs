@@ -5,13 +5,13 @@ export default function AdCampaignSubstep({ subStep }: { subStep: SubStepType })
   return (
     <li className="flex items-center gap-2">
       {!subStep.isSubStepCompleted ? (
-        <span className="w-3 text-base-600">&#8226;</span>
+        <span className="size-1 rounded-full bg-current text-base-600" />
       ) : (
-        <span className="w-3 text-base-400">
+        <span className="text-base-400">
           <Check size={12} />
         </span>
       )}
-      <span className={subStep.isSubStepActive ? "text-base-600" : "text-base-400"}>
+      <span className={`text-xs ${subStep.isSubStepActive ? "text-base-600 font-medium" : "text-base-400"}`}>
         {subStep.label}
       </span>
     </li>

@@ -14,10 +14,10 @@ export type WorkflowBuddyViewProps = {
 
 export function WorkflowBuddyView({ activeStep, activeSubstep }: WorkflowBuddyViewProps) {
   return (
-    <CardHeader>
-      <CardTitle className="text-lg font-medium">Ad Campaign</CardTitle>
-      <CardDescription className="flex flex-col gap-3">
-        <div className="font-medium">Steps</div>
+    <CardHeader className="px-4 py-4">
+      <CardTitle className="text-lg font-semibold font-serif">Ad Campaign</CardTitle>
+      <CardDescription className="flex flex-col gap-[18px]">
+        <div className="font-medium text-sm text-base-400">Steps</div>
         {adCampaignSteps?.map((step) => (
           <AdCampaignStep
             key={step.name}

@@ -6,3 +6,5 @@ packages:
   - "shared"
   - "packages/*"
   - "packages/*/packages/*"
+  - "packages/*/libs/*"
+  - "packages/*/internal/*"

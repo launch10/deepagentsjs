@@ -33,7 +33,7 @@ export function HeaderProgressStepperView({ steps, currentStepIndex, className }
             width: `${progressWidth}px`,
           }}
         >
-          <div className="size-4 bg-[#3748B8] rounded-full -top-[50%] right-0 absolute" />
+          <div className="size-[14px] bg-[#3748B8] rounded-full -top-[3px] right-0 absolute" />
         </div>
       </div>
       <div className="flex justify-between mt-2 relative">
@@ -44,9 +44,9 @@ export function HeaderProgressStepperView({ steps, currentStepIndex, className }
             <span
               key={index}
               className={twMerge(
-                "text-sm text-primary",
+                "text-xs text-base-500",
                 isCurrent && "font-semibold",
-                isUpcoming && "text-gray-500"
+                isUpcoming && "text-base-300"
               )}
               ref={(el) => {
                 if (isCurrent) {

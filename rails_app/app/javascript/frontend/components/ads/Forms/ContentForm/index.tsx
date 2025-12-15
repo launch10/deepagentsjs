@@ -11,14 +11,16 @@ export default function ContentForm() {
 
   return (
     <div className="border border-neutral-300 border-t-0 rounded-b-2xl bg-white">
-      <div className="p-9 flex flex-col gap-6">
-        <h2 className="text-lg font-semibold">Content</h2>
-        <p className="text-sm text-base-400">
+      <div className="p-8 flex flex-col gap-6">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-lg font-semibold leading-[22px]">Content</h2>
+          <p className="text-xs text-base-300">
           Content is the core of your ad. Think of billboard headlines. They describe the problem
           your business solves, and encourage users to click to learn more.
-        </p>
-        <FieldSet>
-          <FieldGroup className="grid grid-cols-2">
+          </p>
+        </div>
+        <FieldSet className="gap-4">
+          <FieldGroup className="w-[405px]">
             <Field>
               <Label className="flex items-center gap-2 text-base-600">
                 <span className="font-semibold">Ad Group Name</span>

@@ -32,7 +32,7 @@ export default function AdCampaignFieldList({
           name={`${fieldName}.${index}.text`}
           control={control}
           render={({ field: controllerField, fieldState }) => (
-            <Field>
+            <Field className="gap-1">
               <InputLockable
                 placeholder={placeholder}
                 {...controllerField}
@@ -41,7 +41,7 @@ export default function AdCampaignFieldList({
               />
               <div className="flex">
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
-                <div className="text-right text-sm text-base-300 ml-auto">
+                <div className="text-right text-xs text-[#8b8b8b] ml-auto">
                   {controllerField.value?.length ?? 0}/{maxLength}
                 </div>
               </div>

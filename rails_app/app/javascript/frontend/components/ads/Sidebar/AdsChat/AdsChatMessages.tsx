@@ -26,7 +26,7 @@ export function AdsChatMessagesView({ messages, isLoading = false }: AdsChatMess
   }
 
   return (
-    <div className="space-y-4 max-h-[30vh] overflow-y-auto">
+    <div className="space-y-4">
       {messages.map((message, index) => {
         if (message.role === "assistant") {
           return message.blocks.map((block) => (

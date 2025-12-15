@@ -19,15 +19,15 @@ const InputLockable = forwardRef<HTMLInputElement, InputLockableProps>(
     ref
   ) => {
     return (
-      <div className="flex items-center gap-2">
-        <Button type="button" onClick={onLockToggle} variant="ghost" size="icon" className="p-2">
+      <div className="flex items-center gap-1">
+        <Button type="button" onClick={onLockToggle} variant="ghost" size="icon" className="p-0 h-auto w-auto">
           {isLocked ? (
-            <Lock size={14} className="text-base" />
+            <Lock size={12} className="text-base" />
           ) : (
-            <LockOpen size={14} className="text-[#96989B]" />
+            <LockOpen size={12} className="text-[#96989B]" />
           )}
         </Button>
-        <InputGroup className={isLocked ? "border-[#2E3238]" : undefined}>
+        <InputGroup className={`h-10 ${isLocked ? "border-[#2E3238]" : ""}`}>
           <InputGroupInput
             ref={ref}
             name={name}

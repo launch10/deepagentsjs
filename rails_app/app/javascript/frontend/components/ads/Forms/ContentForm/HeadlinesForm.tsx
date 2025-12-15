@@ -91,7 +91,7 @@ export default function HeadlinesForm() {
   };
 
   return (
-    <FieldGroup>
+    <FieldGroup className="gap-3">
       <AdCampaignHeadlineInput
         onAdd={handleAddHeadline}
         currentCount={fields.length}

@@ -10,11 +10,11 @@ export default function Campaign() {
   const isLoadingHistory = useAdsChatIsLoadingHistory();
 
   return (
-    <main className="mx-auto container max-w-6xl grid grid-cols-12 gap-10 px-5">
-      <div className="col-span-4">
+    <main className="mx-auto container max-w-7xl grid grid-cols-[288px_1fr] gap-8 px-8">
+      <div>
         <Sidebar />
       </div>
-      <div className="col-span-8">
+      <div className="max-w-[948px]">
         <AdPreview className="mb-8" />
         <AdCampaignTabSwitcher />
         {isLoadingHistory ? (

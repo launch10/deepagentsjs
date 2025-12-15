@@ -26,5 +26,12 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=8.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "langgraph-ai-sdk": "workspace:*",
+      "langgraph-ai-sdk-types": "workspace:*",
+      "langgraph-ai-sdk-react": "workspace:*"
+    }
   }
 }

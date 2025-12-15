@@ -80,11 +80,11 @@ export default function DescriptionsForm() {
   };
 
   return (
-    <FieldGroup>
+    <FieldGroup className="gap-3">
       <Field>
         <FieldLabel className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <span className="font-semibold">Descriptions</span>
+            <span className="font-semibold">Details</span>
             <Info size={12} className="text-base-300" />
           </div>
           <div className="flex items-center gap-2">
