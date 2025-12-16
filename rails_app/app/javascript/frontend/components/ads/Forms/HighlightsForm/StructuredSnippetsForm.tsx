@@ -12,6 +12,8 @@ import { useEffect } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
+import { createLockToggleHandler } from "@helpers/handleLockToggle";
+import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
 
 const STRUCTURED_SNIPPET_CATEGORIES = Ads.StructuredSnippetCategoryKeys.map((key) => ({
   value: Ads.StructuredSnippetCategories[key].key,
@@ -72,34 +74,7 @@ export default function StructuredSnippetsForm() {
     });
   };
 
-  const handleLockToggle = (_fieldName: string, index: number) => {
-    const currentFields = methods.getValues("details");
-    const isLocked = currentFields[index].locked;
-
-    if (!isLocked && !currentFields[index].text) {
-      methods.setError(`details.${index}.text`, {
-        type: "manual",
-        message: "Cannot lock an empty input.",
-      });
-      return;
-    }
-
-    const updatedFields = currentFields.map((field, i) =>
-      i === index ? { ...field, locked: !isLocked } : field
-    );
-    methods.setValue("details", updatedFields);
-
-    const updatedDetails = structuredSnippets?.details?.map((d) =>
-      d.id === updatedFields[index].id ? { ...d, locked: !isLocked } : d
-    );
-    setState({
-      structuredSnippets: {
-        ...structuredSnippets,
-        category: structuredSnippets?.category || "",
-        details: updatedDetails || [],
-      },
-    });
-  };
+  const handleLockToggle = createLockToggleHandler(methods, "details", () => details, setState);
 
   const handleAddDetail = () => {
     const newDetail = { id: generateUUID(), text: "", locked: false, rejected: false };
@@ -136,6 +111,11 @@ export default function StructuredSnippetsForm() {
       },
     });
   };
+
+  useCampaignAutosave({
+    methods,
+    fieldMappings: [{ formField: "details", apiField: "details" }],
+  });
 
   return (
     <div className="grid grid-cols-2">
