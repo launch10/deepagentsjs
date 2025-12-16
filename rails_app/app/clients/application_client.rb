@@ -163,6 +163,12 @@ class ApplicationClient
 
   def ssl_verify_mode = nil
 
+  def configure_ssl(http)
+    return unless http.use_ssl?
+
+    http.verify_mode = ssl_verify_mode if ssl_verify_mode
+  end
+
   # Makes an HTTP request
   #   `klass` should be a Net::HTTP::Request class such as Net::HTTP::Get
   #   `path` is a String for the URL path without the protocol and domain. For example: "/api/v1/me"
@@ -193,7 +199,7 @@ class ApplicationClient
 
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true if uri.instance_of? URI::HTTPS
-    http.verify_mode = ssl_verify_mode if ssl_verify_mode
+    configure_ssl(http)
 
     http.open_timeout = http_options[:open_timeout] || open_timeout || http.open_timeout
     http.read_timeout = http_options[:read_timeout] || read_timeout || http.read_timeout

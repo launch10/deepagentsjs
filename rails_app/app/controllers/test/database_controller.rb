@@ -46,7 +46,8 @@ class Test::DatabaseController < Test::TestController
     begin
       params = snapshot_params
       truncate_first = params[:truncate_first] == "true" || params[:truncate_first] == true
-      input_path = SNAPSHOT_DIR.join("#{params[:name]}.sql")
+      snapshot_name = params[:name]
+      input_path = SNAPSHOT_DIR.join("#{snapshot_name}.sql")
 
       if truncate_first
         actually_truncate
@@ -64,7 +65,7 @@ class Test::DatabaseController < Test::TestController
       puts "Database restored"
       render json: {
         status: "ok",
-        message: "Snapshot '#{params[:name]}' restored."
+        message: "Snapshot '#{snapshot_name}' restored."
       }, status: :ok
     else
       render json: {

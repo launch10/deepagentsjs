@@ -1232,6 +1232,76 @@ paths:
                             type: string
                         description: Object with field paths as keys and arrays of error
                           messages as values
+  "/api/v1/geo_target_constants":
+    get:
+      summary: Search geo target constants
+      tags:
+        - Geo Target Constants
+      security:
+        - bearer_auth: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: location_query
+          in: query
+          required: true
+          description: Search query for location names
+          schema:
+            type: string
+      responses:
+        "200":
+          description: searches canonical name as well
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Unique identifier
+                    criteria_id:
+                      type: integer
+                      description: Google Ads criteria ID
+                    name:
+                      type: string
+                      description: Location name
+                    canonical_name:
+                      type: string
+                      description: Full canonical name with hierarchy
+                    country_code:
+                      type: string
+                      nullable: true
+                      description: ISO country code
+                    target_type:
+                      type: string
+                      description: Location type (City, Country, etc.)
+                    status:
+                      type: string
+                      description: Active status
+                  required:
+                    - id
+                    - criteria_id
+                    - name
+                    - canonical_name
+                    - target_type
+                    - status
+        "401":
+          description: unauthorized without token
   "/api/v1/projects/{project_uuid}/workflows/{id}":
     parameters:
       - name: project_uuid

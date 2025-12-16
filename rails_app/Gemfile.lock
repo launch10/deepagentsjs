@@ -176,6 +176,7 @@ GEM
       bigdecimal
       rexml
     crass (1.0.6)
+    csv (3.3.5)
     dalli (3.2.8)
     database_cleaner-active_record (2.2.2)
       activerecord (>= 5.a)
@@ -882,6 +883,7 @@ DEPENDENCIES
   capybara (>= 3.39)
   carrierwave
   carrierwave-aws
+  csv
   database_cleaner-active_record
   debug
   devise!
@@ -941,6 +943,7 @@ DEPENDENCIES
   rubocop-rails-omakase
   ruby-oembed (~> 0.18.0)
   ruby_llm
+  rubyzip
   selenium-webdriver (>= 4.20.1)
   shoulda-matchers (~> 6.0)
   sidekiq

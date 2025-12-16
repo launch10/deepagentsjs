@@ -7,12 +7,14 @@ class GoogleAdsDataClient < ApplicationClient
 
   def content_type = "application/zip"
 
-  def ssl_verify_mode
-    Rails.env.local? ? OpenSSL::SSL::VERIFY_NONE : OpenSSL::SSL::VERIFY_PEER
+  def configure_ssl(http)
+    http.use_ssl = true
+    http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    http.cert_store = OpenSSL::X509::Store.new.tap(&:set_default_paths)
   end
 
   def geo_targets_zip(date:)
-    get("/geotargets-#{date.strftime('%Y-%m-%d')}.csv.zip")
+    get("/geotargets-#{date.strftime("%Y-%m-%d")}.csv.zip")
   rescue NotFound
     nil
   end

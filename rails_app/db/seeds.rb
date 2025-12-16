@@ -10,4 +10,8 @@ CoreData.new.build
 puts "Seeding basic account..."
 BasicAccount.new.build
 
+puts "Seeding geo target constants..."
+require_relative "../spec/snapshot_builders/core/geo_target_constants"
+Core::GeoTargetConstants.new.seed
+
 puts "=== Seeding Complete ==="

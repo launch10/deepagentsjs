@@ -9,8 +9,8 @@ module GoogleAds
         if result[:success]
           Rails.logger.info("[GoogleAds::LocationTargeting::IngestWorker] Ingested #{result[:upserted]} geo target constants")
         else
-          raise "Error ingesting constants" # Retry
           Rails.logger.error("[GoogleAds::LocationTargeting::IngestWorker] Failed: #{result[:error]}")
+          raise "Error ingesting constants" # Retry
         end
       end
     end
