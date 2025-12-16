@@ -27,7 +27,11 @@ export const whereWeArePrompt = (state: AdsGraphState, config: LangGraphRunnable
                 5. They can measure results and iterate
                 6. They can learn which business ideas work and which don't
         </where_we_are>
+    `;
+};
 
+export const whatTheUserIsSeeingPrompt = (state: AdsGraphState, config: LangGraphRunnableConfig) => {
+    return `
         <what_the_user_is_seeing>
             The user is seeing:
             ${PAGE_DESCRIPTIONS[state.stage as Ads.StageName]}

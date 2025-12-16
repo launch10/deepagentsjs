@@ -5,7 +5,7 @@ import { needsIntentClassification } from "./helpers";
 import { ResponseTemplates } from "./assets/responseTemplates";
 import { previousAssetsContext } from "./helpers/previousAssetsContext";
 import { processPrompt } from "../../core/process";
-import { whereWeArePrompt } from "./whereWeAre";
+import { whereWeArePrompt, whatTheUserIsSeeingPrompt } from "./whereWeAre";
 import { helpInstructions } from "../helpPrompt";
 import { HumanMessage } from "@langchain/core/messages";
 import { isPseudoMessage } from "../pseudoMessages";
@@ -168,10 +168,11 @@ export const promptBuilder = async (state: AdsGraphState, config: LangGraphRunna
 
         <remember>
           Remember: Pay attention to which page the user is on. 
-          The user is switching back and forth between different pages of the campaign builder.
-          Do not simply respond to where we left off in the conversation, it will feel awkward for the user
-          if they have already moved on to something else. 
+          What are they seeing? This is the most important context for their question.
+          These are the assets they are likely asking about.
         </remember>
+
+        ${whatTheUserIsSeeingPrompt(state, config)}
 
         ${outputPrompt}
     `

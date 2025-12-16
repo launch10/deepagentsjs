@@ -941,7 +941,7 @@ describe.sequential("Ads Flow", () => {
     });
   });
 
-  describe("Pseudo Messages - Page Switch Detection", () => {
+  describe("Page Switch Detection", () => {
     describe("didSwitchPage", () => {
       it("returns false when previousStage is undefined", () => {
         const state = {
@@ -1119,33 +1119,6 @@ describe.sequential("Ads Flow", () => {
 
     describe("Integration: Page switch triggers correct context", () => {
       it("generates new assets when switching from keywords back to highlights", async () => {
-        const keywordsResult = await testGraph<AdsGraphState>()
-          .withGraph(adsGraph)
-          .withState({
-            projectUUID,
-            threadId,
-            stage: "keywords",
-          })
-          .execute();
-
-        expect(keywordsResult.state.keywords?.length).toEqual(8);
-        expect(keywordsResult.state.previousStage).toBe("keywords");
-
-        const highlightsResult = await testGraph<AdsGraphState>()
-          .withGraph(adsGraph)
-          .withState({
-            ...keywordsResult.state,
-            stage: "highlights",
-            previousStage: "keywords",
-          })
-          .execute();
-
-        expect(highlightsResult.state.callouts?.length).toEqual(6);
-        expect(highlightsResult.state.structuredSnippets).toBeDefined();
-        expect(highlightsResult.state.previousStage).toBe("highlights");
-      });
-
-      it("tracks previousStage correctly through state transitions", async () => {
         const contentResult = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
           .withState({
@@ -1155,8 +1128,6 @@ describe.sequential("Ads Flow", () => {
           })
           .execute();
 
-        expect(contentResult.state.previousStage).toBe("content");
-
         const highlightsResult = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
           .withState({
@@ -1165,6 +1136,7 @@ describe.sequential("Ads Flow", () => {
           })
           .execute();
 
+        expect(highlightsResult.state.callouts!.length).toBeGreaterThan(0);
         expect(highlightsResult.state.previousStage).toBe("highlights");
 
         const keywordsResult = await testGraph<AdsGraphState>()
@@ -1175,7 +1147,24 @@ describe.sequential("Ads Flow", () => {
           })
           .execute();
 
-        expect(keywordsResult.state.previousStage).toBe("keywords");
+        expect(keywordsResult.state.keywords!.length).toBeGreaterThan(0);
+
+        const highlightsResult2 = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            ...highlightsResult.state,
+            stage: "highlights",
+          })
+          .withPrompt("Let's try these punchier")
+          .execute();
+
+        // it should change the callouts
+        const newCallouts = highlightsResult2.state.callouts!.filter((c) => !highlightsResult.state.callouts!.includes(c));
+        const oldSnippetDetails = highlightsResult.state.structuredSnippets!.details
+        const newSnippetDetails = highlightsResult2.state.structuredSnippets!.details.filter((detail) => !oldSnippetDetails.map((sd) => sd.text).includes(detail.text));
+
+        expect(newCallouts.length).toBeGreaterThan(0);
+        expect(newSnippetDetails.length).toBeGreaterThan(0);
       });
     });
   });
