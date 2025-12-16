@@ -1,5 +1,5 @@
-import { RailsAPIBase, type paths } from "@rails_api";
-import { type Simplify } from "type-fest";
+import { RailsAPIBase, type paths } from "@rails_api_base";
+import type { Simplify } from "type-fest";
 
 export type SearchGeoTargetConstantsRequest = NonNullable<
   paths["/api/v1/geo_target_constants"]["get"]["parameters"]["query"]

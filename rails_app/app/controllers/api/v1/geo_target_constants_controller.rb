@@ -1,6 +1,6 @@
 class API::V1::GeoTargetConstantsController < API::BaseController
   def index
-    locations = GeoTargetConstant.active.search(params[:location_query])
+    locations = GeoTargetConstant.active.search_api(params[:location_query])
     render json: locations.map { |loc| location_json(loc) }
   end
 

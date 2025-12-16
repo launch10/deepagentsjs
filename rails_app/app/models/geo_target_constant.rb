@@ -36,10 +36,32 @@ class GeoTargetConstant < ApplicationRecord
   scope :regions, -> { where(target_type: "Region") }
   scope :cities, -> { where(target_type: "City") }
 
+  scope :search_api, -> (query) {
+    client = GoogleAds.client
+    gtc_service = client.service.geo_target_constant
+
+    location_names = client.resource.location_names do |ln|
+      [query].each do |name|
+        ln.names << name
+      end
+    end
+    geo_consts = gtc_service.suggest_geo_target_constants(
+      locale: "en",
+      country_code: "US",
+      location_names: location_names
+    ).geo_target_constant_suggestions
+    criteria_ids = geo_consts.map(&:geo_target_constant).map(&:resource_name).map { |c| c.split("/").last.to_i }
+    order_clause = criteria_ids.each_with_index.map { |id, idx| "WHEN #{id} THEN #{idx}" }.join(" ")
+    where(criteria_id: criteria_ids).order(Arel.sql("CASE criteria_id #{order_clause} END"))
+  }
+
   scope :search, ->(query) {
     return none if query.blank?
 
     where("name ILIKE :q OR canonical_name ILIKE :q", q: "%#{sanitize_sql_like(query)}%")
+      .where(country_code: "US")
+      .where.not(target_type: "Congressional District")
+      .where.not(status: "Removal Planned")
       .order(Arel.sql("CASE WHEN name ILIKE '#{sanitize_sql_like(query)}%' THEN 0 ELSE 1 END, name"))
       .limit(20)
   }
