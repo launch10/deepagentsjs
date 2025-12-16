@@ -38,6 +38,22 @@ COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access met
 
 
 --
+-- Name: notify_new_run(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_new_run() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+      BEGIN
+        IF NEW.status = 'pending' THEN
+          PERFORM pg_notify('new_run', NEW.run_id);
+        END IF;
+        RETURN NEW;
+      END;
+      $$;
+
+
+--
 -- Name: update_content_tsv(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -54,6 +70,20 @@ CREATE FUNCTION public.update_content_tsv() RETURNS trigger
             RETURN NEW;
         END;
         $$;
+
+
+--
+-- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+      NEW.updated_at = CURRENT_TIMESTAMP;
+      RETURN NEW;
+    END;
+    $$;
 
 
 SET default_tablespace = '';
@@ -952,6 +982,41 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: assistant_versions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.assistant_versions (
+    assistant_id text NOT NULL,
+    version integer NOT NULL,
+    graph_id text NOT NULL,
+    name text NOT NULL,
+    description text,
+    config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    context jsonb,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: assistants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.assistants (
+    assistant_id text NOT NULL,
+    graph_id text NOT NULL,
+    name text NOT NULL,
+    description text,
+    config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    context jsonb,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    version integer DEFAULT 1 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: brainstorms; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1119,7 +1184,8 @@ CREATE TABLE public.checkpoints (
     parent_checkpoint_id text,
     type text,
     checkpoint jsonb NOT NULL,
-    metadata jsonb DEFAULT '{}'::jsonb NOT NULL
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    run_id text
 );
 
 
@@ -1809,6 +1875,43 @@ CREATE SEQUENCE public.file_specifications_id_seq
 --
 
 ALTER SEQUENCE public.file_specifications_id_seq OWNED BY public.file_specifications.id;
+
+
+--
+-- Name: geo_target_constants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.geo_target_constants (
+    id bigint NOT NULL,
+    criteria_id bigint NOT NULL,
+    name character varying NOT NULL,
+    canonical_name character varying NOT NULL,
+    parent_id bigint,
+    country_code character varying,
+    target_type character varying NOT NULL,
+    status character varying DEFAULT 'Active'::character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: geo_target_constants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.geo_target_constants_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: geo_target_constants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.geo_target_constants_id_seq OWNED BY public.geo_target_constants.id;
 
 
 --
@@ -2517,11 +2620,51 @@ ALTER SEQUENCE public.projects_id_seq OWNED BY public.projects.id;
 
 
 --
+-- Name: runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.runs (
+    run_id text NOT NULL,
+    thread_id text NOT NULL,
+    assistant_id text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    kwargs jsonb DEFAULT '{}'::jsonb NOT NULL,
+    multitask_strategy text DEFAULT 'reject'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.schema_migrations (
     version character varying NOT NULL
+);
+
+
+--
+-- Name: store; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.store (
+    namespace_path text NOT NULL,
+    key text NOT NULL,
+    value jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    expires_at timestamp with time zone
+);
+
+
+--
+-- Name: store_migrations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.store_migrations (
+    v integer NOT NULL
 );
 
 
@@ -2748,6 +2891,22 @@ CREATE SEQUENCE public.themes_to_theme_labels_id_seq
 --
 
 ALTER SEQUENCE public.themes_to_theme_labels_id_seq OWNED BY public.themes_to_theme_labels.id;
+
+
+--
+-- Name: threads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.threads (
+    thread_id text NOT NULL,
+    status text DEFAULT 'idle'::text NOT NULL,
+    config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    "values" jsonb,
+    interrupts jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
 
 
 --
@@ -3456,6 +3615,13 @@ ALTER TABLE ONLY public.file_specifications ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: geo_target_constants id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.geo_target_constants ALTER COLUMN id SET DEFAULT nextval('public.geo_target_constants_id_seq'::regclass);
+
+
+--
 -- Name: icon_embeddings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3926,6 +4092,22 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: assistant_versions assistant_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assistant_versions
+    ADD CONSTRAINT assistant_versions_pkey PRIMARY KEY (assistant_id, version);
+
+
+--
+-- Name: assistants assistants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assistants
+    ADD CONSTRAINT assistants_pkey PRIMARY KEY (assistant_id);
+
+
+--
 -- Name: brainstorms brainstorms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4126,6 +4308,14 @@ ALTER TABLE ONLY public.file_specifications
 
 
 --
+-- Name: geo_target_constants geo_target_constants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.geo_target_constants
+    ADD CONSTRAINT geo_target_constants_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: icon_embeddings icon_embeddings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4278,11 +4468,35 @@ ALTER TABLE ONLY public.projects
 
 
 --
+-- Name: runs runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.runs
+    ADD CONSTRAINT runs_pkey PRIMARY KEY (run_id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: store_migrations store_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.store_migrations
+    ADD CONSTRAINT store_migrations_pkey PRIMARY KEY (v);
+
+
+--
+-- Name: store store_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.store
+    ADD CONSTRAINT store_pkey PRIMARY KEY (namespace_path, key);
 
 
 --
@@ -4339,6 +4553,14 @@ ALTER TABLE ONLY public.themes
 
 ALTER TABLE ONLY public.themes_to_theme_labels
     ADD CONSTRAINT themes_to_theme_labels_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: threads threads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.threads
+    ADD CONSTRAINT threads_pkey PRIMARY KEY (thread_id);
 
 
 --
@@ -4690,6 +4912,41 @@ CREATE INDEX idx_on_project_id_workflow_type_status_a7aa4433b7 ON public.project
 
 
 --
+-- Name: idx_runs_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_runs_status ON public.runs USING btree (status);
+
+
+--
+-- Name: idx_runs_thread_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_runs_thread_id ON public.runs USING btree (thread_id);
+
+
+--
+-- Name: idx_store_expires_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_store_expires_at ON public.store USING btree (expires_at) WHERE (expires_at IS NOT NULL);
+
+
+--
+-- Name: idx_store_namespace_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_store_namespace_path ON public.store USING btree (namespace_path);
+
+
+--
+-- Name: idx_store_value_gin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_store_value_gin ON public.store USING gin (value);
+
+
+--
 -- Name: idx_template_files_content_tsv; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4708,6 +4965,13 @@ CREATE INDEX idx_template_files_embedding ON public.template_files USING ivfflat
 --
 
 CREATE INDEX idx_template_files_path_trgm ON public.template_files USING gin (path public.gin_trgm_ops);
+
+
+--
+-- Name: idx_threads_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_threads_status ON public.threads USING btree (status);
 
 
 --
@@ -6055,6 +6319,48 @@ CREATE INDEX index_file_specifications_on_filetype ON public.file_specifications
 
 
 --
+-- Name: index_geo_target_constants_on_canonical_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_geo_target_constants_on_canonical_name ON public.geo_target_constants USING gin (canonical_name public.gin_trgm_ops);
+
+
+--
+-- Name: index_geo_target_constants_on_country_code; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_geo_target_constants_on_country_code ON public.geo_target_constants USING btree (country_code);
+
+
+--
+-- Name: index_geo_target_constants_on_criteria_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_geo_target_constants_on_criteria_id ON public.geo_target_constants USING btree (criteria_id);
+
+
+--
+-- Name: index_geo_target_constants_on_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_geo_target_constants_on_name ON public.geo_target_constants USING gin (name public.gin_trgm_ops);
+
+
+--
+-- Name: index_geo_target_constants_on_parent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_geo_target_constants_on_parent_id ON public.geo_target_constants USING btree (parent_id);
+
+
+--
+-- Name: index_geo_target_constants_on_target_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_geo_target_constants_on_target_type ON public.geo_target_constants USING btree (target_type);
+
+
+--
 -- Name: index_icon_embeddings_on_key; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7364,6 +7670,13 @@ ALTER INDEX public.index_user_request_counts_on_user_month ATTACH PARTITION publ
 
 
 --
+-- Name: runs run_insert_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER run_insert_notify AFTER INSERT ON public.runs FOR EACH ROW EXECUTE FUNCTION public.notify_new_run();
+
+
+--
 -- Name: template_files tsvector_update_template_files; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -7375,6 +7688,13 @@ CREATE TRIGGER tsvector_update_template_files BEFORE INSERT OR UPDATE OF content
 --
 
 CREATE TRIGGER tsvector_update_website_files BEFORE INSERT OR UPDATE OF content, path ON public.website_files FOR EACH ROW EXECUTE FUNCTION public.update_content_tsv();
+
+
+--
+-- Name: store update_store_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_store_updated_at BEFORE UPDATE ON public.store FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -7472,6 +7792,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251216144601'),
 ('20251201143930'),
 ('20251130121846'),
 ('20251129165029'),
