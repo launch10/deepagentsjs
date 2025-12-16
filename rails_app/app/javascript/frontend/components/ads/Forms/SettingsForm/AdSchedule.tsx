@@ -1,7 +1,11 @@
 import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { ChevronDown } from "lucide-react";
 import { FieldGroup } from "@components/ui/field";
 import { cn } from "@lib/utils";
+import { useFormRegistration } from "@hooks/useFormRegistration";
 
 type DayOfWeek = "Mon" | "Tues" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun" | "Always On";
 
@@ -14,33 +18,54 @@ const TIMEZONES = [
   { value: "PST", label: "Pacific Standard Time - PST (GMT-8)" },
 ];
 
+const scheduleFormSchema = z.object({
+  selectedDays: z.array(z.string()).min(1, "Select at least one day"),
+  startTime: z.string().min(1, "Start time is required"),
+  endTime: z.string().min(1, "End time is required"),
+  timezone: z.string().min(1, "Timezone is required"),
+});
+
+type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
+
 export default function AdSchedule() {
-  const [selectedDays, setSelectedDays] = useState<Set<DayOfWeek>>(
-    new Set(["Mon", "Tues", "Wed", "Thu", "Fri"])
-  );
-  const [startTime, setStartTime] = useState("9:00 AM");
-  const [endTime, setEndTime] = useState("5:00 PM");
-  const [timezone, setTimezone] = useState("EST");
   const [isTimezoneOpen, setIsTimezoneOpen] = useState(false);
 
+  const methods = useForm<ScheduleFormData>({
+    resolver: zodResolver(scheduleFormSchema) as any,
+    mode: "onChange",
+    defaultValues: {
+      selectedDays: ["Mon", "Tues", "Wed", "Thu", "Fri"],
+      startTime: "9:00 AM",
+      endTime: "5:00 PM",
+      timezone: "EST",
+    },
+  });
+
+  useFormRegistration("settings", methods);
+
+  const selectedDays = methods.watch("selectedDays");
+  const timezone = methods.watch("timezone");
+
   const toggleDay = (day: DayOfWeek) => {
-    const newSelected = new Set(selectedDays);
+    const current = methods.getValues("selectedDays");
+    let newSelected: string[];
+
     if (day === "Always On") {
-      if (newSelected.has("Always On")) {
-        newSelected.delete("Always On");
+      if (current.includes("Always On")) {
+        newSelected = [];
       } else {
-        newSelected.clear();
-        newSelected.add("Always On");
+        newSelected = ["Mon", "Tues", "Wed", "Thu", "Fri", "Sat", "Sun", "Always On"];
       }
     } else {
-      newSelected.delete("Always On");
-      if (newSelected.has(day)) {
-        newSelected.delete(day);
+      const withoutAlwaysOn = current.filter((d) => d !== "Always On");
+      if (withoutAlwaysOn.includes(day)) {
+        newSelected = withoutAlwaysOn.filter((d) => d !== day);
       } else {
-        newSelected.add(day);
+        newSelected = [...withoutAlwaysOn, day];
       }
     }
-    setSelectedDays(newSelected);
+
+    methods.setValue("selectedDays", newSelected, { shouldValidate: true });
   };
 
   const selectedTimezoneLabel = TIMEZONES.find((tz) => tz.value === timezone)?.label || "";
@@ -48,9 +73,7 @@ export default function AdSchedule() {
   return (
     <FieldGroup className="gap-4">
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-semibold leading-[18px] text-base-500">
-          Ad Schedule
-        </label>
+        <label className="text-sm font-semibold leading-[18px] text-base-500">Ad Schedule</label>
         <div className="flex gap-2">
           {DAYS.map((day) => (
             <button
@@ -59,7 +82,7 @@ export default function AdSchedule() {
               onClick={() => toggleDay(day)}
               className={cn(
                 "h-10 px-[18px] py-3 rounded-lg text-sm leading-[18px] border bg-white transition-colors",
-                selectedDays.has(day)
+                selectedDays.includes(day)
                   ? "border-base-600 text-base-500"
                   : "border-neutral-300 text-base-500"
               )}
@@ -68,35 +91,46 @@ export default function AdSchedule() {
             </button>
           ))}
         </div>
+        {methods.formState.errors.selectedDays && (
+          <span className="text-xs text-[#d14f34]">
+            {methods.formState.errors.selectedDays.message}
+          </span>
+        )}
       </div>
 
       <div className="flex gap-3 items-start">
         <div className="flex flex-col gap-2 w-[212px]">
-          <label className="text-xs font-semibold leading-4 text-base-400">
-            Start Time
-          </label>
-          <input
-            type="text"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            className="h-10 w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 text-xs leading-4 text-base-500 outline-none focus:border-base-600"
+          <label className="text-xs font-semibold leading-4 text-base-400">Start Time</label>
+          <Controller
+            name="startTime"
+            control={methods.control}
+            render={({ field }) => (
+              <input
+                type="text"
+                value={field.value}
+                onChange={field.onChange}
+                className="h-10 w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 text-xs leading-4 text-base-500 outline-none focus:border-base-600"
+              />
+            )}
           />
         </div>
         <div className="flex flex-col gap-2 w-[212px]">
-          <label className="text-xs font-semibold leading-4 text-base-400">
-            End Time
-          </label>
-          <input
-            type="text"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            className="h-10 w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 text-xs leading-4 text-base-500 outline-none focus:border-base-600"
+          <label className="text-xs font-semibold leading-4 text-base-400">End Time</label>
+          <Controller
+            name="endTime"
+            control={methods.control}
+            render={({ field }) => (
+              <input
+                type="text"
+                value={field.value}
+                onChange={field.onChange}
+                className="h-10 w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 text-xs leading-4 text-base-500 outline-none focus:border-base-600"
+              />
+            )}
           />
         </div>
         <div className="flex flex-col gap-2 w-[313px]">
-          <label className="text-xs font-semibold leading-4 text-base-400">
-            Time Zone
-          </label>
+          <label className="text-xs font-semibold leading-4 text-base-400">Time Zone</label>
           <div className="relative">
             <button
               type="button"
@@ -104,7 +138,12 @@ export default function AdSchedule() {
               className="h-10 w-full flex items-center justify-between gap-2 rounded-lg border border-neutral-300 bg-white pl-4 pr-3 py-3 text-xs leading-4 text-base-600 outline-none focus:border-base-600"
             >
               <span className="truncate">{selectedTimezoneLabel}</span>
-              <ChevronDown className={cn("h-3.5 w-3.5 flex-shrink-0 transition-transform", isTimezoneOpen && "rotate-180")} />
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 flex-shrink-0 transition-transform",
+                  isTimezoneOpen && "rotate-180"
+                )}
+              />
             </button>
             {isTimezoneOpen && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-neutral-300 rounded-lg shadow-lg z-10">
@@ -113,7 +152,7 @@ export default function AdSchedule() {
                     key={tz.value}
                     type="button"
                     onClick={() => {
-                      setTimezone(tz.value);
+                      methods.setValue("timezone", tz.value, { shouldValidate: true });
                       setIsTimezoneOpen(false);
                     }}
                     className={cn(

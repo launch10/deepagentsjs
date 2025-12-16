@@ -17,6 +17,7 @@
     "baseUrl": ".",
     "paths": {
       "~/*": ["./app/javascript/frontend/*"],
+      "@api/*": ["./app/javascript/frontend/api/*"],
       "@components/*": ["./app/javascript/frontend/components/*"],
       "@context/*": ["./app/javascript/frontend/context/*"],
       "@hooks/*": ["./app/javascript/frontend/hooks/*"],
@@ -26,11 +27,11 @@
       "@utils/*": ["./app/javascript/frontend/lib/utils/*"],
       "@runtime/*": ["./app/javascript/frontend/runtime/*"],
       "@types/*": ["./app/javascript/frontend/types/*"],
-      "@rails_api": ["../shared/lib/api/index.ts"],
+      "@rails_api_base": ["../shared/lib/api/index.ts"],
       "@styles/*": ["./app/javascript/frontend/styles/*"],
       "@webcontainer/*": ["./app/javascript/frontend/webcontainer/*"],
       "@shared": ["../shared/index.ts"],
-      "@pages/*": ["./app/javascript/frontend/pages/*"],
+      "@pages/*": ["./app/javascript/frontend/pages/*"]
     },
     "noEmit": true,
     "incremental": true
