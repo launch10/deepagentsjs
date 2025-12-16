@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useFormContext, Controller } from "react-hook-form";
 import { ChevronDown } from "lucide-react";
 import { FieldGroup } from "@components/ui/field";
 import { cn } from "@lib/utils";
-import { useFormRegistration } from "@hooks/useFormRegistration";
+import type { SettingsFormData } from "./settingsForm.schema";
 
 type DayOfWeek = "Mon" | "Tues" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun" | "Always On";
 
@@ -18,30 +16,10 @@ const TIMEZONES = [
   { value: "PST", label: "Pacific Standard Time - PST (GMT-8)" },
 ];
 
-const scheduleFormSchema = z.object({
-  selectedDays: z.array(z.string()).min(1, "Select at least one day"),
-  startTime: z.string().min(1, "Start time is required"),
-  endTime: z.string().min(1, "End time is required"),
-  timezone: z.string().min(1, "Timezone is required"),
-});
-
-type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
-
 export default function AdSchedule() {
   const [isTimezoneOpen, setIsTimezoneOpen] = useState(false);
 
-  const methods = useForm<ScheduleFormData>({
-    resolver: zodResolver(scheduleFormSchema) as any,
-    mode: "onChange",
-    defaultValues: {
-      selectedDays: ["Mon", "Tues", "Wed", "Thu", "Fri"],
-      startTime: "9:00 AM",
-      endTime: "5:00 PM",
-      timezone: "EST",
-    },
-  });
-
-  useFormRegistration("settings", methods);
+  const methods = useFormContext<SettingsFormData>();
 
   const selectedDays = methods.watch("selectedDays");
   const timezone = methods.watch("timezone");

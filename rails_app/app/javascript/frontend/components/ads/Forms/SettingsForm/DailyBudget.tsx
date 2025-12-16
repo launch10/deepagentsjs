@@ -1,28 +1,11 @@
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useFormContext, Controller } from "react-hook-form";
 import { Sparkles } from "lucide-react";
 import { useAdsChatActions } from "@hooks/useAdsChat";
-import { useFormRegistration } from "@hooks/useFormRegistration";
-
-const budgetFormSchema = z.object({
-  budget: z.number().min(1, "Budget must be at least $1"),
-});
-
-type BudgetFormData = z.infer<typeof budgetFormSchema>;
+import type { SettingsFormData } from "./settingsForm.schema";
 
 export default function DailyBudget() {
   const { sendMessage } = useAdsChatActions();
-
-  const methods = useForm<BudgetFormData>({
-    resolver: zodResolver(budgetFormSchema) as any,
-    mode: "onChange",
-    defaultValues: {
-      budget: 500,
-    },
-  });
-
-  useFormRegistration("settings", methods);
+  const methods = useFormContext<SettingsFormData>();
 
   const handleAskChat = () => {
     sendMessage("Suggest appropriate daily budget amounts for this ad campaign");

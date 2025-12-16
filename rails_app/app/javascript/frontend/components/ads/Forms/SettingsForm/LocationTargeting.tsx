@@ -1,7 +1,6 @@
-import { useState, useMemo, useEffect, useRef } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { useDebouncedCallback } from "use-debounce";
+import { useFormContext, useFieldArray, Controller } from "react-hook-form";
 import { Search, Info, X, MapPin } from "lucide-react";
 import { cn } from "@lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -11,55 +10,27 @@ import {
   type SearchGeoTargetConstantsResponse,
 } from "@api/geoTargetConstants";
 import type { CampaignProps } from "@components/ads/Sidebar/WorkflowBuddy/ad-campaign.types";
-import { useFormRegistration } from "@hooks/useFormRegistration";
+import type { SettingsFormData, LocationWithSettings } from "./settingsForm.schema";
 
 type GeoTarget = NonNullable<SearchGeoTargetConstantsResponse>[number];
-
-const LocationSchema = z.object({
-  criteria_id: z.number(),
-  name: z.string(),
-  canonical_name: z.string(),
-  target_type: z.string(),
-  country_code: z.string(),
-  radius: z.number().min(1),
-  isTargeted: z.boolean(),
-});
-
-const locationFormSchema = z.object({
-  locations: z.array(LocationSchema).min(1, "You need to select at least 1 location"),
-});
-
-type LocationFormData = z.infer<typeof locationFormSchema>;
-export type LocationWithSettings = z.infer<typeof LocationSchema>;
 
 export default function LocationTargeting() {
   const [searchValue, setSearchValue] = useState("");
   const [debouncedSearchValue, setDebouncedSearchValue] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const debouncedSetSearch = useDebouncedCallback((value: string) => {
+    setDebouncedSearchValue(value);
+  }, 300);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const methods = useForm<LocationFormData>({
-    resolver: zodResolver(locationFormSchema) as any,
-    mode: "onChange",
-    defaultValues: {
-      locations: [],
-    },
-  });
+  const methods = useFormContext<SettingsFormData>();
 
   const { fields, append, remove, update } = useFieldArray({
     control: methods.control,
     name: "locations",
   });
-
-  useFormRegistration("settings", methods);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchValue(searchValue);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchValue]);
 
   const { jwt } = usePage<CampaignProps>().props;
   const service = useMemo(() => new GeoTargetConstantsService({ jwt }), [jwt]);
@@ -78,13 +49,14 @@ export default function LocationTargeting() {
   const hasError = methods.formState.errors.locations?.message;
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchValue(e.target.value);
+    const value = e.target.value;
+    setSearchValue(value);
+    debouncedSetSearch(value);
     setIsDropdownOpen(true);
   };
 
   const handleSelectLocation = (location: GeoTarget) => {
     if (!location) {
-      console.warn("Invalid location selected", location);
       return;
     }
 
@@ -99,17 +71,13 @@ export default function LocationTargeting() {
     };
     append(newLocation);
     setSearchValue("");
+    debouncedSetSearch.cancel();
     setDebouncedSearchValue("");
     setIsDropdownOpen(false);
   };
 
   const handleRemoveLocation = (index: number) => {
     remove(index);
-  };
-
-  const handleRadiusChange = (index: number, radius: number) => {
-    const current = fields[index];
-    update(index, { ...current, radius });
   };
 
   const handleToggleTargeted = (index: number) => {
