@@ -103,6 +103,7 @@ export default function HeadlinesForm() {
         fieldName="headlines"
         fields={fields}
         onLockToggle={handleLockToggle}
+        // onDelete={handleDeleteHeadline}
         control={methods.control as any}
         placeholder="Headline Option"
         maxLength={30}

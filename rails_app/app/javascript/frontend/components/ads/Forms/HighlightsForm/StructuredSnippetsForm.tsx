@@ -1,22 +1,17 @@
-import { useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@components/ui/select";
-import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
-import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
+import { NativeSelect } from "@components/ui/native-select";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useAdsChatActions, useAdsChatState } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
-import { Ads, keyBy } from "@shared";
-import { Info, Sparkles } from "lucide-react";
+import { Ads, generateUUID, keyBy } from "@shared";
+import { Info, Plus } from "lucide-react";
+import { useEffect } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
+import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 
 const STRUCTURED_SNIPPET_CATEGORIES = Ads.StructuredSnippetCategoryKeys.map((key) => ({
   value: Ads.StructuredSnippetCategories[key].key,
@@ -43,7 +38,7 @@ export default function StructuredSnippetsForm() {
     },
   });
 
-  const { fields } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: methods.control,
     name: "details",
   });
@@ -94,8 +89,8 @@ export default function StructuredSnippetsForm() {
     );
     methods.setValue("details", updatedFields);
 
-    const updatedDetails = structuredSnippets?.details?.map((d, i) =>
-      i === index ? { ...d, locked: !isLocked } : d
+    const updatedDetails = structuredSnippets?.details?.map((d) =>
+      d.id === updatedFields[index].id ? { ...d, locked: !isLocked } : d
     );
     setState({
       structuredSnippets: {
@@ -104,6 +99,15 @@ export default function StructuredSnippetsForm() {
         details: updatedDetails || [],
       },
     });
+  };
+
+  const handleAddDetail = () => {
+    const newDetail = { id: generateUUID(), text: "", locked: false, rejected: false };
+    append(newDetail);
+  };
+
+  const handleDeleteDetail = (index: number) => {
+    remove(index);
   };
 
   const handleRefreshSnippets = () => {
@@ -119,7 +123,12 @@ export default function StructuredSnippetsForm() {
     }));
 
     updateState({
-      refresh: [{ asset: "structuredSnippets", nVariants: Ads.DefaultNumAssets.structuredSnippets - numLocked }],
+      refresh: [
+        {
+          asset: "structuredSnippets",
+          nVariants: Ads.DefaultNumAssets.structuredSnippets - numLocked,
+        },
+      ],
       structuredSnippets: {
         ...structuredSnippets,
         category: structuredSnippets?.category || "",
@@ -129,58 +138,57 @@ export default function StructuredSnippetsForm() {
   };
 
   return (
-    <FieldGroup className="gap-2">
-      <div className="flex items-center gap-2">
-        <span className="font-semibold">Product or Service Offerings</span>
-        <Info size={12} className="text-base-300" />
-      </div>
-      <Field>
-        <FieldLabel className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-xs text-base-400">Category</span>
+    <div className="grid grid-cols-2">
+      <div className="col-span-1">
+        <FieldGroup className="gap-2">
+          <div className="flex items-center gap-2 mb-6">
+            <span className="font-semibold text-sm">Product or Service Offerings</span>
             <Info size={12} className="text-base-300" />
           </div>
-        </FieldLabel>
-        <Select
-          value={methods.watch("category")}
-          onValueChange={handleCategoryChange}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select a category" />
-          </SelectTrigger>
-          <SelectContent>
-            {STRUCTURED_SNIPPET_CATEGORIES.map((category) => (
-              <SelectItem key={category.value} value={category.label}>
-                {category.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-      <Field>
-        <FieldLabel className="flex justify-between items-center">
-          <span className="font-semibold text-xs text-base-400">Details</span>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">Select 3-10</Badge>
-            <Button
-              type="button"
-              variant="link"
-              className="text-base-400 font-normal"
-              onClick={handleRefreshSnippets}
+          <Field>
+            <FieldLabel className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-xs text-base-400">Category</span>
+                <Info size={12} className="text-base-300" />
+              </div>
+            </FieldLabel>
+            <NativeSelect
+              value={methods.watch("category")}
+              onChange={(e) => handleCategoryChange(e.target.value)}
             >
-              <Sparkles /> Refresh Suggestions
-            </Button>
-          </div>
-        </FieldLabel>
-      </Field>
-      <AdCampaignFieldList
-        fieldName="details"
-        fields={fields as any}
-        onLockToggle={handleLockToggle}
-        control={methods.control as any}
-        placeholder="Detail value"
-        maxLength={25}
-      />
-    </FieldGroup>
+              <option value="" disabled selected>
+                Select a category
+              </option>
+              {STRUCTURED_SNIPPET_CATEGORIES.map((category) => (
+                <option key={category.value} value={category.value}>
+                  {category.label}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+          <Field>
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-xs text-base-400">Details</span>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">Select 3-10</Badge>
+                <RefreshSuggestionsButton onClick={handleRefreshSnippets} />
+              </div>
+            </div>
+          </Field>
+          <AdCampaignFieldList
+            fieldName="details"
+            fields={fields as any}
+            control={methods.control as any}
+            placeholder="Detail value"
+            maxLength={25}
+            onLockToggle={handleLockToggle}
+            onDelete={handleDeleteDetail}
+          />
+        </FieldGroup>
+        <Button type="button" variant="ghost" size="sm" onClick={handleAddDetail}>
+          <Plus /> Add Value
+        </Button>
+      </div>
+    </div>
   );
 }

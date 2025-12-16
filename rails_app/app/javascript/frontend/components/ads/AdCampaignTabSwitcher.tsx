@@ -1,20 +1,29 @@
 import { twMerge } from "tailwind-merge";
-import { useWorkflowSteps, selectStep, selectSubstep, selectSetSubstep } from "@context/WorkflowStepsProvider";
+import {
+  useWorkflowSteps,
+  selectStep,
+  selectSubstep,
+  selectSetSubstep,
+  selectCanGoBack,
+} from "@context/WorkflowStepsProvider";
 import { useFormRegistry, selectValidate } from "@stores/formRegistry";
-import { Workflow } from "@shared"
+import { Workflow } from "@shared";
 
 export default function AdCampaignTabSwitcher() {
   const validateForm = useFormRegistry(selectValidate);
-  const step = useWorkflowSteps(selectStep)
+  const step = useWorkflowSteps(selectStep);
   const activeTab = useWorkflowSteps(selectSubstep) || "content";
   const setSubstep = useWorkflowSteps(selectSetSubstep)!;
+  const canGoBack = useWorkflowSteps(selectCanGoBack)!;
 
   if (!step || !Workflow.isTabGroupName(step)) return null;
 
   const availableSubsteps = Workflow.findTabs(step);
 
   const setActiveTab = async (tabName: Workflow.SubstepName) => {
-    const selectedTabIsGreaterThanCurrentTab = availableSubsteps.findIndex((substep) => substep.name === tabName) > availableSubsteps.findIndex((substep) => substep.name === activeTab);
+    const selectedTabIsGreaterThanCurrentTab =
+      availableSubsteps.findIndex((substep) => substep.name === tabName) >
+      availableSubsteps.findIndex((substep) => substep.name === activeTab);
 
     // You're allowed to go back to previous tabs, but not forward without validating
     if (selectedTabIsGreaterThanCurrentTab) {
@@ -31,11 +40,13 @@ export default function AdCampaignTabSwitcher() {
         <button
           key={substep.order}
           type="button"
-          onClick={() => setActiveTab(substep.name)} 
+          onClick={() => setActiveTab(substep.name)}
           className={twMerge(
             "flex-1 py-2 text-sm text-base-400 border-b-2 border-b-neutral-300 bg-background",
-            activeTab === substep.name && "border-b-accent-yellow-700 text-accent-yellow-800 bg-accent-yellow-100"
+            activeTab === substep.name &&
+              "border-b-accent-yellow-700 text-accent-yellow-800 bg-accent-yellow-100"
           )}
+          disabled={!canGoBack}
         >
           {substep.label}
         </button>

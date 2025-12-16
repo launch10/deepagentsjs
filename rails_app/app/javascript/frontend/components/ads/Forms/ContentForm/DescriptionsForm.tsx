@@ -30,7 +30,7 @@ export default function DescriptionsForm() {
     },
   });
 
-  const { fields } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: methods.control,
     name: "descriptions",
   });
@@ -79,6 +79,12 @@ export default function DescriptionsForm() {
     createRefreshHandler("descriptions", descriptions, updateState);
   };
 
+  const handleDeleteDescription = (index: number) => {
+    remove(index);
+    const updatedLanggraph = descriptions?.filter((d, i) => i !== index);
+    setState({ descriptions: updatedLanggraph });
+  };
+
   return (
     <FieldGroup className="gap-3">
       <Field>
@@ -104,6 +110,7 @@ export default function DescriptionsForm() {
         fieldName="descriptions"
         fields={fields}
         onLockToggle={handleLockToggle}
+        onDelete={handleDeleteDescription}
         control={methods.control as any}
         placeholder="Description Option"
         maxLength={90}

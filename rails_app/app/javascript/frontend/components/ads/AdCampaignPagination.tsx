@@ -41,7 +41,7 @@ export default function AdCampaignPagination({ className }: { className?: string
   };
 
   return (
-    <AdCampaignPaginationView 
+    <AdCampaignPaginationView
       className={className}
       handleBack={handleBack}
       handleContinue={handleContinue}
@@ -51,7 +51,13 @@ export default function AdCampaignPagination({ className }: { className?: string
   );
 }
 
-export function AdCampaignPaginationView({ className, handleBack, handleContinue, canGoBack, canGoForward }: AdCampaignPaginationProps) {
+export function AdCampaignPaginationView({
+  className,
+  handleBack,
+  handleContinue,
+  canGoBack,
+  canGoForward,
+}: AdCampaignPaginationProps) {
   return (
     <div
       className={twMerge(
@@ -63,7 +69,9 @@ export function AdCampaignPaginationView({ className, handleBack, handleContinue
       <Button variant="link" onClick={handleBack} disabled={!canGoBack}>
         Previous Step
       </Button>
-      <Button onClick={handleContinue} disabled={!canGoForward}>Continue</Button>
+      <Button onClick={handleContinue} disabled={!canGoForward}>
+        Continue
+      </Button>
     </div>
   );
 }

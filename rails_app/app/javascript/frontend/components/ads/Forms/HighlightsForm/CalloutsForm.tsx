@@ -1,16 +1,16 @@
-import { useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Badge } from "@components/ui/badge";
-import { Button } from "@components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
 import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
-import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
+import { Badge } from "@components/ui/badge";
+import { Field, FieldGroup } from "@components/ui/field";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useAdsChatActions, useAdsChatState } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads } from "@shared";
+import { Info } from "lucide-react";
+import { useEffect } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
 import { createRefreshHandler } from "../../utils/refreshAssets";
-import { Info, Sparkles } from "lucide-react";
+import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 
 const calloutsFormSchema = z.object({
   callouts: z.array(Ads.AssetSchema),
@@ -45,7 +45,7 @@ export default function CalloutsForm() {
   useFormRegistration("highlights", methods);
 
   const handleLockToggle = (
-    _fieldName: "headlines" | "descriptions" | "features" | "callouts",
+    _fieldName: "headlines" | "descriptions" | "features" | "callouts" | "details" | "keywords",
     index: number
   ) => {
     const currentFields = methods.getValues("callouts");
@@ -74,32 +74,35 @@ export default function CalloutsForm() {
     createRefreshHandler("callouts", callouts, updateState);
   };
 
+  const handleDeleteCallout = (index: number) => {
+    const currentFields = methods.getValues("callouts");
+    const updatedFields = currentFields.filter((_, i) => i !== index);
+    methods.setValue("callouts", updatedFields);
+
+    const updatedLanggraph = callouts?.filter((c, i) => i !== index);
+    setState({ callouts: updatedLanggraph });
+  };
+
   return (
     <FieldGroup className="gap-2">
       <Field>
-        <FieldLabel className="flex justify-between items-center">
+        <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <span className="font-semibold">Unique Features</span>
             <Info size={12} className="text-base-300" />
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary">Select 2-10</Badge>
-            <Button
-              type="button"
-              variant="link"
-              className="text-base-400 font-normal"
-              onClick={handleRefreshCallouts}
-            >
-              <Sparkles /> Refresh Suggestions
-            </Button>
+            <RefreshSuggestionsButton onClick={handleRefreshCallouts} />
           </div>
-        </FieldLabel>
+        </div>
       </Field>
       <AdCampaignFieldList
         fieldName="callouts"
         fields={fields}
         onLockToggle={handleLockToggle}
-        control={methods.control as any}
+        onDelete={handleDeleteCallout}
+        control={methods.control as any} // TODO: Fix this
         placeholder="Feature Option"
         maxLength={90}
       />

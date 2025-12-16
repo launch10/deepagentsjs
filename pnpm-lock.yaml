@@ -8199,6 +8199,7 @@ packages:
   react-server-dom-webpack@19.2.1:
     resolution: {integrity: sha512-6z3FuEtZ7wVWyPYRhKKRo4TF7IyQ7XrQZRW1fTjzK2mLVmcv7xJtoANSixaUJ+EFjCh2ekNOaBSoI9spiMSnNA==}
     engines: {node: '>=0.10.0'}
+    deprecated: High Security Vulnerability in React Server Components
     peerDependencies:
       react: ^19.2.1
       react-dom: ^19.2.1
@@ -13455,11 +13456,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/browser@3.2.4(msw@2.12.4(@types/node@20.19.26)(typescript@5.9.3))(playwright@1.57.0)(vite@6.4.1(@types/node@20.19.26)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.95.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@3.2.4)':
+  '@vitest/browser@3.2.4(msw@2.12.4(@types/node@20.19.26)(typescript@5.9.3))(playwright@1.57.0)(vite@5.4.21(@types/node@20.19.26)(lightningcss@1.30.2)(sass@1.95.1)(terser@5.44.1))(vitest@3.2.4)':
     dependencies:
       '@testing-library/dom': 10.4.1
       '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.1)
-      '@vitest/mocker': 3.2.4(msw@2.12.4(@types/node@20.19.26)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.26)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.95.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+      '@vitest/mocker': 3.2.4(msw@2.12.4(@types/node@20.19.26)(typescript@5.9.3))(vite@5.4.21(@types/node@20.19.26)(lightningcss@1.30.2)(sass@1.95.1)(terser@5.44.1))
       '@vitest/utils': 3.2.4
       magic-string: 0.30.21
       sirv: 3.0.2
@@ -13603,7 +13604,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.2)(@vitest/browser@3.2.4)(@vitest/ui@3.2.4)(happy-dom@16.8.1)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(msw@2.12.4(@types/node@24.10.2)(typescript@5.9.3))(sass@1.95.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.26)(@vitest/browser@3.2.4)(@vitest/ui@3.2.4)(happy-dom@16.8.1)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(msw@2.12.4(@types/node@20.19.26)(typescript@5.9.3))(sass@1.95.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
   '@vitest/utils@2.1.9':
     dependencies:
@@ -18874,7 +18875,7 @@ snapshots:
     optionalDependencies:
       '@types/debug': 4.1.12
       '@types/node': 20.19.26
-      '@vitest/browser': 3.2.4(msw@2.12.4(@types/node@20.19.26)(typescript@5.9.3))(playwright@1.57.0)(vite@6.4.1(@types/node@20.19.26)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.95.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@3.2.4)
+      '@vitest/browser': 3.2.4(msw@2.12.4(@types/node@20.19.26)(typescript@5.9.3))(playwright@1.57.0)(vite@5.4.21(@types/node@20.19.26)(lightningcss@1.30.2)(sass@1.95.1)(terser@5.44.1))(vitest@3.2.4)
       '@vitest/ui': 3.2.4(vitest@3.2.4)
       happy-dom: 16.8.1
       jsdom: 26.1.0
