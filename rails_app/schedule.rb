@@ -7,7 +7,7 @@ def est_time(time)
 end
 
 Zhong.schedule do
-  category "cloudflare" do
+  category "Cloudflare" do
     every(5.minutes, "monitor domains") do
       Domain.monitor_cloudflare_domains
     end
@@ -24,6 +24,12 @@ Zhong.schedule do
   category "FAQs" do
     every(30.minutes, "sync google docs") do
       GoogleDocs::IngestWorker.enqueue_with_tracking
+    end
+  end
+
+  category "Google Ads" do
+    every(1.day, "ingest geo target constants", at: "03:00") do
+      GoogleAds::LocationTargeting::IngestWorker.perform_async
     end
   end
 end

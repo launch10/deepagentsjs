@@ -1,4 +1,4 @@
-import { RailsAPIBase, type paths } from "@rails_api";
+import { RailsAPIBase, type paths } from "@rails_api_base";
 import { type Simplify } from "type-fest";
 
 export type AdvanceCampaignRequest = NonNullable<

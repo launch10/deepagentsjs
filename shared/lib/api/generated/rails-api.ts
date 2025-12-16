@@ -945,6 +945,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/geo_target_constants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search geo target constants */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Search query for location names */
+                    location_query: string;
+                };
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description searches canonical name as well */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Google Ads criteria ID */
+                            criteria_id: number;
+                            /** @description Location name */
+                            name: string;
+                            /** @description Full canonical name with hierarchy */
+                            canonical_name: string;
+                            /** @description ISO country code */
+                            country_code?: string | null;
+                            /** @description Location type (City, Country, etc.) */
+                            target_type: string;
+                            /** @description Active status */
+                            status: string;
+                        }[];
+                    };
+                };
+                /** @description unauthorized without token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_uuid}/workflows/{id}": {
         parameters: {
             query?: never;

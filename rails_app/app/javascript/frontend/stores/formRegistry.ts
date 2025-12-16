@@ -41,7 +41,6 @@ export const useFormRegistry = create<FormRegistryStore>((set, get) => ({
     const results = await Promise.all(subforms.map((h) => h.validate()));
     return results.every(Boolean);
   },
-
 }));
 
 export const selectValidate = (s: FormRegistryStore) => s.validate;

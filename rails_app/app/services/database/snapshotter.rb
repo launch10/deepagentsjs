@@ -25,6 +25,12 @@ module Database
       schema_migrations
     ].freeze
 
+    EXCLUDED_HEAVY_TABLES = %w[
+      geo_target_constants
+    ].freeze
+
+    EXCLUDED_TABLES = (EXCLUDED_SYSTEM_TABLES + EXCLUDED_HEAVY_TABLES).freeze
+
     def initialize
       @config = ActiveRecord::Base.connection_db_config.configuration_hash
       @env = {"PGPASSWORD" => @config[:password].to_s}
@@ -49,7 +55,7 @@ module Database
         inserts: true,
         column_inserts: true,
         disable_triggers: true,
-        exclude_tables: EXCLUDED_SYSTEM_TABLES
+        exclude_tables: EXCLUDED_TABLES
       }
 
       # Dump data to temp file first
@@ -110,8 +116,9 @@ module Database
       execute_command(Shellwords.join(command_args))
     end
 
-    def truncate
-      DatabaseCleaner.clean_with(:truncation)
+    def truncate(except: [])
+      except = Array(except) + ["geo_target_constants"]
+      DatabaseCleaner.clean_with(:truncation, except: except)
     end
 
     def reset_all_sequences(start_value: 1)

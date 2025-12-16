@@ -1,19 +1,27 @@
 core_data:
   class: CoreData
-  description: "Seeds plans, templates, and themes (no accounts)"
+  description: "Seeds plans, templates, themes, and faqs"
+
+geo_target_constants:
+  class: Core::GeoTargetConstants
+  description: "Seeds Google Ads geo target constants (228k locations)"
 
 basic_account:
   class: BasicAccount
+  base_snapshot: core_data
   description: "Creates a subscribed test user account"
 
 website_created:
   class: WebsiteCreated
+  base_snapshot: basic_account
   description: "Creates a website with brainstorm data"
 
 website_deployed:
   class: WebsiteDeployed
-  description: "Sets workflow to ad_campaign:content without creating campaign"
+  base_snapshot: website_created
+  description: "Sets workflow to ad_campaign:content"
 
 campaign_created:
   class: CampaignCreated
+  base_snapshot: website_created
   description: "Creates a campaign with ad groups and ads"

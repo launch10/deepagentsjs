@@ -19,6 +19,8 @@ namespace :api, defaults: {format: :json} do
       post :advance, on: :member
       post :back, on: :member
     end
+
+    resources :geo_target_constants, only: [:index]
   end
 end
 
