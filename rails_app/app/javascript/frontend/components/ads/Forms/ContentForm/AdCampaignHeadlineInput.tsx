@@ -1,9 +1,9 @@
 import { Badge } from "@components/ui/badge";
-import { Button } from "@components/ui/button";
-import { Field, FieldError, FieldLabel } from "@components/ui/field";
-import { Info, Plus, Sparkles } from "lucide-react";
+import { Field, FieldError } from "@components/ui/field";
+import { Info, Plus } from "lucide-react";
 import { useState } from "react";
 import { headlineSchema } from "../shared/AdCampaignForm.schema";
+import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 
 interface AdCampaignHeadlineInputProps {
   onAdd: (value: string) => void;
@@ -31,6 +31,11 @@ export default function AdCampaignHeadlineInput({
       return;
     }
 
+    if (!trimmed.length) {
+      setError("Headline cannot be empty");
+      return;
+    }
+
     const result = headlineSchema.shape.text.safeParse(trimmed);
     if (!result.success) {
       setError(result.error.errors[0]?.message ?? "Invalid headline");
@@ -46,7 +51,7 @@ export default function AdCampaignHeadlineInput({
 
   return (
     <Field className="gap-2">
-      <FieldLabel className="flex justify-between items-center">
+      <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-base-600">Headlines</span>
           <Info size={12} className="text-base-300" />
@@ -54,16 +59,9 @@ export default function AdCampaignHeadlineInput({
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="secondary">Select 3-{maxCount}</Badge>
-          <Button
-            type="button"
-            variant="link"
-            className="text-[#74767A] font-normal"
-            onClick={onRefreshSuggestions}
-          >
-            <Sparkles /> Refresh Suggestions
-          </Button>
+          <RefreshSuggestionsButton onClick={onRefreshSuggestions} />
         </div>
-      </FieldLabel>
+      </div>
       <div className="flex border border-neutral-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring">
         <input
           placeholder="Enter headline"

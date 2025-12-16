@@ -33,7 +33,7 @@ export default function HeadlinesForm() {
     },
   });
 
-  const { fields, append } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: methods.control,
     name: "headlines",
   });
@@ -60,6 +60,12 @@ export default function HeadlinesForm() {
     setState({ headlines: updated });
   };
 
+  const handleDeleteHeadline = (index: number) => {
+    remove(index);
+    const updatedLanggraph = headlines?.filter((h, i) => i !== index);
+    setState({ headlines: updatedLanggraph });
+  };
+
   const handleLockToggle = createLockToggleHandler(methods, "headlines", () => headlines, setState);
 
   const handleRefreshHeadlines = () => {
@@ -84,7 +90,7 @@ export default function HeadlinesForm() {
         fieldName="headlines"
         fields={fields}
         onLockToggle={handleLockToggle}
-        // onDelete={handleDeleteHeadline}
+        onDelete={handleDeleteHeadline}
         control={methods.control as any}
         placeholder="Headline Option"
         maxLength={30}
