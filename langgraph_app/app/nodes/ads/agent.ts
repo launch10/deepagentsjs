@@ -4,10 +4,8 @@ import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
 import { chooseAdsPrompt, injectPseudoMessage, filterPseudoMessages } from "@prompts";
 import { NodeMiddleware } from "@middleware";
-import { adsFaqTool } from "@tools";
 import { type AdsGraphState } from "@state";
 import z from "zod";
-import { toStructuredMessage } from "langgraph-ai-sdk";
 import { lastAIMessage, Ads } from "@types";
 import { getTools } from "./helpers/index";
 import { AdsBridge } from "@annotation";
@@ -20,7 +18,7 @@ const dynamicPromptMiddleware = createMiddleware({
       websiteId: z.number(),
       brainstorm: z.any(),
       stage: z.string(),
-      refresh: Ads.RefreshContextSchema.optional(),
+      refresh: Ads.RefreshCommandSchema.optional(),
       headlines: z.array(Ads.AssetSchema),
       descriptions: z.array(Ads.AssetSchema),
       uniqueFeatures: z.array(Ads.AssetSchema),
@@ -82,6 +80,7 @@ export const adsAgent = NodeMiddleware.use(
     return {
       ...mergedAssets,
       messages: filtered,
+      previousStage: state.stage,
     };
   }
 );

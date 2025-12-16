@@ -87,7 +87,7 @@ class ProjectWorkflow < ApplicationRecord
   def as_json
     {
       workflow_type: workflow_type,
-      step: step,
+      page: step,
       substep: substep,
       progress: calculate_progress,
       available_steps: WorkflowConfig.steps_for(workflow_type)

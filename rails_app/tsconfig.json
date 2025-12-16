@@ -19,7 +19,6 @@
       "~/*": ["./app/javascript/frontend/*"],
       "@components/*": ["./app/javascript/frontend/components/*"],
       "@context/*": ["./app/javascript/frontend/context/*"],
-      "@contexts/*": ["./app/javascript/frontend/contexts/*"],
       "@hooks/*": ["./app/javascript/frontend/hooks/*"],
       "@stores/*": ["./app/javascript/frontend/stores/*"],
       "@lib/*": ["./app/javascript/frontend/lib/*"],
@@ -31,7 +30,7 @@
       "@styles/*": ["./app/javascript/frontend/styles/*"],
       "@webcontainer/*": ["./app/javascript/frontend/webcontainer/*"],
       "@shared": ["../shared/index.ts"],
-      "@pages/*": ["./app/javascript/frontend/pages/*"]
+      "@pages/*": ["./app/javascript/frontend/pages/*"],
     },
     "noEmit": true,
     "incremental": true

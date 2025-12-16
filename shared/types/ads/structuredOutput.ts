@@ -86,7 +86,9 @@ export const mergeStructuredData = (
     return {};
   }
   const allowedKeys = (
-    state.refresh?.asset ? [state.refresh.asset] : Ads.AssetKinds
+    state.refresh?.length 
+      ? state.refresh.map((r) => r.asset)
+      : Ads.AssetKinds
   ) as Ads.AssetKind[];
 
   const structuredData = allowedKeys.reduce((acc, key) => {

@@ -2,12 +2,20 @@ import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
 import { userPreferencesPrompt } from "../userPreferences";
 
-export const StructuredSnippetss: Partial<Ads.AssetPromptMap> = {
+const categoryList = Ads.StructuredSnippetCategoryKeys.map(
+  (key) => `"${Ads.StructuredSnippetCategories[key].key}"`
+).join(", ");
+
+const categoryExamples = Ads.StructuredSnippetCategoryKeys.slice(0, 3)
+  .map((key) => `- ${Ads.StructuredSnippetCategories[key].examples}`)
+  .join("\n              ");
+
+export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
   structuredSnippets: {
     prompt: async (state: AdsGraphState, _config?: any) => {
       const snippetCategory = state?.structuredSnippets?.category;
       const userPrefs = await userPreferencesPrompt(state, "structuredSnippets");
-      const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structuredSnippets;
+      const numberOfDetails = Ads.getNVariantsForAsset(state.refresh, "structuredSnippets") ?? Ads.DefaultNumAssets.structuredSnippets;
 
       return `
             ## Product or Service Offerings (Structured Snippets)
@@ -17,15 +25,13 @@ export const StructuredSnippetss: Partial<Ads.AssetPromptMap> = {
             ${
               snippetCategory
                 ? snippetCategory
-                : `Choose ONE header that best describes what you're listing (e.g., "Types", "Services", "Amenities", "Products", "Styles", "Brands", "Courses", "Destinations")`
+                : `Choose ONE header that best describes what you're listing (e.g., ${categoryList})`
             }
 
             **Details (Values):**
             List ${numberOfDetails} specific offerings under that category header.
             - Examples: 
-              - Types: "Web Design", "SEO", "Content Marketing"
-              - Amenities: "Free WiFi", "Free Parking", "Included Breakfast", "Spa Services"
-              - Services: "Emergency Repairs", "Annual Maintenance", "Free Estimates"
+              ${categoryExamples}
 
             **Requirements:**
             - Choose an appropriate category header
@@ -38,7 +44,7 @@ export const StructuredSnippetss: Partial<Ads.AssetPromptMap> = {
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-      const numberOfDetails = state?.refresh?.nVariants || Ads.DefaultNumAssets.structuredSnippets;
+      const numberOfDetails = Ads.getNVariantsForAsset(state.refresh, "structuredSnippets") ?? Ads.DefaultNumAssets.structuredSnippets;
       return {
         structuredSnippets: {
           category: "Types",

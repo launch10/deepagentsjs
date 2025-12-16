@@ -44,7 +44,7 @@ export const getOutputPrompt = async (
     {}
   );
   const needsIntent = needsIntentClassification(state);
-  const isRefreshMode = state.refresh !== undefined;
+  const isRefreshMode = !!state.refresh?.length;
   const stage = state.stage as Ads.StageName;
   const responseTemplate = ResponseTemplates[stage];
   const assetResponse = `
@@ -85,8 +85,11 @@ const getAssetsConfigs = (state: AdsGraphState): Ads.AssetPromptMap => {
   }
 
   const stage = Ads.Stages[state.stage];
-  const assetsToGenerate: Ads.AssetKind[] = state.refresh?.asset
-    ? [state.refresh.asset]
+  if (!stage) {
+    throw new Error(`Stage "${state.stage}" is not a valid stage`);
+  }
+  const assetsToGenerate: Ads.AssetKind[] = state.refresh?.length
+    ? state.refresh.map((r) => r.asset)
     : stage.assets;
 
   const assetConfigs: Ads.AssetPromptMap = assetsToGenerate.reduce(

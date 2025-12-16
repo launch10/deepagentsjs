@@ -1,14 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
-import AdCampaignPreview from "@components/ad-campaign/ad-campaign-preview";
+import { mocked } from "storybook/test";
+import AdPreview from "@components/ads/AdPreview";
+import { useAdsChatState } from "@hooks/useAdsChat";
 
 const meta = {
   title: "Ad Campaign/Components/Ad Preview",
-  component: AdCampaignPreview,
-  // This component will have an automatically generated Autodocs entry: https://storybook.js.org/docs/writing-docs/autodocs
+  component: AdPreview,
   tags: ["autodocs"],
   parameters: {
-    // More on how to position stories at: https://storybook.js.org/docs/configure/story-layout
     layout: "centered",
   },
   decorators: [
@@ -18,25 +17,48 @@ const meta = {
       </div>
     ),
   ],
-  args: {},
-} satisfies Meta<typeof AdCampaignPreview>;
+} satisfies Meta<typeof AdPreview>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  args: {
-    headline: "Paw Portraits - Portraits of your furry family members",
-    url: "pawportraits.launch10.ai",
-    details:
-      "Celebrate your pet with creative, personality-filled portraits. Cozy studio or outdoor sessions—crafted with patience, treats, and love. Book now.",
+  beforeEach: () => {
+    mocked(useAdsChatState).mockImplementation(((key: string) => {
+      if (key === "headlines") {
+        return [
+          { text: "Paw Portraits", locked: false, rejected: false },
+          { text: "Portraits of your furry family members", locked: false, rejected: false },
+          { text: "Capture their personality", locked: false, rejected: false },
+        ];
+      }
+      if (key === "descriptions") {
+        return [
+          {
+            text: "Celebrate your pet with creative, personality-filled portraits. Cozy studio or outdoor sessions—crafted with patience, treats, and love. Book now.",
+            locked: false,
+            rejected: false,
+          },
+        ];
+      }
+      return undefined;
+    }) as any);
   },
 };
 
 export const Loading: Story = {
-  args: {
-    headline: "",
-    url: "",
-    details: "",
+  beforeEach: () => {
+    mocked(useAdsChatState).mockReturnValue(undefined as any);
+  },
+};
+
+export const PartialContent: Story = {
+  beforeEach: () => {
+    mocked(useAdsChatState).mockImplementation(((key: string) => {
+      if (key === "headlines") {
+        return [{ text: "Single Headline Only", locked: false, rejected: false }];
+      }
+      return undefined;
+    }) as any);
   },
 };

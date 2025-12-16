@@ -1,5 +1,5 @@
 import { Chat } from "@components/chat/Chat.client";
-import { Header } from "@components/header/Header";
+import { Header } from "@components/Header/Header";
 import React, { useEffect } from "react";
 import { pageStore } from "@stores/page";
 import type { PageState } from "@stores/page";

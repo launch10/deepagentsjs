@@ -37,6 +37,18 @@ class ProjectsController < SubscribedController
 
   WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|
     define_method("campaigns_#{substep}") do
+      @campaign = @project.campaigns.first
+      if @campaign.present?
+        # If this fails, it's because the user hasn't completed the previous steps
+        # before the page they're trying to go to. We'll just stay on the same page.
+        # Don't use update! here because it will raise an exception if the update fails.
+        @campaign.update(stage: substep)
+
+        if @campaign.reload.stage != substep
+          redirect_to action: "campaigns_#{@campaign.stage}" and return
+        end
+      end
+
       render inertia: "Campaign",
         props: @project.to_ad_campaign_json,
         layout: "layouts/webcontainer"

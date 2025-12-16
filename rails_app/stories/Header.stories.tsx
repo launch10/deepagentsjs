@@ -1,23 +1,22 @@
-import Header from "@components/header/header";
-
+import Header from "@components/Header/Header";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { WorkflowProgressProvider } from "~/contexts/workflow-progress-context";
-import { workflow } from "@shared";
+import { WorkflowStepsProvider } from "@context/WorkflowStepsProvider";
 
 const meta = {
   title: "Header",
   component: Header,
-  // This component will have an automatically generated Autodocs entry: https://storybook.js.org/docs/writing-docs/autodocs
   tags: ["autodocs"],
   parameters: {
-    // More on how to position stories at: https://storybook.js.org/docs/configure/story-layout
     layout: "fullscreen",
   },
   decorators: [
     (Story) => (
-      <WorkflowProgressProvider steps={workflow.launch.steps}>
+      <WorkflowStepsProvider
+        workflow={{ page: "ad_campaign", substep: "content" }}
+        projectUUID="test-uuid"
+      >
         <Story />
-      </WorkflowProgressProvider>
+      </WorkflowStepsProvider>
     ),
   ],
 } satisfies Meta<typeof Header>;
@@ -25,14 +24,56 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
-  args: {
-    steps: [
-      { label: "Brainstorm" },
-      { label: "Landing Page" },
-      { label: "Ad Campaign" },
-      { label: "Launch" },
-    ],
-    currentStepIndex: 1,
-  },
+export const Default: Story = {};
+
+export const BrainstormStep: Story = {
+  decorators: [
+    (Story) => (
+      <WorkflowStepsProvider
+        workflow={{ page: "brainstorm", substep: null }}
+        projectUUID="test-uuid"
+      >
+        <Story />
+      </WorkflowStepsProvider>
+    ),
+  ],
+};
+
+export const WebsiteStep: Story = {
+  decorators: [
+    (Story) => (
+      <WorkflowStepsProvider
+        workflow={{ page: "website", substep: null }}
+        projectUUID="test-uuid"
+      >
+        <Story />
+      </WorkflowStepsProvider>
+    ),
+  ],
+};
+
+export const CampaignStep: Story = {
+  decorators: [
+    (Story) => (
+      <WorkflowStepsProvider
+        workflow={{ page: "ad_campaign", substep: null }}
+        projectUUID="test-uuid"
+      >
+        <Story />
+      </WorkflowStepsProvider>
+    ),
+  ],
+};
+
+export const LaunchStep: Story = {
+  decorators: [
+    (Story) => (
+      <WorkflowStepsProvider
+        workflow={{ page: "launch", substep: null }}
+        projectUUID="test-uuid"
+      >
+        <Story />
+      </WorkflowStepsProvider>
+    ),
+  ],
 };
