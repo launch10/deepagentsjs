@@ -15,8 +15,8 @@ export default function ContentForm() {
         <div className="flex flex-col gap-0.5">
           <h2 className="text-lg font-semibold leading-[22px]">Content</h2>
           <p className="text-xs text-base-300">
-          Content is the core of your ad. Think of billboard headlines. They describe the problem
-          your business solves, and encourage users to click to learn more.
+            Content is the core of your ad. Think of billboard headlines. They describe the problem
+            your business solves, and encourage users to click to learn more.
           </p>
         </div>
         <FieldSet className="gap-4">
