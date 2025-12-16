@@ -14,6 +14,24 @@ RSpec.describe "Geo Target Constants API", type: :request do
   let!(:new_york_state) { GeoTargetConstant.create!(criteria_id: 21167, name: "New York", canonical_name: "New York,United States", target_type: "State", status: "Active", country_code: "US") }
   let!(:los_angeles) { GeoTargetConstant.create!(criteria_id: 1013962, name: "Los Angeles", canonical_name: "Los Angeles,California,United States", target_type: "City", status: "Active", country_code: "US") }
 
+  def mock_google_ads_api(criteria_ids)
+    client = instance_double("GoogleAds::Client")
+    gtc_service = instance_double("GoogleAds::GeoTargetConstantService")
+    resource = instance_double("GoogleAds::Resource")
+
+    allow(GoogleAds).to receive(:client).and_return(client)
+    allow(client).to receive(:service).and_return(double(geo_target_constant: gtc_service))
+    allow(client).to receive(:resource).and_return(resource)
+    allow(resource).to receive(:location_names).and_yield(double(names: []))
+
+    suggestions = criteria_ids.map do |id|
+      double(geo_target_constant: double(resource_name: "geoTargetConstants/#{id}"))
+    end
+    allow(gtc_service).to receive(:suggest_geo_target_constants).and_return(
+      double(geo_target_constant_suggestions: suggestions)
+    )
+  end
+
   path '/api/v1/geo_target_constants' do
     get 'Search geo target constants' do
       tags 'Geo Target Constants'
@@ -31,6 +49,10 @@ RSpec.describe "Geo Target Constants API", type: :request do
         let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
         let(:location_query) { "New York" }
 
+        before do
+          mock_google_ads_api([1023191, 21167])
+        end
+
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data.length).to eq(2)
@@ -46,6 +68,10 @@ RSpec.describe "Geo Target Constants API", type: :request do
         let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
         let(:location_query) { "xyznonexistent" }
 
+        before do
+          mock_google_ads_api([])
+        end
+
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data).to eq([])
@@ -58,6 +84,10 @@ RSpec.describe "Geo Target Constants API", type: :request do
         let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
         let(:location_query) { "California" }
+
+        before do
+          mock_google_ads_api([1013962])
+        end
 
         run_test! do |response|
           data = JSON.parse(response.body)

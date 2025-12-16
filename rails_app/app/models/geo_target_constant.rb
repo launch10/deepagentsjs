@@ -36,7 +36,7 @@ class GeoTargetConstant < ApplicationRecord
   scope :regions, -> { where(target_type: "Region") }
   scope :cities, -> { where(target_type: "City") }
 
-  scope :search_api, -> (query) {
+  scope :search_api, ->(query) {
     client = GoogleAds.client
     gtc_service = client.service.geo_target_constant
 
