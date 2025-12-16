@@ -166,6 +166,13 @@ export const promptBuilder = async (state: AdsGraphState, config: LangGraphRunna
 
         ${previousAssetsContext}
 
+        <remember>
+          Remember: Pay attention to which page the user is on. 
+          The user is switching back and forth between different pages of the campaign builder.
+          Do not simply respond to where we left off in the conversation, it will feel awkward for the user
+          if they have already moved on to something else. 
+        </remember>
+
         ${outputPrompt}
     `
     .replace(/\n\s*\n/g, "\n\n")

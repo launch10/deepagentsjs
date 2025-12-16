@@ -1,4 +1,5 @@
 import { createStore } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
 import { Workflow } from "@shared";
 
 const WORKFLOW_STEPS = Workflow.workflows.launch.steps;
@@ -67,7 +68,7 @@ export const createWorkflowStore = (
   const stepNumber = findStepIndex(step);
   const substepNumber = findSubstepIndex(substep);
 
-  return createStore<WorkflowStepsStore>((set, get) => ({
+  return createStore<WorkflowStepsStore>()(subscribeWithSelector((set, get) => ({
     name: "launch",
     steps: WORKFLOW_STEPS,
     page: page,
@@ -143,5 +144,5 @@ export const createWorkflowStore = (
         pushUrl(projectUUID, prevSubstep);
       }
     },
-  }));
+  })));
 };

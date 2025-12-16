@@ -8,6 +8,12 @@ import { db, projects as projectsTable } from "@db";
 import { type UUIDType, Ads, type ThreadIDType } from "@types";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { v7 as uuid } from "uuid";
+import {
+  didSwitchPage,
+  getPseudoMessage,
+  needsPseudoMessage,
+  PseudoMessages,
+} from "@prompts";
 
 const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" });
 
@@ -932,6 +938,245 @@ describe.sequential("Ads Flow", () => {
       expect(message.length).toBeGreaterThan(20);
       expect(result.state.headlines).toBeUndefined();
       expect(result.state.descriptions).toBeUndefined();
+    });
+  });
+
+  describe("Pseudo Messages - Page Switch Detection", () => {
+    describe("didSwitchPage", () => {
+      it("returns false when previousStage is undefined", () => {
+        const state = {
+          stage: "highlights",
+          previousStage: undefined,
+        } as AdsGraphState;
+
+        expect(didSwitchPage(state)).toBe(false);
+      });
+
+      it("returns false when stage is undefined", () => {
+        const state = {
+          stage: undefined,
+          previousStage: "content",
+        } as AdsGraphState;
+
+        expect(didSwitchPage(state)).toBe(false);
+      });
+
+      it("returns false when stage equals previousStage", () => {
+        const state = {
+          stage: "content",
+          previousStage: "content",
+        } as AdsGraphState;
+
+        expect(didSwitchPage(state)).toBe(false);
+      });
+
+      it("returns true when stage differs from previousStage", () => {
+        const state = {
+          stage: "highlights",
+          previousStage: "content",
+        } as AdsGraphState;
+
+        expect(didSwitchPage(state)).toBe(true);
+      });
+
+      it("returns true for any valid stage transition", () => {
+        const transitions = [
+          { from: "content", to: "highlights" },
+          { from: "highlights", to: "keywords" },
+          { from: "keywords", to: "content" },
+          { from: "keywords", to: "highlights" },
+        ];
+
+        transitions.forEach(({ from, to }) => {
+          const state = {
+            stage: to,
+            previousStage: from,
+          } as AdsGraphState;
+
+          expect(didSwitchPage(state)).toBe(true);
+        });
+      });
+    });
+
+    describe("needsPseudoMessage", () => {
+      it("returns true when page switched", () => {
+        const state = {
+          stage: "highlights",
+          previousStage: "content",
+          messages: [new AIMessage("Previous response")],
+        } as AdsGraphState;
+
+        expect(needsPseudoMessage(state)).toBe(true);
+      });
+
+      it("returns true when no messages exist", () => {
+        const state = {
+          stage: "content",
+          messages: [],
+        } as unknown as AdsGraphState;
+
+        expect(needsPseudoMessage(state)).toBe(true);
+      });
+
+      it("returns true when refresh is set", () => {
+        const state = {
+          stage: "content",
+          messages: [new HumanMessage("test")],
+          refresh: [{ asset: "headlines", nVariants: 3 }],
+        } as unknown as AdsGraphState;
+
+        expect(needsPseudoMessage(state)).toBe(true);
+      });
+
+      it("returns false for normal user message without page switch", () => {
+        const state = {
+          stage: "content",
+          previousStage: "content",
+          messages: [new HumanMessage("Help me with headlines")],
+        } as AdsGraphState;
+
+        expect(needsPseudoMessage(state)).toBe(false);
+      });
+    });
+
+    describe("getPseudoMessage", () => {
+      it("returns PAGE_SWITCH message when page switched", () => {
+        const state = {
+          stage: "highlights",
+          previousStage: "content",
+          messages: [new AIMessage("Previous response")],
+        } as AdsGraphState;
+
+        const message = getPseudoMessage(state);
+
+        expect(message).not.toBeNull();
+        expect(message?.content).toContain("__SYSTEM__");
+        expect(message?.content).toContain("switched to");
+        expect(message?.content).toContain("callouts and structured snippets");
+      });
+
+      it("prioritizes refresh over page switch", () => {
+        const state = {
+          stage: "highlights",
+          previousStage: "content",
+          messages: [new AIMessage("Previous response")],
+          refresh: [{ asset: "callouts", nVariants: 3 }],
+        } as unknown as AdsGraphState;
+
+        const message = getPseudoMessage(state);
+
+        expect(message).not.toBeNull();
+        expect(message?.content).toContain("Generate new callouts");
+      });
+
+      it("returns BEGIN message for empty messages", () => {
+        const state = {
+          stage: "content",
+          messages: [],
+        } as unknown as AdsGraphState;
+
+        const message = getPseudoMessage(state);
+
+        expect(message).not.toBeNull();
+        expect(message?.content).toBe(PseudoMessages.BEGIN);
+      });
+
+      it("returns null for normal user message without page switch", () => {
+        const state = {
+          stage: "content",
+          previousStage: "content",
+          messages: [new HumanMessage("Help me with headlines")],
+        } as AdsGraphState;
+
+        const message = getPseudoMessage(state);
+
+        expect(message).toBeNull();
+      });
+
+      it("generates correct page name for each stage", () => {
+        const stageToExpectedContent: Record<string, string> = {
+          content: "headlines and descriptions",
+          highlights: "callouts and structured snippets",
+          keywords: "keywords",
+          settings: "campaign settings",
+          launch: "review",
+          review: "review",
+        };
+
+        Object.entries(stageToExpectedContent).forEach(([stage, expectedContent]) => {
+          const state = {
+            stage: stage as Ads.StageName,
+            previousStage: "content" === stage ? "highlights" : "content",
+            messages: [new AIMessage("Previous response")],
+          } as AdsGraphState;
+
+          const message = getPseudoMessage(state);
+
+          expect(message?.content).toContain(expectedContent);
+        });
+      });
+    });
+
+    describe("Integration: Page switch triggers correct context", () => {
+      it("generates new assets when switching from keywords back to highlights", async () => {
+        const keywordsResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            projectUUID,
+            threadId,
+            stage: "keywords",
+          })
+          .execute();
+
+        expect(keywordsResult.state.keywords?.length).toEqual(8);
+        expect(keywordsResult.state.previousStage).toBe("keywords");
+
+        const highlightsResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            ...keywordsResult.state,
+            stage: "highlights",
+            previousStage: "keywords",
+          })
+          .execute();
+
+        expect(highlightsResult.state.callouts?.length).toEqual(6);
+        expect(highlightsResult.state.structuredSnippets).toBeDefined();
+        expect(highlightsResult.state.previousStage).toBe("highlights");
+      });
+
+      it("tracks previousStage correctly through state transitions", async () => {
+        const contentResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            projectUUID,
+            threadId,
+            stage: "content",
+          })
+          .execute();
+
+        expect(contentResult.state.previousStage).toBe("content");
+
+        const highlightsResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            ...contentResult.state,
+            stage: "highlights",
+          })
+          .execute();
+
+        expect(highlightsResult.state.previousStage).toBe("highlights");
+
+        const keywordsResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            ...highlightsResult.state,
+            stage: "keywords",
+          })
+          .execute();
+
+        expect(keywordsResult.state.previousStage).toBe("keywords");
+      });
     });
   });
 });

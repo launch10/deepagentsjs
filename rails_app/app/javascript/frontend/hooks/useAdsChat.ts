@@ -3,6 +3,7 @@ import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
 import type { AdsBridgeType, AdsGraphState } from "@shared";
 import { Ads } from "@shared";
 import type { CampaignProps } from "@components/ads/Sidebar/WorkflowBuddy/ad-campaign.types";
+import { useChatRegistration } from "./useChatRegistration";
 
 export type AdsSnapshot = ChatSnapshot<AdsGraphState>;
 
@@ -25,7 +26,12 @@ export function useAdsChat<TSelected = AdsSnapshot>(
   selector?: (snapshot: AdsSnapshot) => TSelected
 ): TSelected {
   const options = getAdsChatOptions();
-  return useLanggraph<AdsBridgeType, TSelected>(options, selector);
+  const snapshot = useLanggraph<AdsBridgeType>(options);
+
+  // Register the "ad campaign chat" so we can sync state to current chat from other components
+  useChatRegistration("ad_campaign", snapshot.chat);
+
+  return (selector ? selector(snapshot) : snapshot) as TSelected;
 }
 
 export function useAdsChatMessages() {

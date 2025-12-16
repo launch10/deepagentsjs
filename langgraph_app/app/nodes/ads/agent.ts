@@ -4,7 +4,6 @@ import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
 import { chooseAdsPrompt, injectPseudoMessage, filterPseudoMessages } from "@prompts";
 import { NodeMiddleware } from "@middleware";
-import { adsFaqTool } from "@tools";
 import { type AdsGraphState } from "@state";
 import z from "zod";
 import { lastAIMessage, Ads } from "@types";
@@ -81,6 +80,7 @@ export const adsAgent = NodeMiddleware.use(
     return {
       ...mergedAssets,
       messages: filtered,
+      previousStage: state.stage,
     };
   }
 );

@@ -2,15 +2,13 @@ import { useEffect } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Badge } from "@components/ui/badge";
-import { Button } from "@components/ui/button";
-import { Field, FieldGroup, FieldLabel, FieldError } from "@components/ui/field";
+import { Field, FieldGroup, FieldError } from "@components/ui/field";
 import InputLockable from "@components/forms/input-lockable";
+import AdCampaignKeywordInput from "./AdCampaignKeywordInput";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
-import { Ads } from "@shared";
+import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
-import { Info, Sparkles } from "lucide-react";
 
 const keywordsFormSchema = z.object({
   keywords: z.array(Ads.AssetSchema),
@@ -30,7 +28,7 @@ export default function KeywordTargetingForm() {
     },
   });
 
-  const { fields } = useFieldArray({
+  const { fields, append } = useFieldArray({
     control: methods.control,
     name: "keywords",
   });
@@ -43,6 +41,19 @@ export default function KeywordTargetingForm() {
   }, [keywords, methods]);
 
   useFormRegistration("keywords", methods);
+
+  const handleAddKeyword = (value: string) => {
+    const newKeyword: Ads.Keyword = {
+      id: generateUUID(),
+      text: value,
+      locked: false,
+      rejected: false,
+    };
+    append(newKeyword);
+
+    const updated = [...(keywords || []), newKeyword];
+    setState({ keywords: updated });
+  };
 
   const handleLockToggle = (
     _fieldName: "headlines" | "descriptions" | "features" | "callouts" | "keywords",
@@ -105,26 +116,14 @@ export default function KeywordTargetingForm() {
   };
 
   return (
-    <FieldGroup className="gap-2">
-      <Field>
-        <FieldLabel className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">Keywords</span>
-            <Info size={12} className="text-base-300" />
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">Select 5-15</Badge>
-            <Button
-              type="button"
-              variant="link"
-              className="text-base-400 font-normal"
-              onClick={handleRefreshKeywords}
-            >
-              <Sparkles /> Refresh Suggestions
-            </Button>
-          </div>
-        </FieldLabel>
-      </Field>
+    <FieldGroup className="gap-4">
+      <AdCampaignKeywordInput
+        onAdd={handleAddKeyword}
+        currentCount={fields.length}
+        maxCount={15}
+        error={methods.formState.errors.keywords?.message}
+        onRefreshSuggestions={handleRefreshKeywords}
+      />
       <div className="grid grid-cols-2 gap-x-5 gap-y-4">
         <div className="flex flex-col gap-4">
           {leftColumnFields.map((field) => renderField(field))}

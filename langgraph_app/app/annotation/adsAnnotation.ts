@@ -12,6 +12,7 @@ export const AdsAnnotation = Annotation.Root({
   campaignId: Annotation<PrimaryKeyType | undefined>(),
   brainstorm: Annotation<Brainstorm.MemoriesType | undefined>(),
   stage: Annotation<Ads.StageName | undefined>(),
+  previousStage: Annotation<Ads.StageName | undefined>(),
   refresh: Annotation<Ads.RefreshCommand | undefined>(),
   headlines: Annotation<Ads.Headline[] | undefined>(),
   descriptions: Annotation<Ads.Description[] | undefined>(),

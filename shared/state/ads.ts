@@ -9,6 +9,7 @@ export type AdsGraphState = Simplify<CoreGraphState & {
     campaignId: PrimaryKeyType | undefined;
     brainstorm: Brainstorm.MemoriesType | undefined;
     stage: Ads.StageName | undefined;
+    previousStage: Ads.StageName | undefined;
     refresh: Ads.RefreshCommand | undefined;
     headlines: Ads.Headline[] | undefined;
     descriptions: Ads.Description[] | undefined;
