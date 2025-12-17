@@ -13,6 +13,7 @@
 #  time_zone           :string           default("America/New_York")
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
+#  google_customer_id  :string
 #  owner_id            :bigint
 #
 # Indexes
@@ -33,6 +34,7 @@ class Account < ApplicationRecord
   include Transfer
   include Atlas::Account
   include AccountConcerns::TrafficLimits
+  include AccountConcerns::GoogleAccount
 
   belongs_to :owner, class_name: "User"
   has_one :ads_account, dependent: :destroy

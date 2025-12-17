@@ -273,7 +273,7 @@ CREATE TABLE public.accounts (
     subdomain character varying,
     billing_email character varying,
     account_users_count integer DEFAULT 0,
-    time_zone character varying DEFAULT 'America/New_York'::character varying
+    google_customer_id character varying
 );
 
 
@@ -848,40 +848,6 @@ CREATE TABLE public.ads (
 
 
 --
--- Name: ads_account_invitations; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.ads_account_invitations (
-    id bigint NOT NULL,
-    ads_account_id bigint NOT NULL,
-    email_address character varying NOT NULL,
-    platform character varying NOT NULL,
-    platform_settings jsonb DEFAULT '{}'::jsonb,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: ads_account_invitations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.ads_account_invitations_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: ads_account_invitations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.ads_account_invitations_id_seq OWNED BY public.ads_account_invitations.id;
-
-
---
 -- Name: ads_accounts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1087,41 +1053,6 @@ CREATE SEQUENCE public.brainstorms_id_seq
 --
 
 ALTER SEQUENCE public.brainstorms_id_seq OWNED BY public.brainstorms.id;
-
-
---
--- Name: campaign_deploys; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.campaign_deploys (
-    id bigint NOT NULL,
-    campaign_id bigint NOT NULL,
-    campaign_history_id bigint,
-    status character varying DEFAULT 'pending'::character varying NOT NULL,
-    current_step character varying,
-    stacktrace text,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: campaign_deploys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.campaign_deploys_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: campaign_deploys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.campaign_deploys_id_seq OWNED BY public.campaign_deploys.id;
 
 
 --
@@ -2814,40 +2745,6 @@ CREATE TABLE public.schema_migrations (
 
 
 --
--- Name: social_links; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.social_links (
-    id bigint NOT NULL,
-    project_id bigint NOT NULL,
-    platform character varying NOT NULL,
-    url character varying NOT NULL,
-    handle character varying,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: social_links_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.social_links_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: social_links_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.social_links_id_seq OWNED BY public.social_links.id;
-
-
---
 -- Name: store; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3124,8 +3021,7 @@ CREATE TABLE public.uploads (
     is_logo boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    original_filename character varying,
-    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb
+    original_filename character varying
 );
 
 
@@ -3667,13 +3563,6 @@ ALTER TABLE ONLY public.ads ALTER COLUMN id SET DEFAULT nextval('public.ads_id_s
 
 
 --
--- Name: ads_account_invitations id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ads_account_invitations ALTER COLUMN id SET DEFAULT nextval('public.ads_account_invitations_id_seq'::regclass);
-
-
---
 -- Name: ads_accounts id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3699,13 +3588,6 @@ ALTER TABLE ONLY public.api_tokens ALTER COLUMN id SET DEFAULT nextval('public.a
 --
 
 ALTER TABLE ONLY public.brainstorms ALTER COLUMN id SET DEFAULT nextval('public.brainstorms_id_seq'::regclass);
-
-
---
--- Name: campaign_deploys id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campaign_deploys ALTER COLUMN id SET DEFAULT nextval('public.campaign_deploys_id_seq'::regclass);
 
 
 --
@@ -3958,13 +3840,6 @@ ALTER TABLE ONLY public.project_workflows ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.projects ALTER COLUMN id SET DEFAULT nextval('public.projects_id_seq'::regclass);
-
-
---
--- Name: social_links id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.social_links ALTER COLUMN id SET DEFAULT nextval('public.social_links_id_seq'::regclass);
 
 
 --
@@ -4272,14 +4147,6 @@ ALTER TABLE ONLY public.ad_structured_snippets
 
 
 --
--- Name: ads_account_invitations ads_account_invitations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ads_account_invitations
-    ADD CONSTRAINT ads_account_invitations_pkey PRIMARY KEY (id);
-
-
---
 -- Name: ads_accounts ads_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4341,14 +4208,6 @@ ALTER TABLE ONLY public.assistants
 
 ALTER TABLE ONLY public.brainstorms
     ADD CONSTRAINT brainstorms_pkey PRIMARY KEY (id);
-
-
---
--- Name: campaign_deploys campaign_deploys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.campaign_deploys
-    ADD CONSTRAINT campaign_deploys_pkey PRIMARY KEY (id);
 
 
 --
@@ -4717,14 +4576,6 @@ ALTER TABLE ONLY public.runs
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
-
-
---
--- Name: social_links social_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.social_links
-    ADD CONSTRAINT social_links_pkey PRIMARY KEY (id);
 
 
 --
@@ -5140,13 +4991,6 @@ CREATE INDEX domain_request_counts_2025_12_domain_id_hour_idx ON public.domain_r
 --
 
 CREATE INDEX domain_request_counts_2025_12_domain_id_hour_request_count_idx ON public.domain_request_counts_2025_12 USING btree (domain_id, hour, request_count);
-
-
---
--- Name: idx_ads_account_invitations_lookup; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_ads_account_invitations_lookup ON public.ads_account_invitations USING btree (ads_account_id, email_address, platform);
 
 
 --
@@ -5780,27 +5624,6 @@ CREATE INDEX index_ad_structured_snippets_on_platform_settings ON public.ad_stru
 
 
 --
--- Name: index_ads_account_invitations_on_ads_account_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ads_account_invitations_on_ads_account_id ON public.ads_account_invitations USING btree (ads_account_id);
-
-
---
--- Name: index_ads_account_invitations_on_platform; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ads_account_invitations_on_platform ON public.ads_account_invitations USING btree (platform);
-
-
---
--- Name: index_ads_account_invitations_on_platform_settings; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ads_account_invitations_on_platform_settings ON public.ads_account_invitations USING gin (platform_settings);
-
-
---
 -- Name: index_ads_accounts_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5924,41 +5747,6 @@ CREATE UNIQUE INDEX index_brainstorms_on_thread_id ON public.brainstorms USING b
 --
 
 CREATE UNIQUE INDEX index_brainstorms_on_website_id ON public.brainstorms USING btree (website_id);
-
-
---
--- Name: index_campaign_deploys_on_campaign_history_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_campaign_deploys_on_campaign_history_id ON public.campaign_deploys USING btree (campaign_history_id);
-
-
---
--- Name: index_campaign_deploys_on_campaign_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_campaign_deploys_on_campaign_id ON public.campaign_deploys USING btree (campaign_id);
-
-
---
--- Name: index_campaign_deploys_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_campaign_deploys_on_created_at ON public.campaign_deploys USING btree (created_at);
-
-
---
--- Name: index_campaign_deploys_on_current_step; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_campaign_deploys_on_current_step ON public.campaign_deploys USING btree (current_step);
-
-
---
--- Name: index_campaign_deploys_on_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_campaign_deploys_on_status ON public.campaign_deploys USING btree (status);
 
 
 --
@@ -7054,20 +6842,6 @@ CREATE UNIQUE INDEX index_projects_on_uuid ON public.projects USING btree (uuid)
 
 
 --
--- Name: index_social_links_on_project_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_social_links_on_project_id ON public.social_links USING btree (project_id);
-
-
---
--- Name: index_social_links_on_project_id_and_platform; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_social_links_on_project_id_and_platform ON public.social_links USING btree (project_id, platform);
-
-
---
 -- Name: index_tasks_on_action; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8077,14 +7851,6 @@ ALTER TABLE ONLY public.account_invitations
 
 
 --
--- Name: ads_account_invitations fk_rails_1d7b1920c0; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ads_account_invitations
-    ADD CONSTRAINT fk_rails_1d7b1920c0 FOREIGN KEY (ads_account_id) REFERENCES public.ads_accounts(id);
-
-
---
 -- Name: accounts fk_rails_37ced7af95; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8138,14 +7904,6 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 ALTER TABLE ONLY public.document_chunks
     ADD CONSTRAINT fk_rails_99b41ada32 FOREIGN KEY (document_id) REFERENCES public.documents(id);
-
-
---
--- Name: social_links fk_rails_9c390957fe; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.social_links
-    ADD CONSTRAINT fk_rails_9c390957fe FOREIGN KEY (project_id) REFERENCES public.projects(id);
 
 
 --
@@ -8203,18 +7961,10 @@ ALTER TABLE ONLY public.website_urls
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
-('20251230152039'),
-('20251230132615'),
-('20251229001513'),
-('20251223152858'),
-('20251223010445'),
-('20251220160359'),
-('20251220153026'),
 ('20251219192557'),
 ('20251219013512'),
 ('20251218235348'),
-('20251218132052'),
-('20251218125017'),
+('20251217211636'),
 ('20251217173931'),
 ('20251216144601'),
 ('20251201143930'),

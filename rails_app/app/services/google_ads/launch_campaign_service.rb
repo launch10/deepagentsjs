@@ -13,6 +13,15 @@
 # # # # # # # # # # # # # # # #
 #
 # IMPORTANT: Make sure to use the correct customer ID for your environment.
+#
+# Get a developer token:
+# 1) Login to the main Google Ads account API Center https://ads.google.com/aw/apicenter
+# 2) Grab the developer token
+# 2) Navigate to Settings > Tools & Settings > Measurement > Developer tokens
+# 3) Click "New token" and follow the prompts
+# 4) Copy the developer token to your Rails credentials
+
+
 # https://console.cloud.google.com/auth/clients?project=launch10-479317
 # 1) Set web app
 # 2) Add authorized redirect URI: http://localhost:3000
@@ -36,10 +45,12 @@
 # So I think i have to set this up separately from the main accoutn (setup using personal Gmail)
 module GoogleAds
   class LaunchCampaignService
+    include TypeCheck
+
     attr_reader :campaign, :client, :errors
 
     def initialize(campaign)
-      @campaign = campaign
+      @campaign = expect_type(campaign, Campaign, :campaign)
       @client = GoogleAds.client
       @errors = []
     end
