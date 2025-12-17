@@ -273,7 +273,8 @@ CREATE TABLE public.accounts (
     subdomain character varying,
     billing_email character varying,
     account_users_count integer DEFAULT 0,
-    google_customer_id character varying
+    google_customer_id character varying,
+    time_zone character varying DEFAULT 'America/New_York'::character varying
 );
 
 

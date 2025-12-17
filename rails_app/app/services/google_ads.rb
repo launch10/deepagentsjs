@@ -4,6 +4,10 @@ module GoogleAds
       Rails.application.config.google_ads
     end
 
+    def is_test_mode?
+      !Rails.env.production?
+    end
+
     def client
       @client ||= Google::Ads::GoogleAds::GoogleAdsClient.new do |c|
         c.client_id = config[:client_id]
