@@ -131,19 +131,14 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
     const updateRequest = buildUpdateRequest(fieldMappings, debouncedFields);
     const serialized = JSON.stringify(updateRequest);
 
-    console.log({ updateRequest }, serialized);
-
     if (serialized === lastSavedValue.current) {
       return;
     }
     lastSavedValue.current = serialized;
 
-    console.log("autosaving", { updateRequest });
-
     autosaveMutation.mutate(updateRequest, {
       onSuccess,
       onError: (error) => {
-        console.log("autosave error", error);
         return mapApiErrorsToForm(error, methods);
       },
     });
