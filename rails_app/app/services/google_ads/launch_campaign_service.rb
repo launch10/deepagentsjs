@@ -1,6 +1,18 @@
 # app/services/google_ads/launch_campaign_service.rb
 
 # Create a Google Ads client:
+# ONLY DO THIS ONCE - YOU CAN REUSE THE SAME CLIENT FOR ALL ENVIRONMENTS
+# # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # #
+# The ONLY thing that routes us to the test account is the customer_id!
+# # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # #
+#
+# IMPORTANT: Make sure to use the correct customer ID for your environment.
 # https://console.cloud.google.com/auth/clients?project=launch10-479317
 # 1) Set web app
 # 2) Add authorized redirect URI: http://localhost:3000
@@ -28,12 +40,12 @@ module GoogleAds
 
     def initialize(campaign)
       @campaign = campaign
-      @client = Google::Ads::GoogleAds::GoogleAdsClient.new
+      @client = GoogleAds.client
       @errors = []
     end
 
     def call
-      return error_result("Campaign is not ready to launch") unless campaign.done_launch_stage?
+      return error_result("Campaign is not ready to launch") unless campaign.deployable?
 
       ActiveRecord::Base.transaction do
         # Set customer ID
