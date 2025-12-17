@@ -1,14 +1,16 @@
-import { useEffect } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useEffect, useRef } from "react";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Field, FieldGroup, FieldError } from "@components/ui/field";
-import InputLockable from "@components/forms/input-lockable";
+import { FieldGroup } from "@components/ui/field";
 import AdCampaignKeywordInput from "./AdCampaignKeywordInput";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
+import { createLockToggleHandler } from "@helpers/handleLockToggle";
+import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import AdCampaignFieldList from "../shared/AdCampaignFieldList";
 
 const keywordsFormSchema = z.object({
   keywords: z.array(Ads.AssetSchema),
@@ -19,6 +21,7 @@ type KeywordsFormData = z.infer<typeof keywordsFormSchema>;
 export default function KeywordTargetingForm() {
   const keywords = useAdsChatState("keywords");
   const { setState, updateState } = useAdsChatActions();
+  const gridEndRef = useRef<HTMLDivElement>(null);
 
   const methods = useForm<KeywordsFormData>({
     resolver: zodResolver(keywordsFormSchema) as any,
@@ -28,7 +31,7 @@ export default function KeywordTargetingForm() {
     },
   });
 
-  const { fields, append } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: methods.control,
     name: "keywords",
   });
@@ -53,67 +56,56 @@ export default function KeywordTargetingForm() {
 
     const updated = [...(keywords || []), newKeyword];
     setState({ keywords: updated });
+
+    // Scroll the new keyword into view after it's rendered
+    // Account for the sticky pagination bar at the bottom (~80px)
+    setTimeout(() => {
+      const element = gridEndRef.current;
+      if (!element) return;
+
+      const rect = element.getBoundingClientRect();
+      const paginationHeight = 80;
+      const viewportBottom = window.innerHeight - paginationHeight;
+
+      if (rect.bottom > viewportBottom) {
+        window.scrollBy({
+          top: rect.bottom - viewportBottom + 16,
+          behavior: "smooth",
+        });
+      }
+    }, 0);
   };
 
-  const handleLockToggle = (
-    _fieldName: "headlines" | "descriptions" | "features" | "callouts" | "keywords",
-    index: number
-  ) => {
-    const currentFields = methods.getValues("keywords");
-    const isLocked = currentFields[index].locked;
-
-    if (!isLocked && !currentFields[index].text) {
-      methods.setError(`keywords.${index}.text`, {
-        type: "manual",
-        message: "Cannot lock an empty input.",
-      });
-      return;
-    }
-
-    const updatedFields = currentFields.map((field, i) =>
-      i === index ? { ...field, locked: !isLocked } : field
-    );
-    methods.setValue("keywords", updatedFields);
-
-    const updatedLanggraph = keywords?.map((k, i) =>
-      i === index ? { ...k, locked: !isLocked } : k
-    );
-    setState({ keywords: updatedLanggraph });
-  };
+  const handleLockToggle = createLockToggleHandler(methods, "keywords", () => keywords, setState);
 
   const handleRefreshKeywords = () => {
     createRefreshHandler("keywords", keywords, updateState);
   };
 
+  const handleDeleteKeyword = (index: number) => {
+    remove(index);
+    const updatedLanggraph = keywords?.filter((k, i) => i !== index);
+    setState({ keywords: updatedLanggraph });
+  };
+
   const leftColumnFields = fields.filter((_, i) => i % 2 === 0);
   const rightColumnFields = fields.filter((_, i) => i % 2 === 1);
 
-  const renderField = (field: typeof fields[number]) => {
-    const actualIndex = fields.findIndex((f) => f.id === field.id);
-    return (
-      <Controller
-        key={field.id}
-        name={`keywords.${actualIndex}.text`}
-        control={methods.control}
-        render={({ field: controllerField, fieldState }) => (
-          <Field className="gap-1">
-            <InputLockable
-              placeholder="Keyword Option"
-              {...controllerField}
-              isLocked={field.locked}
-              onLockToggle={() => handleLockToggle("keywords", actualIndex)}
-            />
-            <div className="flex">
-              {fieldState.error && <FieldError errors={[fieldState.error]} />}
-              <div className="text-right text-xs text-[#8b8b8b] ml-auto">
-                {controllerField.value?.length ?? 0}/80
-              </div>
-            </div>
-          </Field>
-        )}
-      />
-    );
-  };
+  const resolveIndex = (id: string) => fields.findIndex((f) => f.id === id);
+
+  useCampaignAutosave({
+    methods,
+    fieldMappings: [
+      {
+        formField: "keywords",
+        apiField: "keywords",
+        transform: (keywords) =>
+          keywords
+            ?.filter((k) => k.text?.trim())
+            .map(({ id, text }) => ({ id, text, match_type: "broad" })) ?? [],
+      },
+    ],
+  });
 
   return (
     <FieldGroup className="gap-4">
@@ -126,11 +118,30 @@ export default function KeywordTargetingForm() {
       />
       <div className="grid grid-cols-2 gap-x-5 gap-y-4">
         <div className="flex flex-col gap-4">
-          {leftColumnFields.map((field) => renderField(field))}
+          <AdCampaignFieldList
+            fieldName="keywords"
+            fields={leftColumnFields}
+            onLockToggle={handleLockToggle}
+            onDelete={handleDeleteKeyword}
+            control={methods.control as any}
+            placeholder="Keyword Option"
+            maxLength={80}
+            resolveIndex={resolveIndex}
+          />
         </div>
         <div className="flex flex-col gap-4">
-          {rightColumnFields.map((field) => renderField(field))}
+          <AdCampaignFieldList
+            fieldName="keywords"
+            fields={rightColumnFields}
+            onLockToggle={handleLockToggle}
+            onDelete={handleDeleteKeyword}
+            control={methods.control as any}
+            placeholder="Keyword Option"
+            maxLength={80}
+            resolveIndex={resolveIndex}
+          />
         </div>
+        <div ref={gridEndRef} />
       </div>
     </FieldGroup>
   );
