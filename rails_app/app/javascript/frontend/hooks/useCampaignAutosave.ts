@@ -2,9 +2,9 @@ import { useEffect, useRef } from "react";
 import { usePage } from "@inertiajs/react";
 import type { UseFormReturn, FieldValues, Path } from "react-hook-form";
 import type { CampaignProps } from "@components/ads/Sidebar/WorkflowBuddy/ad-campaign.types";
-import { useAutosaveCampaign, type CampaignUpdateRequest } from "./useCampaign";
+import { useAutosaveCampaign, type CampaignUpdateRequest } from "@api/campaigns.hooks";
 import { useDebounce } from "./useDebounce";
-import { mapApiErrorsToForm } from "../helpers/formErrorMapper";
+import { mapApiErrorsToForm } from "@helpers/formErrorMapper";
 
 // ============================================================================
 // Types
@@ -131,16 +131,23 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
     const updateRequest = buildUpdateRequest(fieldMappings, debouncedFields);
     const serialized = JSON.stringify(updateRequest);
 
+    console.log({ updateRequest }, serialized);
+
     if (serialized === lastSavedValue.current) {
       return;
     }
     lastSavedValue.current = serialized;
 
+    console.log("autosaving", { updateRequest });
+
     autosaveMutation.mutate(updateRequest, {
       onSuccess,
-      onError: (error) => mapApiErrorsToForm(error, methods),
+      onError: (error) => {
+        console.log("autosave error", error);
+        return mapApiErrorsToForm(error, methods);
+      },
     });
-  }, [debouncedFields, shouldAutosave, campaignId, autosaveMutation.isPending]);
+  }, [debouncedFields, shouldAutosave, campaignId, autosaveMutation.isPending, fieldMappings]);
 
   return {
     isAutosaving: autosaveMutation.isPending,

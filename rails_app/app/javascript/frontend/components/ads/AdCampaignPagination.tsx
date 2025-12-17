@@ -7,7 +7,7 @@ import {
   selectSubstep,
   useWorkflowSteps,
 } from "@context/WorkflowStepsProvider";
-import { useAdvanceCampaign, useBackCampaign } from "@hooks/useCampaign";
+import { useAdvanceCampaign, useBackCampaign } from "@api/campaigns.hooks";
 import { usePage } from "@inertiajs/react";
 import { selectValidate, useFormRegistry } from "@stores/formRegistry";
 import { twMerge } from "tailwind-merge";
@@ -47,7 +47,6 @@ export default function AdCampaignPagination({ className }: { className?: string
       },
       onError: (err) => {
         console.error(err);
-        // TODO: Send errors to UI via FormProvider
       },
     });
   };
@@ -59,7 +58,6 @@ export default function AdCampaignPagination({ className }: { className?: string
       },
       onError: (err) => {
         console.error(err);
-        // TODO: Send errors to UI via FormProvider
       },
     });
   };

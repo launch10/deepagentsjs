@@ -1,5 +1,4 @@
 import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
-import type { AxiosError } from "axios";
 import { parseFieldNameFromApi } from "./fieldNameParser";
 
 /**
@@ -10,6 +9,38 @@ export type ApiErrorResponse = {
   errors?: Record<string, string[]>;
   error?: string;
 };
+
+/**
+ * Type guard to check if error has axios-like response structure
+ */
+function hasAxiosResponse(error: unknown): error is { response?: { data?: unknown } } {
+  return typeof error === "object" && error !== null && "response" in error;
+}
+
+/**
+ * Extracts API error response from various error types.
+ * Handles both Axios errors (with response.data) and service errors (with message containing JSON).
+ */
+function extractErrorResponse(error: unknown): ApiErrorResponse | undefined {
+  // Handle Axios-style errors
+  if (hasAxiosResponse(error)) {
+    return error.response?.data as ApiErrorResponse | undefined;
+  }
+
+  // Handle service errors that embed JSON in the message
+  if (error instanceof Error && error.message) {
+    const jsonMatch = error.message.match(/:\s*(\{.*\})$/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[1]) as ApiErrorResponse;
+      } catch {
+        // Not valid JSON, ignore
+      }
+    }
+  }
+
+  return undefined;
+}
 
 /**
  * Maps API validation errors to react-hook-form field errors.
@@ -23,10 +54,10 @@ export type ApiErrorResponse = {
  * ```
  */
 export function mapApiErrorsToForm<TFormData extends FieldValues>(
-  error: AxiosError<unknown>,
+  error: unknown,
   methods: UseFormReturn<TFormData>
 ): void {
-  const errorResponse = error.response?.data as ApiErrorResponse | undefined;
+  const errorResponse = extractErrorResponse(error);
 
   if (!errorResponse?.errors || typeof errorResponse.errors !== "object") {
     return;
