@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe GoogleAds::AccountManager do
-  let(:account) { create(:account, name: "Test Account", google_customer_id: nil) }
+  let(:account) { create(:account, name: "Test Account", google_customer_id: nil, google_email_address: "test@example.com") }
 
   before { mock_google_ads_client }
 
@@ -19,7 +19,8 @@ RSpec.describe GoogleAds::AccountManager do
       it "creates a new customer client" do
         expect(@mock_customer_service).to receive(:create_customer_client).with(
           customer_id: "1234567890",
-          customer_client: anything
+          customer_client: anything,
+          email_address: "test@example.com"
         )
         described_class.create_client_account(account)
       end
@@ -111,7 +112,7 @@ RSpec.describe GoogleAds::AccountManager do
     end
 
     context "when account has canceled google_customer_id" do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: "123456") }
+      let(:account) { create(:account, name: "Test Account", google_customer_id: "123456", google_email_address: "canceled@example.com") }
 
       before do
         allow(@mock_google_ads_service).to receive(:search)

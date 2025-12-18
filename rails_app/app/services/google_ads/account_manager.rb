@@ -40,6 +40,10 @@ module GoogleAds
         return customer
       end
 
+      unless account.google_email_address.present?
+        raise ArgumentError, "Cannot create Google Ads account without google_email_address"
+      end
+
       customer = @client.resource.customer do |c|
         c.descriptive_name = account.name
         c.currency_code = account.try(:currency_code).presence || "USD"
@@ -49,7 +53,8 @@ module GoogleAds
 
       response = @client.service.customer.create_customer_client(
         customer_id: GoogleAds.config[:login_customer_id],
-        customer_client: customer
+        customer_client: customer,
+        email_address: account.google_email_address
       )
 
       customer_id = response.resource_name.split("/").last

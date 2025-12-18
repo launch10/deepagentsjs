@@ -2,19 +2,20 @@
 #
 # Table name: accounts
 #
-#  id                  :bigint           not null, primary key
-#  account_users_count :integer          default(0)
-#  billing_email       :string
-#  domain              :string
-#  extra_billing_info  :text
-#  name                :string           not null
-#  personal            :boolean          default(FALSE)
-#  subdomain           :string
-#  time_zone           :string           default("America/New_York")
-#  created_at          :datetime         not null
-#  updated_at          :datetime         not null
-#  google_customer_id  :string
-#  owner_id            :bigint
+#  id                   :bigint           not null, primary key
+#  account_users_count  :integer          default(0)
+#  billing_email        :string
+#  domain               :string
+#  extra_billing_info   :text
+#  google_email_address :string
+#  name                 :string           not null
+#  personal             :boolean          default(FALSE)
+#  subdomain            :string
+#  time_zone            :string           default("America/New_York")
+#  created_at           :datetime         not null
+#  updated_at           :datetime         not null
+#  google_customer_id   :string
+#  owner_id             :bigint
 #
 # Indexes
 #
