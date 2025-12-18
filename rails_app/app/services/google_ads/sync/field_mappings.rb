@@ -120,8 +120,13 @@ module GoogleAds
         field_mapping.each do |_our_key, mapping|
           their_field = mapping[:their_field]
           value = if google_resource.is_a?(Hash)
-            next unless google_resource.key?(their_field) || google_resource.key?(their_field.to_s)
-            google_resource[their_field] || google_resource[their_field.to_s]
+            if google_resource.key?(their_field)
+              google_resource[their_field]
+            elsif google_resource.key?(their_field.to_s)
+              google_resource[their_field.to_s]
+            else
+              next
+            end
           else
             next unless google_resource.respond_to?(their_field)
             google_resource.send(their_field)

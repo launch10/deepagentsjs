@@ -35,8 +35,7 @@ RSpec.describe GoogleAds::Budget do
         double("Services",
           customer: @mock_customer_service,
           google_ads: @mock_google_ads_service,
-          campaign_budget: mock_budget_service
-        )
+          campaign_budget: mock_budget_service)
       )
     end
 
@@ -102,8 +101,7 @@ RSpec.describe GoogleAds::Budget do
         double("Services",
           customer: @mock_customer_service,
           google_ads: @mock_google_ads_service,
-          campaign_budget: mock_budget_service
-        )
+          campaign_budget: mock_budget_service)
       )
     end
 
@@ -166,8 +164,7 @@ RSpec.describe GoogleAds::Budget do
         double("Services",
           customer: @mock_customer_service,
           google_ads: @mock_google_ads_service,
-          campaign_budget: mock_budget_service
-        )
+          campaign_budget: mock_budget_service)
       )
     end
 
@@ -203,8 +200,7 @@ RSpec.describe GoogleAds::Budget do
         double("Services",
           customer: @mock_customer_service,
           google_ads: @mock_google_ads_service,
-          campaign_budget: mock_budget_service
-        )
+          campaign_budget: mock_budget_service)
       )
       allow(@mock_operation).to receive(:create_resource).and_return(mock_create_resource)
     end
@@ -327,8 +323,7 @@ RSpec.describe GoogleAds::Budget do
         double("Services",
           customer: @mock_customer_service,
           google_ads: @mock_google_ads_service,
-          campaign_budget: mock_budget_service
-        )
+          campaign_budget: mock_budget_service)
       )
     end
 
@@ -387,8 +382,7 @@ RSpec.describe GoogleAds::Budget do
         double("Services",
           customer: @mock_customer_service,
           google_ads: @mock_google_ads_service,
-          campaign_budget: mock_budget_service
-        )
+          campaign_budget: mock_budget_service)
       )
       allow(@mock_operation).to receive(:create_resource).and_return(mock_create_resource)
     end
