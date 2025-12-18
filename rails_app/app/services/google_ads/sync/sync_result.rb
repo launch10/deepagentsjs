@@ -34,7 +34,7 @@ module GoogleAds
       end
 
       def success?
-        [:created, :updated, :unchanged].include?(action) && synced?
+        [:created, :updated, :unchanged].include?(action)
       end
 
       def synced?

@@ -87,18 +87,18 @@ module GoogleAds
         return error_result(:budget, e)
       end
 
-      Sync::SyncResult.new(
-        resource_type: :campaign_budget,
-        resource_name: response.results.first.resource_name,
-        action: :created,
-        comparisons: []
-      )
+      resource_name = response.results.first.resource_name
+      budget_id = resource_name.split("/").last.to_i
+      local_resource.google_budget_id = budget_id
+
+      verify_sync(:created, resource_name)
     end
 
     def update_budget
       comparisons = build_comparisons
+      resource_name = remote_resource.resource_name
 
-      operation = client.operation.update_resource.campaign_budget(remote_resource.resource_name) do |budget|
+      operation = client.operation.update_resource.campaign_budget(resource_name) do |budget|
         comparisons.each do |comparison|
           next if comparison.values_match?
           case comparison.their_field
@@ -117,12 +117,25 @@ module GoogleAds
         operations: [operation]
       )
 
+      verify_sync(:updated, resource_name)
+    end
+
+    def verify_sync(action, resource_name)
+      clear_memoization
+      fresh_remote = fetch_remote
+
       Sync::SyncResult.new(
         resource_type: :campaign_budget,
-        resource_name: remote_resource.resource_name,
-        action: :updated,
-        comparisons: comparisons
+        resource_name: resource_name,
+        action: action,
+        comparisons: build_comparisons
       )
+    end
+
+    def clear_memoization
+      flush_cache(:remote_resource)
+      flush_cache(:synced?)
+      flush_cache(:sync_result)
     end
   end
 end
