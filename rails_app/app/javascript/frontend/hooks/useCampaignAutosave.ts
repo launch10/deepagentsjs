@@ -1,10 +1,9 @@
 import { useEffect, useRef } from "react";
-import { usePage } from "@inertiajs/react";
 import type { UseFormReturn, FieldValues, Path } from "react-hook-form";
-import type { CampaignProps } from "@components/ads/Sidebar/WorkflowBuddy/ad-campaign.types";
 import { useAutosaveCampaign, type CampaignUpdateRequest } from "@api/campaigns.hooks";
 import { useDebounce } from "./useDebounce";
 import { mapApiErrorsToForm } from "@helpers/formErrorMapper";
+import { useAdsChatState } from "./useAdsChat";
 
 // ============================================================================
 // Types
@@ -108,13 +107,14 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
   onSuccess,
   enabled,
 }: UseCampaignAutosaveOptions<TFormData>): UseCampaignAutosaveReturn {
-  const campaignId = usePage<CampaignProps>().props.campaign?.id;
+  const campaignId = useAdsChatState("campaignId");
   const autosaveMutation = useAutosaveCampaign(campaignId);
 
   const isInitialMount = useRef(true);
   const lastSavedValue = useRef<string | null>(null);
 
-  const watchedFields = fieldMappings.map((m) => methods.watch(m.formField));
+  const formFieldNames = fieldMappings.map((m) => m.formField);
+  const watchedFields = methods.watch(formFieldNames);
   const debouncedFields = useDebounce(watchedFields, debounceMs);
   const shouldAutosave = enabled ?? !!campaignId;
 

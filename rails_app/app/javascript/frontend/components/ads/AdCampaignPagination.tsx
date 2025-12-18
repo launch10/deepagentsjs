@@ -8,11 +8,10 @@ import {
   useWorkflowSteps,
 } from "@context/WorkflowStepsProvider";
 import { useAdvanceCampaign, useBackCampaign } from "@api/campaigns.hooks";
-import { usePage } from "@inertiajs/react";
 import { selectValidate, useFormRegistry } from "@stores/formRegistry";
 import { twMerge } from "tailwind-merge";
 import { Spinner } from "../ui/spinner";
-import type { CampaignProps } from "./Sidebar/WorkflowBuddy/ad-campaign.types";
+import { useAdsChatState } from "@hooks/useAdsChat";
 interface AdCampaignPaginationProps {
   className?: string;
   handleBack: () => void;
@@ -24,7 +23,7 @@ interface AdCampaignPaginationProps {
 
 export default function AdCampaignPagination({ className }: { className?: string }) {
   const validateForm = useFormRegistry(selectValidate);
-  const campaignId = usePage<CampaignProps>().props.campaign?.id;
+  const campaignId = useAdsChatState("campaignId");
 
   const substep = useWorkflowSteps(selectSubstep);
   const workflowContinue = useWorkflowSteps(selectContinue)!;
@@ -82,6 +81,8 @@ export function AdCampaignPaginationView({
   canGoForward,
   isPending,
 }: AdCampaignPaginationProps) {
+  const campaignId = useAdsChatState("campaignId");
+
   return (
     <div
       className={twMerge(
@@ -91,10 +92,14 @@ export function AdCampaignPaginationView({
       )}
     >
       <div className="flex justify-between items-center">
-        <Button variant="link" onClick={handleBack} disabled={!canGoBack || isPending}>
+        <Button
+          variant="link"
+          onClick={handleBack}
+          disabled={!campaignId || !canGoBack || isPending}
+        >
           Previous Step
         </Button>
-        <Button onClick={handleContinue} disabled={!canGoForward || isPending}>
+        <Button onClick={handleContinue} disabled={!campaignId || !canGoForward || isPending}>
           {isPending && <Spinner />}
           Continue
         </Button>
