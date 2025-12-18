@@ -7,7 +7,15 @@ module PlatformSettings
       setter_name = "#{platform}_#{attribute}="
 
       define_method(getter_name) do
-        platform_settings.dig(platform.to_s, attribute.to_s)
+        value = platform_settings.dig(platform.to_s, attribute.to_s)
+        if value.nil? && options[:default]
+          default_value = options[:default].respond_to?(:call) ? options[:default].call : options[:default]
+          send(setter_name, default_value)
+          save! if persisted?
+          default_value
+        else
+          value
+        end
       end
 
       define_method(setter_name) do |value|

@@ -5,7 +5,7 @@ module GoogleAds
       MICROS_TO_CENTS = ->(micros) { micros / 10_000 }
       DOLLARS_TO_MICROS = ->(dollars) { dollars * 1_000_000 }
       MICROS_TO_DOLLARS = ->(micros) { micros / 1_000_000.0 }
-      IDENTITY = ->(value) { value }
+      ITSELF = ->(value) { value }
 
       BUDGET_FIELDS = {
         daily_budget_cents: {
@@ -13,6 +13,11 @@ module GoogleAds
           their_field: :amount_micros,
           transform: CENTS_TO_MICROS,
           reverse_transform: MICROS_TO_CENTS
+        },
+        name: {
+          our_field: :google_budget_name,
+          their_field: :name,
+          transform: ITSELF
         }
       }.freeze
 
@@ -20,22 +25,22 @@ module GoogleAds
         name: {
           our_field: :name,
           their_field: :name,
-          transform: IDENTITY
+          transform: ITSELF
         },
         status: {
           our_field: :status,
           their_field: :status,
-          transform: IDENTITY
+          transform: ITSELF
         },
         advertising_channel_type: {
           our_field: :advertising_channel_type,
           their_field: :advertising_channel_type,
-          transform: IDENTITY
+          transform: ITSELF
         },
         bidding_strategy_type: {
           our_field: :bidding_strategy_type,
           their_field: :bidding_strategy_type,
-          transform: IDENTITY
+          transform: ITSELF
         }
       }.freeze
 
@@ -43,17 +48,17 @@ module GoogleAds
         name: {
           our_field: :name,
           their_field: :name,
-          transform: IDENTITY
+          transform: ITSELF
         },
         status: {
           our_field: :status,
           their_field: :status,
-          transform: IDENTITY
+          transform: ITSELF
         },
         type: {
           our_field: :type,
           their_field: :type,
-          transform: IDENTITY
+          transform: ITSELF
         },
         cpc_bid_cents: {
           our_field: :cpc_bid_cents,
@@ -64,16 +69,17 @@ module GoogleAds
         cpc_bid_micros: {
           our_field: :cpc_bid_micros,
           their_field: :cpc_bid_micros,
-          transform: IDENTITY
+          transform: ITSELF
         }
       }.freeze
 
       def self.to_google(resource)
         field_mapping = self.for(resource.class)
         result = {}
-        resource.as_json.each do |key, value|
-          mapping = field_mapping[key.to_sym]
-          next unless mapping
+        field_mapping.each do |_key, mapping|
+          our_field = mapping[:our_field]
+          value = resource.respond_to?(our_field) ? resource.send(our_field) : nil
+          next if value.nil?
 
           result[mapping[:their_field]] = mapping[:transform].call(value)
         end
@@ -93,7 +99,7 @@ module GoogleAds
             google_resource.send(their_field)
           end
 
-          reverse_transform = mapping[:reverse_transform] || IDENTITY
+          reverse_transform = mapping[:reverse_transform] || ITSELF
           result[mapping[:our_field]] = reverse_transform.call(value)
         end
         result

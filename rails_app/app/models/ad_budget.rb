@@ -22,6 +22,7 @@ class AdBudget < ApplicationRecord
   include GoogleMappable
   belongs_to :campaign
   platform_setting :google, :budget_id
+  platform_setting :google, :budget_name, default: -> { Time.now.utc.strftime("%Y-%m-%d %H:%M:%S")}
 
   acts_as_paranoid
 end

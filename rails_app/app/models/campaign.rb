@@ -112,4 +112,8 @@ class Campaign < ApplicationRecord
   def thread_id
     chat&.thread_id
   end
+
+  def google_customer_id
+    account&.google_customer_id
+  end
 end
