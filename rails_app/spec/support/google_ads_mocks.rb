@@ -226,6 +226,140 @@ module GoogleAdsMocks
       error_value: :CUSTOMER_CANCELED
     )
   end
+
+  def mock_search_response_with_budget(
+    budget_id: 123,
+    name: "Test Budget",
+    amount_micros: 5_000_000,
+    delivery_method: :STANDARD
+  )
+    budget = double("CampaignBudget",
+      resource_name: "customers/456/campaignBudgets/#{budget_id}",
+      id: budget_id,
+      name: name,
+      amount_micros: amount_micros,
+      delivery_method: delivery_method)
+    row = double("GoogleAdsRow", campaign_budget: budget)
+    [row]
+  end
+
+  def mock_search_response_with_campaign(
+    campaign_id: 789,
+    name: "Test Campaign",
+    status: :PAUSED,
+    advertising_channel_type: :SEARCH,
+    bidding_strategy_type: :MANUAL_CPC
+  )
+    campaign = double("Campaign",
+      resource_name: "customers/456/campaigns/#{campaign_id}",
+      id: campaign_id,
+      name: name,
+      status: status,
+      advertising_channel_type: advertising_channel_type,
+      bidding_strategy_type: bidding_strategy_type)
+    row = double("GoogleAdsRow", campaign: campaign)
+    [row]
+  end
+
+  def mock_search_response_with_ad_group(
+    ad_group_id: 999,
+    name: "Test Ad Group",
+    status: :ENABLED,
+    type: :SEARCH_STANDARD,
+    cpc_bid_micros: 1_000_000
+  )
+    ad_group = double("AdGroup",
+      resource_name: "customers/456/adGroups/#{ad_group_id}",
+      id: ad_group_id,
+      name: name,
+      status: status,
+      type: type,
+      cpc_bid_micros: cpc_bid_micros)
+    row = double("GoogleAdsRow", ad_group: ad_group)
+    [row]
+  end
+
+  def mock_search_response_with_bidding_strategy(
+    strategy_id: 555,
+    name: "Test Strategy",
+    type: :TARGET_CPA,
+    target_cpa_micros: 10_000_000,
+    target_roas: nil
+  )
+    strategy = double("BiddingStrategy",
+      resource_name: "customers/456/biddingStrategies/#{strategy_id}",
+      id: strategy_id,
+      name: name,
+      type: type,
+      target_cpa_micros: target_cpa_micros,
+      target_roas: target_roas)
+    row = double("GoogleAdsRow", bidding_strategy: strategy)
+    [row]
+  end
+
+  def mock_mutate_budget_response(budget_id: 123, customer_id: 456)
+    result = double("MutateCampaignBudgetResult",
+      resource_name: "customers/#{customer_id}/campaignBudgets/#{budget_id}")
+    double("MutateCampaignBudgetsResponse", results: [result])
+  end
+
+  def mock_mutate_campaign_response(campaign_id: 789, customer_id: 456)
+    result = double("MutateCampaignResult",
+      resource_name: "customers/#{customer_id}/campaigns/#{campaign_id}")
+    double("MutateCampaignsResponse", results: [result])
+  end
+
+  def mock_mutate_ad_group_response(ad_group_id: 999, customer_id: 456)
+    result = double("MutateAdGroupResult",
+      resource_name: "customers/#{customer_id}/adGroups/#{ad_group_id}")
+    double("MutateAdGroupsResponse", results: [result])
+  end
+
+  def mock_mutate_bidding_strategy_response(strategy_id: 555, customer_id: 456)
+    result = double("MutateBiddingStrategyResult",
+      resource_name: "customers/#{customer_id}/biddingStrategies/#{strategy_id}")
+    double("MutateBiddingStrategiesResponse", results: [result])
+  end
+
+  def mock_budget_resource
+    double("CampaignBudget").tap do |budget|
+      allow(budget).to receive(:name=)
+      allow(budget).to receive(:amount_micros=)
+      allow(budget).to receive(:delivery_method=)
+    end
+  end
+
+  def mock_campaign_resource
+    double("Campaign").tap do |campaign|
+      allow(campaign).to receive(:name=)
+      allow(campaign).to receive(:status=)
+      allow(campaign).to receive(:advertising_channel_type=)
+      allow(campaign).to receive(:campaign_budget=)
+      allow(campaign).to receive(:bidding_strategy_type=)
+      allow(campaign).to receive(:manual_cpc=)
+      allow(campaign).to receive(:target_spend=)
+      allow(campaign).to receive(:network_settings=)
+    end
+  end
+
+  def mock_ad_group_resource
+    double("AdGroup").tap do |ad_group|
+      allow(ad_group).to receive(:name=)
+      allow(ad_group).to receive(:status=)
+      allow(ad_group).to receive(:type=)
+      allow(ad_group).to receive(:campaign=)
+      allow(ad_group).to receive(:cpc_bid_micros=)
+    end
+  end
+
+  def mock_bidding_strategy_resource
+    double("BiddingStrategy").tap do |strategy|
+      allow(strategy).to receive(:name=)
+      allow(strategy).to receive(:type=)
+      allow(strategy).to receive(:target_cpa=)
+      allow(strategy).to receive(:target_roas=)
+    end
+  end
 end
 
 RSpec.configure do |config|
