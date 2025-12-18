@@ -25,6 +25,19 @@
 #
 class AdKeyword < ApplicationRecord
   include PlatformSettings
+  include GoogleMappable
+  include GoogleSyncable
+
+  platform_setting :google, :criterion_id
+
+  use_google_sync GoogleAds::Keyword
+
+  after_google_sync do |result|
+    if result.resource_name.present?
+      criterion_id = result.resource_name.split("~").last
+      update_column(:platform_settings, platform_settings.deep_merge("google" => { "criterion_id" => criterion_id }))
+    end
+  end
 
   acts_as_paranoid
 
@@ -37,6 +50,4 @@ class AdKeyword < ApplicationRecord
   validates :text, presence: true, length: { maximum: 80 }
   validates :match_type, presence: true, inclusion: { in: MATCH_TYPES }
   validates :position, presence: true
-
-  platform_setting :google, :criterion_id
 end

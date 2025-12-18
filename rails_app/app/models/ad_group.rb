@@ -23,6 +23,16 @@
 class AdGroup < ApplicationRecord
   include PlatformSettings
   include GoogleMappable
+  include GoogleSyncable
+
+  use_google_sync GoogleAds::AdGroup
+
+  after_google_sync do |result|
+    if result.resource_name.present?
+      ad_group_id = result.resource_name.split("/").last.to_i
+      update!(google_ad_group_id: ad_group_id)
+    end
+  end
 
   acts_as_paranoid
 

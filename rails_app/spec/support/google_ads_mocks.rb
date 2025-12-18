@@ -3,6 +3,12 @@ module GoogleAdsMocks
     @mock_client = double("Google::Ads::GoogleAds::GoogleAdsClient")
     @mock_customer_service = double("CustomerService")
     @mock_google_ads_service = double("GoogleAdsService")
+    @mock_campaign_budget_service = double("CampaignBudgetService")
+    @mock_campaign_service = double("CampaignService")
+    @mock_ad_group_service = double("AdGroupService")
+    @mock_bidding_strategy_service = double("BiddingStrategyService")
+    @mock_campaign_criterion_service = double("CampaignCriterionService")
+    @mock_ad_group_criterion_service = double("AdGroupCriterionService")
     @mock_operation = double("Operation")
     @mock_resource = double("Resource")
     @mock_update_resource = double("UpdateResource")
@@ -11,7 +17,15 @@ module GoogleAdsMocks
     allow(GoogleAds).to receive(:config).and_return({ login_customer_id: "1234567890" })
 
     allow(@mock_client).to receive(:service).and_return(
-      double("Services", customer: @mock_customer_service, google_ads: @mock_google_ads_service)
+      double("Services",
+        customer: @mock_customer_service,
+        google_ads: @mock_google_ads_service,
+        campaign_budget: @mock_campaign_budget_service,
+        campaign: @mock_campaign_service,
+        ad_group: @mock_ad_group_service,
+        bidding_strategy: @mock_bidding_strategy_service,
+        campaign_criterion: @mock_campaign_criterion_service,
+        ad_group_criterion: @mock_ad_group_criterion_service)
     )
 
     allow(@mock_client).to receive(:resource).and_return(@mock_resource)
@@ -264,13 +278,14 @@ module GoogleAdsMocks
 
   def mock_search_response_with_ad_group(
     ad_group_id: 999,
+    customer_id: 456,
     name: "Test Ad Group",
     status: :ENABLED,
     type: :SEARCH_STANDARD,
     cpc_bid_micros: 1_000_000
   )
     ad_group = double("AdGroup",
-      resource_name: "customers/456/adGroups/#{ad_group_id}",
+      resource_name: "customers/#{customer_id}/adGroups/#{ad_group_id}",
       id: ad_group_id,
       name: name,
       status: status,
@@ -367,7 +382,8 @@ module GoogleAdsMocks
     campaign_id: 789,
     customer_id: 456,
     location_id: 21167,
-    negative: false
+    negative: false,
+    bid_modifier: nil
   )
     location = double("LocationInfo", geo_target_constant: "geoTargetConstants/#{location_id}")
     criterion = double("CampaignCriterion",
@@ -375,7 +391,8 @@ module GoogleAdsMocks
       criterion_id: criterion_id,
       campaign: "customers/#{customer_id}/campaigns/#{campaign_id}",
       location: location,
-      negative: negative)
+      negative: negative,
+      bid_modifier: bid_modifier)
     row = double("GoogleAdsRow", campaign_criterion: criterion)
     [row]
   end
@@ -391,6 +408,111 @@ module GoogleAdsMocks
       allow(criterion).to receive(:campaign=)
       allow(criterion).to receive(:location=)
       allow(criterion).to receive(:negative=)
+      allow(criterion).to receive(:bid_modifier=)
+    end
+  end
+
+  def mock_location_info_resource
+    double("LocationInfo").tap do |location|
+      allow(location).to receive(:geo_target_constant=)
+    end
+  end
+
+  def mock_search_response_with_ad_schedule(
+    criterion_id: 222,
+    campaign_id: 789,
+    customer_id: 456,
+    day_of_week: :MONDAY,
+    start_hour: 9,
+    start_minute: :ZERO,
+    end_hour: 17,
+    end_minute: :ZERO,
+    bid_modifier: nil
+  )
+    ad_schedule = double("AdScheduleInfo",
+      day_of_week: day_of_week,
+      start_hour: start_hour,
+      start_minute: start_minute,
+      end_hour: end_hour,
+      end_minute: end_minute
+    )
+    criterion = double("CampaignCriterion",
+      resource_name: "customers/#{customer_id}/campaignCriteria/#{campaign_id}~#{criterion_id}",
+      criterion_id: criterion_id,
+      campaign: "customers/#{customer_id}/campaigns/#{campaign_id}",
+      ad_schedule: ad_schedule,
+      bid_modifier: bid_modifier
+    )
+    row = double("GoogleAdsRow", campaign_criterion: criterion)
+    [row]
+  end
+
+  def mock_ad_schedule_info_resource
+    double("AdScheduleInfo").tap do |schedule|
+      allow(schedule).to receive(:day_of_week=)
+      allow(schedule).to receive(:start_hour=)
+      allow(schedule).to receive(:start_minute=)
+      allow(schedule).to receive(:end_hour=)
+      allow(schedule).to receive(:end_minute=)
+    end
+  end
+
+  def mock_campaign_criterion_with_ad_schedule_resource
+    double("CampaignCriterion").tap do |criterion|
+      allow(criterion).to receive(:campaign=)
+      allow(criterion).to receive(:ad_schedule=)
+      allow(criterion).to receive(:bid_modifier=)
+    end
+  end
+
+  def mock_search_response_with_keyword(
+    criterion_id: 333,
+    ad_group_id: 999,
+    customer_id: 456,
+    keyword_text: "test keyword",
+    match_type: :BROAD,
+    status: :ENABLED,
+    cpc_bid_micros: nil,
+    negative: false
+  )
+    keyword = double("KeywordInfo",
+      text: keyword_text,
+      match_type: match_type
+    )
+    criterion = double("AdGroupCriterion",
+      resource_name: "customers/#{customer_id}/adGroupCriteria/#{ad_group_id}~#{criterion_id}",
+      criterion_id: criterion_id,
+      ad_group: "customers/#{customer_id}/adGroups/#{ad_group_id}",
+      keyword: keyword,
+      status: status,
+      cpc_bid_micros: cpc_bid_micros,
+      negative: negative
+    )
+    row = double("GoogleAdsRow", ad_group_criterion: criterion)
+    [row]
+  end
+
+  def mock_mutate_ad_group_criterion_response(criterion_id: 333, ad_group_id: 999, customer_id: 456)
+    result = double("MutateAdGroupCriterionResult",
+      resource_name: "customers/#{customer_id}/adGroupCriteria/#{ad_group_id}~#{criterion_id}"
+    )
+    double("MutateAdGroupCriteriaResponse", results: [result])
+  end
+
+  def mock_ad_group_criterion_resource
+    double("AdGroupCriterion").tap do |criterion|
+      allow(criterion).to receive(:ad_group=)
+      allow(criterion).to receive(:keyword=)
+      allow(criterion).to receive(:status=)
+      allow(criterion).to receive(:cpc_bid_micros=)
+      allow(criterion).to receive(:negative=)
+    end
+  end
+
+  def mock_keyword_info_resource
+    double("KeywordInfo").tap do |keyword|
+      allow(keyword).to receive(:text=)
+      allow(keyword).to receive(:match_type=)
     end
   end
 end

@@ -115,6 +115,72 @@ module GoogleAds
         }
       }.freeze
 
+      DAY_OF_WEEK_TO_SYMBOL = ->(day) {
+        {
+          "Monday" => :MONDAY,
+          "Tuesday" => :TUESDAY,
+          "Wednesday" => :WEDNESDAY,
+          "Thursday" => :THURSDAY,
+          "Friday" => :FRIDAY,
+          "Saturday" => :SATURDAY,
+          "Sunday" => :SUNDAY
+        }[day]
+      }
+
+      MINUTE_TO_SYMBOL = ->(minute) {
+        { 0 => :ZERO, 15 => :FIFTEEN, 30 => :THIRTY, 45 => :FORTY_FIVE }[minute] || :ZERO
+      }
+
+      AD_SCHEDULE_FIELDS = {
+        day_of_week: {
+          our_field: :day_of_week,
+          their_field: :day_of_week,
+          transform: DAY_OF_WEEK_TO_SYMBOL,
+          nested_field: :ad_schedule
+        },
+        start_hour: {
+          our_field: :start_hour,
+          their_field: :start_hour,
+          transform: ITSELF,
+          nested_field: :ad_schedule
+        },
+        start_minute: {
+          our_field: :start_minute,
+          their_field: :start_minute,
+          transform: MINUTE_TO_SYMBOL,
+          nested_field: :ad_schedule
+        },
+        end_hour: {
+          our_field: :end_hour,
+          their_field: :end_hour,
+          transform: ITSELF,
+          nested_field: :ad_schedule
+        },
+        end_minute: {
+          our_field: :end_minute,
+          their_field: :end_minute,
+          transform: MINUTE_TO_SYMBOL,
+          nested_field: :ad_schedule
+        }
+      }.freeze
+
+      MATCH_TYPE_TO_SYMBOL = ->(match_type) { match_type.upcase.to_sym }
+
+      KEYWORD_FIELDS = {
+        text: {
+          our_field: :text,
+          their_field: :text,
+          transform: ITSELF,
+          nested_field: :keyword
+        },
+        match_type: {
+          our_field: :match_type,
+          their_field: :match_type,
+          transform: MATCH_TYPE_TO_SYMBOL,
+          nested_field: :keyword
+        }
+      }.freeze
+
       def self.to_google(resource)
         field_mapping = self.for(resource.class)
         result = {}
@@ -158,12 +224,16 @@ module GoogleAds
           BUDGET_FIELDS
         when ::Campaign.name
           CAMPAIGN_FIELDS
-        when AdGroup.name
+        when ::AdGroup.name
           AD_GROUP_FIELDS
         when AdsAccount.name
           ADS_ACCOUNT_FIELDS
         when AdLocationTarget.name
           LOCATION_TARGET_FIELDS
+        when ::AdSchedule.name
+          AD_SCHEDULE_FIELDS
+        when ::AdKeyword.name
+          KEYWORD_FIELDS
         else
           raise ArgumentError, "Unknown resource type: #{resource_type}"
         end

@@ -12,8 +12,7 @@ RSpec.describe GoogleAds::LocationTarget do
       location_name: "Chicago",
       country_code: "US",
       targeted: true,
-      platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/21167" } }
-    )
+      platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/21167" } })
   end
   let(:location_target_syncer) { described_class.new(ad_location_target) }
 
@@ -290,7 +289,7 @@ RSpec.describe GoogleAds::LocationTarget do
         ad_location_target.save!
       end
 
-      it 'deletes and recreates the criterion since campaign criteria cannot be updated' do
+      it 'updates the criterion with the new negative value' do
         mismatched_response = mock_search_response_with_campaign_criterion(
           criterion_id: 111,
           campaign_id: 789,
@@ -298,8 +297,8 @@ RSpec.describe GoogleAds::LocationTarget do
           location_id: 21167,
           negative: false
         )
-        recreated_criterion_response = mock_search_response_with_campaign_criterion(
-          criterion_id: 333,
+        synced_response = mock_search_response_with_campaign_criterion(
+          criterion_id: 111,
           campaign_id: 789,
           customer_id: 1234567890,
           location_id: 21167,
@@ -307,19 +306,14 @@ RSpec.describe GoogleAds::LocationTarget do
         )
 
         allow(@mock_google_ads_service).to receive(:search)
-          .and_return(mismatched_response, recreated_criterion_response)
+          .and_return(mismatched_response, synced_response)
 
         mock_criterion = mock_campaign_criterion_resource
-        mock_location_info = double("LocationInfo")
-        allow(mock_location_info).to receive(:geo_target_constant=)
-        allow(@mock_resource).to receive(:location_info).and_yield(mock_location_info).and_return(mock_location_info)
-        allow(mock_create_resource).to receive(:campaign_criterion).and_yield(mock_criterion)
+        allow(@mock_update_resource).to receive(:campaign_criterion)
+          .with("customers/1234567890/campaignCriteria/789~111")
+          .and_yield(mock_criterion)
 
-        remove_operation = double("RemoveOperation")
-        allow(@mock_operation).to receive(:remove_resource).and_return(remove_operation)
-        allow(remove_operation).to receive(:campaign_criterion).and_return("remove_op")
-
-        mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 333, campaign_id: 789, customer_id: 1234567890)
+        mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 111, campaign_id: 789, customer_id: 1234567890)
         allow(mock_campaign_criterion_service).to receive(:mutate_campaign_criteria)
           .and_return(mutate_response)
 

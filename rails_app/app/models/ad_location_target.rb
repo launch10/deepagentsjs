@@ -202,5 +202,4 @@ class AdLocationTarget < ApplicationRecord
     errors.add(:city, "can't be blank") if city.blank?
     errors.add(:country_code, "can't be blank") if country_code.blank?
   end
-
 end

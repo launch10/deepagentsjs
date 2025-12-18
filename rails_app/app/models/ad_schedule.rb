@@ -29,6 +29,8 @@
 #
 class AdSchedule < ApplicationRecord
   include PlatformSettings
+  include GoogleMappable
+  include GoogleSyncable
 
   belongs_to :campaign
   has_one :ads_account, through: :campaign
@@ -36,6 +38,15 @@ class AdSchedule < ApplicationRecord
   acts_as_paranoid
 
   platform_setting :google, :criterion_id
+
+  use_google_sync GoogleAds::AdSchedule
+
+  after_google_sync do |result|
+    if result.resource_name.present?
+      criterion_id = result.resource_name.split("~").last
+      update_column(:platform_settings, platform_settings.deep_merge("google" => { "criterion_id" => criterion_id }))
+    end
+  end
 
   DAYS_OF_WEEK = %w[Monday Tuesday Wednesday Thursday Friday Saturday Sunday].freeze
 

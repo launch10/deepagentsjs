@@ -1,5 +1,22 @@
 module GoogleAds
-  class LocationTarget < Sync::Syncable
+  class AdSchedule < Sync::Syncable
+    DAYS_OF_WEEK_MAP = {
+      "Monday" => :MONDAY,
+      "Tuesday" => :TUESDAY,
+      "Wednesday" => :WEDNESDAY,
+      "Thursday" => :THURSDAY,
+      "Friday" => :FRIDAY,
+      "Saturday" => :SATURDAY,
+      "Sunday" => :SUNDAY
+    }.freeze
+
+    MINUTES_MAP = {
+      0 => :ZERO,
+      15 => :FIFTEEN,
+      30 => :THIRTY,
+      45 => :FORTY_FIVE
+    }.freeze
+
     def campaign
       local_resource.campaign
     end
@@ -43,7 +60,7 @@ module GoogleAds
       return nil unless remote_criterion_id.present?
 
       query = %(
-        SELECT campaign_criterion.resource_name, campaign_criterion.criterion_id, campaign_criterion.campaign, campaign_criterion.location.geo_target_constant, campaign_criterion.negative
+        SELECT campaign_criterion.resource_name, campaign_criterion.criterion_id, campaign_criterion.campaign, campaign_criterion.ad_schedule.day_of_week, campaign_criterion.ad_schedule.start_hour, campaign_criterion.ad_schedule.start_minute, campaign_criterion.ad_schedule.end_hour, campaign_criterion.ad_schedule.end_minute, campaign_criterion.bid_modifier
         FROM campaign_criterion
         WHERE campaign_criterion.criterion_id = #{remote_criterion_id}
         AND campaign_criterion.campaign = 'customers/#{google_customer_id}/campaigns/#{google_campaign_id}'
@@ -68,7 +85,7 @@ module GoogleAds
       return sync_result if synced?
 
       if remote_resource
-        update_criterion
+        recreate_criterion
       else
         create_criterion
       end
@@ -77,7 +94,7 @@ module GoogleAds
     private
 
     def remote_criterion_id
-      local_resource.google_remote_criterion_id
+      local_resource.google_criterion_id
     end
     memoize :remote_criterion_id
 
@@ -93,13 +110,29 @@ module GoogleAds
       "customers/#{google_customer_id}/campaigns/#{google_campaign_id}"
     end
 
+    def google_day_of_week
+      DAYS_OF_WEEK_MAP[local_resource.day_of_week]
+    end
+
+    def google_start_minute
+      MINUTES_MAP[local_resource.start_minute] || :ZERO
+    end
+
+    def google_end_minute
+      MINUTES_MAP[local_resource.end_minute] || :ZERO
+    end
+
     def create_criterion
       operation = client.operation.create_resource.campaign_criterion do |cc|
         cc.campaign = campaign_resource_name
-        cc.location = client.resource.location_info do |li|
-          li.geo_target_constant = local_resource.google_criterion_id
+        cc.ad_schedule = client.resource.ad_schedule_info do |as|
+          as.day_of_week = google_day_of_week
+          as.start_hour = local_resource.start_hour
+          as.start_minute = google_start_minute
+          as.end_hour = local_resource.end_hour
+          as.end_minute = google_end_minute
         end
-        cc.negative = !local_resource.targeted
+        cc.bid_modifier = local_resource.bid_modifier if local_resource.bid_modifier.present?
       end
 
       begin
@@ -113,33 +146,38 @@ module GoogleAds
 
       resource_name = response.results.first.resource_name
       criterion_id = resource_name.split("~").last.to_i
-      local_resource.google_remote_criterion_id = criterion_id
+      local_resource.google_criterion_id = criterion_id
 
       verify_sync(:created, resource_name)
     end
 
-    def update_criterion
-      comparisons = build_comparisons
-      resource_name = remote_resource.resource_name
+    def recreate_criterion
+      remove_operation = client.operation.remove_resource.campaign_criterion(remote_resource.resource_name)
 
-      operation = client.operation.update_resource.campaign_criterion(resource_name) do |cc|
-        comparisons.each do |comparison|
-          next if comparison.values_match?
-          case comparison.their_field
-          when :negative
-            cc.negative = comparison.transformed_our_value
-          end
+      create_operation = client.operation.create_resource.campaign_criterion do |cc|
+        cc.campaign = campaign_resource_name
+        cc.ad_schedule = client.resource.ad_schedule_info do |as|
+          as.day_of_week = google_day_of_week
+          as.start_hour = local_resource.start_hour
+          as.start_minute = google_start_minute
+          as.end_hour = local_resource.end_hour
+          as.end_minute = google_end_minute
         end
+        cc.bid_modifier = local_resource.bid_modifier if local_resource.bid_modifier.present?
       end
 
       begin
-        client.service.campaign_criterion.mutate_campaign_criteria(
+        response = client.service.campaign_criterion.mutate_campaign_criteria(
           customer_id: google_customer_id,
-          operations: [operation]
+          operations: [remove_operation, create_operation]
         )
       rescue => e
         return error_result(:campaign_criterion, e)
       end
+
+      resource_name = response.results.last.resource_name
+      criterion_id = resource_name.split("~").last.to_i
+      local_resource.google_criterion_id = criterion_id
 
       verify_sync(:updated, resource_name)
     end

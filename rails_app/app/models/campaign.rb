@@ -55,7 +55,7 @@ class Campaign < ApplicationRecord
   after_google_sync do |result|
     if result.resource_name.present?
       campaign_id = result.resource_name.split("/").last
-      update(:platform_settings, platform_settings.deep_merge("google" => { "campaign_id" => campaign_id }))
+      update_column(:platform_settings, platform_settings.deep_merge("google" => { "campaign_id" => campaign_id }))
     end
   end
 

@@ -1,7 +1,11 @@
 module GoogleAds
-  class LocationTarget < Sync::Syncable
+  class Keyword < Sync::Syncable
+    def ad_group
+      local_resource.ad_group
+    end
+
     def campaign
-      local_resource.campaign
+      ad_group.campaign
     end
 
     def fetch_remote
@@ -43,21 +47,22 @@ module GoogleAds
       return nil unless remote_criterion_id.present?
 
       query = %(
-        SELECT campaign_criterion.resource_name, campaign_criterion.criterion_id, campaign_criterion.campaign, campaign_criterion.location.geo_target_constant, campaign_criterion.negative
-        FROM campaign_criterion
-        WHERE campaign_criterion.criterion_id = #{remote_criterion_id}
-        AND campaign_criterion.campaign = 'customers/#{google_customer_id}/campaigns/#{google_campaign_id}'
+        SELECT ad_group_criterion.resource_name, ad_group_criterion.criterion_id, ad_group_criterion.ad_group, ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type, ad_group_criterion.status
+        FROM ad_group_criterion
+        WHERE ad_group_criterion.criterion_id = #{remote_criterion_id}
+        AND ad_group_criterion.ad_group = 'customers/#{google_customer_id}/adGroups/#{google_ad_group_id}'
+        AND ad_group_criterion.type = 'KEYWORD'
       )
 
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
-      results.first&.campaign_criterion
+      results.first&.ad_group_criterion
     end
 
     def sync_result
-      return not_found_result(:campaign_criterion) unless remote_resource
+      return not_found_result(:ad_group_criterion) unless remote_resource
 
       Sync::SyncResult.new(
-        resource_type: :campaign_criterion,
+        resource_type: :ad_group_criterion,
         resource_name: remote_resource.resource_name,
         action: :unchanged,
         comparisons: build_comparisons
@@ -77,7 +82,7 @@ module GoogleAds
     private
 
     def remote_criterion_id
-      local_resource.google_remote_criterion_id
+      local_resource.google_criterion_id
     end
     memoize :remote_criterion_id
 
@@ -85,35 +90,36 @@ module GoogleAds
       campaign.google_customer_id.to_s
     end
 
-    def google_campaign_id
-      campaign.google_campaign_id.to_s
+    def google_ad_group_id
+      ad_group.google_ad_group_id.to_s
     end
 
-    def campaign_resource_name
-      "customers/#{google_customer_id}/campaigns/#{google_campaign_id}"
+    def ad_group_resource_name
+      "customers/#{google_customer_id}/adGroups/#{google_ad_group_id}"
     end
 
     def create_criterion
-      operation = client.operation.create_resource.campaign_criterion do |cc|
-        cc.campaign = campaign_resource_name
-        cc.location = client.resource.location_info do |li|
-          li.geo_target_constant = local_resource.google_criterion_id
+      operation = client.operation.create_resource.ad_group_criterion do |agc|
+        agc.ad_group = ad_group_resource_name
+        agc.keyword = client.resource.keyword_info do |k|
+          k.text = local_resource.text
+          k.match_type = local_resource.match_type.upcase.to_sym
         end
-        cc.negative = !local_resource.targeted
+        agc.status = :ENABLED
       end
 
       begin
-        response = client.service.campaign_criterion.mutate_campaign_criteria(
+        response = client.service.ad_group_criterion.mutate_ad_group_criteria(
           customer_id: google_customer_id,
           operations: [operation]
         )
       rescue => e
-        return error_result(:campaign_criterion, e)
+        return error_result(:ad_group_criterion, e)
       end
 
       resource_name = response.results.first.resource_name
       criterion_id = resource_name.split("~").last.to_i
-      local_resource.google_remote_criterion_id = criterion_id
+      local_resource.google_criterion_id = criterion_id
 
       verify_sync(:created, resource_name)
     end
@@ -122,23 +128,31 @@ module GoogleAds
       comparisons = build_comparisons
       resource_name = remote_resource.resource_name
 
-      operation = client.operation.update_resource.campaign_criterion(resource_name) do |cc|
+      operation = client.operation.update_resource.ad_group_criterion(resource_name) do |agc|
         comparisons.each do |comparison|
           next if comparison.values_match?
           case comparison.their_field
-          when :negative
-            cc.negative = comparison.transformed_our_value
+          when :match_type
+            agc.keyword = client.resource.keyword_info do |k|
+              k.match_type = comparison.transformed_our_value
+            end
+          when :text
+            agc.keyword = client.resource.keyword_info do |k|
+              k.text = comparison.transformed_our_value
+            end
+          when :status
+            agc.status = comparison.transformed_our_value
           end
         end
       end
 
       begin
-        client.service.campaign_criterion.mutate_campaign_criteria(
+        client.service.ad_group_criterion.mutate_ad_group_criteria(
           customer_id: google_customer_id,
           operations: [operation]
         )
       rescue => e
-        return error_result(:campaign_criterion, e)
+        return error_result(:ad_group_criterion, e)
       end
 
       verify_sync(:updated, resource_name)
@@ -149,7 +163,7 @@ module GoogleAds
       fetch_remote
 
       Sync::SyncResult.new(
-        resource_type: :campaign_criterion,
+        resource_type: :ad_group_criterion,
         resource_name: resource_name,
         action: action,
         comparisons: build_comparisons
