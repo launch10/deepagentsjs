@@ -116,14 +116,19 @@ module GoogleAds
       return nil unless response.first
       customer = response.first&.customer
 
-      {
+      Output.new({
         id: customer_client.id,
         descriptive_name: customer_client.descriptive_name,
         status: customer_client.status,
         auto_tagging_enabled: customer&.auto_tagging_enabled,
         currency_code: customer_client.currency_code,
         time_zone: customer_client.time_zone
-      }
+      })
+    end
+    class Output < Struct.new(:id, :descriptive_name, :status, :auto_tagging_enabled, :currency_code, :time_zone)
+      def success?
+        id.present? && auto_tagging_enabled
+      end
     end
 
     def enable_auto_tagging(customer_id)

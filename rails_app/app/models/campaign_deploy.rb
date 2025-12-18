@@ -42,6 +42,11 @@ class CampaignDeploy < ApplicationRecord
       name: :create_ads_account,
       run_block: ->(context) { context[:account].create_google_ads_account },
       finished_block: ->(context) { context[:account].verify_google_ads_account&.success? }
+    ),
+    Step.new(
+      name: :sync_budget,
+      run_block: ->(context) { context[:budget].sync },
+      finished_block: ->(context) { context[:budget].synced? }
     )
   ].freeze
 
