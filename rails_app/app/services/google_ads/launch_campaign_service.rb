@@ -21,7 +21,6 @@
 # 3) Click "New token" and follow the prompts
 # 4) Copy the developer token to your Rails credentials
 
-
 # https://console.cloud.google.com/auth/clients?project=launch10-479317
 # 1) Set web app
 # 2) Add authorized redirect URI: http://localhost:3000

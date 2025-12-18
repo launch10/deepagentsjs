@@ -25,15 +25,13 @@ module GoogleAdsMocks
   def mock_create_customer_client_response(customer_id: "9876543210")
     double("CreateCustomerClientResponse",
       resource_name: "customers/#{customer_id}",
-      invitation_link: ""
-    )
+      invitation_link: "")
   end
 
   def mock_mutate_customer_response(customer_id: "9876543210")
     result = double("MutateCustomerResult",
       resource_name: "customers/#{customer_id}",
-      customer: nil
-    )
+      customer: nil)
     double("MutateCustomerResponse", result: result)
   end
 
@@ -49,8 +47,7 @@ module GoogleAdsMocks
       currency_code: "USD",
       hidden: false,
       client_customer: "customers/#{customer_id}",
-      status: :ENABLED
-    )
+      status: :ENABLED)
     row = double("GoogleAdsRow", customer_client: customer_client)
     [row]
   end
@@ -66,8 +63,7 @@ module GoogleAdsMocks
       currency_code: nil,
       time_zone: nil,
       test_account: false,
-      auto_tagging_enabled: false
-    ).tap do |customer|
+      auto_tagging_enabled: false).tap do |customer|
       allow(customer).to receive(:descriptive_name=)
       allow(customer).to receive(:currency_code=)
       allow(customer).to receive(:time_zone=)
@@ -79,8 +75,7 @@ module GoogleAdsMocks
   def mock_customer_operation
     double("CustomerOperation",
       update: double("Customer", resource_name: "customers/123", status: :CANCELED),
-      update_mask: double("FieldMask", paths: ["status"])
-    )
+      update_mask: double("FieldMask", paths: ["status"]))
   end
 
   def mock_search_response_with_customer(
@@ -100,8 +95,7 @@ module GoogleAdsMocks
       auto_tagging_enabled: auto_tagging_enabled,
       test_account: false,
       manager: false,
-      status: status
-    )
+      status: status)
     row = double("GoogleAdsRow", customer: customer, customer_client: nil)
     [row]
   end
@@ -127,13 +121,11 @@ module GoogleAdsMocks
       currency_code: "USD",
       hidden: false,
       client_customer: "customers/#{customer_id}",
-      status: status
-    )
+      status: status)
     customer_client_row = double("GoogleAdsRow", customer_client: customer_client)
 
     customer = double("Customer",
-      auto_tagging_enabled: auto_tagging_enabled
-    )
+      auto_tagging_enabled: auto_tagging_enabled)
     customer_row = double("GoogleAdsRow", customer: customer)
 
     [[customer_client_row], [customer_row]]
@@ -151,20 +143,17 @@ module GoogleAdsMocks
   def mock_mutate_customer_response_auto_tagging(customer_id: "9876543210")
     customer = double("Customer",
       resource_name: "customers/#{customer_id}",
-      auto_tagging_enabled: true
-    )
+      auto_tagging_enabled: true)
     result = double("MutateCustomerResult",
       resource_name: "customers/#{customer_id}",
-      customer: customer
-    )
+      customer: customer)
     double("MutateCustomerResponse", result: result)
   end
 
   def mock_auto_tagging_operation
     double("AutoTaggingOperation",
       update: double("Customer", resource_name: "customers/123", auto_tagging_enabled: true),
-      update_mask: double("FieldMask", paths: ["auto_tagging_enabled"])
-    )
+      update_mask: double("FieldMask", paths: ["auto_tagging_enabled"]))
   end
 
   def mock_google_ads_error(message: "Request failed", error_type: :authorization_error, error_value: :USER_PERMISSION_DENIED)
@@ -172,19 +161,16 @@ module GoogleAdsMocks
     allow(error_code).to receive(:to_h).and_return({ error_type => error_value })
 
     location = double("ErrorLocation",
-      field_path_elements: [double("FieldPathElement", field_name: "operations", index: 0)]
-    )
+      field_path_elements: [double("FieldPathElement", field_name: "operations", index: 0)])
 
     individual_error = double("GoogleAdsError",
       message: message,
       location: location,
-      error_code: error_code
-    )
+      error_code: error_code)
 
     failure = double("GoogleAdsFailure",
       errors: [individual_error],
-      request_id: "test-request-id-#{SecureRandom.hex(4)}"
-    )
+      request_id: "test-request-id-#{SecureRandom.hex(4)}")
 
     Google::Ads::GoogleAds::Errors::GoogleAdsError.new(failure)
   end

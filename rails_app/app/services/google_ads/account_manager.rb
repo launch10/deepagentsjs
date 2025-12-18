@@ -87,7 +87,7 @@ module GoogleAds
     end
 
     def verify_customer(customer_id)
-      sanitized_id = customer_id.to_s.gsub(/\D/, '')
+      sanitized_id = customer_id.to_s.gsub(/\D/, "")
 
       query = <<~QUERY
         SELECT customer_client.id, customer_client.descriptive_name, customer_client.status,
