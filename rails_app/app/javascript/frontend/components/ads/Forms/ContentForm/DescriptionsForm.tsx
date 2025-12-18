@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
-import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
+import AdCampaignFieldList from "@components/ads/Forms/shared/AdCampaignFieldList";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads } from "@shared";

@@ -1,4 +1,4 @@
-import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
+import AdCampaignFieldList from "@components/ads/Forms/shared/AdCampaignFieldList";
 import { Badge } from "@components/ui/badge";
 import { Field, FieldGroup } from "@components/ui/field";
 import { zodResolver } from "@hookform/resolvers/zod";
