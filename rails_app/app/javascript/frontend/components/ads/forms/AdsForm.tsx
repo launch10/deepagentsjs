@@ -1,18 +1,19 @@
+import { selectSubstep, useWorkflowSteps } from "@context/WorkflowStepsProvider";
 import { Workflow } from "@shared";
 import ContentForm from "./ContentForm/ContentForm";
 import HighlightsForm from "./HighlightsForm/HighlightsForm";
 import KeywordsForm from "./KeywordsForm/KeywordsForm";
+import LaunchForm from "./LaunchForm/LaunchForm";
+import ReviewForm from "./ReviewForm/ReviewForm";
 import SettingsForm from "./SettingsForm/SettingsForm";
-import {
-  useWorkflowSteps,
-  selectSubstep,
-} from "@context/WorkflowStepsProvider";
 
 const FORMS: Partial<Record<Workflow.AdCampaignSubstepName, React.ComponentType>> = {
   content: ContentForm,
   highlights: HighlightsForm,
   keywords: KeywordsForm,
   settings: SettingsForm,
+  launch: LaunchForm,
+  review: ReviewForm,
 };
 
 export default function AdsForm() {

@@ -5,7 +5,6 @@ import { useAdsChatIsLoadingHistory } from "@hooks/useAdsChat";
 import AdPreview from "@components/ads/AdPreview";
 import AdsForm from "@components/ads/forms/AdsForm";
 import AdCampaignPagination from "@components/ads/AdCampaignPagination";
-import { useEffect } from "react";
 
 export default function Campaign() {
   const isLoadingHistory = useAdsChatIsLoadingHistory();
@@ -17,7 +16,7 @@ export default function Campaign() {
       </div>
       <div className="max-w-[948px]">
         <AdPreview className="mb-8" />
-        <AdCampaignTabSwitcher />
+        <AdCampaignTabSwitcher /> {/* TODO: Hide on Launch/Review steps */}
         {isLoadingHistory ? (
           <div className="border-[#D3D2D0] border border-t-0 rounded-b-2xl bg-white">
             <div className="flex items-center justify-center p-9">

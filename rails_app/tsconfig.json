@@ -32,7 +32,8 @@
       "@webcontainer/*": ["./app/javascript/frontend/webcontainer/*"],
       "@shared": ["../shared/index.ts"],
       "@pages/*": ["./app/javascript/frontend/pages/*"],
-      "@helpers/*": ["./app/javascript/frontend/helpers/*"]
+      "@helpers/*": ["./app/javascript/frontend/helpers/*"],
+      "@assets/*": ["./app/javascript/assets/*"]
     },
     "noEmit": true,
     "incremental": true
