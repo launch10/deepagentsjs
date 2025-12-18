@@ -1,4 +1,4 @@
-import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
+import AdCampaignFieldList from "@components/ads/Forms/shared/AdCampaignFieldList";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
