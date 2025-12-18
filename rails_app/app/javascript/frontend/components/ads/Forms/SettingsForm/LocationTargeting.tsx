@@ -1,8 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useDebouncedCallback } from "use-debounce";
-import { useFormContext, useFieldArray, Controller } from "react-hook-form";
-import { Search, Info, X, MapPin } from "lucide-react";
-import { cn } from "@lib/utils";
+import { useFormContext, useFieldArray } from "react-hook-form";
+import { Search, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { usePage } from "@inertiajs/react";
 import {
@@ -11,7 +10,8 @@ import {
 } from "@api/geoTargetConstants";
 import type { CampaignProps } from "@components/ads/Sidebar/WorkflowBuddy/ad-campaign.types";
 import type { SettingsFormData, LocationWithSettings } from "./settingsForm.schema";
-
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/input-group";
+import LocationTargetingItem from "./LocationTargetingItem";
 type GeoTarget = NonNullable<SearchGeoTargetConstantsResponse>[number];
 
 export default function LocationTargeting() {
@@ -111,21 +111,19 @@ export default function LocationTargeting() {
           {hasError && <span className="text-xs leading-4 text-[#d14f34]">{hasError}</span>}
         </div>
         <div className="relative">
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="Search for cities, counties, states or countries..."
-            value={searchValue}
-            onChange={handleSearchChange}
-            onFocus={() => setIsDropdownOpen(true)}
-            className={cn(
-              "h-10 w-full rounded-full border bg-white px-4 py-3 text-xs leading-4 placeholder:text-neutral-500 pr-10 outline-none",
-              "border-neutral-300",
-              "focus:border-base-600"
-            )}
-          />
-          <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-base-600" />
-
+          <InputGroup className="rounded-full">
+            <InputGroupInput
+              ref={inputRef}
+              type="text"
+              placeholder="Search for cities, counties, states or countries..."
+              value={searchValue}
+              onChange={handleSearchChange}
+              onFocus={() => setIsDropdownOpen(true)}
+            />
+            <InputGroupAddon align="inline-end">
+              <Search className="size-3.5 text-base-600" />
+            </InputGroupAddon>
+          </InputGroup>
           {isDropdownOpen && searchValue.length >= 2 && (
             <div
               ref={dropdownRef}
@@ -147,7 +145,7 @@ export default function LocationTargeting() {
                     }}
                   >
                     <span className="text-sm">{location.canonical_name}</span>
-                    <span className="text-xs text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded">
+                    <span className="text-xs text-base-300 bg-neutral-100 px-2 py-0.5 rounded">
                       {location.target_type}
                     </span>
                   </button>
@@ -161,73 +159,20 @@ export default function LocationTargeting() {
           <Info className="h-4 w-4 text-[#0d342b] flex-shrink-0" />
           <p className="text-sm leading-[18px] text-[#081f1a]">
             For small businesses, a narrow local geographic focus is the best starting point.
+            {/* TODO: This copy should smart update dependent on the what we have collected about their business so far */}
           </p>
         </div>
 
         {fields.length > 0 && (
           <div className="flex flex-col gap-2 mt-2">
             {fields.map((location, index) => (
-              <div
+              <LocationTargetingItem
                 key={location.id}
-                className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-4 py-3"
-              >
-                <div className="flex items-center gap-3">
-                  <MapPin className="h-4 w-4 text-neutral-400" />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium text-neutral-900">
-                      {location.canonical_name}
-                    </span>
-                    <span className="text-xs text-neutral-400">{location.target_type}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-neutral-500">Radius:</span>
-                    <Controller
-                      name={`locations.${index}.radius`}
-                      control={methods.control}
-                      render={({ field }) => (
-                        <input
-                          type="number"
-                          value={field.value}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          className="w-12 h-8 rounded border border-neutral-300 px-2 text-sm text-center"
-                        />
-                      )}
-                    />
-                    <span className="text-xs text-neutral-500">miles</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-neutral-500">Excluded</span>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleTargeted(index)}
-                      className={cn(
-                        "relative w-11 h-6 rounded-full transition-colors",
-                        location.isTargeted ? "bg-neutral-900" : "bg-neutral-300"
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
-                          location.isTargeted ? "left-6" : "left-1"
-                        )}
-                      />
-                    </button>
-                    <span className="text-xs text-neutral-500">Targeted</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveLocation(index)}
-                    className="p-1 hover:bg-neutral-100 rounded"
-                  >
-                    <X className="h-4 w-4 text-neutral-400" />
-                  </button>
-                </div>
-              </div>
+                location={location}
+                index={index}
+                handleRemoveLocation={handleRemoveLocation}
+                handleToggleTargeted={handleToggleTargeted}
+              />
             ))}
           </div>
         )}

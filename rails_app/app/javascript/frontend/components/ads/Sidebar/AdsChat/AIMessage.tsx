@@ -1,4 +1,5 @@
 import { twMerge } from "tailwind-merge";
+import ReactMarkdown from "react-markdown";
 
 export default function AIMessage({
   state = "active",
@@ -8,6 +9,8 @@ export default function AIMessage({
   message: string;
 }) {
   return (
-    <div className={twMerge("text-xs", state === "inactive" && "text-base-300")}>{message}</div>
+    <div className={twMerge("text-xs", state === "inactive" && "text-base-300")}>
+      <ReactMarkdown>{message}</ReactMarkdown>
+    </div>
   );
 }

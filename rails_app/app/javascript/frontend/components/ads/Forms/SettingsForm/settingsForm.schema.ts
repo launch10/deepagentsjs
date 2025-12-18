@@ -25,8 +25,8 @@ export type LocationWithSettings = z.infer<typeof LocationSchema>;
 export const settingsFormDefaults: SettingsFormData = {
   locations: [],
   selectedDays: ["Mon", "Tues", "Wed", "Thu", "Fri"],
-  startTime: "9:00 AM",
-  endTime: "5:00 PM",
+  startTime: "09:00",
+  endTime: "17:00",
   timezone: "EST",
   budget: 500,
 };

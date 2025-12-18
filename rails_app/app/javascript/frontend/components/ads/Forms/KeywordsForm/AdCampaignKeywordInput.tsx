@@ -4,6 +4,8 @@ import { Field, FieldError, FieldLabel } from "@components/ui/field";
 import { Info, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
+import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
+import InputAddable from "@components/forms/input-addable";
 
 const keywordSchema = z.object({
   text: z.string().min(1, "Keyword cannot be empty").max(80, "Maximum 80 characters"),
@@ -57,44 +59,26 @@ export default function AdCampaignKeywordInput({
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="secondary">Select 5-{maxCount}</Badge>
-          <Button
-            type="button"
-            variant="link"
-            className="text-[#74767A] font-normal"
-            onClick={onRefreshSuggestions}
-          >
-            <Sparkles /> Refresh Suggestions
-          </Button>
+          <RefreshSuggestionsButton onClick={onRefreshSuggestions} />
         </div>
       </FieldLabel>
-      <div className="flex border border-neutral-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-ring/50 focus-within:border-ring">
-        <input
-          placeholder="Enter keywords, separated by commas"
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
-            if (error) setError(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleAdd();
-            }
-          }}
-          aria-invalid={!!displayError}
-          className="flex-1 h-10 px-4 text-xs placeholder:text-neutral-400 outline-none bg-transparent border-none shadow-none"
-        />
-        <button
-          type="button"
-          onClick={handleAdd}
-          className="flex items-center gap-2 h-10 px-3 bg-background border-l border-neutral-300 text-sm text-base-500 hover:bg-neutral-100"
-        >
-          <Plus size={16} /> Add
-        </button>
-      </div>
+      <InputAddable
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleAdd();
+          }
+        }}
+        isInvalid={!!displayError}
+        handleAdd={handleAdd}
+        placeholder="Enter keywords, separated by commas"
+        className="flex-1 h-10 px-4 text-xs placeholder:text-neutral-400 outline-none bg-transparent border-none shadow-none"
+      />
       <div className="flex items-center">
         {displayError && <FieldError errors={[{ message: displayError }]} />}
-        <div className="text-right text-xs text-[#8b8b8b] ml-auto">{value.length}/80</div>
+        <div className="text-right text-xs text-base-300 ml-auto">{value.length}/80</div>
       </div>
     </Field>
   );

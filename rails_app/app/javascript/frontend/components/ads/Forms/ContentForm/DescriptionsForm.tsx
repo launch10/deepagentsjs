@@ -3,14 +3,16 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Badge } from "@components/ui/badge";
-import { Button } from "@components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
+import { Field, FieldGroup } from "@components/ui/field";
 import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import { Info, Sparkles } from "lucide-react";
+import { createLockToggleHandler } from "@helpers/handleLockToggle";
+import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 
 const descriptionsFormSchema = z.object({
   descriptions: z.array(Ads.AssetSchema),
@@ -42,38 +44,12 @@ export default function DescriptionsForm() {
     }
   }, [descriptions, methods]);
 
-  // Attach our methods to the parent "content" form
-  // This allows other parts of our codebase (e.g. Footer)
-  // to simply call validate on all "content" pieces
-  useFormRegistration("content", methods);
-
-  const handleLockToggle = (
-    fieldName: "headlines" | "descriptions" | "features" | "callouts",
-    index: number
-  ) => {
-    if (fieldName !== "descriptions") return;
-
-    const currentFields = methods.getValues("descriptions");
-    const isLocked = currentFields[index].locked;
-
-    if (!isLocked && !currentFields[index].text) {
-      methods.setError(`descriptions.${index}.text`, {
-        type: "manual",
-        message: "Cannot lock an empty input.",
-      });
-      return;
-    }
-
-    const updatedFields = currentFields.map((field, i) =>
-      i === index ? { ...field, locked: !isLocked } : field
-    );
-    methods.setValue("descriptions", updatedFields);
-
-    const updatedLanggraph = descriptions?.map((d, i) =>
-      i === index ? { ...d, locked: !isLocked } : d
-    );
-    setState({ descriptions: updatedLanggraph });
-  };
+  const handleLockToggle = createLockToggleHandler(
+    methods,
+    "descriptions",
+    () => descriptions,
+    setState
+  );
 
   const handleRefreshDescriptions = () => {
     createRefreshHandler("descriptions", descriptions, updateState);
@@ -85,26 +61,27 @@ export default function DescriptionsForm() {
     setState({ descriptions: updatedLanggraph });
   };
 
+  const { save } = useCampaignAutosave({
+    methods,
+    fieldMappings: [{ formField: "descriptions", apiField: "descriptions" }],
+  });
+
+  // Attach save function to form registration
+  useFormRegistration("content", methods, save);
+
   return (
     <FieldGroup className="gap-3">
       <Field>
-        <FieldLabel className="flex justify-between items-center">
+        <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <span className="font-semibold">Details</span>
             <Info size={12} className="text-base-300" />
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary">Select 2-4</Badge>
-            <Button
-              type="button"
-              variant="link"
-              className="text-base-400 font-normal"
-              onClick={handleRefreshDescriptions}
-            >
-              <Sparkles /> Refresh Suggestions
-            </Button>
+            <RefreshSuggestionsButton onClick={handleRefreshDescriptions} />
           </div>
-        </FieldLabel>
+        </div>
       </Field>
       <AdCampaignFieldList
         fieldName="descriptions"

@@ -1,4 +1,9 @@
 import type { StorybookConfig } from "@storybook/react-vite";
+import tsconfigPaths from "vite-tsconfig-paths";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
   stories: ["../stories/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
@@ -19,6 +24,17 @@ const config: StorybookConfig = {
       ...config.server,
       hmr: true,
     };
+
+    // Mock @inertiajs/react for Storybook
+    config.resolve = {
+      ...config.resolve,
+      alias: {
+        ...config.resolve?.alias,
+        "@inertiajs/react": path.resolve(__dirname, "mocks/inertia.ts"),
+      },
+    };
+
+    config.plugins = [...(config.plugins ?? []), tsconfigPaths({ projects: ["./tsconfig.json"] })];
 
     return config;
   },
