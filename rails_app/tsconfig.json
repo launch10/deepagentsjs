@@ -37,5 +37,5 @@
     "incremental": true
   },
   "include": ["**/*.ts", "**/*.tsx", "vite.config.ts", "postcss.config.js"],
-  "exclude": ["node_modules", "public", "vendor"]
+  "exclude": ["node_modules", "public", "vendor", "app/javascript/frontend_old"]
 }
