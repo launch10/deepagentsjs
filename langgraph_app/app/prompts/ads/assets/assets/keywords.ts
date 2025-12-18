@@ -48,5 +48,6 @@ export const Keywords: Partial<Ads.AssetPromptMap> = {
       const keywords = Array.from({ length: nVariants }, (_, i) => `Keyword ${i + 1}`);
       return { keywords };
     },
+    schema: (_state?: AdsGraphState, _config?: any) => Ads.KeywordsOutputSchema,
   },
 };

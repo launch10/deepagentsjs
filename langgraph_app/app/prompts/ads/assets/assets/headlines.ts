@@ -41,5 +41,6 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
       const headlines = Array.from({ length: nVariants }, (_, i) => `Headline ${i + 1}`);
       return { headlines };
     },
+    schema: (_state?: AdsGraphState, _config?: any) => Ads.HeadlinesOutputSchema,
   },
 };

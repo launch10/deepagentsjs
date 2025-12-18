@@ -257,7 +257,6 @@ describe.sequential("Ads Flow", () => {
           (d) => !d.rejected && !d.locked
         );
         expect(newDescriptions?.length).toEqual(Ads.DefaultNumAssets.descriptions);
-        debugger;
       });
 
       // user request | user asks | asks via chat | auto-reject headlines
@@ -324,7 +323,7 @@ describe.sequential("Ads Flow", () => {
 
         const structuredSnippets = result.state.structuredSnippets;
         expect(structuredSnippets).toBeDefined();
-        expect(structuredSnippets?.category).toBeDefined();
+        expect(structuredSnippets.category).toBeOneOf(Object.values(Ads.StructuredSnippetCategoryNames));
         expect(structuredSnippets?.details?.length).toEqual(
           Ads.DefaultNumAssets.structuredSnippets
         );

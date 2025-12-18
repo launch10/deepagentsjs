@@ -1,8 +1,10 @@
+import { z } from "zod";
 import { type LangGraphRunnableConfig, Ads } from "@types";
 import { type AdsGraphState } from "@state";
 import { AssetPrompts } from "./config";
 import { needsIntentClassification } from "../helpers";
 import { ResponseTemplates } from "./responseTemplates";
+import { structuredOutputPrompt } from "@prompts";
 
 export const getAssetPrompts = async (
   state: AdsGraphState,
@@ -77,6 +79,30 @@ export const getOutputPrompt = async (
             </example_response>
         `;
   }
+};
+
+export const getStructuredOutputPrompt = async (
+  state: AdsGraphState,
+  config: LangGraphRunnableConfig
+): Promise<string> => {
+  const assetConfigs = getAssetsConfigs(state);
+
+  const schemas = Object.values(assetConfigs).map((assetConfig) =>
+    assetConfig.schema(state, config)
+  );
+
+  const combinedSchema = schemas.reduce((acc, schema) => {
+    if (acc === null) {
+      return schema;
+    }
+    return acc.and(schema);
+  }, null as z.ZodSchema | null);
+
+  if (!combinedSchema) {
+    return "";
+  }
+
+  return structuredOutputPrompt({ schema: combinedSchema });
 };
 
 const getAssetsConfigs = (state: AdsGraphState): Ads.AssetPromptMap => {
