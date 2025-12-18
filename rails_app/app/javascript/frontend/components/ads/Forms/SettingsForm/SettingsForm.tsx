@@ -55,8 +55,6 @@ export default function SettingsForm() {
     const apiData = transformSettingsFormToApi(debouncedValues);
     const serialized = JSON.stringify(apiData);
 
-    console.log({ apiData });
-
     if (serialized === lastSavedValue.current) {
       return;
     }

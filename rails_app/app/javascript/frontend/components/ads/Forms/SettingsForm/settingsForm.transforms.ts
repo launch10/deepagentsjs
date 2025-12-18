@@ -41,8 +41,8 @@ export function transformScheduleToApi(formData: SettingsFormData) {
     day_of_week: formData.selectedDays
       .filter((day) => day !== "Always On")
       .map((day) => DAY_NAME_MAP[day]),
-    start_time: formData.startTime, // TODO: Add PM/AM to the time
-    end_time: formData.endTime, // TODO: Add PM/AM to the time
+    start_time: formData.startTime,
+    end_time: formData.endTime,
     time_zone: TIMEZONE_MAP[formData.timezone] || formData.timezone,
   };
 }
