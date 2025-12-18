@@ -434,15 +434,13 @@ module GoogleAdsMocks
       start_hour: start_hour,
       start_minute: start_minute,
       end_hour: end_hour,
-      end_minute: end_minute
-    )
+      end_minute: end_minute)
     criterion = double("CampaignCriterion",
       resource_name: "customers/#{customer_id}/campaignCriteria/#{campaign_id}~#{criterion_id}",
       criterion_id: criterion_id,
       campaign: "customers/#{customer_id}/campaigns/#{campaign_id}",
       ad_schedule: ad_schedule,
-      bid_modifier: bid_modifier
-    )
+      bid_modifier: bid_modifier)
     row = double("GoogleAdsRow", campaign_criterion: criterion)
     [row]
   end
@@ -477,8 +475,7 @@ module GoogleAdsMocks
   )
     keyword = double("KeywordInfo",
       text: keyword_text,
-      match_type: match_type
-    )
+      match_type: match_type)
     criterion = double("AdGroupCriterion",
       resource_name: "customers/#{customer_id}/adGroupCriteria/#{ad_group_id}~#{criterion_id}",
       criterion_id: criterion_id,
@@ -486,16 +483,14 @@ module GoogleAdsMocks
       keyword: keyword,
       status: status,
       cpc_bid_micros: cpc_bid_micros,
-      negative: negative
-    )
+      negative: negative)
     row = double("GoogleAdsRow", ad_group_criterion: criterion)
     [row]
   end
 
   def mock_mutate_ad_group_criterion_response(criterion_id: 333, ad_group_id: 999, customer_id: 456)
     result = double("MutateAdGroupCriterionResult",
-      resource_name: "customers/#{customer_id}/adGroupCriteria/#{ad_group_id}~#{criterion_id}"
-    )
+      resource_name: "customers/#{customer_id}/adGroupCriteria/#{ad_group_id}~#{criterion_id}")
     double("MutateAdGroupCriteriaResponse", results: [result])
   end
 

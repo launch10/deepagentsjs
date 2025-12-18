@@ -40,13 +40,12 @@ RSpec.describe GoogleAds::AdGroup do
       end
 
       it 'fetches the remote ad_group by ID' do
-        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
           ad_group_id: 999,
           name: "Test Ad Group",
           status: :PAUSED,
           type: :SEARCH_STANDARD,
-          cpc_bid_micros: 1_000_000
-        )
+          cpc_bid_micros: 1_000_000)
         allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
 
         remote = ad_group_syncer.fetch_remote
@@ -57,13 +56,12 @@ RSpec.describe GoogleAds::AdGroup do
 
     context 'when ad_group exists by name (fallback)' do
       it 'fetches the remote ad_group by name and sets the ID' do
-        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
           ad_group_id: 888,
           name: "Test Ad Group",
           status: :PAUSED,
           type: :SEARCH_STANDARD,
-          cpc_bid_micros: 1_000_000
-        )
+          cpc_bid_micros: 1_000_000)
         allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
 
         remote = ad_group_syncer.fetch_remote
@@ -90,13 +88,12 @@ RSpec.describe GoogleAds::AdGroup do
 
     context 'when remote ad_group exists and matches local' do
       it 'returns synced result' do
-        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
           ad_group_id: 999,
           name: "Test Ad Group",
           status: :PAUSED,
           type: :SEARCH_STANDARD,
-          cpc_bid_micros: 1_000_000
-        )
+          cpc_bid_micros: 1_000_000)
         allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
 
         result = ad_group_syncer.sync_result
@@ -108,13 +105,12 @@ RSpec.describe GoogleAds::AdGroup do
 
     context 'when remote ad_group exists but name does not match' do
       it 'returns unsynced result with mismatched fields' do
-        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
           ad_group_id: 999,
           name: "Different Name",
           status: :PAUSED,
           type: :SEARCH_STANDARD,
-          cpc_bid_micros: 1_000_000
-        )
+          cpc_bid_micros: 1_000_000)
         allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
 
         result = ad_group_syncer.sync_result
@@ -148,26 +144,24 @@ RSpec.describe GoogleAds::AdGroup do
     end
 
     it 'returns true when values match' do
-      ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+      ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
         ad_group_id: 999,
         name: "Test Ad Group",
         status: :PAUSED,
         type: :SEARCH_STANDARD,
-        cpc_bid_micros: 1_000_000
-      )
+        cpc_bid_micros: 1_000_000)
       allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
 
       expect(ad_group_syncer.synced?).to be true
     end
 
     it 'returns false when values do not match' do
-      ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+      ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
         ad_group_id: 999,
         name: "Different Name",
         status: :PAUSED,
         type: :SEARCH_STANDARD,
-        cpc_bid_micros: 1_000_000
-      )
+        cpc_bid_micros: 1_000_000)
       allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
 
       expect(ad_group_syncer.synced?).to be false
@@ -188,13 +182,12 @@ RSpec.describe GoogleAds::AdGroup do
       end
 
       it 'returns sync_result without making API calls' do
-        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
           ad_group_id: 999,
           name: "Test Ad Group",
           status: :PAUSED,
           type: :SEARCH_STANDARD,
-          cpc_bid_micros: 1_000_000
-        )
+          cpc_bid_micros: 1_000_000)
         allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
 
         expect(@mock_ad_group_service).not_to receive(:mutate_ad_groups)
@@ -206,13 +199,12 @@ RSpec.describe GoogleAds::AdGroup do
 
     context 'when remote ad_group does not exist' do
       it 'creates a new ad_group and verifies sync' do
-        created_ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+        created_ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
           ad_group_id: 1001,
           name: "Test Ad Group",
           status: :PAUSED,
           type: :SEARCH_STANDARD,
-          cpc_bid_micros: 1_000_000
-        )
+          cpc_bid_micros: 1_000_000)
 
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(mock_empty_search_response, created_ad_group_response)
@@ -255,20 +247,18 @@ RSpec.describe GoogleAds::AdGroup do
       end
 
       it 'updates the ad_group with the new name' do
-        mismatched_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+        mismatched_response = mock_search_response_with_ad_group(customer_id: 1234567890,
           ad_group_id: 999,
           name: "Test Ad Group",
           status: :PAUSED,
           type: :SEARCH_STANDARD,
-          cpc_bid_micros: 1_000_000
-        )
-        synced_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+          cpc_bid_micros: 1_000_000)
+        synced_response = mock_search_response_with_ad_group(customer_id: 1234567890,
           ad_group_id: 999,
           name: "Updated Ad Group Name",
           status: :PAUSED,
           type: :SEARCH_STANDARD,
-          cpc_bid_micros: 1_000_000
-        )
+          cpc_bid_micros: 1_000_000)
 
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(mismatched_response, synced_response)
@@ -298,13 +288,12 @@ RSpec.describe GoogleAds::AdGroup do
 
     describe '#google_synced?' do
       it 'delegates to the syncer' do
-        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
           ad_group_id: 999,
           name: "Test Ad Group",
           status: :PAUSED,
           type: :SEARCH_STANDARD,
-          cpc_bid_micros: 1_000_000
-        )
+          cpc_bid_micros: 1_000_000)
         allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
 
         expect(ad_group.google_synced?).to be true
@@ -313,13 +302,12 @@ RSpec.describe GoogleAds::AdGroup do
 
     describe '#google_sync_result' do
       it 'returns the sync result' do
-        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
           ad_group_id: 999,
           name: "Test Ad Group",
           status: :PAUSED,
           type: :SEARCH_STANDARD,
-          cpc_bid_micros: 1_000_000
-        )
+          cpc_bid_micros: 1_000_000)
         allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
 
         result = ad_group.google_sync_result
@@ -330,13 +318,12 @@ RSpec.describe GoogleAds::AdGroup do
 
     describe '#google_sync' do
       it 'syncs the ad_group' do
-        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
           ad_group_id: 999,
           name: "Test Ad Group",
           status: :PAUSED,
           type: :SEARCH_STANDARD,
-          cpc_bid_micros: 1_000_000
-        )
+          cpc_bid_micros: 1_000_000)
         allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
 
         result = ad_group.google_sync
@@ -354,13 +341,12 @@ RSpec.describe GoogleAds::AdGroup do
     end
 
     it 'sets google_ad_group_id from resource_name after sync' do
-      created_ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+      created_ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
         ad_group_id: 777,
         name: "Test Ad Group",
         status: :PAUSED,
         type: :SEARCH_STANDARD,
-        cpc_bid_micros: 1_000_000
-      )
+        cpc_bid_micros: 1_000_000)
 
       allow(@mock_google_ads_service).to receive(:search)
         .and_return(mock_empty_search_response, created_ad_group_response)
@@ -377,13 +363,12 @@ RSpec.describe GoogleAds::AdGroup do
     end
 
     it 'persists the google_ad_group_id to the database' do
-      created_ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890, 
+      created_ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
         ad_group_id: 888,
         name: "Test Ad Group",
         status: :PAUSED,
         type: :SEARCH_STANDARD,
-        cpc_bid_micros: 1_000_000
-      )
+        cpc_bid_micros: 1_000_000)
 
       allow(@mock_google_ads_service).to receive(:search)
         .and_return(mock_empty_search_response, created_ad_group_response)
