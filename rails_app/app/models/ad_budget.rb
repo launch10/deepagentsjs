@@ -25,9 +25,17 @@ class AdBudget < ApplicationRecord
   belongs_to :campaign
 
   platform_setting :google, :budget_id
-  platform_setting :google, :budget_name, default: -> { Time.now.utc.strftime("%Y-%m-%d %H:%M:%S")}
+  platform_setting :google, :budget_name, default: -> { Time.now.utc.strftime("%Y-%m-%d %H:%M:%S") }
 
   acts_as_paranoid
 
   use_google_sync GoogleAds::Budget
+  after_google_sync :set_google_budget_id
+
+  def set_google_budget_id(result)
+    return unless result.resource_name.present?
+    budget_id = result.resource_name.split("/").last
+    self.google_budget_id = budget_id if budget_id.present?
+    save! if changed?
+  end
 end

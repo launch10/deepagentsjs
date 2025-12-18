@@ -3,7 +3,7 @@ module GoogleAds
     class SyncResult
       attr_reader :resource_type, :resource_name, :action, :comparisons, :error
 
-      ACTIONS = [:created, :updated, :unchanged, :not_found, :error].freeze
+      ACTIONS = [:created, :updated, :unchanged, :deleted, :not_found, :error].freeze
 
       def initialize(resource_type:, action:, resource_name: nil, comparisons: [], error: nil)
         @resource_type = resource_type
@@ -33,8 +33,12 @@ module GoogleAds
         action == :error
       end
 
+      def deleted?
+        action == :deleted
+      end
+
       def success?
-        [:created, :updated, :unchanged].include?(action)
+        [:created, :updated, :unchanged, :deleted].include?(action)
       end
 
       def synced?

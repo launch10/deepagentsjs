@@ -11,7 +11,7 @@ module AccountConcerns
     end
 
     def has_google_ads_account?
-      find_google_customer_id.present?
+      google_customer_id.present? || google_ads_account&.google_syncer&.remote_resource.present?
     end
 
     def google_ads_billing_url
@@ -21,36 +21,27 @@ module AccountConcerns
       "https://ads.google.com/aw/billing/setup?ocid=#{customer_id}"
     end
 
-    def find_google_customer_id
-      return google_customer_id if google_customer_id.present?
-
-      GoogleAds::AccountManager.new.find_google_customer_id(self)
-    end
-
     def verify_google_ads_account
-      customer_id = find_google_customer_id
-      return nil unless customer_id.present?
-
-      GoogleAds::AccountManager.new.verify_customer(customer_id)
-    end
-
-    def set_google_customer_id
-      customer_id = find_google_customer_id
-      return "Customer id not found" unless customer_id.present?
-
-      ads_account = ads_accounts.find_or_initialize_by(platform: "google")
-      ads_account.google_customer_id = customer_id
-      ads_account.save!
+      ads_account = find_or_build_google_ads_account
+      ads_account.google_sync_result
     end
 
     def create_google_ads_account
-      GoogleAds::AccountManager.create_client_account(self)
+      ads_account = find_or_build_google_ads_account
+      ads_account.google_sync
     end
 
     def dangerously_destroy_google_ads_account!
-      GoogleAds::AccountManager.cancel_client_account(self)
-      google_ads_account&.update!(google_customer_id: nil)
+      return true unless google_ads_account.present?
+
+      google_ads_account.google_delete
       true
+    end
+
+    private
+
+    def find_or_build_google_ads_account
+      ads_accounts.find_or_initialize_by(platform: "google")
     end
   end
 end

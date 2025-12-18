@@ -18,7 +18,7 @@ module GoogleAds
       end
 
       def values_match?
-        transformed_our_value == their_value
+        normalize(transformed_our_value) == normalize(their_value)
       end
 
       def to_h
@@ -31,6 +31,12 @@ module GoogleAds
           transformed_our_value: transformed_our_value,
           values_match: values_match?
         }
+      end
+
+      private
+
+      def normalize(value)
+        value.is_a?(Symbol) ? value.to_s : value
       end
     end
   end

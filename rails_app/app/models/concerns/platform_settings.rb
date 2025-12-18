@@ -9,7 +9,7 @@ module PlatformSettings
       define_method(getter_name) do
         value = platform_settings.dig(platform.to_s, attribute.to_s)
         if value.nil? && options[:default]
-          default_value = options[:default].respond_to?(:call) ? options[:default].call : options[:default]
+          default_value = options[:default].respond_to?(:call) ? instance_exec(&options[:default]) : options[:default]
           send(setter_name, default_value)
           save! if persisted?
           default_value

@@ -6,22 +6,22 @@ RSpec.describe GoogleAds::Budget do
   let(:account) { create(:account) }
   let(:campaign) { create(:campaign, account: account) }
   let(:ad_budget) { create(:ad_budget, campaign: campaign, daily_budget_cents: 500) }
-  let(:budget_syncer) { described_class.new(campaign) }
+  let(:budget_syncer) { described_class.new(ad_budget) }
 
   before do
     mock_google_ads_client
-    allow(account).to receive(:google_customer_id).and_return("1234567890")
-    campaign.reload
+    allow(campaign).to receive(:google_customer_id).and_return("1234567890")
   end
 
   describe '#local_resource' do
-    it 'returns the campaign budget' do
-      ad_budget
+    it 'returns the ad_budget passed to the syncer' do
       expect(budget_syncer.local_resource).to eq(ad_budget)
     end
+  end
 
-    it 'returns nil when no budget exists' do
-      expect(budget_syncer.local_resource).to be_nil
+  describe '#campaign' do
+    it 'returns the campaign from the ad_budget' do
+      expect(budget_syncer.campaign).to eq(campaign)
     end
   end
 
@@ -215,7 +215,7 @@ RSpec.describe GoogleAds::Budget do
         ad_budget.save!
       end
 
-      it 'returns true without making API calls' do
+      it 'returns sync_result without making API calls' do
         budget_response = mock_search_response_with_budget(
           budget_id: 123,
           name: ad_budget.google_budget_name,
@@ -224,7 +224,9 @@ RSpec.describe GoogleAds::Budget do
         allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
 
         expect(mock_budget_service).not_to receive(:mutate_campaign_budgets)
-        expect(budget_syncer.sync).to be true
+        result = budget_syncer.sync
+        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+        expect(result.synced?).to be true
       end
     end
 
@@ -367,8 +369,74 @@ RSpec.describe GoogleAds::Budget do
         )
         allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
 
-        expect(ad_budget.google_sync).to be true
+        result = ad_budget.google_sync
+        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+        expect(result.synced?).to be true
       end
+    end
+  end
+
+  describe 'after_google_sync callback' do
+    let(:mock_budget_service) { double("CampaignBudgetService") }
+    let(:mock_create_resource) { double("CreateResource") }
+
+    before do
+      ad_budget.google_budget_id = nil
+      ad_budget.save!
+      allow(@mock_client).to receive(:service).and_return(
+        double("Services",
+          customer: @mock_customer_service,
+          google_ads: @mock_google_ads_service,
+          campaign_budget: mock_budget_service
+        )
+      )
+      allow(@mock_operation).to receive(:create_resource).and_return(mock_create_resource)
+    end
+
+    it 'sets google_budget_id from resource_name after sync' do
+      created_budget_response = mock_search_response_with_budget(
+        budget_id: 789,
+        name: ad_budget.google_budget_name,
+        amount_micros: 5_000_000
+      )
+
+      allow(@mock_google_ads_service).to receive(:search)
+        .and_return(mock_empty_search_response, created_budget_response)
+
+      mock_budget = mock_budget_resource
+      allow(mock_budget).to receive(:period=)
+      allow(mock_create_resource).to receive(:campaign_budget).and_yield(mock_budget)
+
+      mutate_response = mock_mutate_budget_response(budget_id: 789)
+      allow(mock_budget_service).to receive(:mutate_campaign_budgets)
+        .and_return(mutate_response)
+
+      ad_budget.google_sync
+      expect(ad_budget.reload.google_budget_id).to eq("789")
+    end
+
+    it 'persists the google_budget_id to the database' do
+      created_budget_response = mock_search_response_with_budget(
+        budget_id: 999,
+        name: ad_budget.google_budget_name,
+        amount_micros: 5_000_000
+      )
+
+      allow(@mock_google_ads_service).to receive(:search)
+        .and_return(mock_empty_search_response, created_budget_response)
+
+      mock_budget = mock_budget_resource
+      allow(mock_budget).to receive(:period=)
+      allow(mock_create_resource).to receive(:campaign_budget).and_yield(mock_budget)
+
+      mutate_response = mock_mutate_budget_response(budget_id: 999)
+      allow(mock_budget_service).to receive(:mutate_campaign_budgets)
+        .and_return(mutate_response)
+
+      ad_budget.google_sync
+
+      fresh_budget = AdBudget.find(ad_budget.id)
+      expect(fresh_budget.google_budget_id).to eq("999")
     end
   end
 end

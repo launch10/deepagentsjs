@@ -1,7 +1,7 @@
 module GoogleAds
   class Budget < Sync::Syncable
-    def local_resource
-      campaign.budget
+    def campaign
+      local_resource.campaign
     end
 
     def fetch_remote
@@ -11,7 +11,7 @@ module GoogleAds
     def fetch_by_id
       return nil unless budget_id.present?
 
-      query = %Q(
+      query = %(
         SELECT campaign_budget.resource_name, campaign_budget.id, campaign_budget.name, campaign_budget.amount_micros, campaign_budget.delivery_method
         FROM campaign_budget
         WHERE campaign_budget.id = #{budget_id}
@@ -25,7 +25,7 @@ module GoogleAds
       budget_name = local_resource&.google_budget_name
       return nil unless budget_name.present?
 
-      query = %Q(
+      query = %(
         SELECT campaign_budget.resource_name, campaign_budget.id, campaign_budget.name, campaign_budget.amount_micros, campaign_budget.delivery_method
         FROM campaign_budget
         WHERE campaign_budget.name = '#{budget_name}'
@@ -51,7 +51,7 @@ module GoogleAds
     end
 
     def sync
-      return true if synced?
+      return sync_result if synced?
 
       if remote_resource
         update_budget
@@ -60,9 +60,10 @@ module GoogleAds
       end
     end
 
-  private
+    private
+
     def budget_id
-      campaign.budget&.google_budget_id
+      local_resource.google_budget_id
     end
     memoize :budget_id
 
@@ -122,7 +123,7 @@ module GoogleAds
 
     def verify_sync(action, resource_name)
       clear_memoization
-      fresh_remote = fetch_remote
+      fetch_remote
 
       Sync::SyncResult.new(
         resource_type: :campaign_budget,

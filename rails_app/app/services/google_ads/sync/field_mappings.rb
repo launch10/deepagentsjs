@@ -73,6 +73,34 @@ module GoogleAds
         }
       }.freeze
 
+      ADS_ACCOUNT_FIELDS = {
+        descriptive_name: {
+          our_field: :google_descriptive_name,
+          their_field: :descriptive_name,
+          transform: ITSELF
+        },
+        currency_code: {
+          our_field: :google_currency_code,
+          their_field: :currency_code,
+          transform: ITSELF
+        },
+        time_zone: {
+          our_field: :google_time_zone,
+          their_field: :time_zone,
+          transform: ITSELF
+        },
+        status: {
+          our_field: :google_status,
+          their_field: :status,
+          transform: ITSELF
+        },
+        auto_tagging_enabled: {
+          our_field: :google_auto_tagging_enabled,
+          their_field: :auto_tagging_enabled,
+          transform: ITSELF
+        }
+      }.freeze
+
       def self.to_google(resource)
         field_mapping = self.for(resource.class)
         result = {}
@@ -113,6 +141,8 @@ module GoogleAds
           CAMPAIGN_FIELDS
         when AdGroup.name
           AD_GROUP_FIELDS
+        when AdsAccount.name
+          ADS_ACCOUNT_FIELDS
         else
           raise ArgumentError, "Unknown resource type: #{resource_type}"
         end

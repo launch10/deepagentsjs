@@ -4,9 +4,10 @@ module GoogleAds
       extend Memoist
       include TypeCheck
 
-      attr_reader :campaign
-      def initialize(campaign)
-        @campaign = expect_type(campaign, Campaign)
+      attr_reader :local_resource
+
+      def initialize(local_resource)
+        @local_resource = local_resource
       end
 
       def client
@@ -22,14 +23,14 @@ module GoogleAds
         raise "Not implemented error"
       end
 
+      def delete
+        raise "Not implemented error"
+      end
+
       def sync_result
         raise "Not implemented error"
       end
       memoize :sync_result
-
-      def local_resource
-        raise "Not implemented error"
-      end
 
       def fetch_remote
         raise "Not implemented error"
@@ -66,7 +67,7 @@ module GoogleAds
         comparisons
       end
 
-    private
+      private
 
       def extract_remote_value(remote, field)
         return nil unless remote
