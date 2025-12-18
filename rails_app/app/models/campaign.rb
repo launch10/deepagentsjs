@@ -48,6 +48,16 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::GooglePlatformSettings
   include CampaignConcerns::MetaPlatformSettings
   include GoogleMappable
+  include GoogleSyncable
+
+  use_google_sync GoogleAds::Campaign
+
+  after_google_sync do |result|
+    if result.resource_name.present?
+      campaign_id = result.resource_name.split("/").last
+      update(:platform_settings, platform_settings.deep_merge("google" => { "campaign_id" => campaign_id }))
+    end
+  end
 
   acts_as_paranoid
 

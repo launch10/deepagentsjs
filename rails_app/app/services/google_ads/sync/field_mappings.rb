@@ -21,6 +21,8 @@ module GoogleAds
         }
       }.freeze
 
+      TO_SYMBOL = ->(value) { value.to_sym }
+
       CAMPAIGN_FIELDS = {
         name: {
           our_field: :name,
@@ -28,19 +30,14 @@ module GoogleAds
           transform: ITSELF
         },
         status: {
-          our_field: :status,
+          our_field: :google_status,
           their_field: :status,
-          transform: ITSELF
+          transform: TO_SYMBOL
         },
         advertising_channel_type: {
-          our_field: :advertising_channel_type,
+          our_field: :google_advertising_channel_type,
           their_field: :advertising_channel_type,
-          transform: ITSELF
-        },
-        bidding_strategy_type: {
-          our_field: :bidding_strategy_type,
-          their_field: :bidding_strategy_type,
-          transform: ITSELF
+          transform: TO_SYMBOL
         }
       }.freeze
 
@@ -101,6 +98,23 @@ module GoogleAds
         }
       }.freeze
 
+      TARGETED_TO_NEGATIVE = ->(targeted) { !targeted }
+      NEGATIVE_TO_TARGETED = ->(negative) { !negative }
+
+      LOCATION_TARGET_FIELDS = {
+        geo_target_constant: {
+          our_field: :google_criterion_id,
+          their_field: :geo_target_constant,
+          transform: ITSELF,
+          nested_field: :location
+        },
+        negative: {
+          our_field: :negative,
+          their_field: :negative,
+          transform: ITSELF
+        }
+      }.freeze
+
       def self.to_google(resource)
         field_mapping = self.for(resource.class)
         result = {}
@@ -142,12 +156,14 @@ module GoogleAds
         case resource_type.name
         when AdBudget.name
           BUDGET_FIELDS
-        when Campaign.name
+        when ::Campaign.name
           CAMPAIGN_FIELDS
         when AdGroup.name
           AD_GROUP_FIELDS
         when AdsAccount.name
           ADS_ACCOUNT_FIELDS
+        when AdLocationTarget.name
+          LOCATION_TARGET_FIELDS
         else
           raise ArgumentError, "Unknown resource type: #{resource_type}"
         end

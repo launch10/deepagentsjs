@@ -33,7 +33,20 @@
 #
 class AdLocationTarget < ApplicationRecord
   include PlatformSettings
+  include GoogleMappable
+  include GoogleSyncable
+
   platform_setting :google, :criterion_id
+  platform_setting :google, :remote_criterion_id
+
+  use_google_sync GoogleAds::LocationTarget
+
+  after_google_sync do |result|
+    if result.resource_name.present?
+      criterion_id = result.resource_name.split("~").last
+      update_column(:platform_settings, platform_settings.deep_merge("google" => { "remote_criterion_id" => criterion_id }))
+    end
+  end
 
   acts_as_paranoid
 
@@ -71,6 +84,10 @@ class AdLocationTarget < ApplicationRecord
   end
 
   def excluded?
+    !targeted
+  end
+
+  def negative
     !targeted
   end
 
@@ -185,4 +202,5 @@ class AdLocationTarget < ApplicationRecord
     errors.add(:city, "can't be blank") if city.blank?
     errors.add(:country_code, "can't be blank") if country_code.blank?
   end
+
 end

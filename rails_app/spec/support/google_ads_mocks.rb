@@ -245,13 +245,14 @@ module GoogleAdsMocks
 
   def mock_search_response_with_campaign(
     campaign_id: 789,
+    customer_id: 456,
     name: "Test Campaign",
     status: :PAUSED,
     advertising_channel_type: :SEARCH,
     bidding_strategy_type: :MANUAL_CPC
   )
     campaign = double("Campaign",
-      resource_name: "customers/456/campaigns/#{campaign_id}",
+      resource_name: "customers/#{customer_id}/campaigns/#{campaign_id}",
       id: campaign_id,
       name: name,
       status: status,
@@ -358,6 +359,38 @@ module GoogleAdsMocks
       allow(strategy).to receive(:type=)
       allow(strategy).to receive(:target_cpa=)
       allow(strategy).to receive(:target_roas=)
+    end
+  end
+
+  def mock_search_response_with_campaign_criterion(
+    criterion_id: 111,
+    campaign_id: 789,
+    customer_id: 456,
+    location_id: 21167,
+    negative: false
+  )
+    location = double("LocationInfo", geo_target_constant: "geoTargetConstants/#{location_id}")
+    criterion = double("CampaignCriterion",
+      resource_name: "customers/#{customer_id}/campaignCriteria/#{campaign_id}~#{criterion_id}",
+      criterion_id: criterion_id,
+      campaign: "customers/#{customer_id}/campaigns/#{campaign_id}",
+      location: location,
+      negative: negative)
+    row = double("GoogleAdsRow", campaign_criterion: criterion)
+    [row]
+  end
+
+  def mock_mutate_campaign_criterion_response(criterion_id: 111, campaign_id: 789, customer_id: 456)
+    result = double("MutateCampaignCriterionResult",
+      resource_name: "customers/#{customer_id}/campaignCriteria/#{campaign_id}~#{criterion_id}")
+    double("MutateCampaignCriteriaResponse", results: [result])
+  end
+
+  def mock_campaign_criterion_resource
+    double("CampaignCriterion").tap do |criterion|
+      allow(criterion).to receive(:campaign=)
+      allow(criterion).to receive(:location=)
+      allow(criterion).to receive(:negative=)
     end
   end
 end

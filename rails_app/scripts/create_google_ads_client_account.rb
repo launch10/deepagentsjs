@@ -2,4 +2,4 @@
 require_relative '../config/environment'
 
 account = Account.first
-GoogleAds::AccountManager.create_client_account(account)
+account.create_google_ads_account
