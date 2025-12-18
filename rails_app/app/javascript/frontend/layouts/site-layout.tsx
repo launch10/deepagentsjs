@@ -1,4 +1,4 @@
-import Header from "@components/Header/Header";
+import Header from "@components/header/Header";
 import { usePage } from "@inertiajs/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
