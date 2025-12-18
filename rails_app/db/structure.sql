@@ -1057,6 +1057,41 @@ ALTER SEQUENCE public.brainstorms_id_seq OWNED BY public.brainstorms.id;
 
 
 --
+-- Name: campaign_deploys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.campaign_deploys (
+    id bigint NOT NULL,
+    campaign_id bigint NOT NULL,
+    campaign_history_id bigint,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    current_step character varying,
+    stacktrace text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: campaign_deploys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.campaign_deploys_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: campaign_deploys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.campaign_deploys_id_seq OWNED BY public.campaign_deploys.id;
+
+
+--
 -- Name: campaigns; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3592,6 +3627,13 @@ ALTER TABLE ONLY public.brainstorms ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: campaign_deploys id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.campaign_deploys ALTER COLUMN id SET DEFAULT nextval('public.campaign_deploys_id_seq'::regclass);
+
+
+--
 -- Name: campaigns id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4209,6 +4251,14 @@ ALTER TABLE ONLY public.assistants
 
 ALTER TABLE ONLY public.brainstorms
     ADD CONSTRAINT brainstorms_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: campaign_deploys campaign_deploys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.campaign_deploys
+    ADD CONSTRAINT campaign_deploys_pkey PRIMARY KEY (id);
 
 
 --
@@ -5748,6 +5798,41 @@ CREATE UNIQUE INDEX index_brainstorms_on_thread_id ON public.brainstorms USING b
 --
 
 CREATE UNIQUE INDEX index_brainstorms_on_website_id ON public.brainstorms USING btree (website_id);
+
+
+--
+-- Name: index_campaign_deploys_on_campaign_history_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaign_deploys_on_campaign_history_id ON public.campaign_deploys USING btree (campaign_history_id);
+
+
+--
+-- Name: index_campaign_deploys_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaign_deploys_on_campaign_id ON public.campaign_deploys USING btree (campaign_id);
+
+
+--
+-- Name: index_campaign_deploys_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaign_deploys_on_created_at ON public.campaign_deploys USING btree (created_at);
+
+
+--
+-- Name: index_campaign_deploys_on_current_step; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaign_deploys_on_current_step ON public.campaign_deploys USING btree (current_step);
+
+
+--
+-- Name: index_campaign_deploys_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaign_deploys_on_status ON public.campaign_deploys USING btree (status);
 
 
 --
@@ -7967,6 +8052,7 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20251218235348'),
 ('20251218002116'),
 ('20251217211636'),
+('20251218132052'),
 ('20251218125017'),
 ('20251217173931'),
 ('20251216144601'),
