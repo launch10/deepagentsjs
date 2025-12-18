@@ -44,11 +44,6 @@ export default function DescriptionsForm() {
     }
   }, [descriptions, methods]);
 
-  // Attach our methods to the parent "content" form
-  // This allows other parts of our codebase (e.g. Footer)
-  // to simply call validate on all "content" pieces
-  useFormRegistration("content", methods);
-
   const handleLockToggle = createLockToggleHandler(
     methods,
     "descriptions",
@@ -66,10 +61,13 @@ export default function DescriptionsForm() {
     setState({ descriptions: updatedLanggraph });
   };
 
-  useCampaignAutosave({
+  const { save } = useCampaignAutosave({
     methods,
     fieldMappings: [{ formField: "descriptions", apiField: "descriptions" }],
   });
+
+  // Attach save function to form registration
+  useFormRegistration("content", methods, save);
 
   return (
     <FieldGroup className="gap-3">

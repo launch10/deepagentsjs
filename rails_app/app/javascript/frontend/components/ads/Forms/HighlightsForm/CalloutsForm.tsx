@@ -44,8 +44,6 @@ export default function CalloutsForm() {
     }
   }, [callouts, methods]);
 
-  useFormRegistration("highlights", methods);
-
   const handleLockToggle = createLockToggleHandler(methods, "callouts", () => callouts, setState);
 
   const handleRefreshCallouts = () => {
@@ -58,10 +56,13 @@ export default function CalloutsForm() {
     setState({ callouts: updatedLanggraph });
   };
 
-  useCampaignAutosave({
+  const { save } = useCampaignAutosave({
     methods,
     fieldMappings: [{ formField: "callouts", apiField: "callouts" }],
   });
+
+  // Attach save function to form registration
+  useFormRegistration("highlights", methods, save);
 
   return (
     <FieldGroup className="gap-2">

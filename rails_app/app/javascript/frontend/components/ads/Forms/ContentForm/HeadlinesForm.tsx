@@ -45,8 +45,6 @@ export default function HeadlinesForm() {
     }
   }, [headlines, methods]);
 
-  useFormRegistration("content", methods);
-
   const handleAddHeadline = (value: string) => {
     const newHeadline: Ads.Headline = {
       id: generateUUID(),
@@ -72,10 +70,13 @@ export default function HeadlinesForm() {
     createRefreshHandler("headlines", headlines, updateState);
   };
 
-  useCampaignAutosave({
+  const { save } = useCampaignAutosave({
     methods,
     fieldMappings: [{ formField: "headlines", apiField: "headlines" }],
   });
+
+  // Attach save function to form registration
+  useFormRegistration("content", methods, save);
 
   return (
     <FieldGroup className="gap-3">

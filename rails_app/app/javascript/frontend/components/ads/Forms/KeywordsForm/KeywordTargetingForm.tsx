@@ -43,8 +43,6 @@ export default function KeywordTargetingForm() {
     }
   }, [keywords, methods]);
 
-  useFormRegistration("keywords", methods);
-
   const handleAddKeyword = (value: string) => {
     const newKeyword: Ads.Keyword = {
       id: generateUUID(),
@@ -93,7 +91,7 @@ export default function KeywordTargetingForm() {
 
   const resolveIndex = (id: string) => fields.findIndex((f) => f.id === id);
 
-  useCampaignAutosave({
+  const { save } = useCampaignAutosave({
     methods,
     fieldMappings: [
       {
@@ -106,6 +104,9 @@ export default function KeywordTargetingForm() {
       },
     ],
   });
+
+  // Attach save function to form registration
+  useFormRegistration("keywords", methods, save);
 
   return (
     <FieldGroup className="gap-4">

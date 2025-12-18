@@ -8,7 +8,7 @@ import {
   useWorkflowSteps,
 } from "@context/WorkflowStepsProvider";
 import { useAdvanceCampaign, useBackCampaign } from "@api/campaigns.hooks";
-import { selectValidate, useFormRegistry } from "@stores/formRegistry";
+import { selectValidate, selectSave, useFormRegistry } from "@stores/formRegistry";
 import { twMerge } from "tailwind-merge";
 import { Spinner } from "../ui/spinner";
 import { useAdsChatState } from "@hooks/useAdsChat";
@@ -23,6 +23,7 @@ interface AdCampaignPaginationProps {
 
 export default function AdCampaignPagination({ className }: { className?: string }) {
   const validateForm = useFormRegistry(selectValidate);
+  const saveForm = useFormRegistry(selectSave);
   const campaignId = useAdsChatState("campaignId");
 
   const substep = useWorkflowSteps(selectSubstep);
@@ -40,12 +41,20 @@ export default function AdCampaignPagination({ className }: { className?: string
     const isValid = await validateForm(substep);
     if (!isValid) return;
 
+    // Save all forms before advancing to ensure data is persisted
+    try {
+      await saveForm(substep);
+    } catch (error) {
+      // Don't continue if save failed - show error to user
+      return;
+    }
+
     advanceCampaign(undefined, {
       onSuccess: () => {
         workflowContinue();
       },
-      onError: (err) => {
-        console.error(err);
+      onError: () => {
+        // Error handling is done by the mutation
       },
     });
   };
@@ -55,8 +64,8 @@ export default function AdCampaignPagination({ className }: { className?: string
       onSuccess: () => {
         workflowBack();
       },
-      onError: (err) => {
-        console.error(err);
+      onError: () => {
+        // Error handling is done by the mutation
       },
     });
   };

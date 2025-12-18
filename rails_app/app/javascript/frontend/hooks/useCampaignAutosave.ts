@@ -41,6 +41,7 @@ export type UseCampaignAutosaveOptions<TFormData extends FieldValues> = {
 export type UseCampaignAutosaveReturn = {
   isAutosaving: boolean;
   autosaveError: Error | null;
+  save: () => Promise<void>;
 };
 
 // ============================================================================
@@ -56,17 +57,28 @@ const defaultAssetTransform = (assets: AssetLike[] | undefined): ApiFieldValue =
 
 /**
  * Builds the API update request from field mappings and current values.
+ * Returns null if all transformed values are empty (to prevent accidental deletion).
  */
 function buildUpdateRequest<TFormData extends FieldValues>(
   fieldMappings: FieldMapping<TFormData>[],
   values: unknown[]
-): CampaignUpdateRequest {
+): CampaignUpdateRequest | null {
   const campaign: Record<string, ApiFieldValue> = {};
+  let hasNonEmptyValue = false;
 
   fieldMappings.forEach((mapping, index) => {
     const transform = mapping.transform ?? defaultAssetTransform;
-    campaign[mapping.apiField] = transform(values[index] as AssetLike[] | undefined);
+    const transformedValue = transform(values[index] as AssetLike[] | undefined);
+    campaign[mapping.apiField] = transformedValue;
+    if (transformedValue.length > 0) {
+      hasNonEmptyValue = true;
+    }
   });
+
+  // Don't send empty updates - they would delete all existing records
+  if (!hasNonEmptyValue) {
+    return null;
+  }
 
   return { campaign };
 }
@@ -112,6 +124,7 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
 
   const isInitialMount = useRef(true);
   const lastSavedValue = useRef<string | null>(null);
+  const pendingSavePromise = useRef<Promise<void> | null>(null);
 
   const formFieldNames = fieldMappings.map((m) => m.formField);
   const watchedFields = methods.watch(formFieldNames);
@@ -129,6 +142,12 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
     }
 
     const updateRequest = buildUpdateRequest(fieldMappings, debouncedFields);
+
+    // Skip if all fields are empty (prevents accidental deletion)
+    if (!updateRequest) {
+      return;
+    }
+
     const serialized = JSON.stringify(updateRequest);
 
     if (serialized === lastSavedValue.current) {
@@ -144,8 +163,57 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
     });
   }, [debouncedFields, shouldAutosave, campaignId, autosaveMutation.isPending, fieldMappings]);
 
+  const save = async () => {
+    if (!campaignId) {
+      return;
+    }
+
+    // If a save is already in progress, wait for it to complete
+    // This prevents duplicate API calls when multiple forms save simultaneously
+    if (pendingSavePromise.current) {
+      await pendingSavePromise.current;
+    }
+
+    const currentValues = formFieldNames.map((fieldName) => {
+      return methods.getValues(fieldName as any);
+    });
+
+    const updateRequest = buildUpdateRequest(fieldMappings, currentValues);
+
+    // Skip if all fields are empty (prevents accidental deletion)
+    if (!updateRequest) {
+      return;
+    }
+
+    const serialized = JSON.stringify(updateRequest);
+
+    // Skip if already saved and no changes
+    if (serialized === lastSavedValue.current) {
+      return;
+    }
+
+    // Create and track the save promise to prevent duplicate calls
+    const savePromise = (async () => {
+      try {
+        const data = await autosaveMutation.mutateAsync(updateRequest);
+        lastSavedValue.current = serialized;
+        onSuccess?.(data);
+      } catch (error) {
+        mapApiErrorsToForm(error, methods);
+        throw error;
+      } finally {
+        // Clear the pending promise when done
+        pendingSavePromise.current = null;
+      }
+    })();
+
+    pendingSavePromise.current = savePromise;
+    await savePromise;
+  };
+
   return {
     isAutosaving: autosaveMutation.isPending,
     autosaveError: autosaveMutation.error,
+    save,
   };
 }
