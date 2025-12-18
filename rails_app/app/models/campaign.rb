@@ -47,6 +47,7 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::LocationTargeting
   include CampaignConcerns::GooglePlatformSettings
   include CampaignConcerns::MetaPlatformSettings
+  include GoogleMappable
 
   acts_as_paranoid
 

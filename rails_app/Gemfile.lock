@@ -439,6 +439,7 @@ GEM
       turbo-rails
     marcel (1.0.4)
     matrix (0.4.3)
+    memoist (0.16.2)
     method_source (1.1.0)
     mini_magick (5.3.1)
       logger
@@ -914,6 +915,7 @@ DEPENDENCIES
   local_time (~> 3.0)
   madmin (~> 2.0)
   mailbin (~> 1.0)
+  memoist
   money
   money-rails
   name_of_person (~> 1.0)

@@ -8,25 +8,11 @@ module GoogleAds
       IDENTITY = ->(value) { value }
 
       BUDGET_FIELDS = {
-        amount_cents: {
-          our_field: :amount_cents,
+        daily_budget_cents: {
+          our_field: :daily_budget_cents,
           their_field: :amount_micros,
-          transform: CENTS_TO_MICROS
-        },
-        amount_micros: {
-          our_field: :amount_micros,
-          their_field: :amount_micros,
-          transform: IDENTITY
-        },
-        delivery_method: {
-          our_field: :delivery_method,
-          their_field: :delivery_method,
-          transform: IDENTITY
-        },
-        name: {
-          our_field: :name,
-          their_field: :name,
-          transform: IDENTITY
+          transform: CENTS_TO_MICROS,
+          reverse_transform: MICROS_TO_CENTS
         }
       }.freeze
 
@@ -53,29 +39,6 @@ module GoogleAds
         }
       }.freeze
 
-      BIDDING_STRATEGY_FIELDS = {
-        name: {
-          our_field: :name,
-          their_field: :name,
-          transform: IDENTITY
-        },
-        type: {
-          our_field: :type,
-          their_field: :type,
-          transform: IDENTITY
-        },
-        target_cpa_micros: {
-          our_field: :target_cpa_cents,
-          their_field: :target_cpa_micros,
-          transform: CENTS_TO_MICROS
-        },
-        target_roas: {
-          our_field: :target_roas,
-          their_field: :target_roas,
-          transform: IDENTITY
-        }
-      }.freeze
-
       AD_GROUP_FIELDS = {
         name: {
           our_field: :name,
@@ -95,7 +58,8 @@ module GoogleAds
         cpc_bid_cents: {
           our_field: :cpc_bid_cents,
           their_field: :cpc_bid_micros,
-          transform: CENTS_TO_MICROS
+          transform: CENTS_TO_MICROS,
+          reverse_transform: MICROS_TO_CENTS
         },
         cpc_bid_micros: {
           our_field: :cpc_bid_micros,
@@ -104,15 +68,44 @@ module GoogleAds
         }
       }.freeze
 
+      def self.to_google(resource)
+        field_mapping = self.for(resource.class)
+        result = {}
+        resource.as_json.each do |key, value|
+          mapping = field_mapping[key.to_sym]
+          next unless mapping
+
+          result[mapping[:their_field]] = mapping[:transform].call(value)
+        end
+        result
+      end
+
+      def self.from_google(google_resource, resource_class)
+        field_mapping = self.for(resource_class)
+        result = {}
+        field_mapping.each do |_our_key, mapping|
+          their_field = mapping[:their_field]
+          value = if google_resource.is_a?(Hash)
+            next unless google_resource.key?(their_field) || google_resource.key?(their_field.to_s)
+            google_resource[their_field] || google_resource[their_field.to_s]
+          else
+            next unless google_resource.respond_to?(their_field)
+            google_resource.send(their_field)
+          end
+
+          reverse_transform = mapping[:reverse_transform] || IDENTITY
+          result[mapping[:our_field]] = reverse_transform.call(value)
+        end
+        result
+      end
+
       def self.for(resource_type)
-        case resource_type
-        when :budget, :campaign_budget
+        case resource_type.name
+        when AdBudget.name
           BUDGET_FIELDS
-        when :campaign
+        when Campaign.name
           CAMPAIGN_FIELDS
-        when :bidding_strategy
-          BIDDING_STRATEGY_FIELDS
-        when :ad_group
+        when AdGroup.name
           AD_GROUP_FIELDS
         else
           raise ArgumentError, "Unknown resource type: #{resource_type}"

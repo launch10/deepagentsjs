@@ -34,11 +34,11 @@ module GoogleAds
       end
 
       def success?
-        [:created, :updated, :unchanged].include?(action)
+        [:created, :updated, :unchanged].include?(action) && synced?
       end
 
       def synced?
-        values_match?
+        comparisons.any? && values_match?
       end
 
       def values_match?

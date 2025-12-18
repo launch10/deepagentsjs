@@ -22,6 +22,7 @@
 #
 class AdGroup < ApplicationRecord
   include PlatformSettings
+  include GoogleMappable
 
   acts_as_paranoid
 
