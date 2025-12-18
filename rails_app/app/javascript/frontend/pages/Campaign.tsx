@@ -5,9 +5,12 @@ import { useAdsChatIsLoadingHistory } from "@hooks/useAdsChat";
 import AdPreview from "@components/ads/AdPreview";
 import AdsForm from "@components/ads/forms/AdsForm";
 import AdCampaignPagination from "@components/ads/AdCampaignPagination";
+import { selectSubstep, useWorkflowSteps } from "@context/WorkflowStepsProvider";
 
 export default function Campaign() {
   const isLoadingHistory = useAdsChatIsLoadingHistory();
+  const substep = useWorkflowSteps(selectSubstep);
+  const shouldHideTabSwitcher = substep === "launch" || substep === "review"; // Hide tab switcher on Launch/Review steps
 
   return (
     <main className="mx-auto container max-w-7xl grid grid-cols-[288px_1fr] gap-8 px-8">
@@ -16,7 +19,7 @@ export default function Campaign() {
       </div>
       <div className="max-w-[948px]">
         <AdPreview className="mb-8" />
-        <AdCampaignTabSwitcher /> {/* TODO: Hide on Launch/Review steps */}
+        {!shouldHideTabSwitcher && <AdCampaignTabSwitcher />}
         {isLoadingHistory ? (
           <div className="border-[#D3D2D0] border border-t-0 rounded-b-2xl bg-white">
             <div className="flex items-center justify-center p-9">
