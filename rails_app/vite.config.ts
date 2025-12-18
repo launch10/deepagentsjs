@@ -49,7 +49,7 @@ export default defineConfig((config) => {
       react(),
       tailwindcss(),
       RubyPlugin(),
-      tsconfigPaths({ root: __dirname }),
+      tsconfigPaths(),
       chrome129IssuePlugin(),
       config.mode === "production" && optimizeCssModules({ apply: "build" }),
     ],
