@@ -22,18 +22,19 @@ module GoogleAds
 
     def create_client_account(account, timezone: nil)
       @account = expect_type(account, Account)
+      ads_account = account.google_ads_account
 
-      if account.google_customer_id.present?
-        customer = verify_customer(account.google_customer_id)
+      if ads_account&.google_customer_id.present?
+        customer = verify_customer(ads_account.google_customer_id)
         if customer && customer[:status] != :CANCELED
-          ensure_auto_tagging_enabled(account.google_customer_id, customer)
+          ensure_auto_tagging_enabled(ads_account.google_customer_id, customer)
           customer[:auto_tagging_enabled] = true
           return customer
         end
       end
 
       if (found_id = find_google_customer_id_by_name(account.name))
-        account.update!(google_customer_id: found_id.to_s)
+        find_or_create_google_ads_account(account, found_id.to_s)
         customer = verify_customer(found_id)
         ensure_auto_tagging_enabled(found_id.to_s, customer)
         customer[:auto_tagging_enabled] = true
@@ -58,9 +59,11 @@ module GoogleAds
       )
 
       customer_id = response.resource_name.split("/").last
-      account.update!(google_customer_id: customer_id)
+      find_or_create_google_ads_account(account, customer_id)
 
       setup_client_account(customer_id)
+
+      response
     end
 
     def setup_client_account(customer_id)
@@ -70,8 +73,9 @@ module GoogleAds
 
     def cancel_client_account(account)
       @account = expect_type(account, Account)
+      ads_account = account.google_ads_account
 
-      customer_id = account.google_customer_id.presence || find_google_customer_id_by_name(account.name)
+      customer_id = ads_account&.google_customer_id.presence || find_google_customer_id_by_name(account.name)
       raise ArgumentError, "No Google Ads account found for #{account.name}" unless customer_id
 
       operation = @client.operation.update_resource.customer("customers/#{customer_id}") do |c|
@@ -83,7 +87,7 @@ module GoogleAds
         operation: operation
       )
 
-      account.update!(google_customer_id: nil)
+      ads_account&.update!(google_customer_id: nil)
     end
 
     def verify_customer(customer_id)
@@ -141,7 +145,8 @@ module GoogleAds
     end
 
     def find_google_customer_id(account)
-      return account.google_customer_id if account.google_customer_id.present?
+      ads_account = account.google_ads_account
+      return ads_account.google_customer_id if ads_account&.google_customer_id.present?
 
       find_google_customer_id_by_name(account.name)
     end
@@ -150,7 +155,7 @@ module GoogleAds
       query = <<~QUERY
         SELECT customer_client.id, customer_client.descriptive_name
         FROM customer_client
-        WHERE customer_client.descriptive_name = '#{name.gsub("'", "\\'")}'
+        WHERE customer_client.descriptive_name = '#{name.gsub("'", "\\\\'")}'
       QUERY
 
       response = @client.service.google_ads.search(
@@ -159,6 +164,15 @@ module GoogleAds
       )
 
       response.first&.customer_client&.id
+    end
+
+    private
+
+    def find_or_create_google_ads_account(account, customer_id)
+      ads_account = account.ads_accounts.find_or_initialize_by(platform: "google")
+      ads_account.google_customer_id = customer_id
+      ads_account.save!
+      ads_account
     end
   end
 end

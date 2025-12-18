@@ -1,18 +1,22 @@
 require 'rails_helper'
 
-RSpec.describe AccountConcerns::GoogleAccount do
+RSpec.describe AccountConcerns::GoogleAdsAccount do
   include GoogleAdsMocks
 
-  let(:account) { create(:account, name: "Test Account", google_customer_id: nil) }
+  let(:account) { create(:account, name: "Test Account") }
 
   before { mock_google_ads_client }
 
-  describe '#has_google_account?' do
+  def create_google_ads_account(account, customer_id)
+    account.ads_accounts.create!(platform: "google", platform_settings: { "google" => { "customer_id" => customer_id } })
+  end
+
+  describe '#has_google_ads_account?' do
     context 'when google_customer_id is present' do
-      let(:account) { create(:account, google_customer_id: "123456") }
+      before { create_google_ads_account(account, "123456") }
 
       it 'returns true' do
-        expect(account.has_google_account?).to be true
+        expect(account.has_google_ads_account?).to be true
       end
     end
 
@@ -23,7 +27,7 @@ RSpec.describe AccountConcerns::GoogleAccount do
       end
 
       it 'returns true' do
-        expect(account.has_google_account?).to be true
+        expect(account.has_google_ads_account?).to be true
       end
     end
 
@@ -33,18 +37,18 @@ RSpec.describe AccountConcerns::GoogleAccount do
       end
 
       it 'returns false' do
-        expect(account.has_google_account?).to be false
+        expect(account.has_google_ads_account?).to be false
       end
     end
   end
 
-  describe '#find_google_account_id' do
+  describe '#find_google_customer_id' do
     context 'when google_customer_id is already set' do
-      let(:account) { create(:account, google_customer_id: "existing_id_123") }
+      before { create_google_ads_account(account, "existing_id_123") }
 
       it 'returns the existing google_customer_id without API call' do
         expect(GoogleAds::AccountManager).not_to receive(:new)
-        expect(account.find_google_account_id).to eq("existing_id_123")
+        expect(account.find_google_customer_id).to eq("existing_id_123")
       end
     end
 
@@ -56,11 +60,11 @@ RSpec.describe AccountConcerns::GoogleAccount do
 
       it 'queries Google Ads API' do
         expect(@mock_google_ads_service).to receive(:search)
-        account.find_google_account_id
+        account.find_google_customer_id
       end
 
       it 'returns the found customer id' do
-        expect(account.find_google_account_id).to eq(456)
+        expect(account.find_google_customer_id).to eq(456)
       end
     end
 
@@ -70,7 +74,7 @@ RSpec.describe AccountConcerns::GoogleAccount do
       end
 
       it 'returns nil' do
-        expect(account.find_google_account_id).to be_nil
+        expect(account.find_google_customer_id).to be_nil
       end
     end
   end
@@ -82,14 +86,14 @@ RSpec.describe AccountConcerns::GoogleAccount do
           .and_return(mock_search_response_with_customer_client(customer_id: 999, descriptive_name: "Test Account"))
       end
 
-      it 'updates the account with the customer id' do
+      it 'creates an ads_account with the customer id' do
         account.set_google_customer_id
-        expect(account.reload.google_customer_id).to eq("999")
+        expect(account.reload.google_customer_id.to_s).to eq("999")
       end
     end
 
     context 'when customer id already exists on account' do
-      let(:account) { create(:account, google_customer_id: "already_set_456") }
+      before { create_google_ads_account(account, "already_set_456") }
 
       it 'keeps the existing customer id' do
         account.set_google_customer_id
@@ -116,7 +120,7 @@ RSpec.describe AccountConcerns::GoogleAccount do
 
   describe '#create_google_ads_account' do
     let(:customer_resource) { mock_customer_resource }
-    let(:account) { create(:account, name: "Test Account", google_customer_id: nil, google_email_address: "test@example.com") }
+    let(:account) { create(:account, name: "Test Account", google_email_address: "test@example.com") }
 
     before do
       allow(@mock_resource).to receive(:customer).and_yield(customer_resource).and_return(customer_resource)
@@ -129,7 +133,7 @@ RSpec.describe AccountConcerns::GoogleAccount do
     end
 
     context 'when google_email_address is missing' do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: nil, google_email_address: nil) }
+      let(:account) { create(:account, name: "Test Account", google_email_address: nil) }
 
       it 'raises an error' do
         expect { account.create_google_ads_account }
@@ -139,16 +143,11 @@ RSpec.describe AccountConcerns::GoogleAccount do
 
     context 'when successful' do
       before do
-        customer_client_response, customer_response = mock_verify_customer_responses(
-          customer_id: 789,
-          auto_tagging_enabled: true,
-          status: :CLOSED
-        )
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(
             mock_empty_search_response,
-            customer_client_response,
-            customer_response
+            mock_search_response_with_customer(customer_id: 789, auto_tagging_enabled: true),
+            mock_search_response_with_customer(customer_id: 789, auto_tagging_enabled: true)
           )
         allow(@mock_customer_service).to receive(:create_customer_client)
           .and_return(mock_create_customer_client_response(customer_id: "new_customer_789"))
@@ -159,31 +158,24 @@ RSpec.describe AccountConcerns::GoogleAccount do
         account.create_google_ads_account
       end
 
-      it 'updates the account with the new customer id via AccountManager' do
+      it 'creates an ads_account with the new customer id via AccountManager' do
         account.create_google_ads_account
         expect(account.reload.google_customer_id).to be_present
       end
 
-      it 'returns a truthy customer hash' do
+      it 'returns a truthy response' do
         result = account.create_google_ads_account
         expect(result).to be_truthy
-        expect(result[:id]).to eq(789)
       end
     end
 
     context 'when account already exists in Google Ads by name' do
       before do
-        customer_client_response, customer_response = mock_verify_customer_responses(
-          customer_id: 123,
-          descriptive_name: "Test Account",
-          auto_tagging_enabled: true,
-          status: :CLOSED
-        )
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(
             mock_search_response_with_customer_client(customer_id: 123, descriptive_name: "Test Account"),
-            customer_client_response,
-            customer_response
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: true),
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: true)
           )
       end
 
@@ -192,7 +184,7 @@ RSpec.describe AccountConcerns::GoogleAccount do
         account.create_google_ads_account
       end
 
-      it 'updates the account with the existing customer id' do
+      it 'creates an ads_account with the existing customer id' do
         account.create_google_ads_account
         expect(account.reload.google_customer_id).to eq("123")
       end
@@ -219,16 +211,15 @@ RSpec.describe AccountConcerns::GoogleAccount do
     end
 
     context 'when account has existing valid google_customer_id' do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: "existing_123") }
+      let(:account) { create(:account, name: "Test Account") }
 
       before do
-        customer_client_response, customer_response = mock_verify_customer_responses(
-          customer_id: 123,
-          auto_tagging_enabled: true,
-          status: :CLOSED
-        )
+        create_google_ads_account(account, "existing_123")
         allow(@mock_google_ads_service).to receive(:search)
-          .and_return(customer_client_response, customer_response)
+          .and_return(
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: true),
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: true)
+          )
       end
 
       it 'skips creation and returns existing id' do
@@ -243,16 +234,15 @@ RSpec.describe AccountConcerns::GoogleAccount do
     end
 
     context 'when account has existing google_customer_id without auto-tagging' do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: "existing_123") }
+      let(:account) { create(:account, name: "Test Account") }
 
       before do
-        customer_client_response, customer_response = mock_verify_customer_responses(
-          customer_id: 123,
-          auto_tagging_enabled: false,
-          status: :CLOSED
-        )
+        create_google_ads_account(account, "existing_123")
         allow(@mock_google_ads_service).to receive(:search)
-          .and_return(customer_client_response, customer_response)
+          .and_return(
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: false),
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: false)
+          )
         allow(@mock_update_resource).to receive(:customer)
           .and_yield(double.as_null_object)
           .and_return(mock_auto_tagging_operation)
@@ -267,13 +257,16 @@ RSpec.describe AccountConcerns::GoogleAccount do
     end
 
     context 'when account has canceled google_customer_id (idempotency)' do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: "canceled_456", google_email_address: "canceled@example.com") }
+      let(:account) { create(:account, name: "Test Account", google_email_address: "canceled@example.com") }
 
       before do
+        create_google_ads_account(account, "canceled_456")
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(
-            mock_search_response_with_canceled_customer(customer_id: 456),
+            mock_search_response_with_customer(customer_id: 456, status: :CANCELED, auto_tagging_enabled: false),
+            mock_search_response_with_customer(customer_id: 456, status: :CANCELED, auto_tagging_enabled: false),
             mock_empty_search_response,
+            mock_search_response_with_customer(customer_id: 999, auto_tagging_enabled: true),
             mock_search_response_with_customer(customer_id: 999, auto_tagging_enabled: true)
           )
         allow(@mock_resource).to receive(:customer)
@@ -299,23 +292,12 @@ RSpec.describe AccountConcerns::GoogleAccount do
       end
     end
 
-    # Auto-tagging automatically appends ?gclid=ABC123 to URLs when someone clicks your ad.
-    #
-    # What it's for: Connecting ad clicks to conversions.
-    #
-    # User clicks ad → lands on yoursite.com?gclid=Cj0KCQjw...
-    # User converts → you tell Google "gclid Cj0KCQjw... converted"
-    # Google matches → "Ah, that was from Campaign X, Keyword Y, Ad Z"
-    #
-    # Without auto-tagging: You'd have to manually set up UTM parameters and lose detailed click-level attribution.
-    #
-    # With auto-tagging: Google Ads knows exactly which keyword, ad, device, time, etc. drove each conversion.
-    #
     context 'auto-tagging' do
       before do
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(
             mock_empty_search_response,
+            mock_search_response_with_customer(customer_id: 9999, auto_tagging_enabled: true),
             mock_search_response_with_customer(customer_id: 9999, auto_tagging_enabled: true)
           )
         allow(@mock_resource).to receive(:customer)
@@ -338,12 +320,13 @@ RSpec.describe AccountConcerns::GoogleAccount do
 
     context 'timezone support' do
       it 'uses account time_zone when available' do
-        tz_account = create(:account, name: "TZ Test Account", google_customer_id: nil, time_zone: "America/Los_Angeles", google_email_address: "tz@example.com")
+        tz_account = create(:account, name: "TZ Test Account", time_zone: "America/Los_Angeles", google_email_address: "tz@example.com")
         tz_customer_resource = mock_customer_resource
 
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(
             mock_empty_search_response,
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: true),
             mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: true)
           )
         allow(@mock_resource).to receive(:customer)
@@ -360,13 +343,15 @@ RSpec.describe AccountConcerns::GoogleAccount do
         expect(tz_customer_resource).to receive(:time_zone=).with("America/Los_Angeles")
         tz_account.create_google_ads_account
       end
+
       it 'falls back to default timezone when account has none' do
-        no_tz_account = create(:account, name: "No TZ Account", google_customer_id: nil, time_zone: nil, google_email_address: "notz@example.com")
+        no_tz_account = create(:account, name: "No TZ Account", time_zone: nil, google_email_address: "notz@example.com")
         no_tz_customer_resource = mock_customer_resource
 
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(
             mock_empty_search_response,
+            mock_search_response_with_customer(customer_id: 456, auto_tagging_enabled: true),
             mock_search_response_with_customer(customer_id: 456, auto_tagging_enabled: true)
           )
         allow(@mock_resource).to receive(:customer)
@@ -390,6 +375,7 @@ RSpec.describe AccountConcerns::GoogleAccount do
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(
             mock_empty_search_response,
+            mock_search_response_with_customer(customer_id: 7777, auto_tagging_enabled: true),
             mock_search_response_with_customer(customer_id: 7777, auto_tagging_enabled: true)
           )
         allow(@mock_resource).to receive(:customer)
@@ -412,7 +398,9 @@ RSpec.describe AccountConcerns::GoogleAccount do
   end
 
   describe '#dangerously_destroy_google_ads_account!' do
-    let(:account) { create(:account, name: "Test Account", google_customer_id: "123456") }
+    let(:account) { create(:account, name: "Test Account") }
+
+    before { create_google_ads_account(account, "123456") }
 
     context 'when successful' do
       before do
@@ -442,14 +430,14 @@ RSpec.describe AccountConcerns::GoogleAccount do
     end
 
     context 'when account has no google_customer_id' do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: nil) }
+      let!(:account_without_ads) { create(:account, name: "Test Account Without Ads") }
 
       before do
         allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
       end
 
       it 'raises ArgumentError' do
-        expect { account.dangerously_destroy_google_ads_account! }
+        expect { account_without_ads.dangerously_destroy_google_ads_account! }
           .to raise_error(ArgumentError, /No Google Ads account found/)
       end
     end

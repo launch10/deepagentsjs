@@ -273,9 +273,8 @@ CREATE TABLE public.accounts (
     subdomain character varying,
     billing_email character varying,
     account_users_count integer DEFAULT 0,
-    google_customer_id character varying,
-    time_zone character varying DEFAULT 'America/New_York'::character varying,
-    google_email_address character varying
+    google_email_address character varying,
+    time_zone character varying DEFAULT 'America/New_York'::character varying
 );
 
 
@@ -7968,6 +7967,7 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20251218235348'),
 ('20251218002116'),
 ('20251217211636'),
+('20251218125017'),
 ('20251217173931'),
 ('20251216144601'),
 ('20251201143930'),

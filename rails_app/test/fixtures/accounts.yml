@@ -14,7 +14,6 @@
 #  time_zone            :string           default("America/New_York")
 #  created_at           :datetime         not null
 #  updated_at           :datetime         not null
-#  google_customer_id   :string
 #  owner_id             :bigint
 #
 # Indexes

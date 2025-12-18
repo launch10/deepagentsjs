@@ -86,6 +86,18 @@ module GoogleAdsMocks
     time_zone: "America/New_York",
     currency_code: "USD"
   )
+    customer_client = double("CustomerClient",
+      resource_name: "customers/123/customerClients/#{customer_id}",
+      id: customer_id,
+      descriptive_name: descriptive_name,
+      manager: false,
+      test_account: false,
+      level: 1,
+      time_zone: time_zone,
+      currency_code: currency_code,
+      hidden: false,
+      client_customer: "customers/#{customer_id}",
+      status: status)
     customer = double("Customer",
       resource_name: "customers/#{customer_id}",
       id: customer_id,
@@ -96,7 +108,7 @@ module GoogleAdsMocks
       test_account: false,
       manager: false,
       status: status)
-    row = double("GoogleAdsRow", customer: customer, customer_client: nil)
+    row = double("GoogleAdsRow", customer: customer, customer_client: customer_client)
     [row]
   end
 

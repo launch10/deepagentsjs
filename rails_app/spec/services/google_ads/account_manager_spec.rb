@@ -1,9 +1,13 @@
 require "rails_helper"
 
 RSpec.describe GoogleAds::AccountManager do
-  let(:account) { create(:account, name: "Test Account", google_customer_id: nil, google_email_address: "test@example.com") }
+  let(:account) { create(:account, name: "Test Account", google_email_address: "test@example.com") }
 
   before { mock_google_ads_client }
+
+  def google_ads_account_for(account)
+    account.ads_accounts.find_by(platform: "google")
+  end
 
   describe "#create_client_account" do
     context "when account has no existing google_customer_id" do
@@ -25,9 +29,11 @@ RSpec.describe GoogleAds::AccountManager do
         described_class.create_client_account(account)
       end
 
-      it "updates the account with google_customer_id" do
+      it "creates an AdsAccount with google_customer_id" do
         described_class.create_client_account(account)
-        expect(account.reload.google_customer_id).to eq("9876543210")
+        ads_account = google_ads_account_for(account.reload)
+        expect(ads_account).to be_present
+        expect(ads_account.google_customer_id).to eq("9876543210")
       end
 
       it "enables auto-tagging after creation" do
@@ -49,7 +55,11 @@ RSpec.describe GoogleAds::AccountManager do
     context "when account already exists by name in Google Ads" do
       before do
         allow(@mock_google_ads_service).to receive(:search)
-          .and_return(mock_search_response_with_customer_client(customer_id: 123, descriptive_name: "Test Account"))
+          .and_return(
+            mock_search_response_with_customer_client(customer_id: 123, descriptive_name: "Test Account"),
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: true),
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: true)
+          )
         allow(@mock_update_resource).to receive(:customer).and_yield(double.as_null_object).and_return(mock_auto_tagging_operation)
         allow(@mock_customer_service).to receive(:mutate_customer).and_return(mock_mutate_customer_response_auto_tagging)
       end
@@ -61,46 +71,56 @@ RSpec.describe GoogleAds::AccountManager do
 
       it "returns existing customer_id" do
         result = described_class.create_client_account(account)
-        expect(result).to eq(123)
+        expect(result[:id]).to eq(123)
       end
 
-      it "updates the account with the found google_customer_id" do
+      it "creates an AdsAccount with the found google_customer_id" do
         described_class.create_client_account(account)
-        expect(account.reload.google_customer_id).to eq("123")
+        ads_account = google_ads_account_for(account.reload)
+        expect(ads_account).to be_present
+        expect(ads_account.google_customer_id).to eq("123")
       end
 
       it "ensures auto-tagging is enabled on existing account" do
-        expect(@mock_customer_service).to receive(:mutate_customer).at_least(:once)
+        expect(@mock_customer_service).not_to receive(:mutate_customer)
         described_class.create_client_account(account)
       end
     end
 
     context "when account has existing valid google_customer_id" do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: "123456") }
+      let(:account) { create(:account, name: "Test Account") }
+      let!(:ads_account) { account.ads_accounts.create!(platform: "google", platform_settings: { "google" => { "customer_id" => "123456" } }) }
 
       before do
         allow(@mock_google_ads_service).to receive(:search)
-          .and_return(mock_search_response_with_customer(customer_id: 123456, auto_tagging_enabled: true))
+          .and_return(
+            mock_search_response_with_customer(customer_id: 123456, auto_tagging_enabled: true),
+            mock_search_response_with_customer(customer_id: 123456, auto_tagging_enabled: true)
+          )
       end
 
       it "skips creation and returns existing id" do
         expect(@mock_customer_service).not_to receive(:create_customer_client)
         result = described_class.create_client_account(account)
-        expect(result).to eq("123456")
+        expect(result[:id]).to eq(123456)
       end
 
-      it "does not update the account" do
-        expect(account).not_to receive(:update!)
+      it "does not update the ads_account" do
         described_class.create_client_account(account)
+        expect(ads_account.reload.google_customer_id).to eq("123456")
       end
     end
 
     context "when account has existing google_customer_id but auto-tagging is disabled" do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: "123456") }
+      let(:account) { create(:account, name: "Test Account", google_email_address: "test@example.com") }
+      let!(:ads_account) { account.ads_accounts.create!(platform: "google", platform_settings: { "google" => { "customer_id" => "123456" } }) }
 
       before do
         allow(@mock_google_ads_service).to receive(:search)
-          .and_return(mock_search_response_with_customer(customer_id: 123456, auto_tagging_enabled: false))
+          .and_return(
+            mock_search_response_with_customer(customer_id: 123456, auto_tagging_enabled: false),
+            mock_search_response_with_customer(customer_id: 123456, auto_tagging_enabled: false)
+          )
         allow(@mock_update_resource).to receive(:customer).and_yield(double.as_null_object).and_return(mock_auto_tagging_operation)
         allow(@mock_customer_service).to receive(:mutate_customer).and_return(mock_mutate_customer_response_auto_tagging)
       end
@@ -112,14 +132,17 @@ RSpec.describe GoogleAds::AccountManager do
     end
 
     context "when account has canceled google_customer_id" do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: "123456", google_email_address: "canceled@example.com") }
+      let(:account) { create(:account, name: "Test Account", google_email_address: "canceled@example.com") }
+      let!(:ads_account) { account.ads_accounts.create!(platform: "google", platform_settings: { "google" => { "customer_id" => "123456" } }) }
 
       before do
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(
-            mock_search_response_with_canceled_customer(customer_id: 123456),
+            mock_search_response_with_customer(customer_id: 123456, status: :CANCELED, auto_tagging_enabled: false),
+            mock_search_response_with_customer(customer_id: 123456, status: :CANCELED, auto_tagging_enabled: false),
             mock_empty_search_response,
-            mock_search_response_with_customer(customer_id: 9999)
+            mock_search_response_with_customer(customer_id: 9999, auto_tagging_enabled: true),
+            mock_search_response_with_customer(customer_id: 9999, auto_tagging_enabled: true)
           )
         allow(@mock_resource).to receive(:customer).and_yield(mock_customer_resource).and_return(mock_customer_resource)
         allow(@mock_customer_service).to receive(:create_customer_client)
@@ -133,9 +156,9 @@ RSpec.describe GoogleAds::AccountManager do
         described_class.create_client_account(account)
       end
 
-      it "updates the account with new google_customer_id" do
+      it "updates the ads_account with new google_customer_id" do
         described_class.create_client_account(account)
-        expect(account.reload.google_customer_id).to eq("9999")
+        expect(ads_account.reload.google_customer_id).to eq("9999")
       end
     end
 
@@ -174,7 +197,8 @@ RSpec.describe GoogleAds::AccountManager do
 
   describe "#cancel_client_account" do
     context "when account has google_customer_id" do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: "123456") }
+      let(:account) { create(:account, name: "Test Account") }
+      let!(:ads_account) { account.ads_accounts.create!(platform: "google", platform_settings: { "google" => { "customer_id" => "123456" } }) }
 
       before do
         allow(@mock_update_resource).to receive(:customer).and_yield(double.as_null_object).and_return(mock_customer_operation)
@@ -189,14 +213,14 @@ RSpec.describe GoogleAds::AccountManager do
         described_class.cancel_client_account(account)
       end
 
-      it "clears google_customer_id" do
+      it "clears google_customer_id on ads_account" do
         described_class.cancel_client_account(account)
-        expect(account.reload.google_customer_id).to be_nil
+        expect(ads_account.reload.google_customer_id).to be_nil
       end
     end
 
     context "when account has no google_customer_id but exists by name" do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: nil) }
+      let(:account) { create(:account, name: "Test Account") }
 
       before do
         allow(@mock_google_ads_service).to receive(:search)
@@ -215,7 +239,7 @@ RSpec.describe GoogleAds::AccountManager do
     end
 
     context "when account has no google_customer_id and not found by name" do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: nil) }
+      let(:account) { create(:account, name: "Test Account") }
 
       before do
         allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
@@ -228,7 +252,8 @@ RSpec.describe GoogleAds::AccountManager do
     end
 
     context "when API returns an error" do
-      let(:account) { create(:account, name: "Test Account", google_customer_id: "123456") }
+      let(:account) { create(:account, name: "Test Account") }
+      let!(:ads_account) { account.ads_accounts.create!(platform: "google", platform_settings: { "google" => { "customer_id" => "123456" } }) }
 
       before do
         allow(@mock_update_resource).to receive(:customer).and_yield(double.as_null_object).and_return(mock_customer_operation)
@@ -248,14 +273,20 @@ RSpec.describe GoogleAds::AccountManager do
     context "when customer exists" do
       before do
         allow(@mock_google_ads_service).to receive(:search)
-          .and_return(mock_search_response_with_customer(
-            customer_id: 123,
-            descriptive_name: "Test Client",
-            auto_tagging_enabled: true,
-            status: :ENABLED,
-            time_zone: "America/New_York",
-            currency_code: "USD"
-          ))
+          .and_return(
+            mock_search_response_with_customer(
+              customer_id: 123,
+              descriptive_name: "Test Client",
+              auto_tagging_enabled: true,
+              status: :ENABLED,
+              time_zone: "America/New_York",
+              currency_code: "USD"
+            ),
+            mock_search_response_with_customer(
+              customer_id: 123,
+              auto_tagging_enabled: true
+            )
+          )
       end
 
       it "returns customer details hash" do
@@ -306,7 +337,10 @@ RSpec.describe GoogleAds::AccountManager do
     context "when auto-tagging is already enabled" do
       before do
         allow(@mock_google_ads_service).to receive(:search)
-          .and_return(mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: true))
+          .and_return(
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: true),
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: true)
+          )
       end
 
       it "does not call mutate_customer" do
@@ -318,7 +352,10 @@ RSpec.describe GoogleAds::AccountManager do
     context "when auto-tagging is disabled" do
       before do
         allow(@mock_google_ads_service).to receive(:search)
-          .and_return(mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: false))
+          .and_return(
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: false),
+            mock_search_response_with_customer(customer_id: 123, auto_tagging_enabled: false)
+          )
         allow(@mock_update_resource).to receive(:customer).and_yield(double.as_null_object).and_return(mock_auto_tagging_operation)
         allow(@mock_customer_service).to receive(:mutate_customer).and_return(mock_mutate_customer_response_auto_tagging)
       end
