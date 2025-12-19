@@ -14,6 +14,11 @@ const preview: Preview = {
       },
     },
   },
+  initialGlobals: {
+    backgrounds: {
+      values: [{ name: "background", value: "#fafaf9" }],
+    },
+  },
 };
 
 export default preview;
