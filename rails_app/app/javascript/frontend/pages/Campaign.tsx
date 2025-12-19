@@ -6,6 +6,7 @@ import AdPreview from "@components/ads/AdPreview";
 import AdsForm from "@components/ads/forms/AdsForm";
 import AdCampaignPagination from "@components/ads/AdCampaignPagination";
 import { selectSubstep, useWorkflowSteps } from "@context/WorkflowStepsProvider";
+import { cn } from "@lib/utils";
 
 export default function Campaign() {
   const isLoadingHistory = useAdsChatIsLoadingHistory();
@@ -19,9 +20,14 @@ export default function Campaign() {
       </div>
       <div className="max-w-[948px]">
         <AdPreview className="mb-8" />
-        {!shouldHideTabSwitcher && <AdCampaignTabSwitcher />}
+        {!shouldHideTabSwitcher && <AdCampaignTabSwitcher disabled={isLoadingHistory} />}
         {isLoadingHistory ? (
-          <div className="border-[#D3D2D0] border border-t-0 rounded-b-2xl bg-white">
+          <div
+            className={cn(
+              "border-[#D3D2D0] border rounded-2xl bg-white",
+              !shouldHideTabSwitcher && "rounded-t-none"
+            )}
+          >
             <div className="flex items-center justify-center p-9">
               <LogoSpinner />
             </div>
