@@ -136,6 +136,51 @@ RSpec.describe WebsiteUrl, type: :model do
     end
   end
 
+  describe 'path normalization' do
+    it 'adds leading slash when missing' do
+      website_url = create(:website_url, website: website, domain: domain, account: account, path: "bingo")
+      expect(website_url.path).to eq("/bingo")
+    end
+
+    it 'removes trailing slash' do
+      website_url = create(:website_url, website: website, domain: domain, account: account, path: "/bingo/")
+      expect(website_url.path).to eq("/bingo")
+    end
+
+    it 'preserves root path as "/"' do
+      website_url = create(:website_url, website: website, domain: domain, account: account, path: "/")
+      expect(website_url.path).to eq("/")
+    end
+
+    it 'normalizes path without leading slash and with trailing slash' do
+      website_url = create(:website_url, website: website, domain: domain, account: account, path: "campaign/")
+      expect(website_url.path).to eq("/campaign")
+    end
+  end
+
+  describe 'single-level path restriction' do
+    it 'allows root path' do
+      url = create(:website_url, website: website, domain: domain, account: account, path: "/")
+      expect(url).to be_valid
+    end
+
+    it 'allows single-level paths' do
+      url = create(:website_url, website: website, domain: domain, account: account, path: "/bingo")
+      expect(url).to be_valid
+    end
+
+    it 'rejects multi-level paths' do
+      url = build(:website_url, website: website, domain: domain, account: account, path: "/marketing/campaign")
+      expect(url).not_to be_valid
+      expect(url.errors[:path]).to include("must be single-level (e.g., '/bingo'), multi-level paths like '/marketing/campaign' are not supported")
+    end
+
+    it 'rejects deeply nested paths' do
+      url = build(:website_url, website: website, domain: domain, account: account, path: "/a/b/c")
+      expect(url).not_to be_valid
+    end
+  end
+
   describe 'path-based routing scenarios' do
     let(:website2) { create(:website, project: project, account: account) }
 
@@ -152,12 +197,6 @@ RSpec.describe WebsiteUrl, type: :model do
       url = create(:website_url, website: website, domain: domain, account: account, path: "/")
       expect(url).to be_valid
       expect(url.path).to eq("/")
-    end
-
-    it 'allows nested paths' do
-      url = create(:website_url, website: website, domain: domain, account: account, path: "/marketing/campaign")
-      expect(url).to be_valid
-      expect(url.path).to eq("/marketing/campaign")
     end
   end
 

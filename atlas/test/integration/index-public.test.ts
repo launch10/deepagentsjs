@@ -488,6 +488,69 @@ describe('Public Worker - index-public', () => {
     });
   });
 
+  describe('Asset Resolution for Subpath Websites', () => {
+    it('redirects subpath without trailing slash to trailing slash', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-bingo' },
+        websiteUrl: { id: 'url-bingo', domain: 'example.launch10.site', path: '/bingo' },
+        r2Files: {
+          'production/ws-bingo/live/index.html': '<html>Bingo Site</html>',
+        },
+      });
+
+      const res = await app.request('https://example.launch10.site/bingo', { redirect: 'manual' }, env);
+      expect(res.status).toBe(301);
+      expect(res.headers.get('location')).toBe('https://example.launch10.site/bingo/');
+    });
+
+    it('serves assets from subpath website when both root and subpath exist', async () => {
+      // Setup root website at /
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-root' },
+        websiteUrl: { id: 'url-root', domain: 'example.launch10.site', path: '/' },
+        r2Files: {
+          'production/ws-root/live/index.html': '<html>Root Site</html>',
+          'production/ws-root/live/assets/index-root.js': 'console.log("root")',
+        },
+      });
+
+      // Setup subpath website at /bingo
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-bingo' },
+        websiteUrl: { id: 'url-bingo', domain: 'example.launch10.site', path: '/bingo' },
+        r2Files: {
+          'production/ws-bingo/live/index.html': '<html>Bingo Site</html>',
+          'production/ws-bingo/live/assets/index-bingo.js': 'console.log("bingo")',
+          'production/ws-bingo/live/assets/index-CJtnk77_.css': 'body { color: red; }',
+        },
+      });
+
+      // Root should serve root content
+      const rootRes = await app.request('https://example.launch10.site/', {}, env);
+      expect(await rootRes.text()).toBe('<html>Root Site</html>');
+
+      // Subpath should serve subpath content
+      const bingoRes = await app.request('https://example.launch10.site/bingo/', {}, env);
+      expect(await bingoRes.text()).toBe('<html>Bingo Site</html>');
+
+      // Assets under subpath should resolve to subpath website's assets
+      const bingoAssetRes = await app.request('https://example.launch10.site/bingo/assets/index-bingo.js', {}, env);
+      expect(bingoAssetRes.status).toBe(200);
+      expect(await bingoAssetRes.text()).toBe('console.log("bingo")');
+
+      // CSS asset under subpath
+      const bingoCssRes = await app.request('https://example.launch10.site/bingo/assets/index-CJtnk77_.css', {}, env);
+      expect(bingoCssRes.status).toBe(200);
+      expect(await bingoCssRes.text()).toBe('body { color: red; }');
+
+      // Root assets should still work
+      const rootAssetRes = await app.request('https://example.launch10.site/assets/index-root.js', {}, env);
+      expect(rootAssetRes.status).toBe(200);
+      expect(await rootAssetRes.text()).toBe('console.log("root")');
+    });
+
+  });
+
   describe('Complex Multi-Tenant Scenarios', () => {
     it('serves different websites for different domains', async () => {
       await setupWebsiteWithUrl({

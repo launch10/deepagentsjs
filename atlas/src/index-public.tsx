@@ -68,6 +68,15 @@ app.get('*', async (c) => {
   
   if (urlMatch) {
     console.log(`Found WebsiteUrl for hostname: ${lookupHostname}, path: ${urlMatch.matchedPath}`);
+    
+    // Redirect to trailing slash for subpath websites to ensure relative paths resolve correctly
+    // e.g., /bingo -> /bingo/ so that ./assets/app.js resolves to /bingo/assets/app.js
+    if (urlMatch.matchedPath !== '/' && pathname === urlMatch.matchedPath) {
+      const redirectUrl = new URL(c.req.url);
+      redirectUrl.pathname = pathname + '/';
+      return Response.redirect(redirectUrl.toString(), 301);
+    }
+    
     website = await websiteModel.get(urlMatch.websiteUrl.websiteId);
     matchedPath = urlMatch.matchedPath;
   } else {
