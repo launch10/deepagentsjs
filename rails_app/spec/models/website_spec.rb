@@ -37,6 +37,7 @@ describe Website do
     allow(DeployUploader).to receive(:new).and_return(deploy_uploader)
     allow(deploy_uploader).to receive(:client).and_return(s3_client)
     allow(deploy_uploader).to receive(:bucket_name).and_return('deploys')
+    allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
     Sidekiq::Testing.fake!
   end
 

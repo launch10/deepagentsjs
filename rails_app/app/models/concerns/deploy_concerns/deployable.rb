@@ -30,6 +30,7 @@ module DeployConcerns
 
       dist_path = build!
       upload!(dist_path)
+      website.sync_all_to_atlas
       true
     rescue => e
       Rails.logger.error "Deploy failed: #{e.message} #{e.backtrace}"
@@ -138,10 +139,9 @@ module DeployConcerns
     def set_default_environment
       self.environment ||= if Rails.env.production?
         "production"
-      elsif Rails.env.staging?
-        "staging"
       else
-        "development"
+        binding.pry
+        Cloudflare.deploy_env || "staging"
       end
     end
 

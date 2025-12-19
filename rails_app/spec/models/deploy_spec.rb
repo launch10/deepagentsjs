@@ -88,6 +88,7 @@ RSpec.describe Deploy, type: :model do
       allow(File).to receive(:write)
       allow(Dir).to receive(:chdir).and_yield
       allow(Dir).to receive(:exist?).and_return(true)
+      allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
     end
 
     context 'when deploy is successful' do
@@ -154,6 +155,11 @@ RSpec.describe Deploy, type: :model do
       it 'marks deploy as live' do
         deploy.deploy!
         expect(deploy.reload.is_live).to be true
+      end
+
+      it 'syncs website to Atlas' do
+        expect(website_with_files).to receive(:sync_all_to_atlas)
+        deploy.deploy!
       end
     end
 
@@ -484,6 +490,7 @@ RSpec.describe Deploy, type: :model do
       allow(File).to receive(:write)
       allow(Dir).to receive(:chdir).and_yield
       allow(Dir).to receive(:exist?).and_return(true)
+      allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
 
       allow(s3_client).to receive(:put_object)
       allow(s3_client).to receive(:copy_object)
@@ -684,6 +691,7 @@ RSpec.describe Deploy, type: :model do
         allow(Dir).to receive(:chdir).and_yield
         allow(Dir).to receive(:exist?).and_return(true)
         allow(deploy).to receive(:system).and_return(true)
+        allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
 
         # Mock file system operations for upload
         allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
@@ -724,6 +732,7 @@ RSpec.describe Deploy, type: :model do
         allow(Dir).to receive(:chdir).and_yield
         allow(Dir).to receive(:exist?).and_return(true)
         allow(early_deploy).to receive(:system).and_return(true)
+        allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
 
         # Mock file system operations for upload
         allow(Dir).to receive(:glob).and_return(['/tmp/test/dist/index.html'])
