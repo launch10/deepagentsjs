@@ -11,6 +11,11 @@ module Core
           starter: 1_000_000,
           pro: 5_000_000,
           enterprise: 20_000_000
+        },
+        platform_subdomains: {
+          starter: 1,
+          pro: 2,
+          enterprise: 3
         }
       }
 

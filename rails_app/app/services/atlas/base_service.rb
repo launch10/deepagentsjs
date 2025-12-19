@@ -7,6 +7,7 @@ module Atlas
     config_accessor :base_url
     config_accessor :api_secret
     config_accessor :timeout, default: 30
+    config_accessor :allow_sync, default: false
 
     # Custom error classes for Atlas
     class ValidationError < Error; end
@@ -47,7 +48,7 @@ module Atlas
     private
 
     def make_request(klass:, path:, headers: {}, body: nil, query: nil, form_data: nil, http_options: {})
-      return if Rails.env.development? || Rails.env.test?
+      return if (Rails.env.development? || Rails.env.test?) && !self.class.config.allow_sync
 
       # Calculate signature based on the request body
       body_for_signature = if body.present? && klass != Net::HTTP::Get

@@ -220,6 +220,29 @@ wrangler secret put ALLOWED_IPS -c wrangler-admin.toml
 wrangler secret put CLOUDFLARE_API_TOKEN -c wrangler-public.toml
 ```
 
+## Testing Rails Sync to Production Atlas
+
+By default, Atlas syncing is disabled in development/test environments. To enable syncing from local Rails to production Atlas:
+
+```bash
+# Set ALLOW_ATLAS_SYNC=true to enable syncing
+ALLOW_ATLAS_SYNC=true bin/rails console
+
+# Or run the full dev server with syncing enabled
+ALLOW_ATLAS_SYNC=true bin/dev
+```
+
+You'll also need to set the production Atlas URL:
+
+```bash
+ALLOW_ATLAS_SYNC=true ATLAS_BASE_URL=https://atlas-admin.launch10.ai bin/rails console
+```
+
+When sync is enabled, you'll see a log message:
+```
+[Atlas] Sync enabled: true
+```
+
 ## Debugging
 
 ```bash

@@ -20,4 +20,8 @@ module Atlas
   def self.plans
     @plans ||= PlanService.new
   end
+
+  def self.website_urls
+    @website_urls ||= WebsiteUrlService.new
+  end
 end

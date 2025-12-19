@@ -3,6 +3,7 @@ import { etag } from 'hono/etag';
 import { Env } from './types';
 import { loggerMiddleware, contextMiddleware } from './middleware';
 import { Website } from '~/models/website';
+import { WebsiteUrl } from '~/models/website-url';
 import { WebsiteType } from './types';
 import { logger } from '@utils/logger';
 import { R2Bucket } from '@cloudflare/workers-types';
@@ -50,23 +51,45 @@ app.get('*', async (c) => {
     lookupHostname = hostname.replace('preview.', '');
   }
 
-  const websiteModel = new Website(c); 
-  console.log(`Looking up website for hostname: ${lookupHostname}`);
-  const website: WebsiteType | null = await websiteModel.findByUrl(lookupHostname);
+  // Try WebsiteUrl first (new path-based routing), fall back to legacy Domain lookup
+  const websiteUrlModel = new WebsiteUrl(c);
+  const websiteModel = new Website(c);
+  
+  let website: WebsiteType | null = null;
+  let matchedPath = '/';
+  
+  // Try to find WebsiteUrl with longest path match
+  const urlMatch = await websiteUrlModel.findByDomainWithLongestPathMatch(lookupHostname, pathname);
+  
+  if (urlMatch) {
+    console.log(`Found WebsiteUrl for hostname: ${lookupHostname}, path: ${urlMatch.matchedPath}`);
+    website = await websiteModel.get(urlMatch.websiteUrl.websiteId);
+    matchedPath = urlMatch.matchedPath;
+  } else {
+    // Fall back to legacy Domain-based lookup via Website.findByUrl
+    console.log(`No WebsiteUrl found, falling back to legacy lookup for hostname: ${lookupHostname}`);
+    website = await websiteModel.findByUrl(lookupHostname);
+  }
 
   if (!website) {
     return new Response('Website not found', { status: 404 });
   }
 
-  // 2. Normalize the path to construct the R2 object key.
-  if (pathname.endsWith('/')) {
-    pathname = pathname.concat('index.html');
-  } else if (!pathname.split('/').pop()?.includes('.')) {
-    pathname = pathname.concat('/index.html');
+  // Strip matched path prefix from pathname for R2 lookup
+  let strippedPathname = pathname;
+  if (matchedPath !== '/') {
+    strippedPathname = pathname.slice(matchedPath.length) || '/';
   }
 
-  if (pathname.startsWith('/')) {
-    pathname = pathname.substring(1);
+  // 2. Normalize the path to construct the R2 object key.
+  if (strippedPathname.endsWith('/')) {
+    strippedPathname = strippedPathname.concat('index.html');
+  } else if (!strippedPathname.split('/').pop()?.includes('.')) {
+    strippedPathname = strippedPathname.concat('/index.html');
+  }
+
+  if (strippedPathname.startsWith('/')) {
+    strippedPathname = strippedPathname.substring(1);
   }
 
   // 3. Determine the target directory and environment
@@ -74,7 +97,7 @@ app.get('*', async (c) => {
   const envBucket = env ? env : 'production';
   
   // 4. Construct the object key.
-  const objectKey = `${envBucket}/${website.id}/${targetDir}/${pathname}`;
+  const objectKey = `${envBucket}/${website.id}/${targetDir}/${strippedPathname}`;
   console.log(`objectKey: ${objectKey}, environment: ${envBucket}`);
   requestLogger.debug(`objectKey: ${objectKey}, environment: ${envBucket}`);
   
@@ -97,7 +120,7 @@ app.get('*', async (c) => {
   let contentType = headers.get('content-type') || object.httpMetadata?.contentType || '';
   
   if (!contentType) {
-    const ext = pathname.split('.').pop()?.toLowerCase();
+    const ext = strippedPathname.split('.').pop()?.toLowerCase();
     const contentTypes: Record<string, string> = {
       'js': 'application/javascript',
       'mjs': 'application/javascript',
