@@ -76,5 +76,9 @@ export const selectContinue = (s: WorkflowStepsStore) => s.continue;
 export const selectBack = (s: WorkflowStepsStore) => s.back;
 export const selectCanGoBack = (s: WorkflowStepsStore) => s.canGoBack;
 export const selectCanGoForward = (s: WorkflowStepsStore) => s.canGoForward;
+export const selectHasVisitedReview = (s: WorkflowStepsStore) => s.hasVisitedReview;
+export const selectReturnToReview = (s: WorkflowStepsStore) => s.returnToReview;
+export const selectReturnToSection = (s: WorkflowStepsStore) => s.returnToSection;
+export const selectClearReturnToSection = (s: WorkflowStepsStore) => s.clearReturnToSection;
 
 export { type WorkflowStepsStore };
