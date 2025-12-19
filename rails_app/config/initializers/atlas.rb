@@ -7,10 +7,7 @@ Rails.application.config.to_prepare do
       Rails.env.production? ? "https://atlas-admin.your-domain.com" : "http://localhost:8788"
     end
 
-    config.api_secret = ENV.fetch("ATLAS_API_SECRET") do
-      Rails.application.credentials.dig(:atlas, :api_secret) || "development-secret"
-    end
-
+    config.api_secret = Rails.application.credentials.dig(:atlas, :api_secret) || "development-secret"
     config.timeout = ENV.fetch("ATLAS_TIMEOUT", 30).to_i
 
     # Set to true to enable syncing to production Atlas from development/test

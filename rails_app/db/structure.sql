@@ -1279,20 +1279,47 @@ CREATE TABLE public.template_files (
 
 
 --
--- Name: website_files; Type: TABLE; Schema: public; Owner: -
+-- Name: website_file_histories; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.website_files (
+CREATE TABLE public.website_file_histories (
     id bigint NOT NULL,
-    website_id bigint NOT NULL,
-    file_specification_id bigint,
+    website_file_id integer NOT NULL,
+    website_id integer NOT NULL,
+    file_specification_id integer,
     path character varying NOT NULL,
     content character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    history_started_at timestamp(6) without time zone NOT NULL,
+    history_ended_at timestamp(6) without time zone,
+    history_user_id integer,
+    snapshot_id character varying,
     shasum character varying,
     content_tsv tsvector,
     embedding public.vector(1536)
+);
+
+
+--
+-- Name: website_histories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.website_histories (
+    id bigint NOT NULL,
+    website_id integer NOT NULL,
+    name character varying,
+    project_id integer,
+    account_id integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    history_started_at timestamp(6) without time zone NOT NULL,
+    history_ended_at timestamp(6) without time zone,
+    history_user_id integer,
+    snapshot_id character varying,
+    thread_id character varying,
+    template_id integer,
+    theme_id integer
 );
 
 
@@ -1310,6 +1337,76 @@ CREATE TABLE public.websites (
     thread_id character varying,
     template_id bigint,
     theme_id integer
+);
+
+
+--
+-- Name: code_file_histories; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.code_file_histories AS
+ WITH merged_files AS (
+         SELECT wfh.website_id,
+            wfh.snapshot_id,
+            wfh.path,
+            wfh.content,
+            wfh.content_tsv,
+            wfh.shasum,
+            wfh.file_specification_id,
+            wfh.created_at,
+            wfh.updated_at,
+            'WebsiteFile'::text AS source_type,
+            wfh.website_file_id AS source_id
+           FROM public.website_file_histories wfh
+        UNION ALL
+         SELECT wh.website_id,
+            wh.snapshot_id,
+            tf.path,
+            tf.content,
+            tf.content_tsv,
+            tf.shasum,
+            tf.file_specification_id,
+            tf.created_at,
+            tf.updated_at,
+            'TemplateFile'::text AS source_type,
+            tf.id AS source_id
+           FROM ((public.template_files tf
+             JOIN public.websites w ON ((w.template_id = tf.template_id)))
+             JOIN public.website_histories wh ON (((wh.website_id = w.id) AND (wh.snapshot_id IS NOT NULL))))
+          WHERE (NOT (EXISTS ( SELECT 1
+                   FROM public.website_file_histories wfh2
+                  WHERE ((wfh2.website_id = wh.website_id) AND ((wfh2.snapshot_id)::text = (wh.snapshot_id)::text) AND ((wfh2.path)::text = (tf.path)::text)))))
+        )
+ SELECT website_id,
+    snapshot_id,
+    path,
+    content,
+    content_tsv,
+    shasum,
+    file_specification_id,
+    source_type,
+    source_id,
+    created_at,
+    updated_at
+   FROM merged_files
+  ORDER BY website_id, snapshot_id, path;
+
+
+--
+-- Name: website_files; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.website_files (
+    id bigint NOT NULL,
+    website_id bigint NOT NULL,
+    file_specification_id bigint,
+    path character varying NOT NULL,
+    content character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    shasum character varying,
+    content_tsv tsvector,
+    embedding public.vector(1536)
 );
 
 
@@ -3094,29 +3191,6 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
--- Name: website_file_histories; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.website_file_histories (
-    id bigint NOT NULL,
-    website_file_id integer NOT NULL,
-    website_id integer NOT NULL,
-    file_specification_id integer,
-    path character varying NOT NULL,
-    content character varying NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    history_started_at timestamp(6) without time zone NOT NULL,
-    history_ended_at timestamp(6) without time zone,
-    history_user_id integer,
-    snapshot_id character varying,
-    shasum character varying,
-    content_tsv tsvector,
-    embedding public.vector(1536)
-);
-
-
---
 -- Name: website_file_histories_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -3152,28 +3226,6 @@ CREATE SEQUENCE public.website_files_id_seq
 --
 
 ALTER SEQUENCE public.website_files_id_seq OWNED BY public.website_files.id;
-
-
---
--- Name: website_histories; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.website_histories (
-    id bigint NOT NULL,
-    website_id integer NOT NULL,
-    name character varying,
-    project_id integer,
-    account_id integer,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    history_started_at timestamp(6) without time zone NOT NULL,
-    history_ended_at timestamp(6) without time zone,
-    history_user_id integer,
-    snapshot_id character varying,
-    thread_id character varying,
-    template_id integer,
-    theme_id integer
-);
 
 
 --
@@ -7901,6 +7953,7 @@ ALTER TABLE ONLY public.website_urls
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251219192557'),
 ('20251219013512'),
 ('20251218235348'),
 ('20251216144601'),

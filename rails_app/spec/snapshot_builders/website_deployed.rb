@@ -22,7 +22,9 @@ class WebsiteDeployed < BaseBuilder
     website = project.website
     raise "No website found for project #{project.id}" unless website
 
-    domain = website.domains.first || create(:domain, website: website, account: account)
+    Core::TestSites.import_to_website(website, "hello-world")
+
+    domain = website.domains.first || create(:domain, website: website, account: account, domain: "example.launch10.site")
     website_url = website.website_urls.first || create(:website_url, website: website, domain: domain, account: account)
 
     project.current_workflow.update!(step: "ad_campaign", substep: "content")

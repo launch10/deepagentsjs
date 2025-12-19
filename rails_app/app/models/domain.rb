@@ -29,6 +29,7 @@ class Domain < ApplicationRecord
     "www"
   ].map { |d| "#{d}.launch10.ai" }.freeze
 
+  include Atlas::Domain
   include Cloudflare::Monitorable
   include DomainConcerns::NormalizeDomain
   include DomainConcerns::Serialization
@@ -62,7 +63,7 @@ class Domain < ApplicationRecord
     return if domain.present?
     return unless website
 
-    base_url = ENV.fetch("DEPLOYMENT_BASE_URL", "launch10.ai")
+    base_url = ENV.fetch("DEPLOYMENT_BASE_URL", "launch10.site")
     base_domain = "#{website.name.parameterize}.#{base_url}"
 
     if self.class.exists?(domain: base_domain)
@@ -70,7 +71,7 @@ class Domain < ApplicationRecord
       pattern = "#{website.name.parameterize}%.#{base_url}"
       existing_domains = Domain.where("domain LIKE ?", pattern).pluck(:domain)
 
-      # Extract numbers from domains like test-site1.launch10.ai
+      # Extract numbers from domains like test-site1.launch10.site
       numbers = existing_domains.map do |d|
         match = d.match(/#{Regexp.escape(website.name.parameterize)}(\d+)\.#{Regexp.escape(base_url)}/)
         match ? match[1].to_i : 0
@@ -91,7 +92,7 @@ class Domain < ApplicationRecord
 
   def set_is_platform_subdomain
     return if domain.blank?
-    self.is_platform_subdomain = domain.end_with?(".launch10.ai")
+    self.is_platform_subdomain = domain.end_with?(".launch10.site")
   end
 
   def domain_not_restricted

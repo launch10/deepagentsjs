@@ -2,7 +2,7 @@ FactoryBot.define do
   factory :domain do
     association :website
     association :account
-    sequence(:domain) { |n| "test-domain-#{n}.launch10.ai" }
+    sequence(:domain) { |n| "test-domain-#{n}.launch10.site" }
     cloudflare_zone_id { nil }
     is_platform_subdomain { false }
 
@@ -16,7 +16,7 @@ FactoryBot.define do
     end
 
     trait :platform_subdomain do
-      sequence(:domain) { |n| "site-#{n}.launch10.ai" }
+      sequence(:domain) { |n| "site-#{n}.launch10.site" }
       is_platform_subdomain { true }
     end
   end

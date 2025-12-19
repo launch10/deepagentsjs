@@ -3,7 +3,7 @@ require "fileutils"
 class DeployUploader
   attr_reader :client, :bucket_name, :environment
 
-  def initialize(environment: Rails.env)
+  def initialize(environment: Cloudflare.deploy_env)
     @environment = environment
     @bucket_name = Cloudflare.deploys_bucket
     @client = Cloudflare::R2.new(bucket_name: @bucket_name, environment: @environment)

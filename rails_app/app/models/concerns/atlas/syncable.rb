@@ -61,8 +61,7 @@ module Atlas
     end
 
     def atlas_sync_enabled?
-      Rails.application.credentials.dig(:atlas, :api_secret).present? ||
-        ENV["ATLAS_API_SECRET"].present?
+      Rails.application.credentials.dig(:atlas, :api_secret).present?
     end
 
     def sync_to_atlas_required?
