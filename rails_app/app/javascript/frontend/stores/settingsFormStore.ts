@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { SettingsFormData } from "@components/ads/Forms/SettingsForm/settingsForm.schema";
-import { settingsFormDefaults } from "@components/ads/Forms/SettingsForm/settingsForm.schema";
+import type { SettingsFormData } from "@components/ads/forms/SettingsForm/settingsForm.schema";
+import { settingsFormDefaults } from "@components/ads/forms/SettingsForm/settingsForm.schema";
 
 interface SettingsFormStore {
   values: SettingsFormData;
