@@ -3,15 +3,15 @@
 # Table name: geo_target_constants
 #
 #  id             :bigint           not null, primary key
-#  criteria_id    :bigint           not null
-#  name           :string           not null
 #  canonical_name :string           not null
-#  parent_id      :bigint
 #  country_code   :string
+#  name           :string           not null
+#  status         :string           default("Active"), not null
 #  target_type    :string           not null
-#  status         :string           not null, default: "Active"
 #  created_at     :datetime         not null
 #  updated_at     :datetime         not null
+#  criteria_id    :bigint           not null
+#  parent_id      :bigint
 #
 # Indexes
 #
