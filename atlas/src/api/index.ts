@@ -4,6 +4,7 @@ import { accountRoutes } from './routes/account.js';
 import { websiteRoutes } from './routes/website.js';
 import { planRoutes } from './routes/plan.js';
 import { domainRoutes } from './routes/domain.js';
+import { websiteUrlRoutes } from './routes/website-url.js';
 import { ipAllowlistMiddleware, hmacMiddleware } from '~/middleware/auth/admin';
 
 export function createInternalAPI() {
@@ -26,6 +27,7 @@ export function createInternalAPI() {
   api.route('/websites', websiteRoutes());
   api.route('/plans', planRoutes());
   api.route('/domains', domainRoutes());
+  api.route('/website-urls', websiteUrlRoutes());
   
   return api;
 }

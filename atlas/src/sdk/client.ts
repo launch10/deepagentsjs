@@ -1,5 +1,5 @@
-import { Account, Website, Plan, Domain } from '../models/index.js';
-import type { AccountType, WebsiteType, PlanType, DomainType } from '../types.js';
+import { Account, Website, Plan, Domain, WebsiteUrl } from '../models/index.js';
+import type { AccountType, WebsiteType, PlanType, DomainType, WebsiteUrlType } from '../types.js';
 import type { SDKContext, OperationResult } from './types.js';
 export class SDKClient {
   private context: SDKContext;
@@ -238,6 +238,78 @@ export class SDKClient {
     findByWebsiteId: async (websiteId: string): Promise<OperationResult<DomainType[]>> => {
       try {
         const model = new Domain(this.context as any);
+        const data = await model.findByWebsiteId(websiteId);
+        return { success: true, data };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    }
+  };
+
+  websiteUrl = {
+    get: async (id: string): Promise<OperationResult<WebsiteUrlType>> => {
+      try {
+        const model = new WebsiteUrl(this.context as any);
+        const data = await model.get(id);
+        
+        if (!data) {
+          return { success: false, error: `WebsiteUrl ${id} not found` };
+        }
+        
+        return { success: true, data };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    },
+    
+    set: async (id: string, data: WebsiteUrlType): Promise<OperationResult<void>> => {
+      try {
+        const model = new WebsiteUrl(this.context as any);
+        await model.set(id, data);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    },
+    
+    delete: async (id: string): Promise<OperationResult<void>> => {
+      try {
+        const model = new WebsiteUrl(this.context as any);
+        await model.delete(id);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    },
+    
+    list: async (limit?: number): Promise<OperationResult<WebsiteUrlType[]>> => {
+      try {
+        const model = new WebsiteUrl(this.context as any);
+        const data = await model.listAll(limit);
+        return { success: true, data };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    },
+    
+    findByDomainAndPath: async (domain: string, path: string): Promise<OperationResult<WebsiteUrlType>> => {
+      try {
+        const model = new WebsiteUrl(this.context as any);
+        const data = await model.findByDomainAndPath(domain, path);
+        
+        if (!data) {
+          return { success: false, error: `WebsiteUrl with domain ${domain} and path ${path} not found` };
+        }
+        
+        return { success: true, data };
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    },
+    
+    findByWebsiteId: async (websiteId: string): Promise<OperationResult<WebsiteUrlType | null>> => {
+      try {
+        const model = new WebsiteUrl(this.context as any);
         const data = await model.findByWebsiteId(websiteId);
         return { success: true, data };
       } catch (error) {
