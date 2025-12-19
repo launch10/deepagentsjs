@@ -25,7 +25,7 @@ class MediaUploader < CarrierWave::Uploader::Base
 
   version :favicon, if: :logo? do
     process resize_to_fill: [32, 32]
-    process convert: 'ico'
+    process convert: "ico"
 
     def full_filename(for_file)
       "favicon.ico"
