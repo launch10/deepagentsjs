@@ -1,7 +1,7 @@
 import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
-import type { CampaignProps } from "@components/ads/Sidebar/WorkflowBuddy/ad-campaign.types";
+import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
 import {
   CampaignService,
   type CreateCampaignRequest,

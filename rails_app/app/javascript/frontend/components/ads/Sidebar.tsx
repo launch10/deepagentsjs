@@ -1,7 +1,7 @@
 import { Card } from "@components/ui/card";
 import { Separator } from "@components/ui/separator";
-import WorkflowBuddy from "./Sidebar/WorkflowBuddy";
-import AdsChat from "./Sidebar/AdsChat";
+import WorkflowBuddy from "./sidebar/WorkflowBuddy";
+import AdsChat from "./sidebar/AdsChat";
 
 export default function AdsSidebar() {
   return (

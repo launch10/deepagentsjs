@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import HumanMessage from "@components/ads/Sidebar/AdsChat/HumanMessage";
+import HumanMessage from "@components/ads/sidebar/ads-chat/HumanMessage";
 
 const meta = {
   title: "Ad Campaign/Components/Chat/User Message",

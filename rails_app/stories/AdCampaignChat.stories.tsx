@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mocked } from "storybook/test";
-import AdsChat from "@components/ads/Sidebar/AdsChat";
+import AdsChat from "@components/ads/sidebar/AdsChat";
 import { useAdsChat } from "@hooks/useAdsChat";
 
 const sampleMessages = [

@@ -2,7 +2,7 @@ import { usePage } from "@inertiajs/react";
 import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
 import type { AdsBridgeType, AdsGraphState } from "@shared";
 import { Ads } from "@shared";
-import type { CampaignProps } from "@components/ads/Sidebar/WorkflowBuddy/ad-campaign.types";
+import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
 import { useChatRegistration } from "./useChatRegistration";
 
 export type AdsSnapshot = ChatSnapshot<AdsGraphState>;
