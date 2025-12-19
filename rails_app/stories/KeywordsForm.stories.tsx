@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { mocked } from "storybook/test";
-import KeywordsForm from "@components/ads/Forms/KeywordsForm/KeywordsForm";
+import KeywordsForm from "@components/ads/forms/KeywordsForm/KeywordsForm";
 import { useStageInit } from "@hooks/useStageInit";
 
 const meta = {

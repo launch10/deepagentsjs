@@ -3,7 +3,7 @@ import AdCampaignTabSwitcher from "@components/ads/AdCampaignTabSwitcher";
 import LogoSpinner from "@components/ui/logo-spinner";
 import { useAdsChatIsLoadingHistory } from "@hooks/useAdsChat";
 import AdPreview from "@components/ads/AdPreview";
-import AdsForm from "@components/ads/Forms/AdsForm";
+import AdsForm from "@components/ads/forms/AdsForm";
 import AdCampaignPagination from "@components/ads/AdCampaignPagination";
 import { useEffect } from "react";
 

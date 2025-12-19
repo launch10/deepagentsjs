@@ -2,7 +2,7 @@ import { atom, computed, map, type MapStore, type WritableAtom } from "nanostore
 import type {
   EditorDocument,
   ScrollPosition,
-} from "~/components/editor/codemirror/CodeMirrorEditor";
+} from "@components/editor/codemirror/CodeMirrorEditor";
 import type { FileMap, FilesStore } from "./files";
 
 export type EditorDocuments = Record<string, EditorDocument>;

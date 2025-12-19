@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import AdCampaignHeadlineInput from "@components/ads/Forms/ContentForm/AdCampaignHeadlineInput";
+import AdCampaignHeadlineInput from "@components/ads/forms/ContentForm/AdCampaignHeadlineInput";
 
 const meta = {
   title: "Ad Campaign/Components/Headline Input",
