@@ -15,9 +15,7 @@ export default function Campaign() {
 
   return (
     <main className="mx-auto container max-w-7xl grid grid-cols-[288px_1fr] gap-8 px-8">
-      <div>
-        <Sidebar />
-      </div>
+      <div>{/* <Sidebar /> */}</div>
       <div className="max-w-[948px]">
         <AdPreview className="mb-8" />
         {!shouldHideTabSwitcher && <AdCampaignTabSwitcher disabled={isLoadingHistory} />}

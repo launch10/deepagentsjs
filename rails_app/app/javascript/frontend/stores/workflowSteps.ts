@@ -16,14 +16,20 @@ export type WorkflowStepsState = {
   projectUUID: string | null;
   canGoBack: boolean;
   canGoForward: boolean;
+  /** True once user has visited the review page - enables "Return to Review" button */
+  hasVisitedReview: boolean;
+  /** Section ID to scroll to when returning to review page */
+  returnToSection: string | null;
 };
 
 export type WorkflowStepsActions = {
-  setSubstep: (substep: Workflow.SubstepName) => void;
+  setSubstep: (substep: Workflow.SubstepName, returnToSection?: string | null) => void;
   syncFromUrl: () => void;
   syncCanGoBack: () => void;
   continue: () => void;
   back: () => void;
+  returnToReview: () => void;
+  clearReturnToSection: () => void;
 };
 
 export type WorkflowStepsStore = WorkflowStepsState & WorkflowStepsActions;
@@ -67,82 +73,147 @@ export const createWorkflowStore = (
   const pageNumber = findPageIndex(page);
   const stepNumber = findStepIndex(step);
   const substepNumber = findSubstepIndex(substep);
+  // Initialize hasVisitedReview to true if starting on review page
+  const hasVisitedReview = substep === "review";
 
-  return createStore<WorkflowStepsStore>()(subscribeWithSelector((set, get) => ({
-    name: "launch",
-    steps: WORKFLOW_STEPS,
-    page: page,
-    step: step,
-    substep: substep,
-    projectUUID: initialState.projectUUID ?? null,
-    pageNumber: pageNumber,
-    stepNumber: stepNumber,
-    substepNumber: substepNumber,
-    canGoBack: false,
-    canGoForward: false,
+  return createStore<WorkflowStepsStore>()(
+    subscribeWithSelector((set, get) => ({
+      name: "launch",
+      steps: WORKFLOW_STEPS,
+      page: page,
+      step: step,
+      substep: substep,
+      projectUUID: initialState.projectUUID ?? null,
+      pageNumber: pageNumber,
+      stepNumber: stepNumber,
+      substepNumber: substepNumber,
+      canGoBack: false,
+      canGoForward: false,
+      hasVisitedReview: hasVisitedReview,
+      returnToSection: null,
 
-    setSubstep: (substep) => {
-      const step = Workflow.deriveStep(substep);
-      const stepNumber = findStepIndex(step);
-      const substepNumber = findSubstepIndex(substep);
-      const currentIndex = AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName);
-      const canGoBack = currentIndex > 0;
-      const canGoForward = currentIndex < AD_CAMPAIGN_SUBSTEP_ORDER.length - 1;
-      set({ substep, step, stepNumber, substepNumber, canGoBack, canGoForward });
-      pushUrl(get().projectUUID, substep);
-    },
-
-    syncFromUrl: () => {
-      const substep = getSubstepFromUrl();
-      if (substep) {
+      setSubstep: (substep, returnToSection) => {
         const step = Workflow.deriveStep(substep);
         const stepNumber = findStepIndex(step);
         const substepNumber = findSubstepIndex(substep);
-        const currentIndex = AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName);
+        const currentIndex = AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(
+          substep as Workflow.AdCampaignSubstepName
+        );
         const canGoBack = currentIndex > 0;
         const canGoForward = currentIndex < AD_CAMPAIGN_SUBSTEP_ORDER.length - 1;
-        set({ substep, step, stepNumber, substepNumber, canGoBack, canGoForward });
-      }
-    },
+        // Set hasVisitedReview to true if navigating to review (once true, stays true)
+        const hasVisitedReview = substep === "review" ? true : get().hasVisitedReview;
+        // Store the section to scroll to when returning to review
+        const newReturnToSection =
+          returnToSection !== undefined ? returnToSection : get().returnToSection;
+        set({
+          substep,
+          step,
+          stepNumber,
+          substepNumber,
+          canGoBack,
+          canGoForward,
+          hasVisitedReview,
+          returnToSection: newReturnToSection,
+        });
+        pushUrl(get().projectUUID, substep);
+      },
 
-    syncCanGoBack: () => {
-      const { substep } = get();
-      const currentIndex = substep ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName) : -1;
-      const canGoBack = currentIndex > 0;
-      const canGoForward = currentIndex < AD_CAMPAIGN_SUBSTEP_ORDER.length - 1;
-      set({ canGoBack, canGoForward });
-    },
+      syncFromUrl: () => {
+        const substep = getSubstepFromUrl();
+        if (substep) {
+          const step = Workflow.deriveStep(substep);
+          const stepNumber = findStepIndex(step);
+          const substepNumber = findSubstepIndex(substep);
+          const currentIndex = AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(
+            substep as Workflow.AdCampaignSubstepName
+          );
+          const canGoBack = currentIndex > 0;
+          const canGoForward = currentIndex < AD_CAMPAIGN_SUBSTEP_ORDER.length - 1;
+          const hasVisitedReview = substep === "review" ? true : get().hasVisitedReview;
+          set({
+            substep,
+            step,
+            stepNumber,
+            substepNumber,
+            canGoBack,
+            canGoForward,
+            hasVisitedReview,
+          });
+        }
+      },
 
-    continue: () => {
-      const { substep, projectUUID } = get();
-      const currentIndex = substep ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName) : -1;
-      const nextSubstep = AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex + 1];
-      if (nextSubstep) {
-        const step = Workflow.deriveStep(nextSubstep);
+      syncCanGoBack: () => {
+        const { substep } = get();
+        const currentIndex = substep
+          ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName)
+          : -1;
+        const canGoBack = currentIndex > 0;
+        const canGoForward = currentIndex < AD_CAMPAIGN_SUBSTEP_ORDER.length - 1;
+        set({ canGoBack, canGoForward });
+      },
+
+      continue: () => {
+        const { substep, projectUUID } = get();
+        const currentIndex = substep
+          ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName)
+          : -1;
+        const nextSubstep = AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex + 1];
+        if (nextSubstep) {
+          const step = Workflow.deriveStep(nextSubstep);
+          const stepNumber = findStepIndex(step);
+          const substepNumber = findSubstepIndex(nextSubstep);
+          const nextIndex = currentIndex + 1;
+          const canGoBack = nextIndex > 0;
+          const canGoForward = nextIndex < AD_CAMPAIGN_SUBSTEP_ORDER.length - 1;
+          const hasVisitedReview = nextSubstep === "review" ? true : get().hasVisitedReview;
+          set({
+            substep: nextSubstep,
+            step,
+            stepNumber,
+            substepNumber,
+            canGoBack,
+            canGoForward,
+            hasVisitedReview,
+          });
+          pushUrl(projectUUID, nextSubstep);
+        }
+      },
+
+      back: () => {
+        const { substep, projectUUID } = get();
+        const currentIndex = substep
+          ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName)
+          : -1;
+        const prevSubstep = AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex - 1];
+        if (prevSubstep) {
+          const step = Workflow.deriveStep(prevSubstep);
+          const stepNumber = findStepIndex(step);
+          const substepNumber = findSubstepIndex(prevSubstep);
+          const prevIndex = currentIndex - 1;
+          const canGoBack = prevIndex > 0;
+          const canGoForward = prevIndex < AD_CAMPAIGN_SUBSTEP_ORDER.length - 1;
+          set({ substep: prevSubstep, step, stepNumber, substepNumber, canGoBack, canGoForward });
+          pushUrl(projectUUID, prevSubstep);
+        }
+      },
+
+      returnToReview: () => {
+        const { projectUUID } = get();
+        const reviewSubstep = "review" as Workflow.SubstepName;
+        const step = Workflow.deriveStep(reviewSubstep);
         const stepNumber = findStepIndex(step);
-        const substepNumber = findSubstepIndex(nextSubstep);
-        const nextIndex = currentIndex + 1;
-        const canGoBack = nextIndex > 0;
-        const canGoForward = nextIndex < AD_CAMPAIGN_SUBSTEP_ORDER.length - 1;
-        set({ substep: nextSubstep, step, stepNumber, substepNumber, canGoBack, canGoForward });
-        pushUrl(projectUUID, nextSubstep);
-      }
-    },
+        const substepNumber = findSubstepIndex(reviewSubstep);
+        const reviewIndex = AD_CAMPAIGN_SUBSTEP_ORDER.indexOf("review");
+        const canGoBack = reviewIndex > 0;
+        const canGoForward = reviewIndex < AD_CAMPAIGN_SUBSTEP_ORDER.length - 1;
+        set({ substep: reviewSubstep, step, stepNumber, substepNumber, canGoBack, canGoForward });
+        pushUrl(projectUUID, reviewSubstep);
+      },
 
-    back: () => {
-      const { substep, projectUUID } = get();
-      const currentIndex = substep ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName) : -1;
-      const prevSubstep = AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex - 1];
-      if (prevSubstep) {
-        const step = Workflow.deriveStep(prevSubstep);
-        const stepNumber = findStepIndex(step);
-        const substepNumber = findSubstepIndex(prevSubstep);
-        const prevIndex = currentIndex - 1;
-        const canGoBack = prevIndex > 0;
-        const canGoForward = prevIndex < AD_CAMPAIGN_SUBSTEP_ORDER.length - 1;
-        set({ substep: prevSubstep, step, stepNumber, substepNumber, canGoBack, canGoForward });
-        pushUrl(projectUUID, prevSubstep);
-      }
-    },
-  })));
+      clearReturnToSection: () => {
+        set({ returnToSection: null });
+      },
+    }))
+  );
 };

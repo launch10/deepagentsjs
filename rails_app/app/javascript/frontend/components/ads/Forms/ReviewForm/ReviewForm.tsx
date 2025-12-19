@@ -2,15 +2,39 @@ import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@components/ui/field";
 import { Input } from "@components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/input-group";
-import { selectSetSubstep, useWorkflowSteps } from "@context/WorkflowStepsProvider";
+import {
+  selectSetSubstep,
+  selectReturnToSection,
+  selectClearReturnToSection,
+  useWorkflowSteps,
+} from "@context/WorkflowStepsProvider";
 import { Cog8ToothIcon, CursorArrowRippleIcon } from "@heroicons/react/24/solid";
 import { useAdsChatState } from "@hooks/useAdsChat";
 import { useStageInit } from "@hooks/useStageInit";
+import { useScrollToSection } from "@hooks/useScrollToSection";
+import { useSettingsFormStore } from "@stores/settingsFormStore";
+import { useLaunchFormStore } from "@stores/launchFormStore";
+import { formatDate, formatSchedule, getSelectedItems } from "@helpers/formatUtils";
+import {
+  GOOGLE_ADVERTISING_CHANNEL_TYPES,
+  GOOGLE_BIDDING_STRATEGIES,
+  type GoogleAdvertisingChannelType,
+  type GoogleBiddingStrategy,
+} from "@components/ads/Forms/LaunchForm/launchForm.schema";
 import type { Workflow } from "@shared";
 import { Info, Pencil } from "lucide-react";
 import { ReviewItem, ReviewItemList } from "./ReviewItem";
 import ReviewFormFieldGroup from "./ReviewFormFieldGroup";
 import ReviewFormSection from "./ReviewFormSection";
+
+// Section IDs for scroll targeting
+const SECTION_IDS = {
+  content: "review-section-content",
+  highlights: "review-section-highlights",
+  keywords: "review-section-keywords",
+  settings: "review-section-settings",
+  launch: "review-section-launch",
+} as const;
 
 export default function ReviewForm() {
   useStageInit("review");
@@ -21,19 +45,25 @@ export default function ReviewForm() {
   const structuredSnippets = useAdsChatState("structuredSnippets");
   const keywords = useAdsChatState("keywords");
 
+  // Settings form data
+  const { values: settingsValues } = useSettingsFormStore();
+  const { locations, selectedDays, startTime, endTime, timezone, budget } = settingsValues;
+
+  // Launch form data
+  const { values: launchValues } = useLaunchFormStore();
+  const { campaignName, googleAdvertisingChannelType, googleBiddingStrategy, startDate, endDate } =
+    launchValues;
+
   const setSubstep = useWorkflowSteps(selectSetSubstep);
+  const returnToSection = useWorkflowSteps(selectReturnToSection);
+  const clearReturnToSection = useWorkflowSteps(selectClearReturnToSection);
 
-  const navigateTo = (substep: Workflow.AdCampaignSubstepName) => {
-    setSubstep?.(substep);
-  };
+  useScrollToSection(returnToSection, clearReturnToSection);
 
-  const getSelectedItems = <T extends { id: string; text: string; rejected: boolean }>(
-    items: T[] | undefined
-  ): Array<{ id: string; text: string }> => {
-    return (
-      items?.filter((item) => !item.rejected).map((item) => ({ id: item.id, text: item.text })) ??
-      []
-    );
+  const navigateTo = (substep: Workflow.AdCampaignSubstepName, sectionId: string) => {
+    // Store the section ID so we can scroll back to it when returning
+    // This preserves the user's placement on the page
+    setSubstep?.(substep, sectionId);
   };
 
   const selectedHeadlines = getSelectedItems(headlines);
@@ -42,9 +72,32 @@ export default function ReviewForm() {
   const snippetDetails = getSelectedItems(structuredSnippets?.details);
   const selectedKeywords = getSelectedItems(keywords);
 
+  // Get campaign type label
+  const getCampaignTypeLabel = () => {
+    return (
+      GOOGLE_ADVERTISING_CHANNEL_TYPES[googleAdvertisingChannelType as GoogleAdvertisingChannelType]
+        ?.label ?? googleAdvertisingChannelType
+    );
+  };
+
+  // Get bidding strategy label
+  const getBiddingStrategyLabel = () => {
+    return (
+      GOOGLE_BIDDING_STRATEGIES[googleBiddingStrategy as GoogleBiddingStrategy]?.label ??
+      googleBiddingStrategy
+    );
+  };
+
+  const schedule = formatSchedule({
+    days: selectedDays,
+    startTime,
+    endTime,
+    timezone,
+  });
+
   return (
     <div className="flex flex-col gap-6">
-      <ReviewFormSection title="Ad Content & Highlights">
+      <ReviewFormSection id={SECTION_IDS.content} title="Ad Content & Highlights">
         <FieldSet className="gap-6">
           {/* Ad Group Name */}
           <FieldGroup className="max-w-1/2 gap-2">
@@ -54,7 +107,11 @@ export default function ReviewForm() {
                   Ad Group Name
                   <Info size={12} className="text-base-300" />
                 </FieldLabel>
-                <Button variant="ghost" size="sm" onClick={() => navigateTo("content")}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigateTo("content", SECTION_IDS.content)}
+                >
                   <Pencil size={16} />
                   Edit Section
                 </Button>
@@ -71,14 +128,14 @@ export default function ReviewForm() {
           <ReviewFormFieldGroup
             title={`Selected Headlines (${selectedHeadlines.length})`}
             items={selectedHeadlines}
-            onEditSection={() => navigateTo("content")}
+            onEditSection={() => navigateTo("content", SECTION_IDS.content)}
           />
 
           {/* Selected Details (Descriptions) */}
           <ReviewFormFieldGroup
             title={`Selected Details (${selectedDescriptions.length})`}
             items={selectedDescriptions}
-            onEditSection={() => navigateTo("content")}
+            onEditSection={() => navigateTo("content", SECTION_IDS.content)}
             showPagination={false}
           />
 
@@ -86,7 +143,7 @@ export default function ReviewForm() {
           <ReviewFormFieldGroup
             title="Unique Features"
             items={selectedCallouts}
-            onEditSection={() => navigateTo("highlights")}
+            onEditSection={() => navigateTo("highlights", SECTION_IDS.content)}
           />
 
           {/* Product or Service Offerings (Structured Snippets) */}
@@ -94,63 +151,84 @@ export default function ReviewForm() {
             <ReviewFormFieldGroup
               title={`Product or Service Offerings: ${structuredSnippets.category}`}
               items={snippetDetails}
-              onEditSection={() => navigateTo("highlights")}
+              onEditSection={() => navigateTo("highlights", SECTION_IDS.content)}
             />
           )}
         </FieldSet>
       </ReviewFormSection>
-      <ReviewFormSection title="Keywords">
+      <ReviewFormSection id={SECTION_IDS.keywords} title="Keywords">
         <ReviewFormFieldGroup
           title={`Selected Keywords (${selectedKeywords.length})`}
           items={selectedKeywords}
-          onEditSection={() => navigateTo("keywords")}
+          onEditSection={() => navigateTo("keywords", SECTION_IDS.keywords)}
         />
       </ReviewFormSection>
       <ReviewFormSection
+        id={SECTION_IDS.settings}
         title="Targeting and Budget"
         icon={<CursorArrowRippleIcon className="size-4" />}
         showEditSection={true}
-        onEditSection={() => navigateTo("settings")}
+        onEditSection={() => navigateTo("settings", SECTION_IDS.settings)}
       >
         <FieldSet>
           <FieldGroup>
             <Field>
               <FieldLabel className="text-base-500">Geo Targeting</FieldLabel>
-              <InputGroup>
-                <InputGroupInput value="United States" readOnly />
-                <InputGroupAddon align="inline-start">Country</InputGroupAddon>
-                <InputGroupAddon align="inline-end">Radius: 10 miles</InputGroupAddon>
-              </InputGroup>
-              <InputGroup>
-                <InputGroupInput value="Florida" readOnly />
-                <InputGroupAddon align="inline-start">State</InputGroupAddon>
-                <InputGroupAddon align="inline-end">Excluded</InputGroupAddon>
-              </InputGroup>
+              {locations.length > 0 ? (
+                locations.map((location) => (
+                  <InputGroup key={location.criteria_id}>
+                    <InputGroupInput value={location.name} readOnly />
+                    <InputGroupAddon align="inline-start">{location.target_type}</InputGroupAddon>
+                    <InputGroupAddon align="inline-end">
+                      {location.isTargeted ? `Radius: ${location.radius} miles` : "Excluded"}
+                    </InputGroupAddon>
+                  </InputGroup>
+                ))
+              ) : (
+                <InputGroup>
+                  <InputGroupInput value="No locations selected" readOnly />
+                </InputGroup>
+              )}
             </Field>
           </FieldGroup>
         </FieldSet>
         <ReviewItemList>
           <ReviewItem label="Ad Schedule">
             <div className="flex flex-col gap-1 items-end">
-              <span>Mon, Wed, Fri</span>
-              <span className="text-base-300">9:00 AM - 5:00 PM</span>
+              <span>{schedule.days || "No days selected"}</span>
+              <span className="text-base-300">{schedule.timeRange}</span>
             </div>
           </ReviewItem>
-          <ReviewItem label="Daily Budget">$500</ReviewItem>
+          <ReviewItem label="Daily Budget">${budget}</ReviewItem>
         </ReviewItemList>
       </ReviewFormSection>
       <ReviewFormSection
+        id={SECTION_IDS.launch}
         title="Campaign Settings"
         icon={<Cog8ToothIcon className="size-4" />}
         showEditSection={true}
-        onEditSection={() => navigateTo("settings")}
+        onEditSection={() => navigateTo("launch", SECTION_IDS.launch)}
       >
         <ReviewItemList>
           <ReviewItem label="Campaign Name" className="py-4">
-            Campaign Name
+            {campaignName || "Not set"}
           </ReviewItem>
           <ReviewItem label="Campaign Type" className="py-4">
-            Google Search
+            {getCampaignTypeLabel()}
+          </ReviewItem>
+          <ReviewItem label="Bidding Strategy" className="py-4">
+            {getBiddingStrategyLabel()}
+          </ReviewItem>
+          <ReviewItem label="Duration" className="py-4">
+            {formatDate(startDate, {
+              formatOptions: { month: "2-digit", day: "2-digit", year: "numeric" },
+              fallback: "Not set",
+            })}{" "}
+            -{" "}
+            {formatDate(endDate, {
+              formatOptions: { month: "2-digit", day: "2-digit", year: "numeric" },
+              fallback: "Not set",
+            })}
           </ReviewItem>
         </ReviewItemList>
       </ReviewFormSection>
