@@ -29,7 +29,6 @@ class Domain < ApplicationRecord
     "www"
   ].map { |d| "#{d}.launch10.ai" }.freeze
 
-  include Atlas::Domain
   include Cloudflare::Monitorable
   include DomainConcerns::NormalizeDomain
   include DomainConcerns::Serialization
