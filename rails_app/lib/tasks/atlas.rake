@@ -83,14 +83,12 @@ namespace :atlas do
     errors = 0
 
     model.find_each do |record|
-      begin
-        record.sync_to_atlas
-        count += 1
-        print "." if count % 10 == 0
-      rescue => e
-        errors += 1
-        puts "\n  Error syncing #{model.name}##{record.id}: #{e.message}"
-      end
+      record.sync_to_atlas
+      count += 1
+      print "." if count % 10 == 0
+    rescue => e
+      errors += 1
+      puts "\n  Error syncing #{model.name}##{record.id}: #{e.message}"
     end
 
     puts "\n  #{count} synced, #{errors} errors"
