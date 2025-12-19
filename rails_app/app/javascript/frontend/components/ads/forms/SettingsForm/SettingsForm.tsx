@@ -7,7 +7,7 @@ import { useFormRegistration } from "@hooks/useFormRegistration";
 import { useSettingsFormStore } from "@stores/settingsFormStore";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import { useDebounce } from "@hooks/useDebounce";
-import type { CampaignProps } from "@components/ads/Sidebar/WorkflowBuddy/ad-campaign.types";
+import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
 import LocationTargeting from "./LocationTargeting";
 import AdSchedule from "./AdSchedule";
 import DailyBudget from "./DailyBudget";

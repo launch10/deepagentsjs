@@ -25,7 +25,7 @@
     "examples": "Destinations: Las Vegas, New York, Tokyo, Rome, Cancun, Paris"
   },
   "services": {
-    "key": "Services",
+    "key": "Service catalog",
     "definition": "Services offered",
     "examples": "Services: Oil change, Smog check, tire alignment"
   },

@@ -34,5 +34,6 @@ export const Callouts: Partial<Ads.AssetPromptMap> = {
       const callouts = Array.from({ length: nVariants }, (_, i) => `Feature ${i + 1}`);
       return { callouts };
     },
+    schema: (_state?: AdsGraphState, _config?: any) => Ads.CalloutsOutputSchema,
   },
 };

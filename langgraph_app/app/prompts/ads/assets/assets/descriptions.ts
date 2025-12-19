@@ -41,5 +41,6 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
       const descriptions = Array.from({ length: nVariants }, (_, i) => `Description ${i + 1}`);
       return { descriptions };
     },
+    schema: (_state?: AdsGraphState, _config?: any) => Ads.DescriptionsOutputSchema,
   },
 };

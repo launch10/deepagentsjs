@@ -2,9 +2,7 @@ import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
 import { userPreferencesPrompt } from "../userPreferences";
 
-const categoryList = Ads.StructuredSnippetCategoryKeys.map(
-  (key) => `"${Ads.StructuredSnippetCategories[key].key}"`
-).join(", ");
+const categoryList = Ads.StructuredSnippetCategoryNames;
 
 const categoryExamples = Ads.StructuredSnippetCategoryKeys.slice(0, 3)
   .map((key) => `- ${Ads.StructuredSnippetCategories[key].examples}`)
@@ -52,5 +50,6 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
         },
       };
     },
+    schema: (_state?: AdsGraphState, _config?: any) => Ads.StructuredSnippetsOutputSchema,
   },
 };

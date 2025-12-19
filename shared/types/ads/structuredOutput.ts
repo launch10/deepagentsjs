@@ -25,7 +25,7 @@ export const StreamingTransforms = {
       throw new Error("Didn't receive proper snippet")
     }
     return {
-      category: streamed.category,
+      category: streamed.category as Ads.StructuredSnippetCategoryName,
       details: toAssets(streamed.details)
     }
   },

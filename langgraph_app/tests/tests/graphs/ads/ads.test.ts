@@ -8,12 +8,7 @@ import { db, projects as projectsTable } from "@db";
 import { type UUIDType, Ads, type ThreadIDType } from "@types";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { v7 as uuid } from "uuid";
-import {
-  didSwitchPage,
-  getPseudoMessage,
-  needsPseudoMessage,
-  PseudoMessages,
-} from "@prompts";
+import { didSwitchPage, getPseudoMessage, needsPseudoMessage, PseudoMessages } from "@prompts";
 
 const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" });
 
@@ -90,13 +85,13 @@ describe.sequential("Ads Flow", () => {
         const updatedHeadlines = invalidRefresh.state.headlines;
         const updatedDescriptions = invalidRefresh.state.descriptions;
 
-        expect(updatedHeadlines!.length).toEqual(result.state.headlines.length)
+        expect(updatedHeadlines!.length).toEqual(result.state.headlines.length);
         expect(updatedHeadlines).toEqual(result.state.headlines);
         expect(updatedDescriptions).toEqual(result.state.descriptions);
       });
     });
 
-   describe("Content Stage", () => {
+    describe("Content Stage", () => {
       it("automatically populates headlines and descriptions", async () => {
         const result = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
@@ -129,8 +124,8 @@ describe.sequential("Ads Flow", () => {
         // Descriptions also relate to the campaign copy
         expect(descriptionContent).toMatch(/schedule|scheduling|meeting times/i);
 
-        expect(headlines.every((h) => !!h.id)).toBe(true)
-        expect(descriptions.every((h) => !!h.id)).toBe(true)
+        expect(headlines.every((h) => !!h.id)).toBe(true);
+        expect(descriptions.every((h) => !!h.id)).toBe(true);
       });
 
       it("refreshes only the specified context (headlines), not descriptions", async () => {
@@ -192,12 +187,12 @@ describe.sequential("Ads Flow", () => {
         expect(refreshedResult.state.descriptions).toEqual(originalDescriptions);
 
         const originalHeadlines = headlines.filter((h) => h.locked);
-        const refreshedHeadlines = refreshedResult.state.headlines
+        const refreshedHeadlines = refreshedResult.state.headlines;
         // Doesn't change id
         originalHeadlines.forEach((originalHeadline, index) => {
-          expect(originalHeadline.id).toEqual(refreshedHeadlines?.at(index)!.id)
-        })
-        expect(refreshedHeadlines?.every((h) => !!h.id)).toBe(true)
+          expect(originalHeadline.id).toEqual(refreshedHeadlines?.at(index)!.id);
+        });
+        expect(refreshedHeadlines?.every((h) => !!h.id)).toBe(true);
       });
 
       it("refreshes all assets for content stage (headlines + descriptions) using refreshAllCommand", async () => {
@@ -257,7 +252,6 @@ describe.sequential("Ads Flow", () => {
           (d) => !d.rejected && !d.locked
         );
         expect(newDescriptions?.length).toEqual(Ads.DefaultNumAssets.descriptions);
-        debugger;
       });
 
       // user request | user asks | asks via chat | auto-reject headlines
@@ -324,7 +318,9 @@ describe.sequential("Ads Flow", () => {
 
         const structuredSnippets = result.state.structuredSnippets;
         expect(structuredSnippets).toBeDefined();
-        expect(structuredSnippets?.category).toBeDefined();
+        expect(structuredSnippets?.category).toBeOneOf(
+          Object.values(Ads.StructuredSnippetCategoryNames)
+        );
         expect(structuredSnippets?.details?.length).toEqual(
           Ads.DefaultNumAssets.structuredSnippets
         );
@@ -1159,9 +1155,13 @@ describe.sequential("Ads Flow", () => {
           .execute();
 
         // it should change the callouts
-        const newCallouts = highlightsResult2.state.callouts!.filter((c) => !highlightsResult.state.callouts!.includes(c));
-        const oldSnippetDetails = highlightsResult.state.structuredSnippets!.details
-        const newSnippetDetails = highlightsResult2.state.structuredSnippets!.details.filter((detail) => !oldSnippetDetails.map((sd) => sd.text).includes(detail.text));
+        const newCallouts = highlightsResult2.state.callouts!.filter(
+          (c) => !highlightsResult.state.callouts!.includes(c)
+        );
+        const oldSnippetDetails = highlightsResult.state.structuredSnippets!.details;
+        const newSnippetDetails = highlightsResult2.state.structuredSnippets!.details.filter(
+          (detail) => !oldSnippetDetails.map((sd) => sd.text).includes(detail.text)
+        );
 
         expect(newCallouts.length).toBeGreaterThan(0);
         expect(newSnippetDetails.length).toBeGreaterThan(0);

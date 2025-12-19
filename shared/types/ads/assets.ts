@@ -37,25 +37,27 @@ export interface StructuredSnippetsCategory extends Asset {}
 export interface StructuredSnippetsDetail extends Asset {}
 
 export const StructuredSnippetCategoryKeys = [
-  "brands",
   "amenities",
+  "brands",
+  "courses",
+  "degree_programs",
+  "destinations",
+  "featured_hotels",
+  "insurance_coverage",
+  "models",
+  "neighborhoods",
+  "services",
+  "shows",
   "styles",
   "types",
-  "destinations",
-  "services",
-  "courses",
-  "neighborhoods",
-  "shows",
-  "insurance_coverage",
-  "degree_programs",
-  "featured_hotels",
-  "models",
 ] as const;
 
 export type StructuredSnippetCategoryKey = typeof StructuredSnippetCategoryKeys[number];
 
+export const StructuredSnippetCategoryNames = ["Amenities", "Brands", "Courses", "Degree programs", "Destinations", "Featured hotels" , "Insurance coverage" , "Models" , "Neighborhoods" , "Service catalog" , "Shows" , "Styles" , "Types"] as const;
+export type StructuredSnippetCategoryName = typeof StructuredSnippetCategoryNames[number];
 export interface StructuredSnippetCategoryDefinition {
-  key: string;
+  key: StructuredSnippetCategoryName;
   definition?: string;
   examples: string;
 }
@@ -65,79 +67,109 @@ export const StructuredSnippetCategories: Record<StructuredSnippetCategoryKey, S
     key: "Brands",
     definition: "Company or product line names",
     examples: "Brands: Nest, Nexus, Chromebook",
-  },
+  } as const,
   amenities: {
     key: "Amenities",
     definition: "Desirable or useful features or facilities of a building or place",
     examples: "Amenities: Ski Storage, Swimming Pool, Restaurant",
-  },
+  } as const,
   styles: {
     key: "Styles",
     definition: "Variants of a product",
     examples: "Styles: Wingback, Button Tufted, French Country, Swivel, Nailhead, Scalloped",
-  },
+  } as const,
   types: {
     key: "Types",
     definition: "Categories or variants of a product or service",
     examples: "Types: LED, Incandescent, Halogen, Fluorescent, Metal Halide",
-  },
+  } as const,
   destinations: {
     key: "Destinations",
     definition: "Geographic entities - cities, states, countries, etc.",
     examples: "Destinations: Las Vegas, New York, Tokyo, Rome, Cancun, Paris",
-  },
+  } as const,
   services: {
-    key: "Services",
+    key: "Service catalog",
     definition: "Services offered",
     examples: "Services: Oil change, Smog check, tire alignment",
-  },
+  } as const,
   courses: {
     key: "Courses",
     definition: "Educational offerings",
     examples: "Courses: Linear Algebra, Creative Writing, Data Structures",
-  },
+  } as const,
   neighborhoods: {
     key: "Neighborhoods",
     examples: "Neighborhoods: Downtown, Hayes Valley, Mission, Excelsior",
-  },
+  } as const,
   shows: {
     key: "Shows",
     definition: "TV shows or theater",
     examples: "Shows: The Voyage, Knights, American Dancer",
-  },
+  } as const,
   insurance_coverage: {
     key: "Insurance coverage",
     definition: "Types of coverage offered by insurance companies",
     examples: "Coverage: Liability, Collision, Comprehensive",
-  },
+  } as const,
   degree_programs: {
     key: "Degree programs",
     definition: "Major subjects of study at an educational institution",
     examples: "Degree programs: Accounting, Biology, Psychology",
-  },
+  } as const,
   featured_hotels: {
     key: "Featured hotels",
     definition: "Hotel names",
     examples: "Featured hotels: Luxury Inn, Alpine Lodge, Lakeside Hotel",
-  },
+  } as const,
   models: {
     key: "Models",
     definition: "Car product lines",
     examples: "Models: Corolla, Camry, Prius",
-  },
-};
+  } as const,
+} as const;
 
 export const StructuredSnippetsSchema = z.object({
-    category: z.string(),
-    details: z.array(AssetSchema)
+  category: z.enum(StructuredSnippetCategoryNames),
+  details: z.array(AssetSchema)
 });
+
 export type StructuredSnippets = z.infer<typeof StructuredSnippetsSchema>;
+
+// LLM output schemas with character limits
+export const HeadlinesOutputSchema = z.object({
+    headlines: z.array(z.string().max(30, "Headlines must be 30 characters or less"))
+});
+export type HeadlinesOutput = z.infer<typeof HeadlinesOutputSchema>;
+
+export const DescriptionsOutputSchema = z.object({
+    descriptions: z.array(z.string().max(90, "Descriptions must be 90 characters or less"))
+});
+export type DescriptionsOutput = z.infer<typeof DescriptionsOutputSchema>;
+
+export const CalloutsOutputSchema = z.object({
+    callouts: z.array(z.string().max(25, "Callouts must be 25 characters or less"))
+});
+export type CalloutsOutput = z.infer<typeof CalloutsOutputSchema>;
+
+export const StructuredSnippetsOutputSchema = z.object({
+    structuredSnippets: z.object({
+        category: z.enum(StructuredSnippetCategoryNames),
+        details: z.array(z.string().max(25, "Snippet details must be 25 characters or less"))
+    })
+});
+export type StructuredSnippetsOutput = z.infer<typeof StructuredSnippetsOutputSchema>;
+
+export const KeywordsOutputSchema = z.object({
+    keywords: z.array(z.string())
+});
+export type KeywordsOutput = z.infer<typeof KeywordsOutputSchema>;
 
 // This is what the LLM will return
 export const StreamedAssetSchema = z.array(z.string());
 export type StreamedAsset = z.infer<typeof StreamedAssetSchema>;
 export const StreamedSnippetsSchema = z.object({
-    category: z.string(),
+    category: z.enum(StructuredSnippetCategoryNames),
     details: StreamedAssetSchema
 }); 
 export type StreamedSnippets = z.infer<typeof StreamedSnippetsSchema>;
@@ -184,9 +216,11 @@ export const assetsForStage = (stage: StageName): AssetKind[] => {
 
 type PromptFn = (state: any, config?: any) => Promise<string>;
 type OutputFormatFn = (state: any, config?: any) => Promise<string[] | object>;
+type SchemaFn = (state: any, config?: any) => z.ZodSchema;
 export interface AssetPromptConfig {
     prompt: PromptFn;
     outputFormat: OutputFormatFn;
+    schema: SchemaFn;
 }
 
 export type AssetPromptMap = Record<AssetKind, AssetPromptConfig>;

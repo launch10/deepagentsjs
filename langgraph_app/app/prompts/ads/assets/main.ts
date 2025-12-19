@@ -9,6 +9,7 @@ import { whereWeArePrompt, whatTheUserIsSeeingPrompt } from "./whereWeAre";
 import { helpInstructions } from "../helpPrompt";
 import { HumanMessage } from "@langchain/core/messages";
 import { isPseudoMessage } from "../pseudoMessages";
+import { structuredOutputPrompt } from "@prompts";
 
 const isRealHumanMessage = (state: AdsGraphState): boolean => {
   const lastMessage = state.messages?.at(-1);

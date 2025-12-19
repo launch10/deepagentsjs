@@ -10,7 +10,7 @@ import { ArrowUp, FilePlus, Sparkles } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import z from "zod";
 import { useAdsChatActions } from "@hooks/useAdsChat";
-import type { AdCampaignChatFormType } from "../WorkflowBuddy/ad-campaign.types";
+import type { AdCampaignChatFormType } from "../workflow-buddy/ad-campaign.types";
 import { useWorkflowSteps, selectSubstep } from "@context/WorkflowStepsProvider";
 import { Ads } from "@shared";
 
