@@ -113,7 +113,7 @@ export default function LaunchForm() {
     <FormProvider {...methods}>
       <div className="border border-neutral-300 bg-white p-6 rounded-2xl">
         <div className="py-8 px-9 flex flex-col gap-6">
-          <FieldSet className="max-w-1/2">
+          <FieldSet className="md:max-w-2/3 lg:max-w-1/2">
             {/* Campaign Name */}
             <Field>
               <FieldLabel className="text-base-500">

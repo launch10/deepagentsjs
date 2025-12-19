@@ -8,6 +8,7 @@ import { useAdsChatState } from "@hooks/useAdsChat";
 import { useStageInit } from "@hooks/useStageInit";
 import type { Workflow } from "@shared";
 import { Info, Pencil } from "lucide-react";
+import { ReviewItem, ReviewItemList } from "./ReviewItem";
 import ReviewFormFieldGroup from "./ReviewFormFieldGroup";
 import ReviewFormSection from "./ReviewFormSection";
 
@@ -128,19 +129,15 @@ export default function ReviewForm() {
             </Field>
           </FieldGroup>
         </FieldSet>
-        <div className="divide-y divide-neutral-300">
-          <div className="flex justify-between items-center py-3">
-            <div className="text-sm font-semibold text-base-500">Ad Schedule</div>
-            <div className="text-sm flex flex-col gap-1 items-end">
+        <ReviewItemList>
+          <ReviewItem label="Ad Schedule">
+            <div className="flex flex-col gap-1 items-end">
               <span>Mon, Wed, Fri</span>
               <span className="text-base-300">9:00 AM - 5:00 PM</span>
             </div>
-          </div>
-          <div className="flex justify-between items-center py-3">
-            <div className="text-sm font-semibold text-base-500">Daily Budget</div>
-            <div className="text-sm">$500</div>
-          </div>
-        </div>
+          </ReviewItem>
+          <ReviewItem label="Daily Budget">$500</ReviewItem>
+        </ReviewItemList>
       </ReviewFormSection>
       <ReviewFormSection
         title="Campaign Settings"
@@ -148,16 +145,14 @@ export default function ReviewForm() {
         showEditSection={true}
         onEditSection={() => navigateTo("settings")}
       >
-        <div className="divide-y divide-neutral-300">
-          <div className="flex justify-between items-center py-4">
-            <div className="text-sm font-semibold text-base-500">Campaign Name</div>
-            <div className="text-sm">Campaign Name</div>
-          </div>
-          <div className="flex justify-between items-center py-4">
-            <div className="text-sm font-semibold text-base-500">Campaign Type</div>
-            <div className="text-sm">Google Search</div>
-          </div>
-        </div>
+        <ReviewItemList>
+          <ReviewItem label="Campaign Name" className="py-4">
+            Campaign Name
+          </ReviewItem>
+          <ReviewItem label="Campaign Type" className="py-4">
+            Google Search
+          </ReviewItem>
+        </ReviewItemList>
       </ReviewFormSection>
     </div>
   );

@@ -71,20 +71,15 @@ export default function ReviewFormFieldGroup({
             Showing {startIndex + 1}-{endIndex} of {totalItems}
           </span>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={handlePrevPage} disabled={currentPage === 1}>
+            <button type="button" onClick={handlePrevPage} disabled={currentPage === 1}>
               <ChevronLeft size={12} />
-            </Button>
+            </button>
             <span className="text-base-600">
               {currentPage}/{totalPages}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight size={12} className="text-base-600" />
-            </Button>
+            <button type="button" onClick={handleNextPage} disabled={currentPage === totalPages}>
+              <ChevronRight size={12} />
+            </button>
           </div>
         </div>
       )}
