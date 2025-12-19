@@ -220,9 +220,32 @@ jobs:
           environment:
             <<: *rails-env
 
+  atlas-tests:
+    docker:
+      - image: cimg/node:22.12.0
+    working_directory: ~/project/atlas
+    steps:
+      - checkout:
+          path: ~/project
+      - restore_cache:
+          keys:
+            - atlas-deps-v1-{{ checksum "package-lock.json" }}
+            - atlas-deps-v1-
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - save_cache:
+          key: atlas-deps-v1-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+      - run:
+          name: Run tests
+          command: npm run test:run
+
 workflows:
   version: 2
   test:
     jobs:
       - langgraph-tests
       - rails-tests
+      - atlas-tests

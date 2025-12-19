@@ -164,12 +164,12 @@ RSpec.describe WebsiteUrl, type: :model do
   describe 'dependent behavior' do
     it 'is destroyed when website is destroyed' do
       other_domain = create(:domain, account: account)
-      website_url = create(:website_url, website: website, domain: other_domain, account: account)
+      create(:website_url, website: website, domain: other_domain, account: account)
       expect { website.destroy }.to change { WebsiteUrl.count }.by(-1)
     end
 
     it 'is destroyed when domain is destroyed' do
-      website_url = create(:website_url, website: website, domain: domain, account: account)
+      create(:website_url, website: website, domain: domain, account: account)
       expect { domain.destroy }.to change { WebsiteUrl.count }.by(-1)
     end
   end
