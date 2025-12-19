@@ -47,6 +47,19 @@ class WebsiteUrl < ApplicationRecord
     domain&.domain
   end
 
+  def to_api_json
+    {
+      id: id,
+      path: path,
+      account_id: account_id,
+      website_id: website_id,
+      domain_id: domain_id,
+      domain_string: domain_string,
+      created_at: created_at.iso8601,
+      updated_at: updated_at.iso8601
+    }
+  end
+
   private
 
   def set_default_path

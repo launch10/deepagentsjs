@@ -9,10 +9,10 @@ paths:
     get:
       summary: New page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters: []
       responses:
-        "200":
+        '200':
           description: New page props
           content:
             application/json:
@@ -22,16 +22,16 @@ paths:
     get:
       summary: Brainstorm page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Brainstorm page props
           content:
             application/json:
@@ -41,16 +41,16 @@ paths:
     get:
       summary: Website page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Website page props
           content:
             application/json:
@@ -60,16 +60,16 @@ paths:
     get:
       summary: Content page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Content page props
           content:
             application/json:
@@ -79,16 +79,16 @@ paths:
     get:
       summary: Highlights page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Highlights page props
           content:
             application/json:
@@ -98,16 +98,16 @@ paths:
     get:
       summary: Keywords page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Keywords page props
           content:
             application/json:
@@ -117,16 +117,16 @@ paths:
     get:
       summary: Settings page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Settings page props
           content:
             application/json:
@@ -136,16 +136,16 @@ paths:
     get:
       summary: Launch page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Launch page props
           content:
             application/json:
@@ -155,16 +155,16 @@ paths:
     get:
       summary: Review page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Review page props
           content:
             application/json:
@@ -174,16 +174,16 @@ paths:
     get:
       summary: Settings page props
       tags:
-        - Inertia Pages - Launch
+      - Inertia Pages - Launch
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Settings page props
           content:
             application/json:
@@ -193,16 +193,16 @@ paths:
     get:
       summary: Review page props
       tags:
-        - Inertia Pages - Launch
+      - Inertia Pages - Launch
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Review page props
           content:
             application/json:
@@ -212,16 +212,16 @@ paths:
     get:
       summary: Deployment page props
       tags:
-        - Inertia Pages - Launch
+      - Inertia Pages - Launch
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Deployment page props
           content:
             application/json:
@@ -257,31 +257,31 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         thread_id:
-          type: "null"
+          type: 'null'
           description: Langgraph thread ID for the conversation
         project:
           type: object
           additionalProperties: false
           properties:
             uuid:
-              type: "null"
+              type: 'null'
               description: Project UUID
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
-        - thread_id
+      - root_path
+      - langgraph_path
+      - jwt
+      - thread_id
     BrainstormProps:
       type: object
       additionalProperties: false
@@ -310,14 +310,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         thread_id:
           type: string
@@ -395,10 +395,10 @@ components:
               type: string
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
-        - thread_id
+      - root_path
+      - langgraph_path
+      - jwt
+      - thread_id
     WebsiteProps:
       type: object
       additionalProperties: false
@@ -427,14 +427,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         thread_id:
           type: string
@@ -486,9 +486,9 @@ components:
               type: string
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
+      - root_path
+      - langgraph_path
+      - jwt
     CampaignsProps:
       type: object
       additionalProperties: false
@@ -517,14 +517,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         thread_id:
           type: string
@@ -686,9 +686,9 @@ components:
           additionalProperties: false
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
+      - root_path
+      - langgraph_path
+      - jwt
     LaunchProps:
       type: object
       additionalProperties: false
@@ -717,14 +717,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         thread_id:
           type: string
@@ -895,11 +895,11 @@ components:
               type: string
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
+      - root_path
+      - langgraph_path
+      - jwt
 servers:
-  - url: https://{defaultHost}
-    variables:
-      defaultHost:
-        default: www.example.com
+- url: https://{defaultHost}
+  variables:
+    defaultHost:
+      default: www.example.com

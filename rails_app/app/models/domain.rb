@@ -91,7 +91,7 @@ class Domain < ApplicationRecord
 
   def set_is_platform_subdomain
     return if domain.blank?
-    self.is_platform_subdomain = domain.end_with?('.launch10.ai')
+    self.is_platform_subdomain = domain.end_with?(".launch10.ai")
   end
 
   def domain_not_restricted
