@@ -357,7 +357,7 @@ describe.sequential("Brainstorming Flow", () => {
       expect(result2.state.availableCommands[2]).toBe("doTheRest");
     });
 
-    it.only("should ask about solution after audience", async () => {
+    it("should ask about solution after audience", async () => {
       const graph = await restartChatFrom("audience", SimpleChatHistory);
       const result = await graph.withPrompt(validAnswers.audience).stopAfter("agent").execute();
 
