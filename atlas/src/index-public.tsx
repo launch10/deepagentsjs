@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { etag } from 'hono/etag';
-import { Env } from './types';
+import { Env, CloudEnvironment, AppVariables } from './types';
 import { loggerMiddleware, contextMiddleware } from './middleware';
 import { Website } from '~/models/website';
 import { WebsiteUrl } from '~/models/website-url';
@@ -8,7 +8,10 @@ import { WebsiteType } from './types';
 import { logger } from '@utils/logger';
 import { R2Bucket } from '@cloudflare/workers-types';
 
-const app = new Hono<{ Bindings: Env }>();
+const ALLOWED_ENVS: CloudEnvironment[] = ['development', 'staging', 'production'];
+const DEFAULT_ENV: CloudEnvironment = 'production';
+
+const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 const requestLogger = logger.addScope('request');
 
 // Use Hono's built-in ETag middleware for automatic browser caching.
@@ -24,26 +27,28 @@ app.get('*', async (c) => {
   let pathname = url.pathname;
 
   const isPreview = hostname.startsWith('preview.');
-  const allowedEnvs = ['development', 'staging', 'production'];
   
   // Check query string for cloudEnv parameter
-  const cloudEnv = url.searchParams.get('cloudEnv');
+  const cloudEnvParam = url.searchParams.get('cloudEnv');
   
   // For asset requests, check the Referer header to inherit cloudEnv from the parent page
-  let env: string | undefined;
-  if (cloudEnv && allowedEnvs.includes(cloudEnv)) {
-    env = cloudEnv;
+  let cloudEnv: CloudEnvironment = DEFAULT_ENV;
+  if (cloudEnvParam && ALLOWED_ENVS.includes(cloudEnvParam as CloudEnvironment)) {
+    cloudEnv = cloudEnvParam as CloudEnvironment;
   } else if (pathname.includes('/assets/') || pathname.endsWith('.js') || pathname.endsWith('.css')) {
     // Check referer header for cloudEnv parameter
     const referer = c.req.header('referer');
     if (referer) {
       const refererUrl = new URL(referer);
       const refererCloudEnv = refererUrl.searchParams.get('cloudEnv');
-      if (refererCloudEnv && allowedEnvs.includes(refererCloudEnv)) {
-        env = refererCloudEnv;
+      if (refererCloudEnv && ALLOWED_ENVS.includes(refererCloudEnv as CloudEnvironment)) {
+        cloudEnv = refererCloudEnv as CloudEnvironment;
       }
     }
   }
+  
+  // Set cloudEnv in context for models to access
+  c.set('cloudEnv', cloudEnv);
   
   // Remove preview prefix to get the actual domain for lookup
   let lookupHostname = hostname;
@@ -94,12 +99,11 @@ app.get('*', async (c) => {
 
   // 3. Determine the target directory and environment
   const targetDir = isPreview ? 'preview' : 'live';
-  const envBucket = env ? env : 'production';
   
   // 4. Construct the object key.
-  const objectKey = `${envBucket}/${website.id}/${targetDir}/${strippedPathname}`;
-  console.log(`objectKey: ${objectKey}, environment: ${envBucket}`);
-  requestLogger.debug(`objectKey: ${objectKey}, environment: ${envBucket}`);
+  const objectKey = `${cloudEnv}/${website.id}/${targetDir}/${strippedPathname}`;
+  console.log(`objectKey: ${objectKey}, environment: ${cloudEnv}`);
+  requestLogger.debug(`objectKey: ${objectKey}, environment: ${cloudEnv}`);
   
   let r2Bucket: R2Bucket = c.env.DEPLOYS_R2;
   

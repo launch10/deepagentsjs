@@ -182,9 +182,9 @@ describe('Public Worker - index-public', () => {
       await setupWebsiteWithUrl({
         website: { id: 'ws-1' },
         websiteUrl: { domain: 'example.com', path: '/' },
+        cloudEnv: 'staging',
         r2Files: {
           'staging/ws-1/live/index.html': '<html>Staging</html>',
-          'production/ws-1/live/index.html': '<html>Production</html>',
         },
       });
 
@@ -196,9 +196,9 @@ describe('Public Worker - index-public', () => {
       await setupWebsiteWithUrl({
         website: { id: 'ws-1' },
         websiteUrl: { domain: 'example.com', path: '/' },
+        cloudEnv: 'development',
         r2Files: {
           'development/ws-1/live/index.html': '<html>Development</html>',
-          'production/ws-1/live/index.html': '<html>Production</html>',
         },
       });
 
@@ -223,9 +223,9 @@ describe('Public Worker - index-public', () => {
       await setupWebsiteWithUrl({
         website: { id: 'ws-1' },
         websiteUrl: { domain: 'example.com', path: '/' },
+        cloudEnv: 'staging',
         r2Files: {
           'staging/ws-1/live/assets/app.js': 'console.log("staging")',
-          'production/ws-1/live/assets/app.js': 'console.log("production")',
         },
       });
 
@@ -242,9 +242,9 @@ describe('Public Worker - index-public', () => {
       await setupWebsiteWithUrl({
         website: { id: 'ws-1' },
         websiteUrl: { domain: 'example.com', path: '/' },
+        cloudEnv: 'development',
         r2Files: {
           'development/ws-1/live/styles.css': 'body { background: red; }',
-          'production/ws-1/live/styles.css': 'body { background: blue; }',
         },
       });
 
@@ -261,6 +261,7 @@ describe('Public Worker - index-public', () => {
       await setupWebsiteWithUrl({
         website: { id: 'ws-1' },
         websiteUrl: { domain: 'example.com', path: '/' },
+        cloudEnv: 'staging',
         r2Files: {
           'staging/ws-1/live/bundle.js': 'var env="staging"',
         },
@@ -425,6 +426,7 @@ describe('Public Worker - index-public', () => {
       await setupWebsiteWithUrl({
         website: { id: 'ws-1' },
         websiteUrl: { domain: 'example.com', path: '/' },
+        cloudEnv: 'staging',
         r2Files: {
           'staging/ws-1/live/index.html': '<html>Staging</html>',
         },

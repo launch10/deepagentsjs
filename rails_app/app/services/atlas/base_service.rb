@@ -32,9 +32,14 @@ module Atlas
 
       {
         "X-Timestamp" => timestamp,
+        "X-Environment" => cloud_environment,
         "Content-Type" => "application/json",
         "Accept" => "application/json"
       }
+    end
+
+    def cloud_environment
+      Cloudflare.deploy_env.to_s
     end
 
     def open_timeout
