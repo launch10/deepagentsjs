@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 type FormHandle = {
   validate: () => Promise<boolean>;
+  save?: () => Promise<void>;
 };
 
 type FormRegistryState = {
@@ -11,6 +12,7 @@ type FormRegistryState = {
 type FormRegistryActions = {
   register: (formName: string, handle: FormHandle) => () => void;
   validate: (formName: string) => Promise<boolean>;
+  save: (formName: string) => Promise<void>;
 };
 
 type FormRegistryStore = FormRegistryState & FormRegistryActions;
@@ -41,7 +43,14 @@ export const useFormRegistry = create<FormRegistryStore>((set, get) => ({
     const results = await Promise.all(subforms.map((h) => h.validate()));
     return results.every(Boolean);
   },
+
+  save: async (formName) => {
+    const subforms = get().formNames[formName] || [];
+    const savePromises = subforms.map((h) => h.save?.() ?? Promise.resolve());
+    await Promise.all(savePromises);
+  },
 }));
 
 export const selectValidate = (s: FormRegistryStore) => s.validate;
 export const selectRegister = (s: FormRegistryStore) => s.register;
+export const selectSave = (s: FormRegistryStore) => s.save;

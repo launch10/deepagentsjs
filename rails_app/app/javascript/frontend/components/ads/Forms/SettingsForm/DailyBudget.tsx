@@ -2,6 +2,8 @@ import { useFormContext, Controller } from "react-hook-form";
 import { Sparkles } from "lucide-react";
 import { useAdsChatActions } from "@hooks/useAdsChat";
 import type { SettingsFormData } from "./settingsForm.schema";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/input-group";
+import { Field, FieldError, FieldLabel } from "@components/ui/field";
 
 export default function DailyBudget() {
   const { sendMessage } = useAdsChatActions();
@@ -12,42 +14,38 @@ export default function DailyBudget() {
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-sm font-semibold leading-[18px] text-base-500">
+    <Field className="flex flex-col gap-2">
+      <FieldLabel className="text-sm font-semibold leading-[18px] text-base-500">
         Daily Budget (USD)
-      </label>
+      </FieldLabel>
       <div className="flex gap-3 items-center">
-        <div className="relative w-[212px]">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs leading-4 text-neutral-400">
-            $
-          </span>
+        <InputGroup className="flex-1">
+          <InputGroupAddon>$</InputGroupAddon>
           <Controller
             name="budget"
             control={methods.control}
             render={({ field }) => (
-              <input
+              <InputGroupInput
                 type="number"
                 value={field.value}
                 onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                className="h-10 w-full rounded-lg border border-neutral-300 bg-white pl-7 pr-4 py-3 text-xs leading-4 text-base-500 outline-none focus:border-base-600"
               />
             )}
           />
-        </div>
+        </InputGroup>
         <button
           type="button"
           onClick={handleAskChat}
           className="flex items-center gap-3 rounded-lg border border-[#5f7e78] bg-[#eaf5f3] px-4 py-[14px] hover:bg-[#dceee9] transition-colors"
         >
+          {/* TODO: Add style this to Button component variations */}
           <Sparkles className="h-4 w-4 text-[#0d342b]" />
           <span className="text-sm leading-[18px] text-[#081f1a]">
             Ask chat for recommendations
           </span>
         </button>
       </div>
-      {methods.formState.errors.budget && (
-        <span className="text-xs text-[#d14f34]">{methods.formState.errors.budget.message}</span>
-      )}
-    </div>
+      <FieldError errors={[{ message: methods.formState.errors.budget?.message }]} />
+    </Field>
   );
 }

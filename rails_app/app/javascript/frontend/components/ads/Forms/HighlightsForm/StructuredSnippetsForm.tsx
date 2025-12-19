@@ -2,21 +2,48 @@ import AdCampaignFieldList from "@components/ads/Forms/shared/AdCampaignFieldLis
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
-import { NativeSelect } from "@components/ui/native-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAdsChatActions, useAdsChatState } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID, keyBy } from "@shared";
 import { Info, Plus } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
+import { createLockToggleHandler } from "@helpers/handleLockToggle";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
+import { useAutosaveCampaign } from "@api/campaigns.hooks";
+import { mapApiErrorsToForm } from "@helpers/formErrorMapper";
+import { useDebounce } from "@hooks/useDebounce";
 
 const STRUCTURED_SNIPPET_CATEGORIES = Ads.StructuredSnippetCategoryKeys.map((key) => ({
-  value: Ads.StructuredSnippetCategories[key].key,
-  label: Ads.StructuredSnippetCategories[key].key,
+  value: key, // Use the lowercase key (e.g., "brands") for API validation
+  label: Ads.StructuredSnippetCategories[key].key, // Use display name for UI
 }));
+
+// Map from display name (e.g., "Brands") to API key (e.g., "brands")
+const displayNameToKey = Object.fromEntries(
+  Ads.StructuredSnippetCategoryKeys.map((key) => [Ads.StructuredSnippetCategories[key].key, key])
+);
+
+// Normalize category: if it's a display name, convert to API key
+const normalizeCategory = (category: string | undefined): string => {
+  if (!category) return "";
+  // If it's already a valid API key, return it
+  if (Ads.StructuredSnippetCategoryKeys.includes(category as any)) {
+    return category;
+  }
+  // Otherwise, try to map from display name
+  return displayNameToKey[category] || category;
+};
 
 const structuredSnippetsFormSchema = z.object({
   category: z.string(),
@@ -43,7 +70,7 @@ export default function StructuredSnippetsForm() {
     name: "details",
   });
 
-  const category = structuredSnippets?.category;
+  const category = normalizeCategory(structuredSnippets?.category);
   const details = structuredSnippets?.details;
 
   useEffect(() => {
@@ -59,8 +86,6 @@ export default function StructuredSnippetsForm() {
     }
   }, [details]);
 
-  useFormRegistration("highlights", methods);
-
   const handleCategoryChange = (value: string) => {
     methods.setValue("category", value);
     setState({
@@ -72,34 +97,7 @@ export default function StructuredSnippetsForm() {
     });
   };
 
-  const handleLockToggle = (_fieldName: string, index: number) => {
-    const currentFields = methods.getValues("details");
-    const isLocked = currentFields[index].locked;
-
-    if (!isLocked && !currentFields[index].text) {
-      methods.setError(`details.${index}.text`, {
-        type: "manual",
-        message: "Cannot lock an empty input.",
-      });
-      return;
-    }
-
-    const updatedFields = currentFields.map((field, i) =>
-      i === index ? { ...field, locked: !isLocked } : field
-    );
-    methods.setValue("details", updatedFields);
-
-    const updatedDetails = structuredSnippets?.details?.map((d) =>
-      d.id === updatedFields[index].id ? { ...d, locked: !isLocked } : d
-    );
-    setState({
-      structuredSnippets: {
-        ...structuredSnippets,
-        category: structuredSnippets?.category || "",
-        details: updatedDetails || [],
-      },
-    });
-  };
+  const handleLockToggle = createLockToggleHandler(methods, "details", () => details, setState);
 
   const handleAddDetail = () => {
     const newDetail = { id: generateUUID(), text: "", locked: false, rejected: false };
@@ -137,6 +135,104 @@ export default function StructuredSnippetsForm() {
     });
   };
 
+  const campaignId = useAdsChatState("campaignId");
+  const autosaveMutation = useAutosaveCampaign(campaignId);
+
+  // Custom save function for structured snippets that combines category and details
+  const save = async () => {
+    if (!campaignId) {
+      return;
+    }
+
+    const category = methods.getValues("category");
+    const details = methods.getValues("details");
+    const values =
+      details
+        ?.filter((d: { text?: string }) => d.text?.trim())
+        .map((d: { text: string }) => d.text) ?? [];
+
+    // Only save if category and values are present
+    if (!category || values.length === 0) {
+      return;
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      autosaveMutation.mutate(
+        {
+          campaign: {
+            structured_snippet: {
+              category,
+              values,
+            },
+          },
+        },
+        {
+          onSuccess: () => {
+            resolve();
+          },
+          onError: (error) => {
+            mapApiErrorsToForm(error, methods);
+            reject(error);
+          },
+        }
+      );
+    });
+  };
+
+  // Custom autosave for structured snippets (category + details combined)
+  const watchedCategory = methods.watch("category");
+  const watchedDetails = methods.watch("details");
+  const debouncedCategory = useDebounce(watchedCategory, 750);
+  const debouncedDetails = useDebounce(watchedDetails, 750);
+  const isInitialMount = useRef(true);
+  const lastSavedValue = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (!campaignId || autosaveMutation.isPending) {
+      return;
+    }
+
+    const values =
+      debouncedDetails
+        ?.filter((d: { text?: string }) => d.text?.trim())
+        .map((d: { text: string }) => d.text) ?? [];
+
+    // Only save if category and values are present
+    if (!debouncedCategory || values.length === 0) {
+      return;
+    }
+
+    const serialized = JSON.stringify({ category: debouncedCategory, values });
+    if (serialized === lastSavedValue.current) {
+      return;
+    }
+    lastSavedValue.current = serialized;
+
+    autosaveMutation.mutate(
+      {
+        campaign: {
+          structured_snippet: {
+            category: debouncedCategory,
+            values,
+          },
+        },
+      },
+      {
+        onError: (error) => {
+          mapApiErrorsToForm(error, methods);
+        },
+      }
+    );
+  }, [debouncedCategory, debouncedDetails, campaignId, autosaveMutation.isPending]);
+
+  // Attach save function to form registration
+  useFormRegistration("highlights", methods, save);
+
   return (
     <div className="grid grid-cols-2">
       <div className="col-span-1">
@@ -152,19 +248,23 @@ export default function StructuredSnippetsForm() {
                 <Info size={12} className="text-base-300" />
               </div>
             </FieldLabel>
-            <NativeSelect
-              value={methods.watch("category")}
-              onChange={(e) => handleCategoryChange(e.target.value)}
+            <Select
+              value={methods.watch("category") || undefined}
+              onValueChange={(value) => handleCategoryChange(value)}
             >
-              <option value="" disabled selected>
-                Select a category
-              </option>
-              {STRUCTURED_SNIPPET_CATEGORIES.map((category) => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
-                </option>
-              ))}
-            </NativeSelect>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {STRUCTURED_SNIPPET_CATEGORIES.map((category) => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </Field>
           <Field>
             <div className="flex justify-between items-center">

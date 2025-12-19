@@ -11,6 +11,8 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
+import { createLockToggleHandler } from "@helpers/handleLockToggle";
+import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
 
 const calloutsFormSchema = z.object({
   callouts: z.array(Ads.AssetSchema),
@@ -30,7 +32,7 @@ export default function CalloutsForm() {
     },
   });
 
-  const { fields } = useFieldArray({
+  const { fields, remove } = useFieldArray({
     control: methods.control,
     name: "callouts",
   });
@@ -42,46 +44,25 @@ export default function CalloutsForm() {
     }
   }, [callouts, methods]);
 
-  useFormRegistration("highlights", methods);
-
-  const handleLockToggle = (
-    _fieldName: "headlines" | "descriptions" | "features" | "callouts" | "details" | "keywords",
-    index: number
-  ) => {
-    const currentFields = methods.getValues("callouts");
-    const isLocked = currentFields[index].locked;
-
-    if (!isLocked && !currentFields[index].text) {
-      methods.setError(`callouts.${index}.text`, {
-        type: "manual",
-        message: "Cannot lock an empty input.",
-      });
-      return;
-    }
-
-    const updatedFields = currentFields.map((field, i) =>
-      i === index ? { ...field, locked: !isLocked } : field
-    );
-    methods.setValue("callouts", updatedFields);
-
-    const updatedLanggraph = callouts?.map((c, i) =>
-      i === index ? { ...c, locked: !isLocked } : c
-    );
-    setState({ callouts: updatedLanggraph });
-  };
+  const handleLockToggle = createLockToggleHandler(methods, "callouts", () => callouts, setState);
 
   const handleRefreshCallouts = () => {
     createRefreshHandler("callouts", callouts, updateState);
   };
 
   const handleDeleteCallout = (index: number) => {
-    const currentFields = methods.getValues("callouts");
-    const updatedFields = currentFields.filter((_, i) => i !== index);
-    methods.setValue("callouts", updatedFields);
-
+    remove(index);
     const updatedLanggraph = callouts?.filter((c, i) => i !== index);
     setState({ callouts: updatedLanggraph });
   };
+
+  const { save } = useCampaignAutosave({
+    methods,
+    fieldMappings: [{ formField: "callouts", apiField: "callouts" }],
+  });
+
+  // Attach save function to form registration
+  useFormRegistration("highlights", methods, save);
 
   return (
     <FieldGroup className="gap-2">
@@ -104,7 +85,7 @@ export default function CalloutsForm() {
         onDelete={handleDeleteCallout}
         control={methods.control as any} // TODO: Fix this
         placeholder="Feature Option"
-        maxLength={90}
+        maxLength={25}
       />
     </FieldGroup>
   );

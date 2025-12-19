@@ -3,12 +3,14 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { FieldGroup } from "@components/ui/field";
-import AdCampaignHeadlineInput from "@components/ads/Forms/ContentForm/AdCampaignHeadlineInput";
-import AdCampaignFieldList from "@components/ads/Forms/shared/AdCampaignFieldList";
+import AdCampaignHeadlineInput from "./AdCampaignHeadlineInput";
+import AdCampaignFieldList from "../shared/AdCampaignFieldList";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
+import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import { createLockToggleHandler } from "@helpers/handleLockToggle";
 
 const headlinesFormSchema = z.object({
   headlines: z
@@ -31,7 +33,7 @@ export default function HeadlinesForm() {
     },
   });
 
-  const { fields, append } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: methods.control,
     name: "headlines",
   });
@@ -42,8 +44,6 @@ export default function HeadlinesForm() {
       methods.setValue("headlines", filtered);
     }
   }, [headlines, methods]);
-
-  useFormRegistration("content", methods);
 
   const handleAddHeadline = (value: string) => {
     const newHeadline: Ads.Headline = {
@@ -58,37 +58,25 @@ export default function HeadlinesForm() {
     setState({ headlines: updated });
   };
 
-  const handleLockToggle = (
-    fieldName: "headlines" | "descriptions" | "features" | "callouts",
-    index: number
-  ) => {
-    if (fieldName !== "headlines") return;
-
-    const currentFields = methods.getValues("headlines");
-    const isLocked = currentFields[index].locked;
-
-    if (!isLocked && !currentFields[index].text) {
-      methods.setError(`headlines.${index}.text`, {
-        type: "manual",
-        message: "Cannot lock an empty input.",
-      });
-      return;
-    }
-
-    const updatedFields = currentFields.map((field, i) =>
-      i === index ? { ...field, locked: !isLocked } : field
-    );
-    methods.setValue("headlines", updatedFields);
-
-    const updatedLanggraph = headlines?.map((h, i) =>
-      i === index ? { ...h, locked: !isLocked } : h
-    );
+  const handleDeleteHeadline = (index: number) => {
+    remove(index);
+    const updatedLanggraph = headlines?.filter((h, i) => i !== index);
     setState({ headlines: updatedLanggraph });
   };
+
+  const handleLockToggle = createLockToggleHandler(methods, "headlines", () => headlines, setState);
 
   const handleRefreshHeadlines = () => {
     createRefreshHandler("headlines", headlines, updateState);
   };
+
+  const { save } = useCampaignAutosave({
+    methods,
+    fieldMappings: [{ formField: "headlines", apiField: "headlines" }],
+  });
+
+  // Attach save function to form registration
+  useFormRegistration("content", methods, save);
 
   return (
     <FieldGroup className="gap-3">
@@ -103,7 +91,7 @@ export default function HeadlinesForm() {
         fieldName="headlines"
         fields={fields}
         onLockToggle={handleLockToggle}
-        // onDelete={handleDeleteHeadline}
+        onDelete={handleDeleteHeadline}
         control={methods.control as any}
         placeholder="Headline Option"
         maxLength={30}
