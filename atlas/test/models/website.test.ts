@@ -9,6 +9,7 @@ import {
   seedKV,
   seedKVRaw,
   createMockContext,
+  DEFAULT_ENV,
 } from '../support';
 
 describe('Website Model', () => {
@@ -19,7 +20,7 @@ describe('Website Model', () => {
   describe('get', () => {
     it('retrieves a website by ID', async () => {
       const website = createWebsite({ id: 'ws-1', accountId: 'acc-1' });
-      await seedKV({ 'website:ws-1': website });
+      await seedKV({ [`${DEFAULT_ENV}:website:ws-1`]: website });
 
       const c = createMockContext();
       const model = new Website(c);
@@ -34,6 +35,26 @@ describe('Website Model', () => {
       const result = await model.get('nonexistent');
 
       expect(result).toBeNull();
+    });
+
+    it('retrieves from correct environment', async () => {
+      const prodWebsite = createWebsite({ id: 'ws-1', accountId: 'prod-acc' });
+      const stagingWebsite = createWebsite({ id: 'ws-1', accountId: 'staging-acc' });
+
+      await seedKV({
+        ['production:website:ws-1']: prodWebsite,
+        ['staging:website:ws-1']: stagingWebsite,
+      });
+
+      const prodContext = createMockContext({ cloudEnv: 'production' });
+      const prodModel = new Website(prodContext);
+      const prodResult = await prodModel.get('ws-1');
+      expect(prodResult!.accountId).toBe('prod-acc');
+
+      const stagingContext = createMockContext({ cloudEnv: 'staging' });
+      const stagingModel = new Website(stagingContext);
+      const stagingResult = await stagingModel.get('ws-1');
+      expect(stagingResult!.accountId).toBe('staging-acc');
     });
   });
 
@@ -66,8 +87,8 @@ describe('Website Model', () => {
         websiteId: 'nonexistent-website',
         domain: 'orphan.com',
       });
-      await seedKV({ 'domain:orphan-domain': domain });
-      await seedKVRaw({ 'index:domain:domain:orphan.com': 'orphan-domain' });
+      await seedKV({ [`${DEFAULT_ENV}:domain:orphan-domain`]: domain });
+      await seedKVRaw({ [`${DEFAULT_ENV}:index:domain:domain:orphan.com`]: 'orphan-domain' });
 
       const c = createMockContext();
       const model = new Website(c);
@@ -114,6 +135,22 @@ describe('Website Model', () => {
 
       expect(result).toBeNull();
     });
+
+    it('stores data in environment-specific keys', async () => {
+      const stagingContext = createMockContext({ cloudEnv: 'staging' });
+      const stagingModel = new Website(stagingContext);
+      
+      const website = createWebsite({ id: 'env-test-ws' });
+      await stagingModel.set(website.id, website);
+      
+      const stagingResult = await stagingModel.get(website.id);
+      expect(stagingResult).toEqual(website);
+
+      const prodContext = createMockContext({ cloudEnv: 'production' });
+      const prodModel = new Website(prodContext);
+      const prodResult = await prodModel.get(website.id);
+      expect(prodResult).toBeNull();
+    });
   });
 });
 
@@ -125,8 +162,8 @@ describe('Domain Model', () => {
   describe('findByUrl', () => {
     it('finds domain by URL', async () => {
       const domain = createDomain({ id: 'd-1', domain: 'test.com' });
-      await seedKV({ 'domain:d-1': domain });
-      await seedKVRaw({ 'index:domain:domain:test.com': 'd-1' });
+      await seedKV({ [`${DEFAULT_ENV}:domain:d-1`]: domain });
+      await seedKVRaw({ [`${DEFAULT_ENV}:index:domain:domain:test.com`]: 'd-1' });
 
       const c = createMockContext();
       const model = new Domain(c);
@@ -141,6 +178,30 @@ describe('Domain Model', () => {
       const result = await model.findByUrl('nonexistent.com');
 
       expect(result).toBeNull();
+    });
+
+    it('retrieves from correct environment', async () => {
+      const prodDomain = createDomain({ id: 'd-1', domain: 'test.com', websiteId: 'prod-ws' });
+      const stagingDomain = createDomain({ id: 'd-1', domain: 'test.com', websiteId: 'staging-ws' });
+
+      await seedKV({
+        ['production:domain:d-1']: prodDomain,
+        ['staging:domain:d-1']: stagingDomain,
+      });
+      await seedKVRaw({
+        ['production:index:domain:domain:test.com']: 'd-1',
+        ['staging:index:domain:domain:test.com']: 'd-1',
+      });
+
+      const prodContext = createMockContext({ cloudEnv: 'production' });
+      const prodModel = new Domain(prodContext);
+      const prodResult = await prodModel.findByUrl('test.com');
+      expect(prodResult!.websiteId).toBe('prod-ws');
+
+      const stagingContext = createMockContext({ cloudEnv: 'staging' });
+      const stagingModel = new Domain(stagingContext);
+      const stagingResult = await stagingModel.findByUrl('test.com');
+      expect(stagingResult!.websiteId).toBe('staging-ws');
     });
   });
 

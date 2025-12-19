@@ -1,7 +1,9 @@
 import { Context } from "hono";
-import { Env } from "~/types";
+import { Env, CloudEnvironment } from "~/types";
 import { CloudflareContext } from "~/utils/cloudflareContext";
 import { logger } from "~/utils/logger";
+
+const DEFAULT_ENVIRONMENT: CloudEnvironment = 'production';
 
 export const scopedLogger = logger.addScope('KVCache');
 
@@ -40,12 +42,18 @@ export class BaseModel<T> extends CloudflareContext {
         this.indexes.push(index);
     }
 
+    protected getCloudEnv(): CloudEnvironment {
+        return (this.c.get('cloudEnv') as CloudEnvironment) || DEFAULT_ENVIRONMENT;
+    }
+
     private getKey(id: string): string {
-        return `${this.prefix}:${id}`;
+        const env = this.getCloudEnv();
+        return `${env}:${this.prefix}:${id}`;
     }
 
     private getIndexKey(indexName: string, value: string): string {
-        return `index:${this.prefix}:${indexName}:${value}`;
+        const env = this.getCloudEnv();
+        return `${env}:index:${this.prefix}:${indexName}:${value}`;
     }
 
     async get(id: string): Promise<T | null> {
@@ -221,10 +229,12 @@ export class BaseModel<T> extends CloudflareContext {
 
     // List all entities (use with caution on large datasets)
     async listAll(limit?: number): Promise<T[]> {
-        const keys = await this.c.env.DEPLOYS_KV.list({ prefix: `${this.prefix}:`, limit });
+        const env = this.getCloudEnv();
+        const prefix = `${env}:${this.prefix}:`;
+        const keys = await this.c.env.DEPLOYS_KV.list({ prefix, limit });
         const results = await Promise.all(
             keys.keys.map(key => {
-                const id = key.name.replace(`${this.prefix}:`, '');
+                const id = key.name.replace(prefix, '');
                 return this.get(id);
             })
         );

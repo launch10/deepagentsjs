@@ -7,6 +7,7 @@ import {
   createWebsiteUrl,
   setupMultipleWebsiteUrls,
   createMockContext,
+  DEFAULT_ENV,
 } from '../support';
 
 describe('WebsiteUrl Model', () => {
@@ -22,8 +23,8 @@ describe('WebsiteUrl Model', () => {
         path: '/blog',
       });
 
-      await seedKV({ 'websiteUrl:url-1': websiteUrl });
-      await seedKVRaw({ 'index:websiteUrl:domainPath:example.com:/blog': 'url-1' });
+      await seedKV({ [`${DEFAULT_ENV}:websiteUrl:url-1`]: websiteUrl });
+      await seedKVRaw({ [`${DEFAULT_ENV}:index:websiteUrl:domainPath:example.com:/blog`]: 'url-1' });
 
       const c = createMockContext();
       const model = new WebsiteUrl(c);
@@ -38,6 +39,39 @@ describe('WebsiteUrl Model', () => {
       const result = await model.findByDomainAndPath('nonexistent.com', '/path');
 
       expect(result).toBeNull();
+    });
+
+    it('uses correct environment when looking up data', async () => {
+      const prodUrl = createWebsiteUrl({
+        id: 'url-prod',
+        domain: 'example.com',
+        path: '/blog',
+      });
+      const stagingUrl = createWebsiteUrl({
+        id: 'url-staging',
+        domain: 'example.com',
+        path: '/blog',
+        websiteId: 'staging-website',
+      });
+
+      await seedKV({
+        ['production:websiteUrl:url-prod']: prodUrl,
+        ['staging:websiteUrl:url-staging']: stagingUrl,
+      });
+      await seedKVRaw({
+        ['production:index:websiteUrl:domainPath:example.com:/blog']: 'url-prod',
+        ['staging:index:websiteUrl:domainPath:example.com:/blog']: 'url-staging',
+      });
+
+      const prodContext = createMockContext({ cloudEnv: 'production' });
+      const prodModel = new WebsiteUrl(prodContext);
+      const prodResult = await prodModel.findByDomainAndPath('example.com', '/blog');
+      expect(prodResult).toEqual(prodUrl);
+
+      const stagingContext = createMockContext({ cloudEnv: 'staging' });
+      const stagingModel = new WebsiteUrl(stagingContext);
+      const stagingResult = await stagingModel.findByDomainAndPath('example.com', '/blog');
+      expect(stagingResult).toEqual(stagingUrl);
     });
   });
 
@@ -171,12 +205,12 @@ describe('WebsiteUrl Model', () => {
       });
 
       await seedKV({
-        'websiteUrl:url-1': website1,
-        'websiteUrl:url-2': website2,
+        [`${DEFAULT_ENV}:websiteUrl:url-1`]: website1,
+        [`${DEFAULT_ENV}:websiteUrl:url-2`]: website2,
       });
       await seedKVRaw({
-        'index:websiteUrl:domainPath:site1.com:/app': 'url-1',
-        'index:websiteUrl:domainPath:site2.com:/app': 'url-2',
+        [`${DEFAULT_ENV}:index:websiteUrl:domainPath:site1.com:/app`]: 'url-1',
+        [`${DEFAULT_ENV}:index:websiteUrl:domainPath:site2.com:/app`]: 'url-2',
       });
 
       const c = createMockContext();
@@ -246,6 +280,27 @@ describe('WebsiteUrl Model', () => {
       const result = await model.get(websiteUrl.id);
 
       expect(result).toBeNull();
+    });
+
+    it('stores data in environment-specific keys', async () => {
+      const stagingContext = createMockContext({ cloudEnv: 'staging' });
+      const stagingModel = new WebsiteUrl(stagingContext);
+      
+      const websiteUrl = createWebsiteUrl({
+        id: 'env-test-url',
+        domain: 'test.com',
+        path: '/test',
+      });
+
+      await stagingModel.set(websiteUrl.id, websiteUrl);
+      
+      const stagingResult = await stagingModel.get(websiteUrl.id);
+      expect(stagingResult).toEqual(websiteUrl);
+
+      const prodContext = createMockContext({ cloudEnv: 'production' });
+      const prodModel = new WebsiteUrl(prodContext);
+      const prodResult = await prodModel.get(websiteUrl.id);
+      expect(prodResult).toBeNull();
     });
   });
 });

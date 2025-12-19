@@ -1,5 +1,7 @@
 import { env } from 'cloudflare:test';
-import { WebsiteType, WebsiteUrlType, DomainType } from '~/types';
+import { WebsiteType, WebsiteUrlType, DomainType, CloudEnvironment } from '~/types';
+
+export const DEFAULT_ENV: CloudEnvironment = 'production';
 
 export async function seedKV(data: Record<string, any>): Promise<void> {
   await Promise.all(
@@ -66,7 +68,9 @@ export async function setupWebsiteWithUrl(options: {
   website?: Partial<WebsiteType>;
   websiteUrl?: Partial<WebsiteUrlType>;
   r2Files?: Record<string, string>;
+  cloudEnv?: CloudEnvironment;
 }): Promise<{ website: WebsiteType; websiteUrl: WebsiteUrlType }> {
+  const cloudEnv = options.cloudEnv ?? DEFAULT_ENV;
   const website = createWebsite(options.website);
   const websiteUrl = createWebsiteUrl({
     websiteId: website.id,
@@ -74,13 +78,13 @@ export async function setupWebsiteWithUrl(options: {
   });
 
   await seedKV({
-    [`website:${website.id}`]: website,
-    [`websiteUrl:${websiteUrl.id}`]: websiteUrl,
+    [`${cloudEnv}:website:${website.id}`]: website,
+    [`${cloudEnv}:websiteUrl:${websiteUrl.id}`]: websiteUrl,
   });
 
   await seedKVRaw({
-    [`index:websiteUrl:websiteId:${websiteUrl.websiteId}`]: websiteUrl.id,
-    [`index:websiteUrl:domainPath:${websiteUrl.domain}:${websiteUrl.path}`]: websiteUrl.id,
+    [`${cloudEnv}:index:websiteUrl:websiteId:${websiteUrl.websiteId}`]: websiteUrl.id,
+    [`${cloudEnv}:index:websiteUrl:domainPath:${websiteUrl.domain}:${websiteUrl.path}`]: websiteUrl.id,
   });
 
   if (options.r2Files) {
@@ -94,7 +98,9 @@ export async function setupWebsiteWithDomain(options: {
   website?: Partial<WebsiteType>;
   domain?: Partial<DomainType>;
   r2Files?: Record<string, string>;
+  cloudEnv?: CloudEnvironment;
 }): Promise<{ website: WebsiteType; domain: DomainType }> {
+  const cloudEnv = options.cloudEnv ?? DEFAULT_ENV;
   const website = createWebsite(options.website);
   const domain = createDomain({
     websiteId: website.id,
@@ -102,14 +108,14 @@ export async function setupWebsiteWithDomain(options: {
   });
 
   await seedKV({
-    [`website:${website.id}`]: website,
-    [`domain:${domain.id}`]: domain,
+    [`${cloudEnv}:website:${website.id}`]: website,
+    [`${cloudEnv}:domain:${domain.id}`]: domain,
   });
 
   await seedKVRaw({
-    [`index:website:accountId:${website.accountId}`]: website.id,
-    [`index:domain:websiteId:${domain.websiteId}`]: domain.id,
-    [`index:domain:domain:${domain.domain}`]: domain.id,
+    [`${cloudEnv}:index:website:accountId:${website.accountId}`]: website.id,
+    [`${cloudEnv}:index:domain:websiteId:${domain.websiteId}`]: domain.id,
+    [`${cloudEnv}:index:domain:domain:${domain.domain}`]: domain.id,
   });
 
   if (options.r2Files) {
@@ -123,7 +129,9 @@ export async function setupMultipleWebsiteUrls(configs: {
   website?: Partial<WebsiteType>;
   urls: Partial<WebsiteUrlType>[];
   r2Files?: Record<string, string>;
+  cloudEnv?: CloudEnvironment;
 }): Promise<{ website: WebsiteType; websiteUrls: WebsiteUrlType[] }> {
+  const cloudEnv = configs.cloudEnv ?? DEFAULT_ENV;
   const website = createWebsite(configs.website);
   const websiteUrls = configs.urls.map((urlConfig, index) =>
     createWebsiteUrl({
@@ -134,16 +142,16 @@ export async function setupMultipleWebsiteUrls(configs: {
   );
 
   const kvData: Record<string, any> = {
-    [`website:${website.id}`]: website,
+    [`${cloudEnv}:website:${website.id}`]: website,
   };
 
   const kvRawData: Record<string, string> = {
-    [`index:website:accountId:${website.accountId}`]: website.id,
+    [`${cloudEnv}:index:website:accountId:${website.accountId}`]: website.id,
   };
 
   for (const websiteUrl of websiteUrls) {
-    kvData[`websiteUrl:${websiteUrl.id}`] = websiteUrl;
-    kvRawData[`index:websiteUrl:domainPath:${websiteUrl.domain}:${websiteUrl.path}`] = websiteUrl.id;
+    kvData[`${cloudEnv}:websiteUrl:${websiteUrl.id}`] = websiteUrl;
+    kvRawData[`${cloudEnv}:index:websiteUrl:domainPath:${websiteUrl.domain}:${websiteUrl.path}`] = websiteUrl.id;
   }
 
   await seedKV(kvData);
