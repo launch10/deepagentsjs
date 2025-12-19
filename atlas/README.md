@@ -9,7 +9,6 @@ It's a Cloudflare edge gateway that serves user-generated static websites with i
 ### Two Separate Workers
 
 1. **Public Worker** (`src/index-public.tsx`)
-
    - **Purpose**: Serve user-generated static websites
    - **Access**: Publicly accessible via user-configured domains
    - **Features**: Rate limiting, caching, static file serving
@@ -239,6 +238,7 @@ ALLOW_ATLAS_SYNC=true ATLAS_BASE_URL=https://atlas-admin.launch10.ai bin/rails c
 ```
 
 When sync is enabled, you'll see a log message:
+
 ```
 [Atlas] Sync enabled: true
 ```
