@@ -4,6 +4,17 @@
 
 This skill covers deploying websites and syncing metadata from Rails to Cloudflare (Atlas + R2).
 
+## Important: Synchronous Deploys
+
+When deploying from the console or rake tasks, always use `async: false`:
+
+```ruby
+website.deploy(async: false, environment: 'staging')
+website.preview(async: false, environment: 'staging')
+```
+
+This runs the build and upload synchronously so you can see the results immediately. The `async: true` default is for background job processing in the web app.
+
 ## Environment Variables
 
 | Variable                | Purpose                                 | Default                       |
@@ -70,7 +81,7 @@ CLOUDFLARE_DEPLOY_ENV=staging ALLOW_ATLAS_SYNC=true bin/rails console
 
 # Deploy a website to staging R2 + sync metadata
 website = Website.find(id)
-website.deploy(environment: 'staging')
+website.deploy(async: false, environment: 'staging')
 ```
 
 ## How It Works
@@ -98,3 +109,27 @@ https://your-domain.com/?cloudEnv=staging
 ```
 
 The `cloudEnv` query parameter tells the public Atlas worker which environment's files to serve.
+
+## Subpath Deployments
+
+Websites can be deployed to subpaths like `/bingo` on a domain. See `docs/architecture/subpath-deployment.md` for the full explanation.
+
+**Key constraints:**
+- Paths must start with `/`
+- Only single-level paths supported (e.g., `/bingo`, not `/marketing/campaign`)
+- Atlas redirects `/bingo` → `/bingo/` to ensure relative asset paths resolve correctly
+
+```ruby
+# Create a WebsiteUrl for subpath deployment
+website_url = WebsiteUrl.create!(
+  website: website,
+  domain: domain,
+  path: "/bingo"  # Single-level only
+)
+
+# Sync to Atlas and deploy
+website.sync_all_to_atlas
+website.deploy(async: false, environment: 'staging')
+```
+
+Access at: `https://example.launch10.site/bingo/?cloudEnv=staging`
