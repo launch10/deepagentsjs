@@ -166,6 +166,28 @@ module GoogleAds
 
       MATCH_TYPE_TO_SYMBOL = ->(match_type) { match_type.upcase.to_sym }
 
+      STATUS_TO_GOOGLE = ->(status) { (status == "active") ? :ENABLED : :PAUSED }
+
+      AD_FIELDS = {
+        status: {
+          our_field: :status,
+          their_field: :status,
+          transform: STATUS_TO_GOOGLE
+        },
+        display_path_1: {
+          our_field: :display_path_1,
+          their_field: :path1,
+          transform: ITSELF,
+          nested_field: :ad
+        },
+        display_path_2: {
+          our_field: :display_path_2,
+          their_field: :path2,
+          transform: ITSELF,
+          nested_field: :ad
+        }
+      }.freeze
+
       KEYWORD_FIELDS = {
         text: {
           our_field: :text,
@@ -178,6 +200,34 @@ module GoogleAds
           their_field: :match_type,
           transform: MATCH_TYPE_TO_SYMBOL,
           nested_field: :keyword
+        }
+      }.freeze
+
+      CALLOUT_FIELDS = {
+        text: {
+          our_field: :text,
+          their_field: :callout_text,
+          transform: ITSELF,
+          nested_field: :callout_asset
+        }
+      }.freeze
+
+      CATEGORY_TO_HEADER = ->(category) {
+        StructuredSnippetCategoriesConfig.definitions.dig(category, :key) || category.titleize
+      }
+
+      STRUCTURED_SNIPPET_FIELDS = {
+        category: {
+          our_field: :category,
+          their_field: :header,
+          transform: CATEGORY_TO_HEADER,
+          nested_field: :structured_snippet_asset
+        },
+        values: {
+          our_field: :values,
+          their_field: :values,
+          transform: ITSELF,
+          nested_field: :structured_snippet_asset
         }
       }.freeze
 
@@ -234,6 +284,12 @@ module GoogleAds
           AD_SCHEDULE_FIELDS
         when ::AdKeyword.name
           KEYWORD_FIELDS
+        when ::Ad.name
+          AD_FIELDS
+        when ::AdCallout.name
+          CALLOUT_FIELDS
+        when ::AdStructuredSnippet.name
+          STRUCTURED_SNIPPET_FIELDS
         else
           raise ArgumentError, "Unknown resource type: #{resource_type}"
         end

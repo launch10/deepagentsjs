@@ -3057,7 +3057,8 @@ CREATE TABLE public.uploads (
     is_logo boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    original_filename character varying
+    original_filename character varying,
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb
 );
 
 
@@ -8047,6 +8048,8 @@ ALTER TABLE ONLY public.website_urls
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251220160359'),
+('20251220153026'),
 ('20251219192557'),
 ('20251219013512'),
 ('20251218235348'),

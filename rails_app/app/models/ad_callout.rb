@@ -24,9 +24,21 @@
 #
 class AdCallout < ApplicationRecord
   include PlatformSettings
+  include GoogleMappable
+  include GoogleSyncable
+
   belongs_to :campaign, class_name: "Campaign", inverse_of: :callouts
   belongs_to :ad_group, class_name: "AdGroup", inverse_of: :callouts
+
   platform_setting :google, :asset_id
+
+  use_google_sync GoogleAds::Callout
+  after_google_sync do |result|
+    if result.resource_name.present?
+      asset_id = result.resource_name.split("/").last
+      update_column(:platform_settings, platform_settings.deep_merge("google" => { "asset_id" => asset_id }))
+    end
+  end
 
   validates :text, presence: true, length: { maximum: 25 }
   validates :position, presence: true

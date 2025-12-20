@@ -23,10 +23,13 @@
 #
 class Ad < ApplicationRecord
   include PlatformSettings
+  include GoogleMappable
+  include GoogleSyncable
 
   belongs_to :ad_group
   has_one :campaign, through: :ad_group
   has_one :ads_account, through: :campaign
+  has_one :website, through: :campaign
 
   has_many :headlines, dependent: :destroy, class_name: "AdHeadline"
   has_many :descriptions, dependent: :destroy, class_name: "AdDescription"
@@ -35,6 +38,15 @@ class Ad < ApplicationRecord
   accepts_nested_attributes_for :descriptions, allow_destroy: true
 
   platform_setting :google, :ad_id
+
+  use_google_sync GoogleAds::Ad
+
+  after_google_sync do |result|
+    if result.resource_name.present?
+      ad_id = result.resource_name.split("~").last
+      update_column(:platform_settings, platform_settings.deep_merge("google" => { "ad_id" => ad_id }))
+    end
+  end
 
   def google_customer_id
     ads_account.google_customer_id
@@ -46,5 +58,12 @@ class Ad < ApplicationRecord
 
   def google_campaign_id
     campaign.google_campaign_id
+  end
+
+  def final_urls
+    return [] unless website&.domains&.any?
+
+    domain = website.domains.first.domain
+    ["https://#{domain}"]
   end
 end

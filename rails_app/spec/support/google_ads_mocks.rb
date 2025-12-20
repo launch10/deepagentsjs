@@ -9,6 +9,9 @@ module GoogleAdsMocks
     @mock_bidding_strategy_service = double("BiddingStrategyService")
     @mock_campaign_criterion_service = double("CampaignCriterionService")
     @mock_ad_group_criterion_service = double("AdGroupCriterionService")
+    @mock_ad_group_ad_service = double("AdGroupAdService")
+    @mock_asset_service = double("AssetService")
+    @mock_campaign_asset_service = double("CampaignAssetService")
     @mock_operation = double("Operation")
     @mock_resource = double("Resource")
     @mock_update_resource = double("UpdateResource")
@@ -25,7 +28,10 @@ module GoogleAdsMocks
         ad_group: @mock_ad_group_service,
         bidding_strategy: @mock_bidding_strategy_service,
         campaign_criterion: @mock_campaign_criterion_service,
-        ad_group_criterion: @mock_ad_group_criterion_service)
+        ad_group_criterion: @mock_ad_group_criterion_service,
+        ad_group_ad: @mock_ad_group_ad_service,
+        asset: @mock_asset_service,
+        campaign_asset: @mock_campaign_asset_service)
     )
 
     allow(@mock_client).to receive(:resource).and_return(@mock_resource)
@@ -508,6 +514,207 @@ module GoogleAdsMocks
     double("KeywordInfo").tap do |keyword|
       allow(keyword).to receive(:text=)
       allow(keyword).to receive(:match_type=)
+    end
+  end
+
+  def mock_search_response_with_ad_group_ad(
+    ad_id: 12345,
+    ad_group_id: 999,
+    customer_id: 456,
+    status: :PAUSED,
+    final_urls: ["https://example.com"],
+    headlines: [],
+    descriptions: [],
+    path1: nil,
+    path2: nil
+  )
+    rsa = double("ResponsiveSearchAdInfo",
+      headlines: headlines,
+      descriptions: descriptions,
+      path1: path1,
+      path2: path2)
+
+    ad = double("Ad",
+      id: ad_id,
+      final_urls: final_urls,
+      responsive_search_ad: rsa)
+
+    ad_group_ad = double("AdGroupAd",
+      resource_name: "customers/#{customer_id}/adGroupAds/#{ad_group_id}~#{ad_id}",
+      ad: ad,
+      status: status,
+      ad_group: "customers/#{customer_id}/adGroups/#{ad_group_id}")
+
+    row = double("GoogleAdsRow", ad_group_ad: ad_group_ad)
+    [row]
+  end
+
+  def mock_mutate_ad_group_ad_response(ad_id: 12345, ad_group_id: 999, customer_id: 456)
+    result = double("MutateAdGroupAdResult",
+      resource_name: "customers/#{customer_id}/adGroupAds/#{ad_group_id}~#{ad_id}")
+    double("MutateAdGroupAdsResponse", results: [result])
+  end
+
+  def mock_ad_group_ad_resource
+    double("AdGroupAd").tap do |aga|
+      allow(aga).to receive(:ad_group=)
+      allow(aga).to receive(:status=)
+      allow(aga).to receive(:ad=)
+    end
+  end
+
+  def mock_ad_resource
+    final_urls_array = []
+    double("Ad").tap do |ad|
+      allow(ad).to receive(:final_urls).and_return(final_urls_array)
+      allow(ad).to receive(:final_urls=)
+      allow(ad).to receive(:responsive_search_ad=)
+    end
+  end
+
+  def mock_responsive_search_ad_info_resource
+    headlines_array = []
+    descriptions_array = []
+    double("ResponsiveSearchAdInfo").tap do |rsa|
+      allow(rsa).to receive(:headlines).and_return(headlines_array)
+      allow(rsa).to receive(:descriptions).and_return(descriptions_array)
+      allow(rsa).to receive(:path1=)
+      allow(rsa).to receive(:path2=)
+    end
+  end
+
+  def mock_ad_text_asset_resource
+    double("AdTextAsset").tap do |asset|
+      allow(asset).to receive(:text=)
+      allow(asset).to receive(:pinned_field=)
+    end
+  end
+
+  def mock_search_response_with_asset(
+    asset_id: 77777,
+    customer_id: 456,
+    name: "Test Business Logo",
+    type: :IMAGE,
+    file_size: 1024,
+    mime_type: :IMAGE_PNG
+  )
+    image_asset = double("ImageAsset",
+      file_size: file_size,
+      mime_type: mime_type)
+
+    asset = double("Asset",
+      resource_name: "customers/#{customer_id}/assets/#{asset_id}",
+      id: asset_id,
+      name: name,
+      type: type,
+      image_asset: image_asset)
+
+    row = double("GoogleAdsRow", asset: asset)
+    [row]
+  end
+
+  def mock_mutate_asset_response(asset_id: 77777, customer_id: 456)
+    result = double("MutateAssetResult",
+      resource_name: "customers/#{customer_id}/assets/#{asset_id}")
+    double("MutateAssetsResponse", results: [result])
+  end
+
+  def mock_mutate_campaign_asset_response(asset_id: 77777, campaign_id: 789, customer_id: 456)
+    result = double("MutateCampaignAssetResult",
+      resource_name: "customers/#{customer_id}/campaignAssets/#{campaign_id}~#{asset_id}")
+    double("MutateCampaignAssetsResponse", results: [result])
+  end
+
+  def mock_asset_resource
+    double("Asset").tap do |asset|
+      allow(asset).to receive(:name=)
+      allow(asset).to receive(:type=)
+      allow(asset).to receive(:image_asset=)
+    end
+  end
+
+  def mock_image_asset_resource
+    double("ImageAsset").tap do |img|
+      allow(img).to receive(:data=)
+      allow(img).to receive(:file_size=)
+      allow(img).to receive(:mime_type=)
+      allow(img).to receive(:full_size=)
+    end
+  end
+
+  def mock_image_dimension_resource
+    double("ImageDimension").tap do |dim|
+      allow(dim).to receive(:width_pixels=)
+      allow(dim).to receive(:height_pixels=)
+    end
+  end
+
+  def mock_campaign_asset_resource
+    double("CampaignAsset").tap do |ca|
+      allow(ca).to receive(:campaign=)
+      allow(ca).to receive(:asset=)
+      allow(ca).to receive(:field_type=)
+    end
+  end
+
+  def mock_search_response_with_callout_asset(
+    asset_id: 88888,
+    customer_id: 456,
+    callout_text: "Free Shipping"
+  )
+    callout_asset = double("CalloutAsset", callout_text: callout_text)
+
+    asset = double("Asset",
+      resource_name: "customers/#{customer_id}/assets/#{asset_id}",
+      id: asset_id,
+      callout_asset: callout_asset)
+
+    row = double("GoogleAdsRow", asset: asset)
+    [row]
+  end
+
+  def mock_callout_asset_resource
+    double("CalloutAsset").tap do |ca|
+      allow(ca).to receive(:callout_text=)
+    end
+  end
+
+  def mock_asset_with_callout_resource
+    double("Asset").tap do |asset|
+      allow(asset).to receive(:callout_asset=)
+    end
+  end
+
+  def mock_search_response_with_structured_snippet_asset(
+    asset_id: 88888,
+    customer_id: 456,
+    header: "Services",
+    values: []
+  )
+    snippet_asset = double("StructuredSnippetAsset",
+      header: header,
+      values: values)
+
+    asset = double("Asset",
+      resource_name: "customers/#{customer_id}/assets/#{asset_id}",
+      id: asset_id,
+      structured_snippet_asset: snippet_asset)
+
+    row = double("GoogleAdsRow", asset: asset)
+    [row]
+  end
+
+  def mock_structured_snippet_asset_resource
+    values_array = []
+    double("StructuredSnippetAsset").tap do |snippet|
+      allow(snippet).to receive(:header=)
+      allow(snippet).to receive(:values).and_return(values_array)
+    end
+  end
+
+  def mock_asset_with_structured_snippet_resource
+    double("Asset").tap do |asset|
+      allow(asset).to receive(:structured_snippet_asset=)
     end
   end
 end

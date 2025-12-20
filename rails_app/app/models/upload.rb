@@ -24,6 +24,9 @@
 class Upload < ApplicationRecord
   include UploadConcerns::Serialization
   include UploadConcerns::Creation
+  include PlatformSettings
+
+  platform_setting :google, :asset_id
 
   MEDIA_TYPES = %w[image video document]
 

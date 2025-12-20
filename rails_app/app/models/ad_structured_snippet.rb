@@ -22,6 +22,8 @@
 #
 class AdStructuredSnippet < ApplicationRecord
   include PlatformSettings
+  include GoogleSyncable
+
   platform_setting :google, :asset_id
 
   include AdStructuredSnippetConcerns::Categories
@@ -29,6 +31,15 @@ class AdStructuredSnippet < ApplicationRecord
   acts_as_paranoid
 
   belongs_to :campaign
+
+  use_google_sync GoogleAds::StructuredSnippet
+
+  after_google_sync do |result|
+    if result.resource_name.present?
+      asset_id = result.resource_name.split("/").last
+      update_column(:platform_settings, platform_settings.deep_merge("google" => { "asset_id" => asset_id }))
+    end
+  end
 
   validates :category, presence: true
   validates :values, presence: true, length: { minimum: 3, maximum: 10 }

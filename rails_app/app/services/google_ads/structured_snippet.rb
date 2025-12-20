@@ -1,0 +1,157 @@
+module GoogleAds
+  class StructuredSnippet < Sync::Syncable
+    def campaign
+      local_resource.campaign
+    end
+
+    def fetch_remote
+      fetch_by_id
+    end
+
+    def build_comparisons
+      return [] unless local_resource && remote_resource
+
+      field_mappings = Sync::FieldMappings.for(local_resource.class)
+      comparisons = []
+
+      field_mappings.each do |_key, mapping|
+        our_field = mapping[:our_field]
+        our_value = local_resource.respond_to?(our_field) ? local_resource.send(our_field) : nil
+        next if our_value.nil?
+
+        their_value = if mapping[:nested_field]
+          nested = remote_resource.respond_to?(mapping[:nested_field]) ? remote_resource.send(mapping[:nested_field]) : nil
+          nested&.respond_to?(mapping[:their_field]) ? nested.send(mapping[:their_field]) : nil
+        else
+          remote_resource.respond_to?(mapping[:their_field]) ? remote_resource.send(mapping[:their_field]) : nil
+        end
+
+        comparisons << Sync::FieldComparison.new(
+          field: our_field,
+          our_field: mapping[:our_field],
+          our_value: our_value,
+          their_field: mapping[:their_field],
+          their_value: their_value,
+          transform: mapping[:transform]
+        )
+      end
+
+      comparisons
+    end
+
+    def fetch_by_id
+      return nil unless remote_asset_id.present?
+
+      query = %(
+        SELECT asset.id, asset.resource_name, asset.structured_snippet_asset.header, asset.structured_snippet_asset.values
+        FROM asset
+        WHERE asset.id = #{remote_asset_id}
+      )
+
+      results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
+      results.first&.asset
+    end
+
+    def sync_result
+      return not_found_result(:asset) unless remote_resource
+
+      Sync::SyncResult.new(
+        resource_type: :asset,
+        resource_name: remote_resource.resource_name,
+        action: :unchanged,
+        comparisons: build_comparisons
+      )
+    end
+
+    def sync
+      return sync_result if synced?
+
+      if remote_resource
+        sync_result
+      else
+        create_structured_snippet_asset
+      end
+    end
+
+    private
+
+    def remote_asset_id
+      local_resource.google_asset_id
+    end
+    memoize :remote_asset_id
+
+    def google_customer_id
+      campaign.google_customer_id.to_s
+    end
+
+    def google_campaign_id
+      campaign.google_campaign_id.to_s
+    end
+
+    def campaign_resource_name
+      "customers/#{google_customer_id}/campaigns/#{google_campaign_id}"
+    end
+
+    def header_for_category
+      StructuredSnippetCategoriesConfig.definitions.dig(local_resource.category, :key) || local_resource.category.titleize
+    end
+
+    def create_structured_snippet_asset
+      asset_operation = client.operation.create_resource.asset do |asset|
+        asset.structured_snippet_asset = client.resource.structured_snippet_asset do |snippet|
+          snippet.header = header_for_category
+          local_resource.values.each { |v| snippet.values << v }
+        end
+      end
+
+      begin
+        asset_response = client.service.asset.mutate_assets(
+          customer_id: google_customer_id,
+          operations: [asset_operation]
+        )
+      rescue => e
+        return error_result(:asset, e)
+      end
+
+      asset_resource_name = asset_response.results.first.resource_name
+      asset_id = asset_resource_name.split("/").last.to_i
+      local_resource.google_asset_id = asset_id
+
+      link_operation = client.operation.create_resource.campaign_asset do |ca|
+        ca.campaign = campaign_resource_name
+        ca.asset = asset_resource_name
+        ca.field_type = :STRUCTURED_SNIPPET
+      end
+
+      begin
+        client.service.campaign_asset.mutate_campaign_assets(
+          customer_id: google_customer_id,
+          operations: [link_operation]
+        )
+      rescue => e
+        return error_result(:campaign_asset, e)
+      end
+
+      verify_sync(:created, asset_resource_name)
+    end
+
+    def verify_sync(action, resource_name)
+      clear_memoization
+      fetch_remote
+
+      Sync::SyncResult.new(
+        resource_type: :asset,
+        resource_name: resource_name,
+        action: action,
+        comparisons: build_comparisons
+      )
+    end
+
+    def clear_memoization
+      flush_cache(:remote_resource)
+      flush_cache(:synced?)
+      flush_cache(:sync_result)
+      flush_cache(:remote_asset_id)
+    end
+  end
+end
