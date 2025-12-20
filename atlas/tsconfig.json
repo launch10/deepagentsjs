@@ -9,7 +9,7 @@
       "ESNext",
       "DOM"
     ],
-    "types": ["vite/client", "@cloudflare/workers-types"],
+    "types": ["vite/client", "@cloudflare/workers-types", "@cloudflare/vitest-pool-workers"],
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
     "paths": {

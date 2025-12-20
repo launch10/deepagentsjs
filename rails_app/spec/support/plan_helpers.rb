@@ -41,22 +41,41 @@ module PlanHelpers
       }
     )
 
+    starter_plan = Plan.find_by(name: 'starter')
+    pro_plan = Plan.find_by(name: 'pro')
+    enterprise_plan = Plan.find_by(name: 'enterprise')
+
     # Also create plan limits as defined in seeds
     plan_limits_data = [
       {
-        plan_id: Plan.find_by(name: 'starter').id,
+        plan_id: starter_plan.id,
         limit_type: 'requests_per_month',
         limit: 1_000_000
       },
       {
-        plan_id: Plan.find_by(name: 'pro').id,
+        plan_id: pro_plan.id,
         limit_type: 'requests_per_month',
         limit: 5_000_000
       },
       {
-        plan_id: Plan.find_by(name: 'enterprise').id,
+        plan_id: enterprise_plan.id,
         limit_type: 'requests_per_month',
         limit: 20_000_000
+      },
+      {
+        plan_id: starter_plan.id,
+        limit_type: 'platform_subdomains',
+        limit: 3
+      },
+      {
+        plan_id: pro_plan.id,
+        limit_type: 'platform_subdomains',
+        limit: 3
+      },
+      {
+        plan_id: enterprise_plan.id,
+        limit_type: 'platform_subdomains',
+        limit: 3
       }
     ]
 
@@ -89,5 +108,11 @@ module PlanHelpers
   def enterprise_plan
     ensure_plans_exist
     Plan.find_by(name: 'enterprise')
+  end
+
+  def create_plan_limit(plan, limit_type, limit)
+    PlanLimit.find_or_create_by!(plan: plan, limit_type: limit_type) do |pl|
+      pl.limit = limit
+    end.tap { |pl| pl.update!(limit: limit) }
   end
 end

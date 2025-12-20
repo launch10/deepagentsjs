@@ -46,6 +46,19 @@ export interface DomainType extends Model {
   domain: string;
 }
 
+export interface WebsiteUrlType extends Model {
+  websiteId: string;
+  domainId?: string;
+  domain: string;
+  path: string;
+}
+
+export type CloudEnvironment = 'development' | 'staging' | 'production';
+
+export interface AppVariables {
+  cloudEnv: CloudEnvironment;
+}
+
 export type PlanName = 'starter' | 'pro' | 'enterprise';
 export const plans: Map<string, PlanType> = new Map([
     ['starter' as PlanName, { id: '1', name: 'Starter', usageLimit: 1_000_000 }],

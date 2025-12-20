@@ -41,6 +41,7 @@ class Website < ApplicationRecord
   has_many :code_files
   alias_method :files, :code_files
   has_many :domains, dependent: :destroy
+  has_many :website_urls, dependent: :destroy
   has_many :deploys, dependent: :destroy
   has_one :content_strategy, class_name: "ContentStrategy"
   alias_method :strategy, :content_strategy
@@ -118,8 +119,18 @@ class Website < ApplicationRecord
   end
 
   def files_from_snapshot(snapshot_id = nil)
-    snapshot = snapshot_id ? snapshots.find(snapshot_id) : latest_snapshot
-    snapshot.files
+    snapshot = snapshot_id ? snapshots.find_by(snapshot_id: snapshot_id) : latest_snapshot
+    return CodeFileHistory.none unless snapshot.is_a?(WebsiteHistory)
+
+    CodeFileHistory.for_website(id).for_snapshot(snapshot.snapshot_id)
+  end
+
+  def sync_all_to_atlas
+    account.sync_to_atlas
+    domains.each { |d| d.sync_to_atlas }
+    website_urls.each { |wu| wu.sync_to_atlas }
+    account.plan.sync_to_atlas
+    sync_to_atlas
   end
 
   private
@@ -130,7 +141,7 @@ class Website < ApplicationRecord
     elsif Rails.env.staging?
       "staging"
     else
-      "development"
+      Cloudflare.deploy_env || "development"
     end
   end
 

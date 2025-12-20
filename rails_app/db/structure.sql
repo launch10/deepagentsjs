@@ -1279,20 +1279,47 @@ CREATE TABLE public.template_files (
 
 
 --
--- Name: website_files; Type: TABLE; Schema: public; Owner: -
+-- Name: website_file_histories; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.website_files (
+CREATE TABLE public.website_file_histories (
     id bigint NOT NULL,
-    website_id bigint NOT NULL,
-    file_specification_id bigint,
+    website_file_id integer NOT NULL,
+    website_id integer NOT NULL,
+    file_specification_id integer,
     path character varying NOT NULL,
     content character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    history_started_at timestamp(6) without time zone NOT NULL,
+    history_ended_at timestamp(6) without time zone,
+    history_user_id integer,
+    snapshot_id character varying,
     shasum character varying,
     content_tsv tsvector,
     embedding public.vector(1536)
+);
+
+
+--
+-- Name: website_histories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.website_histories (
+    id bigint NOT NULL,
+    website_id integer NOT NULL,
+    name character varying,
+    project_id integer,
+    account_id integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    history_started_at timestamp(6) without time zone NOT NULL,
+    history_ended_at timestamp(6) without time zone,
+    history_user_id integer,
+    snapshot_id character varying,
+    thread_id character varying,
+    template_id integer,
+    theme_id integer
 );
 
 
@@ -1310,6 +1337,76 @@ CREATE TABLE public.websites (
     thread_id character varying,
     template_id bigint,
     theme_id integer
+);
+
+
+--
+-- Name: code_file_histories; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.code_file_histories AS
+ WITH merged_files AS (
+         SELECT wfh.website_id,
+            wfh.snapshot_id,
+            wfh.path,
+            wfh.content,
+            wfh.content_tsv,
+            wfh.shasum,
+            wfh.file_specification_id,
+            wfh.created_at,
+            wfh.updated_at,
+            'WebsiteFile'::text AS source_type,
+            wfh.website_file_id AS source_id
+           FROM public.website_file_histories wfh
+        UNION ALL
+         SELECT wh.website_id,
+            wh.snapshot_id,
+            tf.path,
+            tf.content,
+            tf.content_tsv,
+            tf.shasum,
+            tf.file_specification_id,
+            tf.created_at,
+            tf.updated_at,
+            'TemplateFile'::text AS source_type,
+            tf.id AS source_id
+           FROM ((public.template_files tf
+             JOIN public.websites w ON ((w.template_id = tf.template_id)))
+             JOIN public.website_histories wh ON (((wh.website_id = w.id) AND (wh.snapshot_id IS NOT NULL))))
+          WHERE (NOT (EXISTS ( SELECT 1
+                   FROM public.website_file_histories wfh2
+                  WHERE ((wfh2.website_id = wh.website_id) AND ((wfh2.snapshot_id)::text = (wh.snapshot_id)::text) AND ((wfh2.path)::text = (tf.path)::text)))))
+        )
+ SELECT website_id,
+    snapshot_id,
+    path,
+    content,
+    content_tsv,
+    shasum,
+    file_specification_id,
+    source_type,
+    source_id,
+    created_at,
+    updated_at
+   FROM merged_files
+  ORDER BY website_id, snapshot_id, path;
+
+
+--
+-- Name: website_files; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.website_files (
+    id bigint NOT NULL,
+    website_id bigint NOT NULL,
+    file_specification_id bigint,
+    path character varying NOT NULL,
+    content character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    shasum character varying,
+    content_tsv tsvector,
+    embedding public.vector(1536)
 );
 
 
@@ -1819,7 +1916,8 @@ CREATE TABLE public.domains (
     account_id bigint,
     cloudflare_zone_id character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    is_platform_subdomain boolean DEFAULT false NOT NULL
 );
 
 
@@ -3093,29 +3191,6 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
--- Name: website_file_histories; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.website_file_histories (
-    id bigint NOT NULL,
-    website_file_id integer NOT NULL,
-    website_id integer NOT NULL,
-    file_specification_id integer,
-    path character varying NOT NULL,
-    content character varying NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    history_started_at timestamp(6) without time zone NOT NULL,
-    history_ended_at timestamp(6) without time zone,
-    history_user_id integer,
-    snapshot_id character varying,
-    shasum character varying,
-    content_tsv tsvector,
-    embedding public.vector(1536)
-);
-
-
---
 -- Name: website_file_histories_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -3151,28 +3226,6 @@ CREATE SEQUENCE public.website_files_id_seq
 --
 
 ALTER SEQUENCE public.website_files_id_seq OWNED BY public.website_files.id;
-
-
---
--- Name: website_histories; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.website_histories (
-    id bigint NOT NULL,
-    website_id integer NOT NULL,
-    name character varying,
-    project_id integer,
-    account_id integer,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    history_started_at timestamp(6) without time zone NOT NULL,
-    history_ended_at timestamp(6) without time zone,
-    history_user_id integer,
-    snapshot_id character varying,
-    thread_id character varying,
-    template_id integer,
-    theme_id integer
-);
 
 
 --
@@ -3222,6 +3275,40 @@ CREATE SEQUENCE public.website_uploads_id_seq
 --
 
 ALTER SEQUENCE public.website_uploads_id_seq OWNED BY public.website_uploads.id;
+
+
+--
+-- Name: website_urls; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.website_urls (
+    id bigint NOT NULL,
+    website_id bigint NOT NULL,
+    domain_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    path character varying DEFAULT '/'::character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: website_urls_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.website_urls_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: website_urls_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.website_urls_id_seq OWNED BY public.website_urls.id;
 
 
 --
@@ -3850,6 +3937,13 @@ ALTER TABLE ONLY public.website_histories ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.website_uploads ALTER COLUMN id SET DEFAULT nextval('public.website_uploads_id_seq'::regclass);
+
+
+--
+-- Name: website_urls id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_urls ALTER COLUMN id SET DEFAULT nextval('public.website_urls_id_seq'::regclass);
 
 
 --
@@ -4649,6 +4743,14 @@ ALTER TABLE ONLY public.website_histories
 
 ALTER TABLE ONLY public.website_uploads
     ADD CONSTRAINT website_uploads_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: website_urls website_urls_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_urls
+    ADD CONSTRAINT website_urls_pkey PRIMARY KEY (id);
 
 
 --
@@ -6270,6 +6372,13 @@ CREATE INDEX index_domains_on_account_id ON public.domains USING btree (account_
 
 
 --
+-- Name: index_domains_on_account_id_and_platform_subdomain; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_domains_on_account_id_and_platform_subdomain ON public.domains USING btree (account_id, is_platform_subdomain);
+
+
+--
 -- Name: index_domains_on_cloudflare_zone_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7236,6 +7345,34 @@ CREATE INDEX index_website_uploads_on_website_id ON public.website_uploads USING
 
 
 --
+-- Name: index_website_urls_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_urls_on_account_id ON public.website_urls USING btree (account_id);
+
+
+--
+-- Name: index_website_urls_on_domain_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_urls_on_domain_id ON public.website_urls USING btree (domain_id);
+
+
+--
+-- Name: index_website_urls_on_domain_id_and_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_website_urls_on_domain_id_and_path ON public.website_urls USING btree (domain_id, path);
+
+
+--
+-- Name: index_website_urls_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_urls_on_website_id ON public.website_urls USING btree (website_id);
+
+
+--
 -- Name: index_websites_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7714,6 +7851,14 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- Name: website_urls fk_rails_5b1c40b4b3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_urls
+    ADD CONSTRAINT fk_rails_5b1c40b4b3 FOREIGN KEY (domain_id) REFERENCES public.domains(id);
+
+
+--
 -- Name: account_users fk_rails_685e030c15; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7727,6 +7872,14 @@ ALTER TABLE ONLY public.account_users
 
 ALTER TABLE ONLY public.account_invitations
     ADD CONSTRAINT fk_rails_7a9e106543 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: website_urls fk_rails_8eb3a9594a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_urls
+    ADD CONSTRAINT fk_rails_8eb3a9594a FOREIGN KEY (account_id) REFERENCES public.accounts(id);
 
 
 --
@@ -7786,12 +7939,23 @@ ALTER TABLE ONLY public.api_tokens
 
 
 --
+-- Name: website_urls fk_rails_f97a85eb03; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_urls
+    ADD CONSTRAINT fk_rails_f97a85eb03 FOREIGN KEY (website_id) REFERENCES public.websites(id);
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251219192557'),
+('20251219013512'),
+('20251218235348'),
 ('20251216144601'),
 ('20251201143930'),
 ('20251130121846'),

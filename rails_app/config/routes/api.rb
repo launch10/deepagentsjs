@@ -21,6 +21,8 @@ namespace :api, defaults: {format: :json} do
     end
 
     resources :geo_target_constants, only: [:index]
+    resources :domains, only: [:index, :show, :create]
+    resources :website_urls, only: [:index, :show, :create, :update]
   end
 end
 

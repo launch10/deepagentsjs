@@ -7,6 +7,7 @@ module Atlas
     config_accessor :base_url
     config_accessor :api_secret
     config_accessor :timeout, default: 30
+    config_accessor :allow_sync, default: false
 
     # Custom error classes for Atlas
     class ValidationError < Error; end
@@ -28,12 +29,18 @@ module Atlas
 
     def default_headers
       timestamp = Time.now.to_i.to_s
+      puts "Syncing to cloudflare environment: #{cloud_environment}"
 
       {
         "X-Timestamp" => timestamp,
+        "X-Environment" => cloud_environment,
         "Content-Type" => "application/json",
         "Accept" => "application/json"
       }
+    end
+
+    def cloud_environment
+      Cloudflare.deploy_env.to_s
     end
 
     def open_timeout
@@ -47,7 +54,10 @@ module Atlas
     private
 
     def make_request(klass:, path:, headers: {}, body: nil, query: nil, form_data: nil, http_options: {})
-      return if Rails.env.development? || Rails.env.test?
+      if (Rails.env.development? || Rails.env.test?) && !self.class.config.allow_sync
+        puts "Skipping Atlas sync in dev/test environment"
+        return
+      end
 
       # Calculate signature based on the request body
       body_for_signature = if body.present? && klass != Net::HTTP::Get
@@ -58,6 +68,11 @@ module Atlas
 
       timestamp = headers["X-Timestamp"] || default_headers["X-Timestamp"]
       signature = generate_signature(body_for_signature, timestamp)
+
+      Rails.logger.debug "[Atlas] Timestamp: #{timestamp}"
+      Rails.logger.debug "[Atlas] Body for signature: #{body_for_signature.inspect}"
+      Rails.logger.debug "[Atlas] Signature: #{signature}"
+      Rails.logger.debug "[Atlas] Secret (first 4 chars): #{self.class.config.api_secret&.first(4)}..."
 
       # Add signature to headers
       headers_with_signature = headers.merge("X-Signature" => signature)

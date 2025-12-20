@@ -1,0 +1,289 @@
+require 'swagger_helper'
+
+RSpec.describe "Domains API", type: :request do
+  include SubscriptionHelpers
+  include PlanHelpers
+
+  let!(:user1) { create(:user, name: "User 1") }
+  let!(:user2) { create(:user, name: "User 2") }
+
+  let!(:user1_owned_account) { user1.owned_account }
+  let!(:user1_team_account) { create_account_with_user(user1, account_name: "User 1 Team Account") }
+  let!(:user2_owned_account) { user2.owned_account }
+
+  let!(:project1_owned) { create(:project, account: user1_owned_account, name: "Project in Owned Account") }
+  let!(:project1_team) { create(:project, account: user1_team_account, name: "Project in Team Account") }
+  let!(:project2_owned) { create(:project, account: user2_owned_account, name: "User 2 Project") }
+
+  let!(:website1_owned) { create(:website, account: user1_owned_account, project: project1_owned, name: "Owned Website") }
+  let!(:website1_team) { create(:website, account: user1_team_account, project: project1_team, name: "Team Website") }
+  let!(:website2_owned) { create(:website, account: user2_owned_account, project: project2_owned, name: "User 2 Website") }
+
+  before do
+    ensure_plans_exist
+    subscribe_account(user1_owned_account, plan_name: 'pro')
+    subscribe_account(user1_team_account, plan_name: 'pro')
+    subscribe_account(user2_owned_account, plan_name: 'pro')
+    create_plan_limit(user1_owned_account.plan, 'platform_subdomains', 3)
+  end
+
+  path '/api/v1/domains' do
+    post 'Creates a domain' do
+      tags 'Domains'
+      consumes 'application/json'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+
+      parameter name: :domain_params, in: :body, schema: APISchemas::Domain.params_schema
+
+      before do
+        switch_account_to(user1_owned_account)
+      end
+
+      response '201', 'domain created successfully' do
+        schema APISchemas::Domain.response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:domain_params) do
+          {
+            domain: {
+              domain: 'mysite.launch10.ai',
+              website_id: website1_owned.id,
+              is_platform_subdomain: true
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['domain']).to eq('mysite.launch10.ai')
+          expect(data['account_id']).to eq(user1_owned_account.id)
+          expect(data['website_id']).to eq(website1_owned.id)
+          expect(data['is_platform_subdomain']).to eq(true)
+        end
+      end
+
+      response '201', 'domain created in team account after switching' do
+        schema APISchemas::Domain.response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:domain_params) do
+          {
+            domain: {
+              domain: 'team-site.launch10.ai',
+              website_id: website1_team.id,
+              is_platform_subdomain: true
+            }
+          }
+        end
+
+        before do
+          switch_account_to(user1_team_account)
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['domain']).to eq('team-site.launch10.ai')
+          expect(data['account_id']).to eq(user1_team_account.id)
+        end
+      end
+
+      response '401', 'unauthorized - missing token' do
+        let(:Authorization) { nil }
+        let(:domain_params) do
+          {
+            domain: {
+              domain: 'test.launch10.ai'
+            }
+          }
+        end
+
+        run_test! do |response|
+          expect(response.code).to eq("401")
+        end
+      end
+
+      response '422', 'subdomain limit exceeded' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:domain_params) do
+          {
+            domain: {
+              domain: 'site4.launch10.ai',
+              is_platform_subdomain: true
+            }
+          }
+        end
+
+        before do
+          3.times do |i|
+            create(:domain, :platform_subdomain, account: user1_owned_account, domain: "existing#{i}.launch10.ai")
+          end
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to include('You have reached the maximum number of platform subdomains for your plan')
+        end
+      end
+    end
+
+    get 'Lists domains for the account' do
+      tags 'Domains'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+      parameter name: :website_id, in: :query, type: :integer, required: false, description: 'Filter by website ID'
+
+      let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.ai', account: user1_owned_account, website: website1_owned) }
+      let!(:domain2_owned) { create(:domain, domain: 'site2.launch10.ai', account: user1_owned_account, website: website1_owned) }
+      let!(:domain1_team) { create(:domain, domain: 'team1.launch10.ai', account: user1_team_account, website: website1_team) }
+      let!(:domain2_other) { create(:domain, domain: 'other.launch10.ai', account: user2_owned_account, website: website2_owned) }
+
+      before do
+        switch_account_to(user1_owned_account)
+      end
+
+      response '200', 'returns domains for owned account' do
+        schema APISchemas::Domain.list_response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['domains'].length).to eq(2)
+          domain_names = data['domains'].map { |d| d['domain'] }
+          expect(domain_names).to include('site1.launch10.ai', 'site2.launch10.ai')
+          expect(domain_names).not_to include('team1.launch10.ai', 'other.launch10.ai')
+        end
+      end
+
+      response '200', 'returns domains for team account after switching' do
+        schema APISchemas::Domain.list_response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+        before do
+          switch_account_to(user1_team_account)
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['domains'].length).to eq(1)
+          expect(data['domains'].first['domain']).to eq('team1.launch10.ai')
+        end
+      end
+
+      response '200', 'filters domains by website_id' do
+        schema APISchemas::Domain.list_response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:website_id) { website1_owned.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['domains'].length).to eq(2)
+          data['domains'].each do |domain|
+            expect(domain['website_id']).to eq(website1_owned.id)
+          end
+        end
+      end
+
+      response '401', 'unauthorized - missing token' do
+        let(:Authorization) { nil }
+
+        run_test! do |response|
+          expect(response.code).to eq("401")
+        end
+      end
+    end
+  end
+
+  path '/api/v1/domains/{id}' do
+    parameter name: :id, in: :path, type: :integer, description: 'Domain ID'
+
+    get 'Retrieves a domain' do
+      tags 'Domains'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+
+      let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.ai', account: user1_owned_account, website: website1_owned) }
+      let!(:domain1_team) { create(:domain, domain: 'team1.launch10.ai', account: user1_team_account, website: website1_team) }
+      let!(:domain2_other) { create(:domain, domain: 'other.launch10.ai', account: user2_owned_account, website: website2_owned) }
+
+      before do
+        switch_account_to(user1_owned_account)
+      end
+
+      response '200', 'domain found in owned account' do
+        schema APISchemas::Domain.response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:id) { domain1_owned.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['id']).to eq(domain1_owned.id)
+          expect(data['domain']).to eq('site1.launch10.ai')
+        end
+      end
+
+      response '404', 'cannot access team account domain from owned account' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:id) { domain1_team.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to include('Not found')
+        end
+      end
+
+      response '404', 'cannot access other user domain' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:id) { domain2_other.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to include('Not found')
+        end
+      end
+
+      response '200', 'domain found in team account after switching' do
+        schema APISchemas::Domain.response
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:id) { domain1_team.id }
+
+        before do
+          switch_account_to(user1_team_account)
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['id']).to eq(domain1_team.id)
+          expect(data['domain']).to eq('team1.launch10.ai')
+        end
+      end
+    end
+  end
+end

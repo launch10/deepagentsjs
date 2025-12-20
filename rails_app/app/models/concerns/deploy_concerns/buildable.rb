@@ -14,7 +14,7 @@ module DeployConcerns
       FileUtils.mkdir_p(temp_dir)
 
       # Write all website files to disk
-      website.files_from_snapshot(snapshot_id).each do |file|
+      website.current_history.files.each do |file|
         file_path = File.join(temp_dir, file.path)
         FileUtils.mkdir_p(File.dirname(file_path))
         File.write(file_path, file.content)
@@ -23,8 +23,8 @@ module DeployConcerns
       # Run pnpm install and build
       unless build_exists?
         Dir.chdir(temp_dir) do
-          system("pnpm install") or raise "pnpm install failed"
-          system("pnpm build") or raise "pnpm build failed"
+          system("pnpm install --ignore-workspace") or raise "pnpm install failed"
+          system("pnpm run build") or raise "pnpm build failed"
         end
       end
 
@@ -50,9 +50,9 @@ module DeployConcerns
       # Only create a new snapshot if files have changed, or no snapshot exists
       if website.files_changed? || website.latest_snapshot.nil?
         snapshot = website.snapshot
-        self.snapshot_id = snapshot.id
+        self.snapshot_id = snapshot.snapshot_id
       else
-        self.snapshot_id = website.latest_snapshot.id
+        self.snapshot_id = website.latest_snapshot.snapshot_id
       end
     end
 
@@ -61,7 +61,7 @@ module DeployConcerns
     end
 
     def temp_dir
-      Rails.root.join("tmp/deploy_#{id}")
+      File.join(Dir.tmpdir, "launch10_deploy_#{id}")
     end
   end
 end

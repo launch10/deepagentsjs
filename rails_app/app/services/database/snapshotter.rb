@@ -27,6 +27,7 @@ module Database
 
     EXCLUDED_HEAVY_TABLES = %w[
       geo_target_constants
+      icon_embeddings
     ].freeze
 
     EXCLUDED_TABLES = (EXCLUDED_SYSTEM_TABLES + EXCLUDED_HEAVY_TABLES).freeze
@@ -106,7 +107,7 @@ module Database
         "psql",
         "-U", @config[:username],
         "-h", @config[:host] || "localhost",
-        "-p", @config[:port].to_s,
+        "-p", (@config[:port] || 5432).to_s,
         "--no-password",
         "-v", "ON_ERROR_STOP=1",  # Stop on first error
         "-d", @config[:database],
@@ -117,7 +118,7 @@ module Database
     end
 
     def truncate(except: [])
-      except = Array(except) + ["geo_target_constants"]
+      except = Array(except) + EXCLUDED_HEAVY_TABLES
       DatabaseCleaner.clean_with(:truncation, except: except)
     end
 
@@ -158,7 +159,7 @@ module Database
         "pg_dump",
         "-U", @config[:username],
         "-h", @config[:host] || "localhost",
-        "-p", @config[:port].to_s,
+        "-p", (@config[:port] || 5432).to_s,
         "--no-password",
         *flags,
         @config[:database]

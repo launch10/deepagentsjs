@@ -45,6 +45,7 @@ class Account < ApplicationRecord
   has_many :websites, through: :projects
   has_many :brainstorms, through: :websites
   has_many :domains
+  has_many :website_urls
   has_many :domain_request_counts
   has_many :account_request_counts
   has_many :themes, as: :author

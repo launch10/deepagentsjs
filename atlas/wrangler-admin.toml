@@ -6,6 +6,10 @@ account_id = "e18bb4a0cdad8679a28c8bdfcfed3741"
 compatibility_flags = ["nodejs_compat"]
 observability = { enabled = true }
 
+routes = [
+  { pattern = "atlas-admin.launch10.ai/*", zone_name = "launch10.ai" }
+]
+
 [[kv_namespaces]]
 binding = "DEPLOYS_KV"
 id = "bc5f59801b704f668f3acee75915fddb"
