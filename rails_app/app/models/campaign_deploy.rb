@@ -26,29 +26,49 @@ class CampaignDeploy < ApplicationRecord
 
   belongs_to :campaign
   validates :status, presence: true, inclusion: { in: STATUS }
+  class Step
+    class << self
+      attr_accessor :step_name
 
-  Step = Struct.new(:name, :run_block, :finished_block, keyword_init: true) do
-    def run(context)
-      run_block.call(context)
+      def define(name, &block)
+        Class.new(Step) do
+          self.step_name = name
+          class_eval(&block)
+        end
+      end
     end
 
-    def finished?(context)
-      finished_block.call(context)
+    def initialize(campaign)
+      @campaign = campaign
     end
+
+    private
+
+    attr_reader :campaign
   end
 
   STEPS = [
-    Step.new(
-      name: :create_ads_account,
-      run_block: ->(context) { context[:account].create_google_ads_account },
-      finished_block: ->(context) { context[:account].verify_google_ads_account&.success? }
-    ),
-    Step.new(
-      name: :sync_budget,
-      run_block: ->(context) { context[:budget].sync },
-      finished_block: ->(context) { context[:budget].synced? }
-    )
+    Step.define(:create_ads_account) do
+      def run
+        campaign.account.create_google_ads_account
+      end
+
+      def finished?
+        campaign.account.verify_google_ads_account&.success?
+      end
+    end,
+
+    Step.define(:sync_budget) do
+      def run
+        campaign.budget.sync
+      end
+
+      def finished?
+        campaign.budget.synced?
+      end
+    end
   ].freeze
+
 
   def next_step
     return STEPS.first if current_step.nil?

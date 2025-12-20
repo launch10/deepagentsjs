@@ -56,28 +56,41 @@ RSpec.describe Ad, type: :model do
   end
 
   describe '#final_urls' do
-    context 'when website has a domain' do
+    context 'when website has a website_url with root path' do
       before do
-        create(:domain, website: website, account: account, domain: "example.launch10.ai")
+        domain = create(:domain, website: website, account: account, domain: "example.launch10.ai")
+        create(:website_url, website: website, account: account, domain: domain, path: "/")
       end
 
-      it 'returns the domain as a URL array' do
-        expect(ad.final_urls).to eq(["https://example.launch10.ai"])
+      it 'returns the full URL array' do
+        expect(ad.final_urls).to eq(["https://example.launch10.ai/"])
       end
     end
 
-    context 'when website has multiple domains' do
+    context 'when website has a website_url with a path' do
       before do
-        create(:domain, website: website, account: account, domain: "first.launch10.ai")
-        create(:domain, website: website, account: account, domain: "second.launch10.ai")
+        domain = create(:domain, website: website, account: account, domain: "example.launch10.ai")
+        create(:website_url, website: website, account: account, domain: domain, path: "/campaign")
       end
 
-      it 'returns the first domain as a URL array' do
-        expect(ad.final_urls).to eq(["https://first.launch10.ai"])
+      it 'returns the full URL with path' do
+        expect(ad.final_urls).to eq(["https://example.launch10.ai/campaign"])
       end
     end
 
-    context 'when website has no domains' do
+    context 'when website has multiple website_urls' do
+      before do
+        domain = create(:domain, website: website, account: account, domain: "example.launch10.ai")
+        create(:website_url, website: website, account: account, domain: domain, path: "/promo")
+        create(:website_url, website: website, account: account, domain: domain, path: "/sale")
+      end
+
+      it 'returns only the first website_url' do
+        expect(ad.final_urls).to eq(["https://example.launch10.ai/promo"])
+      end
+    end
+
+    context 'when website has no website_urls' do
       it 'returns empty array' do
         expect(ad.final_urls).to eq([])
       end

@@ -61,9 +61,9 @@ class Ad < ApplicationRecord
   end
 
   def final_urls
-    return [] unless website&.domains&.any?
+    return [] unless website&.website_urls&.any?
 
-    domain = website.domains.first.domain
-    ["https://#{domain}"]
+    website_url = website.website_urls.first
+    ["https://#{website_url.domain.domain}#{website_url.path}"]
   end
 end
