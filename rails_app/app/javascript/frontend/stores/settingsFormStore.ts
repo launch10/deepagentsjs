@@ -2,7 +2,7 @@ import { create } from "zustand";
 import {
   settingsFormDefaults,
   type SettingsFormData,
-} from "@components/ads/forms/SettingsForm/settingsForm.schema";
+} from "@components/ads/forms/settings-form/settingsForm.schema";
 
 interface SettingsFormStore {
   values: SettingsFormData;

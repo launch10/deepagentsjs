@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { LaunchFormData } from "@components/ads/Forms/LaunchForm/launchForm.schema";
-import { launchFormDefaults } from "@components/ads/Forms/LaunchForm/launchForm.schema";
+import type { LaunchFormData } from "@components/ads/forms/launch-form/launchForm.schema";
+import { launchFormDefaults } from "@components/ads/forms/launch-form/launchForm.schema";
 
 interface LaunchFormStore {
   values: LaunchFormData;

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ReviewItem, ReviewItemList } from "~/components/ads/Forms/ReviewForm/ReviewItem";
+import { ReviewItem, ReviewItemList } from "@components/ads/forms/review-form/ReviewItem";
 import { formatDate } from "~/helpers/formatUtils";
 
 const meta = {

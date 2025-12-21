@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import ReviewFormFieldGroup from "~/components/ads/Forms/ReviewForm/ReviewFormFieldGroup";
+import ReviewFormFieldGroup from "@components/ads/forms/review-form/ReviewFormFieldGroup";
 
 const meta = {
   title: "Ad Campaign/Review Form/Field Group",

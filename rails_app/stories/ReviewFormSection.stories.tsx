@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import ReviewFormSection from "@components/ads/Forms/ReviewForm/ReviewFormSection";
+import ReviewFormSection from "@components/ads/forms/review-form/ReviewFormSection";
 import { CursorArrowRippleIcon } from "@heroicons/react/24/solid";
 
 const meta = {

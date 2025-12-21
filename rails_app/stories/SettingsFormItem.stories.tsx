@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import SettingsFormItem from "@components/ads/forms/SettingsForm/LocationTargetingItem";
+import SettingsFormItem from "@components/ads/forms/settings-form/LocationTargetingItem";
 import { FormProvider, useForm } from "react-hook-form";
 import {
   settingsFormSchema,
   type SettingsFormData,
-} from "@components/ads/forms/SettingsForm/settingsForm.schema";
+} from "@components/ads/forms/settings-form/settingsForm.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 const meta = {

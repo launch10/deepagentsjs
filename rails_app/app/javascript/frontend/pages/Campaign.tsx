@@ -3,7 +3,7 @@ import LogoSpinner from "@components/ui/logo-spinner";
 import { useAdsChatIsLoadingHistory } from "@hooks/useAdsChat";
 import AdPreview from "@components/ads/AdPreview";
 import AdsForm from "@components/ads/forms/AdsForm";
-import AdCampaignPagination from "@components/ads/Pagination/AdCampaignPagination";
+import AdCampaignPagination from "@components/ads/pagination/AdCampaignPagination";
 import { selectSubstep, useWorkflowSteps } from "@context/WorkflowStepsProvider";
 import { cn } from "@lib/utils";
 

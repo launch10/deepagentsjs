@@ -20,7 +20,7 @@ import {
   GOOGLE_BIDDING_STRATEGIES,
   type GoogleAdvertisingChannelType,
   type GoogleBiddingStrategy,
-} from "@components/ads/Forms/LaunchForm/launchForm.schema";
+} from "@components/ads/forms/launch-form/launchForm.schema";
 import type { Workflow } from "@shared";
 import { Info, Pencil } from "lucide-react";
 import { ReviewItem, ReviewItemList } from "./ReviewItem";

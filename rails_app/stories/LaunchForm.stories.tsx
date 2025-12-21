@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import LaunchForm from "@components/ads/Forms/LaunchForm/LaunchForm";
+import LaunchForm from "@components/ads/forms/launch-form/LaunchForm";
 
 const meta = {
   title: "Ad Campaign/Launch Form",
