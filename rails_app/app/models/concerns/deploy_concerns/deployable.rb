@@ -140,7 +140,6 @@ module DeployConcerns
       self.environment ||= if Rails.env.production?
         "production"
       else
-        binding.pry
         Cloudflare.deploy_env || "staging"
       end
     end
