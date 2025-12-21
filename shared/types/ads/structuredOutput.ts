@@ -20,9 +20,9 @@ export const StreamingTransforms = {
   descriptions: toAssets,
   callouts: toAssets,
   keywords: toAssets,
-  structuredSnippets: (streamed: StreamedSnippet | undefined): Ads.StructuredSnippets => {
+  structuredSnippets: (streamed: StreamedSnippet | undefined): Ads.StructuredSnippets | undefined => {
     if (!streamed?.details || !streamed?.category) {
-      throw new Error("Didn't receive proper snippet")
+      return undefined;
     }
     return {
       category: streamed.category as Ads.StructuredSnippetCategoryName,
