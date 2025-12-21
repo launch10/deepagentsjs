@@ -1,15 +1,15 @@
+import { useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useAdsChatActions, useAdsChatState } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID, keyBy } from "@shared";
 import { Info, Plus } from "lucide-react";
-import { useEffect, useRef } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
-import { z } from "zod";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 import {
@@ -25,23 +25,19 @@ import { mapApiErrorsToForm } from "@helpers/formErrorMapper";
 import { useDebounce } from "@hooks/useDebounce";
 
 const STRUCTURED_SNIPPET_CATEGORIES = Ads.StructuredSnippetCategoryKeys.map((key) => ({
-  value: key, // Use the lowercase key (e.g., "brands") for API validation
-  label: Ads.StructuredSnippetCategories[key].key, // Use display name for UI
+  value: key,
+  label: Ads.StructuredSnippetCategories[key].key,
 }));
 
-// Map from display name (e.g., "Brands") to API key (e.g., "brands")
 const displayNameToKey = Object.fromEntries(
   Ads.StructuredSnippetCategoryKeys.map((key) => [Ads.StructuredSnippetCategories[key].key, key])
 );
 
-// Normalize category: if it's a display name, convert to API key
 const normalizeCategory = (category: string | undefined): string => {
   if (!category) return "";
-  // If it's already a valid API key, return it
   if (Ads.StructuredSnippetCategoryKeys.includes(category as any)) {
     return category;
   }
-  // Otherwise, try to map from display name
   return displayNameToKey[category] || category;
 };
 
@@ -56,65 +52,105 @@ export default function StructuredSnippetsForm() {
   const structuredSnippets = useAdsChatState("structuredSnippets");
   const { setState, updateState } = useAdsChatActions();
 
+  const category = normalizeCategory(structuredSnippets?.category);
+  const details = structuredSnippets?.details;
+  const filteredDetails = (details || []).filter((d) => !d.rejected);
+  const prevIdsRef = useRef<string[]>([]);
+
   const methods = useForm<StructuredSnippetsFormData>({
     resolver: zodResolver(structuredSnippetsFormSchema) as any,
     mode: "onChange",
     defaultValues: {
-      category: "",
-      details: [],
+      category: category,
+      details: filteredDetails,
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control: methods.control,
-    name: "details",
-  });
+  useEffect(() => {
+    const currentIds = filteredDetails.map((d) => d.id).join(",");
+    const prevIds = prevIdsRef.current.join(",");
 
-  const category = normalizeCategory(structuredSnippets?.category);
-  const details = structuredSnippets?.details;
+    if (currentIds !== prevIds) {
+      methods.reset({ category, details: filteredDetails });
+      prevIdsRef.current = filteredDetails.map((d) => d.id);
+    }
+  }, [filteredDetails, category, methods]);
 
   useEffect(() => {
-    if (category) {
+    if (category && methods.getValues("category") !== category) {
       methods.setValue("category", category);
     }
-  }, [category]);
-
-  useEffect(() => {
-    if (details?.length) {
-      const filtered = details.filter((d) => !d.rejected);
-      methods.setValue("details", filtered);
-    }
-  }, [details]);
+  }, [category, methods]);
 
   const handleCategoryChange = (value: string) => {
     methods.setValue("category", value);
     setState({
       structuredSnippets: {
         ...structuredSnippets,
-        category: value,
+        category: value as Ads.StructuredSnippetCategoryKey,
         details: structuredSnippets?.details || [],
       },
     });
   };
 
-  const handleLockToggle = createLockToggleHandler(methods, "details", () => details, setState);
+  const handleLockToggle = createLockToggleHandler(
+    "details",
+    methods,
+    () => filteredDetails,
+    () => details,
+    (updates) => {
+      setState({
+        structuredSnippets: {
+          ...structuredSnippets,
+          category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+          details: updates.details || [],
+        },
+      });
+    }
+  );
 
   const handleAddDetail = () => {
     const newDetail = { id: generateUUID(), text: "", locked: false, rejected: false };
-    append(newDetail);
+    setState({
+      structuredSnippets: {
+        ...structuredSnippets,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+        details: [...(details || []), newDetail],
+      },
+    });
   };
 
   const handleDeleteDetail = (index: number) => {
-    remove(index);
+    const detailId = filteredDetails[index]?.id;
+    if (!detailId) return;
+    setState({
+      structuredSnippets: {
+        ...structuredSnippets,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+        details: details?.filter((d) => d.id !== detailId) || [],
+      },
+    });
+  };
+
+  const handleInputChange = (index: number, input: string) => {
+    const detailId = filteredDetails[index]?.id;
+    if (!detailId) return;
+    setState({
+      structuredSnippets: {
+        ...structuredSnippets,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+        details: details?.map((d) => (d.id === detailId ? { ...d, text: input } : d)) || [],
+      },
+    });
   };
 
   const handleRefreshSnippets = () => {
-    const details = structuredSnippets?.details || [];
-    const lockedDetails = details.filter((d) => d.locked);
+    const currentDetails = structuredSnippets?.details || [];
+    const lockedDetails = currentDetails.filter((d) => d.locked);
     const lockedByText = keyBy(lockedDetails, "text");
     const numLocked = lockedDetails.length;
 
-    const updatedDetails = details.map((d) => ({
+    const updatedDetails = currentDetails.map((d) => ({
       ...d,
       locked: !!lockedByText[d.text],
       rejected: !lockedByText[d.text],
@@ -129,7 +165,7 @@ export default function StructuredSnippetsForm() {
       ],
       structuredSnippets: {
         ...structuredSnippets,
-        category: structuredSnippets?.category || "",
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
         details: updatedDetails,
       },
     });
@@ -138,38 +174,30 @@ export default function StructuredSnippetsForm() {
   const campaignId = useAdsChatState("campaignId");
   const autosaveMutation = useAutosaveCampaign(campaignId);
 
-  // Custom save function for structured snippets that combines category and details
   const save = async () => {
-    if (!campaignId) {
-      return;
-    }
+    if (!campaignId) return;
 
-    const category = methods.getValues("category");
-    const details = methods.getValues("details");
+    const currentCategory = methods.getValues("category");
+    const currentDetails = methods.getValues("details");
     const values =
-      details
+      currentDetails
         ?.filter((d: { text?: string }) => d.text?.trim())
         .map((d: { text: string }) => d.text) ?? [];
 
-    // Only save if category and values are present
-    if (!category || values.length === 0) {
-      return;
-    }
+    if (!currentCategory || values.length === 0) return;
 
     return new Promise<void>((resolve, reject) => {
       autosaveMutation.mutate(
         {
           campaign: {
             structured_snippet: {
-              category,
+              category: currentCategory,
               values,
             },
           },
         },
         {
-          onSuccess: () => {
-            resolve();
-          },
+          onSuccess: () => resolve(),
           onError: (error) => {
             mapApiErrorsToForm(error, methods);
             reject(error);
@@ -179,11 +207,8 @@ export default function StructuredSnippetsForm() {
     });
   };
 
-  // Custom autosave for structured snippets (category + details combined)
-  const watchedCategory = methods.watch("category");
-  const watchedDetails = methods.watch("details");
-  const debouncedCategory = useDebounce(watchedCategory, 750);
-  const debouncedDetails = useDebounce(watchedDetails, 750);
+  const debouncedCategory = useDebounce(category, 750);
+  const debouncedDetails = useDebounce(details, 750);
   const isInitialMount = useRef(true);
   const lastSavedValue = useRef<string | null>(null);
 
@@ -193,24 +218,17 @@ export default function StructuredSnippetsForm() {
       return;
     }
 
-    if (!campaignId || autosaveMutation.isPending) {
-      return;
-    }
+    if (!campaignId || autosaveMutation.isPending) return;
 
     const values =
       debouncedDetails
-        ?.filter((d: { text?: string }) => d.text?.trim())
+        ?.filter((d: { text?: string; rejected?: boolean }) => d.text?.trim() && !d.rejected)
         .map((d: { text: string }) => d.text) ?? [];
 
-    // Only save if category and values are present
-    if (!debouncedCategory || values.length === 0) {
-      return;
-    }
+    if (!debouncedCategory || values.length === 0) return;
 
     const serialized = JSON.stringify({ category: debouncedCategory, values });
-    if (serialized === lastSavedValue.current) {
-      return;
-    }
+    if (serialized === lastSavedValue.current) return;
     lastSavedValue.current = serialized;
 
     autosaveMutation.mutate(
@@ -230,8 +248,9 @@ export default function StructuredSnippetsForm() {
     );
   }, [debouncedCategory, debouncedDetails, campaignId, autosaveMutation.isPending]);
 
-  // Attach save function to form registration
   useFormRegistration("highlights", methods, save);
+
+  const fields = filteredDetails.map((d) => ({ ...d, id: d.id }));
 
   return (
     <div className="grid grid-cols-2">
@@ -257,9 +276,9 @@ export default function StructuredSnippetsForm() {
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {STRUCTURED_SNIPPET_CATEGORIES.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
-                      {category.label}
+                  {STRUCTURED_SNIPPET_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -283,6 +302,7 @@ export default function StructuredSnippetsForm() {
             maxLength={25}
             onLockToggle={handleLockToggle}
             onDelete={handleDeleteDetail}
+            onInputChange={handleInputChange}
           />
         </FieldGroup>
         <Button type="button" variant="ghost" size="sm" onClick={handleAddDetail}>

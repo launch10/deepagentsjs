@@ -8,8 +8,6 @@ export {
 
 export { mapApiErrorsToForm, clearServerErrors, type ApiErrorResponse } from "./formErrorMapper";
 
-export { handleLockToggle, createLockToggleHandler } from "./handleLockToggle";
-
 export {
   formatDate,
   formatSchedule,
@@ -17,3 +15,4 @@ export {
   type FormatDateOptions,
   type FormatScheduleOptions,
 } from "./formatUtils";
+export { createLockToggleHandler } from "./handleLockToggle";

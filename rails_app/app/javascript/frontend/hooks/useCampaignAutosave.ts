@@ -197,7 +197,6 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
     // Create and track the save promise to prevent duplicate calls
     const savePromise = (async () => {
       try {
-        console.log(`saving campaign`);
         const data = await autosaveMutation.mutateAsync(updateRequest);
         lastSavedValue.current = serialized;
         onSuccess?.(data);

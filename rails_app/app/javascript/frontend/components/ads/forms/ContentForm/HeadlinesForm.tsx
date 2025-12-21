@@ -10,6 +10,7 @@ import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
 import { useFormRegistration } from "@hooks/useFormRegistration";
+import { createLockToggleHandler } from "@helpers/handleLockToggle";
 
 const headlinesFormSchema = z.object({
   headlines: z
@@ -61,13 +62,13 @@ export default function HeadlinesForm() {
     setState({ headlines: headlines?.filter((h) => h.id !== headlineId) });
   };
 
-  const handleLockToggle = (fieldName: string, index: number) => {
-    const headlineId = filteredHeadlines[index]?.id;
-    if (!headlineId) return;
-    setState({
-      headlines: headlines?.map((h) => (h.id === headlineId ? { ...h, locked: !h.locked } : h)),
-    });
-  };
+  const handleLockToggle = createLockToggleHandler(
+    "headlines",
+    methods,
+    () => filteredHeadlines,
+    () => headlines,
+    setState
+  );
 
   const handleRefreshHeadlines = () => {
     createRefreshHandler("headlines", headlines, updateState);
