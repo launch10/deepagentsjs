@@ -89,29 +89,63 @@ class Schedule
     end
   end
 
-  # Builds ad schedules from structured data without saving
+  # Builds ad schedules from structured data, reusing existing records where possible
   #
   # @param schedule_data [Hash] the schedule configuration
-  # @return [Array<AdSchedule>] array of built (unsaved) ad schedules
+  # @return [Hash] with :schedules (to keep/create) and :to_delete (ids to soft delete)
   def build(schedule_data)
+    existing = AdSchedule.unscoped.where(campaign_id: campaign.id).order(:id).to_a
+    schedules_to_keep = []
+    ids_to_delete = existing.map(&:id)
+
     if schedule_data[:always_on]
-      [campaign.ad_schedules.new(always_on: true)]
+      if existing.any?
+        schedule = existing.first
+        schedule.assign_attributes(
+          always_on: true,
+          day_of_week: nil,
+          start_hour: nil,
+          start_minute: nil,
+          end_hour: nil,
+          end_minute: nil,
+          deleted_at: nil
+        )
+        schedules_to_keep << schedule
+        ids_to_delete = existing[1..].map(&:id)
+      else
+        schedules_to_keep << campaign.ad_schedules.new(always_on: true)
+        ids_to_delete = []
+      end
     else
       days = schedule_data[:day_of_week] || []
       start_hour, start_minute = parse_time(schedule_data[:start_time])
       end_hour, end_minute = parse_time(schedule_data[:end_time])
 
-      days.map do |day|
-        campaign.ad_schedules.new(
+      days.each_with_index do |day, idx|
+        attrs = {
           day_of_week: day,
           start_hour: start_hour,
           start_minute: start_minute,
           end_hour: end_hour,
           end_minute: end_minute,
-          always_on: false
-        )
+          always_on: false,
+          deleted_at: nil
+        }
+
+        if idx < existing.size
+          schedule = existing[idx]
+          schedule.assign_attributes(attrs)
+          schedules_to_keep << schedule
+        else
+          schedules_to_keep << campaign.ad_schedules.new(attrs)
+        end
       end
+
+      ids_to_delete = existing[days.size..].map(&:id) if days.size < existing.size
+      ids_to_delete = [] if days.size >= existing.size
     end
+
+    { schedules: schedules_to_keep, to_delete: ids_to_delete }
   end
 
   # Updates the campaign schedule from structured data
@@ -138,14 +172,17 @@ class Schedule
   # @return [void]
   def update(schedule_data)
     Campaign.transaction do
-      destroy
-
       if schedule_data[:time_zone].present?
         self.time_zone = schedule_data[:time_zone]
       end
 
-      schedules = build(schedule_data)
-      schedules.each(&:save!)
+      result = build(schedule_data)
+
+      if result[:to_delete].any?
+        AdSchedule.unscoped.where(id: result[:to_delete]).update_all(deleted_at: Time.current)
+      end
+
+      result[:schedules].each(&:save!)
     end
   end
 

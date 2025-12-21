@@ -342,15 +342,19 @@ module CampaignConcerns
           campaign.time_zone = schedule_data[:time_zone]
         end
 
-        schedules = campaign.schedule.build(schedule_data)
+        result = campaign.schedule.build(schedule_data)
 
-        schedules.each do |schedule|
-          # ad_schedules is a single object in the API, not an array
-          # so all schedule errors map to "ad_schedules.attribute"
+        result[:schedules].each do |schedule|
           add_to_validation(schedule, "ad_schedules")
         end
 
-        @saves_to_perform << -> { campaign.schedule.update(schedule_data) }
+        if result[:to_delete].any?
+          @deletions_to_perform << -> {
+            AdSchedule.unscoped.where(id: result[:to_delete]).update_all(deleted_at: Time.current)
+          }
+        end
+
+        @saves_to_perform << -> { result[:schedules].each(&:save!) }
       end
 
       def prepare_structured_snippet(snippet_attrs)
