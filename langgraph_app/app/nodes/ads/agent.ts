@@ -22,7 +22,7 @@ const dynamicPromptMiddleware = createMiddleware({
       headlines: z.array(Ads.AssetSchema),
       descriptions: z.array(Ads.AssetSchema),
       uniqueFeatures: z.array(Ads.AssetSchema),
-      structuredSnippets: Ads.StructuredSnippetsSchema,
+      structuredSnippets: Ads.StructuredSnippetsSchema.optional(),
       keywords: z.array(Ads.AssetSchema),
       availableCommands: z.array(z.string()),
       command: z.string(),
@@ -70,9 +70,7 @@ export const adsAgent = NodeMiddleware.use(
       throw new Error("Agent did not return an AI message");
     }
     const [message, updates] = await AdsBridge.toStructuredMessage(lastMessage);
-    const mergedAssets = Ads.removeRejected(
-      Ads.mergeStructuredData(state, updates!)
-    )
+    const mergedAssets = Ads.removeRejected(Ads.mergeStructuredData(state, updates!));
 
     const allMessages = result.messages.slice(0, -1).concat([message]);
     const filtered = filterPseudoMessages(allMessages);
