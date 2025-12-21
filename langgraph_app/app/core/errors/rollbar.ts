@@ -21,7 +21,7 @@ export const rollbar = {
   },
   warn: async (message: string, context?: LogContext) => {
     if (!ENABLED) return;
-    await logger.warning(message, context);
+    await logger.warning(message, context)
   },
   info: async (message: string, context?: LogContext) => {
     if (!ENABLED) return;

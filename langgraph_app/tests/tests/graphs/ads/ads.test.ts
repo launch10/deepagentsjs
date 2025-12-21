@@ -89,6 +89,41 @@ describe.sequential("Ads Flow", () => {
         expect(updatedHeadlines).toEqual(result.state.headlines);
         expect(updatedDescriptions).toEqual(result.state.descriptions);
       });
+
+      it("regenerates if hasStartedStep is true but assets are empty (failed generation)", async () => {
+        const result = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            projectUUID,
+            threadId,
+            stage: "content",
+            hasStartedStep: { content: true },
+            headlines: [],
+            descriptions: [],
+          })
+          .execute();
+
+        expect(result.state.headlines?.length).toEqual(6);
+        expect(result.state.descriptions?.length).toEqual(4);
+        expect(result.state.hasStartedStep?.content).toEqual(true);
+      });
+
+      it("regenerates if hasStartedStep is true but assets are undefined (failed generation)", async () => {
+        const result = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            projectUUID,
+            threadId,
+            stage: "content",
+            hasStartedStep: { content: true },
+            headlines: undefined,
+            descriptions: undefined,
+          })
+          .execute();
+
+        expect(result.state.headlines?.length).toEqual(6);
+        expect(result.state.descriptions?.length).toEqual(4);
+      });
     });
 
     describe("Content Stage", () => {

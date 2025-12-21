@@ -9,7 +9,7 @@ import {
 import { useFormRegistry, selectValidate } from "@stores/formRegistry";
 import { Workflow } from "@shared";
 
-export default function AdCampaignTabSwitcher() {
+export default function AdCampaignTabSwitcher({ disabled }: { disabled?: boolean }) {
   const validateForm = useFormRegistry(selectValidate);
   const step = useWorkflowSteps(selectStep);
   const activeTab = useWorkflowSteps(selectSubstep) || "content";
@@ -46,7 +46,7 @@ export default function AdCampaignTabSwitcher() {
             activeTab === substep.name &&
               "border-b-accent-yellow-700 text-accent-yellow-800 bg-accent-yellow-100"
           )}
-          disabled={!canGoBack}
+          disabled={!canGoBack || disabled}
         >
           {substep.label}
         </button>

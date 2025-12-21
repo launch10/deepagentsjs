@@ -9,6 +9,7 @@ interface InputLockableProps {
   isLocked?: boolean;
   isInvalid?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   onLockToggle?: () => void;
   onDelete?: () => void;
   name?: string;
@@ -22,6 +23,7 @@ const InputLockable = forwardRef<HTMLInputElement, InputLockableProps>(
       isLocked = false,
       isInvalid = false,
       onChange,
+      onBlur,
       onLockToggle,
       onDelete,
       name,
@@ -51,6 +53,7 @@ const InputLockable = forwardRef<HTMLInputElement, InputLockableProps>(
             placeholder={placeholder}
             value={value}
             onChange={onChange}
+            onBlur={onBlur}
             disabled={isLocked}
             className="disabled:opacity-100"
             aria-invalid={isInvalid}

@@ -29,13 +29,16 @@ export function AdsChatMessagesView({ messages, isLoading = false }: AdsChatMess
     <div className="space-y-4">
       {messages.map((message, index) => {
         if (message.role === "assistant") {
-          return message.blocks.map((block) => (
-            <AIMessage
-              key={block.id}
-              message={block.type === "text" ? block.text : JSON.stringify(block)}
-              state={index === messages.length - 1 ? "active" : "inactive"}
-            />
-          ));
+          // Explicitly filter out tool calls here, we're only looking for text blocks
+          return message.blocks
+            .filter((block) => block.type === "text")
+            .map((block) => (
+              <AIMessage
+                key={block.id}
+                message={block.type === "text" ? block.text : JSON.stringify(block)}
+                state={index === messages.length - 1 ? "active" : "inactive"}
+              />
+            ));
         }
         if (message.role === "user") {
           return message.blocks.map((block) => (

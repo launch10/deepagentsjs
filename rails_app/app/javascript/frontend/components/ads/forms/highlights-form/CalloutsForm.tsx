@@ -1,14 +1,14 @@
+import { useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
 import { Badge } from "@components/ui/badge";
 import { Field, FieldGroup } from "@components/ui/field";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useAdsChatActions, useAdsChatState } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads } from "@shared";
 import { Info } from "lucide-react";
-import { useEffect } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
-import { z } from "zod";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
@@ -24,45 +24,62 @@ export default function CalloutsForm() {
   const callouts = useAdsChatState("callouts");
   const { setState, updateState } = useAdsChatActions();
 
+  const filteredCallouts = (callouts || []).filter((c) => !c.rejected);
+  const prevIdsRef = useRef<string[]>([]);
+
   const methods = useForm<CalloutsFormData>({
     resolver: zodResolver(calloutsFormSchema) as any,
     mode: "onChange",
     defaultValues: {
-      callouts: [],
+      callouts: filteredCallouts,
     },
   });
 
-  const { fields, remove } = useFieldArray({
-    control: methods.control,
-    name: "callouts",
-  });
-
   useEffect(() => {
-    if (callouts?.length) {
-      const filtered = callouts.filter((c) => !c.rejected);
-      methods.setValue("callouts", filtered);
-    }
-  }, [callouts, methods]);
+    const currentIds = filteredCallouts.map((c) => c.id).join(",");
+    const prevIds = prevIdsRef.current.join(",");
 
-  const handleLockToggle = createLockToggleHandler(methods, "callouts", () => callouts, setState);
+    if (currentIds !== prevIds) {
+      methods.reset({ callouts: filteredCallouts });
+      prevIdsRef.current = filteredCallouts.map((c) => c.id);
+    }
+  }, [filteredCallouts, methods]);
+
+  const handleLockToggle = createLockToggleHandler(
+    "callouts",
+    methods,
+    () => filteredCallouts,
+    () => callouts,
+    setState
+  );
 
   const handleRefreshCallouts = () => {
     createRefreshHandler("callouts", callouts, updateState);
   };
 
   const handleDeleteCallout = (index: number) => {
-    remove(index);
-    const updatedLanggraph = callouts?.filter((c, i) => i !== index);
-    setState({ callouts: updatedLanggraph });
+    const calloutId = filteredCallouts[index]?.id;
+    if (!calloutId) return;
+    setState({ callouts: callouts?.filter((c) => c.id !== calloutId) });
   };
 
-  const { save } = useCampaignAutosave({
+  const handleInputChange = (index: number, input: string) => {
+    const calloutId = filteredCallouts[index]?.id;
+    if (!calloutId) return;
+    setState({
+      callouts: callouts?.map((c) => (c.id === calloutId ? { ...c, text: input } : c)),
+    });
+  };
+
+  useCampaignAutosave({
     methods,
     fieldMappings: [{ formField: "callouts", apiField: "callouts" }],
+    values: [callouts],
   });
 
-  // Attach save function to form registration
-  useFormRegistration("highlights", methods, save);
+  useFormRegistration("highlights", methods);
+
+  const fields = filteredCallouts.map((c) => ({ ...c, id: c.id }));
 
   return (
     <FieldGroup className="gap-2">
@@ -80,12 +97,13 @@ export default function CalloutsForm() {
       </Field>
       <AdCampaignFieldList
         fieldName="callouts"
-        fields={fields}
+        fields={fields as any}
         onLockToggle={handleLockToggle}
         onDelete={handleDeleteCallout}
-        control={methods.control as any} // TODO: Fix this
+        control={methods.control as any}
         placeholder="Feature Option"
         maxLength={25}
+        onInputChange={handleInputChange}
       />
     </FieldGroup>
   );

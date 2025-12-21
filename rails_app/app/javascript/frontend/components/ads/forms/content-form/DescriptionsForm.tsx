@@ -1,16 +1,15 @@
-import { useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Badge } from "@components/ui/badge";
-import { Button } from "@components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
+import { Field, FieldGroup } from "@components/ui/field";
 import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
-import { Info, Sparkles } from "lucide-react";
+import { Info } from "lucide-react";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
@@ -25,29 +24,31 @@ export default function DescriptionsForm() {
   const descriptions = useAdsChatState("descriptions");
   const { setState, updateState } = useAdsChatActions();
 
+  const filteredDescriptions = (descriptions || []).filter((d) => !d.rejected);
+  const prevIdsRef = useRef<string[]>([]);
+
   const methods = useForm<DescriptionsFormData>({
     resolver: zodResolver(descriptionsFormSchema) as any,
     mode: "onChange",
     defaultValues: {
-      descriptions: [],
+      descriptions: filteredDescriptions,
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control: methods.control,
-    name: "descriptions",
-  });
-
   useEffect(() => {
-    if (descriptions?.length) {
-      const filtered = descriptions.filter((d) => !d.rejected);
-      methods.setValue("descriptions", filtered);
+    const currentIds = filteredDescriptions.map((d) => d.id).join(",");
+    const prevIds = prevIdsRef.current.join(",");
+
+    if (currentIds !== prevIds) {
+      methods.reset({ descriptions: filteredDescriptions });
+      prevIdsRef.current = filteredDescriptions.map((d) => d.id);
     }
-  }, [descriptions, methods]);
+  }, [filteredDescriptions, methods]);
 
   const handleLockToggle = createLockToggleHandler(
-    methods,
     "descriptions",
+    methods,
+    () => filteredDescriptions,
     () => descriptions,
     setState
   );
@@ -57,18 +58,28 @@ export default function DescriptionsForm() {
   };
 
   const handleDeleteDescription = (index: number) => {
-    remove(index);
-    const updatedLanggraph = descriptions?.filter((d, i) => i !== index);
-    setState({ descriptions: updatedLanggraph });
+    const descId = filteredDescriptions[index]?.id;
+    if (!descId) return;
+    setState({ descriptions: descriptions?.filter((d) => d.id !== descId) });
   };
 
-  const { save } = useCampaignAutosave({
+  const handleInputChange = (index: number, input: string) => {
+    const descId = filteredDescriptions[index]?.id;
+    if (!descId) return;
+    setState({
+      descriptions: descriptions?.map((d) => (d.id === descId ? { ...d, text: input } : d)),
+    });
+  };
+
+  useCampaignAutosave({
     methods,
     fieldMappings: [{ formField: "descriptions", apiField: "descriptions" }],
+    values: [descriptions],
   });
 
-  // Attach save function to form registration
-  useFormRegistration("content", methods, save);
+  useFormRegistration("content", methods);
+
+  const fields = filteredDescriptions.map((d) => ({ ...d, id: d.id }));
 
   return (
     <FieldGroup className="gap-3">
@@ -86,12 +97,13 @@ export default function DescriptionsForm() {
       </Field>
       <AdCampaignFieldList
         fieldName="descriptions"
-        fields={fields}
+        fields={fields as any}
         onLockToggle={handleLockToggle}
         onDelete={handleDeleteDescription}
         control={methods.control as any}
         placeholder="Description Option"
         maxLength={90}
+        onInputChange={handleInputChange}
       />
     </FieldGroup>
   );

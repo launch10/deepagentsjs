@@ -115,6 +115,7 @@ The `cloudEnv` query parameter tells the public Atlas worker which environment's
 Websites can be deployed to subpaths like `/bingo` on a domain. See `docs/architecture/subpath-deployment.md` for the full explanation.
 
 **Key constraints:**
+
 - Paths must start with `/`
 - Only single-level paths supported (e.g., `/bingo`, not `/marketing/campaign`)
 - Atlas redirects `/bingo` → `/bingo/` to ensure relative asset paths resolve correctly

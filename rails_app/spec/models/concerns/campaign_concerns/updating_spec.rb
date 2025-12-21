@@ -455,4 +455,35 @@ RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets
       expect(AdLocationTarget.unscoped.where(campaign_id: campaign.id).count).to eq(initial_count + 1)
     end
   end
+
+  describe "ad_schedules" do
+    it "replaces existing scheduled times with always_on" do
+      campaign.ad_schedules.create!(
+        day_of_week: 'Monday',
+        start_hour: 9,
+        start_minute: 0,
+        end_hour: 17,
+        end_minute: 0,
+        always_on: false
+      )
+      campaign.ad_schedules.create!(
+        day_of_week: 'Tuesday',
+        start_hour: 9,
+        start_minute: 0,
+        end_hour: 17,
+        end_minute: 0,
+        always_on: false
+      )
+
+      expect(campaign.ad_schedules.count).to eq(2)
+
+      campaign.update_idempotently!(
+        ad_schedules: { always_on: true }
+      )
+
+      campaign.reload
+      expect(campaign.ad_schedules.count).to eq(1)
+      expect(campaign.ad_schedules.first.always_on).to be true
+    end
+  end
 end

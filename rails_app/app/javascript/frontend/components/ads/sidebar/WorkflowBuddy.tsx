@@ -12,6 +12,27 @@ export type WorkflowBuddyViewProps = {
   activeSubstep?: string | null;
 };
 
+/**
+ * Determines if a substep is completed based on the current active substep.
+ * A substep is considered completed if it comes before the active substep in the order.
+ */
+function isSubStepCompleted(
+  substepName: string,
+  activeSubstep: string | null | undefined
+): boolean {
+  if (!activeSubstep) return false;
+
+  const substepOrder = Workflow.AdCampaignSubstepNames;
+  const currentIndex = substepOrder.indexOf(activeSubstep as Workflow.AdCampaignSubstepName);
+  const substepIndex = substepOrder.indexOf(substepName as Workflow.AdCampaignSubstepName);
+
+  // If either index is -1 (not found), return false
+  if (currentIndex === -1 || substepIndex === -1) return false;
+
+  // A substep is completed if it comes before the current active substep
+  return substepIndex < currentIndex;
+}
+
 export function WorkflowBuddyView({ activeStep, activeSubstep }: WorkflowBuddyViewProps) {
   return (
     <CardHeader className="px-4 py-4">
@@ -27,6 +48,7 @@ export function WorkflowBuddyView({ activeStep, activeSubstep }: WorkflowBuddyVi
             subSteps={step.steps?.map((subStep) => ({
               label: subStep.label,
               isSubStepActive: subStep.name === activeSubstep,
+              isSubStepCompleted: isSubStepCompleted(subStep.name, activeSubstep),
             }))}
           />
         ))}

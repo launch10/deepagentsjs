@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { FieldGroup } from "@components/ui/field";
@@ -23,25 +23,26 @@ export default function KeywordTargetingForm() {
   const { setState, updateState } = useAdsChatActions();
   const gridEndRef = useRef<HTMLDivElement>(null);
 
+  const filteredKeywords = (keywords || []).filter((k) => !k.rejected);
+  const prevIdsRef = useRef<string[]>([]);
+
   const methods = useForm<KeywordsFormData>({
     resolver: zodResolver(keywordsFormSchema) as any,
     mode: "onChange",
     defaultValues: {
-      keywords: [],
+      keywords: filteredKeywords,
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control: methods.control,
-    name: "keywords",
-  });
-
   useEffect(() => {
-    if (keywords?.length) {
-      const filtered = keywords.filter((k) => !k.rejected);
-      methods.setValue("keywords", filtered);
+    const currentIds = filteredKeywords.map((k) => k.id).join(",");
+    const prevIds = prevIdsRef.current.join(",");
+
+    if (currentIds !== prevIds) {
+      methods.reset({ keywords: filteredKeywords });
+      prevIdsRef.current = filteredKeywords.map((k) => k.id);
     }
-  }, [keywords, methods]);
+  }, [filteredKeywords, methods]);
 
   const handleAddKeyword = (value: string) => {
     const newKeyword: Ads.Keyword = {
@@ -50,13 +51,8 @@ export default function KeywordTargetingForm() {
       locked: false,
       rejected: false,
     };
-    append(newKeyword);
+    setState({ keywords: [...(keywords || []), newKeyword] });
 
-    const updated = [...(keywords || []), newKeyword];
-    setState({ keywords: updated });
-
-    // Scroll the new keyword into view after it's rendered
-    // Account for the sticky pagination bar at the bottom (~80px)
     setTimeout(() => {
       const element = gridEndRef.current;
       if (!element) return;
@@ -74,24 +70,39 @@ export default function KeywordTargetingForm() {
     }, 0);
   };
 
-  const handleLockToggle = createLockToggleHandler(methods, "keywords", () => keywords, setState);
+  const handleLockToggle = createLockToggleHandler(
+    "keywords",
+    methods,
+    () => filteredKeywords,
+    () => keywords,
+    setState
+  );
 
   const handleRefreshKeywords = () => {
     createRefreshHandler("keywords", keywords, updateState);
   };
 
   const handleDeleteKeyword = (index: number) => {
-    remove(index);
-    const updatedLanggraph = keywords?.filter((k, i) => i !== index);
-    setState({ keywords: updatedLanggraph });
+    const keywordId = filteredKeywords[index]?.id;
+    if (!keywordId) return;
+    setState({ keywords: keywords?.filter((k) => k.id !== keywordId) });
   };
 
+  const handleInputChange = (index: number, input: string) => {
+    const keywordId = filteredKeywords[index]?.id;
+    if (!keywordId) return;
+    setState({
+      keywords: keywords?.map((k) => (k.id === keywordId ? { ...k, text: input } : k)),
+    });
+  };
+
+  const fields = filteredKeywords.map((k) => ({ ...k, id: k.id }));
   const leftColumnFields = fields.filter((_, i) => i % 2 === 0);
   const rightColumnFields = fields.filter((_, i) => i % 2 === 1);
 
   const resolveIndex = (id: string) => fields.findIndex((f) => f.id === id);
 
-  const { save } = useCampaignAutosave({
+  useCampaignAutosave({
     methods,
     fieldMappings: [
       {
@@ -103,10 +114,10 @@ export default function KeywordTargetingForm() {
             .map(({ id, text }) => ({ id, text, match_type: "broad" })) ?? [],
       },
     ],
+    values: [keywords],
   });
 
-  // Attach save function to form registration
-  useFormRegistration("keywords", methods, save);
+  useFormRegistration("keywords", methods);
 
   return (
     <FieldGroup className="gap-4">
@@ -121,25 +132,27 @@ export default function KeywordTargetingForm() {
         <div className="flex flex-col gap-4">
           <AdCampaignFieldList
             fieldName="keywords"
-            fields={leftColumnFields}
+            fields={leftColumnFields as any}
             onLockToggle={handleLockToggle}
             onDelete={handleDeleteKeyword}
             control={methods.control as any}
             placeholder="Keyword Option"
             maxLength={80}
             resolveIndex={resolveIndex}
+            onInputChange={handleInputChange}
           />
         </div>
         <div className="flex flex-col gap-4">
           <AdCampaignFieldList
             fieldName="keywords"
-            fields={rightColumnFields}
+            fields={rightColumnFields as any}
             onLockToggle={handleLockToggle}
             onDelete={handleDeleteKeyword}
             control={methods.control as any}
             placeholder="Keyword Option"
             maxLength={80}
             resolveIndex={resolveIndex}
+            onInputChange={handleInputChange}
           />
         </div>
         <div ref={gridEndRef} />

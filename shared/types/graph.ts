@@ -3,7 +3,7 @@ import { type PrimaryKeyType, type BaseMessage, type ThreadIDType } from ".";
 export interface ErrorStateType { message: string; node: string }
 
 export type CoreGraphState = {
-    error: ErrorStateType | undefined;
+    error: ErrorStateType | null;
     jwt: string | undefined;
     messages: BaseMessage[];
     threadId: ThreadIDType | undefined;

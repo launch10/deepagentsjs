@@ -30,6 +30,8 @@ export type UseCampaignAutosaveOptions<TFormData extends FieldValues> = {
   methods: UseFormReturn<TFormData>;
   /** Field mappings from form to API */
   fieldMappings: FieldMapping<TFormData>[];
+  /** Values to autosave (must be passed explicitly to avoid re-render loops from methods.watch) */
+  values: unknown[];
   /** Debounce delay in ms (default: 750) */
   debounceMs?: number;
   /** Callback when autosave succeeds */
@@ -115,6 +117,7 @@ function buildUpdateRequest<TFormData extends FieldValues>(
 export function useCampaignAutosave<TFormData extends FieldValues>({
   methods,
   fieldMappings,
+  values,
   debounceMs = 750,
   onSuccess,
   enabled,
@@ -127,8 +130,7 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
   const pendingSavePromise = useRef<Promise<void> | null>(null);
 
   const formFieldNames = fieldMappings.map((m) => m.formField);
-  const watchedFields = methods.watch(formFieldNames);
-  const debouncedFields = useDebounce(watchedFields, debounceMs);
+  const debouncedFields = useDebounce(values, debounceMs);
   const shouldAutosave = enabled ?? !!campaignId;
 
   useEffect(() => {
@@ -161,7 +163,7 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
         return mapApiErrorsToForm(error, methods);
       },
     });
-  }, [debouncedFields, shouldAutosave, campaignId, autosaveMutation.isPending, fieldMappings]);
+  }, [debouncedFields, shouldAutosave, campaignId, autosaveMutation.isPending]);
 
   const save = async () => {
     if (!campaignId) {

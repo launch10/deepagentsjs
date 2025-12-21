@@ -42,7 +42,10 @@ class ProjectsController < SubscribedController
         # If this fails, it's because the user hasn't completed the previous steps
         # before the page they're trying to go to. We'll just stay on the same page.
         # Don't use update! here because it will raise an exception if the update fails.
-        @campaign.update(stage: substep)
+        Campaign.transaction do
+          @campaign.update!(stage: substep)
+          @project.current_workflow.update!(substep: substep)
+        end
 
         if @campaign.reload.stage != substep
           redirect_to action: "campaigns_#{@campaign.stage}" and return

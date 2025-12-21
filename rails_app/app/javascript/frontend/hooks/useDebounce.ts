@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
  */
 export function useDebounce<T>(value: T, delay: number = 750): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  const serializedValue = JSON.stringify(value);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -19,7 +20,7 @@ export function useDebounce<T>(value: T, delay: number = 750): T {
     return () => {
       clearTimeout(handler);
     };
-  }, [value, delay]);
+  }, [serializedValue, delay]);
 
   return debouncedValue;
 }

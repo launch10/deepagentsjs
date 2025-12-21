@@ -5,8 +5,8 @@ import type { ErrorStateType, BaseMessage, PrimaryKeyType, ThreadIDType } from "
 export const BaseAnnotation = Annotation.Root({
   threadId: Annotation<ThreadIDType | undefined>(),
 
-  error: Annotation<ErrorStateType | undefined>({
-    default: () => undefined,
+  error: Annotation<ErrorStateType | null>({
+    default: () => null,
     reducer: (current, next) => next,
   }),
 
