@@ -59,6 +59,7 @@ export default function CalloutsForm() {
   const { save } = useCampaignAutosave({
     methods,
     fieldMappings: [{ formField: "callouts", apiField: "callouts" }],
+    values: [callouts],
   });
 
   // Attach save function to form registration

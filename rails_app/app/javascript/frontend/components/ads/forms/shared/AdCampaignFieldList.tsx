@@ -16,6 +16,7 @@ interface AdCampaignFieldListProps {
   placeholder: string;
   maxLength: number;
   resolveIndex?: (id: string) => number;
+  onInputChange?: (index: number, input: string) => void;
 }
 
 export default function AdCampaignFieldList({
@@ -27,6 +28,7 @@ export default function AdCampaignFieldList({
   placeholder,
   maxLength,
   resolveIndex,
+  onInputChange,
 }: AdCampaignFieldListProps) {
   const handleLockToggle = (index: number) => {
     if (!onLockToggle) return;
@@ -45,14 +47,20 @@ export default function AdCampaignFieldList({
         return (
           <Controller
             key={field.id}
-            name={`${fieldName}.${originalIndex}.text` as any}
+            name={`${fieldName}.${index}.text` as any}
             control={control}
             render={({ field: controllerField, fieldState }) => (
               <Field className="gap-1">
                 <InputLockable
                   placeholder={placeholder}
                   value={controllerField.value as string}
-                  onChange={controllerField.onChange}
+                  onChange={(e) => {
+                    controllerField.onChange(e);
+                    if (onInputChange) {
+                      onInputChange(index, e.target.value);
+                    }
+                  }}
+                  onBlur={controllerField.onBlur}
                   name={controllerField.name as string}
                   isLocked={field.locked}
                   onLockToggle={onLockToggle ? () => handleLockToggle(originalIndex) : undefined}

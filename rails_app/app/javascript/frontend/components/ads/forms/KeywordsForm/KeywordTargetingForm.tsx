@@ -103,6 +103,7 @@ export default function KeywordTargetingForm() {
             .map(({ id, text }) => ({ id, text, match_type: "broad" })) ?? [],
       },
     ],
+    values: [keywords],
   });
 
   // Attach save function to form registration

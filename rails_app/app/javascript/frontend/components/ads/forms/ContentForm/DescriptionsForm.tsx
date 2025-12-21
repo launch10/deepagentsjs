@@ -64,6 +64,7 @@ export default function DescriptionsForm() {
   const { save } = useCampaignAutosave({
     methods,
     fieldMappings: [{ formField: "descriptions", apiField: "descriptions" }],
+    values: [descriptions],
   });
 
   // Attach save function to form registration

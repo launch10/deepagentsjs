@@ -1,16 +1,15 @@
-import { useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useEffect, useRef } from "react";
 import { FieldGroup } from "@components/ui/field";
 import AdCampaignHeadlineInput from "./AdCampaignHeadlineInput";
 import AdCampaignFieldList from "../shared/AdCampaignFieldList";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
-import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
-import { createLockToggleHandler } from "@helpers/handleLockToggle";
+import { useFormRegistration } from "@hooks/useFormRegistration";
 
 const headlinesFormSchema = z.object({
   headlines: z
@@ -25,25 +24,26 @@ export default function HeadlinesForm() {
   const headlines = useAdsChatState("headlines");
   const { setState, updateState } = useAdsChatActions();
 
+  const filteredHeadlines = (headlines || []).filter((h) => !h.rejected);
+  const prevIdsRef = useRef<string[]>([]);
+
   const methods = useForm<HeadlinesFormData>({
     resolver: zodResolver(headlinesFormSchema) as any,
     mode: "onChange",
     defaultValues: {
-      headlines: [],
+      headlines: filteredHeadlines,
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control: methods.control,
-    name: "headlines",
-  });
-
   useEffect(() => {
-    if (headlines?.length) {
-      const filtered = headlines.filter((h) => !h.rejected);
-      methods.setValue("headlines", filtered);
+    const currentIds = filteredHeadlines.map((h) => h.id).join(",");
+    const prevIds = prevIdsRef.current.join(",");
+
+    if (currentIds !== prevIds) {
+      methods.reset({ headlines: filteredHeadlines });
+      prevIdsRef.current = filteredHeadlines.map((h) => h.id);
     }
-  }, [headlines, methods]);
+  }, [filteredHeadlines, methods]);
 
   const handleAddHeadline = (value: string) => {
     const newHeadline: Ads.Headline = {
@@ -52,31 +52,44 @@ export default function HeadlinesForm() {
       locked: false,
       rejected: false,
     };
-    append(newHeadline);
-
-    const updated = [...(headlines || []), newHeadline];
-    setState({ headlines: updated });
+    setState({ headlines: [...(headlines || []), newHeadline] });
   };
 
   const handleDeleteHeadline = (index: number) => {
-    remove(index);
-    const updatedLanggraph = headlines?.filter((h, i) => i !== index);
-    setState({ headlines: updatedLanggraph });
+    const headlineId = filteredHeadlines[index]?.id;
+    if (!headlineId) return;
+    setState({ headlines: headlines?.filter((h) => h.id !== headlineId) });
   };
 
-  const handleLockToggle = createLockToggleHandler(methods, "headlines", () => headlines, setState);
+  const handleLockToggle = (fieldName: string, index: number) => {
+    const headlineId = filteredHeadlines[index]?.id;
+    if (!headlineId) return;
+    setState({
+      headlines: headlines?.map((h) => (h.id === headlineId ? { ...h, locked: !h.locked } : h)),
+    });
+  };
 
   const handleRefreshHeadlines = () => {
     createRefreshHandler("headlines", headlines, updateState);
   };
 
-  const { save } = useCampaignAutosave({
+  const handleInputChange = (index: number, input: string) => {
+    const headlineId = filteredHeadlines[index]?.id;
+    if (!headlineId) return;
+    setState({
+      headlines: headlines?.map((h) => (h.id === headlineId ? { ...h, text: input } : h)),
+    });
+  };
+
+  useCampaignAutosave({
     methods,
     fieldMappings: [{ formField: "headlines", apiField: "headlines" }],
+    values: [headlines],
   });
 
-  // Attach save function to form registration
-  useFormRegistration("content", methods, save);
+  const fields = filteredHeadlines.map((h) => ({ ...h, id: h.id }));
+
+  useFormRegistration("content", methods);
 
   return (
     <FieldGroup className="gap-3">
@@ -89,12 +102,13 @@ export default function HeadlinesForm() {
       />
       <AdCampaignFieldList
         fieldName="headlines"
-        fields={fields}
+        fields={fields as any}
         onLockToggle={handleLockToggle}
         onDelete={handleDeleteHeadline}
         control={methods.control as any}
         placeholder="Headline Option"
         maxLength={30}
+        onInputChange={handleInputChange}
       />
     </FieldGroup>
   );

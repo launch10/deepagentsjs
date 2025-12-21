@@ -19,7 +19,7 @@ const FORMS: Partial<Record<Workflow.AdCampaignSubstepName, React.ComponentType>
 export default function AdsForm() {
   const substep = useWorkflowSteps(selectSubstep);
   const FormComponent = substep ? FORMS[substep as Workflow.AdCampaignSubstepName] : null;
-  if (!FormComponent) return;
+  if (!FormComponent) return null;
 
   return <FormComponent />;
 }
