@@ -112,7 +112,7 @@ export default function AdSchedule() {
             name="timezone"
             control={methods.control}
             render={({ field }) => (
-              <Select {...field}>
+              <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a timezone" />
                 </SelectTrigger>

@@ -28,7 +28,10 @@ export default function DailyBudget() {
               <InputGroupInput
                 type="number"
                 value={field.value}
-                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  field.onChange(val === "" ? "" : Number(val));
+                }}
               />
             )}
           />
