@@ -68,49 +68,75 @@ export const createWorkflowStore = (
   const substep = initialState.substep ?? null;
   const pageNumber = page ? WORKFLOW_STEPS.findIndex((s) => s.name === page) : -1;
   const derived = deriveSubstepState(substep);
+  const hasVisitedReview = substep === "review";
 
-  return createStore<WorkflowStepsStore>()(subscribeWithSelector((set, get) => ({
-    steps: WORKFLOW_STEPS,
-    page,
-    substep,
-    projectUUID: initialState.projectUUID ?? null,
-    pageNumber,
-    ...derived,
+  return createStore<WorkflowStepsStore>()(
+    subscribeWithSelector((set, get) => ({
+      steps: WORKFLOW_STEPS,
+      page,
+      substep,
+      projectUUID: initialState.projectUUID ?? null,
+      pageNumber,
+      ...derived,
+      hasVisitedReview,
+      returnToSection: null,
 
-    setSubstep: (substep) => {
-      set({ substep, ...deriveSubstepState(substep) });
-      pushUrl(get().projectUUID, substep);
-    },
+      setSubstep: (substep, returnToSection) => {
+        const hasVisitedReview = substep === "review" ? true : get().hasVisitedReview;
+        const newReturnToSection =
+          returnToSection !== undefined ? returnToSection : get().returnToSection;
+        set({
+          substep,
+          ...deriveSubstepState(substep),
+          hasVisitedReview,
+          returnToSection: newReturnToSection,
+        });
+        pushUrl(get().projectUUID, substep);
+      },
 
-    syncFromUrl: () => {
-      const substep = getSubstepFromUrl();
-      if (substep) {
-        set({ substep, ...deriveSubstepState(substep) });
-      }
-    },
+      syncFromUrl: () => {
+        const substep = getSubstepFromUrl();
+        if (substep) {
+          const hasVisitedReview = substep === "review" ? true : get().hasVisitedReview;
+          set({ substep, ...deriveSubstepState(substep), hasVisitedReview });
+        }
+      },
 
-    continue: () => {
-      const { substep, projectUUID } = get();
-      const currentIndex = substep
-        ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName)
-        : -1;
-      const nextSubstep = AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex + 1];
-      if (nextSubstep) {
-        set({ substep: nextSubstep, ...deriveSubstepState(nextSubstep) });
-        pushUrl(projectUUID, nextSubstep);
-      }
-    },
+      continue: () => {
+        const { substep, projectUUID } = get();
+        const currentIndex = substep
+          ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName)
+          : -1;
+        const nextSubstep = AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex + 1];
+        if (nextSubstep) {
+          const hasVisitedReview = nextSubstep === "review" ? true : get().hasVisitedReview;
+          set({ substep: nextSubstep, ...deriveSubstepState(nextSubstep), hasVisitedReview });
+          pushUrl(projectUUID, nextSubstep);
+        }
+      },
 
-    back: () => {
-      const { substep, projectUUID } = get();
-      const currentIndex = substep
-        ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName)
-        : -1;
-      const prevSubstep = AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex - 1];
-      if (prevSubstep) {
-        set({ substep: prevSubstep, ...deriveSubstepState(prevSubstep) });
-        pushUrl(projectUUID, prevSubstep);
-      }
-    },
-  })));
+      back: () => {
+        const { substep, projectUUID } = get();
+        const currentIndex = substep
+          ? AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(substep as Workflow.AdCampaignSubstepName)
+          : -1;
+        const prevSubstep = AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex - 1];
+        if (prevSubstep) {
+          set({ substep: prevSubstep, ...deriveSubstepState(prevSubstep) });
+          pushUrl(projectUUID, prevSubstep);
+        }
+      },
+
+      returnToReview: () => {
+        const { projectUUID } = get();
+        const reviewSubstep = "review" as Workflow.SubstepName;
+        set({ substep: reviewSubstep, ...deriveSubstepState(reviewSubstep) });
+        pushUrl(projectUUID, reviewSubstep);
+      },
+
+      clearReturnToSection: () => {
+        set({ returnToSection: null });
+      },
+    }))
+  );
 };
