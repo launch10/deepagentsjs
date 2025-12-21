@@ -637,6 +637,7 @@ export interface components {
                 /** @description Campaign ID */
                 id?: number;
                 name?: string;
+                daily_budget_cents?: number | null;
             } | null;
             ad_group?: {
                 id?: number;
@@ -657,7 +658,16 @@ export interface components {
                 id?: number;
                 text?: string;
             }[] | null;
-            location_targets?: Record<string, never>[] | null;
+            location_targets?: {
+                target_type?: string;
+                targeted?: boolean;
+                geo_target_constant?: string | null;
+                location_name?: string | null;
+                location_type?: string | null;
+                country_code?: string | null;
+                radius?: number | null;
+                radius_units?: string | null;
+            }[] | null;
             callouts?: {
                 id?: number;
                 text?: string;
@@ -666,7 +676,13 @@ export interface components {
                 category?: string;
                 values?: string[];
             } | null;
-            ad_schedule?: Record<string, never> | null;
+            ad_schedule?: {
+                always_on?: boolean;
+                day_of_week?: string[];
+                start_time?: string | null;
+                end_time?: string | null;
+                time_zone?: string;
+            } | null;
         };
         LaunchProps: {
             /** @description Base URL of the application */
@@ -718,6 +734,7 @@ export interface components {
                 /** @description Campaign ID */
                 id?: number;
                 name?: string;
+                daily_budget_cents?: number | null;
             } | null;
             ad_group?: {
                 id?: number;
@@ -738,7 +755,16 @@ export interface components {
                 id?: number;
                 text?: string;
             }[] | null;
-            location_targets?: Record<string, never>[] | null;
+            location_targets?: {
+                target_type?: string;
+                targeted?: boolean;
+                geo_target_constant?: string | null;
+                location_name?: string | null;
+                location_type?: string | null;
+                country_code?: string | null;
+                radius?: number | null;
+                radius_units?: string | null;
+            }[] | null;
             callouts?: {
                 id?: number;
                 text?: string;
@@ -747,7 +773,13 @@ export interface components {
                 category?: string;
                 values?: string[];
             } | null;
-            ad_schedule?: Record<string, never> | null;
+            ad_schedule?: {
+                always_on?: boolean;
+                day_of_week?: string[];
+                start_time?: string | null;
+                end_time?: string | null;
+                time_zone?: string;
+            } | null;
             deployment?: {
                 id?: number;
                 status?: string;

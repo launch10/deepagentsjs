@@ -86,7 +86,7 @@ module ProjectConcerns
         ad = ad_group.ads.first
 
         result.merge!({
-          campaign: campaign.as_json,
+          campaign: campaign.as_json.merge(daily_budget_cents: campaign.daily_budget_cents),
           ad_group: ad_group.as_json,
           ad: ad.as_json,
           headlines: campaign.headlines.as_json,
