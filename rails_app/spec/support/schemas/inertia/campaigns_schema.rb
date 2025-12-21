@@ -59,7 +59,8 @@ module InertiaSchemas
           additionalProperties: false,
           properties: {
             id: { type: :integer, description: 'Campaign ID' },
-            name: { type: :string }
+            name: { type: :string },
+            daily_budget_cents: { type: :integer, nullable: true }
           }
         ),
         ad_group: InertiaSchemas.nullable(
@@ -115,7 +116,20 @@ module InertiaSchemas
         ),
         location_targets: InertiaSchemas.nullable(
           type: :array,
-          items: { type: :object, additionalProperties: false }
+          items: {
+            type: :object,
+            additionalProperties: false,
+            properties: {
+              target_type: { type: :string },
+              targeted: { type: :boolean },
+              geo_target_constant: { type: :string, nullable: true },
+              location_name: { type: :string, nullable: true },
+              location_type: { type: :string, nullable: true },
+              country_code: { type: :string, nullable: true },
+              radius: { type: :number, nullable: true },
+              radius_units: { type: :string, nullable: true }
+            }
+          }
         ),
         callouts: InertiaSchemas.nullable(
           type: :array,
@@ -138,7 +152,14 @@ module InertiaSchemas
         ),
         ad_schedule: InertiaSchemas.nullable(
           type: :object,
-          additionalProperties: false
+          additionalProperties: false,
+          properties: {
+            always_on: { type: :boolean },
+            day_of_week: { type: :array, items: { type: :string } },
+            start_time: { type: :string, nullable: true },
+            end_time: { type: :string, nullable: true },
+            time_zone: { type: :string }
+          }
         )
       }
     end

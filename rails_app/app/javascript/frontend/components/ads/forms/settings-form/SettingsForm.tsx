@@ -11,16 +11,23 @@ import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-ca
 import LocationTargeting from "./LocationTargeting";
 import AdSchedule from "./AdSchedule";
 import DailyBudget from "./DailyBudget";
-import { settingsFormSchema, type SettingsFormData } from "./settingsForm.schema";
-import { transformSettingsFormToApi } from "./settingsForm.transforms";
+import { settingsFormSchema, settingsFormDefaults, type SettingsFormData } from "./settingsForm.schema";
+import {
+  transformSettingsFormToApi,
+  transformLocationsFromApi,
+  transformScheduleFromApi,
+  transformBudgetFromApi,
+} from "./settingsForm.transforms";
 
 export default function SettingsForm() {
   const { values, setValues } = useSettingsFormStore();
-  const campaignId = usePage<CampaignProps>().props.campaign?.id;
+  const { campaign, location_targets, ad_schedule } = usePage<CampaignProps>().props;
+  const campaignId = campaign?.id;
   const autosaveMutation = useAutosaveCampaign(campaignId);
 
   const isInitialMount = useRef(true);
   const lastSavedValue = useRef<string | null>(null);
+  const hasInitializedFromProps = useRef(false);
 
   const methods = useForm<SettingsFormData>({
     resolver: zodResolver(settingsFormSchema) as any,
@@ -29,6 +36,34 @@ export default function SettingsForm() {
   });
 
   useFormRegistration("settings", methods);
+
+  useEffect(() => {
+    if (hasInitializedFromProps.current) return;
+
+    const locations = transformLocationsFromApi(location_targets);
+    const schedule = transformScheduleFromApi(ad_schedule);
+    const budget = transformBudgetFromApi(campaign?.daily_budget_cents);
+
+    const hasData =
+      locations.length > 0 ||
+      schedule.selectedDays !== settingsFormDefaults.selectedDays ||
+      budget !== settingsFormDefaults.budget;
+
+    if (hasData) {
+      const newValues: SettingsFormData = {
+        locations,
+        selectedDays: schedule.selectedDays,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
+        timezone: schedule.timezone,
+        budget,
+      };
+
+      methods.reset(newValues);
+      setValues(newValues);
+      hasInitializedFromProps.current = true;
+    }
+  }, [location_targets, ad_schedule, campaign?.daily_budget_cents, methods, setValues]);
 
   // Sync form values to Zustand store
   useEffect(() => {
