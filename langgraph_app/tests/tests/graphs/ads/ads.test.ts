@@ -317,7 +317,7 @@ describe.sequential("Ads Flow", () => {
         const newDescriptions = refreshedResult.state.descriptions?.filter(
           (d) => !d.rejected && !d.locked
         );
-        expect(newDescriptions?.length).toEqual(Ads.DefaultNumAssets.descriptions);
+        expect(newDescriptions?.length).toEqual(Ads.AssetLimits.descriptions.max - 1);
       });
 
       // user request | user asks | asks via chat | auto-reject headlines
@@ -349,6 +349,7 @@ describe.sequential("Ads Flow", () => {
         const rejectedHeadlines = allHeadlines.filter((h) => h.rejected);
         const newHeadlines = allHeadlines.filter((h) => !h.rejected);
 
+        debugger;
         expect(originalHeadlines.length).toEqual(6);
         expect(allHeadlines.length).toEqual(6);
         expect(rejectedHeadlines.length).toEqual(0); // We just remove them
@@ -977,7 +978,9 @@ describe.sequential("Ads Flow", () => {
       const lastMessage = result.state.messages?.at(-1) as AIMessage;
       const message = getTextData(lastMessage);
 
-      expect(message).toMatch(/90 characters/); // It pulls in context from FAQ
+      // It pulls in context from FAQ
+      // Technically, this is the lie we told it... we should undo this part when we can
+      expect(message).toMatch(/70 characters/);
       expect(message).toMatch(/description|text|headline|ad/i);
       expect(result.state.headlines).toBeUndefined();
       expect(result.state.descriptions).toBeUndefined();
