@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePage } from "@inertiajs/react";
@@ -10,11 +10,7 @@ import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-ca
 import LocationTargeting from "./LocationTargeting";
 import AdSchedule from "./AdSchedule";
 import DailyBudget from "./DailyBudget";
-import {
-  settingsFormSchema,
-  settingsFormDefaults,
-  type SettingsFormData,
-} from "./settingsForm.schema";
+import { settingsFormSchema, type SettingsFormData } from "./settingsForm.schema";
 import {
   transformSettingsFormToApi,
   transformLocationsFromApi,
@@ -23,10 +19,8 @@ import {
 } from "./settingsForm.transforms";
 
 export default function SettingsForm() {
-  const { values, setValues } = useSettingsFormStore();
+  const { values, setValues, hydrateOnce } = useSettingsFormStore();
   const { campaign, location_targets, ad_schedule } = usePage<CampaignProps>().props;
-
-  const hasInitializedFromProps = useRef(false);
 
   const methods = useForm<SettingsFormData>({
     resolver: zodResolver(settingsFormSchema) as any,
@@ -34,33 +28,21 @@ export default function SettingsForm() {
     defaultValues: values,
   });
 
-  useEffect(() => {
-    if (hasInitializedFromProps.current) return;
+  const hydrate = useEffectEvent(() => {
+    const inertiaProps: SettingsFormData = {
+      locations: transformLocationsFromApi(location_targets),
+      ...transformScheduleFromApi(ad_schedule),
+      budget: transformBudgetFromApi(campaign?.daily_budget_cents),
+    };
 
-    const locations = transformLocationsFromApi(location_targets);
-    const schedule = transformScheduleFromApi(ad_schedule);
-    const budget = transformBudgetFromApi(campaign?.daily_budget_cents);
-
-    const hasData =
-      locations.length > 0 ||
-      schedule.selectedDays !== settingsFormDefaults.selectedDays ||
-      budget !== settingsFormDefaults.budget;
-
-    if (hasData) {
-      const newValues: SettingsFormData = {
-        locations,
-        selectedDays: schedule.selectedDays,
-        startTime: schedule.startTime,
-        endTime: schedule.endTime,
-        timezone: schedule.timezone,
-        budget,
-      };
-
-      methods.reset(newValues);
-      setValues(newValues);
-      hasInitializedFromProps.current = true;
+    if (hydrateOnce(inertiaProps)) {
+      methods.reset(inertiaProps);
     }
-  }, [location_targets, ad_schedule, campaign?.daily_budget_cents, methods, setValues]);
+  });
+
+  useEffect(() => {
+    hydrate();
+  }, [location_targets, ad_schedule, campaign?.daily_budget_cents]);
 
   useEffect(() => {
     const subscription = methods.watch((formValues) => {

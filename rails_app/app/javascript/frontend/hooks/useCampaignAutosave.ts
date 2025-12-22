@@ -63,7 +63,7 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
     return apiData;
   }, []);
 
-  const { mutate, mutateAsync, cancel, isPending, error } = useLatestMutation<
+  const { mutateDebounced, mutateNowAsync, cancel, isPending, error } = useLatestMutation<
     UpdateCampaignResponse,
     void
   >({
@@ -107,14 +107,14 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
 
       const apiData = getApiData();
       if (apiData) {
-        mutate();
+        mutateDebounced();
       } else {
         cancel();
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [methods, shouldAutosave, campaignId, getApiData, mutate, cancel]);
+  }, [methods, shouldAutosave, campaignId, getApiData, mutateDebounced, cancel]);
 
   const saveNow = useCallback(async () => {
     if (!campaignId) {
@@ -126,8 +126,8 @@ export function useCampaignAutosave<TFormData extends FieldValues>({
       return;
     }
 
-    await mutateAsync();
-  }, [campaignId, getApiData, mutateAsync]);
+    await mutateNowAsync();
+  }, [campaignId, getApiData, mutateNowAsync]);
 
   return {
     isAutosaving: isPending,

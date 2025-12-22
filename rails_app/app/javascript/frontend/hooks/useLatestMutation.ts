@@ -19,9 +19,10 @@ interface LatestMutationOptions<TData, TVariables> {
 }
 
 interface LatestMutationResult<TData, TVariables> {
-  mutate: (variables: TVariables) => void;
+  mutateDebounced: (variables: TVariables) => void;
+  mutateDebouncedAsync: (variables: TVariables) => Promise<TData>;
   mutateNow: (variables: TVariables) => void;
-  mutateAsync: (variables: TVariables) => Promise<TData>;
+  mutateNowAsync: (variables: TVariables) => Promise<TData>;
   cancel: () => void;
   flush: () => void;
   reset: () => void;
@@ -38,9 +39,11 @@ interface LatestMutationResult<TData, TVariables> {
 // Simple Async Debouncer (replaces @tanstack/react-pacer)
 // =============================================================================
 
-interface AsyncDebouncerState<TVariables> {
+interface AsyncDebouncerState<TVariables, TResult> {
   timeoutId: ReturnType<typeof setTimeout> | null;
   pendingVariables: TVariables | null;
+  pendingResolve: ((value: TResult) => void) | null;
+  pendingReject: ((error: unknown) => void) | null;
 }
 
 function useAsyncDebouncer<TVariables, TResult>(
@@ -54,9 +57,11 @@ function useAsyncDebouncer<TVariables, TResult>(
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
 
-  const state = useRef<AsyncDebouncerState<TVariables>>({
+  const state = useRef<AsyncDebouncerState<TVariables, TResult>>({
     timeoutId: null,
     pendingVariables: null,
+    pendingResolve: null,
+    pendingReject: null,
   });
 
   const cancel = useCallback(() => {
@@ -65,6 +70,8 @@ function useAsyncDebouncer<TVariables, TResult>(
       state.current.timeoutId = null;
     }
     state.current.pendingVariables = null;
+    state.current.pendingResolve = null;
+    state.current.pendingReject = null;
   }, []);
 
   const flush = useCallback(() => {
@@ -72,10 +79,18 @@ function useAsyncDebouncer<TVariables, TResult>(
       clearTimeout(state.current.timeoutId);
       state.current.timeoutId = null;
       const variables = state.current.pendingVariables;
+      const resolve = state.current.pendingResolve;
+      const reject = state.current.pendingReject;
       state.current.pendingVariables = null;
-      fnRef.current(variables).catch((error) => {
-        onErrorRef.current?.(error);
-      });
+      state.current.pendingResolve = null;
+      state.current.pendingReject = null;
+      fnRef
+        .current(variables)
+        .then((result) => resolve?.(result))
+        .catch((error) => {
+          reject?.(error);
+          onErrorRef.current?.(error);
+        });
     }
   }, []);
 
@@ -86,13 +101,51 @@ function useAsyncDebouncer<TVariables, TResult>(
       state.current.timeoutId = setTimeout(() => {
         state.current.timeoutId = null;
         const vars = state.current.pendingVariables;
+        const resolve = state.current.pendingResolve;
+        const reject = state.current.pendingReject;
         state.current.pendingVariables = null;
+        state.current.pendingResolve = null;
+        state.current.pendingReject = null;
         if (vars !== null) {
-          fnRef.current(vars).catch((error) => {
-            onErrorRef.current?.(error);
-          });
+          fnRef
+            .current(vars)
+            .then((result) => resolve?.(result))
+            .catch((error) => {
+              reject?.(error);
+              onErrorRef.current?.(error);
+            });
         }
       }, wait);
+    },
+    [wait, cancel]
+  );
+
+  const maybeExecuteAsync = useCallback(
+    (variables: TVariables): Promise<TResult> => {
+      return new Promise((resolve, reject) => {
+        cancel();
+        state.current.pendingVariables = variables;
+        state.current.pendingResolve = resolve;
+        state.current.pendingReject = reject;
+        state.current.timeoutId = setTimeout(() => {
+          state.current.timeoutId = null;
+          const vars = state.current.pendingVariables;
+          const res = state.current.pendingResolve;
+          const rej = state.current.pendingReject;
+          state.current.pendingVariables = null;
+          state.current.pendingResolve = null;
+          state.current.pendingReject = null;
+          if (vars !== null) {
+            fnRef
+              .current(vars)
+              .then((result) => res?.(result))
+              .catch((error) => {
+                rej?.(error);
+                onErrorRef.current?.(error);
+              });
+          }
+        }, wait);
+      });
     },
     [wait, cancel]
   );
@@ -103,7 +156,7 @@ function useAsyncDebouncer<TVariables, TResult>(
     };
   }, [cancel]);
 
-  return { maybeExecute, cancel, flush };
+  return { maybeExecute, maybeExecuteAsync, cancel, flush };
 }
 
 // =============================================================================
@@ -239,7 +292,7 @@ export function useLatestMutation<TData, TVariables>({
   const debouncerRef = useRef(debouncer);
   debouncerRef.current = debouncer;
 
-  const mutate = useCallback(
+  const mutateDebounced = useCallback(
     (variables: TVariables) => {
       if (debounceMs <= 0) {
         mutationRef.current.mutate(variables);
@@ -250,12 +303,22 @@ export function useLatestMutation<TData, TVariables>({
     [debounceMs]
   );
 
+  const mutateDebouncedAsync = useCallback(
+    (variables: TVariables): Promise<TData> => {
+      if (debounceMs <= 0) {
+        return mutationRef.current.mutateAsync(variables);
+      }
+      return debouncerRef.current.maybeExecuteAsync(variables);
+    },
+    [debounceMs]
+  );
+
   const mutateNow = useCallback((variables: TVariables) => {
     debouncerRef.current.cancel();
     mutationRef.current.mutate(variables);
   }, []);
 
-  const mutateAsync = useCallback(async (variables: TVariables): Promise<TData> => {
+  const mutateNowAsync = useCallback(async (variables: TVariables): Promise<TData> => {
     debouncerRef.current.cancel();
     return mutationRef.current.mutateAsync(variables);
   }, []);
@@ -286,9 +349,10 @@ export function useLatestMutation<TData, TVariables>({
   const isRealError = mutation.isError && !isAbortOrSuperseded(mutation.error);
 
   return {
-    mutate,
+    mutateDebounced,
+    mutateDebouncedAsync,
     mutateNow,
-    mutateAsync,
+    mutateNowAsync,
     cancel,
     flush,
     reset,

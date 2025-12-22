@@ -49,7 +49,7 @@ describe("useLatestMutation", () => {
       expect(result.current.isIdle).toBe(true);
 
       await act(async () => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
         await flushPromises();
       });
 
@@ -83,7 +83,7 @@ describe("useLatestMutation", () => {
       );
 
       await act(async () => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
         await flushPromises();
       });
 
@@ -124,9 +124,9 @@ describe("useLatestMutation", () => {
       );
 
       await act(async () => {
-        result.current.mutate({ value: "first" });
-        result.current.mutate({ value: "second" });
-        result.current.mutate({ value: "third" });
+        result.current.mutateDebounced({ value: "first" });
+        result.current.mutateDebounced({ value: "second" });
+        result.current.mutateDebounced({ value: "third" });
       });
 
       expect(mutationFn).not.toHaveBeenCalled();
@@ -158,7 +158,7 @@ describe("useLatestMutation", () => {
       );
 
       await act(async () => {
-        result.current.mutate({ value: "debounced" });
+        result.current.mutateDebounced({ value: "debounced" });
       });
 
       expect(mutationFn).not.toHaveBeenCalled();
@@ -191,7 +191,7 @@ describe("useLatestMutation", () => {
       );
 
       await act(async () => {
-        result.current.mutate({ value: "pending" });
+        result.current.mutateDebounced({ value: "pending" });
       });
 
       expect(mutationFn).not.toHaveBeenCalled();
@@ -234,7 +234,7 @@ describe("useLatestMutation", () => {
       );
 
       await act(async () => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
         await flushPromises();
       });
 
@@ -242,7 +242,7 @@ describe("useLatestMutation", () => {
       expect(signals[0].aborted).toBe(false);
 
       await act(async () => {
-        result.current.mutate({ id: 2 });
+        result.current.mutateDebounced({ id: 2 });
         await flushPromises();
       });
 
@@ -279,12 +279,12 @@ describe("useLatestMutation", () => {
       );
 
       await act(async () => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
         await flushPromises();
       });
 
       await act(async () => {
-        result.current.mutate({ id: 2 });
+        result.current.mutateDebounced({ id: 2 });
         await flushPromises();
       });
 
@@ -327,7 +327,7 @@ describe("useLatestMutation", () => {
       );
 
       await act(async () => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
         await flushPromises();
       });
 
@@ -361,7 +361,7 @@ describe("useLatestMutation", () => {
       );
 
       await act(async () => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
         await flushPromises();
       });
 
@@ -405,12 +405,12 @@ describe("useLatestMutation", () => {
       );
 
       await act(async () => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
         await flushPromises();
       });
 
       await act(async () => {
-        result.current.mutate({ id: 2 });
+        result.current.mutateDebounced({ id: 2 });
         await flushPromises();
       });
 
@@ -444,7 +444,7 @@ describe("useLatestMutation", () => {
       );
 
       act(() => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
       });
 
       await act(async () => {
@@ -470,7 +470,7 @@ describe("useLatestMutation", () => {
       );
 
       act(() => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
       });
 
       await act(async () => {
@@ -497,7 +497,7 @@ describe("useLatestMutation", () => {
       );
 
       act(() => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
       });
 
       await act(async () => {
@@ -530,7 +530,7 @@ describe("useLatestMutation", () => {
       );
 
       act(() => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
       });
 
       await act(async () => {
@@ -561,7 +561,7 @@ describe("useLatestMutation", () => {
       );
 
       await act(async () => {
-        result.current.mutate({ id: 1 });
+        result.current.mutateDebounced({ id: 1 });
         await flushPromises();
       });
 
@@ -576,7 +576,7 @@ describe("useLatestMutation", () => {
     });
   });
 
-  describe("mutateAsync", () => {
+  describe("mutateNowAsync", () => {
     it("returns a promise that resolves with data", async () => {
       const deferred = createDeferred<{ success: boolean }>();
       const mutationFn = vi.fn().mockReturnValue(deferred.promise);
@@ -594,7 +594,7 @@ describe("useLatestMutation", () => {
       let promiseSettled = false;
 
       act(() => {
-        result.current.mutateAsync({ id: 1 }).then((data) => {
+        result.current.mutateNowAsync({ id: 1 }).then((data) => {
           resolvedData = data;
           promiseSettled = true;
         });
@@ -626,7 +626,7 @@ describe("useLatestMutation", () => {
       let promiseSettled = false;
 
       act(() => {
-        result.current.mutateAsync({ id: 1 }).catch((err) => {
+        result.current.mutateNowAsync({ id: 1 }).catch((err) => {
           rejectedError = err;
           promiseSettled = true;
         });

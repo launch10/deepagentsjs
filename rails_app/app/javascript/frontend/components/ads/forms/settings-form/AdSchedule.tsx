@@ -2,7 +2,6 @@ import { useFormContext, Controller } from "react-hook-form";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@components/ui/field";
 import { cn } from "@lib/utils";
 import type { SettingsFormData } from "./settingsForm.schema";
-import { Input } from "@components/ui/input";
 import {
   Select,
   SelectTrigger,
@@ -22,6 +21,21 @@ const TIMEZONES = [
   { value: "MST", label: "Mountain Standard Time - MST (GMT-7)" },
   { value: "PST", label: "Pacific Standard Time - PST (GMT-8)" },
 ];
+
+const TIME_OPTIONS = (() => {
+  const options: { value: string; label: string; textValue: string }[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (const minute of ["00", "15", "30", "45"]) {
+      const value = `${hour.toString().padStart(2, "0")}:${minute}`;
+      const h = hour % 12 || 12;
+      const ampm = hour < 12 ? "AM" : "PM";
+      const label = `${h}:${minute} ${ampm}`;
+      const textValue = `${h}:${minute}`;
+      options.push({ value, label, textValue });
+    }
+  }
+  return options;
+})();
 
 export default function AdSchedule() {
   const methods = useFormContext<SettingsFormData>();
@@ -86,7 +100,18 @@ export default function AdSchedule() {
             name="startTime"
             control={methods.control}
             render={({ field }) => (
-              <Input type="time" value={field.value} onChange={field.onChange} />
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select start time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIME_OPTIONS.map((time) => (
+                    <SelectItem key={time.value} value={time.value} textValue={time.textValue}>
+                      {time.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           />
           <FieldError errors={[{ message: methods.formState.errors.startTime?.message }]} />
@@ -99,7 +124,18 @@ export default function AdSchedule() {
             name="endTime"
             control={methods.control}
             render={({ field }) => (
-              <Input type="time" value={field.value} onChange={field.onChange} />
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select end time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIME_OPTIONS.map((time) => (
+                    <SelectItem key={time.value} value={time.value} textValue={time.textValue}>
+                      {time.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           />
           <FieldError errors={[{ message: methods.formState.errors.endTime?.message }]} />

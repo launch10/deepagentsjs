@@ -10,14 +10,39 @@ const LocationSchema = z.object({
   isTargeted: z.boolean(),
 });
 
-export const settingsFormSchema = z.object({
-  locations: z.array(LocationSchema).min(1, "You need to select at least 1 location"),
-  selectedDays: z.array(z.string()).min(1, "Select at least one day"),
-  startTime: z.string().min(1, "Start time is required"),
-  endTime: z.string().min(1, "End time is required"),
-  timezone: z.string().min(1, "Timezone is required"),
-  budget: z.number().min(1, "Budget must be at least $1"),
-});
+const VALID_MINUTES = ["00", "15", "30", "45"] as const;
+
+const timeSchema = z.string().refine(
+  (val) => {
+    const match = val.match(/^(\d{2}):(\d{2})$/);
+    if (!match) return false;
+    const [, hours, minutes] = match;
+    const h = parseInt(hours, 10);
+    const validMinute = VALID_MINUTES.includes(minutes as (typeof VALID_MINUTES)[number]);
+    return h >= 0 && h <= 23 && validMinute;
+  },
+  { message: "Time must be in 15-minute increments (00, 15, 30, 45)" }
+);
+
+export const settingsFormSchema = z
+  .object({
+    locations: z.array(LocationSchema),
+    selectedDays: z.array(z.string()).min(1, "Select at least one day"),
+    startTime: timeSchema,
+    endTime: timeSchema,
+    timezone: z.string().min(1, "Timezone is required"),
+    budget: z.number().min(1, "Budget must be at least $1"),
+  })
+  .superRefine((data, ctx) => {
+    const targetedLocations = data.locations.filter((loc) => loc.isTargeted);
+    if (targetedLocations.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Must have at least 1 targeted location",
+        path: ["locations"],
+      });
+    }
+  });
 
 export type SettingsFormData = z.infer<typeof settingsFormSchema>;
 export type LocationWithSettings = z.infer<typeof LocationSchema>;

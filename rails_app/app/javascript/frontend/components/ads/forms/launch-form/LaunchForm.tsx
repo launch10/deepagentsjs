@@ -10,7 +10,7 @@ import { useFormRegistration } from "@hooks/useFormRegistration";
 import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
 import { useLaunchFormStore } from "@stores/launchFormStore";
 import { Sparkles } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { usePage } from "@inertiajs/react";
 import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
@@ -26,30 +26,30 @@ import {
 import { transformLaunchFormToApi } from "./launchForm.transforms";
 
 export default function LaunchForm() {
-  const { values, setValues } = useLaunchFormStore();
+  const { values, setValues, hydrateOnce } = useLaunchFormStore();
   const { campaign } = usePage<CampaignProps>().props;
-
-  const hasInitializedFromProps = useRef(false);
-
-  const defaultValues =
-    campaign?.name && !values.campaignName ? { ...values, campaignName: campaign.name } : values;
 
   const methods = useForm<LaunchFormData>({
     resolver: zodResolver(launchFormSchema) as any,
     mode: "onChange",
-    defaultValues,
+    defaultValues: values,
+  });
+
+  const hydrate = useEffectEvent(() => {
+    if (campaign?.name) {
+      const newValues: LaunchFormData = {
+        ...launchFormDefaults,
+        campaignName: campaign.name,
+      };
+      if (hydrateOnce(newValues)) {
+        methods.reset(newValues);
+      }
+    }
   });
 
   useEffect(() => {
-    if (campaign?.name && !hasInitializedFromProps.current) {
-      const currentValue = methods.getValues("campaignName");
-      if (!currentValue || currentValue === launchFormDefaults.campaignName) {
-        methods.setValue("campaignName", campaign.name);
-        setValues({ campaignName: campaign.name });
-        hasInitializedFromProps.current = true;
-      }
-    }
-  }, [campaign?.name, methods, setValues]);
+    hydrate();
+  }, [campaign?.name]);
 
   useEffect(() => {
     const subscription = methods.watch((formValues) => {
