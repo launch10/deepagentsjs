@@ -20,7 +20,6 @@ describe("settingsForm.transforms", () => {
           canonical_name: "New York, United States",
           target_type: "CITY",
           country_code: "US",
-          radius: 25,
           isTargeted: true,
         },
       ];
@@ -34,8 +33,6 @@ describe("settingsForm.transforms", () => {
           country_code: "US",
           targeted: true,
           google_criterion_id: "1014221",
-          radius: 25,
-          radius_units: "MILES",
         },
       ]);
     });
@@ -48,7 +45,6 @@ describe("settingsForm.transforms", () => {
           canonical_name: "New York, United States",
           target_type: "CITY",
           country_code: "US",
-          radius: 25,
           isTargeted: true,
         },
         {
@@ -57,7 +53,6 @@ describe("settingsForm.transforms", () => {
           canonical_name: "Los Angeles, United States",
           target_type: "CITY",
           country_code: "US",
-          radius: 50,
           isTargeted: false,
         },
       ];
@@ -86,7 +81,6 @@ describe("settingsForm.transforms", () => {
           targeted: true,
           geo_target_constant: "geoTargetConstants/1014221",
           location_type: "CITY",
-          radius: 25,
         },
       ];
 
@@ -99,7 +93,6 @@ describe("settingsForm.transforms", () => {
           canonical_name: "New York",
           target_type: "CITY",
           country_code: "US",
-          radius: 25,
           isTargeted: true,
         },
       ]);
@@ -126,7 +119,6 @@ describe("settingsForm.transforms", () => {
           targeted: true,
           geo_target_constant: "geoTargetConstants/1014221",
           location_type: "CITY",
-          radius: 25,
         },
         {
           target_type: "proximity",
@@ -289,7 +281,6 @@ describe("settingsForm.transforms", () => {
             canonical_name: "New York, United States",
             target_type: "CITY",
             country_code: "US",
-            radius: 25,
             isTargeted: true,
           },
         ],
@@ -310,8 +301,6 @@ describe("settingsForm.transforms", () => {
             country_code: "US",
             targeted: true,
             google_criterion_id: "1014221",
-            radius: 25,
-            radius_units: "MILES",
           },
         ],
         ad_schedules: {

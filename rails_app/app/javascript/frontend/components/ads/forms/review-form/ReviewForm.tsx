@@ -180,7 +180,7 @@ export default function ReviewForm() {
                     <InputGroupInput value={location.name} readOnly />
                     <InputGroupAddon align="inline-start">{location.target_type}</InputGroupAddon>
                     <InputGroupAddon align="inline-end">
-                      {location.isTargeted ? `Radius: ${location.radius} miles` : "Excluded"}
+                      {location.isTargeted ? "Targeted" : "Excluded"}
                     </InputGroupAddon>
                   </InputGroup>
                 ))

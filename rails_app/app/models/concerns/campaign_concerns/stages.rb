@@ -203,10 +203,6 @@ module CampaignConcerns
         errors.add(:start_date, "must be configured")
       end
 
-      if end_date.blank?
-        errors.add(:end_date, "must be configured")
-      end
-
       errors.empty?
     end
 

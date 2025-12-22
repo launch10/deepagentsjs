@@ -6,7 +6,6 @@ const LocationSchema = z.object({
   canonical_name: z.string(),
   target_type: z.string(),
   country_code: z.string(),
-  radius: z.number().min(1),
   isTargeted: z.boolean(),
 });
 
@@ -24,16 +23,24 @@ const timeSchema = z.string().refine(
   { message: "Time must be in 15-minute increments (00, 15, 30, 45)" }
 );
 
-export const settingsFormSchema = z.object({
-  locations: z.array(LocationSchema).refine((locs) => locs.some((loc) => loc.isTargeted), {
-    message: "Must have at least 1 targeted location",
-  }),
-  selectedDays: z.array(z.string()).min(1, "Select at least one day"),
-  startTime: timeSchema,
-  endTime: timeSchema,
-  timezone: z.string().min(1, "Timezone is required"),
-  budget: z.number().min(1, "Budget must be at least $1"),
-});
+export const settingsFormSchema = z
+  .object({
+    locations: z.array(LocationSchema).refine((locs) => locs.some((loc) => loc.isTargeted), {
+      message: "Must have at least 1 targeted location",
+    }),
+    selectedDays: z.array(z.string()).min(1, "Select at least one day"),
+    startTime: timeSchema,
+    endTime: timeSchema,
+    timezone: z.string().min(1, "Timezone is required"),
+    budget: z.number().min(1, "Budget must be at least $1"),
+  })
+  .refine(
+    (data) => {
+      if (data.selectedDays.includes("Always On")) return true;
+      return data.endTime > data.startTime;
+    },
+    { message: "End time must be after start time", path: ["endTime"] }
+  );
 
 export type SettingsFormData = z.infer<typeof settingsFormSchema>;
 export type LocationWithSettings = z.infer<typeof LocationSchema>;
@@ -44,5 +51,5 @@ export const settingsFormDefaults: SettingsFormData = {
   startTime: "09:00",
   endTime: "17:00",
   timezone: "EST",
-  budget: 500,
+  budget: 10,
 };

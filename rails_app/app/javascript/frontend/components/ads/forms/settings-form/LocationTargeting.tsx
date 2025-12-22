@@ -12,7 +12,19 @@ import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-ca
 import type { SettingsFormData, LocationWithSettings } from "./settingsForm.schema";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/input-group";
 import LocationTargetingItem from "./LocationTargetingItem";
+import { useSettingsFormStore } from "@stores/settingsFormStore";
+
 type GeoTarget = NonNullable<SearchGeoTargetConstantsResponse>[number];
+
+const DefaultLocationTarget: GeoTarget = {
+  id: 31022,
+  criteria_id: 2840,
+  name: "United States",
+  canonical_name: "United States",
+  country_code: "US",
+  target_type: "Country",
+  status: "Active",
+};
 
 export default function LocationTargeting() {
   const [searchValue, setSearchValue] = useState("");
@@ -67,7 +79,6 @@ export default function LocationTargeting() {
       canonical_name: location.canonical_name,
       target_type: location.target_type,
       country_code: location.country_code!,
-      radius: 10,
       isTargeted: true,
     };
     append(newLocation);
@@ -85,6 +96,16 @@ export default function LocationTargeting() {
     const current = fields[index];
     update(index, { ...current, isTargeted: !current.isTargeted });
   };
+
+  const hasInitialized = useRef(false);
+  const { hasHydrated } = useSettingsFormStore();
+
+  useEffect(() => {
+    if (hasHydrated && !hasInitialized.current && fields.length === 0) {
+      hasInitialized.current = true;
+      handleSelectLocation(DefaultLocationTarget);
+    }
+  }, [hasHydrated, fields.length]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

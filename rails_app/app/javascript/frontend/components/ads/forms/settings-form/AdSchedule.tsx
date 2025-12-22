@@ -42,6 +42,7 @@ export default function AdSchedule() {
   const { errors } = useFormState({ control });
 
   const selectedDays = watch("selectedDays");
+  const isAlwaysOn = selectedDays.includes("Always On");
 
   const toggleDay = (day: DayOfWeek) => {
     const current = getValues("selectedDays");
@@ -92,80 +93,88 @@ export default function AdSchedule() {
         <FieldError errors={[{ message: errors.selectedDays?.message }]} />
       </Field>
 
-      <div className="flex gap-3 items-start">
-        <Field className="flex flex-col gap-2 w-[212px]">
-          <FieldLabel className="text-xs font-semibold leading-4 text-base-400" htmlFor="startTime">
-            Start Time
-          </FieldLabel>
-          <Controller
-            name="startTime"
-            control={control}
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select start time" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIME_OPTIONS.map((time) => (
-                    <SelectItem key={time.value} value={time.value} textValue={time.textValue}>
-                      {time.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          <FieldError errors={[{ message: errors.startTime?.message }]} />
-        </Field>
-        <Field className="flex flex-col gap-2 w-[212px]">
-          <FieldLabel className="text-xs font-semibold leading-4 text-base-400" htmlFor="endTime">
-            End Time
-          </FieldLabel>
-          <Controller
-            name="endTime"
-            control={control}
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select end time" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIME_OPTIONS.map((time) => (
-                    <SelectItem key={time.value} value={time.value} textValue={time.textValue}>
-                      {time.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          <FieldError errors={[{ message: errors.endTime?.message }]} />
-        </Field>
-        <Field className="flex flex-col gap-2 w-[313px]">
-          <FieldLabel className="text-xs font-semibold leading-4 text-base-400" htmlFor="timezone">
-            Time Zone
-          </FieldLabel>
-          <Controller
-            name="timezone"
-            control={control}
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a timezone" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEZONES.map((tz) => (
-                    <SelectItem key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          <FieldError errors={[{ message: errors.timezone?.message }]} />
-        </Field>
-      </div>
+      {!isAlwaysOn && (
+        <div className="flex gap-3 items-start">
+          <Field className="flex flex-col gap-2 w-[212px]">
+            <FieldLabel
+              className="text-xs font-semibold leading-4 text-base-400"
+              htmlFor="startTime"
+            >
+              Start Time
+            </FieldLabel>
+            <Controller
+              name="startTime"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select start time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_OPTIONS.map((time) => (
+                      <SelectItem key={time.value} value={time.value} textValue={time.textValue}>
+                        {time.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldError errors={[{ message: errors.startTime?.message }]} />
+          </Field>
+          <Field className="flex flex-col gap-2 w-[212px]">
+            <FieldLabel className="text-xs font-semibold leading-4 text-base-400" htmlFor="endTime">
+              End Time
+            </FieldLabel>
+            <Controller
+              name="endTime"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select end time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_OPTIONS.map((time) => (
+                      <SelectItem key={time.value} value={time.value} textValue={time.textValue}>
+                        {time.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldError errors={[{ message: errors.endTime?.message }]} />
+          </Field>
+          <Field className="flex flex-col gap-2 w-[313px]">
+            <FieldLabel
+              className="text-xs font-semibold leading-4 text-base-400"
+              htmlFor="timezone"
+            >
+              Time Zone
+            </FieldLabel>
+            <Controller
+              name="timezone"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldError errors={[{ message: errors.timezone?.message }]} />
+          </Field>
+        </div>
+      )}
     </FieldGroup>
   );
 }
