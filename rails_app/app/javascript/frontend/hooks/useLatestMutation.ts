@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
-import {
-  useMutation,
-  useQueryClient,
-  type UseMutationOptions,
-  type QueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useAsyncDebouncer, type AsyncDebouncer } from "@tanstack/react-pacer/async-debouncer";
 
 // =============================================================================
 // Types
@@ -14,7 +10,7 @@ type MutationKey = readonly unknown[];
 
 interface LatestMutationOptions<TData, TVariables> {
   /**
-   * Required key that scopes the latest behavior.
+   * Required key that scopes the superseding behavior.
    * Mutations with the same key will cancel each other.
    *
    * @example ['saveDocument', documentId]
@@ -103,51 +99,58 @@ interface LatestMutationResult<TData, TVariables> {
 }
 
 // =============================================================================
-// Global Registry
+// Global Latest Registry
 // =============================================================================
 
-interface MutationEntry {
+interface LatestEntry {
   abortController: AbortController;
   requestId: number;
-  debounceTimer: ReturnType<typeof setTimeout> | null;
-  pendingVariables: unknown | null;
 }
 
 /**
  * Global registry tracking in-flight mutations by key.
- * This enables cross-component latest.
+ * This enables cross-component superseding.
+ *
+ * Note: Debouncing is handled per-component by Pacer.
+ * This registry only handles the superseding/cancellation semantics.
  */
-const mutationRegistry = new Map<string, MutationEntry>();
+const supersedingRegistry = new Map<string, LatestEntry>();
 
 function getKeyString(key: MutationKey): string {
   return JSON.stringify(key);
 }
 
-function getOrCreateEntry(keyString: string): MutationEntry {
-  let entry = mutationRegistry.get(keyString);
+function getOrCreateEntry(keyString: string): LatestEntry {
+  let entry = supersedingRegistry.get(keyString);
   if (!entry) {
     entry = {
       abortController: new AbortController(),
       requestId: 0,
-      debounceTimer: null,
-      pendingVariables: null,
     };
-    mutationRegistry.set(keyString, entry);
+    supersedingRegistry.set(keyString, entry);
   }
   return entry;
 }
 
-function clearDebounceTimer(entry: MutationEntry): void {
-  if (entry.debounceTimer !== null) {
-    clearTimeout(entry.debounceTimer);
-    entry.debounceTimer = null;
-    entry.pendingVariables = null;
-  }
-}
+function supersede(keyString: string): { signal: AbortSignal; requestId: number } {
+  const entry = getOrCreateEntry(keyString);
 
-function abortInflight(entry: MutationEntry): void {
+  // Abort any in-flight request
   entry.abortController.abort();
   entry.abortController = new AbortController();
+
+  // Increment request ID
+  const requestId = ++entry.requestId;
+
+  return {
+    signal: entry.abortController.signal,
+    requestId,
+  };
+}
+
+function isStaleRequest(keyString: string, requestId: number): boolean {
+  const entry = supersedingRegistry.get(keyString);
+  return !entry || entry.requestId !== requestId;
 }
 
 // =============================================================================
@@ -193,48 +196,30 @@ export function useLatestMutation<TData, TVariables>({
   const mutationFnRef = useRef(mutationFn);
   mutationFnRef.current = mutationFn;
 
-  // Track if component is mounted
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  // The core mutation
+  // The core mutation with superseding logic
   const mutation = useMutation<TData, Error, TVariables>({
     mutationKey,
     mutationFn: async (variables: TVariables) => {
-      const entry = getOrCreateEntry(keyString);
-
-      // Abort any in-flight request with same key
-      abortInflight(entry);
-
-      const thisRequestId = ++entry.requestId;
-      const signal = entry.abortController.signal;
+      const { signal, requestId } = supersede(keyString);
 
       try {
         const result = await mutationFnRef.current(variables, signal);
 
         // Check if we were superseded while awaiting
-        const currentEntry = mutationRegistry.get(keyString);
-        if (!currentEntry || currentEntry.requestId !== thisRequestId) {
+        if (isStaleRequest(keyString, requestId)) {
           throw new SupersededError();
         }
 
         return result;
       } catch (error) {
         // Re-check superseded status for abort errors
-        const currentEntry = mutationRegistry.get(keyString);
-        if (currentEntry && currentEntry.requestId !== thisRequestId) {
+        if (isStaleRequest(keyString, requestId)) {
           throw new SupersededError();
         }
         throw error;
       }
     },
     onSuccess: (data, variables) => {
-      // Invalidate queries
       if (invalidateKeys?.length) {
         invalidateKeys.forEach((key) => {
           queryClient.invalidateQueries({ queryKey: key as unknown[] });
@@ -243,82 +228,77 @@ export function useLatestMutation<TData, TVariables>({
       callbacksRef.current.onSuccess?.(data, variables);
     },
     onError: (error, variables) => {
-      // Don't surface abort/superseded as real errors
       if (isAbortOrSuperseded(error)) return;
       callbacksRef.current.onError?.(error, variables);
     },
     onSettled: (data, error, variables) => {
-      // Don't call onSettled for superseded requests
       if (error && isAbortOrSuperseded(error)) return;
       callbacksRef.current.onSettled?.(data, error, variables);
     },
   });
 
-  // Store mutation ref for use in callbacks
+  // Ref for stable access in debouncer
   const mutationRef = useRef(mutation);
   mutationRef.current = mutation;
 
-  /**
-   * Execute the mutation immediately (no debounce)
-   */
-  const executeNow = useCallback(
-    (variables: TVariables) => {
-      const entry = getOrCreateEntry(keyString);
-      clearDebounceTimer(entry);
-      mutationRef.current.mutate(variables);
-    },
-    [keyString]
-  );
-
-  /**
-   * Execute the mutation immediately and return a promise
-   */
-  const executeNowAsync = useCallback(
-    async (variables: TVariables): Promise<TData> => {
-      const entry = getOrCreateEntry(keyString);
-      clearDebounceTimer(entry);
+  // Use Pacer's async debouncer for debounce logic
+  const debouncer = useAsyncDebouncer(
+    async (variables: TVariables) => {
       return mutationRef.current.mutateAsync(variables);
     },
-    [keyString]
+    {
+      wait: debounceMs,
+      onError: (error) => {
+        // Pacer's error handler - silently ignore superseded
+        if (isAbortOrSuperseded(error)) return;
+        // Real errors are handled by mutation.onError
+      },
+    }
   );
+
+  // Store debouncer ref for cleanup
+  const debouncerRef = useRef<AsyncDebouncer<[TVariables], TData>>(debouncer);
+  debouncerRef.current = debouncer;
 
   /**
    * Execute with debouncing (if configured)
    */
-  const executeDebounced = useCallback(
+  const mutate = useCallback(
     (variables: TVariables) => {
-      const entry = getOrCreateEntry(keyString);
-
-      // Clear any existing debounce timer
-      clearDebounceTimer(entry);
-
       if (debounceMs <= 0) {
-        // No debounce, execute immediately
         mutationRef.current.mutate(variables);
-        return;
+      } else {
+        debouncerRef.current.maybeExecute(variables);
       }
-
-      // Store pending variables and set timer
-      entry.pendingVariables = variables;
-      entry.debounceTimer = setTimeout(() => {
-        entry.debounceTimer = null;
-        entry.pendingVariables = null;
-        if (isMountedRef.current) {
-          mutationRef.current.mutate(variables);
-        }
-      }, debounceMs);
     },
-    [keyString, debounceMs]
+    [debounceMs]
   );
+
+  /**
+   * Execute immediately, bypassing debounce
+   */
+  const mutateNow = useCallback((variables: TVariables) => {
+    debouncerRef.current.cancel();
+    mutationRef.current.mutate(variables);
+  }, []);
+
+  /**
+   * Execute immediately and return a promise
+   */
+  const mutateAsync = useCallback(async (variables: TVariables): Promise<TData> => {
+    debouncerRef.current.cancel();
+    return mutationRef.current.mutateAsync(variables);
+  }, []);
 
   /**
    * Cancel everything - debounce timer AND in-flight request
    */
   const cancel = useCallback(() => {
-    const entry = mutationRegistry.get(keyString);
+    debouncerRef.current.cancel();
+    const entry = supersedingRegistry.get(keyString);
     if (entry) {
-      clearDebounceTimer(entry);
-      abortInflight(entry);
+      entry.abortController.abort();
+      entry.abortController = new AbortController();
     }
   }, [keyString]);
 
@@ -326,13 +306,8 @@ export function useLatestMutation<TData, TVariables>({
    * Flush: if there's a pending debounced call, execute it now
    */
   const flush = useCallback(() => {
-    const entry = mutationRegistry.get(keyString);
-    if (entry?.debounceTimer !== null && entry.pendingVariables !== null) {
-      const variables = entry.pendingVariables as TVariables;
-      clearDebounceTimer(entry);
-      mutationRef.current.mutate(variables);
-    }
-  }, [keyString]);
+    debouncerRef.current.flush();
+  }, []);
 
   /**
    * Reset mutation state
@@ -341,24 +316,20 @@ export function useLatestMutation<TData, TVariables>({
     mutation.reset();
   }, [mutation]);
 
-  // Cleanup on unmount: cancel debounce timer but NOT in-flight requests
-  // (other components might be waiting on them)
+  // Cleanup debouncer on unmount (Pacer handles this internally too)
   useEffect(() => {
     return () => {
-      const entry = mutationRegistry.get(keyString);
-      if (entry) {
-        clearDebounceTimer(entry);
-      }
+      debouncerRef.current.cancel();
     };
-  }, [keyString]);
+  }, []);
 
   // Filter out superseded errors from exposed state
   const isRealError = mutation.isError && !isAbortOrSuperseded(mutation.error);
 
   return {
-    mutate: executeDebounced,
-    mutateNow: executeNow,
-    mutateAsync: executeNowAsync,
+    mutate,
+    mutateNow,
+    mutateAsync,
     cancel,
     flush,
     reset,
@@ -378,11 +349,10 @@ export function useLatestMutation<TData, TVariables>({
 
 export function cancelLatestMutation(mutationKey: MutationKey): void {
   const keyString = getKeyString(mutationKey);
-  const entry = mutationRegistry.get(keyString);
+  const entry = supersedingRegistry.get(keyString);
   if (entry) {
-    clearDebounceTimer(entry);
-    abortInflight(entry);
-    mutationRegistry.delete(keyString);
+    entry.abortController.abort();
+    supersedingRegistry.delete(keyString);
   }
 }
 
@@ -392,6 +362,5 @@ export function cancelLatestMutation(mutationKey: MutationKey): void {
 
 export function isMutationInflight(mutationKey: MutationKey): boolean {
   const keyString = getKeyString(mutationKey);
-  const entry = mutationRegistry.get(keyString);
-  return entry !== undefined && entry.requestId > 0;
+  return supersedingRegistry.has(keyString);
 }
