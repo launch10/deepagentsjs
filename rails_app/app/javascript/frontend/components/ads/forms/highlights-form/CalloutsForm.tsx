@@ -13,6 +13,8 @@ import { createRefreshHandler } from "../../utils/refreshAssets";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
+import type { UpdateCampaignRequestBody } from "@api/campaigns";
 
 const calloutsFormSchema = z.object({
   callouts: z.array(Ads.AssetSchema),
@@ -71,13 +73,16 @@ export default function CalloutsForm() {
     });
   };
 
-  const { save } = useCampaignAutosave({
+  const { saveNow } = useCampaignAutosave<CalloutsFormData>({
     methods,
-    fieldMappings: [{ formField: "callouts", apiField: "callouts" }],
-    values: [callouts],
+    transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
+      const transformed = defaultAssetTransform(data.callouts);
+      if (transformed.length === 0) return null;
+      return { callouts: transformed };
+    },
   });
 
-  useFormRegistration("highlights", methods, save);
+  useFormRegistration("highlights", methods, saveNow);
 
   const fields = filteredCallouts.map((c) => ({ ...c, id: c.id }));
 

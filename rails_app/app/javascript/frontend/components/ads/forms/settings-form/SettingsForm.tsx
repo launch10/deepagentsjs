@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useForm, useWatch, FormProvider } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePage } from "@inertiajs/react";
 import { FieldSet } from "@components/ui/field";
@@ -69,15 +69,12 @@ export default function SettingsForm() {
     return () => subscription.unsubscribe();
   }, [methods, setValues]);
 
-  const watchedValues = useWatch({ control: methods.control }) as SettingsFormData;
-
-  const { save } = useCampaignAutosave<SettingsFormData>({
+  const { saveNow } = useCampaignAutosave<SettingsFormData>({
     methods,
     transformFn: transformSettingsFormToApi,
-    watchedValues,
   });
 
-  useFormRegistration("settings", methods, save);
+  useFormRegistration("settings", methods, saveNow);
 
   return (
     <FormProvider {...methods}>

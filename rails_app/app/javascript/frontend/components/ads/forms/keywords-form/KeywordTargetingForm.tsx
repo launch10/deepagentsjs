@@ -10,6 +10,7 @@ import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import type { UpdateCampaignRequestBody } from "@api/campaigns";
 import AdCampaignFieldList from "../shared/AdCampaignFieldList";
 
 const keywordsFormSchema = z.object({
@@ -102,22 +103,18 @@ export default function KeywordTargetingForm() {
 
   const resolveIndex = (id: string) => fields.findIndex((f) => f.id === id);
 
-  const { save } = useCampaignAutosave({
+  const { saveNow } = useCampaignAutosave<KeywordsFormData>({
     methods,
-    fieldMappings: [
-      {
-        formField: "keywords",
-        apiField: "keywords",
-        transform: (keywords) =>
-          keywords
-            ?.filter((k) => k.text?.trim())
-            .map(({ id, text }) => ({ id, text, match_type: "broad" })) ?? [],
-      },
-    ],
-    values: [keywords],
+    transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
+      const transformed = data.keywords
+        ?.filter((k) => k.text?.trim())
+        .map(({ id, text }) => ({ id, text, match_type: "broad" }));
+      if (!transformed || transformed.length === 0) return null;
+      return { keywords: transformed as unknown as UpdateCampaignRequestBody["keywords"] };
+    },
   });
 
-  useFormRegistration("keywords", methods, save);
+  useFormRegistration("keywords", methods, saveNow);
 
   return (
     <FieldGroup className="gap-4">

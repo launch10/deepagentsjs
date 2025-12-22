@@ -11,7 +11,7 @@ import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
 import { useLaunchFormStore } from "@stores/launchFormStore";
 import { Sparkles } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
+import { Controller, FormProvider, useForm } from "react-hook-form";
 import { usePage } from "@inertiajs/react";
 import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
 import {
@@ -58,15 +58,12 @@ export default function LaunchForm() {
     return () => subscription.unsubscribe();
   }, [methods, setValues]);
 
-  const watchedValues = useWatch({ control: methods.control }) as LaunchFormData;
-
-  const { save } = useCampaignAutosave<LaunchFormData>({
+  const { saveNow } = useCampaignAutosave<LaunchFormData>({
     methods,
     transformFn: transformLaunchFormToApi,
-    watchedValues,
   });
 
-  useFormRegistration("launch", methods, save);
+  useFormRegistration("launch", methods, saveNow);
 
   const googleAdvertisingChannelType = methods.watch("googleAdvertisingChannelType");
   const googleBiddingStrategy = methods.watch("googleBiddingStrategy");

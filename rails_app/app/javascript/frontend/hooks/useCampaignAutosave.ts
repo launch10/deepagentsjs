@@ -1,166 +1,137 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { UseFormReturn, FieldValues } from "react-hook-form";
-import { useCampaignService, type CampaignUpdateRequest } from "@api/campaigns.hooks";
+import { useCampaignService } from "@api/campaigns.hooks";
 import type { UpdateCampaignRequestBody } from "@api/campaigns";
 import { mapApiErrorsToForm } from "@helpers/formErrorMapper";
 import { useAdsChatState } from "./useAdsChat";
 import { useLatestMutation } from "./useLatestMutation";
 import type { UpdateCampaignResponse } from "@api/campaigns";
-import { buildUpdateRequest, type FieldMapping } from "./campaignAutosave.transforms";
 
-export type { FieldMapping } from "./campaignAutosave.transforms";
-
-type BaseOptions<TFormData extends FieldValues> = {
+export type UseCampaignAutosaveOptions<TFormData extends FieldValues> = {
   methods: UseFormReturn<TFormData>;
+  transformFn: (formData: TFormData) => Partial<UpdateCampaignRequestBody> | null;
   debounceMs?: number;
   onSuccess?: (data: { ready_for_next_stage?: boolean }) => void;
   enabled?: boolean;
 };
 
-type AssetMappingOptions<TFormData extends FieldValues> = BaseOptions<TFormData> & {
-  fieldMappings: FieldMapping<TFormData>[];
-  values: unknown[];
-  transformFn?: never;
-  watchedValues?: never;
-};
-
-type DirectTransformOptions<TFormData extends FieldValues> = BaseOptions<TFormData> & {
-  transformFn: (formData: TFormData) => UpdateCampaignRequestBody | null;
-  watchedValues: TFormData;
-  fieldMappings?: never;
-  values?: never;
-};
-
-export type UseCampaignAutosaveOptions<TFormData extends FieldValues> =
-  | AssetMappingOptions<TFormData>
-  | DirectTransformOptions<TFormData>;
-
 export type UseCampaignAutosaveReturn = {
   isAutosaving: boolean;
   autosaveError: Error | null;
-  save: () => Promise<void>;
+  saveNow: () => Promise<void>;
 };
 
-function isDirectTransformOptions<TFormData extends FieldValues>(
-  options: UseCampaignAutosaveOptions<TFormData>
-): options is DirectTransformOptions<TFormData> {
-  return "transformFn" in options && options.transformFn !== undefined;
-}
-
-export function useCampaignAutosave<TFormData extends FieldValues>(
-  options: UseCampaignAutosaveOptions<TFormData>
-): UseCampaignAutosaveReturn {
-  const { methods, debounceMs = 750, onSuccess, enabled } = options;
-
+export function useCampaignAutosave<TFormData extends FieldValues>({
+  methods,
+  transformFn,
+  debounceMs = 750,
+  onSuccess,
+  enabled,
+}: UseCampaignAutosaveOptions<TFormData>): UseCampaignAutosaveReturn {
   const campaignId = useAdsChatState("campaignId");
   const service = useCampaignService();
   const shouldAutosave = enabled ?? !!campaignId;
 
-  const isInitialMount = useRef(true);
+  const hasMounted = useRef(false);
   const lastSavedValue = useRef<string | null>(null);
 
   const methodsRef = useRef(methods);
   methodsRef.current = methods;
 
+  const transformFnRef = useRef(transformFn);
+  transformFnRef.current = transformFn;
+
   const onSuccessRef = useRef(onSuccess);
   onSuccessRef.current = onSuccess;
 
-  const optionsRef = useRef(options);
-  optionsRef.current = options;
+  const campaignIdRef = useRef(campaignId);
+  campaignIdRef.current = campaignId;
 
-  const { mutate, mutateAsync, flush, isPending, error } = useLatestMutation<
+  const getApiData = useCallback((): Partial<UpdateCampaignRequestBody> | null => {
+    const formData = methodsRef.current.getValues() as TFormData;
+    const apiData = transformFnRef.current(formData);
+
+    if (!apiData) {
+      return null;
+    }
+
+    const serialized = JSON.stringify(apiData);
+    if (serialized === lastSavedValue.current) {
+      return null;
+    }
+
+    return apiData;
+  }, []);
+
+  const { mutate, mutateAsync, cancel, isPending, error } = useLatestMutation<
     UpdateCampaignResponse,
-    CampaignUpdateRequest
+    void
   >({
     mutationKey: ["campaigns", campaignId, "autosave"],
-    mutationFn: async (request: CampaignUpdateRequest, signal: AbortSignal) => {
-      if (!campaignId) {
+    mutationFn: async (_: void, signal: AbortSignal) => {
+      const currentCampaignId = campaignIdRef.current;
+      if (!currentCampaignId) {
         throw new Error("Campaign ID is required for autosave");
       }
-      return service.update(campaignId, request.campaign, signal);
+
+      const apiData = getApiData();
+      if (!apiData) {
+        throw new Error("No data to save");
+      }
+
+      lastSavedValue.current = JSON.stringify(apiData);
+      return service.update(currentCampaignId, apiData as UpdateCampaignRequestBody, signal);
     },
     debounceMs,
     onSuccess: (data) => {
       onSuccessRef.current?.(data);
     },
     onError: (err) => {
+      if (err.message === "No data to save") {
+        return;
+      }
       mapApiErrorsToForm(err, methodsRef.current);
     },
   });
 
-  const deps = isDirectTransformOptions(options) ? [options.watchedValues] : [options.values];
-
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
+    const subscription = methods.watch(() => {
+      if (!hasMounted.current) {
+        hasMounted.current = true;
+        return;
+      }
 
-    if (!shouldAutosave || !campaignId) {
-      return;
-    }
+      if (!shouldAutosave || !campaignId) {
+        return;
+      }
 
-    let apiData: UpdateCampaignRequestBody | null;
-    const currentOptions = optionsRef.current;
+      const apiData = getApiData();
+      if (apiData) {
+        mutate();
+      } else {
+        cancel();
+      }
+    });
 
-    if (isDirectTransformOptions(currentOptions)) {
-      apiData = currentOptions.transformFn(currentOptions.watchedValues);
-    } else {
-      const updateRequest = buildUpdateRequest(currentOptions.fieldMappings, currentOptions.values);
-      apiData = updateRequest?.campaign ?? null;
-    }
+    return () => subscription.unsubscribe();
+  }, [methods, shouldAutosave, campaignId, getApiData, mutate, cancel]);
 
-    if (!apiData) {
-      return;
-    }
-
-    const serialized = JSON.stringify(apiData);
-    if (serialized === lastSavedValue.current) {
-      return;
-    }
-    lastSavedValue.current = serialized;
-
-    mutate({ campaign: apiData });
-  }, [...deps, shouldAutosave, campaignId, mutate]);
-
-  const save = useCallback(async () => {
+  const saveNow = useCallback(async () => {
     if (!campaignId) {
       return;
     }
 
-    flush();
-
-    let apiData: UpdateCampaignRequestBody | null;
-    const currentOptions = optionsRef.current;
-
-    if (isDirectTransformOptions(currentOptions)) {
-      const currentValues = methodsRef.current.getValues();
-      apiData = currentOptions.transformFn(currentValues);
-    } else {
-      const formFieldNames = currentOptions.fieldMappings.map((m) => m.formField);
-      const currentValues = formFieldNames.map((fieldName) => {
-        return methodsRef.current.getValues(fieldName as any);
-      });
-      const updateRequest = buildUpdateRequest(currentOptions.fieldMappings, currentValues);
-      apiData = updateRequest?.campaign ?? null;
-    }
-
+    const apiData = getApiData();
     if (!apiData) {
       return;
     }
 
-    const serialized = JSON.stringify(apiData);
-    if (serialized === lastSavedValue.current) {
-      return;
-    }
-    lastSavedValue.current = serialized;
-
-    await mutateAsync({ campaign: apiData });
-  }, [campaignId, flush, mutateAsync]);
+    await mutateAsync();
+  }, [campaignId, getApiData, mutateAsync]);
 
   return {
     isAutosaving: isPending,
     autosaveError: error,
-    save,
+    saveNow,
   };
 }

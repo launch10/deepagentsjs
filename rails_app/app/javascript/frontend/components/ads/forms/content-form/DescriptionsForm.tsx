@@ -12,6 +12,8 @@ import { createRefreshHandler } from "../../utils/refreshAssets";
 import { Info } from "lucide-react";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
+import type { UpdateCampaignRequestBody } from "@api/campaigns";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 
 const descriptionsFormSchema = z.object({
@@ -71,13 +73,16 @@ export default function DescriptionsForm() {
     });
   };
 
-  const { save } = useCampaignAutosave({
+  const { saveNow } = useCampaignAutosave<DescriptionsFormData>({
     methods,
-    fieldMappings: [{ formField: "descriptions", apiField: "descriptions" }],
-    values: [descriptions],
+    transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
+      const transformed = defaultAssetTransform(data.descriptions);
+      if (transformed.length === 0) return null;
+      return { descriptions: transformed };
+    },
   });
 
-  useFormRegistration("content", methods, save);
+  useFormRegistration("content", methods, saveNow);
 
   const fields = filteredDescriptions.map((d) => ({ ...d, id: d.id }));
 
