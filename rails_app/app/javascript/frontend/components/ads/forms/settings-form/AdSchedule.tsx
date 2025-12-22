@@ -1,4 +1,4 @@
-import { useFormContext, Controller } from "react-hook-form";
+import { useFormContext, Controller, useFormState } from "react-hook-form";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@components/ui/field";
 import { cn } from "@lib/utils";
 import type { SettingsFormData } from "./settingsForm.schema";
@@ -38,12 +38,13 @@ const TIME_OPTIONS = (() => {
 })();
 
 export default function AdSchedule() {
-  const methods = useFormContext<SettingsFormData>();
+  const { control, watch, getValues, setValue } = useFormContext<SettingsFormData>();
+  const { errors } = useFormState({ control });
 
-  const selectedDays = methods.watch("selectedDays");
+  const selectedDays = watch("selectedDays");
 
   const toggleDay = (day: DayOfWeek) => {
-    const current = methods.getValues("selectedDays");
+    const current = getValues("selectedDays");
     let newSelected: string[];
 
     if (day === "Always On") {
@@ -61,7 +62,7 @@ export default function AdSchedule() {
       }
     }
 
-    methods.setValue("selectedDays", newSelected, { shouldValidate: true });
+    setValue("selectedDays", newSelected, { shouldValidate: true });
   };
 
   return (
@@ -88,7 +89,7 @@ export default function AdSchedule() {
             </Button>
           ))}
         </div>
-        <FieldError errors={[{ message: methods.formState.errors.selectedDays?.message }]} />
+        <FieldError errors={[{ message: errors.selectedDays?.message }]} />
       </Field>
 
       <div className="flex gap-3 items-start">
@@ -98,7 +99,7 @@ export default function AdSchedule() {
           </FieldLabel>
           <Controller
             name="startTime"
-            control={methods.control}
+            control={control}
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger>
@@ -114,7 +115,7 @@ export default function AdSchedule() {
               </Select>
             )}
           />
-          <FieldError errors={[{ message: methods.formState.errors.startTime?.message }]} />
+          <FieldError errors={[{ message: errors.startTime?.message }]} />
         </Field>
         <Field className="flex flex-col gap-2 w-[212px]">
           <FieldLabel className="text-xs font-semibold leading-4 text-base-400" htmlFor="endTime">
@@ -122,7 +123,7 @@ export default function AdSchedule() {
           </FieldLabel>
           <Controller
             name="endTime"
-            control={methods.control}
+            control={control}
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger>
@@ -138,7 +139,7 @@ export default function AdSchedule() {
               </Select>
             )}
           />
-          <FieldError errors={[{ message: methods.formState.errors.endTime?.message }]} />
+          <FieldError errors={[{ message: errors.endTime?.message }]} />
         </Field>
         <Field className="flex flex-col gap-2 w-[313px]">
           <FieldLabel className="text-xs font-semibold leading-4 text-base-400" htmlFor="timezone">
@@ -146,7 +147,7 @@ export default function AdSchedule() {
           </FieldLabel>
           <Controller
             name="timezone"
-            control={methods.control}
+            control={control}
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger>
@@ -162,7 +163,7 @@ export default function AdSchedule() {
               </Select>
             )}
           />
-          <FieldError errors={[{ message: methods.formState.errors.timezone?.message }]} />
+          <FieldError errors={[{ message: errors.timezone?.message }]} />
         </Field>
       </div>
     </FieldGroup>

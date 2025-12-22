@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useDebouncedCallback } from "use-debounce";
-import { useFormContext, useFieldArray } from "react-hook-form";
+import { useFormContext, useFieldArray, useFormState } from "react-hook-form";
 import { Search, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { usePage } from "@inertiajs/react";
@@ -25,10 +25,11 @@ export default function LocationTargeting() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const methods = useFormContext<SettingsFormData>();
+  const { control } = useFormContext<SettingsFormData>();
+  const { errors } = useFormState({ control });
 
   const { fields, append, remove, update } = useFieldArray({
-    control: methods.control,
+    control,
     name: "locations",
   });
 
@@ -46,7 +47,7 @@ export default function LocationTargeting() {
     (s) => !fields.some((loc) => loc.criteria_id === s.criteria_id)
   );
 
-  const hasError = methods.formState.errors.locations?.message;
+  const hasError = errors.locations?.message;
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
