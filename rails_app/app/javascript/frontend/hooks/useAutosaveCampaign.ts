@@ -7,7 +7,7 @@ import { useAdsChatState } from "./useAdsChat";
 import { useLatestMutation } from "./useLatestMutation";
 import type { UpdateCampaignResponse } from "@api/campaigns";
 
-export type UseCampaignAutosaveOptions<TFormData extends FieldValues> = {
+export type useAutosaveCampaignOptions<TFormData extends FieldValues> = {
   methods: UseFormReturn<TFormData>;
   transformFn: (formData: TFormData) => Partial<UpdateCampaignRequestBody> | null;
   debounceMs?: number;
@@ -15,19 +15,19 @@ export type UseCampaignAutosaveOptions<TFormData extends FieldValues> = {
   enabled?: boolean;
 };
 
-export type UseCampaignAutosaveReturn = {
+export type useAutosaveCampaignReturn = {
   isAutosaving: boolean;
   autosaveError: Error | null;
   saveNow: () => Promise<void>;
 };
 
-export function useCampaignAutosave<TFormData extends FieldValues>({
+export function useAutosaveCampaign<TFormData extends FieldValues>({
   methods,
   transformFn,
   debounceMs = 750,
   onSuccess,
   enabled,
-}: UseCampaignAutosaveOptions<TFormData>): UseCampaignAutosaveReturn {
+}: useAutosaveCampaignOptions<TFormData>): useAutosaveCampaignReturn {
   const campaignId = useAdsChatState("campaignId");
   const service = useCampaignService();
   const shouldAutosave = enabled ?? !!campaignId;

@@ -11,7 +11,7 @@ import { Ads } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import { Info } from "lucide-react";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
-import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
 import type { UpdateCampaignRequestBody } from "@api/campaigns";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
@@ -73,7 +73,7 @@ export default function DescriptionsForm() {
     });
   };
 
-  const { saveNow } = useCampaignAutosave<DescriptionsFormData>({
+  const { saveNow } = useAutosaveCampaign<DescriptionsFormData>({
     methods,
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const transformed = defaultAssetTransform(data.descriptions);

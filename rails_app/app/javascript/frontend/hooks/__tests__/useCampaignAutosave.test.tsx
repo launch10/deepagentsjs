@@ -3,7 +3,7 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import type { ReactNode } from "react";
-import { useCampaignAutosave } from "../useCampaignAutosave";
+import { useAutosaveCampaign } from "../useAutosaveCampaign";
 
 vi.mock("../useAdsChat", () => ({
   useAdsChatState: vi.fn(() => "campaign-123"),
@@ -49,7 +49,7 @@ const transformTestForm = (data: TestFormData) => ({
   daily_budget_cents: data.budget * 100,
 });
 
-describe("useCampaignAutosave", () => {
+describe("useAutosaveCampaign", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockUpdate.mockReset();
@@ -69,7 +69,7 @@ describe("useCampaignAutosave", () => {
           const methods = useForm<TestFormData>({
             defaultValues: { name: "", budget: 0 },
           });
-          const autosave = useCampaignAutosave({
+          const autosave = useAutosaveCampaign({
             methods,
             transformFn: transformTestForm,
             debounceMs: 500,
@@ -122,7 +122,7 @@ describe("useCampaignAutosave", () => {
           const methods = useForm<TestFormData>({
             defaultValues: { name: "Initial", budget: 100 },
           });
-          const autosave = useCampaignAutosave({
+          const autosave = useAutosaveCampaign({
             methods,
             transformFn: transformTestForm,
             debounceMs: 500,
@@ -173,7 +173,7 @@ describe("useCampaignAutosave", () => {
           const methods = useForm<TestFormData>({
             defaultValues: { name: "Initial", budget: 100 },
           });
-          return useCampaignAutosave({
+          return useAutosaveCampaign({
             methods,
             transformFn: transformTestForm,
             debounceMs: 500,
@@ -200,7 +200,7 @@ describe("useCampaignAutosave", () => {
           const methods = useForm<TestFormData>({
             defaultValues: { name: "Test", budget: 50 },
           });
-          const autosave = useCampaignAutosave({
+          const autosave = useAutosaveCampaign({
             methods,
             transformFn: transformTestForm,
             debounceMs: 500,
@@ -241,7 +241,7 @@ describe("useCampaignAutosave", () => {
           const methods = useForm<TestFormData>({
             defaultValues: { name: "", budget: 0 },
           });
-          const autosave = useCampaignAutosave({
+          const autosave = useAutosaveCampaign({
             methods,
             transformFn: transformTestForm,
             debounceMs: 500,
@@ -303,7 +303,7 @@ describe("useCampaignAutosave", () => {
           const methods = useForm<TestFormData>({
             defaultValues: { name: "Test", budget: 100 },
           });
-          const autosave = useCampaignAutosave({
+          const autosave = useAutosaveCampaign({
             methods,
             transformFn: transformTestForm,
             debounceMs: 500,
@@ -353,7 +353,7 @@ describe("useCampaignAutosave", () => {
           const methods = useForm<TestFormData>({
             defaultValues: { name: "test", budget: 42 },
           });
-          const autosave = useCampaignAutosave({
+          const autosave = useAutosaveCampaign({
             methods,
             transformFn: customTransform,
             debounceMs: 100,
@@ -399,7 +399,7 @@ describe("useCampaignAutosave", () => {
           const methods = useForm<TestFormData>({
             defaultValues: { name: "", budget: 0 },
           });
-          const autosave = useCampaignAutosave({
+          const autosave = useAutosaveCampaign({
             methods,
             transformFn: nullTransform,
             debounceMs: 100,
@@ -434,7 +434,7 @@ describe("useCampaignAutosave", () => {
           const methods = useForm<TestFormData>({
             defaultValues: { name: "Test", budget: 0 },
           });
-          const autosave = useCampaignAutosave({
+          const autosave = useAutosaveCampaign({
             methods,
             transformFn: transformTestForm,
             debounceMs: 100,
@@ -462,7 +462,7 @@ describe("useCampaignAutosave", () => {
   });
 });
 
-describe("useCampaignAutosave (real timers)", () => {
+describe("useAutosaveCampaign (real timers)", () => {
   beforeEach(() => {
     mockUpdate.mockReset();
   });
@@ -476,7 +476,7 @@ describe("useCampaignAutosave (real timers)", () => {
         const methods = useForm<TestFormData>({
           defaultValues: { name: "Test", budget: 0 },
         });
-        const autosave = useCampaignAutosave({
+        const autosave = useAutosaveCampaign({
           methods,
           transformFn: transformTestForm,
           onSuccess,
@@ -518,7 +518,7 @@ describe("useCampaignAutosave (real timers)", () => {
         const methods = useForm<TestFormData>({
           defaultValues: { name: "Test", budget: 0 },
         });
-        const autosave = useCampaignAutosave({
+        const autosave = useAutosaveCampaign({
           methods,
           transformFn: transformTestForm,
           debounceMs: 50,
@@ -563,7 +563,7 @@ describe("useCampaignAutosave (real timers)", () => {
         const methods = useForm<TestFormData>({
           defaultValues: { name: "Test", budget: 0 },
         });
-        const autosave = useCampaignAutosave({
+        const autosave = useAutosaveCampaign({
           methods,
           transformFn: transformTestForm,
           debounceMs: 50,

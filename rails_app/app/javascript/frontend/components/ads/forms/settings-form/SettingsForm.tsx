@@ -5,7 +5,7 @@ import { usePage } from "@inertiajs/react";
 import { FieldSet } from "@components/ui/field";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { useSettingsFormStore } from "@stores/settingsFormStore";
-import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
 import LocationTargeting from "./LocationTargeting";
 import AdSchedule from "./AdSchedule";
@@ -51,7 +51,7 @@ export default function SettingsForm() {
     return () => subscription.unsubscribe();
   }, [methods, setValues]);
 
-  const { saveNow } = useCampaignAutosave<SettingsFormData>({
+  const { saveNow } = useAutosaveCampaign<SettingsFormData>({
     methods,
     transformFn: transformSettingsFormToApi,
   });

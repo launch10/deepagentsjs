@@ -9,7 +9,7 @@ import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
-import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import type { UpdateCampaignRequestBody } from "@api/campaigns";
 import AdCampaignFieldList from "../shared/AdCampaignFieldList";
 
@@ -103,7 +103,7 @@ export default function KeywordTargetingForm() {
 
   const resolveIndex = (id: string) => fields.findIndex((f) => f.id === id);
 
-  const { saveNow } = useCampaignAutosave<KeywordsFormData>({
+  const { saveNow } = useAutosaveCampaign<KeywordsFormData>({
     methods,
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const transformed = data.keywords

@@ -7,7 +7,7 @@ import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@compo
 import { CursorArrowRippleIcon } from "@heroicons/react/24/solid";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFormRegistration } from "@hooks/useFormRegistration";
-import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import { useLaunchFormStore } from "@stores/launchFormStore";
 import { Sparkles } from "lucide-react";
 import { useEffect, useEffectEvent } from "react";
@@ -58,7 +58,7 @@ export default function LaunchForm() {
     return () => subscription.unsubscribe();
   }, [methods, setValues]);
 
-  const { saveNow } = useCampaignAutosave<LaunchFormData>({
+  const { saveNow } = useAutosaveCampaign<LaunchFormData>({
     methods,
     transformFn: transformLaunchFormToApi,
   });

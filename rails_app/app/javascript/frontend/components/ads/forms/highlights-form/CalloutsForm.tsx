@@ -12,7 +12,7 @@ import { Info } from "lucide-react";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
-import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
 import type { UpdateCampaignRequestBody } from "@api/campaigns";
 
@@ -73,7 +73,7 @@ export default function CalloutsForm() {
     });
   };
 
-  const { saveNow } = useCampaignAutosave<CalloutsFormData>({
+  const { saveNow } = useAutosaveCampaign<CalloutsFormData>({
     methods,
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const transformed = defaultAssetTransform(data.callouts);

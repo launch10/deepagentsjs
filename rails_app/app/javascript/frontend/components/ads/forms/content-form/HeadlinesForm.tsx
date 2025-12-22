@@ -8,7 +8,7 @@ import AdCampaignFieldList from "../shared/AdCampaignFieldList";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
-import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
 import type { UpdateCampaignRequestBody } from "@api/campaigns";
 import { useFormRegistration } from "@hooks/useFormRegistration";
@@ -84,7 +84,7 @@ export default function HeadlinesForm() {
     });
   };
 
-  const { saveNow } = useCampaignAutosave<HeadlinesFormData>({
+  const { saveNow } = useAutosaveCampaign<HeadlinesFormData>({
     methods,
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const transformed = defaultAssetTransform(data.headlines);

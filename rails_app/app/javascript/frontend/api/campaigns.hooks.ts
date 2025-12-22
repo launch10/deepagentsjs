@@ -2,15 +2,13 @@ import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
 import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
+export { useAutosaveCampaign } from "../hooks/useAutosaveCampaign";
 import {
   CampaignService,
   type CreateCampaignRequest,
   type CreateCampaignResponse,
-  type UpdateCampaignRequestBody,
-  type UpdateCampaignResponse,
   type AdvanceCampaignResponse,
   type BackCampaignResponse,
-  type CampaignUpdateRequest,
 } from "./campaigns";
 
 // Re-export types for convenience
@@ -54,60 +52,6 @@ export function useCreateCampaign(
 
   return useMutation({
     mutationFn: (variables: CreateCampaignRequest) => service.create(variables),
-    ...options,
-  });
-}
-
-/**
- * Hook for autosaving campaign changes.
- * Requires a campaign ID to be provided.
- *
- * @example
- * ```tsx
- * const { mutate, isPending } = useAutosaveCampaign(campaignId);
- * mutate({ campaign: { headlines: [...] } });
- * ```
- */
-export function useAutosaveCampaign(
-  campaignId: number | undefined,
-  options?: MutationOptions<UpdateCampaignResponse, CampaignUpdateRequest>
-) {
-  const service = useCampaignService();
-
-  return useMutation({
-    mutationFn: async (variables: CampaignUpdateRequest) => {
-      if (campaignId === undefined) {
-        throw new Error("Campaign ID is required for autosave");
-      }
-      return service.update(campaignId, variables.campaign);
-    },
-    ...options,
-  });
-}
-
-/**
- * Hook for updating a campaign directly with the request body.
- * Lower-level than useAutosaveCampaign - doesn't wrap in { campaign: ... }
- *
- * @example
- * ```tsx
- * const { mutate, isPending } = useUpdateCampaign(campaignId);
- * mutate({ headlines: [...] });
- * ```
- */
-export function useUpdateCampaign(
-  campaignId: number | undefined,
-  options?: MutationOptions<UpdateCampaignResponse, UpdateCampaignRequestBody>
-) {
-  const service = useCampaignService();
-
-  return useMutation({
-    mutationFn: async (variables: UpdateCampaignRequestBody) => {
-      if (campaignId === undefined) {
-        throw new Error("Campaign ID is required for update");
-      }
-      return service.update(campaignId, variables);
-    },
     ...options,
   });
 }
