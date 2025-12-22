@@ -82,7 +82,7 @@ export default function HeadlinesForm() {
     });
   };
 
-  useCampaignAutosave({
+  const { save } = useCampaignAutosave({
     methods,
     fieldMappings: [{ formField: "headlines", apiField: "headlines" }],
     values: [headlines],
@@ -90,7 +90,7 @@ export default function HeadlinesForm() {
 
   const fields = filteredHeadlines.map((h) => ({ ...h, id: h.id }));
 
-  useFormRegistration("content", methods);
+  useFormRegistration("content", methods, save);
 
   return (
     <FieldGroup className="gap-3">

@@ -71,13 +71,13 @@ export default function DescriptionsForm() {
     });
   };
 
-  useCampaignAutosave({
+  const { save } = useCampaignAutosave({
     methods,
     fieldMappings: [{ formField: "descriptions", apiField: "descriptions" }],
     values: [descriptions],
   });
 
-  useFormRegistration("content", methods);
+  useFormRegistration("content", methods, save);
 
   const fields = filteredDescriptions.map((d) => ({ ...d, id: d.id }));
 

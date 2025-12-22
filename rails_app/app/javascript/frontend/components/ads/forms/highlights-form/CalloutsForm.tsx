@@ -71,13 +71,13 @@ export default function CalloutsForm() {
     });
   };
 
-  useCampaignAutosave({
+  const { save } = useCampaignAutosave({
     methods,
     fieldMappings: [{ formField: "callouts", apiField: "callouts" }],
     values: [callouts],
   });
 
-  useFormRegistration("highlights", methods);
+  useFormRegistration("highlights", methods, save);
 
   const fields = filteredCallouts.map((c) => ({ ...c, id: c.id }));
 
