@@ -35,9 +35,10 @@ export type TransformsType = {
   [K in keyof typeof StreamingTransforms]: ReturnType<typeof StreamingTransforms[K]>
 }
 
-const mergeAssets = <T extends Ads.Asset>(incoming: T[], current: T[] | undefined): T[] => {
+const mergeAssets = <T extends Ads.Asset>(incoming: T[], current: T[] | undefined, kind: Ads.AssetKind): T[] => {
   const kept = (current || []).filter((c) => c.locked) // Since we know we're merging, it's now safe to filter out existing headlines that aren't locked
-  return uniqBy([...kept, ...incoming], "id");
+  const merged = uniqBy([...kept, ...incoming], "id");
+  return Ads.limitAssets(merged, kind);
 };
 
 const mergeStructuredSnippets = (
@@ -56,14 +57,14 @@ const mergeStructuredSnippets = (
     }
   }
 
-  return { category, details: newDetails };
+  return { category, details: Ads.limitAssets(newDetails, "structuredSnippets") };
 };
  
 export const MergeReducer = {
-  headlines: mergeAssets<Ads.Headline>,
-  descriptions: mergeAssets<Ads.Description>,
-  callouts: mergeAssets<Ads.Callout>,
-  keywords: mergeAssets<Ads.Keyword>,
+  headlines: (incoming: Ads.Headline[], current: Ads.Headline[] | undefined) => mergeAssets<Ads.Headline>(incoming, current, "headlines"),
+  descriptions: (incoming: Ads.Description[], current: Ads.Description[] | undefined) => mergeAssets<Ads.Description>(incoming, current, "descriptions"),
+  callouts: (incoming: Ads.Callout[], current: Ads.Callout[] | undefined) => mergeAssets<Ads.Callout>(incoming, current, "callouts"),
+  keywords: (incoming: Ads.Keyword[], current: Ads.Keyword[] | undefined) => mergeAssets<Ads.Keyword>(incoming, current, "keywords"),
   structuredSnippets: mergeStructuredSnippets,
 }
 
@@ -102,7 +103,7 @@ export const mergeStructuredData = (
     } else {
       const existingAssets = state[key] || [];
       const incomingAssets = value as Ads.Asset[];
-      acc[key] = mergeAssets(incomingAssets, existingAssets);
+      acc[key] = mergeAssets(incomingAssets, existingAssets, key);
     }
     return acc;
   }, {} as Partial<TransformsType>);

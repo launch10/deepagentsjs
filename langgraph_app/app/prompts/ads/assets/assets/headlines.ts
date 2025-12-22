@@ -6,14 +6,15 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
   headlines: {
     prompt: async (state: AdsGraphState, _config?: any): Promise<string> => {
       const userPrefs = await userPreferencesPrompt(state, "headlines");
-      const nVariants = Ads.getNVariantsForAsset(state.refresh, "headlines") ?? Ads.DefaultNumAssets.headlines;
+      const nVariants =
+        Ads.getNVariantsForAsset(state.refresh, "headlines") ?? Ads.DefaultNumAssets.headlines;
 
       return `
             ## Headlines
             Generate ${nVariants} compelling headlines for this business's Google Ads campaign. Headlines are the most prominent part of text ads and appear at the top.
 
             **Guidelines:**
-            - Each headline must be 30 characters or less (this is a strict Google Ads limit)
+            - Each headline must be ${Ads.FakeAssetLengths.headlines} characters or less (this is a strict Google Ads limit)
             - Include the primary keyword or service in at least 3-5 headlines
             - Mix different headline types:
             - Benefit-focused: "Save 50% on Energy Bills"
@@ -26,7 +27,7 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
 
             **Requirements:**
             - Generate exactly ${nVariants} unique headlines
-            - Each must be 30 characters or less
+            - Each must be ${Ads.FakeAssetLengths.headlines} characters or less (hard limit)
             - Vary the messaging angles to test what resonates
             - Include at least one headline with the business name or brand
             - Make them specific to this business, not generic
@@ -37,7 +38,8 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-      const nVariants = Ads.getNVariantsForAsset(state.refresh, "headlines") ?? Ads.DefaultNumAssets.headlines;
+      const nVariants =
+        Ads.getNVariantsForAsset(state.refresh, "headlines") ?? Ads.DefaultNumAssets.headlines;
       const headlines = Array.from({ length: nVariants }, (_, i) => `Headline ${i + 1}`);
       return { headlines };
     },

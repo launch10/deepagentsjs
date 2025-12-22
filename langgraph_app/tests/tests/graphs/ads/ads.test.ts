@@ -163,6 +163,37 @@ describe.sequential("Ads Flow", () => {
         expect(descriptions.every((h) => !!h.id)).toBe(true);
       });
 
+      it("enforces asset limits when regenerating descriptions", async () => {
+        const result = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            projectUUID,
+            threadId,
+            stage: "content",
+          })
+          .execute();
+
+        expect(result.state.descriptions?.length).toEqual(4);
+
+        const descriptions = result.state.descriptions as Ads.Asset[];
+        descriptions[0]!.locked = true;
+        descriptions[1]!.locked = true;
+        descriptions[2]!.locked = true;
+
+        const refreshedResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            ...result.state,
+            refresh: [{ asset: "descriptions", nVariants: 4 }],
+          })
+          .execute();
+
+        expect(refreshedResult.state.descriptions?.length).toBeLessThanOrEqual(
+          Ads.AssetLimits.descriptions.max
+        );
+        expect(refreshedResult.state.descriptions?.length).toEqual(4);
+      });
+
       it("refreshes only the specified context (headlines), not descriptions", async () => {
         const result = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
