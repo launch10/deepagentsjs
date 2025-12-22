@@ -136,13 +136,21 @@ export class CampaignService extends RailsAPIBase {
 
   /**
    * Updates a campaign (autosave)
+   * @param id - Campaign ID
+   * @param body - Update payload
+   * @param signal - Optional AbortSignal for request cancellation
    */
-  async update(id: number, body: UpdateCampaignRequestBody): Promise<UpdateCampaignResponse> {
+  async update(
+    id: number,
+    body: UpdateCampaignRequestBody,
+    signal?: AbortSignal
+  ): Promise<UpdateCampaignResponse> {
     const client = await this.getClient();
     // Rails requires params wrapped in `campaign` key, but openapi-fetch types don't reflect this
     const response = await client.PATCH("/api/v1/campaigns/{id}", {
       params: { path: { id } },
       body: { campaign: body } as unknown as UpdateCampaignRequestBody,
+      signal,
     });
 
     if (response.error) {

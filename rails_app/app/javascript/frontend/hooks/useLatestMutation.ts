@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { useAsyncDebouncer, type AsyncDebouncer } from "@tanstack/react-pacer/async-debouncer";
+import { useAsyncDebouncer } from "@tanstack/react-pacer/async-debouncer";
 
 // =============================================================================
 // Types
@@ -257,7 +257,7 @@ export function useLatestMutation<TData, TVariables>({
   );
 
   // Store debouncer ref for cleanup
-  const debouncerRef = useRef<AsyncDebouncer<[TVariables], TData>>(debouncer);
+  const debouncerRef = useRef(debouncer);
   debouncerRef.current = debouncer;
 
   /**

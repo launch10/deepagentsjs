@@ -11,18 +11,23 @@ import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-ca
 import LocationTargeting from "./LocationTargeting";
 import AdSchedule from "./AdSchedule";
 import DailyBudget from "./DailyBudget";
-import { settingsFormSchema, settingsFormDefaults, type SettingsFormData } from "./settingsForm.schema";
+import {
+  settingsFormSchema,
+  settingsFormDefaults,
+  type SettingsFormData,
+} from "./settingsForm.schema";
 import {
   transformSettingsFormToApi,
   transformLocationsFromApi,
   transformScheduleFromApi,
   transformBudgetFromApi,
 } from "./settingsForm.transforms";
+import { useAdsChat } from "@hooks/useAdsChat";
 
 export default function SettingsForm() {
   const { values, setValues } = useSettingsFormStore();
   const { campaign, location_targets, ad_schedule } = usePage<CampaignProps>().props;
-  const campaignId = campaign?.id;
+  const campaignId = useAdsChat((s) => s.state.campaignId);
   const autosaveMutation = useAutosaveCampaign(campaignId);
 
   const isInitialMount = useRef(true);
