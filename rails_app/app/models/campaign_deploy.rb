@@ -30,10 +30,10 @@ class CampaignDeploy < ApplicationRecord
     class << self
       attr_accessor :step_name
 
-      def define(name, &block)
+      def define(name, &)
         Class.new(Step) do
           self.step_name = name
-          class_eval(&block)
+          class_eval(&)
         end
       end
     end
@@ -152,7 +152,7 @@ class CampaignDeploy < ApplicationRecord
       def finished?
         campaign.ads.all?(&:synced?)
       end
-    end,
+    end
   ].freeze
 
   def next_step
