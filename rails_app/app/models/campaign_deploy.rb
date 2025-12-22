@@ -47,6 +47,21 @@ class CampaignDeploy < ApplicationRecord
     attr_reader :campaign
   end
 
+  # Can create a parallelizable step process here...
+  # | Step | Entity         | Service                | Depends On | Parallel?    |
+  # |------|----------------|------------------------|------------|--------------|
+  # | 1    | Budget         | campaign_budget        | -          | -            |
+  # | 2    | Campaign       | campaign               | Budget     | -            |
+  # | 3a   | Geo Targeting  | campaign_criterion     | Campaign   | ✓            |
+  # | 3b   | Ad Schedule    | campaign_criterion     | Campaign   | ✓            |
+  # | 3c   | Assets + Links | asset + campaign_asset | Campaign   | ✓            |
+  # | 4    | Ad Group       | ad_group               | Campaign   | After step 3 |
+  # | 5a   | Keywords       | ad_group_criterion     | Ad Group   | ✓            |
+  # | 5b   | RSA            | ad_group_ad            | Ad Group   | ✓            |
+  #
+  # Moreover, anything inside a group (e.g. all schedules, all criterions) can be synced in parallel
+  # Needs a sharper definition of parallelizable group
+  #
   STEPS = [
     Step.define(:create_ads_account) do
       def run
@@ -66,9 +81,79 @@ class CampaignDeploy < ApplicationRecord
       def finished?
         campaign.budget.synced?
       end
-    end
-  ].freeze
+    end,
 
+    Step.define(:create_campaign) do
+      def run
+        campaign.sync
+      end
+
+      def finished?
+        campaign.synced?
+      end
+    end,
+
+    Step.define(:create_geo_targeting) do
+      def run
+        campaign.location_targets.each(&:sync)
+      end
+
+      def finished?
+        campaign.location_targets.all?(&:synced?)
+      end
+    end,
+
+    Step.define(:create_schedule) do
+      def run
+        campaign.ad_schedules.each(&:sync)
+      end
+
+      def finished?
+        campaign.ad_schedules.all?(&:synced?)
+      end
+    end,
+
+    # callouts, snippets, favicon...
+    Step.define(:create_assets) do
+      def run
+        campaign.assets.each(&:sync)
+      end
+
+      def finished?
+        campaign.assets.all?(&:synced?)
+      end
+    end,
+
+    Step.define(:create_ad_groups) do
+      def run
+        campaign.ad_groups.each(&:sync)
+      end
+
+      def finished?
+        campaign.ad_groups.all?(&:synced?)
+      end
+    end,
+
+    Step.define(:create_keywords) do
+      def run
+        campaign.keywords.each(&:sync)
+      end
+
+      def finished?
+        campaign.keywords.all?(&:synced?)
+      end
+    end,
+
+    Step.define(:create_ads) do
+      def run
+        campaign.ads.each(&:sync)
+      end
+
+      def finished?
+        campaign.ads.all?(&:synced?)
+      end
+    end,
+  ].freeze
 
   def next_step
     return STEPS.first if current_step.nil?
