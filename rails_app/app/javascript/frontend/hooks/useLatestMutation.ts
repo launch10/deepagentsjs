@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { useAsyncDebouncer } from "@tanstack/react-pacer/async-debouncer";
 
 // =============================================================================
 // Types
@@ -9,93 +8,102 @@ import { useAsyncDebouncer } from "@tanstack/react-pacer/async-debouncer";
 type MutationKey = readonly unknown[];
 
 interface LatestMutationOptions<TData, TVariables> {
-  /**
-   * Required key that scopes the superseding behavior.
-   * Mutations with the same key will cancel each other.
-   *
-   * @example ['saveDocument', documentId]
-   * @example ['updateUser', userId]
-   */
   mutationKey: MutationKey;
-
-  /**
-   * The mutation function. Receives an AbortSignal that will be triggered
-   * if a newer mutation supersedes this one.
-   */
   mutationFn: (variables: TVariables, signal: AbortSignal) => Promise<TData>;
-
-  /**
-   * Optional debounce delay in ms. When set, rapid calls are coalesced
-   * and only the final call executes after the delay.
-   *
-   * @default 0 (no debounce)
-   */
   debounceMs?: number;
-
-  /**
-   * Query keys to invalidate on success.
-   */
   invalidateKeys?: MutationKey[];
-
-  /**
-   * Callbacks
-   */
   onSuccess?: (data: TData, variables: TVariables) => void;
   onError?: (error: Error, variables: TVariables) => void;
   onSettled?: (data: TData | undefined, error: Error | null, variables: TVariables) => void;
-
-  /**
-   * Optional query client override
-   */
   queryClient?: QueryClient;
 }
 
 interface LatestMutationResult<TData, TVariables> {
-  /**
-   * Trigger the mutation with debouncing (if configured).
-   * Supersedes any pending or in-flight mutation with the same key.
-   */
   mutate: (variables: TVariables) => void;
-
-  /**
-   * Trigger the mutation immediately, bypassing any debounce.
-   * Still supersedes any in-flight mutation with the same key.
-   */
   mutateNow: (variables: TVariables) => void;
-
-  /**
-   * Returns a promise. Useful for chaining or awaiting.
-   * Supersedes any pending or in-flight mutation with the same key.
-   */
   mutateAsync: (variables: TVariables) => Promise<TData>;
-
-  /**
-   * Cancel any pending debounce timer AND abort any in-flight request.
-   */
   cancel: () => void;
-
-  /**
-   * If there's a pending debounced call, execute it immediately.
-   */
   flush: () => void;
-
-  /**
-   * Reset mutation state (clears data, error, etc.)
-   */
   reset: () => void;
-
-  // State
   isPending: boolean;
   isSuccess: boolean;
   isError: boolean;
   isIdle: boolean;
   data: TData | undefined;
   error: Error | null;
-
-  /**
-   * The variables from the most recent mutation call
-   */
   variables: TVariables | undefined;
+}
+
+// =============================================================================
+// Simple Async Debouncer (replaces @tanstack/react-pacer)
+// =============================================================================
+
+interface AsyncDebouncerState<TVariables> {
+  timeoutId: ReturnType<typeof setTimeout> | null;
+  pendingVariables: TVariables | null;
+}
+
+function useAsyncDebouncer<TVariables, TResult>(
+  fn: (variables: TVariables) => Promise<TResult>,
+  wait: number,
+  onError?: (error: unknown) => void
+) {
+  const fnRef = useRef(fn);
+  fnRef.current = fn;
+
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
+  const state = useRef<AsyncDebouncerState<TVariables>>({
+    timeoutId: null,
+    pendingVariables: null,
+  });
+
+  const cancel = useCallback(() => {
+    if (state.current.timeoutId !== null) {
+      clearTimeout(state.current.timeoutId);
+      state.current.timeoutId = null;
+    }
+    state.current.pendingVariables = null;
+  }, []);
+
+  const flush = useCallback(() => {
+    if (state.current.timeoutId !== null && state.current.pendingVariables !== null) {
+      clearTimeout(state.current.timeoutId);
+      state.current.timeoutId = null;
+      const variables = state.current.pendingVariables;
+      state.current.pendingVariables = null;
+      fnRef.current(variables).catch((error) => {
+        onErrorRef.current?.(error);
+      });
+    }
+  }, []);
+
+  const maybeExecute = useCallback(
+    (variables: TVariables) => {
+      cancel();
+      state.current.pendingVariables = variables;
+      state.current.timeoutId = setTimeout(() => {
+        state.current.timeoutId = null;
+        const vars = state.current.pendingVariables;
+        state.current.pendingVariables = null;
+        if (vars !== null) {
+          fnRef.current(vars).catch((error) => {
+            onErrorRef.current?.(error);
+          });
+        }
+      }, wait);
+    },
+    [wait, cancel]
+  );
+
+  useEffect(() => {
+    return () => {
+      cancel();
+    };
+  }, [cancel]);
+
+  return { maybeExecute, cancel, flush };
 }
 
 // =============================================================================
@@ -107,13 +115,6 @@ interface LatestEntry {
   requestId: number;
 }
 
-/**
- * Global registry tracking in-flight mutations by key.
- * This enables cross-component superseding.
- *
- * Note: Debouncing is handled per-component by Pacer.
- * This registry only handles the superseding/cancellation semantics.
- */
 const supersedingRegistry = new Map<string, LatestEntry>();
 
 function getKeyString(key: MutationKey): string {
@@ -134,18 +135,10 @@ function getOrCreateEntry(keyString: string): LatestEntry {
 
 function supersede(keyString: string): { signal: AbortSignal; requestId: number } {
   const entry = getOrCreateEntry(keyString);
-
-  // Abort any in-flight request
   entry.abortController.abort();
   entry.abortController = new AbortController();
-
-  // Increment request ID
   const requestId = ++entry.requestId;
-
-  return {
-    signal: entry.abortController.signal,
-    requestId,
-  };
+  return { signal: entry.abortController.signal, requestId };
 }
 
 function isStaleRequest(keyString: string, requestId: number): boolean {
@@ -188,15 +181,12 @@ export function useLatestMutation<TData, TVariables>({
   const queryClient = useQueryClient(queryClientProp);
   const keyString = getKeyString(mutationKey);
 
-  // Keep stable references to callbacks
   const callbacksRef = useRef({ onSuccess, onError, onSettled });
   callbacksRef.current = { onSuccess, onError, onSettled };
 
-  // Keep stable reference to mutationFn
   const mutationFnRef = useRef(mutationFn);
   mutationFnRef.current = mutationFn;
 
-  // The core mutation with superseding logic
   const mutation = useMutation<TData, Error, TVariables>({
     mutationKey,
     mutationFn: async (variables: TVariables) => {
@@ -204,15 +194,11 @@ export function useLatestMutation<TData, TVariables>({
 
       try {
         const result = await mutationFnRef.current(variables, signal);
-
-        // Check if we were superseded while awaiting
         if (isStaleRequest(keyString, requestId)) {
           throw new SupersededError();
         }
-
         return result;
       } catch (error) {
-        // Re-check superseded status for abort errors
         if (isStaleRequest(keyString, requestId)) {
           throw new SupersededError();
         }
@@ -237,32 +223,22 @@ export function useLatestMutation<TData, TVariables>({
     },
   });
 
-  // Ref for stable access in debouncer
   const mutationRef = useRef(mutation);
   mutationRef.current = mutation;
 
-  // Use Pacer's async debouncer for debounce logic
   const debouncer = useAsyncDebouncer(
     async (variables: TVariables) => {
       return mutationRef.current.mutateAsync(variables);
     },
-    {
-      wait: debounceMs,
-      onError: (error) => {
-        // Pacer's error handler - silently ignore superseded
-        if (isAbortOrSuperseded(error)) return;
-        // Real errors are handled by mutation.onError
-      },
+    debounceMs,
+    (error) => {
+      if (isAbortOrSuperseded(error)) return;
     }
   );
 
-  // Store debouncer ref for cleanup
   const debouncerRef = useRef(debouncer);
   debouncerRef.current = debouncer;
 
-  /**
-   * Execute with debouncing (if configured)
-   */
   const mutate = useCallback(
     (variables: TVariables) => {
       if (debounceMs <= 0) {
@@ -274,25 +250,16 @@ export function useLatestMutation<TData, TVariables>({
     [debounceMs]
   );
 
-  /**
-   * Execute immediately, bypassing debounce
-   */
   const mutateNow = useCallback((variables: TVariables) => {
     debouncerRef.current.cancel();
     mutationRef.current.mutate(variables);
   }, []);
 
-  /**
-   * Execute immediately and return a promise
-   */
   const mutateAsync = useCallback(async (variables: TVariables): Promise<TData> => {
     debouncerRef.current.cancel();
     return mutationRef.current.mutateAsync(variables);
   }, []);
 
-  /**
-   * Cancel everything - debounce timer AND in-flight request
-   */
   const cancel = useCallback(() => {
     debouncerRef.current.cancel();
     const entry = supersedingRegistry.get(keyString);
@@ -302,28 +269,20 @@ export function useLatestMutation<TData, TVariables>({
     }
   }, [keyString]);
 
-  /**
-   * Flush: if there's a pending debounced call, execute it now
-   */
   const flush = useCallback(() => {
     debouncerRef.current.flush();
   }, []);
 
-  /**
-   * Reset mutation state
-   */
   const reset = useCallback(() => {
     mutation.reset();
   }, [mutation]);
 
-  // Cleanup debouncer on unmount (Pacer handles this internally too)
   useEffect(() => {
     return () => {
       debouncerRef.current.cancel();
     };
   }, []);
 
-  // Filter out superseded errors from exposed state
   const isRealError = mutation.isError && !isAbortOrSuperseded(mutation.error);
 
   return {
@@ -344,7 +303,7 @@ export function useLatestMutation<TData, TVariables>({
 }
 
 // =============================================================================
-// Utility: Cancel all mutations for a key (useful for cleanup)
+// Utilities
 // =============================================================================
 
 export function cancelLatestMutation(mutationKey: MutationKey): void {
@@ -355,10 +314,6 @@ export function cancelLatestMutation(mutationKey: MutationKey): void {
     supersedingRegistry.delete(keyString);
   }
 }
-
-// =============================================================================
-// Utility: Check if a mutation is in-flight for a key
-// =============================================================================
 
 export function isMutationInflight(mutationKey: MutationKey): boolean {
   const keyString = getKeyString(mutationKey);
