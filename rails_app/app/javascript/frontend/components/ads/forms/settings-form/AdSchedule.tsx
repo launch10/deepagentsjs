@@ -1,8 +1,7 @@
-import { useFormContext, Controller } from "react-hook-form";
+import { useFormContext, Controller, useFormState } from "react-hook-form";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@components/ui/field";
 import { cn } from "@lib/utils";
 import type { SettingsFormData } from "./settingsForm.schema";
-import { Input } from "@components/ui/input";
 import {
   Select,
   SelectTrigger,
@@ -23,13 +22,30 @@ const TIMEZONES = [
   { value: "PST", label: "Pacific Standard Time - PST (GMT-8)" },
 ];
 
-export default function AdSchedule() {
-  const methods = useFormContext<SettingsFormData>();
+const TIME_OPTIONS = (() => {
+  const options: { value: string; label: string; textValue: string }[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (const minute of ["00", "15", "30", "45"]) {
+      const value = `${hour.toString().padStart(2, "0")}:${minute}`;
+      const h = hour % 12 || 12;
+      const ampm = hour < 12 ? "AM" : "PM";
+      const label = `${h}:${minute} ${ampm}`;
+      const textValue = `${h}:${minute}`;
+      options.push({ value, label, textValue });
+    }
+  }
+  return options;
+})();
 
-  const selectedDays = methods.watch("selectedDays");
+export default function AdSchedule() {
+  const { control, watch, getValues, setValue } = useFormContext<SettingsFormData>();
+  const { errors } = useFormState({ control });
+
+  const selectedDays = watch("selectedDays");
+  const isAlwaysOn = selectedDays.includes("Always On");
 
   const toggleDay = (day: DayOfWeek) => {
-    const current = methods.getValues("selectedDays");
+    const current = getValues("selectedDays");
     let newSelected: string[];
 
     if (day === "Always On") {
@@ -47,7 +63,7 @@ export default function AdSchedule() {
       }
     }
 
-    methods.setValue("selectedDays", newSelected, { shouldValidate: true });
+    setValue("selectedDays", newSelected, { shouldValidate: true });
   };
 
   return (
@@ -74,61 +90,91 @@ export default function AdSchedule() {
             </Button>
           ))}
         </div>
-        <FieldError errors={[{ message: methods.formState.errors.selectedDays?.message }]} />
+        <FieldError errors={[{ message: errors.selectedDays?.message }]} />
       </Field>
 
-      <div className="flex gap-3 items-start">
-        <Field className="flex flex-col gap-2 w-[212px]">
-          <FieldLabel className="text-xs font-semibold leading-4 text-base-400" htmlFor="startTime">
-            Start Time
-          </FieldLabel>
-          <Controller
-            name="startTime"
-            control={methods.control}
-            render={({ field }) => (
-              <Input type="time" value={field.value} onChange={field.onChange} />
-            )}
-          />
-          <FieldError errors={[{ message: methods.formState.errors.startTime?.message }]} />
-        </Field>
-        <Field className="flex flex-col gap-2 w-[212px]">
-          <FieldLabel className="text-xs font-semibold leading-4 text-base-400" htmlFor="endTime">
-            End Time
-          </FieldLabel>
-          <Controller
-            name="endTime"
-            control={methods.control}
-            render={({ field }) => (
-              <Input type="time" value={field.value} onChange={field.onChange} />
-            )}
-          />
-          <FieldError errors={[{ message: methods.formState.errors.endTime?.message }]} />
-        </Field>
-        <Field className="flex flex-col gap-2 w-[313px]">
-          <FieldLabel className="text-xs font-semibold leading-4 text-base-400" htmlFor="timezone">
-            Time Zone
-          </FieldLabel>
-          <Controller
-            name="timezone"
-            control={methods.control}
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a timezone" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEZONES.map((tz) => (
-                    <SelectItem key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          <FieldError errors={[{ message: methods.formState.errors.timezone?.message }]} />
-        </Field>
-      </div>
+      {!isAlwaysOn && (
+        <div className="flex gap-3 items-start">
+          <Field className="flex flex-col gap-2 w-[212px]">
+            <FieldLabel
+              className="text-xs font-semibold leading-4 text-base-400"
+              htmlFor="startTime"
+            >
+              Start Time
+            </FieldLabel>
+            <Controller
+              name="startTime"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select start time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_OPTIONS.map((time) => (
+                      <SelectItem key={time.value} value={time.value} textValue={time.textValue}>
+                        {time.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldError errors={[{ message: errors.startTime?.message }]} />
+          </Field>
+          <Field className="flex flex-col gap-2 w-[212px]">
+            <FieldLabel className="text-xs font-semibold leading-4 text-base-400" htmlFor="endTime">
+              End Time
+            </FieldLabel>
+            <Controller
+              name="endTime"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select end time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_OPTIONS.map((time) => (
+                      <SelectItem key={time.value} value={time.value} textValue={time.textValue}>
+                        {time.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldError errors={[{ message: errors.endTime?.message }]} />
+          </Field>
+          <Field className="flex flex-col gap-2 w-[313px]">
+            <FieldLabel
+              className="text-xs font-semibold leading-4 text-base-400"
+              htmlFor="timezone"
+            >
+              Time Zone
+            </FieldLabel>
+            <Controller
+              name="timezone"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldError errors={[{ message: errors.timezone?.message }]} />
+          </Field>
+        </div>
+      )}
     </FieldGroup>
   );
 }

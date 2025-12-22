@@ -5,7 +5,6 @@ import { cn } from "@lib/utils";
 import { MapPin, X } from "lucide-react";
 import { Controller, useFormContext, type FieldArrayWithId } from "react-hook-form";
 import type { SettingsFormData } from "./settingsForm.schema";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/input-group";
 
 type SettingsFormInputProps = {
   location: FieldArrayWithId<SettingsFormData, "locations", "id">;
@@ -32,26 +31,6 @@ function LocationTargetingItem({
           <span className="text-xs font-medium text-base-500">{location.canonical_name}</span>
           <span className="text-xs text-base-300">{location.target_type}</span>
         </div>
-      </div>
-      <div className="flex items-center gap-2 flex-none">
-        <span className="text-xs text-base-300">Radius:</span>
-        <InputGroup className="w-24">
-          <Controller
-            name={`locations.${index}.radius`}
-            control={methods.control}
-            render={({ field }) => (
-              <InputGroupInput
-                className="text-xs text-base-500"
-                type="number"
-                {...field}
-                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-              />
-            )}
-          />
-          <InputGroupAddon className="text-xs text-base-300" align="inline-end">
-            miles
-          </InputGroupAddon>
-        </InputGroup>
       </div>
       <div className="flex items-center space-x-2 ml-auto">
         <Label htmlFor={`locations.${index}.isTargeted`} className="text-xs text-base-400 mb-0">

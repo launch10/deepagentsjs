@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useDebouncedCallback } from "use-debounce";
-import { useFormContext, useFieldArray } from "react-hook-form";
+import { useFormContext, useFieldArray, useFormState } from "react-hook-form";
 import { Search, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { usePage } from "@inertiajs/react";
@@ -12,7 +12,19 @@ import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-ca
 import type { SettingsFormData, LocationWithSettings } from "./settingsForm.schema";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/input-group";
 import LocationTargetingItem from "./LocationTargetingItem";
+import { useSettingsFormStore } from "@stores/settingsFormStore";
+
 type GeoTarget = NonNullable<SearchGeoTargetConstantsResponse>[number];
+
+const DefaultLocationTarget: GeoTarget = {
+  id: 31022,
+  criteria_id: 2840,
+  name: "United States",
+  canonical_name: "United States",
+  country_code: "US",
+  target_type: "Country",
+  status: "Active",
+};
 
 export default function LocationTargeting() {
   const [searchValue, setSearchValue] = useState("");
@@ -25,10 +37,11 @@ export default function LocationTargeting() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const methods = useFormContext<SettingsFormData>();
+  const { control } = useFormContext<SettingsFormData>();
+  const { errors } = useFormState({ control });
 
   const { fields, append, remove, update } = useFieldArray({
-    control: methods.control,
+    control,
     name: "locations",
   });
 
@@ -46,7 +59,7 @@ export default function LocationTargeting() {
     (s) => !fields.some((loc) => loc.criteria_id === s.criteria_id)
   );
 
-  const hasError = methods.formState.errors.locations?.message;
+  const hasError = errors.locations?.message;
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -66,7 +79,6 @@ export default function LocationTargeting() {
       canonical_name: location.canonical_name,
       target_type: location.target_type,
       country_code: location.country_code!,
-      radius: 10,
       isTargeted: true,
     };
     append(newLocation);
@@ -84,6 +96,16 @@ export default function LocationTargeting() {
     const current = fields[index];
     update(index, { ...current, isTargeted: !current.isTargeted });
   };
+
+  const hasInitialized = useRef(false);
+  const { hasHydrated } = useSettingsFormStore();
+
+  useEffect(() => {
+    if (hasHydrated && !hasInitialized.current && fields.length === 0) {
+      hasInitialized.current = true;
+      handleSelectLocation(DefaultLocationTarget);
+    }
+  }, [hasHydrated, fields.length]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

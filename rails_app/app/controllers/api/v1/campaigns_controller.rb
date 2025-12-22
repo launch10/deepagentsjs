@@ -103,7 +103,7 @@ class API::V1::CampaignsController < API::BaseController
       keywords: [:id, :text, :match_type, :position],
       callouts: [:id, :text, :position],
       structured_snippet: [:category, :_destroy, { values: [] }],
-      location_targets: [:target_type, :location_name, :location_type, :country_code, :targeted, :google_criterion_id, :radius, :radius_units],
+      location_targets: [:target_type, :location_name, :location_type, :country_code, :targeted, :google_criterion_id],
       ad_group: [:name]
     }
   end

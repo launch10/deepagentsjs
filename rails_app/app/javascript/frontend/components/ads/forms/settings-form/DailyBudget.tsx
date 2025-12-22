@@ -1,4 +1,4 @@
-import { useFormContext, Controller } from "react-hook-form";
+import { useFormContext, Controller, useFormState } from "react-hook-form";
 import { Sparkles } from "lucide-react";
 import { useAdsChatActions } from "@hooks/useAdsChat";
 import type { SettingsFormData } from "./settingsForm.schema";
@@ -7,7 +7,8 @@ import { Field, FieldError, FieldLabel } from "@components/ui/field";
 
 export default function DailyBudget() {
   const { sendMessage } = useAdsChatActions();
-  const methods = useFormContext<SettingsFormData>();
+  const { control } = useFormContext<SettingsFormData>();
+  const { errors } = useFormState({ control });
 
   const handleAskChat = () => {
     sendMessage("Suggest appropriate daily budget amounts for this ad campaign");
@@ -23,7 +24,7 @@ export default function DailyBudget() {
           <InputGroupAddon>$</InputGroupAddon>
           <Controller
             name="budget"
-            control={methods.control}
+            control={control}
             render={({ field }) => (
               <InputGroupInput
                 type="number"
@@ -48,7 +49,7 @@ export default function DailyBudget() {
           </span>
         </button>
       </div>
-      <FieldError errors={[{ message: methods.formState.errors.budget?.message }]} />
+      <FieldError errors={[{ message: errors.budget?.message }]} />
     </Field>
   );
 }

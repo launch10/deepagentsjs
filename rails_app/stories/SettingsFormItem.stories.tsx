@@ -22,7 +22,6 @@ const meta = {
       canonical_name: "Historic Core,California,United States",
       target_type: "Neighborhood",
       country_code: "US",
-      radius: 11,
       isTargeted: false,
       id: "f82b7b6b-f493-4236-aebf-3ccc0ffd9662",
     },

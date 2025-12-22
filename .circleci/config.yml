@@ -242,10 +242,54 @@ jobs:
           name: Run tests
           command: npm run test:run
 
+  rails-frontend-tests:
+    docker:
+      - image: cimg/node:22.12.0
+    working_directory: ~/project/rails_app
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Add GitHub to known hosts
+          command: |
+            mkdir -p ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
+          name: Initialize submodules
+          command: |
+            cd ~/project
+            git submodule sync
+            git submodule update --init --recursive
+      - run:
+          name: Install pnpm
+          command: |
+            curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=9.15.0 SHELL=/bin/bash sh -
+            echo 'export PNPM_HOME="$HOME/.local/share/pnpm"' >> $BASH_ENV
+            echo 'export PATH="$PNPM_HOME:$PATH"' >> $BASH_ENV
+            source $BASH_ENV
+      - restore_cache:
+          keys:
+            - rails-frontend-deps-v1-{{ checksum "../pnpm-lock.yaml" }}
+            - rails-frontend-deps-v1-
+      - run:
+          name: Install dependencies
+          command: |
+            cd ~/project
+            pnpm install --frozen-lockfile
+      - save_cache:
+          key: rails-frontend-deps-v1-{{ checksum "../pnpm-lock.yaml" }}
+          paths:
+            - node_modules
+            - ~/.pnpm-store
+      - run:
+          name: Run frontend tests
+          command: pnpm run test
+
 workflows:
   version: 2
   test:
     jobs:
       - langgraph-tests
       - rails-tests
+      - rails-frontend-tests
       - atlas-tests

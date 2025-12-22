@@ -8,7 +8,9 @@ import AdCampaignFieldList from "../shared/AdCampaignFieldList";
 import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
 import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
-import { useCampaignAutosave } from "@hooks/useCampaignAutosave";
+import { useAutosaveCampaign } from "@api/campaigns.hooks";
+import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
+import type { UpdateCampaignRequestBody } from "@api/campaigns";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 
@@ -82,15 +84,18 @@ export default function HeadlinesForm() {
     });
   };
 
-  useCampaignAutosave({
+  const { saveNow } = useAutosaveCampaign<HeadlinesFormData>({
     methods,
-    fieldMappings: [{ formField: "headlines", apiField: "headlines" }],
-    values: [headlines],
+    transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
+      const transformed = defaultAssetTransform(data.headlines);
+      if (transformed.length === 0) return null;
+      return { headlines: transformed };
+    },
   });
 
   const fields = filteredHeadlines.map((h) => ({ ...h, id: h.id }));
 
-  useFormRegistration("content", methods);
+  useFormRegistration("content", methods, saveNow);
 
   return (
     <FieldGroup className="gap-3">

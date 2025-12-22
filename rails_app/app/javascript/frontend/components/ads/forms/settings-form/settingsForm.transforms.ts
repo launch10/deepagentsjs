@@ -32,13 +32,11 @@ const REVERSE_TIMEZONE_MAP = Object.fromEntries(
 
 export function transformLocationsToApi(locations: LocationWithSettings[]) {
   return locations.map((loc) => ({
-    target_type: "geo_location", // TODO: Add support for other target types
+    target_type: "geo_location",
     location_name: loc.name,
     country_code: loc.country_code,
     targeted: loc.isTargeted,
     google_criterion_id: String(loc.criteria_id),
-    radius: loc.radius,
-    radius_units: "MILES",
   }));
 }
 
@@ -83,7 +81,6 @@ export function transformLocationsFromApi(
         canonical_name: loc.location_name || "",
         target_type: loc.location_type || "COUNTRY",
         country_code: loc.country_code || "",
-        radius: loc.radius ?? 0,
         isTargeted: loc.targeted,
       };
     });
@@ -122,9 +119,7 @@ export function transformScheduleFromApi(
     };
   }
 
-  const selectedDays = schedule.day_of_week
-    .map((day) => REVERSE_DAY_NAME_MAP[day])
-    .filter(Boolean);
+  const selectedDays = schedule.day_of_week.map((day) => REVERSE_DAY_NAME_MAP[day]).filter(Boolean);
 
   return {
     selectedDays: selectedDays.length > 0 ? selectedDays : settingsFormDefaults.selectedDays,

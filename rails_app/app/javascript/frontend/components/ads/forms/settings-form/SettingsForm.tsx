@@ -1,17 +1,16 @@
-import { useEffect, useRef } from "react";
-import { useForm, useWatch, FormProvider } from "react-hook-form";
+import { useEffect, useEffectEvent } from "react";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePage } from "@inertiajs/react";
 import { FieldSet } from "@components/ui/field";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { useSettingsFormStore } from "@stores/settingsFormStore";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
-import { useDebounce } from "@hooks/useDebounce";
 import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
 import LocationTargeting from "./LocationTargeting";
 import AdSchedule from "./AdSchedule";
 import DailyBudget from "./DailyBudget";
-import { settingsFormSchema, settingsFormDefaults, type SettingsFormData } from "./settingsForm.schema";
+import { settingsFormSchema, type SettingsFormData } from "./settingsForm.schema";
 import {
   transformSettingsFormToApi,
   transformLocationsFromApi,
@@ -20,14 +19,8 @@ import {
 } from "./settingsForm.transforms";
 
 export default function SettingsForm() {
-  const { values, setValues } = useSettingsFormStore();
+  const { values, setValues, hydrateOnce } = useSettingsFormStore();
   const { campaign, location_targets, ad_schedule } = usePage<CampaignProps>().props;
-  const campaignId = campaign?.id;
-  const autosaveMutation = useAutosaveCampaign(campaignId);
-
-  const isInitialMount = useRef(true);
-  const lastSavedValue = useRef<string | null>(null);
-  const hasInitializedFromProps = useRef(false);
 
   const methods = useForm<SettingsFormData>({
     resolver: zodResolver(settingsFormSchema) as any,
@@ -35,37 +28,22 @@ export default function SettingsForm() {
     defaultValues: values,
   });
 
-  useFormRegistration("settings", methods);
+  const hydrate = useEffectEvent(() => {
+    const inertiaProps: SettingsFormData = {
+      locations: transformLocationsFromApi(location_targets),
+      ...transformScheduleFromApi(ad_schedule),
+      budget: transformBudgetFromApi(campaign?.daily_budget_cents),
+    };
+
+    if (hydrateOnce(inertiaProps)) {
+      methods.reset(inertiaProps);
+    }
+  });
 
   useEffect(() => {
-    if (hasInitializedFromProps.current) return;
+    hydrate();
+  }, [location_targets, ad_schedule, campaign?.daily_budget_cents]);
 
-    const locations = transformLocationsFromApi(location_targets);
-    const schedule = transformScheduleFromApi(ad_schedule);
-    const budget = transformBudgetFromApi(campaign?.daily_budget_cents);
-
-    const hasData =
-      locations.length > 0 ||
-      schedule.selectedDays !== settingsFormDefaults.selectedDays ||
-      budget !== settingsFormDefaults.budget;
-
-    if (hasData) {
-      const newValues: SettingsFormData = {
-        locations,
-        selectedDays: schedule.selectedDays,
-        startTime: schedule.startTime,
-        endTime: schedule.endTime,
-        timezone: schedule.timezone,
-        budget,
-      };
-
-      methods.reset(newValues);
-      setValues(newValues);
-      hasInitializedFromProps.current = true;
-    }
-  }, [location_targets, ad_schedule, campaign?.daily_budget_cents, methods, setValues]);
-
-  // Sync form values to Zustand store
   useEffect(() => {
     const subscription = methods.watch((formValues) => {
       setValues(formValues as SettingsFormData);
@@ -73,30 +51,12 @@ export default function SettingsForm() {
     return () => subscription.unsubscribe();
   }, [methods, setValues]);
 
-  // Watch all form fields reactively for autosave
-  const watchedValues = useWatch({ control: methods.control });
-  const debouncedValues = useDebounce(watchedValues as SettingsFormData, 750);
+  const { saveNow } = useAutosaveCampaign<SettingsFormData>({
+    methods,
+    transformFn: transformSettingsFormToApi,
+  });
 
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    if (!campaignId || autosaveMutation.isPending) {
-      return;
-    }
-
-    const apiData = transformSettingsFormToApi(debouncedValues);
-    const serialized = JSON.stringify(apiData);
-
-    if (serialized === lastSavedValue.current) {
-      return;
-    }
-    lastSavedValue.current = serialized;
-
-    autosaveMutation.mutate({ campaign: apiData });
-  }, [debouncedValues, campaignId, autosaveMutation.isPending]);
+  useFormRegistration("settings", methods, saveNow);
 
   return (
     <FormProvider {...methods}>
