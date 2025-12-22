@@ -70,7 +70,7 @@ class CampaignComplete < BaseBuilder
 
   def create_assets(campaign, ad_group)
     5.times { |i| create(:ad_callout, campaign: campaign, ad_group: ad_group, text: "Callout #{i + 1}") }
-    create(:ad_structured_snippet, campaign: campaign, category: "Types", values: ["Type A", "Type B", "Type C", "Type D"])
+    create(:ad_structured_snippet, campaign: campaign, category: StructuredSnippetCategoriesConfig.categories.first, values: ["Type A", "Type B", "Type C", "Type D"])
   end
 
   def create_keywords(ad_group)

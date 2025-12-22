@@ -21,11 +21,6 @@ website_deployed:
   base_snapshot: website_created
   description: "Sets workflow to ad_campaign:content"
 
-campaign_created:
-  class: CampaignCreated
-  base_snapshot: website_created
-  description: "Creates a campaign with ad groups and ads"
-
 campaign_complete:
   class: CampaignComplete
   base_snapshot: website_deployed
