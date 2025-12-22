@@ -62,6 +62,7 @@ class Campaign < ApplicationRecord
   acts_as_paranoid
 
   belongs_to :account
+  delegate :google_ads_account, to: :account
   belongs_to :project
   belongs_to :website
   belongs_to :ads_account, optional: true

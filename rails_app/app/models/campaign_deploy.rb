@@ -46,6 +46,35 @@ class CampaignDeploy < ApplicationRecord
 
     attr_reader :campaign
   end
+  class Steps
+    def initialize(steps)
+      @steps = steps
+    end
+
+    def find_by(name)
+      @steps.find { |step| step.step_name.to_sym == name.to_sym }
+    end
+
+    def first
+      @steps.first
+    end
+
+    def last
+      @steps.last
+    end
+
+    def freeze
+      @steps.freeze
+    end
+
+    def index(&block)
+      @steps.index(&block)
+    end
+
+    def size
+      @steps.size
+    end
+  end
 
   # Can create a parallelizable step process here...
   # | Step | Entity         | Service                | Depends On | Parallel?    |
@@ -62,7 +91,7 @@ class CampaignDeploy < ApplicationRecord
   # Moreover, anything inside a group (e.g. all schedules, all criterions) can be synced in parallel
   # Needs a sharper definition of parallelizable group
   #
-  STEPS = [
+  STEPS = Steps.new([
     Step.define(:create_ads_account) do
       def run
         campaign.account.create_google_ads_account
@@ -153,7 +182,7 @@ class CampaignDeploy < ApplicationRecord
         campaign.ads.all?(&:synced?)
       end
     end
-  ].freeze
+  ])
 
   def next_step
     return STEPS.first if current_step.nil?
