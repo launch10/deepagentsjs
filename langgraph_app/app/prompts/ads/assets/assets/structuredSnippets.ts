@@ -13,7 +13,9 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
     prompt: async (state: AdsGraphState, _config?: any) => {
       const snippetCategory = state?.structuredSnippets?.category;
       const userPrefs = await userPreferencesPrompt(state, "structuredSnippets");
-      const numberOfDetails = Ads.getNVariantsForAsset(state.refresh, "structuredSnippets") ?? Ads.DefaultNumAssets.structuredSnippets;
+      const numberOfDetails =
+        Ads.getNVariantsForAsset(state.refresh, "structuredSnippets") ??
+        Ads.DefaultNumAssets.structuredSnippets;
 
       return `
             ## Product or Service Offerings (Structured Snippets)
@@ -35,14 +37,16 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
             - Choose an appropriate category header
             - Generate exactly ${numberOfDetails} specific, relevant details
             - Do not generate more than ${numberOfDetails} details
-            - Each detail should be 25 characters or less
+            - Each detail should be ${Ads.FakeAssetLengths.structuredSnippets} characters or less
             - Be specific to this business's actual offerings
 
             ${userPrefs}
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-      const numberOfDetails = Ads.getNVariantsForAsset(state.refresh, "structuredSnippets") ?? Ads.DefaultNumAssets.structuredSnippets;
+      const numberOfDetails =
+        Ads.getNVariantsForAsset(state.refresh, "structuredSnippets") ??
+        Ads.DefaultNumAssets.structuredSnippets;
       return {
         structuredSnippets: {
           category: "Types",

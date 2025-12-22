@@ -134,6 +134,41 @@ export const StructuredSnippetsSchema = z.object({
   details: z.array(AssetSchema)
 });
 
+// Real character limits for final assets (what Google actually accepts)
+export const AssetLengths: Record<AssetKind, number> = {
+  headlines: 30,
+  descriptions: 90,
+  callouts: 25,
+  structuredSnippets: 25,
+  keywords: 90,
+} as const;
+
+// Use these to avoid LLMs exceeding character limits during generation (ensures output stays within limits)
+export const FakeAssetLengths: Record<AssetKind, number> = {
+  headlines: 20,
+  descriptions: 70,
+  callouts: 15,
+  structuredSnippets: 15,
+  keywords: 70,
+} as const;
+
+export interface AssetLimit {
+  min: number;
+  max: number;
+}
+
+export const AssetLimits: Record<AssetKind, AssetLimit> = {
+  headlines: { min: 3, max: 15 },
+  descriptions: { min: 2, max: 4 },
+  callouts: { min: 2, max: 10 },
+  structuredSnippets: { min: 3, max: 10 },
+  keywords: { min: 1, max: 20 }
+};
+
+export const limitAssets = <T>(assets: T[], kind: AssetKind): T[] => {
+    return assets.slice(0, AssetLimits[kind].max);
+};
+
 export type StructuredSnippets = z.infer<typeof StructuredSnippetsSchema>;
 
 // LLM output schemas with character limits

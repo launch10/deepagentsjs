@@ -6,21 +6,22 @@ export const Callouts: Partial<Ads.AssetPromptMap> = {
   callouts: {
     prompt: async (state: AdsGraphState, _config?: any) => {
       const userPrefs = await userPreferencesPrompt(state, "callouts");
-      const nVariants = Ads.getNVariantsForAsset(state.refresh, "callouts") ?? Ads.DefaultNumAssets.callouts;
+      const nVariants =
+        Ads.getNVariantsForAsset(state.refresh, "callouts") ?? Ads.DefaultNumAssets.callouts;
 
       return `
             ## Unique Features (Callouts)
             Generate ${nVariants} unique selling points that highlight why customers should choose this business. These appear as callout extensions in Google Ads.
 
             **Guidelines:**
-            - Keep each feature concise and punchy (typically 12-25 characters)
+            - Keep each feature concise and punchy (no more than ${Ads.FakeAssetLengths.callouts} characters)
             - Focus on competitive advantages, special offers, or key differentiators
             - Use action-oriented language when possible
             - Examples: "Free Fast Delivery", "10% Student Discount", "30-Day Free Returns", "No Obligation Estimate", "35+ Years Experience", "Family Owned"
 
             **Requirements:**
             - Generate exactly ${nVariants} unique features
-            - Each must be 25 characters or less
+            - Each must be ${Ads.FakeAssetLengths.callouts} characters or less
             - Avoid generic phrases - be specific to this business
             - Focus on tangible benefits or proof points
 
@@ -30,7 +31,8 @@ export const Callouts: Partial<Ads.AssetPromptMap> = {
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-      const nVariants = Ads.getNVariantsForAsset(state.refresh, "callouts") ?? Ads.DefaultNumAssets.callouts;
+      const nVariants =
+        Ads.getNVariantsForAsset(state.refresh, "callouts") ?? Ads.DefaultNumAssets.callouts;
       const callouts = Array.from({ length: nVariants }, (_, i) => `Feature ${i + 1}`);
       return { callouts };
     },

@@ -6,14 +6,16 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
   descriptions: {
     prompt: async (state: AdsGraphState, _config?: any) => {
       const userPrefs = await userPreferencesPrompt(state, "descriptions");
-      const nVariants = Ads.getNVariantsForAsset(state.refresh, "descriptions") ?? Ads.DefaultNumAssets.descriptions;
+      const nVariants =
+        Ads.getNVariantsForAsset(state.refresh, "descriptions") ??
+        Ads.DefaultNumAssets.descriptions;
 
       return `
             ## Descriptions
             Generate ${nVariants} compelling descriptions for this business's Google Ads campaign. Descriptions appear below the headlines and provide more detail about the offer.
 
             **Guidelines:**
-            - Each description must be 90 characters or less (this is a strict Google Ads limit)
+            - Each description must be ${Ads.FakeAssetLengths.descriptions} characters or less (this is a strict Google Ads limit)
             - Expand on the value proposition introduced in headlines
             - Include a clear call-to-action in at least 2 descriptions
             - Mix different approaches:
@@ -26,7 +28,7 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
 
             **Requirements:**
             - Generate exactly ${nVariants} unique descriptions
-            - Each must be 90 characters or less
+            - Each must be ${Ads.FakeAssetLengths.descriptions} characters or less (hard limit)
             - At least 2 should include a call-to-action (e.g., "Call now", "Get a quote", "Shop today")
             - Make them specific to this business's offerings and benefits
             - Avoid repeating the same information across descriptions
@@ -37,7 +39,9 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-      const nVariants = Ads.getNVariantsForAsset(state.refresh, "descriptions") ?? Ads.DefaultNumAssets.descriptions;
+      const nVariants =
+        Ads.getNVariantsForAsset(state.refresh, "descriptions") ??
+        Ads.DefaultNumAssets.descriptions;
       const descriptions = Array.from({ length: nVariants }, (_, i) => `Description ${i + 1}`);
       return { descriptions };
     },
