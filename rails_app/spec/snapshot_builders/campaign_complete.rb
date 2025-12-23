@@ -11,6 +11,8 @@ class CampaignComplete < BaseBuilder
     account = Account.first
     raise "No account found" unless account
 
+    create_google_connected_account(account)
+
     project = account.projects.first
     raise "No project found for account #{account.id}" unless project
 
@@ -36,6 +38,20 @@ class CampaignComplete < BaseBuilder
   end
 
   private
+
+  def create_google_connected_account(account)
+    user = account.owner
+    raise "No owner found for account #{account.id}" unless user
+
+    return if user.connected_accounts.exists?(provider: "google_oauth2")
+
+    create(:connected_account, :google, owner: user, auth: {
+      "info" => {
+        "email" => "brett@launch10.ai",
+        "name" => user.name
+      }
+    })
+  end
 
   def create_favicon(account, website)
     upload = create(:upload, account: account, is_logo: true)

@@ -62,7 +62,7 @@ module Jumpstart
           name: auth.info.name
         )
         user.password = ::Devise.friendly_token[0, 20] if user.respond_to?(:password=)
-        user.skip_confirmation!
+        user.skip_confirmation! if user.respond_to?(:skip_confirmation!)
         user.connected_accounts.new(connected_account_params)
         user.save!
 

@@ -38,6 +38,7 @@ class Account < ApplicationRecord
   belongs_to :owner, class_name: "User"
   has_one :ads_account, dependent: :destroy
   has_many :account_invitations, dependent: :destroy
+  has_many :ads_account_invitations, through: :ads_account, class_name: "AdsAccountInvitation", dependent: :destroy, source: :invitations
   has_many :account_users, dependent: :destroy
   has_many :campaigns, dependent: :destroy
   has_many :notification_mentions, as: :record, dependent: :destroy, class_name: "Noticed::Event"
@@ -87,6 +88,10 @@ class Account < ApplicationRecord
 
   def google_email_address
     google_connected_account&.email
+  end
+
+  def google_account_invitation
+    ads_account_invitations.where(platform: "google").first
   end
 
   def has_google_connected_account?

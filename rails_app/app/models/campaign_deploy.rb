@@ -78,7 +78,11 @@ class CampaignDeploy < ApplicationRecord
   end
 
   class StepRunner
+    include TypeCheck
+
     def initialize(campaign)
+      expect_type(campaign, Campaign)
+
       @campaign = campaign
       @steps = STEPS
     end
@@ -110,7 +114,11 @@ class CampaignDeploy < ApplicationRecord
       end
 
       def finished?
-        campaign.account.verify_google_ads_account&.success?
+        sync_result&.success? || false
+      end
+
+      def sync_result
+        campaign.account.verify_google_ads_account
       end
     end,
 
@@ -120,7 +128,11 @@ class CampaignDeploy < ApplicationRecord
       end
 
       def finished?
-        campaign.google_account_invitation&.sent?
+        sync_result&.success? || false
+      end
+
+      def sync_result
+        campaign&.account&.google_account_invitation&.google_sync_result
       end
     end,
 
@@ -130,17 +142,25 @@ class CampaignDeploy < ApplicationRecord
       end
 
       def finished?
-        campaign.budget.google_synced?
+        sync_result&.success? || false
+      end
+
+      def sync_result
+        campaign.budget.google_sync_result
       end
     end,
 
     Step.define(:create_campaign) do
       def run
-        campaign.sync
+        campaign.google_sync
       end
 
       def finished?
-        campaign.synced?
+        sync_result&.success? || false
+      end
+
+      def sync_result
+        campaign.google_sync_result
       end
     end,
 
@@ -161,6 +181,10 @@ class CampaignDeploy < ApplicationRecord
 
       def finished?
         campaign.ad_schedules.all?(&:synced?)
+      end
+
+      def sync_result
+        campaign.ad_schedules.map(&:google_sync_result)
       end
     end,
 

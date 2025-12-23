@@ -61,6 +61,8 @@ class AdsAccountInvitation < ApplicationRecord
       self.google_status = "accepted"
       self.google_accepted_at = Time.current.iso8601
     end
+
+    save!
   end
 
   def okay?
