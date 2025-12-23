@@ -50,6 +50,18 @@ module GoogleAds
       )
     end
 
+    def deep_link
+      # - ocid - the customer ID (your MCC: 7879395008)
+      # - ascid - the account/sub-customer ID
+      # - budgetId - the budget ID from the resource name
+      base_url = "https://ads.google.com/aw/sharedbudgetdetails"
+      params = {
+        ocid: campaign.google_customer_id,
+        ascid: campaign.google_customer_id,
+        budgetId: budget_id
+      }
+    end
+
     def sync
       return sync_result if synced?
 

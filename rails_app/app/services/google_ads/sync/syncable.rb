@@ -52,6 +52,10 @@ module GoogleAds
           our_value = local_resource.respond_to?(our_field) ? local_resource.send(our_field) : nil
           next if our_value.nil?
 
+          ignore_for_sync = mapping[:ignore_for_sync]
+          should_ignore = ignore_for_sync.respond_to?(:call) ? ignore_for_sync.call : ignore_for_sync
+          next if should_ignore
+
           their_value = extract_remote_value(remote_resource, mapping[:their_field])
 
           comparisons << FieldComparison.new(

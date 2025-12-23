@@ -44,4 +44,11 @@ class AdsAccount < ApplicationRecord
     customer_id = result.resource_name.split("/").last
     self.google_customer_id = customer_id if customer_id.present?
   end
+
+  def send_google_ads_invitation_email(access_role: :ADMIN)
+    raise "Google Ads account must have a google_customer_id" unless google_customer_id.present?
+    raise "Google Ads account must have a google_email_address" unless account.google_email_address.present?
+
+    google_syncer.send_google_ads_invitation_email(email_address: account.google_email_address, access_role: access_role)
+  end
 end

@@ -51,7 +51,7 @@ class CampaignDeploy < ApplicationRecord
       @steps = steps
     end
 
-    def find_by(name)
+    def find(name)
       @steps.find { |step| step.step_name.to_sym == name.to_sym }
     end
 
@@ -73,6 +73,17 @@ class CampaignDeploy < ApplicationRecord
 
     def size
       @steps.size
+    end
+  end
+
+  class StepRunner
+    def initialize(campaign)
+      @campaign = campaign
+      @steps = STEPS
+    end
+
+    def find(name)
+      @steps.find(name).new(@campaign)
     end
   end
 
@@ -104,11 +115,11 @@ class CampaignDeploy < ApplicationRecord
 
     Step.define(:sync_budget) do
       def run
-        campaign.budget.sync
+        campaign.budget.google_sync
       end
 
       def finished?
-        campaign.budget.synced?
+        campaign.budget.google_synced?
       end
     end,
 
