@@ -127,4 +127,8 @@ class Campaign < ApplicationRecord
   def google_customer_id
     account&.google_customer_id
   end
+
+  def google_account_invitation
+    account&.google_account_invitation
+  end
 end

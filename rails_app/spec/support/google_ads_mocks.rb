@@ -749,6 +749,44 @@ module GoogleAdsMocks
       resource_name: "customers/#{customer_id}/customerUserAccessInvitations/#{invitation_id}")
     double("MutateCustomerUserAccessInvitationResponse", result: result)
   end
+
+  def mock_search_response_with_invitation(
+    invitation_id: 12345,
+    customer_id: 456,
+    email_address: "test@example.com",
+    access_role: :ADMIN,
+    invitation_status: :PENDING,
+    creation_date_time: "2024-01-01 00:00:00"
+  )
+    invitation = double("CustomerUserAccessInvitation",
+      resource_name: "customers/#{customer_id}/customerUserAccessInvitations/#{invitation_id}",
+      email_address: email_address,
+      access_role: access_role,
+      invitation_status: invitation_status,
+      creation_date_time: creation_date_time)
+    row = double("GoogleAdsRow",
+      customer_user_access_invitation: invitation,
+      customer_user_access: nil)
+    [row]
+  end
+
+  def mock_search_response_with_user_access(
+    user_access_id: 67890,
+    customer_id: 456,
+    email_address: "test@example.com",
+    access_role: :ADMIN,
+    access_creation_date_time: "2024-01-01 00:00:00"
+  )
+    user_access = double("CustomerUserAccess",
+      resource_name: "customers/#{customer_id}/customerUserAccess/#{user_access_id}",
+      email_address: email_address,
+      access_role: access_role,
+      access_creation_date_time: access_creation_date_time)
+    row = double("GoogleAdsRow",
+      customer_user_access: user_access,
+      customer_user_access_invitation: nil)
+    [row]
+  end
 end
 
 RSpec.configure do |config|

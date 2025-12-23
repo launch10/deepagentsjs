@@ -232,6 +232,19 @@ module GoogleAds
         }
       }.freeze
 
+      ACCOUNT_INVITATION_FIELDS = {
+        email_address: {
+          our_field: :email_address,
+          their_field: :email_address,
+          transform: ITSELF
+        },
+        access_role: {
+          our_field: :google_access_role,
+          their_field: :access_role,
+          transform: TO_SYMBOL
+        }
+      }.freeze
+
       def self.to_google(resource)
         field_mapping = self.for(resource.class)
         result = {}
@@ -291,6 +304,8 @@ module GoogleAds
           CALLOUT_FIELDS
         when ::AdStructuredSnippet.name
           STRUCTURED_SNIPPET_FIELDS
+        when AdsAccountInvitation.name
+          ACCOUNT_INVITATION_FIELDS
         else
           raise ArgumentError, "Unknown resource type: #{resource_type}"
         end

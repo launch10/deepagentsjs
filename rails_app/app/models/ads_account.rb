@@ -25,6 +25,7 @@ class AdsAccount < ApplicationRecord
   include GoogleSyncable
 
   belongs_to :account
+  has_many :invitations, class_name: "AdsAccountInvitation", dependent: :destroy
 
   PLATFORMS = %w[google meta]
   validates :platform, presence: true, inclusion: { in: PLATFORMS }
@@ -45,10 +46,26 @@ class AdsAccount < ApplicationRecord
     self.google_customer_id = customer_id if customer_id.present?
   end
 
-  def send_google_ads_invitation_email(access_role: :ADMIN)
-    raise "Google Ads account must have a google_customer_id" unless google_customer_id.present?
-    raise "Account owner must have a connected Google account" unless account.has_google_connected_account?
+  def google_account_invitation
+    invitations.where(platform: "google").order(id: :desc).first
+  end
 
-    google_syncer.send_google_ads_invitation_email(email_address: account.google_email_address, access_role: access_role)
+  def send_google_ads_invitation_email(access_role: :STANDARD, force: false)
+    raise "Google Ads account must have a google_customer_id" unless google_customer_id.present?
+    raise "Account must have a connected Google account" unless account.google_email_address.present?
+
+    existing = invitations.find_by(email_address: account.google_email_address, platform: "google")
+    return existing.google_sync_result if existing && !force
+
+    invitation = invitations.create!(
+      email_address: account.google_email_address,
+      platform: "google",
+      google_access_role: access_role.to_s
+    )
+    invitation.google_sync
+  end
+
+  def invitation_for(email_address)
+    invitations.find_by(email_address: email_address, platform: platform)
   end
 end

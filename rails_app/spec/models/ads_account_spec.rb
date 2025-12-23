@@ -208,6 +208,8 @@ RSpec.describe AdsAccount, type: :model do
       mock_google_ads_client
       ads_account.google_customer_id = "123456"
       ads_account.save!
+      allow(@mock_google_ads_service).to receive(:search)
+        .and_return(mock_empty_search_response)
       mock_customer_user_access_invitation_service
       allow(@mock_resource).to receive(:customer_user_access_invitation)
         .and_yield(mock_customer_user_access_invitation_resource)
@@ -219,6 +221,11 @@ RSpec.describe AdsAccount, type: :model do
     end
 
     context 'when account has connected Google account and customer_id' do
+      it 'creates an AdsAccountInvitation record' do
+        expect { ads_account.send_google_ads_invitation_email }
+          .to change { ads_account.invitations.count }.by(1)
+      end
+
       it 'sends invitation email via the syncer' do
         expect(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation)
         ads_account.send_google_ads_invitation_email
@@ -230,9 +237,16 @@ RSpec.describe AdsAccount, type: :model do
         expect(result.created?).to be true
       end
 
-      it 'uses ADMIN access role by default' do
-        result = ads_account.send_google_ads_invitation_email
-        expect(result.resource_type).to eq(:customer_user_access_invitation)
+      it 'uses connected account email by default' do
+        ads_account.send_google_ads_invitation_email
+        invitation = ads_account.invitations.last
+        expect(invitation.email_address).to eq(account.google_email_address)
+      end
+
+      it 'uses STANDARD access role by default' do
+        ads_account.send_google_ads_invitation_email
+        invitation = ads_account.invitations.last
+        expect(invitation.google_access_role).to eq("STANDARD")
       end
     end
 
@@ -253,15 +267,77 @@ RSpec.describe AdsAccount, type: :model do
 
       it 'raises an error' do
         expect { ads_account.send_google_ads_invitation_email }
-          .to raise_error("Account owner must have a connected Google account")
+          .to raise_error("Account must have a connected Google account")
       end
     end
 
     context 'with custom access_role' do
-      it 'passes access_role to the syncer' do
-        expect(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation)
+      it 'passes access_role to the invitation' do
         ads_account.send_google_ads_invitation_email(access_role: :STANDARD)
+        invitation = ads_account.invitations.last
+        expect(invitation.google_access_role).to eq("STANDARD")
       end
+    end
+
+    context 'when invitation already exists for email' do
+      let!(:existing_invitation) do
+        ads_account.invitations.create!(email_address: account.google_email_address, platform: "google")
+      end
+
+      before do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_search_response_with_invitation(
+            email_address: account.google_email_address,
+            customer_id: "123456"
+          ))
+      end
+
+      it 'does not create a new invitation by default' do
+        expect { ads_account.send_google_ads_invitation_email }
+          .not_to change { ads_account.invitations.count }
+      end
+
+      it 'returns the existing invitation sync result' do
+        result = ads_account.send_google_ads_invitation_email
+        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+      end
+
+      it 'creates a new invitation when force: true' do
+        expect { ads_account.send_google_ads_invitation_email(force: true) }
+          .to change { ads_account.invitations.count }.by(1)
+      end
+
+      it 'syncs the new invitation when force: true' do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_empty_search_response)
+        allow(@mock_resource).to receive(:customer_user_access_invitation)
+          .and_yield(mock_customer_user_access_invitation_resource)
+          .and_return(mock_customer_user_access_invitation_resource)
+        allow(@mock_operation).to receive(:create_resource)
+          .and_return(double("CreateResource", customer_user_access_invitation: double("Operation")))
+        allow(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation)
+          .and_return(mock_mutate_customer_user_access_invitation_response(customer_id: "123456"))
+
+        expect(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation)
+        ads_account.send_google_ads_invitation_email(force: true)
+      end
+    end
+  end
+
+  describe '#invitation_for' do
+    let(:account) { create(:account, :with_google_account, name: "Test Account") }
+
+    it 'finds invitation by email address' do
+      invitation = ads_account.invitations.create!(
+        email_address: "test@example.com",
+        platform: "google"
+      )
+
+      expect(ads_account.invitation_for("test@example.com")).to eq(invitation)
+    end
+
+    it 'returns nil when no invitation exists' do
+      expect(ads_account.invitation_for("nonexistent@example.com")).to be_nil
     end
   end
 end

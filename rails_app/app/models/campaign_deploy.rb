@@ -114,6 +114,16 @@ class CampaignDeploy < ApplicationRecord
       end
     end,
 
+    Step.define(:send_account_invitation) do
+      def run
+        campaign.google_ads_account.send_google_ads_invitation_email
+      end
+
+      def finished?
+        campaign.google_account_invitation&.sent?
+      end
+    end,
+
     Step.define(:sync_budget) do
       def run
         campaign.budget.google_sync

@@ -119,32 +119,6 @@ module GoogleAds
       )
     end
 
-    def send_google_ads_invitation_email(email_address: nil, access_role: :ADMIN)
-      raise ArgumentError, "Account must have a google_customer_id" unless customer_id.present?
-
-      email = email_address || account.google_email_address
-      raise ArgumentError, "Email address is required. Connect a Google account or provide an email." unless email.present?
-
-      invitation = client.resource.customer_user_access_invitation do |i|
-        i.email_address = email
-        i.access_role = access_role
-      end
-
-      operation = client.operation.create_resource.customer_user_access_invitation(invitation)
-
-      response = client.service.customer_user_access_invitation.mutate_customer_user_access_invitation(
-        customer_id: customer_id,
-        operation: operation
-      )
-
-      Sync::SyncResult.new(
-        resource_type: :customer_user_access_invitation,
-        resource_name: response.result.resource_name,
-        action: :created,
-        comparisons: []
-      )
-    end
-
     private
 
     def customer_id

@@ -848,6 +848,40 @@ CREATE TABLE public.ads (
 
 
 --
+-- Name: ads_account_invitations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ads_account_invitations (
+    id bigint NOT NULL,
+    ads_account_id bigint NOT NULL,
+    email_address character varying NOT NULL,
+    platform character varying NOT NULL,
+    platform_settings jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ads_account_invitations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ads_account_invitations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ads_account_invitations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ads_account_invitations_id_seq OWNED BY public.ads_account_invitations.id;
+
+
+--
 -- Name: ads_accounts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3599,6 +3633,13 @@ ALTER TABLE ONLY public.ads ALTER COLUMN id SET DEFAULT nextval('public.ads_id_s
 
 
 --
+-- Name: ads_account_invitations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ads_account_invitations ALTER COLUMN id SET DEFAULT nextval('public.ads_account_invitations_id_seq'::regclass);
+
+
+--
 -- Name: ads_accounts id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4187,6 +4228,14 @@ ALTER TABLE ONLY public.ad_schedules
 
 ALTER TABLE ONLY public.ad_structured_snippets
     ADD CONSTRAINT ad_structured_snippets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ads_account_invitations ads_account_invitations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ads_account_invitations
+    ADD CONSTRAINT ads_account_invitations_pkey PRIMARY KEY (id);
 
 
 --
@@ -5045,6 +5094,13 @@ CREATE INDEX domain_request_counts_2025_12_domain_id_hour_request_count_idx ON p
 
 
 --
+-- Name: idx_ads_account_invitations_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ads_account_invitations_lookup ON public.ads_account_invitations USING btree (ads_account_id, email_address, platform);
+
+
+--
 -- Name: idx_document_chunks_embedding; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5672,6 +5728,27 @@ CREATE INDEX index_ad_structured_snippets_on_deleted_at ON public.ad_structured_
 --
 
 CREATE INDEX index_ad_structured_snippets_on_platform_settings ON public.ad_structured_snippets USING gin (platform_settings);
+
+
+--
+-- Name: index_ads_account_invitations_on_ads_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_account_invitations_on_ads_account_id ON public.ads_account_invitations USING btree (ads_account_id);
+
+
+--
+-- Name: index_ads_account_invitations_on_platform; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_account_invitations_on_platform ON public.ads_account_invitations USING btree (platform);
+
+
+--
+-- Name: index_ads_account_invitations_on_platform_settings; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ads_account_invitations_on_platform_settings ON public.ads_account_invitations USING gin (platform_settings);
 
 
 --
@@ -7937,6 +8014,14 @@ ALTER TABLE ONLY public.account_invitations
 
 
 --
+-- Name: ads_account_invitations fk_rails_1d7b1920c0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ads_account_invitations
+    ADD CONSTRAINT fk_rails_1d7b1920c0 FOREIGN KEY (ads_account_id) REFERENCES public.ads_accounts(id);
+
+
+--
 -- Name: accounts fk_rails_37ced7af95; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8047,6 +8132,7 @@ ALTER TABLE ONLY public.website_urls
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251223152858'),
 ('20251223010445'),
 ('20251220160359'),
 ('20251220153026'),
