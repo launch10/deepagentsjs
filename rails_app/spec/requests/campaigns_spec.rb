@@ -1048,6 +1048,103 @@ RSpec.describe "Campaigns API", type: :request do
             end
           end
 
+          response '200', 'soft deletes ad schedules when days are removed' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+            let!(:initial_schedules) do
+              settings_campaign.update_ad_schedules({
+                always_on: false,
+                day_of_week: ['Monday', 'Tuesday', 'Wednesday'],
+                start_time: '9:00am',
+                end_time: '5:00pm',
+                time_zone: 'America/New_York'
+              })
+              settings_campaign.ad_schedules.order(:day_of_week).to_a
+            end
+
+            let(:campaign_params) do
+              {
+                campaign: {
+                  ad_schedules: {
+                    always_on: false,
+                    day_of_week: ['Monday'],
+                    start_time: '9:00am',
+                    end_time: '5:00pm',
+                    time_zone: 'America/New_York'
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              settings_campaign.reload
+
+              expect(settings_campaign.ad_schedules.count).to eq(1)
+              expect(settings_campaign.ad_schedules.first.day_of_week).to eq('Monday')
+
+              monday_schedule = initial_schedules.find { |s| s.day_of_week == 'Monday' }
+              tuesday_schedule = initial_schedules.find { |s| s.day_of_week == 'Tuesday' }
+              wednesday_schedule = initial_schedules.find { |s| s.day_of_week == 'Wednesday' }
+
+              expect(monday_schedule.reload.deleted_at).to be_nil
+              expect(tuesday_schedule.reload.deleted_at).to be_present
+              expect(wednesday_schedule.reload.deleted_at).to be_present
+            end
+          end
+
+          response '200', 'reifies (un-deletes) previously deleted ad schedules' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+            let!(:initial_schedules) do
+              settings_campaign.update_ad_schedules({
+                always_on: false,
+                day_of_week: ['Monday', 'Tuesday'],
+                start_time: '9:00am',
+                end_time: '5:00pm',
+                time_zone: 'America/New_York'
+              })
+              schedules = settings_campaign.ad_schedules.order(:day_of_week).to_a
+              tuesday_schedule = schedules.find { |s| s.day_of_week == 'Tuesday' }
+              AdSchedule.where(id: tuesday_schedule.id).update_all(deleted_at: Time.current)
+              schedules
+            end
+
+            let(:campaign_params) do
+              {
+                campaign: {
+                  ad_schedules: {
+                    always_on: false,
+                    day_of_week: ['Monday', 'Tuesday'],
+                    start_time: '10:00am',
+                    end_time: '6:00pm',
+                    time_zone: 'America/New_York'
+                  }
+                }
+              }
+            end
+
+            run_test! do |response|
+              settings_campaign.reload
+
+              expect(settings_campaign.ad_schedules.count).to eq(2)
+              expect(settings_campaign.ad_schedules.pluck(:day_of_week).sort).to eq(['Monday', 'Tuesday'])
+
+              monday_schedule = initial_schedules.find { |s| s.day_of_week == 'Monday' }
+              tuesday_schedule = initial_schedules.find { |s| s.day_of_week == 'Tuesday' }
+
+              expect(monday_schedule.reload.deleted_at).to be_nil
+              expect(monday_schedule.reload.start_hour).to eq(10)
+              expect(tuesday_schedule.reload.deleted_at).to be_nil
+              expect(tuesday_schedule.reload.start_hour).to eq(10)
+            end
+          end
+
           response '200', 'updates daily budget' do
             schema APISchemas::Campaign.response
             let(:Authorization) { auth_headers_for(user1)['Authorization'] }
@@ -1159,6 +1256,139 @@ RSpec.describe "Campaigns API", type: :request do
               expect(settings_campaign.location_targets.count).to eq(2)
               expect(settings_campaign.location_targets.pluck(:location_name).sort).to eq(['Mexico', 'United States'])
               expect(settings_campaign.location_targets.where(location_name: 'Canada').exists?).to be false
+            end
+          end
+
+          response '200', 'soft deletes location targets when removed from request' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+            let!(:initial_location_targets) do
+              settings_campaign.update_location_targets([
+                {
+                  target_type: 'geo_location',
+                  location_name: 'United States',
+                  location_type: 'COUNTRY',
+                  country_code: 'US',
+                  targeted: true,
+                  google_criterion_id: '2840'
+                },
+                {
+                  target_type: 'geo_location',
+                  location_name: 'Canada',
+                  location_type: 'COUNTRY',
+                  country_code: 'CA',
+                  targeted: true,
+                  google_criterion_id: '2124'
+                },
+                {
+                  target_type: 'geo_location',
+                  location_name: 'Mexico',
+                  location_type: 'COUNTRY',
+                  country_code: 'MX',
+                  targeted: true,
+                  google_criterion_id: '2484'
+                }
+              ])
+              settings_campaign.location_targets.order(:id).to_a
+            end
+
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'geo_location',
+                      location_name: 'United States',
+                      location_type: 'COUNTRY',
+                      country_code: 'US',
+                      targeted: true,
+                      google_criterion_id: '2840'
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              settings_campaign.reload
+
+              expect(settings_campaign.location_targets.count).to eq(1)
+              expect(settings_campaign.location_targets.first.location_name).to eq('United States')
+
+              expect(initial_location_targets[0].reload.deleted_at).to be_nil
+              expect(initial_location_targets[1].reload.deleted_at).to be_present
+              expect(initial_location_targets[2].reload.deleted_at).to be_present
+            end
+          end
+
+          response '200', 'reifies (un-deletes) previously deleted location targets' do
+            schema APISchemas::Campaign.response
+            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+
+            let!(:initial_location_targets) do
+              settings_campaign.update_location_targets([
+                {
+                  target_type: 'geo_location',
+                  location_name: 'United States',
+                  location_type: 'COUNTRY',
+                  country_code: 'US',
+                  targeted: true,
+                  google_criterion_id: '2840'
+                },
+                {
+                  target_type: 'geo_location',
+                  location_name: 'Canada',
+                  location_type: 'COUNTRY',
+                  country_code: 'CA',
+                  targeted: true,
+                  google_criterion_id: '2124'
+                }
+              ])
+              targets = settings_campaign.location_targets.order(:id).to_a
+              AdLocationTarget.where(id: targets[1].id).update_all(deleted_at: Time.current)
+              targets
+            end
+
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      target_type: 'geo_location',
+                      location_name: 'United States Updated',
+                      location_type: 'COUNTRY',
+                      country_code: 'US',
+                      targeted: true,
+                      google_criterion_id: '2840'
+                    },
+                    {
+                      target_type: 'geo_location',
+                      location_name: 'Canada Restored',
+                      location_type: 'COUNTRY',
+                      country_code: 'CA',
+                      targeted: true,
+                      google_criterion_id: '2124'
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              settings_campaign.reload
+
+              expect(settings_campaign.location_targets.count).to eq(2)
+              expect(settings_campaign.location_targets.pluck(:location_name).sort).to eq(['Canada Restored', 'United States Updated'])
+
+              expect(initial_location_targets[0].reload.deleted_at).to be_nil
+              expect(initial_location_targets[0].reload.location_name).to eq('United States Updated')
+              expect(initial_location_targets[1].reload.deleted_at).to be_nil
+              expect(initial_location_targets[1].reload.location_name).to eq('Canada Restored')
             end
           end
 
