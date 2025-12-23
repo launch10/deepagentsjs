@@ -78,6 +78,14 @@ module GoogleAds
       "customers/#{google_customer_id}/campaignBudgets/#{budget.google_budget_id}"
     end
 
+    def set_bidding_strategy(campaign_operation)
+      # Option 1: TargetSpend (closest to MaximizeClicks behavior) - This is the only thing we support for now
+      campaign_operation.target_spend = Google::Ads::GoogleAds::V22::Common::TargetSpend.new
+
+      # Option 2: MaximizeConversions
+      # campaign_operation.maximize_conversions = Google::Ads::GoogleAds::V22::Common::MaximizeConversions.new
+    end
+
     def create_campaign
       operation = client.operation.create_resource.campaign do |c|
         c.name = attrs[:name]
@@ -86,8 +94,9 @@ module GoogleAds
         c.campaign_budget = budget_resource_name if budget_resource_name
         c.start_date = local_resource.start_date.strftime("%Y%m%d") if local_resource.start_date
         c.end_date = local_resource.end_date.strftime("%Y%m%d") if local_resource.end_date
-        c.maximize_clicks = client.resource.maximize_clicks
         c.network_settings = local_resource.google_network_settings_for_api(client)
+        c.contains_eu_political_advertising = attrs[:contains_eu_political_advertising]
+        set_bidding_strategy(c)
       end
 
       begin
@@ -96,6 +105,7 @@ module GoogleAds
           operations: [operation]
         )
       rescue => e
+        binding.pry
         return error_result(:campaign, e)
       end
 
@@ -108,6 +118,9 @@ module GoogleAds
 
     def update_campaign
       comparisons = build_comparisons
+      fields_to_update = comparisons.reject(&:values_match?)
+      return if fields_to_update.empty?
+
       resource_name = remote_resource.resource_name
 
       operation = client.operation.update_resource.campaign(resource_name) do |c|
@@ -124,10 +137,14 @@ module GoogleAds
         end
       end
 
-      client.service.campaign.mutate_campaigns(
-        customer_id: google_customer_id,
-        operations: [operation]
-      )
+      begin
+        client.service.campaign.mutate_campaigns(
+          customer_id: google_customer_id,
+          operations: [operation]
+        )
+      rescue => e
+        binding.pry
+      end
 
       verify_sync(:updated, resource_name)
     end

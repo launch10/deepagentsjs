@@ -1,15 +1,16 @@
 module GoogleAds
   module Sync
     class FieldComparison
-      attr_reader :field, :our_field, :our_value, :their_field, :their_value, :transform
+      attr_reader :field, :our_field, :our_value, :their_field, :their_value, :transform, :their_value_transform
 
-      def initialize(field:, our_field:, our_value:, their_field:, their_value:, transform: nil)
+      def initialize(field:, our_field:, our_value:, their_field:, their_value:, transform: nil, their_value_transform: nil)
         @field = field
         @our_field = our_field
         @our_value = our_value
         @their_field = their_field
         @their_value = their_value
         @transform = transform
+        @their_value_transform = their_value_transform
       end
 
       def transformed_our_value
@@ -17,8 +18,13 @@ module GoogleAds
         transform.call(our_value)
       end
 
+      def transformed_their_value
+        return their_value if their_value_transform.nil?
+        their_value_transform.call(their_value)
+      end
+
       def values_match?
-        normalize(transformed_our_value) == normalize(their_value)
+        normalize(transformed_our_value) == normalize(transformed_their_value)
       end
 
       def to_h

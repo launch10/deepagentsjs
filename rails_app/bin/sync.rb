@@ -21,7 +21,6 @@ sync_budget.run
 create_campaign = runner.find(:create_campaign)
 create_campaign.run
 # create_campaign.finished?
-
 binding.pry
 
 # create_account.run

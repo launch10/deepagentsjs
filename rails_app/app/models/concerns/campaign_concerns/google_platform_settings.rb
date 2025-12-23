@@ -154,6 +154,7 @@ module CampaignConcerns
       platform_setting :google, :advertising_channel_sub_type, in: ADVERTISING_CHANNEL_SUB_TYPES
       platform_setting :google, :bidding_strategy, in: BIDDING_STRATEGIES.keys
       platform_setting :google, :status, in: CAMPAIGN_STATUSES, default: "PAUSED"
+      platform_setting :google, :contains_eu_political_advertising, default: false
 
       NETWORK_SETTINGS_FIELDS.each do |field|
         # e.g. google_target_google_search, google_target_search_network, etc.

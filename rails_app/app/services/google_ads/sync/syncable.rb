@@ -64,7 +64,8 @@ module GoogleAds
             our_value: our_value,
             their_field: mapping[:their_field],
             their_value: their_value,
-            transform: mapping[:transform]
+            transform: mapping[:transform],
+            their_value_transform: mapping[:their_value_transform]
           )
         end
 

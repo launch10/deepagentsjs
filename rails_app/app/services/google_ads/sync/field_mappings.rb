@@ -37,7 +37,15 @@ module GoogleAds
         advertising_channel_type: {
           our_field: :google_advertising_channel_type,
           their_field: :advertising_channel_type,
-          transform: TO_SYMBOL
+          transform: TO_SYMBOL,
+          immutable: true
+        },
+        contains_eu_political_advertising: {
+          our_field: :google_contains_eu_political_advertising,
+          their_field: :contains_eu_political_advertising,
+          transform: ->(value) { value ? :CONTAINS_EU_POLITICAL_ADVERTISING : :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING },
+          their_value_transform: ->(value) { value == :UNSPECIFIED ? :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING : value },
+          immutable: true
         }
       }.freeze
 
