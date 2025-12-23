@@ -47,11 +47,14 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::LocationTargeting
   include CampaignConcerns::GooglePlatformSettings
   include CampaignConcerns::MetaPlatformSettings
-  include CampaignConcerns::CollectionSync
   include GoogleMappable
   include GoogleSyncable
 
   use_google_sync GoogleAds::Campaign
+  use_google_collection_sync :location_targets, GoogleAds::LocationTargets
+  use_google_collection_sync :ad_schedules, GoogleAds::AdSchedules
+  use_google_collection_sync :callouts, GoogleAds::Callouts
+  use_google_collection_sync :structured_snippets, GoogleAds::StructuredSnippets
 
   after_google_sync do |result|
     if result.resource_name.present?

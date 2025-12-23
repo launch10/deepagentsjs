@@ -3,6 +3,7 @@ module GoogleSyncable
 
   included do
     class_attribute :google_sync_callbacks, default: []
+    class_attribute :google_collection_syncers, default: {}
   end
 
   class_methods do
@@ -29,6 +30,28 @@ module GoogleSyncable
         result = google_syncer.delete
         run_after_google_sync_callbacks(result) if result.success?
         result
+      end
+    end
+
+    def use_google_collection_sync(name, syncer_class)
+      self.google_collection_syncers = google_collection_syncers.merge(name.to_sym => syncer_class)
+
+      syncer_method = "#{name}_syncer"
+      define_method(syncer_method) do
+        instance_variable_get("@#{syncer_method}") ||
+          instance_variable_set("@#{syncer_method}", syncer_class.new(self))
+      end
+
+      define_method("sync_#{name}") do
+        send(syncer_method).sync
+      end
+
+      define_method("#{name}_synced?") do
+        send(syncer_method).synced?
+      end
+
+      define_method("#{name}_sync_result") do
+        send(syncer_method).sync_result
       end
     end
 
