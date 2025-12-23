@@ -38,18 +38,19 @@ module GoogleSyncable
 
       syncer_method = "#{name}_syncer"
       define_method(syncer_method) do
-        instance_variable_get("@#{syncer_method}") ||
-          instance_variable_set("@#{syncer_method}", syncer_class.new(self))
+        syncer_class.new(self)
       end
 
       define_method("sync_#{name}") do
         send(syncer_method).sync
       end
 
+      # e.g. location_targets_synced?
       define_method("#{name}_synced?") do
         send(syncer_method).synced?
       end
 
+      # e.g. location_targets_sync_result
       define_method("#{name}_sync_result") do
         send(syncer_method).sync_result
       end

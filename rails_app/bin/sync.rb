@@ -4,38 +4,51 @@ require "bundler/setup"
 require_relative "../config/environment"
 
 # Restore campaign_complete snapshot
+puts "Restoring campaign_complete snapshot..."
 Database::Snapshotter.restore_snapshot("campaign_complete")
 
 campaign = Campaign.last
 runner = CampaignDeploy::StepRunner.new(campaign)
 
+puts "Creating account..."
 create_account = runner.find(:create_ads_account)
 create_account.run
 # create_account.finished?
 
+puts "Sending invitation..."
 send_invitation = runner.find(:send_account_invitation)
 send_invitation.run
 # send_invitation.finished?
 
+puts "Syncing budget..."
 sync_budget = runner.find(:sync_budget)
 sync_budget.run
 # sync_budget.finished?
 
+puts "Creating campaign..."
 create_campaign = runner.find(:create_campaign)
 create_campaign.run
 # create_campaign.finished?
 
+puts "Creating geo targets..."
 create_geo_targets = runner.find(:create_geo_targeting)
 create_geo_targets.run
 
 # Delete location targets, add location targets, re-sync, test
-binding.pry
 location_target = campaign.location_targets.find_by(location_name: "Los Angeles")
 location_target.destroy if location_target
 
-# Re-sync location targets
+create_geo_targets = runner.reload.find(:create_geo_targeting)
+binding.pry
 create_geo_targets.finished?
 create_geo_targets.run
+
+create_geo_targets = runner.reload.find(:create_geo_targeting)
+
+expect(create_geo_targets.finished?).to be(false)
+
+# Re-sync location targets
+create_geo_targets.finished?
 
 binding.pry
 
