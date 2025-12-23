@@ -97,7 +97,7 @@ module GoogleAds
 
       Sync::SyncResult.new(
         resource_type: :campaign_criterion,
-        resource_name: resource_name,
+        resource_name: nil,
         action: :deleted,
         comparisons: []
       )

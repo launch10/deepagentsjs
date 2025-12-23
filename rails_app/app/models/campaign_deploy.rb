@@ -171,15 +171,8 @@ class CampaignDeploy < ApplicationRecord
 
     Step.define(:create_geo_targeting) do
       def run
-        deleted_targets.each do |target|
-          puts "Deleting #{target.as_json}"
-          target.google_delete
-        end
-
-        campaign.location_targets.each do |target|
-          puts "Syncing #{target.as_json}"
-          target.google_sync
-        end
+        deleted_targets.each(&:google_delete)
+        campaign.location_targets.each(&:google_sync)
       end
 
       def finished?

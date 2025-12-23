@@ -230,7 +230,7 @@ RSpec.describe CampaignDeploy, type: :model do
 
       context 'when account already has google ads account' do
         before do
-          account.create_ads_account!(google_customer_id: "123456")
+          account.create_ads_account!(platform: "google", google_customer_id: "123456")
           customer_client_response, auto_tagging_response = mock_verify_customer_responses(
             customer_id: 123456,
             auto_tagging_enabled: true
@@ -258,7 +258,7 @@ RSpec.describe CampaignDeploy, type: :model do
       end
 
       before do
-        account.create_ads_account!(google_customer_id: "456")
+        account.create_ads_account!(platform: "google", google_customer_id: "456")
         campaign.update!(platform_settings: { "google" => { "campaign_id" => "789" } })
         allow(@mock_operation).to receive(:create_resource).and_return(
           double("CreateResource", campaign_criterion: mock_campaign_criterion_resource)
@@ -332,9 +332,9 @@ RSpec.describe CampaignDeploy, type: :model do
             ),
             mock_empty_search_response
           )
-          allow(@mock_operation).to receive(:remove_resource).and_return(
-            double("RemoveResource", campaign_criterion: ->(name) { name })
-          )
+          mock_remove_resource = double("RemoveResource")
+          allow(mock_remove_resource).to receive(:campaign_criterion).and_return("remove_operation")
+          allow(@mock_operation).to receive(:remove_resource).and_return(mock_remove_resource)
           allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria).and_return(
             mock_mutate_campaign_criterion_response(criterion_id: 111, campaign_id: 789, customer_id: 456)
           )
