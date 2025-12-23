@@ -179,7 +179,7 @@ class CampaignDeploy < ApplicationRecord
       end
 
       def sync_result
-        campaign.location_targets_syncer.sync_result
+        campaign.location_targets_sync_result
       end
     end,
 
@@ -193,7 +193,7 @@ class CampaignDeploy < ApplicationRecord
       end
 
       def sync_result
-        campaign.ad_schedules_syncer.sync_result
+        campaign.ad_schedules_sync_result
       end
     end,
 
@@ -208,7 +208,7 @@ class CampaignDeploy < ApplicationRecord
       end
 
       def sync_result
-        [campaign.callouts_syncer.sync_result, campaign.structured_snippets_syncer.sync_result]
+        [campaign.callouts_sync_result, campaign.structured_snippets_sync_result]
       end
     end,
 
@@ -232,7 +232,7 @@ class CampaignDeploy < ApplicationRecord
       end
 
       def sync_result
-        campaign.ad_groups.map { |ag| ag.keywords_syncer.sync_result }
+        campaign.ad_groups.map(&:keywords_sync_result)
       end
     end,
 
