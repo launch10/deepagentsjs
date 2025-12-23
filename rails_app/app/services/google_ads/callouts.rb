@@ -11,7 +11,7 @@ module GoogleAds
     end
 
     def deleted_records
-      AdCallout.only_deleted.where(campaign_id: campaign.id)
+      ::AdCallout.only_deleted.where(campaign_id: campaign.id)
     end
 
     def remote_id_for(record)

@@ -2,12 +2,11 @@ require 'swagger_helper'
 
 RSpec.describe "Test Database API", type: :request do
   before do
-    # Ensure we're in test environment for these specs
     allow(Rails.env).to receive(:local?).and_return(true)
   end
 
   after(:all) do
-    Database::Snapshotter.new.delete_test_snapshots
+    Database::Snapshotter.delete_test_snapshots
   end
 
   path '/test/database/truncate' do
@@ -30,7 +29,7 @@ RSpec.describe "Test Database API", type: :request do
         schema APISchemas::Database.error_response
 
         before do
-          allow_any_instance_of(Database::Snapshotter).to receive(:truncate).and_raise(StandardError.new("Something went wrong"))
+          allow(Database::Snapshotter).to receive(:truncate).and_raise(StandardError.new("Something went wrong"))
         end
 
         run_test! do |response|
@@ -120,16 +119,11 @@ RSpec.describe "Test Database API", type: :request do
         end
 
         before do
-          # Create a snapshot first so we can restore it
-          snapshotter = Database::Snapshotter.new
-          output_path = Test::DatabaseController::SNAPSHOT_DIR.join("#{snapshot_name}.sql")
-          Test::DatabaseController::SNAPSHOT_DIR.mkpath unless Test::DatabaseController::SNAPSHOT_DIR.exist?
-          snapshotter.dump(output_path)
+          Database::Snapshotter.create_snapshot(snapshot_name)
         end
 
         after do
-          # Clean up the test snapshot
-          snapshot_file = Test::DatabaseController::SNAPSHOT_DIR.join("#{snapshot_name}.sql")
+          snapshot_file = Database::Snapshotter.snapshot_path(snapshot_name)
           snapshot_file.delete if snapshot_file.exist?
         end
 

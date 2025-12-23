@@ -214,11 +214,11 @@ class CampaignDeploy < ApplicationRecord
 
     Step.define(:create_ad_groups) do
       def run
-        campaign.ad_groups.each(&:sync)
+        campaign.ad_groups.each(&:google_sync)
       end
 
       def finished?
-        campaign.ad_groups.all?(&:synced?)
+        campaign.ad_groups.all?(&:google_synced?)
       end
     end,
 
@@ -238,11 +238,11 @@ class CampaignDeploy < ApplicationRecord
 
     Step.define(:create_ads) do
       def run
-        campaign.ads.each(&:sync)
+        campaign.ads.each(&:google_sync)
       end
 
       def finished?
-        campaign.ads.all?(&:synced?)
+        campaign.ads.all?(&:google_synced?)
       end
     end
   ])

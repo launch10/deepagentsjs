@@ -41,7 +41,15 @@ module Database
 
     class << self
       extend Forwardable
-      def_delegators :new, :restore, :dump, :export_tables, :list_snapshots, :truncate, :reset_all_sequences, :restore_snapshot, :snapshot_path
+      def_delegators :new, :restore, :dump, :export_tables, :truncate, :reset_all_sequences, :restore_snapshot, :create_snapshot, :list_snapshots, :snapshot_exists?, :delete_test_snapshots
+
+      def snapshot_path(name)
+        SNAPSHOT_DIR.join("#{name}.sql")
+      end
+
+      def ensure_snapshot_dir
+        SNAPSHOT_DIR.mkpath unless SNAPSHOT_DIR.exist?
+      end
     end
 
     # Dumps the database to a file.
@@ -124,16 +132,33 @@ module Database
       DatabaseCleaner.clean_with(:truncation, except: except)
     end
 
-    def snapshot_path(name)
-      SNAPSHOT_DIR.join("#{name}.sql")
+    def snapshot_exists?(name)
+      File.exist?(self.class.snapshot_path(name))
+    end
+
+    def create_snapshot(name)
+      self.class.ensure_snapshot_dir
+      dump(self.class.snapshot_path(name))
     end
 
     def restore_snapshot(name, truncate: true)
-      input_path = snapshot_path(name)
+      input_path = self.class.snapshot_path(name)
       raise "Snapshot '#{name}' not found at #{input_path}" unless File.exist?(input_path)
 
       self.truncate if truncate
       restore(input_path)
+    end
+
+    def list_snapshots
+      self.class.ensure_snapshot_dir
+      SNAPSHOT_DIR.glob("*.sql").map do |file|
+        name = file.basename(".sql").to_s
+        {
+          name: name,
+          size_mb: (file.size / 1024.0 / 1024.0).round(2),
+          created_at: file.mtime
+        }
+      end.sort_by { |s| s[:name] }
     end
 
     def reset_all_sequences(start_value: 1)
@@ -159,7 +184,10 @@ module Database
     end
 
     def delete_test_snapshots
-      Test::DatabaseController::SNAPSHOT_DIR.glob("test_snapshot_*.sql").each do |file|
+      SNAPSHOT_DIR.glob("test_snapshot_*.sql").each do |file|
+        file.delete if file.exist?
+      end
+      SNAPSHOT_DIR.glob("restore_test_*.sql").each do |file|
         file.delete if file.exist?
       end
     end

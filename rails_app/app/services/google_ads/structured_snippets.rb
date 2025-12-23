@@ -11,7 +11,7 @@ module GoogleAds
     end
 
     def deleted_records
-      AdStructuredSnippet.only_deleted.where(campaign_id: campaign.id)
+      ::AdStructuredSnippet.only_deleted.where(campaign_id: campaign.id)
     end
 
     def remote_id_for(record)

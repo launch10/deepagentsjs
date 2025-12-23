@@ -15,7 +15,7 @@ module GoogleAds
     end
 
     def deleted_records
-      AdKeyword.only_deleted.where(ad_group_id: ad_group.id)
+      ::AdKeyword.only_deleted.where(ad_group_id: ad_group.id)
     end
 
     def remote_id_for(record)
