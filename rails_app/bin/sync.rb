@@ -3,6 +3,9 @@ require "rubygems"
 require "bundler/setup"
 require_relative "../config/environment"
 
+# Restore campaign_complete snapshot
+Database::Snapshotter.restore_snapshot("campaign_complete")
+
 campaign = Campaign.last
 runner = CampaignDeploy::StepRunner.new(campaign)
 
@@ -24,6 +27,16 @@ create_campaign.run
 
 create_geo_targets = runner.find(:create_geo_targeting)
 create_geo_targets.run
+
+# Delete location targets, add location targets, re-sync, test
+binding.pry
+location_target = campaign.location_targets.find_by(location_name: "Los Angeles")
+location_target.destroy if location_target
+
+# Re-sync location targets
+create_geo_targets.finished?
+create_geo_targets.run
+
 binding.pry
 
 # create_account.run
