@@ -21,6 +21,9 @@ sync_budget.run
 create_campaign = runner.find(:create_campaign)
 create_campaign.run
 # create_campaign.finished?
+
+create_geo_targets = runner.find(:create_geo_targeting)
+create_geo_targets.run
 binding.pry
 
 # create_account.run
@@ -33,3 +36,13 @@ ads_account = Account.last.google_ads_account
   # We can idempotently create account
   # We can confirm account is created
 # 2. We can sent account invitation email - can't know?
+
+# MCC Test Account: 124-895-7009
+# __e = Our MCC Account
+# authuser = Probably me?
+
+# 149-508-8796
+#  = https://ads.google.com/aw/overview?ocid=7879395008&ascid=7879395008&euid=1519816029&__u=2510653621&uscid=7850857179&__c=1415339971&authuser=2&__e=1248957009&subid=us-en-awhp-g-aw-c-home-signin-bgc%21o2-aluminum%7Cib%3A7219774260%7C-ahpm-0000000179-0000000001
+
+# 965-209-9878
+# =  https://ads.google.com/aw/overview?ocid=7879486011&ascid=7879486011&euid=1519816029&__u=2510653621&uscid=7850857179&__c=1415339971&authuser=2&__e=1248957009&subid=us-en-awhp-g-aw-c-home-signin-bgc%21o2-aluminum%7Cib%3A7219774260%7C-ahpm-0000000179-0000000001

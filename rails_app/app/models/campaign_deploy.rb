@@ -29,6 +29,7 @@ class CampaignDeploy < ApplicationRecord
   class Step
     class << self
       attr_accessor :step_name
+      alias_method :name, :step_name
 
       def define(name, &)
         Class.new(Step) do
@@ -62,6 +63,10 @@ class CampaignDeploy < ApplicationRecord
 
     def last
       @steps.last
+    end
+
+    def [](index)
+      @steps[index]
     end
 
     def freeze
@@ -166,11 +171,30 @@ class CampaignDeploy < ApplicationRecord
 
     Step.define(:create_geo_targeting) do
       def run
-        campaign.location_targets.each(&:sync)
+        deleted_targets.each do |target|
+          puts "Deleting #{target.as_json}"
+          target.google_delete
+        end
+
+        campaign.location_targets.each do |target|
+          puts "Syncing #{target.as_json}"
+          target.google_sync
+        end
       end
 
       def finished?
-        campaign.location_targets.all?(&:synced?)
+        deleted_targets.none? { |t| t.google_remote_criterion_id.present? } &&
+          campaign.location_targets.all?(&:google_synced?)
+      end
+
+      def sync_result
+        campaign.location_targets.map(&:google_sync_result)
+      end
+
+      private
+
+      def deleted_targets
+        AdLocationTarget.only_deleted.where(campaign_id: campaign.id)
       end
     end,
 
@@ -231,12 +255,16 @@ class CampaignDeploy < ApplicationRecord
   ])
 
   def next_step
-    return STEPS.first if current_step.nil?
+    step_class = if current_step.nil?
+      STEPS.first
+    else
+      current_index = STEPS.index { |s| s.name.to_s == current_step }
+      return nil if current_index.nil?
+      STEPS[current_index + 1]
+    end
 
-    current_index = STEPS.index { |s| s.name.to_s == current_step }
-    return nil if current_index.nil?
-
-    STEPS[current_index + 1]
+    return nil if step_class.nil?
+    step_class.new(campaign)
   end
 
   def deploy(async: true)
@@ -255,13 +283,11 @@ class CampaignDeploy < ApplicationRecord
       return true
     end
 
-    context = build_context
+    step.run unless step.finished?
+    update!(current_step: step.class.step_name.to_s)
 
-    step.run(context) unless step.finished?(context)
-    update!(current_step: step.name.to_s)
-
-    unless step.finished?(context)
-      raise StepNotFinishedError, "Step #{step.name} did not complete successfully"
+    unless step.finished?
+      raise StepNotFinishedError, "Step #{step.class.step_name} did not complete successfully"
     end
 
     if async
@@ -269,11 +295,5 @@ class CampaignDeploy < ApplicationRecord
     else
       actually_deploy(async: false)
     end
-  end
-
-  private
-
-  def build_context
-    { account: campaign.account, campaign: campaign }
   end
 end

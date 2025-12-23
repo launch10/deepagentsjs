@@ -73,9 +73,16 @@ class CampaignComplete < BaseBuilder
   end
 
   def create_geo_targets(campaign)
-    create(:ad_location_target, campaign: campaign, location_name: "United States", country_code: "US")
-    create(:ad_location_target, campaign: campaign, location_name: "California", country_code: "US", location_type: "REGION")
-    create(:ad_location_target, campaign: campaign, location_name: "New York", country_code: "US", location_type: "CITY")
+    create(:ad_location_target, campaign: campaign,
+      location_name: "Los Angeles",
+      country_code: "US",
+      location_type: "City",
+      platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/1013962" } })
+    create(:ad_location_target, campaign: campaign,
+      location_name: "New York",
+      country_code: "US",
+      location_type: "City",
+      platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/1023191" } })
   end
 
   def create_ad_schedules(campaign)
