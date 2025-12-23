@@ -65,7 +65,11 @@ class CampaignComplete < BaseBuilder
       project_id: project.id,
       website_id: website.id
     })
-    result[:campaign]
+    campaign = result[:campaign]
+    campaign.start_date = Date.today
+    campaign.google_bidding_strategy = :MAXIMIZE_CLICKS
+    campaign.save!
+    campaign
   end
 
   def create_budget(campaign)

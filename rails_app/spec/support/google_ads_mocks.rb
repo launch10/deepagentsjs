@@ -717,6 +717,7 @@ module GoogleAdsMocks
       allow(asset).to receive(:structured_snippet_asset=)
     end
   end
+
   def mock_customer_user_access_invitation_service
     @mock_customer_user_access_invitation_service = double("CustomerUserAccessInvitationService")
     allow(@mock_client).to receive(:service).and_return(

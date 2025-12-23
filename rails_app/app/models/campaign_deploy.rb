@@ -87,6 +87,9 @@ class CampaignDeploy < ApplicationRecord
 
     def initialize(campaign)
       expect_type(campaign, Campaign)
+      unless campaign.done_launch_stage?
+        raise "Cannot deploy campaign that has not completed launch stage"
+      end
 
       @campaign = campaign
       @steps = STEPS
@@ -94,6 +97,11 @@ class CampaignDeploy < ApplicationRecord
 
     def find(name)
       @steps.find(name).new(@campaign)
+    end
+
+    def reload
+      @campaign.reload
+      self
     end
   end
 
@@ -197,20 +205,33 @@ class CampaignDeploy < ApplicationRecord
       end
     end,
 
-    Step.define(:create_assets) do
+    Step.define(:create_callouts) do
       def run
         campaign.sync_callouts
+      end
+
+      def finished?
+        campaign.callouts_synced?
+      end
+
+      def sync_result
+        campaign.callouts_sync_result
+      end
+    end,
+
+    Step.define(:create_structured_snippets) do
+      def run
         campaign.sync_structured_snippets
       end
 
       def finished?
-        campaign.callouts_synced? && campaign.structured_snippets_synced?
+        campaign.structured_snippets_synced?
       end
 
       def sync_result
-        [campaign.callouts_sync_result, campaign.structured_snippets_sync_result]
+        campaign.structured_snippets_sync_result
       end
-    end,
+    end
 
     Step.define(:create_ad_groups) do
       def run

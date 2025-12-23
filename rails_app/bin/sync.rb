@@ -35,22 +35,52 @@ create_geo_targets = runner.find(:create_geo_targeting)
 create_geo_targets.run
 
 # Delete location targets, add location targets, re-sync, test
+puts "Deleting location targets..."
 location_target = campaign.location_targets.find_by(location_name: "Los Angeles")
 location_target.destroy if location_target
 
-create_geo_targets = runner.reload.find(:create_geo_targeting)
-binding.pry
-create_geo_targets.finished?
+puts "Resyncing geo targets..."
+create_geo_targets = runner.find(:create_geo_targeting)
+create_geo_targets.finished? # should be false
 create_geo_targets.run
+create_geo_targets.finished? # should be true
 
-create_geo_targets = runner.reload.find(:create_geo_targeting)
-
-expect(create_geo_targets.finished?).to be(false)
-
-# Re-sync location targets
-create_geo_targets.finished?
-
+puts "Creating schedule..."
+create_schedule = runner.find(:create_schedule)
 binding.pry
+create_schedule.finished? # should be false
+create_schedule.run
+create_schedule.finished? # should be true
+
+puts "Creating callouts..."
+create_callouts = runner.find(:create_callouts)
+create_callouts.finished? # should be false
+create_callouts.run
+create_callouts.finished? # should be true
+
+puts "Creating structured snippets..."
+create_structured_snippets = runner.find(:create_structured_snippets)
+create_structured_snippets.finished? # should be false
+create_structured_snippets.run
+create_structured_snippets.finished? # should be true
+
+puts "Creating ad groups..."
+create_ad_groups = runner.find(:create_ad_groups)
+create_ad_groups.finished? # should be false
+create_ad_groups.run
+create_ad_groups.finished? # should be true
+
+puts "Creating keywords..."
+create_keywords = runner.create(:create_keywords)
+create_keywords.finished? # should be false
+create_keywords.run
+create_keywords.finished? # should be true
+
+puts "Creating ads..."
+create_ads = runner.create(:create_ads)
+create_ads.finished? # should be false
+create_ads.run
+create_ads.finished? # should be true
 
 # create_account.run
 ads_account = Account.last.google_ads_account

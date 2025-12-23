@@ -44,7 +44,7 @@ module GoogleAds
           our_field: :google_contains_eu_political_advertising,
           their_field: :contains_eu_political_advertising,
           transform: ->(value) { value ? :CONTAINS_EU_POLITICAL_ADVERTISING : :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING },
-          their_value_transform: ->(value) { value == :UNSPECIFIED ? :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING : value },
+          their_value_transform: ->(value) { (value == :UNSPECIFIED) ? :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING : value },
           immutable: true
         }
       }.freeze
