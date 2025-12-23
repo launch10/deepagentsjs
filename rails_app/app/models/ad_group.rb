@@ -24,6 +24,7 @@ class AdGroup < ApplicationRecord
   include PlatformSettings
   include GoogleMappable
   include GoogleSyncable
+  include AdGroupConcerns::CollectionSync
 
   use_google_sync GoogleAds::AdGroup
 

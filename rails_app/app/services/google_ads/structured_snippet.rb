@@ -73,6 +73,35 @@ module GoogleAds
       end
     end
 
+    def delete
+      return not_found_result(:campaign_asset) unless remote_asset_id.present?
+
+      campaign_asset_resource_name = "customers/#{google_customer_id}/campaignAssets/#{google_campaign_id}~#{remote_asset_id}~STRUCTURED_SNIPPET"
+
+      operation = client.operation.remove_resource.campaign_asset(campaign_asset_resource_name)
+
+      begin
+        client.service.campaign_asset.mutate_campaign_assets(
+          customer_id: google_customer_id,
+          operations: [operation]
+        )
+      rescue => e
+        return error_result(:campaign_asset, e)
+      end
+
+      local_resource.google_asset_id = nil
+      local_resource.save!
+
+      clear_memoization
+
+      Sync::SyncResult.new(
+        resource_type: :campaign_asset,
+        resource_name: nil,
+        action: :deleted,
+        comparisons: []
+      )
+    end
+
     private
 
     def remote_asset_id

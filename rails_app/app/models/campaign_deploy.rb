@@ -171,48 +171,44 @@ class CampaignDeploy < ApplicationRecord
 
     Step.define(:create_geo_targeting) do
       def run
-        deleted_targets.each(&:google_delete)
-        campaign.location_targets.each(&:google_sync)
+        campaign.sync_location_targets
       end
 
       def finished?
-        deleted_targets.none? { |t| t.google_remote_criterion_id.present? } &&
-          campaign.location_targets.all?(&:google_synced?)
+        campaign.location_targets_synced?
       end
 
       def sync_result
-        campaign.location_targets.map(&:google_sync_result)
-      end
-
-      private
-
-      def deleted_targets
-        AdLocationTarget.only_deleted.where(campaign_id: campaign.id)
+        campaign.location_targets_syncer.sync_result
       end
     end,
 
     Step.define(:create_schedule) do
       def run
-        campaign.ad_schedules.each(&:sync)
+        campaign.sync_ad_schedules
       end
 
       def finished?
-        campaign.ad_schedules.all?(&:synced?)
+        campaign.ad_schedules_synced?
       end
 
       def sync_result
-        campaign.ad_schedules.map(&:google_sync_result)
+        campaign.ad_schedules_syncer.sync_result
       end
     end,
 
-    # callouts, snippets, favicon...
     Step.define(:create_assets) do
       def run
-        campaign.assets.each(&:sync)
+        campaign.sync_callouts
+        campaign.sync_structured_snippets
       end
 
       def finished?
-        campaign.assets.all?(&:synced?)
+        campaign.callouts_synced? && campaign.structured_snippets_synced?
+      end
+
+      def sync_result
+        [campaign.callouts_syncer.sync_result, campaign.structured_snippets_syncer.sync_result]
       end
     end,
 
@@ -228,11 +224,15 @@ class CampaignDeploy < ApplicationRecord
 
     Step.define(:create_keywords) do
       def run
-        campaign.keywords.each(&:sync)
+        campaign.ad_groups.each(&:sync_keywords)
       end
 
       def finished?
-        campaign.keywords.all?(&:synced?)
+        campaign.ad_groups.all?(&:keywords_synced?)
+      end
+
+      def sync_result
+        campaign.ad_groups.map { |ag| ag.keywords_syncer.sync_result }
       end
     end,
 

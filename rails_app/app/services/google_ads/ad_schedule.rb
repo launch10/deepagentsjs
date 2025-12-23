@@ -91,6 +91,35 @@ module GoogleAds
       end
     end
 
+    def delete
+      return not_found_result(:campaign_criterion) unless remote_resource
+
+      resource_name = remote_resource.resource_name
+
+      operation = client.operation.remove_resource.campaign_criterion(resource_name)
+
+      begin
+        client.service.campaign_criterion.mutate_campaign_criteria(
+          customer_id: google_customer_id,
+          operations: [operation]
+        )
+      rescue => e
+        return error_result(:campaign_criterion, e)
+      end
+
+      local_resource.google_criterion_id = nil
+      local_resource.save!
+
+      clear_memoization
+
+      Sync::SyncResult.new(
+        resource_type: :campaign_criterion,
+        resource_name: nil,
+        action: :deleted,
+        comparisons: []
+      )
+    end
+
     private
 
     def remote_criterion_id
