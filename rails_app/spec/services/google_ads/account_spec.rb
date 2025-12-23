@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe GoogleAds::Account do
   include GoogleAdsMocks
 
-  let(:account) { create(:account, name: "Test Account", google_email_address: "test@example.com") }
+  let(:account) { create(:account, :with_google_account, name: "Test Account") }
   let(:ads_account) { account.ads_accounts.find_or_create_by!(platform: "google") }
   let(:syncer) { described_class.new(ads_account) }
 
@@ -139,8 +139,7 @@ RSpec.describe GoogleAds::Account do
       it "creates a new customer" do
         expect(@mock_customer_service).to receive(:create_customer_client).with(
           customer_id: "1234567890",
-          customer_client: anything,
-          email_address: "test@example.com"
+          customer_client: anything
         )
         syncer.sync
       end
@@ -162,15 +161,15 @@ RSpec.describe GoogleAds::Account do
       end
     end
 
-    context "when account has no google_email_address" do
-      let(:account) { create(:account, name: "Test Account", google_email_address: nil) }
+    context "when account has no connected Google account" do
+      let(:account) { create(:account, name: "Test Account") }
 
       before do
         allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
       end
 
       it "raises ArgumentError" do
-        expect { syncer.sync }.to raise_error(ArgumentError, /google_email_address/)
+        expect { syncer.sync }.to raise_error(ArgumentError, /connected Google account/)
       end
     end
 
@@ -277,6 +276,62 @@ RSpec.describe GoogleAds::Account do
       it "syncs the account" do
         result = ads_account.google_sync
         expect(result).to be_a(GoogleAds::Sync::SyncResult)
+      end
+    end
+  end
+
+  describe "#send_google_ads_invitation_email" do
+    before do
+      ads_account.google_customer_id = "123456"
+      ads_account.save!
+      mock_customer_user_access_invitation_service
+      allow(@mock_resource).to receive(:customer_user_access_invitation)
+        .and_yield(mock_customer_user_access_invitation_resource)
+        .and_return(mock_customer_user_access_invitation_resource)
+      allow(@mock_operation).to receive(:create_resource)
+        .and_return(double("CreateResource", customer_user_access_invitation: double("Operation")))
+      allow(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation)
+        .and_return(mock_mutate_customer_user_access_invitation_response(customer_id: "123456"))
+    end
+
+    context "when account has connected Google account" do
+      it "sends invitation to the connected account email" do
+        expect(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation)
+          .with(customer_id: "123456", operation: anything)
+        syncer.send_google_ads_invitation_email
+      end
+
+      it "returns a SyncResult with created action" do
+        result = syncer.send_google_ads_invitation_email
+        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+        expect(result.created?).to be true
+        expect(result.resource_type).to eq(:customer_user_access_invitation)
+      end
+    end
+
+    context "when explicit email is provided" do
+      it "sends invitation to the provided email" do
+        expect(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation)
+        syncer.send_google_ads_invitation_email(email_address: "other@example.com")
+      end
+    end
+
+    context "when no customer_id exists" do
+      before do
+        ads_account.google_customer_id = nil
+        ads_account.save!
+      end
+
+      it "raises ArgumentError" do
+        expect { syncer.send_google_ads_invitation_email }.to raise_error(ArgumentError, /google_customer_id/)
+      end
+    end
+
+    context "when no connected Google account and no email provided" do
+      let(:account) { create(:account, name: "Test Account") }
+
+      it "raises ArgumentError" do
+        expect { syncer.send_google_ads_invitation_email }.to raise_error(ArgumentError, /Email address is required/)
       end
     end
   end

@@ -22,6 +22,8 @@
 require 'rails_helper'
 
 RSpec.describe AdsAccount, type: :model do
+  include GoogleAdsMocks
+
   let(:account) { create(:account, name: "Test Account", time_zone: "America/Los_Angeles") }
   let(:ads_account) { account.ads_accounts.create!(platform: "google") }
 
@@ -196,6 +198,70 @@ RSpec.describe AdsAccount, type: :model do
       expect(json[:time_zone]).to eq("America/New_York")
       expect(json[:status]).to eq("ENABLED")
       expect(json[:auto_tagging_enabled]).to eq(true)
+    end
+  end
+
+  describe '#send_google_ads_invitation_email' do
+    let(:account) { create(:account, :with_google_account, name: "Test Account") }
+
+    before do
+      mock_google_ads_client
+      ads_account.google_customer_id = "123456"
+      ads_account.save!
+      mock_customer_user_access_invitation_service
+      allow(@mock_resource).to receive(:customer_user_access_invitation)
+        .and_yield(mock_customer_user_access_invitation_resource)
+        .and_return(mock_customer_user_access_invitation_resource)
+      allow(@mock_operation).to receive(:create_resource)
+        .and_return(double("CreateResource", customer_user_access_invitation: double("Operation")))
+      allow(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation)
+        .and_return(mock_mutate_customer_user_access_invitation_response(customer_id: "123456"))
+    end
+
+    context 'when account has connected Google account and customer_id' do
+      it 'sends invitation email via the syncer' do
+        expect(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation)
+        ads_account.send_google_ads_invitation_email
+      end
+
+      it 'returns a SyncResult' do
+        result = ads_account.send_google_ads_invitation_email
+        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+        expect(result.created?).to be true
+      end
+
+      it 'uses ADMIN access role by default' do
+        result = ads_account.send_google_ads_invitation_email
+        expect(result.resource_type).to eq(:customer_user_access_invitation)
+      end
+    end
+
+    context 'when customer_id is missing' do
+      before do
+        ads_account.google_customer_id = nil
+        ads_account.save!
+      end
+
+      it 'raises an error' do
+        expect { ads_account.send_google_ads_invitation_email }
+          .to raise_error("Google Ads account must have a google_customer_id")
+      end
+    end
+
+    context 'when account has no connected Google account' do
+      let(:account) { create(:account, name: "Test Account") }
+
+      it 'raises an error' do
+        expect { ads_account.send_google_ads_invitation_email }
+          .to raise_error("Account owner must have a connected Google account")
+      end
+    end
+
+    context 'with custom access_role' do
+      it 'passes access_role to the syncer' do
+        expect(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation)
+        ads_account.send_google_ads_invitation_email(access_role: :STANDARD)
+      end
     end
   end
 end

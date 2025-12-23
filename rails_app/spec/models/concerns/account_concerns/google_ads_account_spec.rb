@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe AccountConcerns::GoogleAdsAccount do
   include GoogleAdsMocks
 
-  let(:account) { create(:account, name: "Test Account", google_email_address: "test@example.com") }
+  let(:account) { create(:account, :with_google_account, name: "Test Account") }
 
   before { mock_google_ads_client }
 
@@ -102,8 +102,8 @@ RSpec.describe AccountConcerns::GoogleAdsAccount do
   describe '#create_google_ads_account' do
     let(:customer_resource) { mock_customer_resource }
 
-    context 'when google_email_address is missing' do
-      let(:account) { create(:account, name: "Test Account", google_email_address: nil) }
+    context 'when no connected Google account' do
+      let(:account) { create(:account, name: "Test Account") }
 
       before do
         allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
@@ -111,7 +111,7 @@ RSpec.describe AccountConcerns::GoogleAdsAccount do
 
       it 'raises an error' do
         expect { account.create_google_ads_account }
-          .to raise_error(ArgumentError, /Cannot create Google Ads account without google_email_address/)
+          .to raise_error(ArgumentError, /Cannot create Google Ads account without a connected Google account/)
       end
     end
 
@@ -221,7 +221,7 @@ RSpec.describe AccountConcerns::GoogleAdsAccount do
       end
 
       it 'uses account time_zone when available' do
-        tz_account = create(:account, name: "TZ Test Account", time_zone: "America/Los_Angeles", google_email_address: "tz@example.com")
+        tz_account = create(:account, :with_google_account, name: "TZ Test Account", time_zone: "America/Los_Angeles")
         tz_customer_resource = mock_customer_resource
         allow(@mock_resource).to receive(:customer).and_yield(tz_customer_resource).and_return(tz_customer_resource)
 
@@ -230,7 +230,7 @@ RSpec.describe AccountConcerns::GoogleAdsAccount do
       end
 
       it 'falls back to default timezone when account has none' do
-        no_tz_account = create(:account, name: "No TZ Account", time_zone: nil, google_email_address: "notz@example.com")
+        no_tz_account = create(:account, :with_google_account, name: "No TZ Account", time_zone: nil)
         no_tz_customer_resource = mock_customer_resource
         allow(@mock_resource).to receive(:customer).and_yield(no_tz_customer_resource).and_return(no_tz_customer_resource)
 

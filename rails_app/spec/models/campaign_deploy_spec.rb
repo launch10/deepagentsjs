@@ -24,7 +24,7 @@ require 'rails_helper'
 RSpec.describe CampaignDeploy, type: :model do
   include GoogleAdsMocks
 
-  let(:account) { create(:account) }
+  let(:account) { create(:account, :with_google_account) }
   let(:project) { create(:project, account: account) }
   let(:website) { create(:website, project: project) }
   let(:campaign) { create(:campaign, account: account, project: project, website: website) }
@@ -42,6 +42,27 @@ RSpec.describe CampaignDeploy, type: :model do
   describe 'statuses' do
     it 'has the same statuses as Deploy' do
       expect(CampaignDeploy::STATUS).to eq(Deploy::STATUS)
+    end
+  end
+
+  describe 'campaign deploy readiness' do
+    context 'when account has connected Google account' do
+      it 'can proceed with create_ads_account step' do
+        expect(account.has_google_connected_account?).to be true
+        expect(account.google_email_address).to be_present
+      end
+    end
+
+    context 'when account does not have connected Google account' do
+      let(:account) { create(:account) }
+
+      it 'cannot create Google Ads account' do
+        mock_google_ads_client
+        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+
+        expect(account.has_google_connected_account?).to be false
+        expect { account.create_google_ads_account }.to raise_error(ArgumentError, /connected Google account/)
+      end
     end
   end
 

@@ -119,6 +119,32 @@ module GoogleAds
       )
     end
 
+    def send_google_ads_invitation_email(email_address: nil, access_role: :ADMIN)
+      raise ArgumentError, "Account must have a google_customer_id" unless customer_id.present?
+
+      email = email_address || account.google_email_address
+      raise ArgumentError, "Email address is required. Connect a Google account or provide an email." unless email.present?
+
+      invitation = client.resource.customer_user_access_invitation do |i|
+        i.email_address = email
+        i.access_role = access_role
+      end
+
+      operation = client.operation.create_resource.customer_user_access_invitation(invitation)
+
+      response = client.service.customer_user_access_invitation.mutate_customer_user_access_invitation(
+        customer_id: customer_id,
+        operation: operation
+      )
+
+      Sync::SyncResult.new(
+        resource_type: :customer_user_access_invitation,
+        resource_name: response.result.resource_name,
+        action: :created,
+        comparisons: []
+      )
+    end
+
     private
 
     def customer_id
@@ -127,8 +153,8 @@ module GoogleAds
     memoize :customer_id
 
     def create_account
-      unless account.google_email_address.present?
-        raise ArgumentError, "Cannot create Google Ads account without google_email_address"
+      unless account.has_google_connected_account?
+        raise ArgumentError, "Cannot create Google Ads account without a connected Google account"
       end
 
       customer = client.resource.customer do |c|
@@ -140,7 +166,7 @@ module GoogleAds
 
       response = client.service.customer.create_customer_client(
         customer_id: GoogleAds.config[:login_customer_id],
-        customer_client: customer,
+        customer_client: customer
         # This is not allowed! Needs to be allow-listed?
         # email_address: account.google_email_address
       )
@@ -195,35 +221,6 @@ module GoogleAds
         operation: operation
       )
     end
-
-    # access_role: ADMIN is required for the user managing their own billing - which we need
-    def send_google_ads_invitation_email(email_address: nil, access_role: :ADMIN)
-      raise ArgumentError, "Account must have a google_customer_id" unless customer_id.present?
-
-      email = email_address || account.google_email_address
-      raise ArgumentError, "Email address is required" unless email.present?
-
-      invitation = client.resource.customer_user_access_invitation do |i|
-        i.email_address = email
-        i.access_role = access_role
-      end
-
-      operation = client.operation.create_resource.customer_user_access_invitation(invitation)
-
-      response = client.service.customer_user_access_invitation.mutate_customer_user_access_invitation(
-        customer_id: customer_id,
-        operation: operation
-      )
-
-      Sync::SyncResult.new(
-        resource_type: :customer_user_access_invitation,
-        resource_name: response.result.resource_name,
-        action: :created,
-        comparisons: []
-      )
-    end
-
-    private
 
     def verify_sync(action, resource_name)
       clear_memoization

@@ -7,7 +7,7 @@ campaign = Campaign.last
 runner = CampaignDeploy::StepRunner.new(campaign)
 create_account = runner.find(:create_ads_account)
 create_account.run
-
+ads_account = Account.last.google_ads_account
 binding.pry
-sync_budget = runner.find(:sync_budget)
-sync_budget.finished?
+account.send_google_ads_invitation_email
+

@@ -273,7 +273,6 @@ CREATE TABLE public.accounts (
     subdomain character varying,
     billing_email character varying,
     account_users_count integer DEFAULT 0,
-    google_email_address character varying,
     time_zone character varying DEFAULT 'America/New_York'::character varying
 );
 
@@ -8048,15 +8047,12 @@ ALTER TABLE ONLY public.website_urls
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251223010445'),
 ('20251220160359'),
 ('20251220153026'),
 ('20251219192557'),
 ('20251219013512'),
 ('20251218235348'),
-('20251218002116'),
-('20251217211636'),
-('20251219014359'),
-('20251218235543'),
 ('20251218132052'),
 ('20251218125017'),
 ('20251217173931'),

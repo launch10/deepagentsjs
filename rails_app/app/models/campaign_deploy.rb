@@ -46,6 +46,7 @@ class CampaignDeploy < ApplicationRecord
 
     attr_reader :campaign
   end
+
   class Steps
     def initialize(steps)
       @steps = steps
@@ -67,8 +68,8 @@ class CampaignDeploy < ApplicationRecord
       @steps.freeze
     end
 
-    def index(&block)
-      @steps.index(&block)
+    def index(&)
+      @steps.index(&)
     end
 
     def size

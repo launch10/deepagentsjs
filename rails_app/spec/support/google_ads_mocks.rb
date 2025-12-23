@@ -717,6 +717,38 @@ module GoogleAdsMocks
       allow(asset).to receive(:structured_snippet_asset=)
     end
   end
+  def mock_customer_user_access_invitation_service
+    @mock_customer_user_access_invitation_service = double("CustomerUserAccessInvitationService")
+    allow(@mock_client).to receive(:service).and_return(
+      double("Services",
+        customer: @mock_customer_service,
+        google_ads: @mock_google_ads_service,
+        campaign_budget: @mock_campaign_budget_service,
+        campaign: @mock_campaign_service,
+        ad_group: @mock_ad_group_service,
+        bidding_strategy: @mock_bidding_strategy_service,
+        campaign_criterion: @mock_campaign_criterion_service,
+        ad_group_criterion: @mock_ad_group_criterion_service,
+        ad_group_ad: @mock_ad_group_ad_service,
+        asset: @mock_asset_service,
+        campaign_asset: @mock_campaign_asset_service,
+        customer_user_access_invitation: @mock_customer_user_access_invitation_service)
+    )
+    @mock_customer_user_access_invitation_service
+  end
+
+  def mock_customer_user_access_invitation_resource
+    double("CustomerUserAccessInvitation").tap do |invitation|
+      allow(invitation).to receive(:email_address=)
+      allow(invitation).to receive(:access_role=)
+    end
+  end
+
+  def mock_mutate_customer_user_access_invitation_response(invitation_id: 12345, customer_id: 456)
+    result = double("MutateCustomerUserAccessInvitationResult",
+      resource_name: "customers/#{customer_id}/customerUserAccessInvitations/#{invitation_id}")
+    double("MutateCustomerUserAccessInvitationResponse", result: result)
+  end
 end
 
 RSpec.configure do |config|

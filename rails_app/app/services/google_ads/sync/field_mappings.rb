@@ -90,7 +90,7 @@ module GoogleAds
           our_field: :google_status,
           their_field: :status,
           transform: ITSELF,
-          ignore_for_sync: -> { GoogleAds.is_test_mode? }
+          ignore_when: -> { GoogleAds.is_test_mode? }
         },
         auto_tagging_enabled: {
           our_field: :google_auto_tagging_enabled,
