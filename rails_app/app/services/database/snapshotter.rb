@@ -37,9 +37,11 @@ module Database
       @env = {"PGPASSWORD" => @config[:password].to_s}
     end
 
+    SNAPSHOT_DIR = Rails.root.join("test/fixtures/database/snapshots")
+
     class << self
       extend Forwardable
-      def_delegators :new, :restore, :dump, :export_tables, :list_snapshots, :truncate, :reset_all_sequences
+      def_delegators :new, :restore, :dump, :export_tables, :list_snapshots, :truncate, :reset_all_sequences, :restore_snapshot, :snapshot_path
     end
 
     # Dumps the database to a file.
@@ -120,6 +122,18 @@ module Database
     def truncate(except: [])
       except = Array(except) + EXCLUDED_HEAVY_TABLES
       DatabaseCleaner.clean_with(:truncation, except: except)
+    end
+
+    def snapshot_path(name)
+      SNAPSHOT_DIR.join("#{name}.sql")
+    end
+
+    def restore_snapshot(name, truncate: true)
+      input_path = snapshot_path(name)
+      raise "Snapshot '#{name}' not found at #{input_path}" unless File.exist?(input_path)
+
+      self.truncate if truncate
+      restore(input_path)
     end
 
     def reset_all_sequences(start_value: 1)

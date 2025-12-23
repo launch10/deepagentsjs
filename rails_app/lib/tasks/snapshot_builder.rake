@@ -93,24 +93,21 @@ namespace :db do
 
       require_snapshot_builder_support!
 
-      snapshot_dir = Rails.root.join("test/fixtures/database/snapshots")
       base_snapshot = args[:base_snapshot]
 
       puts "=== Interactive Snapshot Builder ==="
 
-      puts "Truncating database..."
-      Database::Snapshotter.truncate
-
       if base_snapshot.present? && base_snapshot != "empty"
-        input_path = snapshot_dir.join("#{base_snapshot}.sql")
-        unless File.exist?(input_path)
-          puts "ERROR: Base snapshot '#{base_snapshot}' not found"
+        puts "Restoring base snapshot '#{base_snapshot}'..."
+        begin
+          Database::Snapshotter.restore_snapshot(base_snapshot, truncate: true)
+        rescue => e
+          puts "ERROR: #{e.message}"
           exit 1
         end
-
-        puts "Restoring base snapshot '#{base_snapshot}'..."
-        Database::Snapshotter.restore(input_path)
       else
+        puts "Truncating database..."
+        Database::Snapshotter.truncate
         puts "Resetting all sequences to 1..."
         Database::Snapshotter.reset_all_sequences(start_value: 1)
       end
@@ -125,7 +122,7 @@ namespace :db do
       puts
 
       define_method(:save_snapshot) do |name|
-        output_path = snapshot_dir.join("#{name}.sql")
+        output_path = Database::Snapshotter.snapshot_path(name)
         puts "Creating snapshot '#{name}'..."
         result = Database::Snapshotter.dump(output_path)
         if result.success?
@@ -265,19 +262,8 @@ class SnapshotBuilder
       end
 
       if base_snapshot.present?
-        input_path = SNAPSHOT_DIR.join("#{base_snapshot}.sql")
-        unless File.exist?(input_path)
-          puts "ERROR: Base snapshot '#{base_snapshot}' not found at #{input_path}"
-          exit 1
-        end
-
         puts "Restoring base snapshot '#{base_snapshot}'..."
-        result = Database::Snapshotter.restore(input_path)
-        unless result.success?
-          puts "ERROR: Failed to restore base snapshot"
-          puts result.stderr
-          exit 1
-        end
+        Database::Snapshotter.restore_snapshot(base_snapshot, truncate: false)
       else
         puts "Resetting all sequences to 1..."
         Database::Snapshotter.reset_all_sequences(start_value: 1)

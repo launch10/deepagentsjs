@@ -52,33 +52,22 @@ namespace :db do
 
     unless args[:name]
       puts "ERROR: Snapshot name is required"
-      puts "Usage: rake db:test:restore_snapshot[snapshot_name] or rake db:test:restore_snapshot[snapshot_name,true]"
+      puts "Usage: rake db:test:restore_snapshot[snapshot_name] or rake db:test:restore_snapshot[snapshot_name,false]"
       exit 1
     end
 
-    input_path = SNAPSHOT_DIR.join("#{args[:name]}.sql")
+    truncate = args[:truncate_first] != "false"
 
-    unless File.exist?(input_path)
-      puts "ERROR: Snapshot '#{args[:name]}' does not exist at #{input_path}"
+    begin
+      result = Database::Snapshotter.restore_snapshot(args[:name], truncate: truncate)
+      puts "Database truncated before restore" if truncate
+      puts "Snapshot '#{args[:name]}' restored successfully"
+    rescue => e
+      puts "ERROR: #{e.message}"
       puts "Available snapshots:"
       Dir.glob(SNAPSHOT_DIR.join("**/*.sql")).each do |file|
         puts "  - #{File.basename(file, ".sql")}"
       end
-      exit 1
-    end
-
-    if args[:truncate_first] != "false"
-      Database::Snapshotter.new.truncate
-      puts "Database truncated before restore"
-    end
-
-    result = Database::Snapshotter.new.restore(input_path)
-
-    if result.success?
-      puts "Snapshot '#{args[:name]}' restored successfully"
-    else
-      puts "ERROR: Failed to restore snapshot"
-      puts result.stderr
       exit 1
     end
   end
