@@ -187,13 +187,13 @@ module GoogleAds
           our_field: :display_path_1,
           their_field: :path1,
           transform: ITSELF,
-          nested_field: :ad
+          nested_fields: [:ad, :responsive_search_ad]
         },
         display_path_2: {
           our_field: :display_path_2,
           their_field: :path2,
           transform: ITSELF,
-          nested_field: :ad
+          nested_fields: [:ad, :responsive_search_ad]
         }
       }.freeze
 

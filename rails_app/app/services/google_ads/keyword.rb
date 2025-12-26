@@ -12,37 +12,6 @@ module GoogleAds
       fetch_by_id
     end
 
-    def build_comparisons
-      return [] unless local_resource && remote_resource
-
-      field_mappings = Sync::FieldMappings.for(local_resource.class)
-      comparisons = []
-
-      field_mappings.each do |_key, mapping|
-        our_field = mapping[:our_field]
-        our_value = local_resource.respond_to?(our_field) ? local_resource.send(our_field) : nil
-        next if our_value.nil?
-
-        their_value = if mapping[:nested_field]
-          nested = remote_resource.respond_to?(mapping[:nested_field]) ? remote_resource.send(mapping[:nested_field]) : nil
-          nested&.respond_to?(mapping[:their_field]) ? nested.send(mapping[:their_field]) : nil
-        else
-          remote_resource.respond_to?(mapping[:their_field]) ? remote_resource.send(mapping[:their_field]) : nil
-        end
-
-        comparisons << Sync::FieldComparison.new(
-          field: our_field,
-          our_field: mapping[:our_field],
-          our_value: our_value,
-          their_field: mapping[:their_field],
-          their_value: their_value,
-          transform: mapping[:transform]
-        )
-      end
-
-      comparisons
-    end
-
     def fetch_by_id
       return nil unless remote_criterion_id.present?
 

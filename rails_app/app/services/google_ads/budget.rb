@@ -51,6 +51,7 @@ module GoogleAds
     end
 
     def deep_link
+      # I don't think these are correct... ocid and ascid are always the same
       # - ocid - the customer ID (your MCC: 7879395008)
       # - ascid - the account/sub-customer ID
       # - budgetId - the budget ID from the resource name

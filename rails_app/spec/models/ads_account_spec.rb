@@ -34,6 +34,54 @@ RSpec.describe AdsAccount, type: :model do
   describe 'validations' do
     it { should validate_presence_of(:platform) }
     it { should validate_inclusion_of(:platform).in_array(AdsAccount::PLATFORMS) }
+
+    describe 'google_currency_code' do
+      it 'allows valid currency codes' do
+        %w[USD EUR GBP JPY AUD CAD].each do |code|
+          ads_account.google_currency_code = code
+          ads_account.valid?
+          expect(ads_account.errors[:google_currency_code]).to be_empty, "Expected #{code} to be valid"
+        end
+      end
+
+      it 'rejects invalid currency codes' do
+        ads_account.google_currency_code = "INVALID"
+        expect(ads_account).not_to be_valid
+        expect(ads_account.errors[:google_currency_code]).to include("is not a valid option")
+      end
+
+      it 'allows blank values' do
+        ads_account.google_currency_code = nil
+        expect(ads_account).to be_valid
+      end
+    end
+
+    describe 'google_time_zone' do
+      it 'allows valid time zones' do
+        %w[America/New_York America/Los_Angeles Europe/London Asia/Tokyo].each do |tz|
+          ads_account.google_time_zone = tz
+          expect(ads_account).to be_valid
+        end
+      end
+
+      it 'rejects invalid time zones' do
+        ads_account.google_time_zone = "Invalid/Timezone"
+        expect(ads_account).not_to be_valid
+        expect(ads_account.errors[:google_time_zone]).to include("is not a valid option")
+      end
+
+      it 'allows blank values' do
+        ads_account.google_time_zone = nil
+        expect(ads_account).to be_valid
+      end
+
+      it 'includes all ActiveSupport time zones' do
+        ActiveSupport::TimeZone.all.map(&:tzinfo).map(&:name).uniq.each do |tz|
+          ads_account.google_time_zone = tz
+          expect(ads_account).to be_valid, "Expected #{tz} to be valid"
+        end
+      end
+    end
   end
 
   describe 'platform_settings' do
@@ -242,7 +290,6 @@ RSpec.describe AdsAccount, type: :model do
         invitation = ads_account.invitations.last
         expect(invitation.email_address).to eq(account.google_email_address)
       end
-
       it 'uses STANDARD access role by default' do
         ads_account.send_google_ads_invitation_email
         invitation = ads_account.invitations.last

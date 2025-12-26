@@ -1,6 +1,12 @@
 module PlatformSettings
   extend ActiveSupport::Concern
 
+  included do
+    class_attribute :_platform_settings_validations, default: []
+
+    validate :validate_platform_settings
+  end
+
   class_methods do
     def platform_setting(platform, attribute, options = {})
       getter_name = "#{platform}_#{attribute}"
@@ -19,19 +25,6 @@ module PlatformSettings
       end
 
       define_method(setter_name) do |value|
-        if options[:in] && value.present?
-          allowed = options[:in].map(&:to_s)
-
-          if options[:array]
-            invalid = Array(value).map(&:to_s) - allowed
-            if invalid.any?
-              raise ArgumentError, "Invalid #{attribute}: #{invalid.join(", ")}. Valid options: #{options[:in].join(", ")}"
-            end
-          elsif !allowed.include?(value.to_s)
-            raise ArgumentError, "Invalid #{attribute}: #{value}. Valid options: #{options[:in].join(", ")}"
-          end
-        end
-
         platform_settings[platform.to_s] ||= {}
         platform_settings[platform.to_s][attribute.to_s] = value
       end
@@ -39,6 +32,14 @@ module PlatformSettings
       attribute_name = "#{platform}_#{attribute}"
       self._platform_settings_attributes ||= []
       self._platform_settings_attributes << attribute_name
+
+      if options[:in]
+        self._platform_settings_validations = _platform_settings_validations + [{
+          attribute: getter_name,
+          in: options[:in],
+          array: options[:array]
+        }]
+      end
     end
 
     def _platform_settings_attributes
@@ -60,5 +61,25 @@ module PlatformSettings
     end
 
     super(regular_attrs.to_h)
+  end
+
+  private
+
+  def validate_platform_settings
+    self.class._platform_settings_validations.each do |validation|
+      value = send(validation[:attribute])
+      next if value.blank?
+
+      allowed = validation[:in].map(&:to_s)
+
+      if validation[:array]
+        invalid = Array(value).map(&:to_s) - allowed
+        if invalid.any?
+          errors.add(validation[:attribute], "contains invalid values: #{invalid.join(', ')}")
+        end
+      elsif !allowed.include?(value.to_s)
+        errors.add(validation[:attribute], "is not a valid option")
+      end
+    end
   end
 end

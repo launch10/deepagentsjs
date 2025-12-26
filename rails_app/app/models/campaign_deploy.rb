@@ -140,8 +140,9 @@ class CampaignDeploy < ApplicationRecord
         campaign.google_ads_account.send_google_ads_invitation_email
       end
 
+      # Will be false if user declines invitation, for example, allowing us to send another invitation
       def finished?
-        sync_result&.success? || false
+        campaign&.account&.google_account_invitation&.okay? || false
       end
 
       def sync_result

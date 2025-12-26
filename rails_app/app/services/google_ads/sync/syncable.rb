@@ -50,13 +50,12 @@ module GoogleAds
         field_mappings.each do |_key, mapping|
           our_field = mapping[:our_field]
           our_value = local_resource.respond_to?(our_field) ? local_resource.send(our_field) : nil
-          next if our_value.nil?
 
           ignore_when = mapping[:ignore_when]
           should_ignore = ignore_when.respond_to?(:call) ? ignore_when.call : ignore_when
           next if should_ignore
 
-          their_value = extract_remote_value(remote_resource, mapping[:their_field])
+          their_value = extract_remote_value(remote_resource, mapping)
 
           comparisons << FieldComparison.new(
             field: our_field,
@@ -74,9 +73,24 @@ module GoogleAds
 
       private
 
-      def extract_remote_value(remote, field)
+      def extract_remote_value(remote, mapping)
         return nil unless remote
-        remote.respond_to?(field) ? remote.send(field) : nil
+
+        their_field = mapping[:their_field]
+
+        if mapping[:nested_fields] # multiple levels of nesting
+          nested = remote
+          mapping[:nested_fields].each do |nf|
+            nested = nested.respond_to?(nf) ? nested.send(nf) : nil
+            return nil unless nested
+          end
+          nested.respond_to?(their_field) ? nested.send(their_field) : nil
+        elsif mapping[:nested_field] # single level of nesting
+          nested = remote.respond_to?(mapping[:nested_field]) ? remote.send(mapping[:nested_field]) : nil
+          nested&.respond_to?(their_field) ? nested.send(their_field) : nil
+        else # no nesting
+          remote.respond_to?(their_field) ? remote.send(their_field) : nil
+        end
       end
 
       def not_found_result(resource_type)

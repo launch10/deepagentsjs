@@ -227,10 +227,6 @@ RSpec.describe AdsAccountInvitation, type: :model do
   describe 'GoogleMappable' do
     let(:invitation) { create(:ads_account_invitation, ads_account: ads_account, email_address: "test@example.com") }
 
-    it 'includes GoogleMappable' do
-      expect(AdsAccountInvitation.ancestors).to include(GoogleMappable)
-    end
-
     it 'converts to Google API format' do
       invitation.google_access_role = "ADMIN"
       json = invitation.to_google_json

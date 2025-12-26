@@ -28,12 +28,16 @@ class AdsAccount < ApplicationRecord
   has_many :invitations, class_name: "AdsAccountInvitation", dependent: :destroy
 
   PLATFORMS = %w[google meta]
+  # https://developers.google.com/google-ads/api/data/codes-formats
+  CURRENCY_CODES = %w[AED ARS AUD BGN BND BOB BRL CAD CHF CLP CNY COP CSD CZK DEM DKK EEK EGP EUR FJD FRF GBP HKD HRK HUF IDR ILS INR JOD JPY KES KRW LKR LTL MAD MTL MXN MYR NGN NOK NZD PEN PHP PKR PLN RON RSD RUB SAR SEK SGD SIT SKK THB TND TRL TRY TWD UAH USD UYU VEB VEF VND ZAR]
+  TIME_ZONES = ActiveSupport::TimeZone.all.map(&:tzinfo).map(&:name)
+
   validates :platform, presence: true, inclusion: { in: PLATFORMS }
 
   platform_setting :google, :customer_id
   platform_setting :google, :descriptive_name, default: -> { account&.name }
-  platform_setting :google, :currency_code, default: -> { account&.try(:currency_code).presence || "USD" }
-  platform_setting :google, :time_zone, default: -> { account&.try(:time_zone).presence || "America/New_York" }
+  platform_setting :google, :currency_code, default: -> { account&.try(:currency_code).presence || "USD" }, in: CURRENCY_CODES
+  platform_setting :google, :time_zone, default: -> { account&.try(:time_zone).presence || "America/New_York" }, in: TIME_ZONES
   platform_setting :google, :status, default: "ENABLED"
   platform_setting :google, :auto_tagging_enabled, default: true
 
