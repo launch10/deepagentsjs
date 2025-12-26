@@ -5,7 +5,7 @@ module GoogleAds
     end
 
     def fetch_remote
-      fetch_by_id
+      fetch_by_id || fetch_by_content
     end
 
     def build_comparisons
@@ -50,6 +50,28 @@ module GoogleAds
 
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
       results.first&.asset
+    end
+
+    def fetch_by_content
+      return nil unless local_resource.text.present?
+
+      escaped_text = local_resource.text.gsub("'", "\\\\'")
+      query = %(
+        SELECT asset.id, asset.resource_name, asset.callout_asset.callout_text
+        FROM asset
+        WHERE asset.type = 'CALLOUT'
+          AND asset.callout_asset.callout_text = '#{escaped_text}'
+      )
+
+      results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
+      asset = results.first&.asset
+
+      if asset
+        local_resource.update_column(:platform_settings,
+          local_resource.platform_settings.deep_merge("google" => { "asset_id" => asset.id.to_s }))
+      end
+
+      asset
     end
 
     def sync_result
@@ -140,6 +162,7 @@ module GoogleAds
       asset_resource_name = asset_response.results.first.resource_name
       asset_id = asset_resource_name.split("/").last.to_i
       local_resource.google_asset_id = asset_id
+      local_resource.save!
 
       link_operation = client.operation.create_resource.campaign_asset do |ca|
         ca.campaign = campaign_resource_name

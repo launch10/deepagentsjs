@@ -52,7 +52,7 @@ class AdGroup < ApplicationRecord
   accepts_nested_attributes_for :keywords, allow_destroy: true
 
   def google_customer_id
-    ads_account.google_customer_id
+    campaign.google_customer_id
   end
 
   platform_setting :google, :ad_group_id

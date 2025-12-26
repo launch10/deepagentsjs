@@ -231,7 +231,7 @@ class CampaignDeploy < ApplicationRecord
       def sync_result
         campaign.structured_snippets_sync_result
       end
-    end
+    end,
 
     Step.define(:create_ad_groups) do
       def run

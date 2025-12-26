@@ -57,7 +57,33 @@ RSpec.describe GoogleAds::Callout do
       end
     end
 
-    context 'when asset does not exist remotely' do
+    context 'when asset ID is missing but asset exists by content' do
+      before do
+        callout.platform_settings["google"] = {}
+        callout.save!
+      end
+
+      it 'fetches the remote asset by callout text and backfills the ID' do
+        asset_response = mock_search_response_with_callout_asset(
+          asset_id: 88888,
+          customer_id: 1234567890,
+          callout_text: "Free Shipping"
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(asset_response)
+
+        remote = callout_syncer.fetch_remote
+        expect(remote.id).to eq(88888)
+        expect(remote.callout_asset.callout_text).to eq("Free Shipping")
+        expect(callout.reload.google_asset_id).to eq("88888")
+      end
+    end
+
+    context 'when asset does not exist remotely by ID or content' do
+      before do
+        callout.platform_settings["google"] = {}
+        callout.save!
+      end
+
       it 'returns nil' do
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(mock_empty_search_response)

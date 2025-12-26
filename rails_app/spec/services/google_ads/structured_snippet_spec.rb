@@ -64,7 +64,34 @@ RSpec.describe GoogleAds::StructuredSnippet do
       end
     end
 
-    context 'when asset does not exist remotely' do
+    context 'when asset ID is missing but asset exists by content' do
+      before do
+        structured_snippet.platform_settings["google"] = {}
+        structured_snippet.save!
+      end
+
+      it 'fetches the remote asset by header and values, and backfills the ID' do
+        asset_response = mock_search_response_with_structured_snippet_asset(
+          asset_id: 88888,
+          customer_id: 1234567890,
+          header: "Service catalog",
+          values: ["Web Design", "SEO", "Marketing"]
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(asset_response)
+
+        remote = snippet_syncer.fetch_remote
+        expect(remote.id).to eq(88888)
+        expect(remote.structured_snippet_asset.header).to eq("Service catalog")
+        expect(structured_snippet.reload.google_asset_id).to eq("88888")
+      end
+    end
+
+    context 'when asset does not exist remotely by ID or content' do
+      before do
+        structured_snippet.platform_settings["google"] = {}
+        structured_snippet.save!
+      end
+
       it 'returns nil' do
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(mock_empty_search_response)
