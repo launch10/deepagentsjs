@@ -18,7 +18,15 @@ module GoogleAds
       )
 
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
-      results.first&.asset
+      asset = results.first&.asset
+      return nil unless asset
+
+      RemoteStructuredSnippet.new(
+        resource_name: asset.resource_name,
+        id: asset.id,
+        header: asset.structured_snippet_asset.header,
+        values: asset.structured_snippet_asset.values.to_a
+      )
     end
 
     def fetch_by_content
@@ -33,13 +41,17 @@ module GoogleAds
 
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
       asset = results.find { |row| row.asset.structured_snippet_asset.values == local_resource.values }&.asset
+      return nil unless asset
 
-      if asset
-        local_resource.update_column(:platform_settings,
-          local_resource.platform_settings.deep_merge("google" => { "asset_id" => asset.id.to_s }))
-      end
+      local_resource.update_column(:platform_settings,
+        local_resource.platform_settings.deep_merge("google" => { "asset_id" => asset.id.to_s }))
 
-      asset
+      RemoteStructuredSnippet.new(
+        resource_name: asset.resource_name,
+        id: asset.id,
+        header: asset.structured_snippet_asset.header,
+        values: asset.structured_snippet_asset.values.to_a
+      )
     end
 
     def sync_result
@@ -172,6 +184,25 @@ module GoogleAds
       flush_cache(:synced?)
       flush_cache(:sync_result)
       flush_cache(:remote_asset_id)
+    end
+
+    class RemoteStructuredSnippet
+      attr_reader :resource_name, :id, :header, :values
+
+      def initialize(resource_name:, id:, header:, values:)
+        @resource_name = resource_name
+        @id = id
+        @header = header
+        @values = values
+      end
+
+      def structured_snippet_asset
+        self
+      end
+
+      def synced?
+        true
+      end
     end
   end
 end

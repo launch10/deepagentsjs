@@ -30,7 +30,19 @@ module GoogleAds
       )
 
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
-      results.first&.ad_group_ad
+      ad_group_ad = results.first&.ad_group_ad
+      return nil unless ad_group_ad
+
+      RemoteAd.new(
+        resource_name: ad_group_ad.resource_name,
+        id: ad_group_ad.ad.id,
+        status: ad_group_ad.status,
+        final_urls: ad_group_ad.ad.final_urls.to_a,
+        headlines: ad_group_ad.ad.responsive_search_ad&.headlines&.to_a || [],
+        descriptions: ad_group_ad.ad.responsive_search_ad&.descriptions&.to_a || [],
+        path1: ad_group_ad.ad.responsive_search_ad&.path1,
+        path2: ad_group_ad.ad.responsive_search_ad&.path2
+      )
     end
 
     def sync_result
@@ -184,6 +196,33 @@ module GoogleAds
       flush_cache(:synced?)
       flush_cache(:sync_result)
       flush_cache(:remote_ad_id)
+    end
+
+    class RemoteAd
+      attr_reader :resource_name, :id, :status, :final_urls, :headlines, :descriptions, :path1, :path2
+
+      def initialize(resource_name:, id:, status:, final_urls:, headlines:, descriptions:, path1:, path2:)
+        @resource_name = resource_name
+        @id = id
+        @status = status
+        @final_urls = final_urls
+        @headlines = headlines
+        @descriptions = descriptions
+        @path1 = path1
+        @path2 = path2
+      end
+
+      def ad
+        self
+      end
+
+      def responsive_search_ad
+        self
+      end
+
+      def synced?
+        status != :REMOVED
+      end
     end
   end
 end

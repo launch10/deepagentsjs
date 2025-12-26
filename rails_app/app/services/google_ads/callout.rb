@@ -18,7 +18,14 @@ module GoogleAds
       )
 
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
-      results.first&.asset
+      asset = results.first&.asset
+      return nil unless asset
+
+      RemoteCallout.new(
+        resource_name: asset.resource_name,
+        id: asset.id,
+        callout_text: asset.callout_asset.callout_text
+      )
     end
 
     def fetch_by_content
@@ -35,12 +42,16 @@ module GoogleAds
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
       asset = results.first&.asset
 
-      if asset
-        local_resource.update_column(:platform_settings,
-          local_resource.platform_settings.deep_merge("google" => { "asset_id" => asset.id.to_s }))
-      end
+      return nil unless asset
 
-      asset
+      local_resource.update_column(:platform_settings,
+        local_resource.platform_settings.deep_merge("google" => { "asset_id" => asset.id.to_s }))
+
+      RemoteCallout.new(
+        resource_name: asset.resource_name,
+        id: asset.id,
+        callout_text: asset.callout_asset.callout_text
+      )
     end
 
     def sync_result
@@ -168,6 +179,24 @@ module GoogleAds
       flush_cache(:synced?)
       flush_cache(:sync_result)
       flush_cache(:remote_asset_id)
+    end
+
+    class RemoteCallout
+      attr_reader :resource_name, :id, :callout_text
+
+      def initialize(resource_name:, id:, callout_text:)
+        @resource_name = resource_name
+        @id = id
+        @callout_text = callout_text
+      end
+
+      def callout_asset
+        self
+      end
+
+      def synced?
+        true
+      end
     end
   end
 end

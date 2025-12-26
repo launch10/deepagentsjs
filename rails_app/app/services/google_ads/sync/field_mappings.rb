@@ -56,23 +56,17 @@ module GoogleAds
           transform: ITSELF
         },
         status: {
-          our_field: :status,
+          our_field: :google_status,
           their_field: :status,
-          transform: ITSELF
+          transform: TO_SYMBOL
         },
         type: {
-          our_field: :type,
+          our_field: :google_type,
           their_field: :type,
-          transform: ITSELF
-        },
-        cpc_bid_cents: {
-          our_field: :cpc_bid_cents,
-          their_field: :cpc_bid_micros,
-          transform: CENTS_TO_MICROS,
-          reverse_transform: MICROS_TO_CENTS
+          transform: TO_SYMBOL
         },
         cpc_bid_micros: {
-          our_field: :cpc_bid_micros,
+          our_field: :google_cpc_bid_micros,
           their_field: :cpc_bid_micros,
           transform: ITSELF
         }

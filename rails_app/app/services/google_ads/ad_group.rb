@@ -18,7 +18,17 @@ module GoogleAds
       )
 
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
-      results.first&.ad_group
+      ad_group = results.first&.ad_group
+      return nil unless ad_group
+
+      RemoteAdGroup.new(
+        resource_name: ad_group.resource_name,
+        id: ad_group.id,
+        name: ad_group.name,
+        status: ad_group.status,
+        type: ad_group.type,
+        cpc_bid_micros: ad_group.cpc_bid_micros
+      )
     end
 
     def fetch_by_name
@@ -37,7 +47,15 @@ module GoogleAds
       return nil unless ad_group
 
       local_resource.google_ad_group_id = ad_group.id
-      ad_group
+
+      RemoteAdGroup.new(
+        resource_name: ad_group.resource_name,
+        id: ad_group.id,
+        name: ad_group.name,
+        status: ad_group.status,
+        type: ad_group.type,
+        cpc_bid_micros: ad_group.cpc_bid_micros
+      )
     end
 
     def sync_result
@@ -152,6 +170,23 @@ module GoogleAds
       flush_cache(:synced?)
       flush_cache(:sync_result)
       flush_cache(:ad_group_id)
+    end
+
+    class RemoteAdGroup
+      attr_reader :resource_name, :id, :name, :status, :type, :cpc_bid_micros
+
+      def initialize(resource_name:, id:, name:, status:, type:, cpc_bid_micros:)
+        @resource_name = resource_name
+        @id = id
+        @name = name
+        @status = status
+        @type = type
+        @cpc_bid_micros = cpc_bid_micros
+      end
+
+      def synced?
+        status != :REMOVED
+      end
     end
   end
 end

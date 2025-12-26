@@ -56,4 +56,7 @@ class AdGroup < ApplicationRecord
   end
 
   platform_setting :google, :ad_group_id
+  platform_setting :google, :status, default: "PAUSED"
+  platform_setting :google, :type, default: "SEARCH_STANDARD"
+  platform_setting :google, :cpc_bid_micros, default: 1_000_000
 end

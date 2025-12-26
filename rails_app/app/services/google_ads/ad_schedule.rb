@@ -36,7 +36,20 @@ module GoogleAds
       )
 
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
-      results.first&.campaign_criterion
+      criterion = results.first&.campaign_criterion
+      return nil unless criterion
+
+      RemoteAdSchedule.new(
+        resource_name: criterion.resource_name,
+        criterion_id: criterion.criterion_id,
+        campaign: criterion.campaign,
+        day_of_week: criterion.ad_schedule.day_of_week,
+        start_hour: criterion.ad_schedule.start_hour,
+        start_minute: criterion.ad_schedule.start_minute,
+        end_hour: criterion.ad_schedule.end_hour,
+        end_minute: criterion.ad_schedule.end_minute,
+        bid_modifier: criterion.bid_modifier
+      )
     end
 
     def sync_result
@@ -197,6 +210,30 @@ module GoogleAds
       flush_cache(:synced?)
       flush_cache(:sync_result)
       flush_cache(:remote_criterion_id)
+    end
+
+    class RemoteAdSchedule
+      attr_reader :resource_name, :criterion_id, :campaign, :day_of_week, :start_hour, :start_minute, :end_hour, :end_minute, :bid_modifier
+
+      def initialize(resource_name:, criterion_id:, campaign:, day_of_week:, start_hour:, start_minute:, end_hour:, end_minute:, bid_modifier:)
+        @resource_name = resource_name
+        @criterion_id = criterion_id
+        @campaign = campaign
+        @day_of_week = day_of_week
+        @start_hour = start_hour
+        @start_minute = start_minute
+        @end_hour = end_hour
+        @end_minute = end_minute
+        @bid_modifier = bid_modifier
+      end
+
+      def ad_schedule
+        self
+      end
+
+      def synced?
+        true
+      end
     end
   end
 end

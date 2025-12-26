@@ -8,13 +8,24 @@ module GoogleAds
       return nil unless campaign_id.present?
 
       query = %(
-        SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.bidding_strategy_type
+        SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.bidding_strategy_type, campaign.contains_eu_political_advertising
         FROM campaign
         WHERE campaign.id = #{campaign_id}
       )
 
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
-      results.first&.campaign
+      campaign = results.first&.campaign
+      return nil unless campaign
+
+      RemoteCampaign.new(
+        resource_name: campaign.resource_name,
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        advertising_channel_type: campaign.advertising_channel_type,
+        bidding_strategy_type: campaign.bidding_strategy_type,
+        contains_eu_political_advertising: campaign.contains_eu_political_advertising
+      )
     end
 
     def fetch_by_name
@@ -22,7 +33,7 @@ module GoogleAds
       return nil unless campaign_name.present?
 
       query = %(
-        SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.bidding_strategy_type
+        SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.bidding_strategy_type, campaign.contains_eu_political_advertising
         FROM campaign
         WHERE campaign.name = '#{campaign_name}'
       )
@@ -32,7 +43,16 @@ module GoogleAds
       return nil unless campaign
 
       local_resource.google_campaign_id = campaign.id
-      campaign
+
+      RemoteCampaign.new(
+        resource_name: campaign.resource_name,
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        advertising_channel_type: campaign.advertising_channel_type,
+        bidding_strategy_type: campaign.bidding_strategy_type,
+        contains_eu_political_advertising: campaign.contains_eu_political_advertising
+      )
     end
 
     def sync_result
@@ -164,6 +184,24 @@ module GoogleAds
       flush_cache(:remote_resource)
       flush_cache(:synced?)
       flush_cache(:sync_result)
+    end
+
+    class RemoteCampaign
+      attr_reader :resource_name, :id, :name, :status, :advertising_channel_type, :bidding_strategy_type, :contains_eu_political_advertising
+
+      def initialize(resource_name:, id:, name:, status:, advertising_channel_type:, bidding_strategy_type:, contains_eu_political_advertising:)
+        @resource_name = resource_name
+        @id = id
+        @name = name
+        @status = status
+        @advertising_channel_type = advertising_channel_type
+        @bidding_strategy_type = bidding_strategy_type
+        @contains_eu_political_advertising = contains_eu_political_advertising
+      end
+
+      def synced?
+        status != :REMOVED
+      end
     end
   end
 end

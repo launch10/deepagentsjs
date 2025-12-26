@@ -24,7 +24,17 @@ module GoogleAds
       )
 
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
-      results.first&.ad_group_criterion
+      criterion = results.first&.ad_group_criterion
+      return nil unless criterion
+
+      RemoteKeyword.new(
+        resource_name: criterion.resource_name,
+        criterion_id: criterion.criterion_id,
+        ad_group: criterion.ad_group,
+        text: criterion.keyword.text,
+        match_type: criterion.keyword.match_type,
+        status: criterion.status
+      )
     end
 
     def sync_result
@@ -173,6 +183,27 @@ module GoogleAds
       flush_cache(:synced?)
       flush_cache(:sync_result)
       flush_cache(:remote_criterion_id)
+    end
+
+    class RemoteKeyword
+      attr_reader :resource_name, :criterion_id, :ad_group, :text, :match_type, :status
+
+      def initialize(resource_name:, criterion_id:, ad_group:, text:, match_type:, status:)
+        @resource_name = resource_name
+        @criterion_id = criterion_id
+        @ad_group = ad_group
+        @text = text
+        @match_type = match_type
+        @status = status
+      end
+
+      def keyword
+        self
+      end
+
+      def synced?
+        status != :REMOVED
+      end
     end
   end
 end

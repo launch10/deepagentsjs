@@ -81,7 +81,6 @@ class CampaignDeploy < ApplicationRecord
       @steps.size
     end
   end
-
   class StepRunner
     include TypeCheck
 
@@ -121,7 +120,25 @@ class CampaignDeploy < ApplicationRecord
   # Needs a sharper definition of parallelizable group
   #
   STEPS = Steps.new([
+    Steps.define(:connect_google_account) do
+      def ready?
+        true
+      end
+
+      def run
+        # Placeholder for connecting Google account
+      end
+
+      def finished?
+        true
+      end
+    end,
+
     Step.define(:create_ads_account) do
+      def ready?
+        campaign.account.has_google_connected_account?
+      end
+
       def run
         campaign.account.create_google_ads_account
       end

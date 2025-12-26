@@ -18,7 +18,16 @@ module GoogleAds
       )
 
       results = client.service.google_ads.search(customer_id: campaign.google_customer_id.to_s, query: query)
-      results.first&.campaign_budget
+      budget = results.first&.campaign_budget
+      return nil unless budget
+
+      RemoteBudget.new(
+        resource_name: budget.resource_name,
+        id: budget.id,
+        name: budget.name,
+        amount_micros: budget.amount_micros,
+        delivery_method: budget.delivery_method
+      )
     end
 
     def fetch_by_name
@@ -36,7 +45,14 @@ module GoogleAds
       return nil unless budget
 
       local_resource.google_budget_id = budget.id
-      budget
+
+      RemoteBudget.new(
+        resource_name: budget.resource_name,
+        id: budget.id,
+        name: budget.name,
+        amount_micros: budget.amount_micros,
+        delivery_method: budget.delivery_method
+      )
     end
 
     def sync_result
@@ -149,6 +165,22 @@ module GoogleAds
       flush_cache(:remote_resource)
       flush_cache(:synced?)
       flush_cache(:sync_result)
+    end
+
+    class RemoteBudget
+      attr_reader :resource_name, :id, :name, :amount_micros, :delivery_method
+
+      def initialize(resource_name:, id:, name:, amount_micros:, delivery_method:)
+        @resource_name = resource_name
+        @id = id
+        @name = name
+        @amount_micros = amount_micros
+        @delivery_method = delivery_method
+      end
+
+      def synced?
+        true
+      end
     end
   end
 end

@@ -19,7 +19,16 @@ module GoogleAds
       )
 
       results = client.service.google_ads.search(customer_id: google_customer_id, query: query)
-      results.first&.campaign_criterion
+      criterion = results.first&.campaign_criterion
+      return nil unless criterion
+
+      RemoteLocationTarget.new(
+        resource_name: criterion.resource_name,
+        criterion_id: criterion.criterion_id,
+        campaign: criterion.campaign,
+        geo_target_constant: criterion.location.geo_target_constant,
+        negative: criterion.negative
+      )
     end
 
     def sync_result
@@ -159,6 +168,26 @@ module GoogleAds
       flush_cache(:synced?)
       flush_cache(:sync_result)
       flush_cache(:remote_criterion_id)
+    end
+
+    class RemoteLocationTarget
+      attr_reader :resource_name, :criterion_id, :campaign, :geo_target_constant, :negative
+
+      def initialize(resource_name:, criterion_id:, campaign:, geo_target_constant:, negative:)
+        @resource_name = resource_name
+        @criterion_id = criterion_id
+        @campaign = campaign
+        @geo_target_constant = geo_target_constant
+        @negative = negative
+      end
+
+      def location
+        self
+      end
+
+      def synced?
+        true
+      end
     end
   end
 end
