@@ -38,10 +38,11 @@ module GoogleAds
       end
 
       def success?
-        [:created, :updated, :unchanged, :deleted].include?(action)
+        synced?
       end
 
       def synced?
+        return true if deleted?
         comparisons.any? && values_match?
       end
 

@@ -7,12 +7,16 @@ module GoogleAds
         @results = results
       end
 
+      def first
+        @results.first
+      end
+
       def success?
         results.all?(&:success?)
       end
 
       def synced?
-        results.all? { |r| r.synced? || r.deleted? }
+        results.all?(&:synced?)
       end
 
       def created

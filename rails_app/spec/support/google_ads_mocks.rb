@@ -269,7 +269,8 @@ module GoogleAdsMocks
     name: "Test Campaign",
     status: :PAUSED,
     advertising_channel_type: :SEARCH,
-    bidding_strategy_type: :MANUAL_CPC
+    bidding_strategy_type: :MANUAL_CPC,
+    contains_eu_political_advertising: :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
   )
     campaign = double("Campaign",
       resource_name: "customers/#{customer_id}/campaigns/#{campaign_id}",
@@ -277,7 +278,8 @@ module GoogleAdsMocks
       name: name,
       status: status,
       advertising_channel_type: advertising_channel_type,
-      bidding_strategy_type: bidding_strategy_type)
+      bidding_strategy_type: bidding_strategy_type,
+      contains_eu_political_advertising: contains_eu_political_advertising)
     row = double("GoogleAdsRow", campaign: campaign)
     [row]
   end
@@ -360,7 +362,11 @@ module GoogleAdsMocks
       allow(campaign).to receive(:bidding_strategy_type=)
       allow(campaign).to receive(:manual_cpc=)
       allow(campaign).to receive(:target_spend=)
+      allow(campaign).to receive(:maximize_clicks=)
       allow(campaign).to receive(:network_settings=)
+      allow(campaign).to receive(:contains_eu_political_advertising=)
+      allow(campaign).to receive(:start_date=)
+      allow(campaign).to receive(:end_date=)
     end
   end
 

@@ -30,6 +30,10 @@ RSpec.describe CampaignDeploy, type: :model do
   let(:campaign) { create(:campaign, account: account, project: project, website: website) }
   let(:campaign_deploy) { create(:campaign_deploy, campaign: campaign) }
 
+  before do
+    allow_any_instance_of(Campaign).to receive(:done_launch_stage?).and_return(true)
+  end
+
   describe 'validations' do
     it { should validate_presence_of(:status) }
     it { should validate_inclusion_of(:status).in_array(CampaignDeploy::STATUS) }
@@ -233,6 +237,7 @@ RSpec.describe CampaignDeploy, type: :model do
           account.create_ads_account!(platform: "google", google_customer_id: "123456")
           customer_client_response, auto_tagging_response = mock_verify_customer_responses(
             customer_id: 123456,
+            descriptive_name: account.name,
             auto_tagging_enabled: true
           )
           allow(@mock_google_ads_service).to receive(:search).and_return(
@@ -423,13 +428,14 @@ RSpec.describe CampaignDeploy, type: :model do
 
         before do
           allow(@mock_google_ads_service).to receive(:search).and_return(
-            mock_search_response_with_campaign_criterion(criterion_id: 333, campaign_id: 789, customer_id: 456, location_id: 1023191),
-            mock_search_response_with_campaign_criterion(criterion_id: 444, campaign_id: 789, customer_id: 456, location_id: 1018127),
-            mock_empty_search_response
+            mock_search_response_with_campaign_criterion(criterion_id: 444, campaign_id: 789, customer_id: 456, location_id: 1018127, negative: false),
+            mock_search_response_with_campaign_criterion(criterion_id: 333, campaign_id: 789, customer_id: 456, location_id: 1023191, negative: false),
+            mock_search_response_with_campaign_criterion(criterion_id: 555, campaign_id: 789, customer_id: 456, location_id: 1014895, negative: false)
           )
           mock_remove_resource = double("RemoveResource")
           allow(mock_remove_resource).to receive(:campaign_criterion).and_return("remove_operation")
           allow(@mock_operation).to receive(:remove_resource).and_return(mock_remove_resource)
+          allow(@mock_update_resource).to receive(:campaign_criterion).and_yield(mock_campaign_criterion_resource).and_return(mock_campaign_criterion_resource)
           allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria).and_return(
             mock_mutate_campaign_criterion_response(criterion_id: 555, campaign_id: 789, customer_id: 456)
           )
@@ -493,7 +499,12 @@ RSpec.describe CampaignDeploy, type: :model do
 
         before do
           allow(@mock_google_ads_service).to receive(:search).and_return(
-            mock_search_response_with_invitation(invitation_id: invitation.google_invitation_id, customer_id: 456, email_address: account.google_email_address)
+            mock_search_response_with_invitation(
+              invitation_id: invitation.google_invitation_id,
+              customer_id: 456,
+              email_address: account.google_email_address,
+              access_role: :STANDARD
+            )
           )
         end
 
@@ -537,7 +548,11 @@ RSpec.describe CampaignDeploy, type: :model do
         before do
           budget.update!(platform_settings: { "google" => { "budget_id" => "123" } })
           allow(@mock_google_ads_service).to receive(:search).and_return(
-            mock_search_response_with_budget(budget_id: 123, amount_micros: budget.daily_budget_cents * 10_000)
+            mock_search_response_with_budget(
+              budget_id: 123,
+              name: budget.google_budget_name,
+              amount_micros: budget.daily_budget_cents * 10_000
+            )
           )
         end
 
@@ -587,7 +602,13 @@ RSpec.describe CampaignDeploy, type: :model do
         before do
           campaign.update!(platform_settings: { "google" => { "campaign_id" => "789" } })
           allow(@mock_google_ads_service).to receive(:search).and_return(
-            mock_search_response_with_campaign(campaign_id: 789, customer_id: 456)
+            mock_search_response_with_campaign(
+              campaign_id: 789,
+              customer_id: 456,
+              name: campaign.name,
+              status: :PAUSED,
+              advertising_channel_type: :SEARCH
+            )
           )
         end
 
@@ -695,8 +716,8 @@ RSpec.describe CampaignDeploy, type: :model do
       end
     end
 
-    describe ':create_assets step' do
-      let(:step) { runner.find(:create_assets) }
+    describe ':create_callouts step' do
+      let(:step) { runner.find(:create_callouts) }
       let!(:ads_account) { account.create_ads_account!(platform: "google", google_customer_id: "456") }
       let!(:ad_group) { create(:ad_group, campaign: campaign) }
 
@@ -704,7 +725,6 @@ RSpec.describe CampaignDeploy, type: :model do
         campaign.update!(ads_account: ads_account, platform_settings: { "google" => { "campaign_id" => "789" } })
         allow(@mock_resource).to receive(:asset).and_yield(mock_asset_with_callout_resource).and_return(mock_asset_with_callout_resource)
         allow(@mock_resource).to receive(:callout_asset).and_yield(mock_callout_asset_resource).and_return(mock_callout_asset_resource)
-        allow(@mock_resource).to receive(:structured_snippet_asset).and_yield(mock_structured_snippet_asset_resource).and_return(mock_structured_snippet_asset_resource)
         allow(@mock_resource).to receive(:campaign_asset).and_yield(mock_campaign_asset_resource).and_return(mock_campaign_asset_resource)
         allow(@mock_operation).to receive(:create_resource).and_return(
           double("CreateResource", asset: mock_asset_with_callout_resource, campaign_asset: mock_campaign_asset_resource)
@@ -734,11 +754,42 @@ RSpec.describe CampaignDeploy, type: :model do
         end
       end
 
+      context 'when callouts are already synced' do
+        let!(:callout) do
+          create(:ad_callout, campaign: campaign, ad_group: ad_group, text: "Free Shipping",
+            platform_settings: { "google" => { "asset_id" => "88888", "campaign_asset_id" => "789~88888" } })
+        end
+
+        before do
+          allow(@mock_google_ads_service).to receive(:search).and_return(
+            mock_search_response_with_callout_asset(asset_id: 88888, customer_id: 456, callout_text: "Free Shipping")
+          )
+        end
+
+        it 'reports finished' do
+          expect(step.finished?).to be true
+        end
+      end
+    end
+
+    describe ':create_structured_snippets step' do
+      let(:step) { runner.find(:create_structured_snippets) }
+      let!(:ads_account) { account.create_ads_account!(platform: "google", google_customer_id: "456") }
+
+      before do
+        campaign.update!(ads_account: ads_account, platform_settings: { "google" => { "campaign_id" => "789" } })
+        allow(@mock_resource).to receive(:asset).and_yield(mock_asset_with_structured_snippet_resource).and_return(mock_asset_with_structured_snippet_resource)
+        allow(@mock_resource).to receive(:structured_snippet_asset).and_yield(mock_structured_snippet_asset_resource).and_return(mock_structured_snippet_asset_resource)
+        allow(@mock_resource).to receive(:campaign_asset).and_yield(mock_campaign_asset_resource).and_return(mock_campaign_asset_resource)
+        allow(@mock_operation).to receive(:create_resource).and_return(
+          double("CreateResource", asset: mock_asset_with_structured_snippet_resource, campaign_asset: mock_campaign_asset_resource)
+        )
+      end
+
       context 'when structured snippets need syncing' do
         let!(:snippet) { create(:ad_structured_snippet, campaign: campaign, category: "brands", values: ["Nike", "Adidas", "Puma"]) }
 
         before do
-          allow(@mock_resource).to receive(:asset).and_yield(mock_asset_with_structured_snippet_resource).and_return(mock_asset_with_structured_snippet_resource)
           allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
           allow(@mock_asset_service).to receive(:mutate_assets).and_return(
             mock_mutate_asset_response(asset_id: 99999, customer_id: 456)
@@ -752,13 +803,13 @@ RSpec.describe CampaignDeploy, type: :model do
           expect(@mock_asset_service).to receive(:mutate_assets)
           step.run
         end
+
+        it 'reports not finished before sync' do
+          expect(step.finished?).to be false
+        end
       end
 
-      context 'when all assets are already synced' do
-        let!(:callout) do
-          create(:ad_callout, campaign: campaign, ad_group: ad_group, text: "Free Shipping",
-            platform_settings: { "google" => { "asset_id" => "88888", "campaign_asset_id" => "789~88888" } })
-        end
+      context 'when structured snippets are already synced' do
         let!(:snippet) do
           create(:ad_structured_snippet, campaign: campaign, category: "brands", values: ["Nike", "Adidas", "Puma"],
             platform_settings: { "google" => { "asset_id" => "99999", "campaign_asset_id" => "789~99999" } })
@@ -766,7 +817,6 @@ RSpec.describe CampaignDeploy, type: :model do
 
         before do
           allow(@mock_google_ads_service).to receive(:search).and_return(
-            mock_search_response_with_callout_asset(asset_id: 88888, customer_id: 456, callout_text: "Free Shipping"),
             mock_search_response_with_structured_snippet_asset(asset_id: 99999, customer_id: 456, header: "Brands", values: ["Nike", "Adidas", "Puma"])
           )
         end
@@ -900,9 +950,9 @@ RSpec.describe CampaignDeploy, type: :model do
 
         before do
           allow(@mock_google_ads_service).to receive(:search).and_return(
+            mock_search_response_with_keyword(criterion_id: 444, ad_group_id: 999, customer_id: 456, keyword_text: "deleted keyword", match_type: :PHRASE),
             mock_search_response_with_keyword(criterion_id: 333, ad_group_id: 999, customer_id: 456, keyword_text: "existing keyword", match_type: :BROAD),
-            mock_search_response_with_keyword(criterion_id: 444, ad_group_id: 999, customer_id: 456, keyword_text: "deleted keyword"),
-            mock_empty_search_response
+            mock_search_response_with_keyword(criterion_id: 555, ad_group_id: 999, customer_id: 456, keyword_text: "new keyword", match_type: :EXACT)
           )
           mock_remove_resource = double("RemoveResource")
           allow(mock_remove_resource).to receive(:ad_group_criterion).and_return("remove_operation")

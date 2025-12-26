@@ -27,7 +27,16 @@ RSpec.describe GoogleAds::LocationTargets do
       end
 
       before do
-        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+        allow(@mock_google_ads_service).to receive(:search).and_return(
+          mock_empty_search_response,
+          mock_search_response_with_campaign_criterion(
+            criterion_id: 111,
+            campaign_id: 789,
+            customer_id: 456,
+            location_id: 1013962,
+            negative: false
+          )
+        )
         allow(@mock_operation).to receive(:create_resource).and_return(
           double("CreateResource", campaign_criterion: mock_campaign_criterion_resource)
         )
@@ -78,7 +87,14 @@ RSpec.describe GoogleAds::LocationTargets do
             location_id: 2840,
             negative: false
           ),
-          mock_empty_search_response
+          mock_empty_search_response,
+          mock_search_response_with_campaign_criterion(
+            criterion_id: 111,
+            campaign_id: 789,
+            customer_id: 456,
+            location_id: 1013962,
+            negative: false
+          )
         )
         mock_remove_resource = double("RemoveResource")
         allow(mock_remove_resource).to receive(:campaign_criterion).and_return("remove_operation")

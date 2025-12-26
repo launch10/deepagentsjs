@@ -59,14 +59,14 @@ RSpec.describe AdsAccountInvitation, type: :model do
     let(:invitation) { create(:ads_account_invitation, ads_account: ads_account) }
 
     describe 'google_access_role' do
-      it 'defaults to ADMIN' do
-        expect(invitation.google_access_role).to eq("ADMIN")
+      it 'defaults to STANDARD' do
+        expect(invitation.google_access_role).to eq("STANDARD")
       end
 
       it 'can be set to other valid roles' do
-        invitation.google_access_role = "STANDARD"
+        invitation.google_access_role = "ADMIN"
         invitation.save!
-        expect(invitation.reload.google_access_role).to eq("STANDARD")
+        expect(invitation.reload.google_access_role).to eq("ADMIN")
       end
 
       it 'raises error for invalid role' do

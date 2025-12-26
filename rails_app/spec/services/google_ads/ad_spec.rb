@@ -384,7 +384,9 @@ RSpec.describe GoogleAds::Ad do
         ad_group_id: 999,
         customer_id: 1234567890,
         status: :PAUSED,
-        final_urls: ["https://test-site.launch10.ai"]
+        final_urls: ["https://test-site.launch10.ai"],
+        path1: "Shop",
+        path2: "Now"
       )
 
       allow(@mock_google_ads_service).to receive(:search)

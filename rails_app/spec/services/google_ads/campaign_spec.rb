@@ -162,6 +162,7 @@ RSpec.describe GoogleAds::Campaign do
       let(:ad_budget) { create(:ad_budget, campaign: campaign, daily_budget_cents: 500) }
       let(:start_date) { Date.today }
       let(:end_date) { Date.today + 30.days }
+      let(:mock_target_spend) { double("TargetSpend") }
 
       before do
         campaign.google_campaign_id = nil
@@ -175,6 +176,10 @@ RSpec.describe GoogleAds::Campaign do
         campaign.save!
         ad_budget.google_budget_id = 123
         ad_budget.save!
+
+        stub_const("Google::Ads::GoogleAds::V22::Common::TargetSpend", Class.new do
+          def initialize; end
+        end)
       end
 
       it 'creates a new campaign with correct attributes' do
@@ -190,7 +195,6 @@ RSpec.describe GoogleAds::Campaign do
           .and_return(mock_empty_search_response, created_campaign_response)
 
         mock_campaign = mock_campaign_resource
-        mock_maximize_clicks = double("MaximizeClicks")
         mock_network_settings = double("NetworkSettings")
 
         expect(mock_campaign).to receive(:name=).with(campaign.name)
@@ -199,13 +203,11 @@ RSpec.describe GoogleAds::Campaign do
         expect(mock_campaign).to receive(:campaign_budget=).with("customers/1234567890/campaignBudgets/123")
         expect(mock_campaign).to receive(:start_date=).with(start_date.strftime("%Y%m%d"))
         expect(mock_campaign).to receive(:end_date=).with(end_date.strftime("%Y%m%d"))
-        expect(mock_campaign).to receive(:maximize_clicks=).with(mock_maximize_clicks)
+        expect(mock_campaign).to receive(:target_spend=)
         expect(mock_campaign).to receive(:network_settings=).with(mock_network_settings)
 
         expect(mock_network_settings).to receive(:target_google_search=).with(true)
         expect(mock_network_settings).to receive(:target_search_network=).with(true)
-
-        allow(@mock_resource).to receive(:maximize_clicks).and_return(mock_maximize_clicks)
         allow(@mock_resource).to receive(:network_settings).and_yield(mock_network_settings).and_return(mock_network_settings)
         allow(mock_create_resource).to receive(:campaign).and_yield(mock_campaign)
 
@@ -226,10 +228,6 @@ RSpec.describe GoogleAds::Campaign do
           .and_return(mock_empty_search_response)
 
         mock_campaign = mock_campaign_resource
-        allow(mock_campaign).to receive(:start_date=)
-        allow(mock_campaign).to receive(:end_date=)
-        allow(mock_campaign).to receive(:maximize_clicks=)
-        allow(@mock_resource).to receive(:maximize_clicks).and_return(double("MaximizeClicks"))
         allow(@mock_resource).to receive(:network_settings).and_yield(double("NetworkSettings").as_null_object)
         allow(mock_create_resource).to receive(:campaign).and_yield(mock_campaign)
 
