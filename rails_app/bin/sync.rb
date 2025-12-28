@@ -47,7 +47,6 @@ create_geo_targets.finished? # should be true
 
 puts "Creating schedule..."
 create_schedule = runner.find(:create_schedule)
-binding.pry
 create_schedule.finished? # should be false
 create_schedule.run
 create_schedule.finished? # should be true
@@ -63,6 +62,7 @@ create_structured_snippets = runner.find(:create_structured_snippets)
 create_structured_snippets.finished? # should be false
 create_structured_snippets.run
 create_structured_snippets.finished? # should be true
+binding.pry
 
 puts "Creating ad groups..."
 create_ad_groups = runner.find(:create_ad_groups)
@@ -71,13 +71,13 @@ create_ad_groups.run
 create_ad_groups.finished? # should be true
 
 puts "Creating keywords..."
-create_keywords = runner.create(:create_keywords)
+create_keywords = runner.find(:create_keywords)
 create_keywords.finished? # should be false
 create_keywords.run
 create_keywords.finished? # should be true
 
 puts "Creating ads..."
-create_ads = runner.create(:create_ads)
+create_ads = runner.find(:create_ads)
 create_ads.finished? # should be false
 create_ads.run
 create_ads.finished? # should be true
