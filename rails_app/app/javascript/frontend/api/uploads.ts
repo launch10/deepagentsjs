@@ -7,9 +7,14 @@ export type GetUploadsRequest = Required<
 export type GetUploadsResponse = NonNullable<
   paths["/api/v1/uploads"]["get"]["responses"][200]["content"]["application/json"]
 >;
-export type CreateUploadRequest = NonNullable<
-  paths["/api/v1/uploads"]["post"]["requestBody"]
->["content"]["multipart/form-data"];
+
+/** Request body for creating an upload - OpenAPI schema doesn't properly type multipart/form-data */
+export interface CreateUploadRequest {
+  "upload[file]": File | Blob;
+  "upload[is_logo]"?: boolean;
+  "upload[website_id]"?: number;
+}
+
 export type CreateUploadResponse = NonNullable<
   paths["/api/v1/uploads"]["post"]["responses"][201]["content"]["application/json"]
 >;
@@ -47,7 +52,8 @@ export class UploadService extends RailsAPIBase {
   async create(options: CreateUploadRequest): Promise<CreateUploadResponse> {
     const client = await this.getClient();
     const response = await client.POST("/api/v1/uploads", {
-      body: options,
+      // Type assertion needed because OpenAPI schema doesn't properly type multipart/form-data
+      body: options as unknown as Record<string, never>,
       bodySerializer: (body) => {
         const formData = new FormData();
         Object.entries(body).forEach(([key, value]) => {

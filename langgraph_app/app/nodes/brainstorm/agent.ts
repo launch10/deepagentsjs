@@ -84,6 +84,8 @@ export const brainstormAgent = NodeMiddleware.use(
       remainingTopics,
       placeholderText,
       availableCommands,
+      // Clear uploadIds after processing (single-message scope)
+      uploadIds: [],
     };
   }
 );

@@ -14,6 +14,8 @@ export type BrainstormGraphState = Simplify<CoreGraphState & {
     command: Brainstorm.CommandName | undefined;
     remainingTopics: Brainstorm.TopicName[];
     redirect: Brainstorm.RedirectType | undefined;
+    /** IDs of uploads to include with the current message (single-message scope) */
+    uploadIds: number[];
 }>
 
 export type BrainstormBridgeType = BridgeType<

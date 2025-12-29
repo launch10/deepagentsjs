@@ -25,7 +25,7 @@ class Upload < ApplicationRecord
   include UploadConcerns::Serialization
   include UploadConcerns::Creation
 
-  MEDIA_TYPES = %w[image video]
+  MEDIA_TYPES = %w[image video document]
 
   mount_uploader :file, MediaUploader
 
@@ -46,6 +46,10 @@ class Upload < ApplicationRecord
     media_type == "image"
   end
 
+  def document?
+    media_type == "document"
+  end
+
   private
 
   def set_media_type_from_file
@@ -56,6 +60,8 @@ class Upload < ApplicationRecord
       "image"
     elsif content_type.start_with?("video/")
       "video"
+    elsif content_type == "application/pdf"
+      "document"
     end
   end
 

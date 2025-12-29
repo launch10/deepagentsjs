@@ -32,13 +32,19 @@ class MediaUploader < CarrierWave::Uploader::Base
     end
   end
 
-  # image/jpeg, video/mp4, etc (mimetypes)
+  # image/jpeg, video/mp4, application/pdf, etc (mimetypes)
   def content_type_allowlist
-    [/image\//, /video\//]
+    [/image\//, /video\//, "application/pdf"]
   end
 
   def size_range
-    model.video? ? 1..500.megabytes : 1..100.megabytes
+    if model.video?
+      1..500.megabytes
+    elsif model.document?
+      1..50.megabytes
+    else
+      1..100.megabytes
+    end
   end
 
   protected

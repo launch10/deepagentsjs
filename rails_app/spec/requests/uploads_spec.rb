@@ -172,15 +172,42 @@ RSpec.describe "Uploads API", type: :request do
         end
       end
 
-      response "422", "rejects PDF upload" do
+      response "201", "PDF upload created as document" do
+        schema APISchemas::Upload.response
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
         let(:"upload[file]") { fixture_file_upload(Rails.root.join('spec/fixtures/files/test_document.pdf'), 'application/pdf') }
+        let(:"upload[is_logo]") { false }
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data["errors"]).to be_present
+          upload = Upload.find(data["id"])
+
+          expect(upload.media_type).to eq("document")
+          expect(upload.original_filename).to eq("test_document.pdf")
+          expect(data["filename"]).to eq("test_document.pdf")
+          expect(data["media_type"]).to eq("document")
+          # PDFs don't have thumbnail/medium versions
+          expect(data["thumb_url"]).to be_nil
+          expect(data["medium_url"]).to be_nil
+        end
+      end
+
+      response "201", "PDF upload associated with website" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:"upload[file]") { fixture_file_upload(Rails.root.join('spec/fixtures/files/test_document.pdf'), 'application/pdf') }
+        let(:"upload[is_logo]") { false }
+        let(:"upload[website_id]") { website1_owned.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          upload = Upload.find(data["id"])
+
+          expect(upload.media_type).to eq("document")
+          expect(upload.websites).to include(website1_owned)
         end
       end
 

@@ -759,4 +759,91 @@ describe.sequential("Brainstorming Flow", () => {
       expect(result3.state.placeholderText).toEqual("I want to acquire leads, sell my product...");
     });
   });
+
+  describe("File uploads", () => {
+    it("accepts uploadIds in state without errors", async () => {
+      const projectUUID = uuidv7() as UUIDType;
+
+      // Pass uploadIds with the message - the graph should accept this state
+      const result = await testGraph<BrainstormGraphState>()
+        .withGraph(brainstormGraph)
+        .withState({
+          projectUUID,
+          uploadIds: [1, 2, 3],
+        })
+        .withPrompt("Here are some brand assets I'd like to use for my landing page")
+        .stopAfter("agent")
+        .execute();
+
+      // No errors and uploadIds should be cleared after processing (single-message scope)
+      expect(result.error).toBeUndefined();
+      expect(result.state.uploadIds).toEqual([]);
+    });
+
+    it("clears uploadIds after processing the message", async () => {
+      const projectUUID = uuidv7() as UUIDType;
+
+      // First message with uploads
+      const result1 = await testGraph<BrainstormGraphState>()
+        .withGraph(brainstormGraph)
+        .withState({
+          projectUUID,
+          uploadIds: [1, 2],
+        })
+        .withPrompt("Here are my brand images")
+        .stopAfter("agent")
+        .execute();
+
+      // uploadIds should be cleared after processing (single-message scope)
+      expect(result1.state.uploadIds).toEqual([]);
+
+      // Second message without uploads
+      const result2 = await testGraph<BrainstormGraphState>()
+        .withGraph(brainstormGraph)
+        .withState({
+          ...result1.state,
+        })
+        .withPrompt("My business helps people with fitness")
+        .stopAfter("agent")
+        .execute();
+
+      // No uploads in subsequent message
+      expect(result2.state.uploadIds).toEqual([]);
+    });
+
+    it("handles empty uploadIds gracefully", async () => {
+      const projectUUID = uuidv7() as UUIDType;
+
+      const result = await testGraph<BrainstormGraphState>()
+        .withGraph(brainstormGraph)
+        .withState({
+          projectUUID,
+          uploadIds: [],
+        })
+        .withPrompt("Tell me about my business idea")
+        .stopAfter("agent")
+        .execute();
+
+      expect(result.error).toBeUndefined();
+      expect(result.state.uploadIds).toEqual([]);
+    });
+
+    it("handles undefined uploadIds gracefully", async () => {
+      const projectUUID = uuidv7() as UUIDType;
+
+      const result = await testGraph<BrainstormGraphState>()
+        .withGraph(brainstormGraph)
+        .withState({
+          projectUUID,
+          // uploadIds not provided
+        })
+        .withPrompt("Tell me about my business idea")
+        .stopAfter("agent")
+        .execute();
+
+      expect(result.error).toBeUndefined();
+      // Should default to empty array
+      expect(result.state.uploadIds ?? []).toEqual([]);
+    });
+  });
 });
