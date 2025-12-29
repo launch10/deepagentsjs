@@ -72,7 +72,7 @@ export function BrainstormInput() {
       <DropZone onDrop={handleDrop} disabled={isStreaming}>
         <div
           style={{ maxWidth: "808px", minHeight: "120px" }}
-          className="bg-white border border-neutral-300 rounded-xl shadow-[0px_0px_8px_4px_rgba(167,165,161,0.08)] p-4 mx-auto flex flex-col"
+          className="bg-white border border-neutral-300 rounded-xl shadow-[0px_0px_8px_4px_rgba(167,165,161,0.08)] hover:shadow-[0px_0px_24px_8px_rgba(55,72,184,0.13)] focus-within:shadow-[0px_0px_24px_8px_rgba(55,72,184,0.13)] transition-shadow p-4 mx-auto flex flex-col"
         >
           {/* Attachment previews */}
           <AttachmentList attachments={attachments} onRemove={removeAttachment} />
@@ -84,7 +84,7 @@ export function BrainstormInput() {
             onKeyDown={handleKeyDown}
             placeholder='e.g. "FreshFund is a budgeting tool that helps freelancers track income and expenses."'
             disabled={isStreaming}
-            className="w-full resize-none border-0 bg-transparent text-sm placeholder:opacity-50 focus:outline-none flex-1 font-sans"
+            className="w-full resize-none border-0 bg-transparent text-sm placeholder:opacity-50 focus:outline-none focus:ring-0 flex-1 font-sans"
             style={{ color: "#74767a" }}
             rows={2}
           />
