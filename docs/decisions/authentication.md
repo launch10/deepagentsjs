@@ -1,16 +1,24 @@
-# Why JWT Authentication Between Services
+# Authentication: Decision History
 
-## The Problem
+> Decisions about user authentication and service-to-service auth. Most recent first.
 
-Rails and Langgraph are separate services that need to share user identity. When a user makes a request to Langgraph, we need to know who they are without requiring them to log in again.
+---
 
-## The Decision
+## Current State
 
-Use JWT (JSON Web Tokens) for stateless authentication between services.
+JWT tokens issued by Rails, validated by Langgraph. 24-hour expiry. Stored in httpOnly cookies. No session store needed between services.
 
-## Why JWT (Simplicity)
+---
 
-The primary driver was **simplicity**. Alternatives considered:
+## Decision Log
+
+### 2025-12-28: Use JWT with 24-hour expiry
+
+**Context:** Rails and Langgraph are separate services that need to share user identity. When a user makes a request to Langgraph, we need to know who they are without requiring them to log in again.
+
+**Decision:** Use JWT (JSON Web Tokens) for stateless authentication between services.
+
+**Why:** The primary driver was **simplicity**.
 
 | Approach | Complexity | Trade-offs |
 |----------|------------|------------|
@@ -24,8 +32,7 @@ JWT won because:
 2. Langgraph validates it (one middleware)
 3. No shared infrastructure required beyond the secret
 
-## How It Works
-
+**How it works:**
 ```
 1. User logs in via Rails (Devise)
 2. Rails generates JWT:
@@ -39,36 +46,20 @@ JWT won because:
 6. All Langgraph resources scoped to that user
 ```
 
-## Token Contents
-
-```json
-{
-  "sub": "user_123",
-  "exp": 1735344000,
-  "iat": 1735257600,
-  "jti": "unique-token-id"
-}
-```
-
-## Consequences
-
-**Benefits:**
-- No shared session store (Redis) needed between services
-- Stateless - any Langgraph instance can validate
-- Simple to implement and debug
-- Standard, well-understood pattern
-
 **Trade-offs:**
 - 24-hour expiry means users re-auth daily (acceptable for beta)
 - Can't revoke individual tokens (would need blocklist)
 - Secret must be shared between services
 
-## Security Considerations
-
+**Security considerations:**
 - JWT stored in httpOnly cookie (not accessible to JavaScript)
 - HTTPS required in production
 - Secret stored in Rails credentials / environment variables
 - 24-hour expiry limits damage from token theft
+
+**Status:** Current
+
+---
 
 ## Files Involved
 
