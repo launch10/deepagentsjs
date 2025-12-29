@@ -1,5 +1,5 @@
 import { useState, useCallback, type DragEvent, type ReactNode } from "react";
-import { Upload } from "lucide-react";
+import { FolderIcon } from "@heroicons/react/24/outline";
 
 interface DropZoneProps {
   children: ReactNode;
@@ -68,17 +68,15 @@ export function DropZone({ children, onDrop, disabled = false }: DropZoneProps) 
 
       {/* Overlay when dragging files */}
       {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 rounded-xl border-2 border-dashed border-secondary-400">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-secondary-100 flex items-center justify-center">
-              <Upload className="w-8 h-8 text-secondary-500" strokeWidth={1.5} />
-            </div>
+        <div className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[200px] bg-neutral-100/75">
+          <div className="flex flex-col items-center gap-4">
+            <FolderIcon className="w-40 h-40 text-primary-800" strokeWidth={1} />
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-base-500 font-sans">
+              <h3 className="text-[28px] leading-8 font-semibold text-primary-800 font-serif">
                 Add files
               </h3>
-              <p className="text-sm text-base-400 font-sans">
-                Drop images or PDFs here
+              <p className="text-lg text-primary-800 font-sans">
+                Drop files here to add to the conversation
               </p>
             </div>
           </div>

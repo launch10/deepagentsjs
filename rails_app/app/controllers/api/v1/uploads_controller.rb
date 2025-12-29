@@ -16,8 +16,10 @@ class API::V1::UploadsController < API::BaseController
     result = Upload.create_upload!(current_account, upload_params)
     upload = result[:upload]
     render json: upload.to_json, status: :created
-  rescue
-    render json: { errors: "invalid upload"}, status: :unprocessable_entity
+  rescue => e
+    Rails.logger.error "[Upload Error] #{e.class}: #{e.message}"
+    Rails.logger.error e.backtrace.first(5).join("\n")
+    render json: { errors: e.message }, status: :unprocessable_entity
   end
 
   private

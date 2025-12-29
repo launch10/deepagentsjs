@@ -1,10 +1,39 @@
-import { X, Image as ImageIcon, AlertTriangle, Loader2 } from "lucide-react";
+import { X, Image as ImageIcon, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { Attachment } from "~/types/attachment";
 
 interface ImageThumbnailProps {
   attachment: Attachment;
   onRemove: (id: string) => void;
+}
+
+/**
+ * Spinner component matching Figma design - simple arc spinner
+ */
+function LoadingSpinner() {
+  return (
+    <svg
+      className="w-6 h-6 animate-spin"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="#D3D2D0"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12 2C6.47715 2 2 6.47715 2 12"
+        stroke="#5867C4"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
 
 /**
@@ -28,16 +57,17 @@ export function ImageThumbnail({ attachment, onRemove }: ImageThumbnailProps) {
 
   const isUploading = attachment.status === "uploading";
   const hasError = attachment.status === "error";
+  const isComplete = attachment.status === "completed";
 
   return (
     <div
       className={`relative w-[110px] h-[104px] rounded-lg overflow-hidden flex-shrink-0 ${
-        hasError ? "border-2 border-error-300" : "border border-neutral-300"
+        hasError ? "border-2 border-error-300" : "border border-neutral-100"
       }`}
       style={{ backgroundColor: "#EDEDEC" }}
     >
-      {/* Image preview */}
-      {previewUrl && (
+      {/* Image preview - only show when upload is complete */}
+      {previewUrl && isComplete && (
         <img
           src={previewUrl}
           alt={attachment.file.name}
@@ -45,15 +75,17 @@ export function ImageThumbnail({ attachment, onRemove }: ImageThumbnailProps) {
         />
       )}
 
-      {/* Overlay for loading/error states */}
-      {(isUploading || hasError) && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-          {isUploading && (
-            <Loader2 className="w-6 h-6 text-white animate-spin" />
-          )}
-          {hasError && (
-            <AlertTriangle className="w-6 h-6 text-error-500" />
-          )}
+      {/* Loading spinner - centered on gray background */}
+      {isUploading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      )}
+
+      {/* Error state */}
+      {hasError && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <AlertTriangle className="w-6 h-6 text-error-500" />
         </div>
       )}
 
@@ -70,7 +102,7 @@ export function ImageThumbnail({ attachment, onRemove }: ImageThumbnailProps) {
       )}
 
       {/* Image icon indicator at bottom left when completed */}
-      {attachment.status === "completed" && (
+      {isComplete && (
         <div className="absolute bottom-1.5 left-1.5 w-4 h-4 flex items-center justify-center">
           <ImageIcon className="w-4 h-4 text-white drop-shadow-sm" strokeWidth={2} />
         </div>

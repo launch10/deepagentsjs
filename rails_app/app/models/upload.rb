@@ -66,9 +66,10 @@ class Upload < ApplicationRecord
   end
 
   def set_original_filename
-    return unless file.present? && file.file.present?
+    return unless file.present?
     return if original_filename.present?
 
-    self.original_filename = file.file.original_filename
+    # Access uploader's private original_filename method (works with both file and AWS storage)
+    self.original_filename = file.send(:original_filename)
   end
 end

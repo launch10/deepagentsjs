@@ -87,6 +87,7 @@ export function BrainstormInput() {
             className="w-full resize-none border-0 bg-transparent text-sm placeholder:opacity-50 focus:outline-none focus:ring-0 flex-1 font-sans"
             style={{ color: "#74767a" }}
             rows={2}
+            data-testid="chat-input"
           />
           <div className="flex items-center justify-between mt-auto pt-2">
             <button
@@ -102,6 +103,8 @@ export function BrainstormInput() {
               onClick={handleSubmit}
               disabled={!canSubmit}
               className="flex items-center justify-center w-6 h-6 rounded-full bg-secondary-500 text-white hover:bg-secondary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid="send-button"
+              aria-label={isStreaming || isUploading ? "Stop" : "Send message"}
             >
               {isStreaming || isUploading ? (
                 <StopIcon className="w-4 h-4" strokeWidth={2} />

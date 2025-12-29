@@ -71,11 +71,20 @@ export function useBrainstormChatThreadId() {
 }
 
 /**
- * Returns whether this is a new conversation (no initial thread ID from server).
+ * Returns whether this is a new conversation.
+ * With key-based remounting in Brainstorm.tsx, SDK state resets on navigation.
+ * New = no server thread_id AND SDK hasn't created one yet (no messages sent).
  */
 export function useBrainstormIsNewConversation() {
-  const { thread_id } = usePage<BrainstormPageProps>().props;
-  return !thread_id;
+  const { thread_id: serverThreadId } = usePage<BrainstormPageProps>().props;
+  const sdkThreadId = useBrainstormChatThreadId();
+
+  // Existing conversation if server provided thread_id
+  if (serverThreadId) return false;
+
+  // New conversation page - show landing until user sends first message
+  // (SDK creates threadId when first message is sent)
+  return !sdkThreadId;
 }
 
 /**

@@ -50,7 +50,7 @@ export default defineConfig({
     : {
         command: "bin/dev-test",
         url: "http://localhost:3001",
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: false, // Always start fresh test server
         timeout: 120 * 1000,
       },
 });

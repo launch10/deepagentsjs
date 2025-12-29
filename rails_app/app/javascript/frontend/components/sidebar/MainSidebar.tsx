@@ -66,6 +66,7 @@ export default function MainSidebar() {
       <div className={twMerge("p-6", isCollapsed && "p-4 flex justify-center")}>
         <Link
           href="/projects/new"
+          data-testid="new-project-link"
           className={twMerge(
             "flex items-center gap-3 text-white font-sans",
             isCollapsed && "justify-center"

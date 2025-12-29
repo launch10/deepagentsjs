@@ -1,9 +1,12 @@
+import { usePage } from "@inertiajs/react";
 import { BrainstormChat } from "@components/brainstorm";
 
 /**
  * Brainstorm page - thin layout component.
- * All data fetching happens in child components via hooks.
+ * Key forces remount when navigating between conversations,
+ * resetting the SDK's internal state.
  */
 export default function Brainstorm() {
-  return <BrainstormChat />;
+  const { thread_id } = usePage<{ thread_id?: string }>().props;
+  return <BrainstormChat key={thread_id || "new"} />;
 }
