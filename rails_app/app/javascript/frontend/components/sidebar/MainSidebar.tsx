@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import {
-  Plus,
-  Rocket,
-  Megaphone,
-  UserPlus,
-  BarChart3,
-  Settings,
-  ArrowLeftFromLine,
-  ArrowRightFromLine,
-} from "lucide-react";
+  PlusIcon,
+  RocketLaunchIcon,
+  MegaphoneIcon,
+  UserPlusIcon,
+  ChartBarIcon,
+  Cog8ToothIcon,
+  ArrowRightStartOnRectangleIcon,
+} from "@heroicons/react/24/outline";
 import { twMerge } from "tailwind-merge";
 
 interface NavItem {
@@ -19,10 +18,10 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Projects", href: "/", icon: Rocket },
-  { label: "Campaigns", href: "/campaigns", icon: Megaphone },
-  { label: "Leads", href: "/leads", icon: UserPlus },
-  { label: "Analytics", href: "/analytics", icon: BarChart3 },
+  { label: "Projects", href: "/", icon: RocketLaunchIcon },
+  { label: "Campaigns", href: "/campaigns", icon: MegaphoneIcon },
+  { label: "Leads", href: "/leads", icon: UserPlusIcon },
+  { label: "Analytics", href: "/analytics", icon: ChartBarIcon },
 ];
 
 export default function MainSidebar() {
@@ -47,11 +46,9 @@ export default function MainSidebar() {
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="text-white hover:opacity-70 transition-opacity"
         >
-          {isCollapsed ? (
-            <ArrowRightFromLine className="w-6 h-6" />
-          ) : (
-            <ArrowLeftFromLine className="w-6 h-6" />
-          )}
+          <ArrowRightStartOnRectangleIcon
+            className={twMerge("w-6 h-6", isCollapsed && "rotate-180")}
+          />
         </button>
       </div>
 
@@ -75,7 +72,7 @@ export default function MainSidebar() {
           )}
         >
           <span className="flex items-center justify-center w-6 h-6 shrink-0 bg-white rounded-full">
-            <Plus className="w-4 h-4" style={{ color: "#12183d" }} strokeWidth={2.5} />
+            <PlusIcon className="w-4 h-4" style={{ color: "#12183d" }} strokeWidth={2.5} />
           </span>
           {!isCollapsed && <span>New Project</span>}
         </Link>
@@ -123,7 +120,7 @@ export default function MainSidebar() {
             isCollapsed && "justify-center"
           )}
         >
-          <Settings className="w-6 h-6 shrink-0" strokeWidth={1.5} />
+          <Cog8ToothIcon className="w-6 h-6 shrink-0" strokeWidth={1.5} />
           {!isCollapsed && <span>Settings</span>}
         </Link>
       </div>

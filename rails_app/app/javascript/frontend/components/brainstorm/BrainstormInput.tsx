@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useBrainstormChatActions, useBrainstormChatIsStreaming } from "@hooks/useBrainstormChat";
 import { useBrainstormInput } from "./BrainstormInputContext";
-import { FilePlus, ArrowUp } from "lucide-react";
+import { DocumentPlusIcon, ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
 import { AttachmentList, DropZone } from "./attachments";
 import { FILE_INPUT_ACCEPT } from "~/types/attachment";
 
@@ -95,7 +95,7 @@ export function BrainstormInput() {
               disabled={isStreaming}
               className="p-0 text-base-500 hover:opacity-70 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <FilePlus className="w-6 h-6" strokeWidth={1.5} />
+              <DocumentPlusIcon className="w-6 h-6" strokeWidth={1.5} />
             </button>
             <button
               type="button"
@@ -104,9 +104,9 @@ export function BrainstormInput() {
               className="flex items-center justify-center w-6 h-6 rounded-full bg-secondary-500 text-white hover:bg-secondary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isStreaming || isUploading ? (
-                <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <StopIcon className="w-4 h-4" strokeWidth={2} />
               ) : (
-                <ArrowUp className="w-4 h-4" strokeWidth={2} />
+                <ArrowUpIcon className="w-4 h-4" strokeWidth={2} />
               )}
             </button>
           </div>
