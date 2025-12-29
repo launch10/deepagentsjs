@@ -1,0 +1,2 @@
+web: RAILS_ENV=test bundle exec rails server -p $PORT
+vite: RAILS_ENV=test bin/vite dev

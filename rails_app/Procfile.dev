@@ -1,5 +1,6 @@
-#web: bin/rails server -p $PORT
-stripe: bin/stripe-listen
-worker: bundle exec sidekiq
+# web: bin/rails server -p $PORT
+# stripe: bin/stripe-listen
+# worker: bundle exec sidekiq
 vite: bin/vite dev
-zhong: zhong schedule.rb
+# css: Handled by Puma tailwindcss plugin (config/puma.rb)
+#zhong: zhong schedule.rb

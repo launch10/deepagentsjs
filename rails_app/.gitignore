@@ -80,3 +80,7 @@ tasks.json
 
 *storybook.log
 storybook-static
+
+# Overmind socket files
+.overmind.sock
+.overmind-test.sock

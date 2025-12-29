@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useBrainstormChatActions, useBrainstormChatIsStreaming } from "@hooks/useBrainstormChat";
+import { useBrainstormChatActions, useBrainstormChatIsStreaming, useBrainstormChatState } from "@hooks/useBrainstormChat";
 import { useBrainstormInput } from "./BrainstormInputContext";
 import { DocumentPlusIcon, ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
 import { AttachmentList, DropZone } from "./attachments";
@@ -10,9 +10,12 @@ import { FILE_INPUT_ACCEPT } from "~/types/attachment";
  * Uses context for input state, hooks for SDK actions.
  * Supports file uploads via FilePlus button and drag & drop.
  */
+const DEFAULT_PLACEHOLDER = 'e.g. "FreshFund is a budgeting tool that helps freelancers track income and expenses."';
+
 export function BrainstormInput() {
   const { sendMessage } = useBrainstormChatActions();
   const isStreaming = useBrainstormChatIsStreaming();
+  const placeholderText = useBrainstormChatState("placeholderText");
   const {
     input,
     setInput,
@@ -82,7 +85,7 @@ export function BrainstormInput() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder='e.g. "FreshFund is a budgeting tool that helps freelancers track income and expenses."'
+            placeholder={placeholderText || DEFAULT_PLACEHOLDER}
             disabled={isStreaming}
             className="w-full resize-none border-0 bg-transparent text-sm placeholder:opacity-50 focus:outline-none focus:ring-0 flex-1 font-sans"
             style={{ color: "#74767a" }}
