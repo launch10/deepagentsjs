@@ -6,11 +6,46 @@
 
 ## Current State
 
-Compound engineering philosophy: each unit of work should make subsequent work easier. Document decisions in `docs/decisions/` (by topic, with history). Create skills in `.claude/skills/` for operational how-to guides. Use `/decision` command to capture "why".
+Unified knowledge capture: after solving a problem, run `/compound` to extract all knowledge types automatically:
+- Solutions → `docs/solutions/` (how we fixed it)
+- Decisions → `docs/decisions/[topic].md` (why we chose this approach)
+- Plans → marked complete in `plans/`
+
+Use `/decision` directly when thinking about architecture (not fixing a bug).
 
 ---
 
 ## Decision Log
+
+### 2025-12-28: Unify Knowledge Capture Under /compound Orchestration
+
+**Context:** Three separate tools operated independently:
+- `/compound` only created solution docs in `docs/solutions/`
+- `/decision` documented architectural choices separately
+- `plans/` had no completion tracking
+
+Users had to remember which tool to use when. Knowledge capture was fragmented.
+
+**Decision:** Make `/compound` the single "close the loop" workflow that:
+1. Extracts solutions → `docs/solutions/`
+2. Detects decisions → `docs/decisions/[topic].md` with temporal history
+3. Matches plans → marks complete in `plans/`
+
+**Why:**
+- Single entry point after solving problems
+- Automatically routes knowledge to the right place
+- Decision Detector identifies "why" statements without user having to think about it
+- Plans get completed as side effect, not forgotten
+- Still allows `/decision` for direct architectural discussions
+
+**Implementation:**
+- Phase 1 (parallel): Context Analyzer, Solution Extractor, Decision Detector, Related Docs Finder, Prevention Strategist, Plan Matcher
+- Phase 2 (sequential): Solution Writer, Decision Writer, Plan Completer
+- Phase 3 (optional): Specialized agent reviews
+
+**Status:** Current
+
+---
 
 ### 2025-12-28: Adopt Topic-Based Decision Logs with History
 
@@ -101,6 +136,9 @@ The compound effect over time:
 
 ## Files Involved
 
-- `docs/decisions/` - All decision history files
+- `docs/decisions/` - All decision history files (by topic)
+- `docs/solutions/` - Solution documentation (by category)
 - `.claude/skills/` - Operational skills
 - `.claude/commands/decision.md` - The `/decision` command
+- `~/.claude/plugins/.../compound-engineering/commands/workflows/compound.md` - The `/compound` orchestrator
+- `plans/` - Project plans (with completion tracking)

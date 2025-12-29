@@ -2,6 +2,13 @@
 
 Capture why a decision was made. Decisions are **organized by topic** and **evolve over time**.
 
+## When to Use
+
+- **Use `/decision`** when you want to document a decision directly (you're thinking about architecture, not fixing a bug)
+- **Use `/compound`** after solving a problem - it will automatically extract any decisions AND create solution docs
+
+Both commands write to the same `docs/decisions/[topic].md` files with the same format.
+
 ## Key Principle: Decisions Evolve
 
 Decisions aren't static. Context changes, we learn, we override previous choices. The documentation should reflect this history - not hide it.
@@ -215,3 +222,9 @@ Good decision logs:
 - Previous decisions marked as superseded (not deleted)
 - "Current State" section always reflects reality
 - Clear reasoning for changes, not just the change itself
+
+## Related Commands
+
+- `/compound` - After solving a problem, extracts decisions AND solutions automatically
+- `/workflows:plan` - References decisions when planning new features
+- `/workflows:review` - May surface decisions that need documenting
