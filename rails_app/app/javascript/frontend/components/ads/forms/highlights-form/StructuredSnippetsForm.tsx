@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import AdCampaignFieldList from "@components/ads/Forms/shared/AdCampaignFieldList";
+import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
