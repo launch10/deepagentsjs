@@ -3,14 +3,20 @@ import type {
   TextMessageBlock,
   StructuredMessageBlock,
   ToolCallMessageBlock,
+  InferBridgeData,
+  InferMessage,
 } from "langgraph-ai-sdk-types";
-import type { BrainstormBridgeType, InferBridgeData } from "@shared";
+import type { BrainstormBridgeType } from "@shared";
 import { Chat } from "@components/chat";
 
-type BrainstormData = InferBridgeData<BrainstormBridgeType>;
+// The LanggraphData type for the Brainstorm graph (used for MessageBlock generic)
+type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
+
+// The actual structured message data type (reply | helpMe)
+type BrainstormMessageData = InferMessage<BrainstormLanggraphData>;
 
 interface BrainstormMessageProps {
-  blocks: MessageBlock<BrainstormData>[];
+  blocks: MessageBlock<BrainstormLanggraphData>[];
   isActive?: boolean;
   onExampleClick?: (text: string) => void;
 }
@@ -27,7 +33,7 @@ export function BrainstormMessage({
   onExampleClick,
 }: BrainstormMessageProps) {
   return (
-    <div className="space-y-3">
+    <div data-testid="ai-message" data-role="assistant" className="space-y-3">
       {blocks.map((block) => (
         <BlockRenderer
           key={block.id}
@@ -41,7 +47,7 @@ export function BrainstormMessage({
 }
 
 interface BlockRendererProps {
-  block: MessageBlock<BrainstormData>;
+  block: MessageBlock<BrainstormLanggraphData>;
   isActive: boolean;
   onExampleClick?: (text: string) => void;
 }
@@ -61,7 +67,7 @@ function BlockRenderer({ block, isActive, onExampleClick }: BlockRendererProps) 
     }
 
     case "structured": {
-      const structuredBlock = block as StructuredMessageBlock<BrainstormData>;
+      const structuredBlock = block as StructuredMessageBlock<BrainstormLanggraphData>;
       const data = structuredBlock.data;
 
       if (!data || Object.keys(data).length === 0) {
@@ -97,7 +103,7 @@ function BlockRenderer({ block, isActive, onExampleClick }: BlockRendererProps) 
 }
 
 interface StructuredBlockRendererProps {
-  data: BrainstormData;
+  data: BrainstormMessageData;
   isActive: boolean;
   onExampleClick?: (text: string) => void;
 }
@@ -108,22 +114,22 @@ function StructuredBlockRenderer({ data, isActive, onExampleClick }: StructuredB
       <div className="space-y-3">
         {"text" in data && data.text && (
           <Chat.AIMessage.Content state={isActive ? "active" : "inactive"}>
-            {String(data.text)}
+            {data.text}
           </Chat.AIMessage.Content>
         )}
 
         {"examples" in data && Array.isArray(data.examples) && data.examples.length > 0 && (
           <div className="space-y-2 mt-3">
             <div className="text-xs font-medium text-neutral-500">Example answers:</div>
-            {data.examples.map((example: unknown, i: number) => (
+            {data.examples.map((example, i) => (
               <button
                 key={i}
                 type="button"
-                onClick={() => onExampleClick?.(String(example))}
+                onClick={() => onExampleClick?.(example)}
                 className="w-full text-left p-3 bg-neutral-50 rounded-lg border border-neutral-200 text-sm hover:bg-neutral-100 transition-colors"
               >
                 <div className="font-medium text-primary-600 text-xs mb-1">Example {i + 1}</div>
-                <div className="text-neutral-700">{String(example)}</div>
+                <div className="text-neutral-700">{example}</div>
               </button>
             ))}
           </div>
@@ -132,7 +138,7 @@ function StructuredBlockRenderer({ data, isActive, onExampleClick }: StructuredB
         {"conclusion" in data && data.conclusion && (
           <div className="mt-3 pt-3 border-t border-neutral-200">
             <Chat.AIMessage.Content state={isActive ? "active" : "inactive"}>
-              {String(data.conclusion)}
+              {data.conclusion}
             </Chat.AIMessage.Content>
           </div>
         )}
@@ -141,7 +147,7 @@ function StructuredBlockRenderer({ data, isActive, onExampleClick }: StructuredB
           <div className="mt-3 pt-3 border-t border-neutral-200">
             <div className="text-xs font-medium text-neutral-500 mb-2">Template:</div>
             <Chat.AIMessage.Content state={isActive ? "active" : "inactive"}>
-              {String(data.template)}
+              {data.template}
             </Chat.AIMessage.Content>
           </div>
         )}

@@ -19,6 +19,9 @@ export function ThinkingIndicator({
 }: ThinkingIndicatorProps) {
   return (
     <div
+      role="status"
+      data-testid="thinking-indicator"
+      aria-label={text}
       className={twMerge(
         "flex flex-col gap-1",
         variant === "bubble" && "bg-base-200 rounded-2xl px-4 py-3 max-w-[80%]",

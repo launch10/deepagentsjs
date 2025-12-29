@@ -1,64 +1,79 @@
-import { useEffect } from "react";
-import { useLanggraph } from "langgraph-ai-sdk-react";
-import type { BrainstormBridgeType } from "@shared";
-import {
-  useBrainstormStore,
-  selectJwt,
-  selectLanggraphPath,
-  selectThreadId,
-} from "../stores/brainstormStore";
+import { usePage } from "@inertiajs/react";
+import { useMemo } from "react";
+import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
+import type { BrainstormBridgeType, BrainstormGraphState, InertiaProps } from "@shared";
 
-export function useBrainstormChat() {
-  const jwt = useBrainstormStore(selectJwt);
-  const langgraphPath = useBrainstormStore(selectLanggraphPath);
-  const initialThreadId = useBrainstormStore(selectThreadId);
+type NewBrainstormProps =
+  InertiaProps.paths["/projects/new"]["get"]["responses"]["200"]["content"]["application/json"];
+type UpdateBrainstormProps =
+  InertiaProps.paths["/projects/{uuid}/brainstorm"]["get"]["responses"]["200"]["content"]["application/json"];
+type BrainstormPageProps = NewBrainstormProps | UpdateBrainstormProps;
 
-  const updateFromGraph = useBrainstormStore((s) => s.updateFromGraph);
-  const setMessages = useBrainstormStore((s) => s.setMessages);
-  const setStatus = useBrainstormStore((s) => s.setStatus);
-  const setIsLoadingHistory = useBrainstormStore((s) => s.setIsLoadingHistory);
-  const setThreadId = useBrainstormStore((s) => s.setThreadId);
+export type BrainstormSnapshot = ChatSnapshot<BrainstormGraphState>;
 
-  const url = langgraphPath ? new URL("api/brainstorm/stream", langgraphPath).toString() : "";
+function useBrainstormChatOptions() {
+  const { thread_id, jwt, langgraph_path } = usePage<BrainstormPageProps>().props;
 
-  const { messages, sendMessage, updateState, status, state, threadId, isLoadingHistory } =
-    useLanggraph<BrainstormBridgeType>({
+  return useMemo(() => {
+    const url = langgraph_path
+      ? new URL("api/brainstorm/stream", langgraph_path).toString()
+      : "";
+    return {
       api: url,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
       },
-      getInitialThreadId: () => initialThreadId || undefined,
-    });
+      getInitialThreadId: () => (thread_id ? thread_id : undefined),
+    };
+  }, [thread_id, jwt, langgraph_path]);
+}
 
-  useEffect(() => {
-    if (state) {
-      updateFromGraph(state);
-    }
-  }, [state, updateFromGraph]);
+export function useBrainstormChat<TSelected = BrainstormSnapshot>(
+  selector?: (snapshot: BrainstormSnapshot) => TSelected
+): TSelected {
+  const options = useBrainstormChatOptions();
+  const snapshot = useLanggraph<BrainstormBridgeType>(options);
 
-  useEffect(() => {
-    setMessages(messages);
-  }, [messages, setMessages]);
+  return (selector ? selector(snapshot) : snapshot) as TSelected;
+}
 
-  useEffect(() => {
-    setStatus(status);
-  }, [status, setStatus]);
+export function useBrainstormChatMessages() {
+  return useBrainstormChat((s) => s.messages);
+}
 
-  useEffect(() => {
-    setIsLoadingHistory(isLoadingHistory);
-  }, [isLoadingHistory, setIsLoadingHistory]);
+export function useBrainstormChatState<K extends keyof BrainstormGraphState>(key: K) {
+  return useBrainstormChat((s) => s.state[key]);
+}
 
-  useEffect(() => {
-    if (threadId && threadId !== initialThreadId) {
-      console.log(`setting thread id to ${threadId}`);
-      setThreadId(threadId);
-    }
-  }, [threadId, initialThreadId, setThreadId]);
+export function useBrainstormChatFullState() {
+  return useBrainstormChat((s) => s.state);
+}
 
-  return {
-    sendMessage,
-    threadId,
-    updateState,
-  };
+export function useBrainstormChatStatus() {
+  return useBrainstormChat((s) => s.status);
+}
+
+export function useBrainstormChatIsLoading() {
+  return useBrainstormChat((s) => s.isLoading);
+}
+
+export function useBrainstormChatIsLoadingHistory() {
+  return useBrainstormChat((s) => s.isLoadingHistory);
+}
+
+export function useBrainstormChatActions() {
+  return useBrainstormChat((s) => s.actions);
+}
+
+export function useBrainstormChatThreadId() {
+  return useBrainstormChat((s) => s.threadId);
+}
+
+/**
+ * Returns whether this is a new conversation (no initial thread ID from server).
+ */
+export function useBrainstormIsNewConversation() {
+  const { thread_id } = usePage<BrainstormPageProps>().props;
+  return !thread_id;
 }

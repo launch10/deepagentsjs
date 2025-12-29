@@ -12,6 +12,8 @@ const Root = forwardRef<HTMLDivElement, MessageListRootProps>(
     return (
       <div
         ref={ref}
+        role="log"
+        data-testid="message-list"
         className={twMerge("flex flex-col gap-4 overflow-y-auto", className)}
         {...props}
       >

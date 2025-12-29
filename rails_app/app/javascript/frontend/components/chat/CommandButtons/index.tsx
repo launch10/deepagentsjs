@@ -9,7 +9,7 @@ export interface CommandButtonsRootProps extends HTMLAttributes<HTMLDivElement> 
 
 function Root({ children, className, ...props }: CommandButtonsRootProps) {
   return (
-    <div className={twMerge("flex flex-wrap gap-2", className)} {...props}>
+    <div data-testid="command-buttons" className={twMerge("flex flex-wrap gap-2", className)} {...props}>
       {children}
     </div>
   );

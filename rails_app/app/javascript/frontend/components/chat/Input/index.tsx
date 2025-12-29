@@ -27,6 +27,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, InputTextareaProps>(
     return (
       <textarea
         ref={ref}
+        data-testid="chat-input"
         className={twMerge(
           "flex-1 resize-none rounded-lg border border-neutral-200 bg-white px-4 py-3",
           "text-sm placeholder:text-neutral-400",
@@ -52,6 +53,7 @@ function SubmitButton({ loading, disabled, className, onClick, ...props }: Input
   return (
     <button
       type="button"
+      data-testid="send-button"
       disabled={disabled || loading}
       onClick={onClick}
       className={twMerge(
