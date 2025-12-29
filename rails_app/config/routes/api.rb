@@ -23,6 +23,14 @@ namespace :api, defaults: {format: :json} do
     resources :geo_target_constants, only: [:index]
     resources :domains, only: [:index, :show, :create]
     resources :website_urls, only: [:index, :show, :create, :update]
+
+    scope "projects/:project_uuid" do
+      resources :social_links, only: [:index, :show, :create, :update, :destroy] do
+        collection do
+          post :bulk_upsert
+        end
+      end
+    end
   end
 end
 
