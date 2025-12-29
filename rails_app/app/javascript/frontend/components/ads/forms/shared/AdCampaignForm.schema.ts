@@ -15,6 +15,10 @@ export const descriptionSchema = Ads.AssetSchema;
 
 export const featureSchema = Ads.AssetSchema;
 
+export const detailsInputSchema = Ads.AssetSchema.extend({
+  text: z.string().min(1, "Value cannot be empty").max(25, "Value must be 25 characters or less"),
+});
+
 export const adCampaignSchema = z.object({
   adGroupName: z.string().min(1, "Ad group name is required"),
   headlines: z
