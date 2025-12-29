@@ -7,6 +7,7 @@
 #  is_logo           :boolean          default(FALSE), not null
 #  media_type        :string           not null
 #  original_filename :string
+#  platform_settings :jsonb
 #  uuid              :uuid             not null
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null

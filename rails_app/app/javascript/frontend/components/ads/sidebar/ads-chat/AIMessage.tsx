@@ -1,5 +1,4 @@
-import { twMerge } from "tailwind-merge";
-import ReactMarkdown from "react-markdown";
+import { AIMessage as SharedAIMessage } from "@components/chat";
 
 export default function AIMessage({
   state = "active",
@@ -8,9 +7,12 @@ export default function AIMessage({
   state?: "active" | "inactive" | "loading";
   message: string;
 }) {
+  // Map loading state to active for shared component (loading handled separately)
+  const mappedState = state === "loading" ? "active" : state;
+
   return (
-    <div className={twMerge("text-xs", state === "inactive" && "text-base-300")}>
-      <ReactMarkdown>{message}</ReactMarkdown>
-    </div>
+    <SharedAIMessage.Content state={mappedState} className="text-xs">
+      {message}
+    </SharedAIMessage.Content>
   );
 }
