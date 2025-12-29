@@ -381,7 +381,7 @@ RSpec.describe "Social Links API", type: :request do
         end
       end
 
-      response '422', 'partial failure with errors' do
+      response '422', 'validation failure rolls back all changes (atomic)' do
         schema APISchemas::SocialLink.bulk_upsert_error_response
         let(:Authorization) { auth_headers_for(user)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
@@ -398,7 +398,8 @@ RSpec.describe "Social Links API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['errors']).to be_present
-          expect(data['social_links'].length).to eq(1)
+          # Atomic behavior: no social links saved when one fails
+          expect(project.social_links.count).to eq(0)
         end
       end
 

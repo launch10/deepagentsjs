@@ -80,21 +80,8 @@ function BlockRenderer({ block, isActive, onExampleClick }: BlockRendererProps) 
     }
 
     case "tool_call": {
-      const toolBlock = block as ToolCallMessageBlock;
-      return (
-        <div className="flex items-center gap-2 text-sm text-neutral-500">
-          <div
-            className={`w-2 h-2 rounded-full ${
-              toolBlock.state === "complete"
-                ? "bg-success-500"
-                : toolBlock.state === "error"
-                  ? "bg-red-500"
-                  : "bg-yellow-500 animate-pulse"
-            }`}
-          />
-          <span>{toolBlock.toolName}</span>
-        </div>
-      );
+      // Tool calls are hidden in the UI - they run silently in the background
+      return null;
     }
 
     default:

@@ -28,7 +28,10 @@ export function BrainstormInput() {
 
   return (
     <div className="px-4 pb-4">
-      <div className="bg-white border border-neutral-300 rounded-xl shadow-[0px_0px_8px_4px_rgba(167,165,161,0.08)] p-4 max-w-[808px] mx-auto">
+      <div
+        style={{ maxWidth: "808px", minHeight: "120px" }}
+        className="bg-white border border-neutral-300 rounded-xl shadow-[0px_0px_8px_4px_rgba(167,165,161,0.08)] p-4 mx-auto flex flex-col"
+      >
         <textarea
           ref={textareaRef}
           value={input}
@@ -36,10 +39,11 @@ export function BrainstormInput() {
           onKeyDown={handleKeyDown}
           placeholder='e.g. "FreshFund is a budgeting tool that helps freelancers track income and expenses."'
           disabled={isStreaming}
-          className="w-full resize-none border-0 bg-transparent text-sm text-base-400 placeholder:text-base-400 placeholder:opacity-50 focus:outline-none min-h-[48px] font-sans"
+          className="w-full resize-none border-0 bg-transparent text-sm placeholder:opacity-50 focus:outline-none flex-1 font-sans"
+          style={{ color: "#74767a" }}
           rows={2}
         />
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between mt-auto pt-2">
           <button type="button" className="p-0 text-base-500 hover:opacity-70 transition-opacity">
             <FilePlus className="w-6 h-6" strokeWidth={1.5} />
           </button>

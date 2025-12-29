@@ -100,25 +100,13 @@ module APISchemas
       {
         type: :object,
         properties: {
-          social_links: {
-            type: :array,
-            items: response
-          },
           errors: {
             type: :array,
-            items: {
-              type: :object,
-              properties: {
-                platform: {type: :string, description: 'Platform that failed'},
-                errors: {
-                  type: :array,
-                  items: {type: :string},
-                  description: 'Error messages for this platform'
-                }
-              }
-            }
+            items: {type: :string},
+            description: 'Validation error messages (transaction rolls back all changes)'
           }
-        }
+        },
+        required: [:errors]
       }
     end
   end

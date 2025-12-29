@@ -35,26 +35,22 @@ class API::V1::SocialLinksController < API::BaseController
   end
 
   # Bulk upsert - creates or updates multiple social links at once
+  # Uses transaction for atomic behavior: all succeed or all rollback
   def bulk_upsert
-    results = []
-    errors = []
-
-    social_links_params.each do |link_params|
-      social_link = @project.social_links.find_or_initialize_by(platform: link_params[:platform])
-      social_link.assign_attributes(link_params.except(:platform))
-
-      if social_link.save
-        results << social_link
-      else
-        errors << { platform: link_params[:platform], errors: social_link.errors.full_messages }
+    results = ActiveRecord::Base.transaction do
+      social_links_params.map do |link_params|
+        social_link = @project.social_links.find_or_initialize_by(platform: link_params[:platform])
+        social_link.assign_attributes(link_params.except(:platform))
+        social_link.save!
+        social_link
       end
     end
 
-    if errors.empty?
-      render json: results, status: :ok
-    else
-      render json: { social_links: results, errors: errors }, status: :unprocessable_entity
-    end
+    render json: results, status: :ok
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+  rescue ActiveRecord::RecordNotUnique
+    render json: { error: "Duplicate platform detected" }, status: :conflict
   end
 
   private

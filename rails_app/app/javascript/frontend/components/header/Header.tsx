@@ -1,19 +1,19 @@
 import HeaderUser from "./HeaderUser";
 import HeaderProgressStepper from "./HeaderProgressStepper";
-import { Rocket } from "lucide-react";
 import { useWorkflowSteps, selectPages } from "@context/WorkflowStepsProvider";
 
-export default function Header({}) {
+interface HeaderProps {
+  showProgressStepper?: boolean;
+}
+
+export default function Header({ showProgressStepper = true }: HeaderProps) {
   const pages = useWorkflowSteps(selectPages); // when we're not inside a provider, it will be undefined
 
   return (
-    <header className="bg-background p-5 border-b border-[#E2E1E0] mb-11 sticky top-0 z-10 h-18">
-      <nav className="mx-auto flex container max-w-8xl justify-between items-center px-8">
-        <span className="font-bold text-[#DF6D4A] flex items-center gap-2">
-          <Rocket />
-          Launch10
-        </span>
-        {pages && <HeaderProgressStepper className="flex-1 mx-24" />}
+    <header className="bg-background py-5 px-6 sticky top-0 z-10">
+      <nav className="flex justify-between items-center">
+        <img src="/images/launch10-logo.svg" alt="Launch10" className="h-8" />
+        {showProgressStepper && pages && <HeaderProgressStepper className="flex-1 mx-24" />}
         <HeaderUser />
       </nav>
     </header>
