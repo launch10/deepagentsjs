@@ -21,26 +21,15 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
+import type { UpdateCampaignRequestBody } from "@api/campaigns";
 import { mapApiErrorsToForm } from "@helpers/formErrorMapper";
 import { useDebounce } from "@hooks/useDebounce";
 import { detailsInputSchema } from "../shared/AdCampaignForm.schema";
 
 const STRUCTURED_SNIPPET_CATEGORIES = Ads.StructuredSnippetCategoryKeys.map((key) => ({
-  value: key,
+  value: Ads.StructuredSnippetCategories[key].key,
   label: Ads.StructuredSnippetCategories[key].key,
 }));
-
-const displayNameToKey = Object.fromEntries(
-  Ads.StructuredSnippetCategoryKeys.map((key) => [Ads.StructuredSnippetCategories[key].key, key])
-);
-
-const normalizeCategory = (category: string | undefined): string => {
-  if (!category) return "";
-  if (Ads.StructuredSnippetCategoryKeys.includes(category as any)) {
-    return category;
-  }
-  return displayNameToKey[category] || category;
-};
 
 const structuredSnippetsFormSchema = z.object({
   category: z.string(),
@@ -53,7 +42,7 @@ export default function StructuredSnippetsForm() {
   const structuredSnippets = useAdsChatState("structuredSnippets");
   const { setState, updateState } = useAdsChatActions();
 
-  const category = normalizeCategory(structuredSnippets?.category);
+  const category = structuredSnippets?.category;
   const details = structuredSnippets?.details;
   const filteredDetails = (details || []).filter((d) => !d.rejected);
   const prevIdsRef = useRef<string[]>([]);
@@ -88,7 +77,7 @@ export default function StructuredSnippetsForm() {
     setState({
       structuredSnippets: {
         ...structuredSnippets,
-        category: value as Ads.StructuredSnippetCategoryKey,
+        category: value as Ads.StructuredSnippetCategoryName,
         details: structuredSnippets?.details || [],
       },
     });
@@ -103,7 +92,7 @@ export default function StructuredSnippetsForm() {
       setState({
         structuredSnippets: {
           ...structuredSnippets,
-          category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+          category: structuredSnippets?.category as Ads.StructuredSnippetCategoryName,
           details: updates.details || [],
         },
       });
@@ -115,7 +104,7 @@ export default function StructuredSnippetsForm() {
     setState({
       structuredSnippets: {
         ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryName,
         details: [...(details || []), newDetail],
       },
     });
@@ -127,7 +116,7 @@ export default function StructuredSnippetsForm() {
     setState({
       structuredSnippets: {
         ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryName,
         details: details?.filter((d) => d.id !== detailId) || [],
       },
     });
@@ -139,7 +128,7 @@ export default function StructuredSnippetsForm() {
     setState({
       structuredSnippets: {
         ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryName,
         details: details?.map((d) => (d.id === detailId ? { ...d, text: input } : d)) || [],
       },
     });
@@ -166,90 +155,29 @@ export default function StructuredSnippetsForm() {
       ],
       structuredSnippets: {
         ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryName,
         details: updatedDetails,
       },
     });
   };
 
-  const campaignId = useAdsChatState("campaignId");
-  const autosaveMutation = useAutosaveCampaign(campaignId);
+  const { saveNow } = useAutosaveCampaign<StructuredSnippetsFormData>({
+    methods,
+    transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
+      const values = data.details?.filter((d) => d.text?.trim()).map((d) => d.text) ?? [];
 
-  const save = async () => {
-    if (!campaignId) return;
+      if (!data.category || values.length === 0) return null;
 
-    const currentCategory = methods.getValues("category");
-    const currentDetails = methods.getValues("details");
-    const values =
-      currentDetails
-        ?.filter((d: { text?: string }) => d.text?.trim())
-        .map((d: { text: string }) => d.text) ?? [];
-
-    if (!currentCategory || values.length === 0) return;
-
-    return new Promise<void>((resolve, reject) => {
-      autosaveMutation.mutate(
-        {
-          campaign: {
-            structured_snippet: {
-              category: currentCategory,
-              values,
-            },
-          },
+      return {
+        structured_snippet: {
+          category: data.category,
+          values,
         },
-        {
-          onSuccess: () => resolve(),
-          onError: (error) => {
-            mapApiErrorsToForm(error, methods);
-            reject(error);
-          },
-        }
-      );
-    });
-  };
+      };
+    },
+  });
 
-  const debouncedCategory = useDebounce(category, 750);
-  const debouncedDetails = useDebounce(details, 750);
-  const isInitialMount = useRef(true);
-  const lastSavedValue = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    if (!campaignId || autosaveMutation.isPending) return;
-
-    const values =
-      debouncedDetails
-        ?.filter((d: { text?: string; rejected?: boolean }) => d.text?.trim() && !d.rejected)
-        .map((d: { text: string }) => d.text) ?? [];
-
-    if (!debouncedCategory || values.length === 0) return;
-
-    const serialized = JSON.stringify({ category: debouncedCategory, values });
-    if (serialized === lastSavedValue.current) return;
-    lastSavedValue.current = serialized;
-
-    autosaveMutation.mutate(
-      {
-        campaign: {
-          structured_snippet: {
-            category: debouncedCategory,
-            values,
-          },
-        },
-      },
-      {
-        onError: (error) => {
-          mapApiErrorsToForm(error, methods);
-        },
-      }
-    );
-  }, [debouncedCategory, debouncedDetails, campaignId, autosaveMutation.isPending]);
-
-  useFormRegistration("highlights", methods, save);
+  useFormRegistration("highlights", methods, saveNow);
 
   const fields = filteredDetails.map((d) => ({ ...d, id: d.id }));
 
