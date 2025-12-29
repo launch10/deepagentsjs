@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { router } from "@inertiajs/react";
 import {
   useBrainstormChatIsLoadingHistory,
+  useBrainstormChatMessages,
   useBrainstormChatState,
   useBrainstormChatThreadId,
   useBrainstormIsNewConversation,
@@ -22,9 +23,13 @@ export function BrainstormChat() {
   const isLoadingHistory = useBrainstormChatIsLoadingHistory();
   const redirect = useBrainstormChatState("redirect");
   const isNewConversation = useBrainstormIsNewConversation();
+  const messages = useBrainstormChatMessages();
 
   // Track if we've already updated the URL
   const hasUpdatedUrl = useRef(!isNewConversation);
+
+  // Check if this is the empty state (no messages)
+  const isEmpty = messages.length === 0;
 
   // Update URL when SDK provides threadId (after first message)
   useEffect(() => {
@@ -53,11 +58,32 @@ export function BrainstormChat() {
 
   return (
     <BrainstormInputProvider>
-      <div className="flex flex-col h-screen max-w-2xl mx-auto">
+      <div className="flex flex-col h-full min-h-0">
         <BrainstormTopic />
-        <BrainstormMessages />
-        <BrainstormCommandButtons />
-        <BrainstormInput />
+        {isEmpty ? (
+          // Empty state - center everything vertically
+          <div className="flex-1 flex flex-col items-center justify-center px-4">
+            <div className="text-center mb-8">
+              <h1 className="text-4xl font-semibold mb-4 text-base-500 tracking-tight font-serif">
+                Tell us your next <em className="italic">big idea</em>
+              </h1>
+              <p className="text-lg text-base-400 opacity-70 max-w-[616px] mx-auto leading-relaxed font-sans">
+                Add as much detail as you want. The more you share, the more tailored your site and
+                campaign will be. No design or tech skills needed.
+              </p>
+            </div>
+            <div className="w-full max-w-[808px]">
+              <BrainstormInput />
+            </div>
+          </div>
+        ) : (
+          // Has messages - normal layout
+          <>
+            <BrainstormMessages />
+            <BrainstormCommandButtons />
+            <BrainstormInput />
+          </>
+        )}
       </div>
     </BrainstormInputProvider>
   );

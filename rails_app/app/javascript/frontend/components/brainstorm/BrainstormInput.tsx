@@ -1,9 +1,6 @@
-import {
-  useBrainstormChatActions,
-  useBrainstormChatStatus,
-} from "@hooks/useBrainstormChat";
-import { Chat } from "@components/chat";
+import { useBrainstormChatActions, useBrainstormChatStatus } from "@hooks/useBrainstormChat";
 import { useBrainstormInput } from "./BrainstormInputContext";
+import { FilePlus, ArrowUp } from "lucide-react";
 
 /**
  * Brainstorm input area.
@@ -30,22 +27,42 @@ export function BrainstormInput() {
   };
 
   return (
-    <div className="p-4 border-t bg-white">
-      <Chat.Input.Root>
-        <Chat.Input.Textarea
+    <div className="px-4 pb-4">
+      <div className="bg-white border border-neutral-300 rounded-xl shadow-[0px_0px_8px_4px_rgba(167,165,161,0.08)] p-4 max-w-[808px] mx-auto">
+        <textarea
           ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Tell me about your business idea..."
+          placeholder='e.g. "FreshFund is a budgeting tool that helps freelancers track income and expenses."'
           disabled={isStreaming}
+          className="w-full resize-none border-0 bg-transparent text-sm text-base-400 placeholder:text-base-400 placeholder:opacity-50 focus:outline-none min-h-[48px] font-sans"
+          rows={2}
         />
-        <Chat.Input.SubmitButton
-          onClick={handleSubmit}
-          disabled={!input.trim() || isStreaming}
-          loading={isStreaming}
-        />
-      </Chat.Input.Root>
+        <div className="flex items-center justify-between mt-4">
+          <button type="button" className="p-0 text-base-500 hover:opacity-70 transition-opacity">
+            <FilePlus className="w-6 h-6" strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!input.trim() || isStreaming}
+            className="flex items-center justify-center w-6 h-6 rounded-full bg-secondary-500 text-white hover:bg-secondary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isStreaming ? (
+              <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <ArrowUp className="w-4 h-4" strokeWidth={2} />
+            )}
+          </button>
+        </div>
+      </div>
+      {/* Help links */}
+      <div className="flex items-center justify-center gap-2 mt-4 text-sm text-base-400 font-sans">
+        <button className="hover:underline">See examples of answers</button>
+        <span className="opacity-70">•</span>
+        <button className="hover:underline">Learn how it works</button>
+      </div>
     </div>
   );
 }

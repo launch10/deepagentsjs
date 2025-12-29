@@ -3,3 +3,4 @@ export * as InertiaProps from "./generated/inertia-props";
 export * from "./client";
 export * from "./railsApiBase";
 export * from "./env";
+export * from "./snapshotter";

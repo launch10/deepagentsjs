@@ -1,8 +1,5 @@
 import { useEffect, useRef } from "react";
-import {
-  useBrainstormChatMessages,
-  useBrainstormChatStatus,
-} from "@hooks/useBrainstormChat";
+import { useBrainstormChatMessages, useBrainstormChatStatus } from "@hooks/useBrainstormChat";
 import { Chat } from "@components/chat";
 import { BrainstormMessage } from "./BrainstormMessage";
 import { useBrainstormInput } from "./BrainstormInputContext";
@@ -31,17 +28,13 @@ export function BrainstormMessages() {
     textareaRef.current?.focus();
   };
 
+  // Empty state is handled by parent component
+  if (messages.length === 0) {
+    return null;
+  }
+
   return (
     <Chat.MessageList.Root className="flex-1 p-4">
-      {messages.length === 0 && (
-        <div className="text-center text-neutral-500 py-12">
-          <h1 className="text-2xl font-semibold mb-2">Let's brainstorm your business idea</h1>
-          <p className="text-sm">
-            Tell me about your business, and I'll help you create compelling marketing copy.
-          </p>
-        </div>
-      )}
-
       {messages.map((message, index) => {
         const isUser = message.role === "user";
         const isLastMessage = index === messages.length - 1;
@@ -60,8 +53,7 @@ export function BrainstormMessages() {
         // AI message - check if it has content
         const hasContent = message.blocks.some(
           (b) =>
-            (b.type === "text" && "text" in b && b.text && b.text.trim()) ||
-            b.type === "structured"
+            (b.type === "text" && "text" in b && b.text && b.text.trim()) || b.type === "structured"
         );
 
         if (!hasContent && isLastMessage && isStreaming) {

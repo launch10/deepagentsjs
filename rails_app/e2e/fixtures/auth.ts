@@ -14,11 +14,7 @@ export interface AuthState {
 
 /**
  * Test user credentials for E2E testing.
- *
- * SETUP: Before running E2E tests, restore the test snapshot:
- *   bundle exec rake "db:restore_snapshot[basic_account]"
- *
- * This creates a subscribed user with access to all features.
+ * Database setup is handled automatically by DatabaseSnapshotter in beforeEach hooks.
  */
 export const testUser = {
   email: "test_user@launch10.ai",
@@ -47,9 +43,28 @@ export async function loginUser(
   // Submit form
   await page.click('input[type="submit"], button[type="submit"]');
 
-  // Wait for navigation away from sign_in page
-  await page.waitForURL(/(?!.*sign_in)/, { timeout: 10000 });
+  // Wait for navigation away from sign_in page (use callback for reliable check)
+  await page.waitForURL((url) => !url.toString().includes("/users/sign_in"), {
+    timeout: 10000,
+  });
   await page.waitForLoadState("networkidle");
+
+  // Verify login succeeded by checking we're not on the public welcome page
+  // The authenticated home page should have the brainstorm interface or dashboard
+  const isAuthenticated = await page
+    .locator('[data-testid="chat-input"], [data-testid="user-menu"], nav:has-text("Brainstorm")')
+    .first()
+    .isVisible({ timeout: 5000 })
+    .catch(() => false);
+
+  if (!isAuthenticated) {
+    // Check if we're on the login page with an error
+    const loginError = await page.locator('.alert-danger, .alert-error, [role="alert"]').textContent().catch(() => null);
+    if (loginError) {
+      throw new Error(`Login failed: ${loginError}`);
+    }
+    throw new Error(`Login may have failed - not on authenticated page. Current URL: ${page.url()}`);
+  }
 }
 
 /**

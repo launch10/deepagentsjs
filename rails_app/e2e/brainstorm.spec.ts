@@ -1,11 +1,12 @@
 import { test, expect, loginUser } from "./fixtures/auth";
+import { DatabaseSnapshotter } from "./fixtures/database";
 import { BrainstormPage } from "./pages/brainstorm.page";
 
 test.describe("Brainstorm Flow", () => {
   let brainstormPage: BrainstormPage;
 
   test.beforeEach(async ({ page }) => {
-    // Login before each test
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
     await loginUser(page);
     brainstormPage = new BrainstormPage(page);
   });
@@ -216,6 +217,7 @@ test.describe("Brainstorm Social Links", () => {
   let brainstormPage: BrainstormPage;
 
   test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
     await loginUser(page);
     brainstormPage = new BrainstormPage(page);
   });
@@ -235,6 +237,7 @@ test.describe("Brainstorm Accessibility", () => {
   let brainstormPage: BrainstormPage;
 
   test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
     await loginUser(page);
     brainstormPage = new BrainstormPage(page);
   });
@@ -280,6 +283,7 @@ test.describe("Brainstorm URL Handling", () => {
   let brainstormPage: BrainstormPage;
 
   test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
     await loginUser(page);
     brainstormPage = new BrainstormPage(page);
   });
