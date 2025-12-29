@@ -181,6 +181,11 @@ interface ColorPaletteRowProps {
 function ColorPaletteRow({ theme, isSelected, onSelect }: ColorPaletteRowProps) {
   const colors = theme.colors || [];
 
+  // Ensure colors have # prefix for CSS
+  const normalizeColor = (color: string) => {
+    return color.startsWith("#") ? color : `#${color}`;
+  };
+
   return (
     <button
       type="button"
@@ -209,7 +214,7 @@ function ColorPaletteRow({ theme, isSelected, onSelect }: ColorPaletteRowProps) 
             index === 0 && "rounded-l",
             index === colors.length - 1 && "rounded-r"
           )}
-          style={{ backgroundColor: color }}
+          style={{ backgroundColor: normalizeColor(color) }}
           aria-hidden="true"
         />
       ))}
