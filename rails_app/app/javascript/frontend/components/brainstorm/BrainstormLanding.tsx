@@ -5,6 +5,7 @@ import {
 } from "@hooks/useBrainstormChat";
 import { BrainstormInputProvider } from "./BrainstormInputContext";
 import { BrainstormInput } from "./BrainstormInput";
+import { ExampleAnswers } from "./ExampleAnswers";
 
 /**
  * Landing page for new brainstorm conversations.
@@ -54,6 +55,7 @@ export function BrainstormLanding() {
           </div>
           <div className="w-full">
             <BrainstormInput />
+            <ExampleAnswers />
           </div>
         </div>
       </div>

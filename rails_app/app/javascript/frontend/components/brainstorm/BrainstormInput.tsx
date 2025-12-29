@@ -122,12 +122,6 @@ export function BrainstormInput() {
           />
         </div>
       </DropZone>
-      {/* Help links */}
-      <div className="flex items-center justify-center gap-2 mt-4 text-sm text-base-400 font-sans">
-        <button className="hover:underline">See examples of answers</button>
-        <span className="opacity-70">•</span>
-        <button className="hover:underline">Learn how it works</button>
-      </div>
     </div>
   );
 }
