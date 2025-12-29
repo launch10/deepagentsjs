@@ -1,0 +1,218 @@
+import { useState, useEffect, useCallback } from "react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { twMerge } from "tailwind-merge";
+import {
+  useBrandPersonalizationStore,
+  useBrandPersonalizationActions,
+  selectSelectedThemeId,
+} from "@context/BrandPersonalizationProvider";
+import { CustomColorPicker } from "./CustomColorPicker";
+import type { GetThemesResponse } from "@api/themes";
+
+type Theme = GetThemesResponse[number];
+
+const PALETTES_PER_PAGE = 3;
+
+interface ColorPaletteSectionProps {
+  className?: string;
+}
+
+export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
+  const selectedThemeId = useBrandPersonalizationStore(selectSelectedThemeId);
+  const setTheme = useBrandPersonalizationStore((s) => s.setTheme);
+  const { fetchThemes, createTheme } = useBrandPersonalizationActions();
+
+  const [themes, setThemes] = useState<Theme[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+
+  // Fetch themes on mount
+  useEffect(() => {
+    const loadThemes = async () => {
+      try {
+        const data = await fetchThemes();
+        setThemes(data);
+      } catch (err) {
+        console.error("Failed to fetch themes:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadThemes();
+  }, [fetchThemes]);
+
+  const totalPages = Math.max(1, Math.ceil(themes.length / PALETTES_PER_PAGE));
+  const visibleThemes = themes.slice(
+    currentPage * PALETTES_PER_PAGE,
+    (currentPage + 1) * PALETTES_PER_PAGE
+  );
+
+  const handlePrevPage = useCallback(() => {
+    setCurrentPage((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1));
+  }, [totalPages]);
+
+  const handleSelectTheme = useCallback(
+    (themeId: number) => {
+      setTheme(selectedThemeId === themeId ? null : themeId);
+    },
+    [setTheme, selectedThemeId]
+  );
+
+  const handleCreateCustomPalette = useCallback(
+    async (colors: string[]) => {
+      try {
+        const newTheme = await createTheme("Custom Palette", colors);
+        setThemes((prev) => [...prev, newTheme]);
+        setTheme(newTheme.id);
+        setShowCustomPicker(false);
+        // Navigate to the last page to show the new palette
+        const newTotalPages = Math.ceil((themes.length + 1) / PALETTES_PER_PAGE);
+        setCurrentPage(newTotalPages - 1);
+      } catch (err) {
+        console.error("Failed to create custom palette:", err);
+      }
+    },
+    [createTheme, setTheme, themes.length]
+  );
+
+  if (isLoading) {
+    return (
+      <div className={twMerge("space-y-2", className)}>
+        <h3 className="text-sm font-semibold text-base-500">Colors</h3>
+        <div className="space-y-2">
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={i}
+              className="h-8 bg-neutral-100 rounded animate-pulse"
+              data-slot="skeleton"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={twMerge("space-y-2", className)}>
+      {/* Header with pagination */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-base-500">Colors</h3>
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handlePrevPage}
+            disabled={currentPage === 0}
+            className="p-0.5 text-base-300 hover:text-base-500 disabled:opacity-30 disabled:cursor-not-allowed"
+            aria-label="Previous page"
+            data-testid="color-pagination-prev"
+          >
+            <ChevronLeft className="w-3 h-3" />
+          </button>
+          <span
+            className="text-xs text-base-500 min-w-[32px] text-center"
+            data-testid="color-pagination-label"
+          >
+            {currentPage + 1}/{totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={handleNextPage}
+            disabled={currentPage >= totalPages - 1}
+            className="p-0.5 text-base-300 hover:text-base-500 disabled:opacity-30 disabled:cursor-not-allowed"
+            aria-label="Next page"
+            data-testid="color-pagination-next"
+          >
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Color palettes */}
+      <div className="space-y-2">
+        {visibleThemes.map((theme) => (
+          <ColorPaletteRow
+            key={theme.id}
+            theme={theme}
+            isSelected={selectedThemeId === theme.id}
+            onSelect={() => handleSelectTheme(theme.id)}
+          />
+        ))}
+
+        {visibleThemes.length === 0 && (
+          <p className="text-xs text-base-300 text-center py-4">No palettes available</p>
+        )}
+      </div>
+
+      {/* Add Custom button */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowCustomPicker(true)}
+          className="flex items-center gap-1 px-2 py-1 text-xs text-base-500 hover:bg-neutral-100 rounded transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Add Custom
+        </button>
+      </div>
+
+      {/* Custom color picker modal */}
+      {showCustomPicker && (
+        <CustomColorPicker
+          onSave={handleCreateCustomPalette}
+          onCancel={() => setShowCustomPicker(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+interface ColorPaletteRowProps {
+  theme: Theme;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+function ColorPaletteRow({ theme, isSelected, onSelect }: ColorPaletteRowProps) {
+  const colors = theme.colors || [];
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      className={twMerge(
+        "flex w-full h-8 rounded overflow-hidden transition-all",
+        "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1",
+        isSelected && "ring-2 ring-primary-500 ring-offset-1"
+      )}
+      data-testid="color-palette"
+      data-selected={isSelected}
+      aria-pressed={isSelected}
+      aria-label={`Color palette: ${theme.name}`}
+    >
+      {colors.slice(0, 5).map((color, index) => (
+        <div
+          key={index}
+          className={twMerge(
+            "flex-1 h-full",
+            index === 0 && "rounded-l",
+            index === colors.length - 1 && "rounded-r"
+          )}
+          style={{ backgroundColor: color }}
+          aria-hidden="true"
+        />
+      ))}
+    </button>
+  );
+}

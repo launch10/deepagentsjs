@@ -1,0 +1,213 @@
+import { useState, useRef, useCallback } from "react";
+import { Upload, X, Loader2 } from "lucide-react";
+import { twMerge } from "tailwind-merge";
+import {
+  useBrandPersonalizationStore,
+  useBrandPersonalizationActions,
+  selectProductImages,
+  selectUploadingImageIds,
+  selectError,
+} from "@context/BrandPersonalizationProvider";
+
+const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.webp";
+const MAX_IMAGES = 10;
+
+interface ProductImagesSectionProps {
+  className?: string;
+}
+
+export function ProductImagesSection({ className }: ProductImagesSectionProps) {
+  const productImages = useBrandPersonalizationStore(selectProductImages);
+  const uploadingIds = useBrandPersonalizationStore(selectUploadingImageIds);
+  const error = useBrandPersonalizationStore(selectError);
+  const { uploadProductImage } = useBrandPersonalizationActions();
+
+  const addProductImage = useBrandPersonalizationStore((s) => s.addProductImage);
+  const removeProductImage = useBrandPersonalizationStore((s) => s.removeProductImage);
+  const addUploadingImageId = useBrandPersonalizationStore((s) => s.addUploadingImageId);
+  const removeUploadingImageId = useBrandPersonalizationStore((s) => s.removeUploadingImageId);
+  const setError = useBrandPersonalizationStore((s) => s.setError);
+
+  const [isDragging, setIsDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const canAddMore = productImages.length < MAX_IMAGES;
+  const isUploading = uploadingIds.size > 0;
+
+  const validateFile = (file: File): string | null => {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      return "Invalid file type. Please use PNG, JPG, or WebP.";
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      return "File too large. Maximum size is 10MB.";
+    }
+    return null;
+  };
+
+  const handleUpload = useCallback(
+    async (file: File) => {
+      if (!canAddMore) {
+        setError(`Maximum ${MAX_IMAGES} images allowed`);
+        return;
+      }
+
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      setError(null);
+      addUploadingImageId(tempId);
+
+      try {
+        const uploadedImage = await uploadProductImage(file, tempId);
+        addProductImage(uploadedImage);
+      } catch (err) {
+        console.error("Product image upload failed:", err);
+        setError("Upload failed. Please try again.");
+      } finally {
+        removeUploadingImageId(tempId);
+      }
+    },
+    [
+      canAddMore,
+      uploadProductImage,
+      addProductImage,
+      setError,
+      addUploadingImageId,
+      removeUploadingImageId,
+    ]
+  );
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []);
+      files.forEach((file) => handleUpload(file));
+      e.target.value = "";
+    },
+    [handleUpload]
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+
+      const files = Array.from(e.dataTransfer.files);
+      files.forEach((file) => handleUpload(file));
+    },
+    [handleUpload]
+  );
+
+  const handleClick = useCallback(() => {
+    inputRef.current?.click();
+  }, []);
+
+  const handleRemove = useCallback(
+    (uploadId: number) => {
+      removeProductImage(uploadId);
+    },
+    [removeProductImage]
+  );
+
+  return (
+    <div className={twMerge("space-y-2", className)}>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-base-500">Images</h3>
+        <span className="text-xs text-base-300">
+          {productImages.length}/{MAX_IMAGES}
+        </span>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPTED_EXTENSIONS}
+        onChange={handleFileSelect}
+        multiple
+        className="hidden"
+        data-testid="product-images-input"
+      />
+
+      {/* Image grid */}
+      {productImages.length > 0 && (
+        <div className="grid grid-cols-3 gap-2" data-testid="product-images-grid">
+          {productImages.map((image) => (
+            <div
+              key={image.uploadId}
+              className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 group"
+            >
+              <img
+                src={image.thumbUrl || image.url}
+                alt="Product"
+                className="w-full h-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => handleRemove(image.uploadId)}
+                className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Remove image"
+                data-testid={`product-image-remove-${image.uploadId}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+
+          {/* Upload placeholder slots */}
+          {Array.from(uploadingIds).map((id) => (
+            <div
+              key={id}
+              className="aspect-square rounded-lg border border-dashed border-neutral-300 bg-neutral-50 flex items-center justify-center"
+            >
+              <Loader2 className="w-5 h-5 text-base-300 animate-spin" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Upload area */}
+      {canAddMore && (
+        <div
+          onClick={handleClick}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={twMerge(
+            "w-full h-20 rounded-lg border border-dashed cursor-pointer transition-colors",
+            "flex flex-col items-center justify-center gap-1",
+            isDragging
+              ? "border-primary-500 bg-primary-50"
+              : "border-neutral-300 bg-white hover:border-neutral-400",
+            isUploading && "pointer-events-none opacity-60"
+          )}
+          data-testid="product-images-upload-area"
+        >
+          <div className="w-6 h-6 rounded bg-neutral-100 flex items-center justify-center">
+            <Upload className="w-3 h-3 text-base-500" />
+          </div>
+          <p className="text-xs text-base-400">Add product images</p>
+        </div>
+      )}
+
+      {error && (
+        <p className="text-xs text-red-500" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
