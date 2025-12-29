@@ -402,6 +402,144 @@ test.describe("New Project Route (/projects/new)", () => {
   });
 });
 
+test.describe("Brainstorm Help Sections", () => {
+  let brainstormPage: BrainstormPage;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await loginUser(page);
+    brainstormPage = new BrainstormPage(page);
+  });
+
+  test("displays help links on landing page", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Both help links should be visible
+    await expect(brainstormPage.seeExamplesButton).toBeVisible();
+    await expect(brainstormPage.learnHowItWorksButton).toBeVisible();
+  });
+
+  test("expands examples panel when clicking 'See examples of answers'", async ({
+    page,
+  }) => {
+    await brainstormPage.goto();
+
+    // Panel should not be visible initially
+    await expect(brainstormPage.examplesPanel).not.toBeVisible();
+
+    // Click to expand
+    await brainstormPage.seeExamplesButton.click();
+
+    // Panel should now be visible with example content
+    await expect(brainstormPage.examplesPanel).toBeVisible();
+    await expect(page.locator('text="Example structure:"')).toBeVisible();
+    await expect(page.locator("text=DevMode is a software tool")).toBeVisible();
+  });
+
+  test("collapses examples panel when clicking again", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Expand
+    await brainstormPage.seeExamplesButton.click();
+    await expect(brainstormPage.examplesPanel).toBeVisible();
+
+    // Collapse
+    await brainstormPage.seeExamplesButton.click();
+
+    // Wait for animation to complete
+    await page.waitForTimeout(400);
+
+    // Panel should be hidden
+    await expect(brainstormPage.examplesPanel).not.toBeVisible();
+  });
+
+  test("expands 'How it works' panel when clicking 'Learn how it works'", async ({
+    page,
+  }) => {
+    await brainstormPage.goto();
+
+    // Panel should not be visible initially
+    await expect(brainstormPage.howItWorksPanel).not.toBeVisible();
+
+    // Click to expand
+    await brainstormPage.learnHowItWorksButton.click();
+
+    // Panel should now be visible with steps
+    await expect(brainstormPage.howItWorksPanel).toBeVisible();
+    await expect(
+      page.locator("text=You tell us your big idea")
+    ).toBeVisible();
+    await expect(
+      page.locator("text=high-performing Google Ads campaign")
+    ).toBeVisible();
+  });
+
+  test("only one panel can be expanded at a time", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Expand examples first
+    await brainstormPage.seeExamplesButton.click();
+    await expect(brainstormPage.examplesPanel).toBeVisible();
+    await expect(brainstormPage.howItWorksPanel).not.toBeVisible();
+
+    // Click "How it works" - should close examples and open how it works
+    await brainstormPage.learnHowItWorksButton.click();
+
+    // Wait for animation
+    await page.waitForTimeout(400);
+
+    // How it works should be visible, examples should be hidden
+    await expect(brainstormPage.howItWorksPanel).toBeVisible();
+    await expect(brainstormPage.examplesPanel).not.toBeVisible();
+  });
+
+  test("active link is underlined when expanded", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Initially neither should be underlined (text-base-400)
+    await expect(brainstormPage.seeExamplesButton).not.toHaveClass(/underline/);
+
+    // Expand examples - should become underlined
+    await brainstormPage.seeExamplesButton.click();
+    await expect(brainstormPage.seeExamplesButton).toHaveClass(/underline/);
+
+    // How it works should not be underlined
+    await expect(brainstormPage.learnHowItWorksButton).not.toHaveClass(
+      /underline/
+    );
+
+    // Switch to how it works
+    await brainstormPage.learnHowItWorksButton.click();
+    await page.waitForTimeout(400);
+
+    // Now how it works should be underlined, examples not
+    await expect(brainstormPage.learnHowItWorksButton).toHaveClass(/underline/);
+    await expect(brainstormPage.seeExamplesButton).not.toHaveClass(/underline/);
+  });
+
+  test("help links are not visible in conversation view", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Send a message to create a conversation
+    await brainstormPage.sendMessage("Test message for conversation");
+
+    // Wait for URL update
+    await page.waitForFunction(
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Wait for conversation to load
+    await brainstormPage.waitForResponse();
+
+    // Help links should not be visible in conversation view
+    await expect(brainstormPage.seeExamplesButton).not.toBeVisible();
+    await expect(brainstormPage.learnHowItWorksButton).not.toBeVisible();
+  });
+});
+
 test.describe("Brainstorm Loading States", () => {
   let brainstormPage: BrainstormPage;
 

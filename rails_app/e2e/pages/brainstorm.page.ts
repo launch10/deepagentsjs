@@ -25,6 +25,12 @@ export class BrainstormPage {
   readonly skeleton: Locator;
   readonly landingPageHero: Locator;
 
+  // Help section elements
+  readonly seeExamplesButton: Locator;
+  readonly learnHowItWorksButton: Locator;
+  readonly examplesPanel: Locator;
+  readonly howItWorksPanel: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
@@ -63,6 +69,18 @@ export class BrainstormPage {
     // Loading states
     this.skeleton = page.locator('[data-slot="skeleton"]');
     this.landingPageHero = page.locator('h1:has-text("Tell us your next")');
+
+    // Help section elements
+    this.seeExamplesButton = page.getByRole("button", {
+      name: "See examples of answers",
+    });
+    this.learnHowItWorksButton = page.getByRole("button", {
+      name: "Learn how it works",
+    });
+    this.examplesPanel = page.locator('text="Example structure:"').locator("..");
+    this.howItWorksPanel = page.locator(
+      'ol:has(li:has-text("You tell us your big idea"))'
+    );
   }
 
   /**
