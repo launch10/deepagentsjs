@@ -1858,44 +1858,15 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description partial failure with errors */
+                /** @description validation failure rolls back all changes (atomic) */
                 422: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            social_links?: {
-                                /** @description Unique identifier */
-                                id: number;
-                                /**
-                                 * @description Social platform type
-                                 * @enum {string}
-                                 */
-                                platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
-                                /** @description URL to the social profile */
-                                url?: string | null;
-                                /** @description Social handle/username */
-                                handle?: string | null;
-                                /** @description Unique identifier */
-                                project_id: number;
-                                /**
-                                 * Format: date-time
-                                 * @description Timestamp
-                                 */
-                                created_at: string;
-                                /**
-                                 * Format: date-time
-                                 * @description Timestamp
-                                 */
-                                updated_at: string;
-                            }[];
-                            errors?: {
-                                /** @description Platform that failed */
-                                platform?: string;
-                                /** @description Error messages for this platform */
-                                errors?: string[];
-                            }[];
+                            /** @description Validation error messages (transaction rolls back all changes) */
+                            errors: string[];
                         };
                     };
                 };
@@ -2302,7 +2273,7 @@ export interface paths {
                              * @description Media type
                              * @enum {string}
                              */
-                            media_type: "image" | "video";
+                            media_type: "image" | "video" | "document";
                             /** @description Whether this upload is a logo */
                             is_logo: boolean;
                             /** @description Original filename */
@@ -2348,7 +2319,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description creating upload without website */
+                /** @description PDF upload associated with website */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -2369,7 +2340,7 @@ export interface paths {
                              * @description Media type
                              * @enum {string}
                              */
-                            media_type: "image" | "video";
+                            media_type: "image" | "video" | "document";
                             /** @description Whether this upload is a logo */
                             is_logo: boolean;
                             /** @description Original filename */
@@ -2394,7 +2365,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description rejects PDF upload */
+                /** @description website not exist */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -2711,6 +2682,82 @@ export interface paths {
                 };
                 /** @description duplicate domain and path on update */
                 422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/projects/{project_uuid}/website": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                project_uuid: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cannot update other account website */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        website: {
+                            /** @description Theme ID to set for the website */
+                            theme_id?: number | null;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description website updated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Website name */
+                            name?: string | null;
+                            /** @description Theme ID */
+                            theme_id?: number | null;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description project not found for other account */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };

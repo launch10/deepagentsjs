@@ -2200,70 +2200,20 @@ paths:
                   - created_at
                   - updated_at
         '422':
-          description: partial failure with errors
+          description: validation failure rolls back all changes (atomic)
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  social_links:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                          description: Unique identifier
-                        platform:
-                          type: string
-                          enum:
-                          - twitter
-                          - instagram
-                          - facebook
-                          - linkedin
-                          - youtube
-                          - tiktok
-                          - website
-                          - other
-                          description: Social platform type
-                        url:
-                          type: string
-                          nullable: true
-                          description: URL to the social profile
-                        handle:
-                          type: string
-                          nullable: true
-                          description: Social handle/username
-                        project_id:
-                          type: integer
-                          description: Unique identifier
-                        created_at:
-                          type: string
-                          format: date-time
-                          description: Timestamp
-                        updated_at:
-                          type: string
-                          format: date-time
-                          description: Timestamp
-                      required:
-                      - id
-                      - platform
-                      - project_id
-                      - created_at
-                      - updated_at
                   errors:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        platform:
-                          type: string
-                          description: Platform that failed
-                        errors:
-                          type: array
-                          items:
-                            type: string
-                          description: Error messages for this platform
+                      type: string
+                    description: Validation error messages (transaction rolls back
+                      all changes)
+                required:
+                - errors
         '401':
           description: unauthorized - missing token
       requestBody:
@@ -2685,7 +2635,7 @@ paths:
           type: string
       responses:
         '201':
-          description: creating upload without website
+          description: PDF upload associated with website
           content:
             application/json:
               schema:
@@ -2713,6 +2663,7 @@ paths:
                     enum:
                     - image
                     - video
+                    - document
                     description: Media type
                   is_logo:
                     type: boolean
@@ -2738,7 +2689,7 @@ paths:
                 - created_at
                 - updated_at
         '422':
-          description: rejects PDF upload
+          description: website not exist
         '401':
           description: unauthorized - missing token
       requestBody:
@@ -2807,6 +2758,7 @@ paths:
                       enum:
                       - image
                       - video
+                      - document
                       description: Media type
                     is_logo:
                       type: boolean
@@ -3183,6 +3135,76 @@ paths:
                   - path
               required:
               - website_url
+  "/api/v1/projects/{project_uuid}/website":
+    parameters:
+    - name: project_uuid
+      in: path
+      description: Project UUID
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Cannot update other account website
+      tags:
+      - Websites
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: website updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    nullable: true
+                    description: Website name
+                  theme_id:
+                    type: integer
+                    nullable: true
+                    description: Theme ID
+                required:
+                - id
+        '401':
+          description: unauthorized - missing token
+        '404':
+          description: project not found for other account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                website:
+                  type: object
+                  properties:
+                    theme_id:
+                      type: integer
+                      nullable: true
+                      description: Theme ID to set for the website
+              required:
+              - website
 servers:
 - url: https://{defaultHost}
   variables:

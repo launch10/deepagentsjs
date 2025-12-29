@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Check, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-const DEFAULT_COLORS = ["#5867C4", "#3D4A94", "#E48568", "#EDEDEC", "#2E3238"];
+const DEFAULT_COLORS = ["#0F1113", "#0F1113", "#0F1113", "#0F1113", "#0F1113"];
 
 interface CustomColorPickerProps {
   onSave: (colors: string[]) => void;
@@ -10,6 +10,10 @@ interface CustomColorPickerProps {
   initialColors?: string[];
 }
 
+/**
+ * Inline custom color picker that displays within the panel.
+ * Shows 5 color inputs with color swatch, hex input, and remove button.
+ */
 export function CustomColorPicker({
   onSave,
   onCancel,
@@ -18,7 +22,7 @@ export function CustomColorPicker({
   const [colors, setColors] = useState<string[]>(initialColors);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Handle escape key to close
+  // Handle escape key to cancel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -33,6 +37,14 @@ export function CustomColorPicker({
     setColors((prev) => {
       const newColors = [...prev];
       newColors[index] = color;
+      return newColors;
+    });
+  }, []);
+
+  const handleRemoveColor = useCallback((index: number) => {
+    setColors((prev) => {
+      const newColors = [...prev];
+      newColors[index] = "#000000";
       return newColors;
     });
   }, []);
@@ -53,107 +65,53 @@ export function CustomColorPicker({
   const allColorsValid = colors.every(isValidHex);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={onCancel}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="custom-color-picker-title"
-    >
-      <div
-        className="bg-white rounded-xl shadow-xl w-[320px] max-w-[90vw] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-        data-testid="custom-color-modal"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
-          <h3
-            id="custom-color-picker-title"
-            className="text-sm font-semibold text-base-500"
-          >
-            Create Custom Palette
-          </h3>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="p-1 text-base-400 hover:text-base-500 rounded transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <div className="space-y-2" data-testid="custom-color-picker-inline">
+      {/* Header with Done button */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-base-500">Custom Colors</h3>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!allColorsValid || isSaving}
+          className={twMerge(
+            "flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors",
+            allColorsValid && !isSaving
+              ? "text-base-500 hover:bg-neutral-100"
+              : "text-base-300 cursor-not-allowed"
+          )}
+          data-testid="custom-color-done-btn"
+        >
+          {isSaving ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Check className="w-4 h-4" />
+          )}
+          {isSaving ? "Saving..." : "Done"}
+        </button>
+      </div>
 
-        {/* Color inputs */}
-        <div className="p-4 space-y-3">
-          <p className="text-xs text-base-400">
-            Select 5 colors for your custom palette
-          </p>
-
-          <div className="space-y-2">
-            {colors.map((color, index) => (
-              <ColorInput
-                key={index}
-                index={index}
-                color={color}
-                onChange={(newColor) => handleColorChange(index, newColor)}
-              />
-            ))}
-          </div>
-
-          {/* Preview */}
-          <div className="pt-2">
-            <p className="text-xs text-base-400 mb-1">Preview</p>
-            <div className="flex h-10 rounded overflow-hidden">
-              {colors.map((color, index) => (
-                <div
-                  key={index}
-                  className={twMerge(
-                    "flex-1 h-full",
-                    index === 0 && "rounded-l",
-                    index === colors.length - 1 && "rounded-r"
-                  )}
-                  style={{ backgroundColor: isValidHex(color) ? color : "#EDEDEC" }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-neutral-200 bg-neutral-50">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 text-sm text-base-500 hover:bg-neutral-200 rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!allColorsValid || isSaving}
-            className={twMerge(
-              "px-4 py-2 text-sm text-white rounded-lg transition-colors",
-              allColorsValid && !isSaving
-                ? "bg-primary-500 hover:bg-primary-600"
-                : "bg-neutral-300 cursor-not-allowed"
-            )}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </button>
-        </div>
+      {/* Color inputs */}
+      <div className="space-y-2">
+        {colors.map((color, index) => (
+          <InlineColorInput
+            key={index}
+            color={color}
+            onChange={(newColor) => handleColorChange(index, newColor)}
+            onRemove={() => handleRemoveColor(index)}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
-interface ColorInputProps {
-  index: number;
+interface InlineColorInputProps {
   color: string;
   onChange: (color: string) => void;
+  onRemove: () => void;
 }
 
-function ColorInput({ index, color, onChange }: ColorInputProps) {
+function InlineColorInput({ color, onChange, onRemove }: InlineColorInputProps) {
   const [hexInput, setHexInput] = useState(color);
 
   // Sync hex input when color prop changes
@@ -183,33 +141,62 @@ function ColorInput({ index, color, onChange }: ColorInputProps) {
 
   const isValid = /^#[0-9A-Fa-f]{6}$/.test(hexInput);
 
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-base-400 w-6">{index + 1}.</span>
+  // Format display value without # prefix
+  const displayValue = hexInput.startsWith("#") ? hexInput.slice(1) : hexInput;
 
-      {/* Native color picker */}
-      <input
-        type="color"
-        value={isValid ? hexInput : "#000000"}
-        onChange={handleColorPickerChange}
-        className="w-8 h-8 rounded cursor-pointer border border-neutral-200"
-        aria-label={`Color ${index + 1} picker`}
-      />
+  return (
+    <div className="flex items-center gap-1 w-full">
+      {/* Color swatch with native picker */}
+      <div className="relative shrink-0">
+        <div
+          className="w-10 h-10 rounded"
+          style={{ backgroundColor: isValid ? hexInput : "#000000" }}
+        />
+        <input
+          type="color"
+          value={isValid ? hexInput : "#000000"}
+          onChange={handleColorPickerChange}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          aria-label="Color picker"
+        />
+      </div>
 
       {/* Hex input */}
-      <input
-        type="text"
-        value={hexInput}
-        onChange={handleHexChange}
-        placeholder="#000000"
-        maxLength={7}
-        className={twMerge(
-          "flex-1 px-2 py-1.5 text-xs border rounded",
-          "focus:outline-none focus:ring-1 focus:ring-primary-500",
-          isValid ? "border-neutral-200" : "border-red-300"
-        )}
-        aria-label={`Color ${index + 1} hex value`}
-      />
+      <div className="flex-1">
+        <div
+          className={twMerge(
+            "flex items-center bg-white border rounded-lg px-4 py-3",
+            isValid ? "border-neutral-300" : "border-red-300"
+          )}
+        >
+          <span className="text-xs text-base-500">#</span>
+          <input
+            type="text"
+            value={displayValue}
+            onChange={(e) => {
+              const val = e.target.value.toUpperCase();
+              setHexInput("#" + val);
+              if (/^[0-9A-Fa-f]{6}$/.test(val)) {
+                onChange("#" + val);
+              }
+            }}
+            placeholder="000000"
+            maxLength={6}
+            className="flex-1 text-xs text-base-500 bg-transparent outline-none ml-0.5"
+            aria-label="Hex color value"
+          />
+        </div>
+      </div>
+
+      {/* Remove button */}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="shrink-0 p-1 text-base-400 hover:text-base-500 transition-colors"
+        aria-label="Remove color"
+      >
+        <X className="w-4 h-4" />
+      </button>
     </div>
   );
 }

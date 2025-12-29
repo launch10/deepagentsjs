@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import {
   useBrandPersonalizationStore,
-  useBrandPersonalizationActions,
   selectSelectedThemeId,
 } from "@context/BrandPersonalizationProvider";
+import { useThemes, useCreateTheme } from "@api/themes.hooks";
+import { useUpdateWebsiteTheme } from "@api/websites.hooks";
 import { CustomColorPicker } from "./CustomColorPicker";
 import type { GetThemesResponse } from "@api/themes";
 
@@ -20,27 +21,14 @@ interface ColorPaletteSectionProps {
 export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
   const selectedThemeId = useBrandPersonalizationStore(selectSelectedThemeId);
   const setTheme = useBrandPersonalizationStore((s) => s.setTheme);
-  const { fetchThemes, createTheme } = useBrandPersonalizationActions();
 
-  const [themes, setThemes] = useState<Theme[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // TanStack Query hooks for caching
+  const { data: themes = [], isLoading } = useThemes();
+  const createThemeMutation = useCreateTheme();
+  const updateWebsiteThemeMutation = useUpdateWebsiteTheme();
+
   const [currentPage, setCurrentPage] = useState(0);
   const [showCustomPicker, setShowCustomPicker] = useState(false);
-
-  // Fetch themes on mount
-  useEffect(() => {
-    const loadThemes = async () => {
-      try {
-        const data = await fetchThemes();
-        setThemes(data);
-      } catch (err) {
-        console.error("Failed to fetch themes:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadThemes();
-  }, [fetchThemes]);
 
   const totalPages = Math.max(1, Math.ceil(themes.length / PALETTES_PER_PAGE));
   const visibleThemes = themes.slice(
@@ -58,26 +46,29 @@ export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
 
   const handleSelectTheme = useCallback(
     (themeId: number) => {
-      setTheme(selectedThemeId === themeId ? null : themeId);
+      const newThemeId = selectedThemeId === themeId ? null : themeId;
+      setTheme(newThemeId);
+      // Persist to backend
+      updateWebsiteThemeMutation.mutate({ themeId: newThemeId });
     },
-    [setTheme, selectedThemeId]
+    [setTheme, selectedThemeId, updateWebsiteThemeMutation]
   );
 
   const handleCreateCustomPalette = useCallback(
     async (colors: string[]) => {
-      try {
-        const newTheme = await createTheme("Custom Palette", colors);
-        setThemes((prev) => [...prev, newTheme]);
-        setTheme(newTheme.id);
-        setShowCustomPicker(false);
-        // Navigate to the last page to show the new palette
-        const newTotalPages = Math.ceil((themes.length + 1) / PALETTES_PER_PAGE);
-        setCurrentPage(newTotalPages - 1);
-      } catch (err) {
-        console.error("Failed to create custom palette:", err);
-      }
+      const newTheme = await createThemeMutation.mutateAsync({
+        name: "Custom Palette",
+        colors,
+      });
+      // Select the new theme and close the picker
+      setTheme(newTheme.id);
+      // Persist to backend
+      updateWebsiteThemeMutation.mutate({ themeId: newTheme.id });
+      setShowCustomPicker(false);
+      // Navigate to the first page to show the new palette (it's prepended)
+      setCurrentPage(0);
     },
-    [createTheme, setTheme, themes.length]
+    [createThemeMutation, setTheme, updateWebsiteThemeMutation]
   );
 
   if (isLoading) {
@@ -93,6 +84,18 @@ export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
             />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  // When in custom picker mode, show the inline custom color picker
+  if (showCustomPicker) {
+    return (
+      <div className={twMerge("space-y-2", className)}>
+        <CustomColorPicker
+          onSave={handleCreateCustomPalette}
+          onCancel={() => setShowCustomPicker(false)}
+        />
       </div>
     );
   }
@@ -160,14 +163,6 @@ export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
           Add Custom
         </button>
       </div>
-
-      {/* Custom color picker modal */}
-      {showCustomPicker && (
-        <CustomColorPicker
-          onSave={handleCreateCustomPalette}
-          onCancel={() => setShowCustomPicker(false)}
-        />
-      )}
     </div>
   );
 }
