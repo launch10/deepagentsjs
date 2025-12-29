@@ -72,7 +72,7 @@ export function BrainstormInput() {
       <DropZone onDrop={handleDrop} disabled={isStreaming}>
         <div
           style={{ maxWidth: "808px", minHeight: "120px" }}
-          className="bg-white border border-neutral-300 rounded-xl shadow-[0px_0px_8px_4px_rgba(167,165,161,0.08)] hover:shadow-[0px_0px_24px_8px_rgba(55,72,184,0.13)] focus-within:shadow-[0px_0px_24px_8px_rgba(55,72,184,0.13)] transition-shadow p-4 mx-auto flex flex-col"
+          className="bg-white border border-neutral-300 rounded-xl shadow-(--shadow-chat-default) hover:shadow-(--shadow-chat-delight) focus-within:shadow-(--shadow-chat-delight) transition-shadow p-4 mx-auto flex flex-col"
         >
           {/* Attachment previews */}
           <AttachmentList attachments={attachments} onRemove={removeAttachment} />

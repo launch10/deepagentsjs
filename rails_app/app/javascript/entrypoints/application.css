@@ -131,6 +131,12 @@
   --color-alpha-error-20: #d14f3433;
 
   /* ========================================
+   * Shadows
+   * ======================================== */
+  --shadow-chat-default: 0px 0px 8px 4px rgba(167, 165, 161, 0.08);
+  --shadow-chat-delight: 0px 0px 24px 8px rgba(55, 72, 184, 0.13);
+
+  /* ========================================
    * Semantic colors (shadcn/ui compatible)
    * ======================================== */
   --color-primary: var(--color-primary-500);
