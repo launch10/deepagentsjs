@@ -23,6 +23,7 @@ import {
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import { mapApiErrorsToForm } from "@helpers/formErrorMapper";
 import { useDebounce } from "@hooks/useDebounce";
+import { detailsInputSchema } from "../shared/AdCampaignForm.schema";
 
 const STRUCTURED_SNIPPET_CATEGORIES = Ads.StructuredSnippetCategoryKeys.map((key) => ({
   value: key,
@@ -43,7 +44,7 @@ const normalizeCategory = (category: string | undefined): string => {
 
 const structuredSnippetsFormSchema = z.object({
   category: z.string(),
-  details: z.array(Ads.AssetSchema),
+  details: z.array(detailsInputSchema),
 });
 
 type StructuredSnippetsFormData = z.infer<typeof structuredSnippetsFormSchema>;
