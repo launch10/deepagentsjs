@@ -1,9 +1,15 @@
-import { useEffect, useRef } from "react";
-import { useBrainstormChatMessages, useBrainstormChatStatus } from "@hooks/useBrainstormChat";
+import { useEffect, useRef, useMemo, useCallback } from "react";
+import type { MessageBlock, InferBridgeData } from "langgraph-ai-sdk-types";
+import { Brainstorm, type BrainstormBridgeType } from "@shared";
+import { useBrainstormChatMessages, useBrainstormChatIsStreaming } from "@hooks/useBrainstormChat";
 import { Chat } from "@components/chat";
 import { BrainstormMessage } from "./BrainstormMessage";
 import { QuestionBadge } from "./QuestionBadge";
 import { useBrainstormInput } from "./BrainstormInputContext";
+
+// The LanggraphData type for the Brainstorm graph (used for MessageBlock generic)
+type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
+type BrainstormBlock = MessageBlock<BrainstormLanggraphData>;
 
 /**
  * Displays the brainstorm message list.
@@ -11,7 +17,7 @@ import { useBrainstormInput } from "./BrainstormInputContext";
  */
 export function BrainstormMessages() {
   const messages = useBrainstormChatMessages();
-  const status = useBrainstormChatStatus();
+  const isStreaming = useBrainstormChatIsStreaming();
   const { setInput, textareaRef } = useBrainstormInput();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -21,31 +27,38 @@ export function BrainstormMessages() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const isStreaming = status === "streaming" || status === "submitted";
-
-  // Handle clicking on example suggestions
-  const handleExampleClick = (text: string) => {
+  // Handle clicking on example suggestions - memoized to prevent unnecessary re-renders
+  const handleExampleClick = useCallback((text: string) => {
     setInput(text);
     textareaRef.current?.focus();
-  };
+  }, [setInput, textareaRef]);
+
+  // Pre-compute message metadata in a single O(n) pass instead of O(n^2)
+  const messageMetadata = useMemo(() => {
+    let aiCount = 0;
+    return messages.map((message, index) => {
+      const isUser = message.role === "user";
+      if (!isUser) aiCount++;
+      return {
+        isUser,
+        isLastMessage: index === messages.length - 1,
+        questionNumber: isUser ? 0 : aiCount,
+        isFirstAIMessage: !isUser && aiCount === 1,
+      };
+    });
+  }, [messages]);
 
   // Empty state is handled by parent component
   if (messages.length === 0) {
     return null;
   }
 
-  // Count AI messages to determine question number
-  const aiMessageCount = messages.filter((m) => m.role === "assistant").length;
-  const currentQuestion = Math.max(1, aiMessageCount);
-  const totalQuestions = 5; // Brainstorm has 5 questions
+  const totalQuestions = Brainstorm.BrainstormTopics.length;
 
   return (
     <Chat.MessageList.Root className="flex-1 p-4 space-y-4">
       {messages.map((message, index) => {
-        const isUser = message.role === "user";
-        const isLastMessage = index === messages.length - 1;
-        const isFirstAIMessage =
-          !isUser && messages.slice(0, index).every((m) => m.role === "user");
+        const { isUser, isLastMessage, questionNumber } = messageMetadata[index];
 
         if (isUser) {
           return (
@@ -68,18 +81,12 @@ export function BrainstormMessages() {
           return <Chat.ThinkingIndicator key={message.id} text="Thinking" />;
         }
 
-        // Count which question this AI message represents
-        const aiMessagesBeforeThis = messages
-          .slice(0, index)
-          .filter((m) => m.role === "assistant").length;
-        const questionNumber = aiMessagesBeforeThis + 1;
-
         return (
           <div key={message.id} className="space-y-3">
             {/* Question badge appears before AI message content */}
             <QuestionBadge current={questionNumber} total={totalQuestions} />
             <BrainstormMessage
-              blocks={message.blocks as any}
+              blocks={message.blocks as BrainstormBlock[]}
               isActive={isLastMessage}
               onExampleClick={handleExampleClick}
             />

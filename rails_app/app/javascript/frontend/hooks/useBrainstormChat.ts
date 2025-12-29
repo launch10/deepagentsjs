@@ -77,3 +77,15 @@ export function useBrainstormIsNewConversation() {
   const { thread_id } = usePage<BrainstormPageProps>().props;
   return !thread_id;
 }
+
+/**
+ * Returns whether the chat is currently streaming a response.
+ * Uses message-based detection: streaming when there's only one human message
+ * (waiting for the AI response).
+ */
+export function useBrainstormChatIsStreaming() {
+  return useBrainstormChat((s) => {
+    const { status } = s;
+    return status === "streaming" || status === "submitted";
+  });
+}

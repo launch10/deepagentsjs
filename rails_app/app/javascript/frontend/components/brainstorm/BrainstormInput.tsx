@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useBrainstormChatActions, useBrainstormChatStatus } from "@hooks/useBrainstormChat";
+import { useBrainstormChatActions, useBrainstormChatIsStreaming } from "@hooks/useBrainstormChat";
 import { useBrainstormInput } from "./BrainstormInputContext";
 import { FilePlus, ArrowUp } from "lucide-react";
 import { AttachmentList, DropZone } from "./attachments";
@@ -12,7 +12,7 @@ import { FILE_INPUT_ACCEPT } from "~/types/attachment";
  */
 export function BrainstormInput() {
   const { sendMessage } = useBrainstormChatActions();
-  const status = useBrainstormChatStatus();
+  const isStreaming = useBrainstormChatIsStreaming();
   const {
     input,
     setInput,
@@ -26,8 +26,6 @@ export function BrainstormInput() {
   } = useBrainstormInput();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const isStreaming = status === "streaming" || status === "submitted";
   const hasContent = input.trim() || attachments.length > 0;
   const canSubmit = hasContent && !isStreaming && !isUploading;
 

@@ -1,3 +1,4 @@
+import React from "react";
 import type {
   MessageBlock,
   TextMessageBlock,
@@ -26,8 +27,10 @@ interface BrainstormMessageProps {
  * - Text blocks (markdown)
  * - Structured blocks (reply/helpMe with examples)
  * - Tool call indicators
+ *
+ * Memoized to prevent unnecessary re-renders during streaming.
  */
-export function BrainstormMessage({
+export const BrainstormMessage = React.memo(function BrainstormMessage({
   blocks,
   isActive = true,
   onExampleClick,
@@ -44,7 +47,7 @@ export function BrainstormMessage({
       ))}
     </div>
   );
-}
+});
 
 interface BlockRendererProps {
   block: MessageBlock<BrainstormLanggraphData>;

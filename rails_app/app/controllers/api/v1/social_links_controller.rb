@@ -57,14 +57,10 @@ class API::V1::SocialLinksController < API::BaseController
 
   def set_project
     @project = current_account.projects.find_by!(uuid: params[:project_uuid])
-  rescue ActiveRecord::RecordNotFound
-    render json: { error: "Project not found" }, status: :not_found
   end
 
   def set_social_link
     @social_link = @project.social_links.find(params[:id])
-  rescue ActiveRecord::RecordNotFound
-    render json: { error: "Social link not found" }, status: :not_found
   end
 
   def social_link_params

@@ -761,6 +761,10 @@ describe.sequential("Brainstorming Flow", () => {
   });
 
   describe("File uploads", () => {
+    // These tests verify uploadIds flow through the brainstorm graph correctly.
+    // We use mock upload IDs since the actual file upload is tested in Rails specs.
+    // This avoids Polly serialization issues with FormData/Blob in Node.js.
+
     it("accepts uploadIds in state without errors", async () => {
       const projectUUID = uuidv7() as UUIDType;
 
@@ -776,6 +780,66 @@ describe.sequential("Brainstorming Flow", () => {
         .execute();
 
       // No errors and uploadIds should be cleared after processing (single-message scope)
+      expect(result.error).toBeUndefined();
+      expect(result.state.uploadIds).toEqual([]);
+    });
+
+    it("accepts image upload IDs", async () => {
+      const projectUUID = uuidv7() as UUIDType;
+
+      // Use mock upload IDs (actual upload tested in Rails)
+      const uploadIds = [101]; // Mock image upload ID
+
+      const result = await testGraph<BrainstormGraphState>()
+        .withGraph(brainstormGraph)
+        .withState({
+          projectUUID,
+          uploadIds,
+        })
+        .withPrompt("Here is my brand logo")
+        .stopAfter("agent")
+        .execute();
+
+      expect(result.error).toBeUndefined();
+      expect(result.state.uploadIds).toEqual([]);
+    });
+
+    it("accepts PDF upload IDs", async () => {
+      const projectUUID = uuidv7() as UUIDType;
+
+      // Use mock upload IDs (actual upload tested in Rails)
+      const uploadIds = [102]; // Mock PDF upload ID
+
+      const result = await testGraph<BrainstormGraphState>()
+        .withGraph(brainstormGraph)
+        .withState({
+          projectUUID,
+          uploadIds,
+        })
+        .withPrompt("Here is my business plan document")
+        .stopAfter("agent")
+        .execute();
+
+      expect(result.error).toBeUndefined();
+      expect(result.state.uploadIds).toEqual([]);
+    });
+
+    it("accepts mixed upload IDs", async () => {
+      const projectUUID = uuidv7() as UUIDType;
+
+      // Use mock upload IDs for mixed content
+      const uploadIds = [101, 102]; // Mock image + PDF upload IDs
+
+      const result = await testGraph<BrainstormGraphState>()
+        .withGraph(brainstormGraph)
+        .withState({
+          projectUUID,
+          uploadIds,
+        })
+        .withPrompt("Here are my brand assets - a logo and business plan")
+        .stopAfter("agent")
+        .execute();
+
       expect(result.error).toBeUndefined();
       expect(result.state.uploadIds).toEqual([]);
     });

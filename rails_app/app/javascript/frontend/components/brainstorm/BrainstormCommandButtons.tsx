@@ -1,7 +1,7 @@
 import { router } from "@inertiajs/react";
 import {
   useBrainstormChatMessages,
-  useBrainstormChatStatus,
+  useBrainstormChatIsStreaming,
   useBrainstormChatThreadId,
 } from "@hooks/useBrainstormChat";
 import { Chat } from "@components/chat";
@@ -13,11 +13,9 @@ import { useBrainstormInput } from "./BrainstormInputContext";
  */
 export function BrainstormCommandButtons() {
   const messages = useBrainstormChatMessages();
-  const status = useBrainstormChatStatus();
+  const isStreaming = useBrainstormChatIsStreaming();
   const { setInput, textareaRef } = useBrainstormInput();
   const threadId = useBrainstormChatThreadId();
-
-  const isStreaming = status === "streaming" || status === "submitted";
   const hasMessages = messages.length > 0;
   const lastMessageIsAI = messages[messages.length - 1]?.role === "assistant";
 
