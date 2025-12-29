@@ -333,3 +333,119 @@ test.describe("Brainstorm URL Handling", () => {
     await page.waitForLoadState("networkidle");
   });
 });
+
+test.describe("New Project Route (/projects/new)", () => {
+  let brainstormPage: BrainstormPage;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await loginUser(page);
+    brainstormPage = new BrainstormPage(page);
+  });
+
+  test("navigates to /projects/new and displays chat input", async ({ page }) => {
+    await brainstormPage.gotoNew();
+
+    // Verify we're on /projects/new
+    expect(page.url()).toContain("/projects/new");
+
+    // Verify chat input is ready
+    await brainstormPage.expectChatInputReady();
+  });
+
+  test("clicking New Project button in sidebar navigates to /projects/new", async ({ page }) => {
+    // Start on root
+    await brainstormPage.goto();
+
+    // Click the New Project button in sidebar
+    await page.click('a[href="/projects/new"]');
+
+    // Verify navigation
+    await page.waitForURL("**/projects/new");
+    expect(page.url()).toContain("/projects/new");
+
+    // Verify brainstorm interface loads
+    await brainstormPage.expectChatInputReady();
+  });
+
+  test("sending message from /projects/new updates URL with thread ID", async ({ page }) => {
+    await brainstormPage.gotoNew();
+
+    // Verify we start on /projects/new
+    expect(page.url()).toContain("/projects/new");
+
+    // Send a message
+    await brainstormPage.sendMessage("Test from /projects/new route");
+
+    // Wait for URL to update
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Verify URL now contains a thread ID
+    const hasThreadId = await brainstormPage.hasThreadIdInUrl();
+    expect(hasThreadId).toBe(true);
+  });
+
+  test("unauthenticated user gets 404 (route scoped to authenticated users)", async ({ browser }) => {
+    // Create new context without authentication
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    const response = await page.goto("/projects/new");
+
+    // Route is inside authenticated block, so unauthenticated users get 404
+    expect(response?.status()).toBe(404);
+
+    await context.close();
+  });
+});
+
+test.describe("Brainstorm Loading States", () => {
+  let brainstormPage: BrainstormPage;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await loginUser(page);
+    brainstormPage = new BrainstormPage(page);
+  });
+
+  test("shows skeleton (not landing page) when loading existing conversation", async ({ page }) => {
+    // First create a conversation to get a valid thread ID
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for loading state test");
+
+    // Wait for URL to update with thread ID
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    const threadId = brainstormPage.getThreadIdFromUrl();
+    expect(threadId).not.toBeNull();
+
+    // Now navigate directly to the conversation URL
+    // Use gotoConversationImmediate to not wait for networkidle
+    await brainstormPage.gotoConversationImmediate(threadId!);
+
+    // The landing page hero ("Tell us your next big idea") should NOT be visible
+    // If it flickers, this test will fail
+    await brainstormPage.expectLandingPageNotVisible();
+
+    // Eventually the messages should load
+    await page.waitForLoadState("networkidle");
+    const messageCount = await brainstormPage.getUserMessageCount();
+    expect(messageCount).toBeGreaterThan(0);
+  });
+
+  test("shows landing page on new conversation (not skeleton)", async ({ page }) => {
+    await brainstormPage.gotoNew();
+
+    // Landing page hero should be visible for new conversations
+    await expect(brainstormPage.landingPageHero).toBeVisible();
+
+    // Skeleton should NOT be visible on new conversations
+    await expect(brainstormPage.skeleton.first()).not.toBeVisible();
+  });
+});

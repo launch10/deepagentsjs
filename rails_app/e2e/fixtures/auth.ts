@@ -18,7 +18,7 @@ export interface AuthState {
  */
 export const testUser = {
   email: "test_user@launch10.ai",
-  password: "password",
+  password: "Launch10TestPass!",
 };
 
 /**

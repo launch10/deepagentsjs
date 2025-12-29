@@ -1,5 +1,5 @@
 import { RailsAPIBase, type paths } from "@rails_api_base";
-import { type Simplify } from "type-fest";
+import type { Simplify } from "type-fest";
 
 export type GetUploadsRequest = Required<
   NonNullable<paths["/api/v1/uploads"]["get"]["parameters"]["query"]>

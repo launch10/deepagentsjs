@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { usePage } from "@inertiajs/react";
 import { twMerge } from "tailwind-merge";
 import { useWorkflowSteps, selectPageNumber, selectPages } from "@context/WorkflowStepsProvider";
 import { Workflow } from "@shared";
@@ -67,11 +68,15 @@ type HeaderProgressStepperProps = {
   className?: string;
 };
 
+const HIDE_URLS = ["/", "/projects/new"];
+
 export default function HeaderProgressStepper({ className }: HeaderProgressStepperProps) {
+  const { url } = usePage();
   const pages = useWorkflowSteps(selectPages);
   const currentPageNumber = useWorkflowSteps(selectPageNumber);
+  const shouldShow = !HIDE_URLS.includes(url);
 
-  if (!pages || currentPageNumber == null) {
+  if (!pages || currentPageNumber == null || !shouldShow) {
     return null;
   }
 

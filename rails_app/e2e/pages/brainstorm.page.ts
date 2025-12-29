@@ -21,6 +21,10 @@ export class BrainstormPage {
   // Social links
   readonly socialLinksSection: Locator;
 
+  // Loading states
+  readonly skeleton: Locator;
+  readonly landingPageHero: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
@@ -55,6 +59,10 @@ export class BrainstormPage {
     this.socialLinksSection = page.locator(
       '[data-testid="social-links"], [aria-label="Social Links"]'
     );
+
+    // Loading states
+    this.skeleton = page.locator('[data-slot="skeleton"]');
+    this.landingPageHero = page.locator('h1:has-text("Tell us your next")');
   }
 
   /**
@@ -63,6 +71,14 @@ export class BrainstormPage {
    */
   async goto(): Promise<void> {
     await this.page.goto("/");
+    await this.page.waitForLoadState("networkidle");
+  }
+
+  /**
+   * Navigate to /projects/new (explicit new project route)
+   */
+  async gotoNew(): Promise<void> {
+    await this.page.goto("/projects/new");
     await this.page.waitForLoadState("networkidle");
   }
 
@@ -176,5 +192,29 @@ export class BrainstormPage {
     await expect(
       this.page.locator(`text=${text}`).first()
     ).toBeVisible({ timeout: 30000 });
+  }
+
+  /**
+   * Assert that skeleton is visible (loading state)
+   */
+  async expectSkeletonVisible(): Promise<void> {
+    await expect(this.skeleton.first()).toBeVisible();
+  }
+
+  /**
+   * Assert that the landing page hero is NOT visible
+   * (to verify no flicker to empty state when loading existing conversation)
+   */
+  async expectLandingPageNotVisible(): Promise<void> {
+    await expect(this.landingPageHero).not.toBeVisible();
+  }
+
+  /**
+   * Navigate to an existing conversation without waiting for networkidle
+   * This allows us to observe the initial loading state before data loads
+   */
+  async gotoConversationImmediate(threadId: string): Promise<void> {
+    await this.page.goto(`/projects/${threadId}/brainstorm`);
+    // Don't wait for networkidle - we want to observe loading state
   }
 }

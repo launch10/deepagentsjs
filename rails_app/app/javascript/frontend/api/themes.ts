@@ -1,5 +1,5 @@
 import { RailsAPIBase, type paths } from "@rails_api_base";
-import { type Simplify } from "type-fest";
+import type { Simplify } from "type-fest";
 
 export type GetThemesRequest = NonNullable<paths["/api/v1/themes"]["get"]["parameters"]["path"]>;
 export type GetThemesResponse = NonNullable<

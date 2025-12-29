@@ -25,13 +25,9 @@ const navItems: NavItem[] = [
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
 ];
 
-interface MainSidebarProps {
-  defaultCollapsed?: boolean;
-}
-
-export default function MainSidebar({ defaultCollapsed = false }: MainSidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+export default function MainSidebar() {
   const { url } = usePage();
+  const [isCollapsed, setIsCollapsed] = useState(() => url !== "/");
 
   const isActive = (href: string) => {
     if (href === "/") {
@@ -42,11 +38,8 @@ export default function MainSidebar({ defaultCollapsed = false }: MainSidebarPro
 
   return (
     <aside
-      style={{ backgroundColor: "#12183d" }}
-      className={twMerge(
-        "h-screen flex flex-col transition-all duration-300 sticky top-0",
-        isCollapsed ? "w-[60px]" : "w-[220px]"
-      )}
+      style={{ backgroundColor: "#12183d", width: isCollapsed ? 60 : 220, minWidth: isCollapsed ? 60 : 220 }}
+      className="h-screen flex flex-col transition-all duration-300 sticky top-0 shrink-0"
     >
       {/* Collapse button */}
       <div className="p-4 flex justify-end">
@@ -73,7 +66,7 @@ export default function MainSidebar({ defaultCollapsed = false }: MainSidebarPro
       />
 
       {/* New Project button */}
-      <div className="p-6">
+      <div className={twMerge("p-6", isCollapsed && "p-4 flex justify-center")}>
         <Link
           href="/projects/new"
           className={twMerge(
@@ -81,7 +74,7 @@ export default function MainSidebar({ defaultCollapsed = false }: MainSidebarPro
             isCollapsed && "justify-center"
           )}
         >
-          <span className="flex items-center justify-center w-6 h-6 bg-white rounded-full">
+          <span className="flex items-center justify-center w-6 h-6 shrink-0 bg-white rounded-full">
             <Plus className="w-4 h-4" style={{ color: "#12183d" }} strokeWidth={2.5} />
           </span>
           {!isCollapsed && <span>New Project</span>}
@@ -98,21 +91,13 @@ export default function MainSidebar({ defaultCollapsed = false }: MainSidebarPro
             <Link
               key={item.href}
               href={item.href}
-              style={active ? { backgroundColor: "#2e3c99" } : undefined}
               className={twMerge(
-                "flex items-center gap-3 px-6 py-3 text-white font-sans relative transition-colors",
-                !active && "hover:bg-white/10",
+                "flex items-center gap-3 px-6 py-3 font-sans relative transition-colors",
+                active ? "text-secondary-500" : "text-white hover:bg-white/10",
                 isCollapsed && "justify-center px-0"
               )}
             >
-              {/* Active indicator - 4px orange bar */}
-              {active && (
-                <div
-                  className="absolute left-0 top-0 bottom-0 w-1"
-                  style={{ backgroundColor: "#df6d4a" }}
-                />
-              )}
-              <Icon className="w-6 h-6" strokeWidth={1.5} />
+              <Icon className="w-6 h-6 shrink-0" strokeWidth={1.5} />
               {!isCollapsed && <span className={active ? "font-semibold" : ""}>{item.label}</span>}
             </Link>
           );
@@ -130,7 +115,7 @@ export default function MainSidebar({ defaultCollapsed = false }: MainSidebarPro
       />
 
       {/* Settings */}
-      <div className="p-6">
+      <div className={twMerge("p-6", isCollapsed && "p-4 flex justify-center")}>
         <Link
           href="/settings"
           className={twMerge(
@@ -138,7 +123,7 @@ export default function MainSidebar({ defaultCollapsed = false }: MainSidebarPro
             isCollapsed && "justify-center"
           )}
         >
-          <Settings className="w-6 h-6" strokeWidth={1.5} />
+          <Settings className="w-6 h-6 shrink-0" strokeWidth={1.5} />
           {!isCollapsed && <span>Settings</span>}
         </Link>
       </div>

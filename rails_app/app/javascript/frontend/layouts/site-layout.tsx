@@ -7,16 +7,7 @@ import { WorkflowStepsProvider } from "@context/WorkflowStepsProvider";
 const queryClient = new QueryClient();
 
 export const SiteLayout = ({ children }: { children: React.ReactNode }): React.ReactNode => {
-  const { workflow, project, url } = usePage().props;
-  const currentUrl = usePage().url;
-
-  // Show progress stepper on brainstorm pages that have a project (conversation started)
-  // but not on the initial empty state (root "/" or "/projects/new")
-  const isEmptyBrainstormPage = currentUrl === "/" || currentUrl === "/projects/new";
-  const isBrainstormWithProject = currentUrl.includes("/brainstorm") && (project as any)?.uuid;
-
-  // Auto-collapse sidebar when on brainstorm page with a project (chat mode)
-  const shouldCollapseSidebar = isBrainstormWithProject;
+  const { workflow, project } = usePage().props;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -25,9 +16,9 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
         projectUUID={(project as any)?.uuid ?? null}
       >
         <div className="flex min-h-screen">
-          <MainSidebar defaultCollapsed={shouldCollapseSidebar} />
+          <MainSidebar />
           <div className="flex-1 flex flex-col bg-background">
-            <Header showProgressStepper={!isEmptyBrainstormPage} />
+            <Header />
             <main className="flex-1">{children}</main>
           </div>
         </div>
