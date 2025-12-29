@@ -71,7 +71,7 @@ export function BrainstormInput() {
   };
 
   return (
-    <div className="px-4 pb-4">
+    <div className="px-4 pb-8">
       <DropZone onDrop={handleDrop} disabled={isStreaming}>
         <div
           style={{ maxWidth: "808px", minHeight: "120px" }}

@@ -1,8 +1,6 @@
-import { useEffect, useRef } from "react";
-import {
-  useBrainstormChatThreadId,
-  useBrainstormIsNewConversation,
-} from "@hooks/useBrainstormChat";
+import { useEffect, useRef, useState } from "react";
+import { router } from "@inertiajs/react";
+import { useBrainstormChatThreadId } from "@hooks/useBrainstormChat";
 import { BrainstormInputProvider } from "./BrainstormInputContext";
 import { BrainstormInput } from "./BrainstormInput";
 import { ExampleAnswers } from "./ExampleAnswers";
@@ -10,23 +8,27 @@ import { ExampleAnswers } from "./ExampleAnswers";
 /**
  * Landing page for new brainstorm conversations.
  * Shows the hero text and centered input.
- * Handles URL update when first message creates a thread.
+ * When first message creates a thread, navigates to the conversation page.
  */
 export function BrainstormLanding() {
   const threadId = useBrainstormChatThreadId();
-  const isNewConversation = useBrainstormIsNewConversation();
+  const [isNavigating, setIsNavigating] = useState(false);
 
-  // Track if we've already updated the URL
-  const hasUpdatedUrl = useRef(false);
+  // Track if we've already triggered navigation
+  const hasNavigatedRef = useRef(false);
 
-  // Update URL when SDK provides threadId (after first message)
+  // Navigate to conversation page when threadId becomes available
   useEffect(() => {
-    if (threadId && isNewConversation && !hasUpdatedUrl.current) {
-      const newUrl = `/projects/${threadId}/brainstorm`;
-      window.history.replaceState({}, "", newUrl);
-      hasUpdatedUrl.current = true;
+    if (threadId && !hasNavigatedRef.current && !isNavigating) {
+      hasNavigatedRef.current = true;
+      setIsNavigating(true);
+      // Use Inertia router for proper page transition
+      router.visit(`/projects/${threadId}/brainstorm`, {
+        preserveState: false,
+        preserveScroll: false,
+      });
     }
-  }, [threadId, isNewConversation]);
+  }, [threadId, isNavigating]);
 
   return (
     <BrainstormInputProvider>

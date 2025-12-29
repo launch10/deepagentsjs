@@ -34,37 +34,24 @@ export class BrainstormPage {
   constructor(page: Page) {
     this.page = page;
 
-    // Chat input elements
-    this.chatInput = page.locator(
-      '[data-testid="chat-input"], textarea[placeholder*="business idea"]'
-    );
-    this.sendButton = page.locator(
-      '[data-testid="send-button"], button[type="submit"]'
-    );
+    // Chat input elements - use data-testid for stability
+    this.chatInput = page.getByTestId('chat-input');
+    // Send button - use data-testid or aria-label
+    this.sendButton = page.getByTestId('send-button');
 
-    // Message list
-    this.messageList = page.locator(
-      '[data-testid="message-list"], [role="log"]'
-    );
-    this.userMessages = page.locator(
-      '[data-testid="user-message"], [data-role="user"]'
-    );
-    this.aiMessages = page.locator(
-      '[data-testid="ai-message"], [data-role="assistant"]'
-    );
+    // Message list - using data-testid for stability
+    this.messageList = page.getByTestId("message-list");
+    this.userMessages = page.getByTestId("user-message");
+    this.aiMessages = page.getByTestId("ai-message");
 
     // Thinking/loading indicator
-    this.thinkingIndicator = page.locator(
-      '[data-testid="thinking-indicator"], [role="status"]'
-    );
+    this.thinkingIndicator = page.getByTestId("thinking-indicator");
 
     // Command buttons
-    this.commandButtons = page.locator('[data-testid="command-buttons"]');
+    this.commandButtons = page.getByTestId("command-buttons");
 
     // Social links section
-    this.socialLinksSection = page.locator(
-      '[data-testid="social-links"], [aria-label="Social Links"]'
-    );
+    this.socialLinksSection = page.getByTestId("social-links");
 
     // Loading states
     this.skeleton = page.locator('[data-slot="skeleton"]');
@@ -89,7 +76,8 @@ export class BrainstormPage {
    */
   async goto(): Promise<void> {
     await this.page.goto("/");
-    await this.page.waitForLoadState("networkidle");
+    // Wait for chat input to be ready instead of networkidle (Vite HMR keeps websocket active)
+    await this.chatInput.waitFor({ state: "visible", timeout: 10000 });
   }
 
   /**
@@ -97,7 +85,7 @@ export class BrainstormPage {
    */
   async gotoNew(): Promise<void> {
     await this.page.goto("/projects/new");
-    await this.page.waitForLoadState("networkidle");
+    await this.chatInput.waitFor({ state: "visible", timeout: 10000 });
   }
 
   /**
@@ -105,7 +93,7 @@ export class BrainstormPage {
    */
   async gotoConversation(threadId: string): Promise<void> {
     await this.page.goto(`/projects/${threadId}/brainstorm`);
-    await this.page.waitForLoadState("networkidle");
+    await this.chatInput.waitFor({ state: "visible", timeout: 10000 });
   }
 
   /**

@@ -3,7 +3,9 @@
  * Mirrors the pattern from langgraph_app/app/services/core/railsApi/snapshotter.ts
  */
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
+import { e2eConfig } from "../config";
+
+const BASE_URL = e2eConfig.railsBaseUrl;
 
 export interface DatabaseOperationResult {
   status: string;

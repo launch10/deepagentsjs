@@ -1,7 +1,12 @@
 import { useEffect, useRef, useMemo, useCallback } from "react";
 import type { MessageBlock, InferBridgeData } from "langgraph-ai-sdk-types";
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
-import { useBrainstormChatMessages, useBrainstormChatIsStreaming } from "@hooks/useBrainstormChat";
+import {
+  useBrainstormChatMessages,
+  useBrainstormChatIsStreaming,
+  useBrainstormChatState,
+  useBrainstormChatActions,
+} from "@hooks/useBrainstormChat";
 import { Chat } from "@components/chat";
 import { BrainstormMessage } from "./BrainstormMessage";
 import { QuestionBadge } from "./QuestionBadge";
@@ -12,12 +17,29 @@ type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
 type BrainstormBlock = MessageBlock<BrainstormLanggraphData>;
 
 /**
+ * User-friendly labels for each command
+ */
+const CommandLabels: Record<Brainstorm.CommandName, string> = {
+  helpMe: "Help Me Answer",
+  skip: "Skip This",
+  doTheRest: "Do The Rest",
+  finished: "Build My Site",
+};
+
+/**
+ * Commands that should be styled as primary (more prominent action)
+ */
+const PrimaryCommands: Brainstorm.CommandName[] = ["finished", "doTheRest"];
+
+/**
  * Displays the brainstorm message list.
  * Fetches messages and status directly via hooks.
  */
 export function BrainstormMessages() {
   const messages = useBrainstormChatMessages();
   const isStreaming = useBrainstormChatIsStreaming();
+  const availableCommands = useBrainstormChatState("availableCommands");
+  const { sendMessage } = useBrainstormChatActions();
   const { setInput, textareaRef } = useBrainstormInput();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -32,6 +54,12 @@ export function BrainstormMessages() {
     setInput(text);
     textareaRef.current?.focus();
   }, [setInput, textareaRef]);
+
+  // Handle clicking on command buttons
+  const handleCommandClick = useCallback((commandName: Brainstorm.CommandName) => {
+    const prompt = Brainstorm.commandToPrompt(commandName);
+    sendMessage(prompt);
+  }, [sendMessage]);
 
   // Pre-compute message metadata in a single O(n) pass instead of O(n^2)
   const messageMetadata = useMemo(() => {
@@ -56,7 +84,7 @@ export function BrainstormMessages() {
   const totalQuestions = Brainstorm.BrainstormTopics.length;
 
   return (
-    <Chat.MessageList.Root className="flex-1 p-4 space-y-4">
+    <Chat.MessageList.Root className="flex-1 p-4 space-y-4 mx-auto" style={{ maxWidth: "808px" }}>
       {messages.map((message, index) => {
         const { isUser, isLastMessage, questionNumber } = messageMetadata[index];
 
@@ -81,6 +109,13 @@ export function BrainstormMessages() {
           return <Chat.ThinkingIndicator key={message.id} text="Thinking" />;
         }
 
+        // Show command buttons only on last AI message when not streaming
+        const showCommandButtons =
+          isLastMessage &&
+          !isStreaming &&
+          availableCommands &&
+          availableCommands.length > 0;
+
         return (
           <div key={message.id} className="space-y-3">
             {/* Question badge appears before AI message content */}
@@ -90,6 +125,20 @@ export function BrainstormMessages() {
               isActive={isLastMessage}
               onExampleClick={handleExampleClick}
             />
+            {/* Command buttons appear after last AI message */}
+            {showCommandButtons && (
+              <Chat.CommandButtons.Root>
+                {availableCommands.map((commandName) => (
+                  <Chat.CommandButtons.Button
+                    key={commandName}
+                    variant={PrimaryCommands.includes(commandName) ? "primary" : "secondary"}
+                    onClick={() => handleCommandClick(commandName)}
+                  >
+                    {CommandLabels[commandName]}
+                  </Chat.CommandButtons.Button>
+                ))}
+              </Chat.CommandButtons.Root>
+            )}
           </div>
         );
       })}

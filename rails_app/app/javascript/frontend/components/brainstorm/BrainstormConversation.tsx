@@ -9,7 +9,6 @@ import {
 import { BrainstormInputProvider } from "./BrainstormInputContext";
 import { BrainstormMessages } from "./BrainstormMessages";
 import { BrainstormInput } from "./BrainstormInput";
-import { BrainstormCommandButtons } from "./BrainstormCommandButtons";
 import { BrandPersonalizationPanel } from "./BrandPersonalizationPanel";
 import { BrainstormChatSkeleton } from "./BrainstormChatSkeleton";
 
@@ -89,22 +88,25 @@ export function BrainstormConversation() {
   // Content ready - fade in
   return (
     <div
-      className={`transition-opacity duration-300 ease-out ${
+      className={`h-full flex flex-col transition-opacity duration-300 ease-out ${
         contentVisible ? "opacity-100" : "opacity-0"
       }`}
     >
       <BrainstormInputProvider>
-        <div className="flex flex-col h-full min-h-0">
-          <div className="flex flex-1 min-h-0">
-            {/* Left sidebar - Brand Personalization Panel */}
-            <div className="hidden lg:block p-4 shrink-0">
-              <BrandPersonalizationPanel />
-            </div>
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Left sidebar - Brand Personalization Panel */}
+          <div className="hidden lg:block p-4 shrink-0">
+            <BrandPersonalizationPanel />
+          </div>
 
-            {/* Main chat area */}
-            <div className="flex-1 flex flex-col min-h-0">
+          {/* Main chat area */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* Scrollable messages area */}
+            <div className="flex-1 overflow-y-auto min-h-0">
               <BrainstormMessages />
-              <BrainstormCommandButtons />
+            </div>
+            {/* Fixed bottom input area */}
+            <div className="shrink-0 bg-neutral-background">
               <BrainstormInput />
             </div>
           </div>

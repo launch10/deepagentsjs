@@ -15,11 +15,11 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
         workflow={workflow as any}
         projectUUID={(project as any)?.uuid ?? null}
       >
-        <div className="flex min-h-screen">
+        <div className="flex h-screen overflow-hidden">
           <MainSidebar />
-          <div className="flex-1 flex flex-col bg-background">
+          <div className="flex-1 flex flex-col bg-background overflow-hidden">
             <Header />
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 overflow-hidden">{children}</main>
           </div>
         </div>
       </WorkflowStepsProvider>

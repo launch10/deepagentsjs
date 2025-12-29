@@ -10,7 +10,6 @@ export { BrainstormConversation } from "./BrainstormConversation";
 export { BrainstormTopic } from "./BrainstormTopic";
 export { BrainstormMessages } from "./BrainstormMessages";
 export { BrainstormInput } from "./BrainstormInput";
-export { BrainstormCommandButtons } from "./BrainstormCommandButtons";
 export { BrainstormMessage } from "./BrainstormMessage";
 export { BrainstormInputProvider, useBrainstormInput } from "./BrainstormInputContext";
 export { BrainstormChatSkeleton } from "./BrainstormChatSkeleton";
