@@ -8,7 +8,7 @@ import {
   deleteLogo as deleteLogoApi,
   selectLogo,
   selectIsUploadingLogo,
-  selectError,
+  selectLogoError,
 } from "@stores/brandPersonalization";
 import { useProjectLogo } from "@api/uploads.hooks";
 
@@ -24,12 +24,12 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
 
   const logo = useBrandPersonalizationStore(selectLogo);
   const isUploading = useBrandPersonalizationStore(selectIsUploadingLogo);
-  const error = useBrandPersonalizationStore(selectError);
+  const error = useBrandPersonalizationStore(selectLogoError);
 
   const setLogo = useBrandPersonalizationStore((s) => s.setLogo);
   const removeLogo = useBrandPersonalizationStore((s) => s.removeLogo);
   const setIsUploadingLogo = useBrandPersonalizationStore((s) => s.setIsUploadingLogo);
-  const setError = useBrandPersonalizationStore((s) => s.setError);
+  const setError = useBrandPersonalizationStore((s) => s.setLogoError);
 
   const [isDragging, setIsDragging] = useState(false);
   const [isHovering, setIsHovering] = useState(false);

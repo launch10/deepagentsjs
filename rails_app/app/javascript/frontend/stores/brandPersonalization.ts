@@ -30,7 +30,8 @@ export interface BrandPersonalizationState {
   selectedThemeId: number | null;
   socialLinks: SocialLinks;
   projectImages: ProjectImage[];
-  error: string | null;
+  logoError: string | null;
+  projectImagesError: string | null;
   isUploadingLogo: boolean;
   uploadingImageIds: Set<string>;
 
@@ -42,7 +43,8 @@ export interface BrandPersonalizationState {
   setProjectImages: (images: ProjectImage[]) => void;
   addProjectImage: (image: ProjectImage) => void;
   removeProjectImage: (uploadId: number) => void;
-  setError: (error: string | null) => void;
+  setLogoError: (error: string | null) => void;
+  setProjectImagesError: (error: string | null) => void;
   setIsUploadingLogo: (isUploading: boolean) => void;
   addUploadingImageId: (id: string) => void;
   removeUploadingImageId: (id: string) => void;
@@ -72,7 +74,8 @@ const createInitialState = () => ({
     youtube: "",
   },
   projectImages: [],
-  error: null,
+  logoError: null,
+  projectImagesError: null,
   isUploadingLogo: false,
   uploadingImageIds: new Set<string>(),
 });
@@ -85,7 +88,7 @@ export const brandPersonalizationStore = create<BrandPersonalizationState>()(
   subscribeWithSelector((set, get) => ({
     ...createInitialState(),
 
-    setLogo: (logo) => set({ logo, error: null }),
+    setLogo: (logo) => set({ logo, logoError: null }),
 
     removeLogo: () => set({ logo: null }),
 
@@ -96,27 +99,29 @@ export const brandPersonalizationStore = create<BrandPersonalizationState>()(
         socialLinks: { ...state.socialLinks, [platform]: url },
       })),
 
-    setProjectImages: (images) => set({ projectImages: images, error: null }),
+    setProjectImages: (images) => set({ projectImages: images, projectImagesError: null }),
 
     addProjectImage: (image) => {
       const { projectImages } = get();
       if (projectImages.length >= MAX_PROJECT_IMAGES) {
-        set({ error: `Maximum ${MAX_PROJECT_IMAGES} images allowed` });
+        set({ projectImagesError: `Maximum ${MAX_PROJECT_IMAGES} images allowed` });
         return;
       }
       set((state) => ({
         projectImages: [...state.projectImages, image],
-        error: null,
+        projectImagesError: null,
       }));
     },
 
     removeProjectImage: (uploadId) =>
       set((state) => ({
         projectImages: state.projectImages.filter((img) => img.uploadId !== uploadId),
-        error: null,
+        projectImagesError: null,
       })),
 
-    setError: (error) => set({ error }),
+    setLogoError: (logoError) => set({ logoError }),
+
+    setProjectImagesError: (projectImagesError) => set({ projectImagesError }),
 
     setIsUploadingLogo: (isUploadingLogo) => set({ isUploadingLogo }),
 
@@ -240,7 +245,8 @@ export const selectLogo = (s: BrandPersonalizationState) => s.logo;
 export const selectSelectedThemeId = (s: BrandPersonalizationState) => s.selectedThemeId;
 export const selectSocialLinks = (s: BrandPersonalizationState) => s.socialLinks;
 export const selectProjectImages = (s: BrandPersonalizationState) => s.projectImages;
-export const selectError = (s: BrandPersonalizationState) => s.error;
+export const selectLogoError = (s: BrandPersonalizationState) => s.logoError;
+export const selectProjectImagesError = (s: BrandPersonalizationState) => s.projectImagesError;
 export const selectIsUploadingLogo = (s: BrandPersonalizationState) => s.isUploadingLogo;
 export const selectUploadingImageIds = (s: BrandPersonalizationState) => s.uploadingImageIds;
 

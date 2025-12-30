@@ -8,46 +8,37 @@
 
 - **File Storage:** Cloudflare R2 with separate buckets per environment (`uploads` for prod, `dev-uploads` for dev)
 - **Asset Host:** `https://uploads.launch10.ai` (prod), `https://dev-uploads.launch10.ai` (dev)
-- **CORS:** R2 buckets must be configured to allow cross-origin requests from app origins
+- **CORS:** R2 buckets configured with `AllowedOrigins: *`
+- **COEP:** App uses Cross-Origin Embedder Policy, requiring `crossOrigin="anonymous"` on cross-origin images
 
 ---
 
 ## Decision Log
 
-### 2024-12-30: Configure CORS on R2 buckets instead of using crossOrigin attribute
+### 2024-12-30: Use crossOrigin="anonymous" for R2 images with COEP
 
-**Context:** Images from R2 were blocked in development with error:
+**Context:** Images from R2 were blocked with error:
 ```
 ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep
 ```
 
-This is caused by Cross-Origin Embedder Policy (COEP) blocking resources that don't have proper CORS headers.
+R2 CORS was already configured with `AllowedOrigins: *`, but the app uses **COEP** (Cross-Origin Embedder Policy: require-corp). COEP requires cross-origin resources to either:
+1. Have `Cross-Origin-Resource-Policy: cross-origin` header, OR
+2. Be fetched in CORS mode via `crossorigin` attribute
 
-**Decision:** Configure CORS policy directly on Cloudflare R2 buckets rather than adding `crossOrigin="anonymous"` to img tags.
+**Decision:** Add `crossOrigin="anonymous"` to img tags loading R2 images.
 
 **Why:**
-- Fixes the issue at the source (infrastructure level)
-- Works for all image usages across the entire app
-- Doesn't require code changes for every img tag
-- More maintainable - new image usages automatically work
+- R2 CORS is already configured correctly
+- Adding `crossorigin="anonymous"` triggers CORS mode, which satisfies COEP
+- No infrastructure changes needed
+- Works immediately
 
-**Configuration:** In Cloudflare R2 dashboard → bucket → Settings → CORS Policy:
-```json
-[
-  {
-    "AllowedOrigins": ["http://localhost:3000", "http://localhost:5173"],
-    "AllowedMethods": ["GET", "HEAD"],
-    "AllowedHeaders": ["*"],
-    "MaxAgeSeconds": 3600
-  }
-]
-```
+**Trade-off:** Must add `crossOrigin="anonymous"` to any img tag loading from R2. This is acceptable since R2 images are only used in specific components (logo upload, project images).
 
-For production, add the production origins as well.
-
-**Alternative considered:** Adding `crossOrigin="anonymous"` to all img tags
-- Pros: Quick fix, no infrastructure changes
-- Cons: Must remember for every img tag, scattered across codebase, treats symptom not cause
+**Alternative considered:** Adding `Cross-Origin-Resource-Policy: cross-origin` header to R2
+- R2 doesn't easily support custom response headers without Cloudflare Workers
+- Would require additional infrastructure complexity
 
 **Status:** Current
 

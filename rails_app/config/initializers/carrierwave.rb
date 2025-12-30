@@ -25,13 +25,15 @@ CarrierWave.configure do |config|
     # defensive headers to prevent script execution if served inline.
     config.aws_attributes = lambda { |file|
       attrs = {
-        # Prevent MIME type sniffing attacks
-        "x-amz-meta-x-content-type-options" => "nosniff"
+        # Prevent MIME type sniffing attacks (AWS SDK uses metadata hash, not x-amz-meta- prefix)
+        metadata: {
+          "x-content-type-options" => "nosniff"
+        }
       }
 
       # For SVG files, force download to prevent inline script execution
       if file&.content_type == "image/svg+xml"
-        attrs["content_disposition"] = "attachment"
+        attrs[:content_disposition] = "attachment"
       end
 
       attrs

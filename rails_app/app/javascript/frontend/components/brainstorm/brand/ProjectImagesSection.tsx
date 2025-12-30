@@ -8,7 +8,7 @@ import {
   deleteProjectImage as deleteProjectImageApi,
   selectProjectImages,
   selectUploadingImageIds,
-  selectError,
+  selectProjectImagesError,
 } from "@stores/brandPersonalization";
 import { useProjectImages } from "@api/uploads.hooks";
 
@@ -25,14 +25,14 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
 
   const projectImages = useBrandPersonalizationStore(selectProjectImages);
   const uploadingIds = useBrandPersonalizationStore(selectUploadingImageIds);
-  const error = useBrandPersonalizationStore(selectError);
+  const error = useBrandPersonalizationStore(selectProjectImagesError);
 
   const addProjectImage = useBrandPersonalizationStore((s) => s.addProjectImage);
   const setProjectImages = useBrandPersonalizationStore((s) => s.setProjectImages);
   const removeProjectImage = useBrandPersonalizationStore((s) => s.removeProjectImage);
   const addUploadingImageId = useBrandPersonalizationStore((s) => s.addUploadingImageId);
   const removeUploadingImageId = useBrandPersonalizationStore((s) => s.removeUploadingImageId);
-  const setError = useBrandPersonalizationStore((s) => s.setError);
+  const setError = useBrandPersonalizationStore((s) => s.setProjectImagesError);
 
   const [isDragging, setIsDragging] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -183,7 +183,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
       />
 
       {/* Image grid */}
-      {projectImages.length > 0 && (
+      {(projectImages.length > 0 || uploadingIds.size > 0) && (
         <div className="grid grid-cols-3 gap-2" data-testid="project-images-grid">
           {projectImages.map((image) => {
             const isImageDeleting = deletingIds.has(image.uploadId);

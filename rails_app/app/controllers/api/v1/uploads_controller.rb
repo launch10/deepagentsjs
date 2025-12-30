@@ -48,16 +48,10 @@ class API::V1::UploadsController < API::BaseController
   private
 
   def destroy_upload(upload)
-    # Skip file removal to avoid errors if file doesn't exist on storage
-    upload.remove_file = false
     upload.destroy!
-
-    # Try to remove file separately, ignoring errors if file doesn't exist
-    begin
-      upload.file.remove! if upload.file.present?
-    rescue StandardError => e
-      Rails.logger.warn "[Upload] Could not remove file for upload #{upload.id}: #{e.message}"
-    end
+  rescue Aws::S3::Errors::NotFound => e
+    # File already gone from storage - record is deleted, this is fine
+    Rails.logger.warn "[Upload] File not found on storage during destroy: #{e.message}"
   end
 
   def upload_params
