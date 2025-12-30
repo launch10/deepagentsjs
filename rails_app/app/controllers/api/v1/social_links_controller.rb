@@ -3,7 +3,7 @@ class API::V1::SocialLinksController < API::BaseController
   before_action :set_social_link, only: [:show, :update, :destroy]
 
   def index
-    @social_links = @project.social_links.order(:platform)
+    @social_links = @project.social_links.order(:id)
     render json: @social_links
   end
 

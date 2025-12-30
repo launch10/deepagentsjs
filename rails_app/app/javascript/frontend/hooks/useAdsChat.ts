@@ -61,8 +61,30 @@ export function useAdsChatIsLoadingHistory() {
   return useAdsChat((s) => s.isLoadingHistory);
 }
 
+/**
+ * Returns chat actions with sendMessage guarded against empty messages.
+ * Empty messages (whitespace-only) are blocked unless additional state is provided.
+ * This prevents the Langgraph backend from becoming unresponsive when receiving
+ * empty message payloads.
+ */
 export function useAdsChatActions() {
-  return useAdsChat((s) => s.actions);
+  return useAdsChat((s) => {
+    const { sendMessage, ...rest } = s.actions;
+
+    const guardedSendMessage: typeof sendMessage = (message, additionalState) => {
+      const hasMessage = message.trim().length > 0;
+      const hasAdditionalState = additionalState && Object.keys(additionalState).length > 0;
+
+      if (!hasMessage && !hasAdditionalState) {
+        console.warn("[useAdsChatActions] Blocked empty message submission");
+        return;
+      }
+
+      sendMessage(message, additionalState);
+    };
+
+    return { sendMessage: guardedSendMessage, ...rest };
+  });
 }
 
 export function useAdsChatThreadId() {

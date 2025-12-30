@@ -10,8 +10,10 @@ class API::V1::UploadsController < API::BaseController
     end
 
     # Filter by specific IDs if provided
-    if params[:ids].present?
-      ids = Array(params[:ids]).map(&:to_i)
+    # Rails receives array params as ids[] from query string
+    ids_param = params[:ids]
+    if ids_param.present?
+      ids = Array(ids_param).map(&:to_i)
       @uploads = @uploads.where(id: ids)
     end
 

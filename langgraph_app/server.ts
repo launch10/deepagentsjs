@@ -14,7 +14,7 @@ const app = new Hono();
 app.use("*", logger());
 app.use("*", prettyJSON());
 
-const defaultOrigins = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"];
+const defaultOrigins = env.NODE_ENV === "production" ? ["https://launch10.ai"] : ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"];
 const allowedOrigins = env.ALLOWED_ORIGINS
   ? [...env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()), ...defaultOrigins]
   : defaultOrigins;
@@ -22,7 +22,7 @@ const allowedOrigins = env.ALLOWED_ORIGINS
 app.use(
   "*",
   cors({
-    origin: env.NODE_ENV === "production" ? ["https://yourdomain.com"] : allowedOrigins,
+    origin: allowedOrigins,
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],

@@ -24,7 +24,7 @@ export function useUploadService() {
   return useMemo(() => new UploadService({ jwt }), [jwt]);
 }
 
-export function useWebsiteId(): number | null {
+function useWebsiteId(): number | null {
   const { data: website } = useWebsite();
   return website?.id ?? null;
 }

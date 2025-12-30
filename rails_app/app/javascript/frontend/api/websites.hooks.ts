@@ -35,7 +35,7 @@ export function useWebsiteService() {
 /**
  * Hook to get the current project UUID from page props
  */
-export function useProjectUuid(): string | null {
+function useProjectUuid(): string | null {
   const { project } = usePage<{ project?: { uuid: string } }>().props;
   return project?.uuid ?? null;
 }

@@ -87,10 +87,26 @@ export class UploadsAPIService extends RailsAPIBase {
     }
 
     const client = await this.getClient();
-    // Pass ids as array - openapi-fetch serializes arrays as ids[]=1&ids[]=2
+    // openapi-fetch by default uses comma-separated arrays (ids=1,2,3)
+    // but Rails expects bracket notation (ids[]=1&ids[]=2&ids[]=3)
+    // We use querySerializer to generate Rails-compatible array params
     const response = await client.GET("/api/v1/uploads", {
       params: {
-        query: { ids: ids } as unknown as GetUploadsRequest,
+        query: { "ids[]": ids } as unknown as GetUploadsRequest,
+      },
+      querySerializer: (params) => {
+        const searchParams = new URLSearchParams();
+        for (const [key, value] of Object.entries(params)) {
+          if (Array.isArray(value)) {
+            // Rails expects ids[]=1&ids[]=2 format for arrays
+            for (const v of value) {
+              searchParams.append(key, String(v));
+            }
+          } else if (value !== undefined && value !== null) {
+            searchParams.append(key, String(value));
+          }
+        }
+        return searchParams.toString();
       },
     });
 

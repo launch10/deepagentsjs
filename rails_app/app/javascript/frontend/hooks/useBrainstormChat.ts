@@ -78,8 +78,30 @@ export function useBrainstormChatIsLoadingHistory() {
   return useBrainstormChat((s) => s.isLoadingHistory);
 }
 
+/**
+ * Returns chat actions with sendMessage guarded against empty messages.
+ * Empty messages (whitespace-only) are blocked unless additional state is provided
+ * (e.g., uploadIds for file attachments). This prevents the Langgraph backend
+ * from becoming unresponsive when receiving empty message payloads.
+ */
 export function useBrainstormChatActions() {
-  return useBrainstormChat((s) => s.actions);
+  return useBrainstormChat((s) => {
+    const { sendMessage, ...rest } = s.actions;
+
+    const guardedSendMessage: typeof sendMessage = (message, additionalState) => {
+      const hasMessage = message.trim().length > 0;
+      const hasAdditionalState = additionalState && Object.keys(additionalState).length > 0;
+
+      if (!hasMessage && !hasAdditionalState) {
+        console.warn("[useBrainstormChatActions] Blocked empty message submission");
+        return;
+      }
+
+      sendMessage(message, additionalState);
+    };
+
+    return { sendMessage: guardedSendMessage, ...rest };
+  });
 }
 
 export function useBrainstormChatThreadId() {
