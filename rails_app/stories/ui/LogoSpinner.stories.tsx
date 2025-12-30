@@ -3,7 +3,7 @@ import LogoSpinner from "@components/ui/logo-spinner";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 const meta = {
-  title: "UI/Spinner",
+  title: "UI/Spinner/Logo",
   component: LogoSpinner,
   tags: ["autodocs"],
   parameters: {
