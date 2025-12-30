@@ -133,3 +133,47 @@ export function useBulkUpsertSocialLinks(
     },
   });
 }
+
+interface DeleteSocialLinkVariables {
+  socialLinkId: number;
+}
+
+/**
+ * Hook for deleting a social link.
+ * Automatically removes the link from the cache on success.
+ *
+ * @example
+ * ```tsx
+ * const { mutate } = useDeleteSocialLink();
+ * mutate({ socialLinkId: 123 });
+ * ```
+ */
+export function useDeleteSocialLink(
+  options?: MutationOptions<void, DeleteSocialLinkVariables>
+) {
+  const service = useSocialLinksService();
+  const projectUuid = useProjectUuid();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ socialLinkId }: DeleteSocialLinkVariables) => {
+      if (!projectUuid) {
+        throw new Error("Project UUID is required");
+      }
+      return service.delete(projectUuid, socialLinkId);
+    },
+    ...options,
+    onSuccess: (...args) => {
+      const [, variables] = args;
+      // Remove the deleted link from the cache
+      if (projectUuid) {
+        queryClient.setQueryData<GetSocialLinksResponse>(
+          socialLinksKeys.list(projectUuid),
+          (oldData) => oldData?.filter((link) => link.id !== variables.socialLinkId) ?? []
+        );
+      }
+      // Then call user's onSuccess if provided
+      options?.onSuccess?.(...args);
+    },
+  });
+}

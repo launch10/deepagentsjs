@@ -31,6 +31,7 @@ class Upload < ApplicationRecord
 
   has_many :website_uploads, dependent: :destroy
   has_many :websites, through: :website_uploads
+  has_many :projects, through: :websites
   belongs_to :account
 
   validates :file, presence: true

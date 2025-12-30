@@ -1,38 +1,58 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import {
   useBrandPersonalizationStore,
   useBrandPersonalizationActions,
-  selectProductImages,
+  selectProjectImages,
   selectUploadingImageIds,
   selectError,
 } from "@context/BrandPersonalizationProvider";
+import { useProjectImages } from "@api/uploads.hooks";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.webp";
 const MAX_IMAGES = 10;
 
-interface ProductImagesSectionProps {
+interface ProjectImagesSectionProps {
   className?: string;
 }
 
-export function ProductImagesSection({ className }: ProductImagesSectionProps) {
-  const productImages = useBrandPersonalizationStore(selectProductImages);
+export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
+  const projectImages = useBrandPersonalizationStore(selectProjectImages);
   const uploadingIds = useBrandPersonalizationStore(selectUploadingImageIds);
   const error = useBrandPersonalizationStore(selectError);
-  const { uploadProductImage } = useBrandPersonalizationActions();
+  const { uploadProjectImage } = useBrandPersonalizationActions();
 
-  const addProductImage = useBrandPersonalizationStore((s) => s.addProductImage);
-  const removeProductImage = useBrandPersonalizationStore((s) => s.removeProductImage);
+  const addProjectImage = useBrandPersonalizationStore((s) => s.addProjectImage);
+  const setProjectImages = useBrandPersonalizationStore((s) => s.setProjectImages);
+  const removeProjectImage = useBrandPersonalizationStore((s) => s.removeProjectImage);
   const addUploadingImageId = useBrandPersonalizationStore((s) => s.addUploadingImageId);
   const removeUploadingImageId = useBrandPersonalizationStore((s) => s.removeUploadingImageId);
   const setError = useBrandPersonalizationStore((s) => s.setError);
 
   const [isDragging, setIsDragging] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const canAddMore = productImages.length < MAX_IMAGES;
+  // Fetch existing images from API
+  const { data: existingImages } = useProjectImages();
+
+  // Initialize store with existing images
+  useEffect(() => {
+    if (existingImages && existingImages.length > 0 && !hasInitialized) {
+      setProjectImages(
+        existingImages.map((img) => ({
+          uploadId: img.id,
+          url: img.url,
+          thumbUrl: img.thumb_url ?? undefined,
+        }))
+      );
+      setHasInitialized(true);
+    }
+  }, [existingImages, hasInitialized, setProjectImages]);
+
+  const canAddMore = projectImages.length < MAX_IMAGES;
   const isUploading = uploadingIds.size > 0;
 
   const validateFile = (file: File): string | null => {
@@ -63,10 +83,10 @@ export function ProductImagesSection({ className }: ProductImagesSectionProps) {
       addUploadingImageId(tempId);
 
       try {
-        const uploadedImage = await uploadProductImage(file, tempId);
-        addProductImage(uploadedImage);
+        const uploadedImage = await uploadProjectImage(file, tempId);
+        addProjectImage(uploadedImage);
       } catch (err) {
-        console.error("Product image upload failed:", err);
+        console.error("Project image upload failed:", err);
         setError("Upload failed. Please try again.");
       } finally {
         removeUploadingImageId(tempId);
@@ -74,8 +94,8 @@ export function ProductImagesSection({ className }: ProductImagesSectionProps) {
     },
     [
       canAddMore,
-      uploadProductImage,
-      addProductImage,
+      uploadProjectImage,
+      addProjectImage,
       setError,
       addUploadingImageId,
       removeUploadingImageId,
@@ -118,9 +138,9 @@ export function ProductImagesSection({ className }: ProductImagesSectionProps) {
 
   const handleRemove = useCallback(
     (uploadId: number) => {
-      removeProductImage(uploadId);
+      removeProjectImage(uploadId);
     },
-    [removeProductImage]
+    [removeProjectImage]
   );
 
   return (
@@ -128,7 +148,7 @@ export function ProductImagesSection({ className }: ProductImagesSectionProps) {
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-base-500">Images</h3>
         <span className="text-xs text-base-300">
-          {productImages.length}/{MAX_IMAGES}
+          {projectImages.length}/{MAX_IMAGES}
         </span>
       </div>
 
@@ -139,20 +159,20 @@ export function ProductImagesSection({ className }: ProductImagesSectionProps) {
         onChange={handleFileSelect}
         multiple
         className="hidden"
-        data-testid="product-images-input"
+        data-testid="project-images-input"
       />
 
       {/* Image grid */}
-      {productImages.length > 0 && (
-        <div className="grid grid-cols-3 gap-2" data-testid="product-images-grid">
-          {productImages.map((image) => (
+      {projectImages.length > 0 && (
+        <div className="grid grid-cols-3 gap-2" data-testid="project-images-grid">
+          {projectImages.map((image) => (
             <div
               key={image.uploadId}
               className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 group"
             >
               <img
                 src={image.thumbUrl || image.url}
-                alt="Product"
+                alt="Project image"
                 className="w-full h-full object-cover"
               />
               <button
@@ -160,7 +180,7 @@ export function ProductImagesSection({ className }: ProductImagesSectionProps) {
                 onClick={() => handleRemove(image.uploadId)}
                 className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
                 aria-label="Remove image"
-                data-testid={`product-image-remove-${image.uploadId}`}
+                data-testid={`project-image-remove-${image.uploadId}`}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -194,12 +214,12 @@ export function ProductImagesSection({ className }: ProductImagesSectionProps) {
               : "border-neutral-300 bg-white hover:border-neutral-400",
             isUploading && "pointer-events-none opacity-60"
           )}
-          data-testid="product-images-upload-area"
+          data-testid="project-images-upload-area"
         >
           <div className="w-6 h-6 rounded bg-neutral-100 flex items-center justify-center">
             <Upload className="w-3 h-3 text-base-500" />
           </div>
-          <p className="text-xs text-base-400">Add product images</p>
+          <p className="text-xs text-base-400">Add project images</p>
         </div>
       )}
 

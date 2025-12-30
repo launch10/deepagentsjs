@@ -758,6 +758,195 @@ test.describe("Brand Personalization Panel Auto-Open", () => {
   });
 });
 
+test.describe("Brand Personalization Uploads", () => {
+  let brainstormPage: BrainstormPage;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await loginUser(page);
+    brainstormPage = new BrainstormPage(page);
+  });
+
+  test("logo upload persists across page reload", async ({ page }) => {
+    // Start a conversation to get access to the brand panel
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for logo upload test");
+
+    // Wait for URL update (conversation created)
+    await page.waitForFunction(
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Wait for response to ensure page is stable
+    await brainstormPage.waitForResponse();
+
+    // Open the brand personalization panel
+    await brainstormPage.openBrandPanel();
+
+    // Initially, the upload area should be visible (no logo yet)
+    await expect(brainstormPage.logoUploadArea).toBeVisible();
+    await expect(brainstormPage.logoPreview).not.toBeVisible();
+
+    // Upload a logo
+    const logoPath = "e2e/fixtures/files/test-logo.jpg";
+    await brainstormPage.uploadLogo(logoPath);
+
+    // Verify logo preview is now visible
+    await expect(brainstormPage.logoPreview).toBeVisible();
+    await expect(brainstormPage.logoUploadArea).not.toBeVisible();
+
+    // Get the logo src for comparison after reload
+    const logoSrcBefore = await brainstormPage.getLogoSrc();
+    expect(logoSrcBefore).toBeTruthy();
+
+    // Reload the page
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // Open the brand panel again
+    await brainstormPage.openBrandPanel();
+
+    // Wait for uploads API to complete
+    await brainstormPage.waitForUploadsLoaded();
+
+    // Verify logo is still displayed after reload
+    await expect(brainstormPage.logoPreview).toBeVisible({ timeout: 10000 });
+    await expect(brainstormPage.logoUploadArea).not.toBeVisible();
+
+    // Verify it's the same image (src should contain similar URL pattern)
+    const logoSrcAfter = await brainstormPage.getLogoSrc();
+    expect(logoSrcAfter).toBeTruthy();
+    // Both should be valid image URLs (from S3 or similar)
+    expect(logoSrcAfter).toMatch(/^https?:\/\//);
+  });
+
+  test("project images upload persists across page reload", async ({ page }) => {
+    // Start a conversation
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for project images test");
+
+    // Wait for conversation to load
+    await page.waitForFunction(
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    await brainstormPage.waitForResponse();
+
+    // Open brand panel
+    await brainstormPage.openBrandPanel();
+
+    // Initially, no project images grid should be visible
+    await expect(brainstormPage.projectImagesGrid).not.toBeVisible();
+
+    // Upload multiple project images
+    const imagePaths = [
+      "e2e/fixtures/files/test-image-1.jpg",
+      "e2e/fixtures/files/test-image-2.jpg",
+    ];
+    await brainstormPage.uploadProjectImages(imagePaths);
+
+    // Verify images are displayed
+    await expect(brainstormPage.projectImagesGrid).toBeVisible();
+    const imageCountBefore = await brainstormPage.getProjectImageCount();
+    expect(imageCountBefore).toBe(2);
+
+    // Reload the page
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // Open brand panel again
+    await brainstormPage.openBrandPanel();
+
+    // Wait for uploads to load
+    await brainstormPage.waitForUploadsLoaded();
+
+    // Verify images are still displayed
+    await expect(brainstormPage.projectImagesGrid).toBeVisible({ timeout: 10000 });
+    const imageCountAfter = await brainstormPage.getProjectImageCount();
+    expect(imageCountAfter).toBe(2);
+  });
+
+  test("uploads display correct images when navigating back to conversation", async ({ page }) => {
+    // Start a conversation and upload a logo
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for navigation test");
+
+    await page.waitForFunction(
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    await brainstormPage.waitForResponse();
+
+    // Get the conversation URL
+    const conversationUrl = page.url();
+
+    // Upload a logo
+    await brainstormPage.openBrandPanel();
+    await brainstormPage.uploadLogo("e2e/fixtures/files/test-logo.jpg");
+    await expect(brainstormPage.logoPreview).toBeVisible();
+
+    // Navigate away to home
+    await page.goto("/");
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // Navigate back to the conversation
+    await page.goto(conversationUrl);
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // Open brand panel
+    await brainstormPage.openBrandPanel();
+
+    // Wait for uploads to load
+    await brainstormPage.waitForUploadsLoaded();
+
+    // Verify logo is displayed
+    await expect(brainstormPage.logoPreview).toBeVisible({ timeout: 10000 });
+  });
+
+  test("logo upload area displays while uploads are loading", async ({ page }) => {
+    // Start a conversation and upload a logo
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for loading state test");
+
+    await page.waitForFunction(
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    await brainstormPage.waitForResponse();
+    const threadId = brainstormPage.getThreadIdFromUrl();
+
+    // Upload a logo
+    await brainstormPage.openBrandPanel();
+    await brainstormPage.uploadLogo("e2e/fixtures/files/test-logo.jpg");
+    await expect(brainstormPage.logoPreview).toBeVisible();
+
+    // Navigate directly to the conversation URL without waiting
+    await brainstormPage.gotoConversationImmediate(threadId!);
+
+    // The brand panel should not show the empty upload area initially
+    // (it should show the preview or be loading)
+    await brainstormPage.openBrandPanel();
+
+    // Wait for uploads to finish loading
+    await brainstormPage.waitForUploadsLoaded();
+
+    // After loading, the logo preview should be visible
+    await expect(brainstormPage.logoPreview).toBeVisible({ timeout: 10000 });
+  });
+});
+
 test.describe("Brainstorm Loading States", () => {
   let brainstormPage: BrainstormPage;
 

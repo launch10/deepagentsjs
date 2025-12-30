@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, Check, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { useSocialLinks, useBulkUpsertSocialLinks } from "@api/socialLinks.hooks";
+import { useSocialLinks, useBulkUpsertSocialLinks, useDeleteSocialLink } from "@api/socialLinks.hooks";
 
 interface SocialLinksSectionProps {
   className?: string;
@@ -108,9 +108,14 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
     },
   });
 
-  // Use a ref to store the mutate function to avoid it being a dependency
+  // Delete mutation for clearing individual social links
+  const deleteMutation = useDeleteSocialLink();
+
+  // Use refs to store the mutate functions to avoid them being dependencies
   const mutateRef = useRef(bulkUpsertMutation.mutate);
   mutateRef.current = bulkUpsertMutation.mutate;
+  const deleteRef = useRef(deleteMutation.mutate);
+  deleteRef.current = deleteMutation.mutate;
 
   // Initialize form from API data
   useEffect(() => {
@@ -133,6 +138,14 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
       lastSavedRef.current = JSON.stringify(linksMap);
     }
   }, [existingSocialLinks, methods]);
+
+  // Helper to find existing link by platform
+  const getExistingLinkByPlatform = useCallback(
+    (platform: LocalSocialPlatform) => {
+      return existingSocialLinks.find((link) => link.platform === platform);
+    },
+    [existingSocialLinks]
+  );
 
   // Watch form changes with separate debounces for validation and autosave
   useEffect(() => {
@@ -168,11 +181,22 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
         const currentValue = JSON.stringify(formData);
         if (currentValue === lastSavedRef.current) return;
 
-        // Only save if we have any non-empty values
-        const hasValues = Object.values(formData).some((v) => v.trim().length > 0);
-        if (!hasValues) return;
+        // Find platforms to delete (had a saved link, now empty)
+        const platformsToDelete = SOCIAL_PLATFORMS.filter(({ platform }) => {
+          const existingLink = getExistingLinkByPlatform(platform);
+          const currentValue = formData[platform].trim();
+          return existingLink && currentValue.length === 0;
+        });
 
-        // Convert to API format and save
+        // Delete cleared platforms
+        platformsToDelete.forEach(({ platform }) => {
+          const existingLink = getExistingLinkByPlatform(platform);
+          if (existingLink) {
+            deleteRef.current({ socialLinkId: existingLink.id });
+          }
+        });
+
+        // Convert to API format and save non-empty values
         const socialLinksToSave = SOCIAL_PLATFORMS.filter(
           ({ platform }) => formData[platform].trim().length > 0
         ).map(({ platform }) => ({
@@ -180,8 +204,10 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
           url: formData[platform],
         }));
 
+        // Update lastSavedRef before mutations
+        lastSavedRef.current = currentValue;
+
         if (socialLinksToSave.length > 0) {
-          lastSavedRef.current = currentValue;
           mutateRef.current({ socialLinks: socialLinksToSave });
         }
       }, 750);
@@ -196,7 +222,7 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
         clearTimeout(autosaveTimerRef.current);
       }
     };
-  }, [methods]);
+  }, [methods, getExistingLinkByPlatform]);
 
   const handleLinkChange = useCallback(
     (platform: LocalSocialPlatform, url: string) => {
@@ -230,7 +256,7 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
     <div className={twMerge("space-y-2", className)}>
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-base-500">Social Links</h3>
-        {bulkUpsertMutation.isPending && (
+        {(bulkUpsertMutation.isPending || deleteMutation.isPending) && (
           <Loader2 className="w-3 h-3 text-base-300 animate-spin" />
         )}
       </div>
@@ -247,7 +273,7 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
             isSaved={
               existingSocialLinks.some(
                 (link) => link.platform === platform && link.url === watchedValues[platform]
-              ) && !bulkUpsertMutation.isPending
+              ) && !bulkUpsertMutation.isPending && !deleteMutation.isPending
             }
           />
         ))}

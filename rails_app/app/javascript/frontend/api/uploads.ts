@@ -1,9 +1,10 @@
 import { RailsAPIBase, type paths } from "@rails_api_base";
 import type { Simplify } from "type-fest";
 
-export type GetUploadsRequest = Required<
-  NonNullable<paths["/api/v1/uploads"]["get"]["parameters"]["query"]>
->;
+export type GetUploadsRequest = {
+  website_id?: number;
+  is_logo?: boolean;
+};
 export type GetUploadsResponse = NonNullable<
   paths["/api/v1/uploads"]["get"]["responses"][200]["content"]["application/json"]
 >;

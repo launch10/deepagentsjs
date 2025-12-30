@@ -1,3 +1,24 @@
+# == Schema Information
+#
+# Table name: social_links
+#
+#  id         :bigint           not null, primary key
+#  handle     :string
+#  platform   :string           not null
+#  url        :string
+#  created_at :datetime         not null
+#  updated_at :datetime         not null
+#  project_id :bigint           not null
+#
+# Indexes
+#
+#  index_social_links_on_project_id               (project_id)
+#  index_social_links_on_project_id_and_platform  (project_id,platform) UNIQUE
+#
+# Foreign Keys
+#
+#  fk_rails_...  (project_id => projects.id)
+#
 require "rails_helper"
 
 RSpec.describe SocialLink, type: :model do

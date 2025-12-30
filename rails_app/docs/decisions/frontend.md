@@ -7,12 +7,44 @@
 ## Current State
 
 React + Inertia.js + Vite. Tailwind CSS v4 with custom design tokens.
-Radix UI primitives with CVA for variants. Lucide icons.
+Radix UI primitives with CVA for variants.
+**Icons (internal app):** Heroicons (from Tailwind Labs).
+**Icons (user-generated sites):** Lucide icons.
+**Illustrations:** Streamline Milano style (PNG, free tier).
 File uploads validated client-side before upload, with immediate upload on selection.
 
 ---
 
 ## Decision Log
+
+### 2025-12-30: Icon and Illustration Libraries
+
+**Context:** Need consistent visual assets across the internal Launch10 app and user-generated landing pages.
+
+**Decision:** Use different icon libraries for different contexts:
+
+**Icons:**
+- **Internal app (Launch10 UI):** [Heroicons](https://github.com/tailwindlabs/heroicons) from Tailwind Labs
+- **User-generated sites (landing pages):** Lucide icons
+
+**Illustrations:**
+- **Source:** [Streamline Milano](https://www.streamlinehq.com/illustrations/milano) style
+- **Format:** PNG (free tier) - download and recolor in Figma as needed
+- **Note:** SVG versions require paid Streamline plan, avoiding for now
+
+**Why:**
+- Heroicons integrate seamlessly with Tailwind CSS (same team)
+- Lucide already established in landing page generation templates
+- Milano illustrations have a clean, modern aesthetic that fits our brand
+- PNG recoloring in Figma is a viable workaround for the free tier
+
+**Trade-offs:**
+- Two icon libraries to maintain awareness of (internal vs generated)
+- PNG illustrations require manual recoloring (no programmatic color changes)
+
+**Status:** Current
+
+---
 
 ### 2025-12-29: Frontend File Type Validation for Brainstorm Uploads
 

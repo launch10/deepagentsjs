@@ -6,7 +6,7 @@ export interface BrandLogo {
   thumbUrl?: string;
 }
 
-export interface ProductImage {
+export interface ProjectImage {
   uploadId: number;
   url: string;
   thumbUrl?: string;
@@ -25,7 +25,7 @@ export interface BrandPersonalizationState {
   logo: BrandLogo | null;
   selectedThemeId: number | null;
   socialLinks: SocialLinks;
-  productImages: ProductImage[];
+  projectImages: ProjectImage[];
   error: string | null;
   isUploadingLogo: boolean;
   uploadingImageIds: Set<string>;
@@ -35,8 +35,9 @@ export interface BrandPersonalizationState {
   removeLogo: () => void;
   setTheme: (themeId: number | null) => void;
   setSocialLink: (platform: SocialPlatform, url: string) => void;
-  addProductImage: (image: ProductImage) => void;
-  removeProductImage: (uploadId: number) => void;
+  setProjectImages: (images: ProjectImage[]) => void;
+  addProjectImage: (image: ProjectImage) => void;
+  removeProjectImage: (uploadId: number) => void;
   setError: (error: string | null) => void;
   setIsUploadingLogo: (isUploading: boolean) => void;
   addUploadingImageId: (id: string) => void;
@@ -44,7 +45,7 @@ export interface BrandPersonalizationState {
   reset: () => void;
 }
 
-const MAX_PRODUCT_IMAGES = 10;
+const MAX_PROJECT_IMAGES = 10;
 
 const createInitialState = () => ({
   logo: null,
@@ -54,7 +55,7 @@ const createInitialState = () => ({
     instagram: "",
     youtube: "",
   },
-  productImages: [],
+  projectImages: [],
   error: null,
   isUploadingLogo: false,
   uploadingImageIds: new Set<string>(),
@@ -75,21 +76,23 @@ export const createBrandPersonalizationStore = () => {
         socialLinks: { ...state.socialLinks, [platform]: url },
       })),
 
-    addProductImage: (image) => {
-      const { productImages } = get();
-      if (productImages.length >= MAX_PRODUCT_IMAGES) {
-        set({ error: `Maximum ${MAX_PRODUCT_IMAGES} images allowed` });
+    setProjectImages: (images) => set({ projectImages: images, error: null }),
+
+    addProjectImage: (image) => {
+      const { projectImages } = get();
+      if (projectImages.length >= MAX_PROJECT_IMAGES) {
+        set({ error: `Maximum ${MAX_PROJECT_IMAGES} images allowed` });
         return;
       }
       set((state) => ({
-        productImages: [...state.productImages, image],
+        projectImages: [...state.projectImages, image],
         error: null,
       }));
     },
 
-    removeProductImage: (uploadId) =>
+    removeProjectImage: (uploadId) =>
       set((state) => ({
-        productImages: state.productImages.filter((img) => img.uploadId !== uploadId),
+        projectImages: state.projectImages.filter((img) => img.uploadId !== uploadId),
         error: null,
       })),
 

@@ -5,7 +5,7 @@ import {
   createBrandPersonalizationStore,
   type BrandPersonalizationState,
   type BrandLogo,
-  type ProductImage,
+  type ProjectImage,
 } from "@stores/brandPersonalization";
 import { UploadService, type CreateUploadResponse } from "@api/uploads";
 import { ThemeService, type GetThemesResponse, type CreateThemeResponse } from "@api/themes";
@@ -15,7 +15,7 @@ type BrandPersonalizationStoreApi = StoreApi<BrandPersonalizationState>;
 interface BrandPersonalizationContextType {
   store: BrandPersonalizationStoreApi;
   uploadLogo: (file: File) => Promise<BrandLogo>;
-  uploadProductImage: (file: File, tempId: string) => Promise<ProductImage>;
+  uploadProjectImage: (file: File, tempId: string) => Promise<ProjectImage>;
   fetchThemes: () => Promise<GetThemesResponse>;
   createTheme: (name: string, colors: string[]) => Promise<CreateThemeResponse>;
 }
@@ -31,7 +31,7 @@ interface BrandPersonalizationProviderProps {
  * Provides upload functions and theme fetching pre-configured with JWT.
  */
 export function BrandPersonalizationProvider({ children }: BrandPersonalizationProviderProps) {
-  const { jwt } = usePage<{ jwt: string }>().props;
+  const { jwt, website } = usePage<{ jwt: string; website?: { id: number } }>().props;
 
   // Create store once (stable reference)
   const [store] = useState(() => createBrandPersonalizationStore());
@@ -43,6 +43,7 @@ export function BrandPersonalizationProvider({ children }: BrandPersonalizationP
       const response: CreateUploadResponse = await uploadService.create({
         "upload[file]": file,
         "upload[is_logo]": true,
+        "upload[website_id]": website?.id,
       });
 
       return {
@@ -51,16 +52,17 @@ export function BrandPersonalizationProvider({ children }: BrandPersonalizationP
         thumbUrl: response.thumb_url ?? undefined,
       };
     },
-    [jwt]
+    [jwt, website?.id]
   );
 
-  // Upload product image function
-  const uploadProductImage = useCallback(
-    async (file: File, _tempId: string): Promise<ProductImage> => {
+  // Upload project image function
+  const uploadProjectImage = useCallback(
+    async (file: File, _tempId: string): Promise<ProjectImage> => {
       const uploadService = new UploadService({ jwt });
       const response: CreateUploadResponse = await uploadService.create({
         "upload[file]": file,
         "upload[is_logo]": false,
+        "upload[website_id]": website?.id,
       });
 
       return {
@@ -69,7 +71,7 @@ export function BrandPersonalizationProvider({ children }: BrandPersonalizationP
         thumbUrl: response.thumb_url ?? undefined,
       };
     },
-    [jwt]
+    [jwt, website?.id]
   );
 
   // Fetch themes function
@@ -94,7 +96,7 @@ export function BrandPersonalizationProvider({ children }: BrandPersonalizationP
 
   return (
     <BrandPersonalizationContext.Provider
-      value={{ store, uploadLogo, uploadProductImage, fetchThemes, createTheme }}
+      value={{ store, uploadLogo, uploadProjectImage, fetchThemes, createTheme }}
     >
       {children}
     </BrandPersonalizationContext.Provider>
@@ -127,8 +129,8 @@ export function useBrandPersonalizationActions() {
     );
   }
 
-  const { uploadLogo, uploadProductImage, fetchThemes, createTheme } = context;
-  return { uploadLogo, uploadProductImage, fetchThemes, createTheme };
+  const { uploadLogo, uploadProjectImage, fetchThemes, createTheme } = context;
+  return { uploadLogo, uploadProjectImage, fetchThemes, createTheme };
 }
 
 /**
@@ -141,12 +143,12 @@ export function useBrandPersonalization() {
   }
 
   const state = useStore(context.store);
-  const { uploadLogo, uploadProductImage, fetchThemes, createTheme } = context;
+  const { uploadLogo, uploadProjectImage, fetchThemes, createTheme } = context;
 
   return {
     ...state,
     uploadLogo,
-    uploadProductImage,
+    uploadProjectImage,
     fetchThemes,
     createTheme,
   };
@@ -156,14 +158,14 @@ export function useBrandPersonalization() {
 export const selectLogo = (s: BrandPersonalizationState) => s.logo;
 export const selectSelectedThemeId = (s: BrandPersonalizationState) => s.selectedThemeId;
 export const selectSocialLinks = (s: BrandPersonalizationState) => s.socialLinks;
-export const selectProductImages = (s: BrandPersonalizationState) => s.productImages;
+export const selectProjectImages = (s: BrandPersonalizationState) => s.projectImages;
 export const selectError = (s: BrandPersonalizationState) => s.error;
 export const selectIsUploadingLogo = (s: BrandPersonalizationState) => s.isUploadingLogo;
 export const selectUploadingImageIds = (s: BrandPersonalizationState) => s.uploadingImageIds;
 
 /**
  * Selector to check if any brand personalizations have been applied.
- * Returns true if logo, theme, social links, or product images have been set.
+ * Returns true if logo, theme, social links, or project images have been set.
  */
 export const selectHasAnyPersonalizations = (s: BrandPersonalizationState): boolean => {
   const hasSocialLinks = Boolean(
@@ -173,6 +175,6 @@ export const selectHasAnyPersonalizations = (s: BrandPersonalizationState): bool
     s.logo ||
     s.selectedThemeId !== null ||
     hasSocialLinks ||
-    s.productImages.length > 0
+    s.projectImages.length > 0
   );
 };

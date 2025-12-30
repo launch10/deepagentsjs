@@ -69,4 +69,17 @@ export class SocialLinksService extends RailsAPIBase {
 
     return response.data satisfies BulkUpsertSocialLinksResponse;
   }
+
+  async delete(projectUuid: string, socialLinkId: number): Promise<void> {
+    const client = await this.getClient();
+    const response = await client.DELETE("/api/v1/projects/{project_uuid}/social_links/{id}", {
+      params: {
+        path: { project_uuid: projectUuid, id: socialLinkId },
+      },
+    });
+
+    if (response.error) {
+      throw new Error(`Failed to delete social link: ${JSON.stringify(response.error)}`);
+    }
+  }
 }

@@ -9,6 +9,11 @@ class API::V1::UploadsController < API::BaseController
       @uploads = website.uploads.order(id: :desc)
     end
 
+    # Filter by is_logo if specified
+    if params[:is_logo].present?
+      @uploads = @uploads.where(is_logo: params[:is_logo])
+    end
+
     render json: @uploads.map(&:to_json)
   end
 
@@ -16,6 +21,9 @@ class API::V1::UploadsController < API::BaseController
     result = Upload.create_upload!(current_account, upload_params)
     upload = result[:upload]
     render json: upload.to_json, status: :created
+  rescue ActiveRecord::RecordNotFound => e
+    Rails.logger.error "[Upload Error] #{e.class}: #{e.message}"
+    render json: { errors: "invalid upload" }, status: :unprocessable_entity
   rescue => e
     Rails.logger.error "[Upload Error] #{e.class}: #{e.message}"
     Rails.logger.error e.backtrace.first(5).join("\n")

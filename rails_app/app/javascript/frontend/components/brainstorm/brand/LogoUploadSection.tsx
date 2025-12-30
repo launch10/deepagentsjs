@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, RefreshCw, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import {
@@ -8,6 +8,7 @@ import {
   selectIsUploadingLogo,
   selectError,
 } from "@context/BrandPersonalizationProvider";
+import { useProjectLogo } from "@api/uploads.hooks";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/svg+xml"];
 const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.svg";
@@ -30,6 +31,21 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch existing logo from API
+  const { data: existingLogos, isLoading: isFetchingLogo } = useProjectLogo();
+
+  // Initialize store with existing logo
+  useEffect(() => {
+    if (existingLogos && existingLogos.length > 0 && !logo) {
+      const existingLogo = existingLogos[0];
+      setLogo({
+        uploadId: existingLogo.id,
+        url: existingLogo.url,
+        thumbUrl: existingLogo.thumb_url ?? undefined,
+      });
+    }
+  }, [existingLogos, logo, setLogo]);
 
   const validateFile = (file: File): string | null => {
     if (!ACCEPTED_TYPES.includes(file.type)) {

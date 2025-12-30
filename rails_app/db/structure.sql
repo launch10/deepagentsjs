@@ -3125,7 +3125,8 @@ CREATE TABLE public.uploads (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     original_filename character varying,
-    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb
+    platform_settings jsonb DEFAULT '{"meta": {}, "google": {}}'::jsonb,
+    project_id bigint
 );
 
 
@@ -7299,6 +7300,13 @@ CREATE INDEX index_uploads_on_media_type ON public.uploads USING btree (media_ty
 
 
 --
+-- Name: index_uploads_on_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_uploads_on_project_id ON public.uploads USING btree (project_id);
+
+
+--
 -- Name: index_uploads_on_uuid; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8203,6 +8211,7 @@ ALTER TABLE ONLY public.website_urls
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251230132615'),
 ('20251229001513'),
 ('20251223152858'),
 ('20251223010445'),

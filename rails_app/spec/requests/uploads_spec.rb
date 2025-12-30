@@ -45,7 +45,8 @@ RSpec.describe "Uploads API", type: :request do
 
       parameter name: 'upload[file]', in: :formData, type: :file, required: true
       parameter name: 'upload[is_logo]', in: :formData, type: :boolean, required: false
-      parameter name: 'upload[website_id]', in: :formData, type: :integer, required: false
+      parameter name: 'upload[website_id]', in: :formData, type: :integer, required: false,
+                description: 'Associate upload with a website (also sets project_id from website)'
 
       before do
         switch_account_to(user1_owned_account)
@@ -88,6 +89,8 @@ RSpec.describe "Uploads API", type: :request do
           expect(upload.account_id).to eq(user1_owned_account.id)
           expect(upload.websites).to include(website1_owned)
           expect(upload.is_logo).to eq(false)
+          # project is derived through website association
+          expect(upload.projects).to include(project1_owned)
         end
       end
 
@@ -229,10 +232,12 @@ RSpec.describe "Uploads API", type: :request do
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
       parameter name: :website_id, in: :query, type: :integer, required: false, description: 'Filter by website'
+      parameter name: :is_logo, in: :query, type: :boolean, required: false,
+                description: 'Filter by logo status (true for logos, false for product images)'
 
-      let!(:upload1_owned) { create(:upload, account: user1_owned_account) }
+      let!(:upload1_owned) { create(:upload, account: user1_owned_account, is_logo: false) }
       let!(:upload2_owned) { create(:upload, account: user1_owned_account, is_logo: true) }
-      let!(:upload1_team) { create(:upload, account: user1_team_account) }
+      let!(:upload1_team) { create(:upload, account: user1_team_account, is_logo: false) }
 
       before do
         website1_owned.uploads << upload1_owned
@@ -261,6 +266,34 @@ RSpec.describe "Uploads API", type: :request do
           data = JSON.parse(response.body)
           expect(data.length).to eq(1)
           expect(data.first["id"]).to eq(upload1_owned.id)
+        end
+      end
+
+      response "200", "returns only logos when is_logo=true" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:is_logo) { true }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data.length).to eq(1)
+          expect(data.first["id"]).to eq(upload2_owned.id)
+          expect(data.first["is_logo"]).to eq(true)
+        end
+      end
+
+      response "200", "returns only non-logos when is_logo=false" do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:is_logo) { false }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data.length).to eq(1)
+          expect(data.first["id"]).to eq(upload1_owned.id)
+          expect(data.first["is_logo"]).to eq(false)
         end
       end
 

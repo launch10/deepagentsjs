@@ -36,6 +36,14 @@ export class BrainstormPage {
   readonly brandPersonalizationToggle: Locator;
   readonly brandPersonalizationContent: Locator;
 
+  // Upload elements
+  readonly logoUploadArea: Locator;
+  readonly logoPreview: Locator;
+  readonly logoFileInput: Locator;
+  readonly projectImagesInput: Locator;
+  readonly projectImagesGrid: Locator;
+  readonly projectImagesUploadArea: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
@@ -78,6 +86,14 @@ export class BrainstormPage {
     this.brandPersonalizationPanel = page.getByTestId("brand-personalization-panel");
     this.brandPersonalizationToggle = page.getByTestId("brand-personalization-toggle");
     this.brandPersonalizationContent = page.getByTestId("brand-personalization-content");
+
+    // Upload elements
+    this.logoUploadArea = page.getByTestId("logo-upload-area");
+    this.logoPreview = page.getByTestId("logo-preview");
+    this.logoFileInput = page.getByTestId("logo-file-input");
+    this.projectImagesInput = page.getByTestId("project-images-input");
+    this.projectImagesGrid = page.getByTestId("project-images-grid");
+    this.projectImagesUploadArea = page.getByTestId("project-images-upload-area");
   }
 
   /**
@@ -270,5 +286,70 @@ export class BrainstormPage {
   async selectColorPalette(index: number = 0): Promise<void> {
     const palettes = this.page.locator('[data-testid^="color-palette-"]');
     await palettes.nth(index).click();
+  }
+
+  /**
+   * Upload a logo image via the file input
+   * @param filePath - Path to the image file to upload
+   */
+  async uploadLogo(filePath: string): Promise<void> {
+    // Set the file on the hidden input
+    await this.logoFileInput.setInputFiles(filePath);
+    // Wait for the upload to complete and preview to appear
+    await this.logoPreview.waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  /**
+   * Upload project images via the file input
+   * @param filePaths - Array of paths to the image files to upload
+   */
+  async uploadProjectImages(filePaths: string[]): Promise<void> {
+    await this.projectImagesInput.setInputFiles(filePaths);
+    // Wait for the grid to appear (indicates at least one image uploaded)
+    await this.projectImagesGrid.waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  /**
+   * Check if logo preview is visible
+   */
+  async isLogoPreviewVisible(): Promise<boolean> {
+    return await this.logoPreview.isVisible();
+  }
+
+  /**
+   * Check if logo upload area (empty state) is visible
+   */
+  async isLogoUploadAreaVisible(): Promise<boolean> {
+    return await this.logoUploadArea.isVisible();
+  }
+
+  /**
+   * Get the count of project images in the grid
+   */
+  async getProjectImageCount(): Promise<number> {
+    const images = this.projectImagesGrid.locator("img");
+    return await images.count();
+  }
+
+  /**
+   * Get the logo image src from the preview
+   */
+  async getLogoSrc(): Promise<string | null> {
+    const img = this.logoPreview.locator("img");
+    return await img.getAttribute("src");
+  }
+
+  /**
+   * Wait for uploads API to complete (monitors network requests)
+   */
+  async waitForUploadsLoaded(): Promise<void> {
+    // Wait for any uploads API call to complete
+    await this.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/v1/uploads") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+      { timeout: 10000 }
+    );
   }
 }

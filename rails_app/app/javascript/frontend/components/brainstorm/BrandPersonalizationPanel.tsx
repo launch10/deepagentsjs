@@ -4,7 +4,7 @@ import { twMerge } from "tailwind-merge";
 import { LogoUploadSection } from "./brand/LogoUploadSection";
 import { ColorPaletteSection } from "./brand/ColorPaletteSection";
 import { SocialLinksSection } from "./brand/SocialLinksSection";
-import { ProductImagesSection } from "./brand/ProductImagesSection";
+import { ProjectImagesSection } from "./brand/ProjectImagesSection";
 
 interface BrandPersonalizationPanelProps {
   className?: string;
@@ -60,7 +60,7 @@ export function BrandPersonalizationPanel({ className, shouldAutoOpen = false }:
           <LogoUploadSection />
           <ColorPaletteSection />
           <SocialLinksSection />
-          <ProductImagesSection />
+          <ProjectImagesSection />
         </div>
       )}
     </div>
