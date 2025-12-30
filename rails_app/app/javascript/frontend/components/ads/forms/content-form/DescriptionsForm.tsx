@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Badge } from "@components/ui/badge";
 import { Field, FieldGroup } from "@components/ui/field";
 import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
@@ -16,12 +15,6 @@ import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
 import type { UpdateCampaignRequestBody } from "@api/campaigns";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 
-const descriptionsFormSchema = z.object({
-  descriptions: z.array(Ads.AssetSchema),
-});
-
-type DescriptionsFormData = z.infer<typeof descriptionsFormSchema>;
-
 export default function DescriptionsForm() {
   const descriptions = useAdsChatState("descriptions");
   const { setState, updateState } = useAdsChatActions();
@@ -29,8 +22,8 @@ export default function DescriptionsForm() {
   const filteredDescriptions = (descriptions || []).filter((d) => !d.rejected);
   const prevIdsRef = useRef<string[]>([]);
 
-  const methods = useForm<DescriptionsFormData>({
-    resolver: zodResolver(descriptionsFormSchema) as any,
+  const methods = useForm<Ads.DescriptionsOutput>({
+    resolver: zodResolver(Ads.DescriptionsOutputSchema) as any,
     mode: "onChange",
     defaultValues: {
       descriptions: filteredDescriptions,
@@ -73,7 +66,7 @@ export default function DescriptionsForm() {
     });
   };
 
-  const { saveNow } = useAutosaveCampaign<DescriptionsFormData>({
+  const { saveNow } = useAutosaveCampaign<Ads.DescriptionsOutput>({
     methods,
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const transformed = defaultAssetTransform(data.descriptions);

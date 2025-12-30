@@ -1,12 +1,27 @@
 import InputLockable from "@components/forms/input-lockable";
 import { Field, FieldError } from "@components/ui/field";
+import { Ads } from "@shared";
 import type { Control, FieldArrayWithId } from "react-hook-form";
 import { Controller } from "react-hook-form";
-import type { AdCampaignFormData } from "./AdCampaignForm.schema";
+import z from "zod";
+
+export const adCampaignSchema = z.object({
+  adGroupName: z.string().min(1, "Ad group name is required"),
+  headlines: Ads.HeadlinesOutputSchema,
+  descriptions: Ads.DescriptionsOutputSchema,
+  features: z.array(Ads.AssetSchema),
+  callouts: Ads.CalloutsOutputSchema,
+});
+
+type AdCampaignFormData = z.infer<typeof adCampaignSchema>;
 
 interface AdCampaignFieldListProps {
   fieldName: "headlines" | "descriptions" | "features" | "callouts" | "details" | "keywords";
-  fields: FieldArrayWithId<AdCampaignFormData, "headlines" | "descriptions" | "features", "id">[];
+  fields: FieldArrayWithId<
+    AdCampaignFormData,
+    "headlines.headlines" | "descriptions.descriptions" | "features" | "callouts.callouts",
+    "id"
+  >[];
   control: Control<AdCampaignFormData>;
   onLockToggle?: (
     fieldName: "headlines" | "descriptions" | "features" | "callouts" | "details" | "keywords",
@@ -42,7 +57,7 @@ export default function AdCampaignFieldList({
 
   return (
     <>
-      {fields.map((field, index) => {
+      {fields.map((field: Ads.Asset, index: number) => {
         const originalIndex = resolveIndex ? resolveIndex(field.id) : index;
         return (
           <Controller

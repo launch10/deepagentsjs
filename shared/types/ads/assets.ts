@@ -1,31 +1,38 @@
 import { z } from "zod";
 import { uuidSchema } from "../core";
-import * as  Workflow from "../workflow";
+import * as Workflow from "../workflow";
 
-export const AssetKinds = ["headlines", "descriptions", "callouts", "structuredSnippets", "keywords"] as const;
-export type AssetKind = typeof AssetKinds[number];
+export const AssetKinds = [
+  "headlines",
+  "descriptions",
+  "callouts",
+  "structuredSnippets",
+  "keywords",
+] as const;
+export type AssetKind = (typeof AssetKinds)[number];
 
 export const StageNames = Workflow.SubstepNames;
-export type StageName = typeof StageNames[number];
+export type StageName = (typeof StageNames)[number];
 
 export const ContentStages = ["content", "highlights", "keywords"] as const;
-export type ContentStage = typeof ContentStages[number];
+export type ContentStage = (typeof ContentStages)[number];
 
-export const NonContentStages = StageNames.filter(stage => !ContentStages.includes(stage as ContentStage)) as Exclude<StageName, ContentStage>[];
-export type NonContentStage = typeof NonContentStages[number];
+export const NonContentStages = StageNames.filter(
+  (stage) => !ContentStages.includes(stage as ContentStage)
+) as Exclude<StageName, ContentStage>[];
+export type NonContentStage = (typeof NonContentStages)[number];
 
 const ContentStagesSet = new Set<string>(ContentStages);
 
-export const isContentStage = (stage: StageName): stage is
-ContentStage => {
-    return ContentStagesSet.has(stage);
+export const isContentStage = (stage: StageName): stage is ContentStage => {
+  return ContentStagesSet.has(stage);
 };
 
 export const AssetSchema = z.object({
-    id: uuidSchema,
-    text: z.string(),
-    rejected: z.boolean(),
-    locked: z.boolean()
+  id: uuidSchema,
+  text: z.string(),
+  rejected: z.boolean(),
+  locked: z.boolean(),
 });
 
 export type Asset = z.infer<typeof AssetSchema>;
@@ -52,17 +59,34 @@ export const StructuredSnippetCategoryKeys = [
   "types",
 ] as const;
 
-export type StructuredSnippetCategoryKey = typeof StructuredSnippetCategoryKeys[number];
+export type StructuredSnippetCategoryKey = (typeof StructuredSnippetCategoryKeys)[number];
 
-export const StructuredSnippetCategoryNames = ["Amenities", "Brands", "Courses", "Degree programs", "Destinations", "Featured hotels" , "Insurance coverage" , "Models" , "Neighborhoods" , "Service catalog" , "Shows" , "Styles" , "Types"] as const;
-export type StructuredSnippetCategoryName = typeof StructuredSnippetCategoryNames[number];
+export const StructuredSnippetCategoryNames = [
+  "Amenities",
+  "Brands",
+  "Courses",
+  "Degree programs",
+  "Destinations",
+  "Featured hotels",
+  "Insurance coverage",
+  "Models",
+  "Neighborhoods",
+  "Service catalog",
+  "Shows",
+  "Styles",
+  "Types",
+] as const;
+export type StructuredSnippetCategoryName = (typeof StructuredSnippetCategoryNames)[number];
 export interface StructuredSnippetCategoryDefinition {
   key: StructuredSnippetCategoryName;
   definition?: string;
   examples: string;
 }
 
-export const StructuredSnippetCategories: Record<StructuredSnippetCategoryKey, StructuredSnippetCategoryDefinition> = {
+export const StructuredSnippetCategories: Record<
+  StructuredSnippetCategoryKey,
+  StructuredSnippetCategoryDefinition
+> = {
   brands: {
     key: "Brands",
     definition: "Company or product line names",
@@ -131,7 +155,7 @@ export const StructuredSnippetCategories: Record<StructuredSnippetCategoryKey, S
 
 export const StructuredSnippetsSchema = z.object({
   category: z.enum(StructuredSnippetCategoryNames),
-  details: z.array(AssetSchema)
+  details: z.array(AssetSchema),
 });
 
 // Real character limits for final assets (what Google actually accepts)
@@ -162,41 +186,69 @@ export const AssetLimits: Record<AssetKind, AssetLimit> = {
   descriptions: { min: 2, max: 4 },
   callouts: { min: 2, max: 10 },
   structuredSnippets: { min: 3, max: 10 },
-  keywords: { min: 1, max: 20 }
+  keywords: { min: 1, max: 20 },
 };
 
 export const limitAssets = <T>(assets: T[], kind: AssetKind): T[] => {
-    return assets.slice(0, AssetLimits[kind].max);
+  return assets.slice(0, AssetLimits[kind].max);
 };
 
 export type StructuredSnippets = z.infer<typeof StructuredSnippetsSchema>;
 
 // LLM output schemas with character limits
+export const headlineSchema = AssetSchema.extend({
+  text: z
+    .string()
+    .min(1, "Headlines cannot be empty")
+    .max(AssetLengths.headlines, `Headlines must be ${AssetLengths.headlines} characters or less`),
+});
 export const HeadlinesOutputSchema = z.object({
-    headlines: z.array(z.string().max(30, "Headlines must be 30 characters or less"))
+  headlines: z.array(headlineSchema),
 });
 export type HeadlinesOutput = z.infer<typeof HeadlinesOutputSchema>;
 
+export const descriptionSchema = AssetSchema.extend({
+  text: z
+    .string()
+    .min(1, "Descriptions cannot be empty")
+    .max(
+      AssetLengths.descriptions,
+      `Descriptions must be ${AssetLengths.descriptions} characters or less`
+    ),
+});
 export const DescriptionsOutputSchema = z.object({
-    descriptions: z.array(z.string().max(90, "Descriptions must be 90 characters or less"))
+  descriptions: z.array(descriptionSchema),
 });
 export type DescriptionsOutput = z.infer<typeof DescriptionsOutputSchema>;
 
+export const callousSchema = AssetSchema.extend({
+  text: z
+    .string()
+    .min(1, "Callouts cannot be empty")
+    .max(AssetLengths.callouts, `Callouts must be ${AssetLengths.callouts} characters or less`),
+});
 export const CalloutsOutputSchema = z.object({
-    callouts: z.array(z.string().max(25, "Callouts must be 25 characters or less"))
+  callouts: z.array(callousSchema),
 });
 export type CalloutsOutput = z.infer<typeof CalloutsOutputSchema>;
 
+const detailsSchema = AssetSchema.extend({
+  text: z
+    .string()
+    .min(1, "Snippet details cannot be empty")
+    .max(
+      AssetLengths.structuredSnippets,
+      `Snippet details must be ${AssetLengths.structuredSnippets} characters or less`
+    ),
+});
 export const StructuredSnippetsOutputSchema = z.object({
-    structuredSnippets: z.object({
-        category: z.enum(StructuredSnippetCategoryNames),
-        details: z.array(z.string().max(25, "Snippet details must be 25 characters or less"))
-    })
+  category: z.enum(StructuredSnippetCategoryNames),
+  details: z.array(detailsSchema),
 });
 export type StructuredSnippetsOutput = z.infer<typeof StructuredSnippetsOutputSchema>;
 
 export const KeywordsOutputSchema = z.object({
-    keywords: z.array(z.string())
+  keywords: z.array(z.string()),
 });
 export type KeywordsOutput = z.infer<typeof KeywordsOutputSchema>;
 
@@ -204,65 +256,65 @@ export type KeywordsOutput = z.infer<typeof KeywordsOutputSchema>;
 export const StreamedAssetSchema = z.array(z.string());
 export type StreamedAsset = z.infer<typeof StreamedAssetSchema>;
 export const StreamedSnippetsSchema = z.object({
-    category: z.enum(StructuredSnippetCategoryNames),
-    details: StreamedAssetSchema
-}); 
+  category: z.enum(StructuredSnippetCategoryNames),
+  details: StreamedAssetSchema,
+});
 export type StreamedSnippets = z.infer<typeof StreamedSnippetsSchema>;
 
 export type Stage = {
-    stage: StageName;
-    assets: AssetKind[];
-}
+  stage: StageName;
+  assets: AssetKind[];
+};
 
 export type StageMap = {
-    [key in StageName]: Stage;
-}
+  [key in StageName]: Stage;
+};
 
 export const Stages: Partial<StageMap> = {
-    "content": {
-        stage: "content",
-        assets: ["headlines", "descriptions"]
-    },
-    "highlights": {
-        stage: "highlights",
-        assets: ["callouts", "structuredSnippets"]
-    },
-    "keywords": {
-        stage: "keywords",
-        assets: ["keywords"]
-    },
-    "settings": {
-        stage: "settings",
-        assets: []
-    },
-    "launch": {
-        stage: "launch",
-        assets: []
-    },
-    "review": {
-        stage: "review",
-        assets: []
-    }
+  content: {
+    stage: "content",
+    assets: ["headlines", "descriptions"],
+  },
+  highlights: {
+    stage: "highlights",
+    assets: ["callouts", "structuredSnippets"],
+  },
+  keywords: {
+    stage: "keywords",
+    assets: ["keywords"],
+  },
+  settings: {
+    stage: "settings",
+    assets: [],
+  },
+  launch: {
+    stage: "launch",
+    assets: [],
+  },
+  review: {
+    stage: "review",
+    assets: [],
+  },
 };
 
 export const assetsForStage = (stage: StageName): AssetKind[] => {
-    return Stages[stage]?.assets ?? [];
+  return Stages[stage]?.assets ?? [];
 };
 
 type PromptFn = (state: any, config?: any) => Promise<string>;
 type OutputFormatFn = (state: any, config?: any) => Promise<string[] | object>;
 type SchemaFn = (state: any, config?: any) => z.ZodSchema;
 export interface AssetPromptConfig {
-    prompt: PromptFn;
-    outputFormat: OutputFormatFn;
-    schema: SchemaFn;
+  prompt: PromptFn;
+  outputFormat: OutputFormatFn;
+  schema: SchemaFn;
 }
 
 export type AssetPromptMap = Record<AssetKind, AssetPromptConfig>;
 
 export const RefreshContextSchema = z.object({
-    asset: z.enum(AssetKinds),
-    nVariants: z.number().min(1).max(10)
+  asset: z.enum(AssetKinds),
+  nVariants: z.number().min(1).max(10),
 });
 
 export type RefreshContext = z.infer<typeof RefreshContextSchema>;
@@ -272,50 +324,53 @@ export const RefreshCommandSchema = z.array(RefreshContextSchema);
 export type RefreshCommand = z.infer<typeof RefreshCommandSchema>;
 
 export type HasStartedStep = {
-    [K in StageName]?: boolean;
+  [K in StageName]?: boolean;
 };
 
 export const DefaultNumAssets: Record<AssetKind, number> = {
-    headlines: 6,
-    descriptions: 4,
-    callouts: 6,
-    structuredSnippets: 3,
-    keywords: 8
+  headlines: 6,
+  descriptions: 4,
+  callouts: 6,
+  structuredSnippets: 3,
+  keywords: 8,
 };
 
 export const refreshAllCommand = (stage: StageName): RefreshCommand => {
-    const assetsToRefresh = assetsForStage(stage);
-    return assetsToRefresh.map((asset) => ({
-        asset: asset,
-        nVariants: DefaultNumAssets[asset],
-    }));
-}
+  const assetsToRefresh = assetsForStage(stage);
+  return assetsToRefresh.map((asset) => ({
+    asset: asset,
+    nVariants: DefaultNumAssets[asset],
+  }));
+};
 
-export const getNVariantsForAsset = (refresh: RefreshCommand | undefined, asset: AssetKind): number | undefined => {
-    if (!refresh?.length) return undefined;
-    const found = refresh.find((r) => r.asset === asset);
-    return found?.nVariants;
-}
+export const getNVariantsForAsset = (
+  refresh: RefreshCommand | undefined,
+  asset: AssetKind
+): number | undefined => {
+  if (!refresh?.length) return undefined;
+  const found = refresh.find((r) => r.asset === asset);
+  return found?.nVariants;
+};
 
 export const diffAssets = (original: Asset[], updated: Asset[]): Asset[] => {
-    const originalTexts = new Set(original.map(a => a.text));
-    return updated.filter(a => !originalTexts.has(a.text));
+  const originalTexts = new Set(original.map((a) => a.text));
+  return updated.filter((a) => !originalTexts.has(a.text));
 };
 
 export type Assets = {
-    headlines: Asset[];
-    descriptions: Asset[];
-    callouts: Asset[];
-    structuredSnippets: StructuredSnippets;
-    keywords: Asset[];
-}
+  headlines: Asset[];
+  descriptions: Asset[];
+  callouts: Asset[];
+  structuredSnippets: StructuredSnippets;
+  keywords: Asset[];
+};
 
 export const stageLoadedSuccessfully = (state: Partial<Assets>, stage: StageName): boolean => {
-    const assets = assetsForStage(stage);
-    return assets.every((asset) => {
-        if (asset === "structuredSnippets") {
-            return state[asset]?.details.length;
-        }
-        return state[asset]?.length;
-    })
-}
+  const assets = assetsForStage(stage);
+  return assets.every((asset) => {
+    if (asset === "structuredSnippets") {
+      return state[asset]?.details.length;
+    }
+    return state[asset]?.length;
+  });
+};
