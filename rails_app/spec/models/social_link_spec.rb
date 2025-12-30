@@ -5,7 +5,7 @@
 #  id         :bigint           not null, primary key
 #  handle     :string
 #  platform   :string           not null
-#  url        :string
+#  url        :string           not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
 #  project_id :bigint           not null
@@ -82,6 +82,36 @@ RSpec.describe SocialLink, type: :model do
         social_link = build(:social_link, platform: "twitter", url: "myusername")
         expect(social_link).to be_valid
         expect(social_link.url).to eq("https://twitter.com/myusername")
+      end
+    end
+
+    describe "URL security" do
+      it "rejects javascript: URLs" do
+        social_link = build(:social_link, platform: "website", url: "javascript:alert(1)")
+        expect(social_link).not_to be_valid
+        expect(social_link.errors[:url]).to be_present
+      end
+
+      it "rejects data: URLs" do
+        social_link = build(:social_link, platform: "website", url: "data:text/html,<script>alert(1)</script>")
+        expect(social_link).not_to be_valid
+        expect(social_link.errors[:url]).to be_present
+      end
+
+      it "rejects file: URLs" do
+        social_link = build(:social_link, platform: "website", url: "file:///etc/passwd")
+        expect(social_link).not_to be_valid
+        expect(social_link.errors[:url]).to be_present
+      end
+
+      it "accepts https URLs" do
+        social_link = build(:social_link, platform: "website", url: "https://example.com")
+        expect(social_link).to be_valid
+      end
+
+      it "accepts http URLs" do
+        social_link = build(:social_link, platform: "website", url: "http://example.com")
+        expect(social_link).to be_valid
       end
     end
   end

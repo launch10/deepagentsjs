@@ -1,13 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import { usePage } from "@inertiajs/react";
 import {
   useBrandPersonalizationStore,
-  useBrandPersonalizationActions,
+  uploadProjectImage as uploadProjectImageApi,
+  deleteProjectImage as deleteProjectImageApi,
   selectProjectImages,
   selectUploadingImageIds,
   selectError,
-} from "@context/BrandPersonalizationProvider";
+} from "@stores/brandPersonalization";
 import { useProjectImages } from "@api/uploads.hooks";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
@@ -19,10 +21,11 @@ interface ProjectImagesSectionProps {
 }
 
 export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
+  const { jwt, website } = usePage<{ jwt: string; website?: { id: number } }>().props;
+
   const projectImages = useBrandPersonalizationStore(selectProjectImages);
   const uploadingIds = useBrandPersonalizationStore(selectUploadingImageIds);
   const error = useBrandPersonalizationStore(selectError);
-  const { uploadProjectImage, deleteProjectImage } = useBrandPersonalizationActions();
 
   const addProjectImage = useBrandPersonalizationStore((s) => s.addProjectImage);
   const setProjectImages = useBrandPersonalizationStore((s) => s.setProjectImages);
@@ -84,7 +87,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
       addUploadingImageId(tempId);
 
       try {
-        const uploadedImage = await uploadProjectImage(file, tempId);
+        const uploadedImage = await uploadProjectImageApi(file, tempId, jwt, website?.id);
         addProjectImage(uploadedImage);
       } catch (err) {
         console.error("Project image upload failed:", err);
@@ -95,7 +98,8 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
     },
     [
       canAddMore,
-      uploadProjectImage,
+      jwt,
+      website?.id,
       addProjectImage,
       setError,
       addUploadingImageId,
@@ -143,7 +147,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
       setError(null);
 
       try {
-        await deleteProjectImage(uploadId);
+        await deleteProjectImageApi(uploadId, jwt);
         removeProjectImage(uploadId);
       } catch (err) {
         console.error("Project image delete failed:", err);
@@ -156,7 +160,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
         });
       }
     },
-    [deleteProjectImage, removeProjectImage, setError]
+    [jwt, removeProjectImage, setError]
   );
 
   return (

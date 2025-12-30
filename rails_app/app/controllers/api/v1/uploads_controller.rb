@@ -27,7 +27,7 @@ class API::V1::UploadsController < API::BaseController
   rescue => e
     Rails.logger.error "[Upload Error] #{e.class}: #{e.message}"
     Rails.logger.error e.backtrace.first(5).join("\n")
-    render json: { errors: e.message }, status: :unprocessable_entity
+    render json: { errors: "invalid upload" }, status: :unprocessable_entity
   end
 
   def destroy

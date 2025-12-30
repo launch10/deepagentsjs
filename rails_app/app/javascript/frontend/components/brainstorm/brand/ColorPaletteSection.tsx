@@ -4,7 +4,7 @@ import { twMerge } from "tailwind-merge";
 import {
   useBrandPersonalizationStore,
   selectSelectedThemeId,
-} from "@context/BrandPersonalizationProvider";
+} from "@stores/brandPersonalization";
 import { useThemes, useCreateTheme } from "@api/themes.hooks";
 import { useWebsite, useUpdateWebsiteTheme } from "@api/websites.hooks";
 import { CustomColorPicker } from "./CustomColorPicker";

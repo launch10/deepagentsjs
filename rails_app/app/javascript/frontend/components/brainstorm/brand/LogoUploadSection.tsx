@@ -1,13 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, RefreshCw, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import { usePage } from "@inertiajs/react";
 import {
   useBrandPersonalizationStore,
-  useBrandPersonalizationActions,
+  uploadLogo as uploadLogoApi,
+  deleteLogo as deleteLogoApi,
   selectLogo,
   selectIsUploadingLogo,
   selectError,
-} from "@context/BrandPersonalizationProvider";
+} from "@stores/brandPersonalization";
 import { useProjectLogo } from "@api/uploads.hooks";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/svg+xml"];
@@ -18,10 +20,11 @@ interface LogoUploadSectionProps {
 }
 
 export function LogoUploadSection({ className }: LogoUploadSectionProps) {
+  const { jwt, website } = usePage<{ jwt: string; website?: { id: number } }>().props;
+
   const logo = useBrandPersonalizationStore(selectLogo);
   const isUploading = useBrandPersonalizationStore(selectIsUploadingLogo);
   const error = useBrandPersonalizationStore(selectError);
-  const { uploadLogo, deleteLogo } = useBrandPersonalizationActions();
 
   const setLogo = useBrandPersonalizationStore((s) => s.setLogo);
   const removeLogo = useBrandPersonalizationStore((s) => s.removeLogo);
@@ -71,7 +74,7 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
       setIsUploadingLogo(true);
 
       try {
-        const uploadedLogo = await uploadLogo(file);
+        const uploadedLogo = await uploadLogoApi(file, jwt, website?.id);
         setLogo(uploadedLogo);
       } catch (err) {
         console.error("Logo upload failed:", err);
@@ -80,7 +83,7 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
         setIsUploadingLogo(false);
       }
     },
-    [uploadLogo, setLogo, setError, setIsUploadingLogo]
+    [jwt, website?.id, setLogo, setError, setIsUploadingLogo]
   );
 
   const handleFileSelect = useCallback(
@@ -131,7 +134,7 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
       setError(null);
 
       try {
-        await deleteLogo(logo.uploadId);
+        await deleteLogoApi(logo.uploadId, jwt);
         removeLogo();
       } catch (err) {
         console.error("Logo delete failed:", err);
@@ -140,7 +143,7 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
         setIsDeleting(false);
       }
     },
-    [logo, deleteLogo, removeLogo, setError]
+    [logo, jwt, removeLogo, setError]
   );
 
   const handleReplace = useCallback(

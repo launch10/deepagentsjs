@@ -19,5 +19,22 @@ CarrierWave.configure do |config|
       endpoint: Rails.application.credentials.dig(:cloudflare, :r2_endpoint),
       ssl_verify_peer: Rails.env.production?
     }
+
+    # Security headers for uploaded files
+    # SVG files are sanitized on upload (see MediaUploader), but we also set
+    # defensive headers to prevent script execution if served inline.
+    config.aws_attributes = lambda { |file|
+      attrs = {
+        # Prevent MIME type sniffing attacks
+        "x-amz-meta-x-content-type-options" => "nosniff"
+      }
+
+      # For SVG files, force download to prevent inline script execution
+      if file&.content_type == "image/svg+xml"
+        attrs["content_disposition"] = "attachment"
+      end
+
+      attrs
+    }
   end
 end

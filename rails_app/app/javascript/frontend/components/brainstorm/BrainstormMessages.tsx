@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo, useCallback } from "react";
-import type { MessageBlock, InferBridgeData } from "langgraph-ai-sdk-types";
+import type { MessageBlock, InferBridgeData, MessageWithBlocks, LanggraphData, ValidGraphState } from "langgraph-ai-sdk-types";
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
 import {
   useBrainstormChatMessages,
@@ -10,11 +10,18 @@ import {
 import { Chat } from "@components/chat";
 import { BrainstormMessage } from "./BrainstormMessage";
 import { QuestionBadge } from "./QuestionBadge";
-import { useBrainstormInput } from "./BrainstormInputContext";
+import {
+  useBrainstormInputStore,
+  getTextareaRef,
+  selectSetInput,
+} from "@stores/brainstormInput";
 
 // The LanggraphData type for the Brainstorm graph (used for MessageBlock generic)
 type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
 type BrainstormBlock = MessageBlock<BrainstormLanggraphData>;
+// Use the generic message type that ChatSnapshot returns (not the specific Brainstorm type)
+// to avoid type compatibility issues between the specific and generic LanggraphData types
+type BrainstormMessage_ = MessageWithBlocks<LanggraphData<ValidGraphState, undefined>>;
 
 /**
  * User-friendly labels for each command
@@ -32,36 +39,43 @@ const CommandLabels: Record<Brainstorm.CommandName, string> = {
 const PrimaryCommands: Brainstorm.CommandName[] = ["finished", "doTheRest"];
 
 /**
- * Displays the brainstorm message list.
- * Fetches messages and status directly via hooks.
+ * Props for the BrainstormMessagesView presentation component.
+ * Contains all data and callbacks needed for rendering without hooks.
  */
-export function BrainstormMessages() {
-  const messages = useBrainstormChatMessages();
-  const isStreaming = useBrainstormChatIsStreaming();
-  const availableCommands = useBrainstormChatState("availableCommands");
-  const { sendMessage } = useBrainstormChatActions();
-  const { setInput, textareaRef } = useBrainstormInput();
+export interface BrainstormMessagesViewProps {
+  /** Array of chat messages to display */
+  messages: BrainstormMessage_[];
+  /** Whether the chat is currently streaming a response */
+  isStreaming: boolean;
+  /** Available command buttons to show (e.g., helpMe, skip, doTheRest, finished) */
+  availableCommands: Brainstorm.CommandName[];
+  /** Callback when user clicks an example suggestion */
+  onExampleClick: (text: string) => void;
+  /** Callback when user clicks a command button */
+  onCommandClick: (command: Brainstorm.CommandName) => void;
+  /** Total number of questions in the brainstorm flow */
+  totalQuestions?: number;
+}
 
-  const totalQuestions = Brainstorm.TotalQuestions;
-
+/**
+ * Pure presentation component for brainstorm messages.
+ * Renders the message list, question badges, and command buttons.
+ * Can be used in Storybook and unit tests without mocking hooks.
+ */
+export function BrainstormMessagesView({
+  messages,
+  isStreaming,
+  availableCommands,
+  onExampleClick,
+  onCommandClick,
+  totalQuestions = Brainstorm.TotalQuestions,
+}: BrainstormMessagesViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // Handle clicking on example suggestions - memoized to prevent unnecessary re-renders
-  const handleExampleClick = useCallback((text: string) => {
-    setInput(text);
-    textareaRef.current?.focus();
-  }, [setInput, textareaRef]);
-
-  // Handle clicking on command buttons
-  const handleCommandClick = useCallback((commandName: Brainstorm.CommandName) => {
-    const prompt = Brainstorm.commandToPrompt(commandName);
-    sendMessage(prompt);
-  }, [sendMessage]);
 
   // Pre-compute message metadata in a single O(n) pass
   // Detect topic changes to show question badge on first message of each topic
@@ -82,7 +96,7 @@ export function BrainstormMessages() {
       }
 
       // AI message - check if it starts a new topic
-      const messageTopic = (message as any).metadata?.currentTopic as string | undefined;
+      const messageTopic = message.metadata?.currentTopic;
       const startsNewTopic = Boolean(messageTopic && messageTopic !== lastSeenTopic);
 
       if (messageTopic) {
@@ -144,7 +158,7 @@ export function BrainstormMessages() {
             <BrainstormMessage
               blocks={message.blocks as BrainstormBlock[]}
               isActive={isLastMessage}
-              onExampleClick={handleExampleClick}
+              onExampleClick={onExampleClick}
             />
             {/* Command buttons appear after last AI message */}
             {showCommandButtons && (
@@ -153,7 +167,7 @@ export function BrainstormMessages() {
                   <Chat.CommandButtons.Button
                     key={commandName}
                     variant={PrimaryCommands.includes(commandName) ? "primary" : "secondary"}
-                    onClick={() => handleCommandClick(commandName)}
+                    onClick={() => onCommandClick(commandName)}
                   >
                     {CommandLabels[commandName]}
                   </Chat.CommandButtons.Button>
@@ -166,5 +180,40 @@ export function BrainstormMessages() {
 
       <div ref={messagesEndRef} />
     </Chat.MessageList.Root>
+  );
+}
+
+/**
+ * Container component for brainstorm messages.
+ * Fetches data via hooks and delegates rendering to BrainstormMessagesView.
+ */
+export function BrainstormMessages() {
+  const messages = useBrainstormChatMessages();
+  const isStreaming = useBrainstormChatIsStreaming();
+  const availableCommands = useBrainstormChatState("availableCommands");
+  const { sendMessage } = useBrainstormChatActions();
+  const setInput = useBrainstormInputStore(selectSetInput);
+
+  // Handle clicking on example suggestions - memoized to prevent unnecessary re-renders
+  const handleExampleClick = useCallback((text: string) => {
+    setInput(text);
+    const textareaRef = getTextareaRef();
+    textareaRef.current?.focus();
+  }, [setInput]);
+
+  // Handle clicking on command buttons
+  const handleCommandClick = useCallback((commandName: Brainstorm.CommandName) => {
+    const prompt = Brainstorm.commandToPrompt(commandName);
+    sendMessage(prompt);
+  }, [sendMessage]);
+
+  return (
+    <BrainstormMessagesView
+      messages={messages}
+      isStreaming={isStreaming}
+      availableCommands={availableCommands ?? []}
+      onExampleClick={handleExampleClick}
+      onCommandClick={handleCommandClick}
+    />
   );
 }

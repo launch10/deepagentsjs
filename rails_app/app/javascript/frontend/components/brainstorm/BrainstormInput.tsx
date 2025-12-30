@@ -1,49 +1,91 @@
-import { useRef } from "react";
+import { useRef, useEffect, useCallback } from "react";
+import { usePage } from "@inertiajs/react";
 import { useBrainstormChatActions, useBrainstormChatIsStreaming, useBrainstormChatState } from "@hooks/useBrainstormChat";
-import { useBrainstormInput } from "./BrainstormInputContext";
+import {
+  useBrainstormInputStore,
+  setTextareaRef,
+  selectInput,
+  selectSetInput,
+  selectAttachments,
+  selectAddFiles,
+  selectRemoveAttachment,
+  selectClearAttachments,
+  selectGetUploadIds,
+  selectIsUploading,
+} from "@stores/brainstormInput";
 import { DocumentPlusIcon, ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
 import { AttachmentList, DropZone } from "./attachments";
-import { FILE_INPUT_ACCEPT } from "~/types/attachment";
+import { FILE_INPUT_ACCEPT, type Attachment } from "~/types/attachment";
 
 /**
- * Brainstorm input area.
- * Uses context for input state, hooks for SDK actions.
- * Supports file uploads via FilePlus button and drag & drop.
+ * Default placeholder text for the input.
  */
 const DEFAULT_PLACEHOLDER = 'e.g. "FreshFund is a budgeting tool that helps freelancers track income and expenses."';
 
-export function BrainstormInput() {
-  const { sendMessage } = useBrainstormChatActions();
-  const isStreaming = useBrainstormChatIsStreaming();
-  const placeholderText = useBrainstormChatState("placeholderText");
-  const {
-    input,
-    setInput,
-    textareaRef,
-    attachments,
-    addFiles,
-    removeAttachment,
-    clearAttachments,
-    getUploadIds,
-    isUploading,
-  } = useBrainstormInput();
+/**
+ * Props for the BrainstormInputView presentation component.
+ * Contains all data and callbacks needed for rendering without hooks.
+ */
+export interface BrainstormInputViewProps {
+  /** Current input text value */
+  input: string;
+  /** Callback to update input text */
+  onInputChange: (value: string) => void;
+  /** Array of file attachments */
+  attachments: Attachment[];
+  /** Callback to remove an attachment by ID */
+  onRemoveAttachment: (id: string) => void;
+  /** Callback when form is submitted */
+  onSubmit: () => void;
+  /** Callback when files are added (via button or drop) */
+  onFilesAdd: (files: FileList) => void;
+  /** Whether the chat is currently streaming a response */
+  isStreaming: boolean;
+  /** Whether files are currently uploading */
+  isUploading: boolean;
+  /** Placeholder text for the input */
+  placeholder?: string;
+  /** Ref to register for external focus management */
+  textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
+}
 
+/**
+ * Pure presentation component for brainstorm input.
+ * Renders the input area, attachments, and submit button.
+ * Can be used in Storybook and unit tests without mocking hooks.
+ *
+ * NOTE: This component uses direct zustand state instead of react-hook-form
+ * (unlike AdsChatInput) because:
+ * 1. Attachment handling requires async upload tracking with progress states
+ * 2. Message + attachments form complex submission logic (uploadIds must be
+ *    resolved from in-flight uploads before submit)
+ * 3. Schema validation provides less value for freeform chat input where
+ *    either text OR attachments satisfy the "has content" requirement
+ *
+ * @see AdsChatInput for the react-hook-form pattern used in simpler chat inputs
+ */
+export function BrainstormInputView({
+  input,
+  onInputChange,
+  attachments,
+  onRemoveAttachment,
+  onSubmit,
+  onFilesAdd,
+  isStreaming,
+  isUploading,
+  placeholder = DEFAULT_PLACEHOLDER,
+  textareaRef: externalTextareaRef,
+}: BrainstormInputViewProps) {
+  const internalTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const textareaRef = externalTextareaRef ?? internalTextareaRef;
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const hasContent = input.trim() || attachments.length > 0;
   const canSubmit = hasContent && !isStreaming && !isUploading;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-
-    const uploadIds = getUploadIds();
-    const message = input.trim();
-
-    // Send message with uploadIds if any
-    if (message || uploadIds.length > 0) {
-      sendMessage(message, { uploadIds });
-      setInput("");
-      clearAttachments();
-    }
+    onSubmit();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -60,14 +102,14 @@ export function BrainstormInput() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      addFiles(files);
+      onFilesAdd(files);
     }
     // Reset input so the same file can be selected again
     e.target.value = "";
   };
 
   const handleDrop = (files: FileList) => {
-    addFiles(files);
+    onFilesAdd(files);
   };
 
   return (
@@ -78,14 +120,14 @@ export function BrainstormInput() {
           className="bg-white border border-neutral-300 rounded-xl shadow-(--shadow-chat-default) hover:shadow-(--shadow-chat-delight) focus-within:shadow-(--shadow-chat-delight) transition-shadow p-4 mx-auto flex flex-col"
         >
           {/* Attachment previews */}
-          <AttachmentList attachments={attachments} onRemove={removeAttachment} />
+          <AttachmentList attachments={attachments} onRemove={onRemoveAttachment} />
 
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholderText || DEFAULT_PLACEHOLDER}
+            placeholder={placeholder}
             disabled={isStreaming}
             className="w-full resize-none border-0 bg-transparent text-sm placeholder:opacity-50 focus:outline-none focus:ring-0 flex-1 font-sans"
             style={{ color: "#74767a" }}
@@ -129,5 +171,65 @@ export function BrainstormInput() {
         </div>
       </DropZone>
     </div>
+  );
+}
+
+/**
+ * Container component for brainstorm input.
+ * Fetches data via hooks and delegates rendering to BrainstormInputView.
+ * Supports file uploads via FilePlus button and drag & drop.
+ */
+export function BrainstormInput() {
+  const { jwt } = usePage<{ jwt: string }>().props;
+  const { sendMessage } = useBrainstormChatActions();
+  const isStreaming = useBrainstormChatIsStreaming();
+  const placeholderText = useBrainstormChatState("placeholderText");
+
+  // Subscribe to store state with selectors
+  const input = useBrainstormInputStore(selectInput);
+  const setInput = useBrainstormInputStore(selectSetInput);
+  const attachments = useBrainstormInputStore(selectAttachments);
+  const addFiles = useBrainstormInputStore(selectAddFiles);
+  const removeAttachment = useBrainstormInputStore(selectRemoveAttachment);
+  const clearAttachments = useBrainstormInputStore(selectClearAttachments);
+  const getUploadIds = useBrainstormInputStore(selectGetUploadIds);
+  const isUploading = useBrainstormInputStore(selectIsUploading);
+
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Register the textarea ref with the store module for external access
+  useEffect(() => {
+    setTextareaRef(textareaRef);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    const uploadIds = getUploadIds();
+    const message = input.trim();
+
+    // Send message with uploadIds if any
+    if (message || uploadIds.length > 0) {
+      sendMessage(message, { uploadIds });
+      setInput("");
+      clearAttachments();
+    }
+  }, [input, getUploadIds, sendMessage, setInput, clearAttachments]);
+
+  const handleFilesAdd = useCallback((files: FileList) => {
+    addFiles(files, jwt);
+  }, [addFiles, jwt]);
+
+  return (
+    <BrainstormInputView
+      input={input}
+      onInputChange={setInput}
+      attachments={attachments}
+      onRemoveAttachment={removeAttachment}
+      onSubmit={handleSubmit}
+      onFilesAdd={handleFilesAdd}
+      isStreaming={isStreaming}
+      isUploading={isUploading}
+      placeholder={placeholderText || DEFAULT_PLACEHOLDER}
+      textareaRef={textareaRef}
+    />
   );
 }
