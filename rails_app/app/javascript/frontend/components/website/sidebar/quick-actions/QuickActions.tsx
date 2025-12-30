@@ -110,7 +110,7 @@ const defaultCopyOptions: CopyOption[] = [
 ];
 
 export default function QuickActions() {
-  const [activeAction, setActiveAction] = useState<QuickActionType | null>("colors");
+  const [activeAction, setActiveAction] = useState<QuickActionType | null>();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>(["1", "2", "3"]);
   const totalPages = 2;

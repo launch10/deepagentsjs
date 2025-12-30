@@ -28,7 +28,10 @@ export function WebsiteSidebarView({
   );
 }
 
-export default function WebsiteSidebar() {
+export default function WebsiteSidebar({
+  isLoading = false,
+  currentStep = 0,
+}: WebsiteSidebarViewProps) {
   // TODO: Wire up to actual state management for isLoading and currentStep
-  return <WebsiteSidebarView isLoading={false} />;
+  return <WebsiteSidebarView isLoading={isLoading} currentStep={currentStep} />;
 }
