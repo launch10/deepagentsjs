@@ -16,6 +16,8 @@ interface BrandPersonalizationContextType {
   store: BrandPersonalizationStoreApi;
   uploadLogo: (file: File) => Promise<BrandLogo>;
   uploadProjectImage: (file: File, tempId: string) => Promise<ProjectImage>;
+  deleteLogo: (uploadId: number) => Promise<void>;
+  deleteProjectImage: (uploadId: number) => Promise<void>;
   fetchThemes: () => Promise<GetThemesResponse>;
   createTheme: (name: string, colors: string[]) => Promise<CreateThemeResponse>;
 }
@@ -74,6 +76,24 @@ export function BrandPersonalizationProvider({ children }: BrandPersonalizationP
     [jwt, website?.id]
   );
 
+  // Delete logo function
+  const deleteLogo = useCallback(
+    async (uploadId: number): Promise<void> => {
+      const uploadService = new UploadService({ jwt });
+      await uploadService.delete(uploadId);
+    },
+    [jwt]
+  );
+
+  // Delete project image function
+  const deleteProjectImage = useCallback(
+    async (uploadId: number): Promise<void> => {
+      const uploadService = new UploadService({ jwt });
+      await uploadService.delete(uploadId);
+    },
+    [jwt]
+  );
+
   // Fetch themes function
   const fetchThemes = useCallback(async (): Promise<GetThemesResponse> => {
     const themeService = new ThemeService({ jwt });
@@ -96,7 +116,7 @@ export function BrandPersonalizationProvider({ children }: BrandPersonalizationP
 
   return (
     <BrandPersonalizationContext.Provider
-      value={{ store, uploadLogo, uploadProjectImage, fetchThemes, createTheme }}
+      value={{ store, uploadLogo, uploadProjectImage, deleteLogo, deleteProjectImage, fetchThemes, createTheme }}
     >
       {children}
     </BrandPersonalizationContext.Provider>
@@ -129,8 +149,8 @@ export function useBrandPersonalizationActions() {
     );
   }
 
-  const { uploadLogo, uploadProjectImage, fetchThemes, createTheme } = context;
-  return { uploadLogo, uploadProjectImage, fetchThemes, createTheme };
+  const { uploadLogo, uploadProjectImage, deleteLogo, deleteProjectImage, fetchThemes, createTheme } = context;
+  return { uploadLogo, uploadProjectImage, deleteLogo, deleteProjectImage, fetchThemes, createTheme };
 }
 
 /**
@@ -143,12 +163,14 @@ export function useBrandPersonalization() {
   }
 
   const state = useStore(context.store);
-  const { uploadLogo, uploadProjectImage, fetchThemes, createTheme } = context;
+  const { uploadLogo, uploadProjectImage, deleteLogo, deleteProjectImage, fetchThemes, createTheme } = context;
 
   return {
     ...state,
     uploadLogo,
     uploadProjectImage,
+    deleteLogo,
+    deleteProjectImage,
     fetchThemes,
     createTheme,
   };

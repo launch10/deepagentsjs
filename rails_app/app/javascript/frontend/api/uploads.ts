@@ -87,4 +87,19 @@ export class UploadService extends RailsAPIBase {
 
     return response.data satisfies CreateUploadResponse;
   }
+
+  async delete(uploadId: number): Promise<void> {
+    const client = await this.getClient();
+    const response = await client.DELETE("/api/v1/uploads/{id}", {
+      params: {
+        path: { id: uploadId },
+      },
+    });
+
+    if (response.response.status !== 204) {
+      throw new Error(
+        `Failed to delete upload: ${response.response.status} ${response.response.statusText}`
+      );
+    }
+  }
 }

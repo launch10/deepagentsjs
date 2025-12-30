@@ -22,7 +22,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
   const projectImages = useBrandPersonalizationStore(selectProjectImages);
   const uploadingIds = useBrandPersonalizationStore(selectUploadingImageIds);
   const error = useBrandPersonalizationStore(selectError);
-  const { uploadProjectImage } = useBrandPersonalizationActions();
+  const { uploadProjectImage, deleteProjectImage } = useBrandPersonalizationActions();
 
   const addProjectImage = useBrandPersonalizationStore((s) => s.addProjectImage);
   const setProjectImages = useBrandPersonalizationStore((s) => s.setProjectImages);
@@ -33,6 +33,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
 
   const [isDragging, setIsDragging] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Fetch existing images from API
@@ -137,10 +138,25 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
   }, []);
 
   const handleRemove = useCallback(
-    (uploadId: number) => {
-      removeProjectImage(uploadId);
+    async (uploadId: number) => {
+      setDeletingIds((prev) => new Set([...prev, uploadId]));
+      setError(null);
+
+      try {
+        await deleteProjectImage(uploadId);
+        removeProjectImage(uploadId);
+      } catch (err) {
+        console.error("Project image delete failed:", err);
+        setError("Failed to remove image. Please try again.");
+      } finally {
+        setDeletingIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(uploadId);
+          return newSet;
+        });
+      }
     },
-    [removeProjectImage]
+    [deleteProjectImage, removeProjectImage, setError]
   );
 
   return (
@@ -165,27 +181,39 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
       {/* Image grid */}
       {projectImages.length > 0 && (
         <div className="grid grid-cols-3 gap-2" data-testid="project-images-grid">
-          {projectImages.map((image) => (
-            <div
-              key={image.uploadId}
-              className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 group"
-            >
-              <img
-                src={image.thumbUrl || image.url}
-                alt="Project image"
-                className="w-full h-full object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => handleRemove(image.uploadId)}
-                className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                aria-label="Remove image"
-                data-testid={`project-image-remove-${image.uploadId}`}
+          {projectImages.map((image) => {
+            const isImageDeleting = deletingIds.has(image.uploadId);
+            return (
+              <div
+                key={image.uploadId}
+                className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 group"
               >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          ))}
+                <img
+                  src={image.thumbUrl || image.url}
+                  alt="Project image"
+                  className={twMerge(
+                    "w-full h-full object-cover",
+                    isImageDeleting && "opacity-50"
+                  )}
+                />
+                {isImageDeleting ? (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 text-base-400 animate-spin" />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(image.uploadId)}
+                    className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Remove image"
+                    data-testid={`project-image-remove-${image.uploadId}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
 
           {/* Upload placeholder slots */}
           {Array.from(uploadingIds).map((id) => (

@@ -30,7 +30,29 @@ class API::V1::UploadsController < API::BaseController
     render json: { errors: e.message }, status: :unprocessable_entity
   end
 
+  def destroy
+    @upload = policy_scope(Upload).find(params[:id])
+    authorize @upload
+    destroy_upload(@upload)
+    head :no_content
+  rescue ActiveRecord::RecordNotFound
+    render json: { errors: ["Upload not found"] }, status: :not_found
+  end
+
   private
+
+  def destroy_upload(upload)
+    # Skip file removal to avoid errors if file doesn't exist on storage
+    upload.remove_file = false
+    upload.destroy!
+
+    # Try to remove file separately, ignoring errors if file doesn't exist
+    begin
+      upload.file.remove! if upload.file.present?
+    rescue StandardError => e
+      Rails.logger.warn "[Upload] Could not remove file for upload #{upload.id}: #{e.message}"
+    end
+  end
 
   def upload_params
     params.require(:upload).permit(:file, :is_logo, :website_id)

@@ -21,7 +21,7 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
   const logo = useBrandPersonalizationStore(selectLogo);
   const isUploading = useBrandPersonalizationStore(selectIsUploadingLogo);
   const error = useBrandPersonalizationStore(selectError);
-  const { uploadLogo } = useBrandPersonalizationActions();
+  const { uploadLogo, deleteLogo } = useBrandPersonalizationActions();
 
   const setLogo = useBrandPersonalizationStore((s) => s.setLogo);
   const removeLogo = useBrandPersonalizationStore((s) => s.removeLogo);
@@ -30,6 +30,7 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
 
   const [isDragging, setIsDragging] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Fetch existing logo from API
@@ -122,11 +123,24 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
   }, []);
 
   const handleRemove = useCallback(
-    (e: React.MouseEvent) => {
+    async (e: React.MouseEvent) => {
       e.stopPropagation();
-      removeLogo();
+      if (!logo) return;
+
+      setIsDeleting(true);
+      setError(null);
+
+      try {
+        await deleteLogo(logo.uploadId);
+        removeLogo();
+      } catch (err) {
+        console.error("Logo delete failed:", err);
+        setError("Failed to remove logo. Please try again.");
+      } finally {
+        setIsDeleting(false);
+      }
     },
-    [removeLogo]
+    [logo, deleteLogo, removeLogo, setError]
   );
 
   const handleReplace = useCallback(
@@ -178,11 +192,16 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
               <button
                 type="button"
                 onClick={handleRemove}
-                className="flex items-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-colors"
+                disabled={isDeleting}
+                className="flex items-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-md text-xs font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
                 data-testid="logo-remove-button"
               >
-                <X className="w-3 h-3" />
-                Remove
+                {isDeleting ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <X className="w-3 h-3" />
+                )}
+                {isDeleting ? "Removing..." : "Remove"}
               </button>
             </div>
           )}

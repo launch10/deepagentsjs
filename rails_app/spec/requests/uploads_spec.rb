@@ -326,4 +326,60 @@ RSpec.describe "Uploads API", type: :request do
       end
     end
   end
+
+  path '/api/v1/uploads/{id}' do
+    delete 'Deletes an upload' do
+      tags 'Uploads'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+      parameter name: :id, in: :path, type: :integer, required: true, description: 'Upload ID'
+
+      let!(:upload) { create(:upload, account: user1_owned_account, is_logo: false) }
+
+      before do
+        switch_account_to(user1_owned_account)
+      end
+
+      response '204', 'upload deleted successfully' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:id) { upload.id }
+
+        run_test! do |_response|
+          expect(Upload.find_by(id: upload.id)).to be_nil
+        end
+      end
+
+      response '404', 'upload not found' do
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:id) { 999999 }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("Upload not found")
+        end
+      end
+
+      response '404', 'cannot delete upload owned by another account' do
+        let!(:other_upload) { create(:upload, account: user2_owned_account, is_logo: false) }
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:id) { other_upload.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("Upload not found")
+          # Verify the upload still exists
+          expect(Upload.find_by(id: other_upload.id)).to be_present
+        end
+      end
+    end
+  end
 end

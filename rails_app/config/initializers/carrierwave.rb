@@ -9,7 +9,7 @@ CarrierWave.configure do |config|
     end
     config.aws_acl = "public-read"
     config.asset_host = ENV.fetch("CLOUDFLARE_ASSET_HOST") do
-      Rails.env.production? ? "https://uploads.launch10.ai" : "http://dev-uploads.launch10.ai"
+      Rails.env.production? ? "https://uploads.launch10.ai" : "https://dev-uploads.launch10.ai"
     end
 
     config.aws_credentials = {

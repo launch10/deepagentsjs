@@ -1437,8 +1437,8 @@ export interface paths {
                              * @enum {string}
                              */
                             platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
-                            /** @description URL to the social profile */
-                            url?: string | null;
+                            /** @description URL to the social profile. For twitter, instagram, and youtube, URLs are automatically normalized (e.g., @username -> https://twitter.com/username) */
+                            url: string;
                             /** @description Social handle/username */
                             handle?: string | null;
                             /** @description Unique identifier */
@@ -1497,8 +1497,8 @@ export interface paths {
                              * @enum {string}
                              */
                             platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
-                            /** @description URL to the social profile */
-                            url?: string;
+                            /** @description URL to the social profile. For twitter, instagram, and youtube: accepts full URLs (http/https, with/without www), usernames, or @usernames. Automatically normalized to canonical format (e.g., @johndoe -> https://twitter.com/johndoe) */
+                            url: string;
                             /** @description Social handle/username */
                             handle?: string;
                         };
@@ -1506,7 +1506,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description social link created successfully */
+                /** @description normalizes x.com URL to twitter.com */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -1520,8 +1520,8 @@ export interface paths {
                              * @enum {string}
                              */
                             platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
-                            /** @description URL to the social profile */
-                            url?: string | null;
+                            /** @description URL to the social profile. For twitter, instagram, and youtube, URLs are automatically normalized (e.g., @username -> https://twitter.com/username) */
+                            url: string;
                             /** @description Social handle/username */
                             handle?: string | null;
                             /** @description Unique identifier */
@@ -1606,8 +1606,8 @@ export interface paths {
                              * @enum {string}
                              */
                             platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
-                            /** @description URL to the social profile */
-                            url?: string | null;
+                            /** @description URL to the social profile. For twitter, instagram, and youtube, URLs are automatically normalized (e.g., @username -> https://twitter.com/username) */
+                            url: string;
                             /** @description Social handle/username */
                             handle?: string | null;
                             /** @description Unique identifier */
@@ -1713,8 +1713,8 @@ export interface paths {
                              * @enum {string}
                              */
                             platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
-                            /** @description URL to the social profile */
-                            url?: string;
+                            /** @description URL to the social profile. For twitter, instagram, and youtube: accepts full URLs (http/https, with/without www), usernames, or @usernames. Automatically normalized to canonical format (e.g., @johndoe -> https://twitter.com/johndoe) */
+                            url: string;
                             /** @description Social handle/username */
                             handle?: string;
                         };
@@ -1722,7 +1722,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description social link updated successfully */
+                /** @description normalizes username on update */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1736,8 +1736,8 @@ export interface paths {
                              * @enum {string}
                              */
                             platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
-                            /** @description URL to the social profile */
-                            url?: string | null;
+                            /** @description URL to the social profile. For twitter, instagram, and youtube, URLs are automatically normalized (e.g., @username -> https://twitter.com/username) */
+                            url: string;
                             /** @description Social handle/username */
                             handle?: string | null;
                             /** @description Unique identifier */
@@ -1762,7 +1762,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description invalid URL format */
+                /** @description invalid URL format for non-normalizable platform */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -1809,8 +1809,8 @@ export interface paths {
                              * @enum {string}
                              */
                             platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
-                            /** @description URL to the social profile */
-                            url?: string;
+                            /** @description URL to the social profile. For twitter, instagram, and youtube: accepts full URLs (http/https, with/without www), usernames, or @usernames. Automatically normalized to canonical format (e.g., @johndoe -> https://twitter.com/johndoe) */
+                            url: string;
                             /** @description Social handle/username */
                             handle?: string;
                         }[];
@@ -1832,8 +1832,8 @@ export interface paths {
                              * @enum {string}
                              */
                             platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
-                            /** @description URL to the social profile */
-                            url?: string | null;
+                            /** @description URL to the social profile. For twitter, instagram, and youtube, URLs are automatically normalized (e.g., @username -> https://twitter.com/username) */
+                            url: string;
                             /** @description Social handle/username */
                             handle?: string | null;
                             /** @description Unique identifier */
@@ -2241,6 +2241,8 @@ export interface paths {
                 query?: {
                     /** @description Filter by website */
                     website_id?: number;
+                    /** @description Filter by logo status (true for logos, false for product images) */
+                    is_logo?: boolean;
                 };
                 header?: {
                     Authorization?: string;
@@ -2375,6 +2377,54 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deletes an upload */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Upload ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description upload deleted successfully */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot delete upload owned by another account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;

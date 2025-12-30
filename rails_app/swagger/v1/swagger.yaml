@@ -1765,8 +1765,9 @@ paths:
                       description: Social platform type
                     url:
                       type: string
-                      nullable: true
-                      description: URL to the social profile
+                      description: URL to the social profile. For twitter, instagram,
+                        and youtube, URLs are automatically normalized (e.g., @username
+                        -> https://twitter.com/username)
                     handle:
                       type: string
                       nullable: true
@@ -1785,6 +1786,7 @@ paths:
                   required:
                   - id
                   - platform
+                  - url
                   - project_id
                   - created_at
                   - updated_at
@@ -1816,7 +1818,7 @@ paths:
           type: string
       responses:
         '201':
-          description: social link created successfully
+          description: normalizes x.com URL to twitter.com
           content:
             application/json:
               schema:
@@ -1839,8 +1841,9 @@ paths:
                     description: Social platform type
                   url:
                     type: string
-                    nullable: true
-                    description: URL to the social profile
+                    description: URL to the social profile. For twitter, instagram,
+                      and youtube, URLs are automatically normalized (e.g., @username
+                      -> https://twitter.com/username)
                   handle:
                     type: string
                     nullable: true
@@ -1859,6 +1862,7 @@ paths:
                 required:
                 - id
                 - platform
+                - url
                 - project_id
                 - created_at
                 - updated_at
@@ -1889,12 +1893,16 @@ paths:
                       description: Social platform type
                     url:
                       type: string
-                      description: URL to the social profile
+                      description: 'URL to the social profile. For twitter, instagram,
+                        and youtube: accepts full URLs (http/https, with/without www),
+                        usernames, or @usernames. Automatically normalized to canonical
+                        format (e.g., @johndoe -> https://twitter.com/johndoe)'
                     handle:
                       type: string
                       description: Social handle/username
                   required:
                   - platform
+                  - url
               required:
               - social_link
   "/api/v1/projects/{project_uuid}/social_links/{id}":
@@ -1958,8 +1966,9 @@ paths:
                     description: Social platform type
                   url:
                     type: string
-                    nullable: true
-                    description: URL to the social profile
+                    description: URL to the social profile. For twitter, instagram,
+                      and youtube, URLs are automatically normalized (e.g., @username
+                      -> https://twitter.com/username)
                   handle:
                     type: string
                     nullable: true
@@ -1978,6 +1987,7 @@ paths:
                 required:
                 - id
                 - platform
+                - url
                 - project_id
                 - created_at
                 - updated_at
@@ -2009,7 +2019,7 @@ paths:
           type: string
       responses:
         '200':
-          description: social link updated successfully
+          description: normalizes username on update
           content:
             application/json:
               schema:
@@ -2032,8 +2042,9 @@ paths:
                     description: Social platform type
                   url:
                     type: string
-                    nullable: true
-                    description: URL to the social profile
+                    description: URL to the social profile. For twitter, instagram,
+                      and youtube, URLs are automatically normalized (e.g., @username
+                      -> https://twitter.com/username)
                   handle:
                     type: string
                     nullable: true
@@ -2052,11 +2063,12 @@ paths:
                 required:
                 - id
                 - platform
+                - url
                 - project_id
                 - created_at
                 - updated_at
         '422':
-          description: invalid URL format
+          description: invalid URL format for non-normalizable platform
         '404':
           description: social link not found
       requestBody:
@@ -2082,12 +2094,16 @@ paths:
                       description: Social platform type
                     url:
                       type: string
-                      description: URL to the social profile
+                      description: 'URL to the social profile. For twitter, instagram,
+                        and youtube: accepts full URLs (http/https, with/without www),
+                        usernames, or @usernames. Automatically normalized to canonical
+                        format (e.g., @johndoe -> https://twitter.com/johndoe)'
                     handle:
                       type: string
                       description: Social handle/username
                   required:
                   - platform
+                  - url
               required:
               - social_link
     delete:
@@ -2176,8 +2192,9 @@ paths:
                       description: Social platform type
                     url:
                       type: string
-                      nullable: true
-                      description: URL to the social profile
+                      description: URL to the social profile. For twitter, instagram,
+                        and youtube, URLs are automatically normalized (e.g., @username
+                        -> https://twitter.com/username)
                     handle:
                       type: string
                       nullable: true
@@ -2196,6 +2213,7 @@ paths:
                   required:
                   - id
                   - platform
+                  - url
                   - project_id
                   - created_at
                   - updated_at
@@ -2241,12 +2259,16 @@ paths:
                         description: Social platform type
                       url:
                         type: string
-                        description: URL to the social profile
+                        description: 'URL to the social profile. For twitter, instagram,
+                          and youtube: accepts full URLs (http/https, with/without
+                          www), usernames, or @usernames. Automatically normalized
+                          to canonical format (e.g., @johndoe -> https://twitter.com/johndoe)'
                       handle:
                         type: string
                         description: Social handle/username
                     required:
                     - platform
+                    - url
               required:
               - social_links
   "/test/database/truncate":
@@ -2726,6 +2748,12 @@ paths:
         description: Filter by website
         schema:
           type: integer
+      - name: is_logo
+        in: query
+        required: false
+        description: Filter by logo status (true for logos, false for product images)
+        schema:
+          type: boolean
       responses:
         '200':
           description: returns team account uploads after switching
@@ -2785,6 +2813,40 @@ paths:
                   - updated_at
         '404':
           description: website not found when filtering
+  "/api/v1/uploads/{id}":
+    delete:
+      summary: Deletes an upload
+      tags:
+      - Uploads
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        description: Upload ID
+        schema:
+          type: integer
+      responses:
+        '204':
+          description: upload deleted successfully
+        '404':
+          description: cannot delete upload owned by another account
   "/api/v1/website_urls":
     post:
       summary: Creates a website URL
