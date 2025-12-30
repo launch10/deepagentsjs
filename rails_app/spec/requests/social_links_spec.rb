@@ -60,7 +60,7 @@ RSpec.describe "Social Links API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['error']).to eq('Project not found')
+          expect(data['error']).to eq('Record not found')
         end
       end
     end
@@ -101,6 +101,86 @@ RSpec.describe "Social Links API", type: :request do
         end
       end
 
+      response '201', 'normalizes Twitter username to full URL' do
+        schema APISchemas::SocialLink.response
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:social_link_params) do
+          {
+            social_link: {
+              platform: 'twitter',
+              url: '@myhandle'
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['url']).to eq('https://twitter.com/myhandle')
+        end
+      end
+
+      response '201', 'normalizes Instagram username to full URL' do
+        schema APISchemas::SocialLink.response
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:social_link_params) do
+          {
+            social_link: {
+              platform: 'instagram',
+              url: 'myhandle'
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['url']).to eq('https://instagram.com/myhandle')
+        end
+      end
+
+      response '201', 'normalizes YouTube username to full URL' do
+        schema APISchemas::SocialLink.response
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:social_link_params) do
+          {
+            social_link: {
+              platform: 'youtube',
+              url: '@mychannel'
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['url']).to eq('https://youtube.com/@mychannel')
+        end
+      end
+
+      response '201', 'normalizes x.com URL to twitter.com' do
+        schema APISchemas::SocialLink.response
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:social_link_params) do
+          {
+            social_link: {
+              platform: 'twitter',
+              url: 'https://x.com/myhandle'
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['url']).to eq('https://twitter.com/myhandle')
+        end
+      end
+
       response '422', 'invalid platform' do
         let(:Authorization) { auth_headers_for(user)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
@@ -117,6 +197,25 @@ RSpec.describe "Social Links API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['errors']).to be_present
+        end
+      end
+
+      response '422', 'missing URL' do
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:social_link_params) do
+          {
+            social_link: {
+              platform: 'facebook',
+              url: ''
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to include("Url can't be blank")
         end
       end
 
@@ -194,7 +293,7 @@ RSpec.describe "Social Links API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['error']).to eq('Social link not found')
+          expect(data['error']).to eq('Record not found')
         end
       end
 
@@ -240,11 +339,12 @@ RSpec.describe "Social Links API", type: :request do
         end
       end
 
-      response '422', 'invalid URL format' do
+      response '422', 'invalid URL format for non-normalizable platform' do
         let(:Authorization) { auth_headers_for(user)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
-        let(:id) { social_link.id }
+        let!(:facebook_link) { create(:social_link, :facebook, project: project) }
+        let(:id) { facebook_link.id }
         let(:social_link_params) do
           {
             social_link: {
@@ -256,6 +356,26 @@ RSpec.describe "Social Links API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['errors']).to be_present
+        end
+      end
+
+      response '200', 'normalizes username on update' do
+        schema APISchemas::SocialLink.response
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:id) { social_link.id }
+        let(:social_link_params) do
+          {
+            social_link: {
+              url: '@newhandle'
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['url']).to eq('https://twitter.com/newhandle')
         end
       end
 
@@ -274,7 +394,7 @@ RSpec.describe "Social Links API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['error']).to eq('Social link not found')
+          expect(data['error']).to eq('Record not found')
         end
       end
     end
@@ -307,7 +427,7 @@ RSpec.describe "Social Links API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['error']).to eq('Social link not found')
+          expect(data['error']).to eq('Record not found')
         end
       end
 
@@ -450,7 +570,7 @@ RSpec.describe "Social Links API", type: :request do
 
           run_test! do |response|
             data = JSON.parse(response.body)
-            expect(data['error']).to eq('Project not found')
+            expect(data['error']).to eq('Record not found')
           end
         end
       end

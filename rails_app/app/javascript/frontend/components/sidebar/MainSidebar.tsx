@@ -37,7 +37,7 @@ export default function MainSidebar() {
 
   return (
     <aside
-      style={{ backgroundColor: "#12183d", width: isCollapsed ? 60 : 220, minWidth: isCollapsed ? 60 : 220 }}
+      style={{ backgroundColor: "#12183d", width: isCollapsed ? 72 : 220, minWidth: isCollapsed ? 72 : 220 }}
       className="h-screen flex flex-col transition-all duration-300 sticky top-0 shrink-0"
     >
       {/* Collapse button */}

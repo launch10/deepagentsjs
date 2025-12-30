@@ -31,15 +31,23 @@ export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
   // Track if we've initialized the theme from the website data
   const hasInitializedRef = useRef(false);
 
-  // Initialize theme from website data (props or API)
+  const [currentPage, setCurrentPage] = useState(0);
+
+  // Initialize theme from website data and scroll to the page containing the selected palette
   useEffect(() => {
-    if (!hasInitializedRef.current && website?.theme_id != null) {
+    if (!hasInitializedRef.current && website?.theme_id != null && themes.length > 0) {
       setTheme(website.theme_id);
+
+      // Find the index of the selected theme and calculate which page it's on
+      const themeIndex = themes.findIndex((t) => t.id === website.theme_id);
+      if (themeIndex !== -1) {
+        const targetPage = Math.floor(themeIndex / PALETTES_PER_PAGE);
+        setCurrentPage(targetPage);
+      }
+
       hasInitializedRef.current = true;
     }
-  }, [website?.theme_id, setTheme]);
-
-  const [currentPage, setCurrentPage] = useState(0);
+  }, [website?.theme_id, themes, setTheme]);
   const [showCustomPicker, setShowCustomPicker] = useState(false);
 
   const isLoading = isLoadingThemes || isLoadingWebsite;
@@ -210,7 +218,7 @@ function ColorPaletteRow({ theme, isSelected, onSelect }: ColorPaletteRowProps) 
         "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1",
         isSelected && "ring-2 ring-primary-500 ring-offset-1"
       )}
-      data-testid="color-palette"
+      data-testid={`color-palette-${theme.id}`}
       data-selected={isSelected}
       aria-pressed={isSelected}
       aria-label={`Color palette: ${theme.name}`}

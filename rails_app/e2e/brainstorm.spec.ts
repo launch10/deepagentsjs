@@ -543,6 +543,221 @@ test.describe("Brainstorm Help Sections", () => {
   });
 });
 
+test.describe("Brainstorm Color Palette", () => {
+  let brainstormPage: BrainstormPage;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await loginUser(page);
+    brainstormPage = new BrainstormPage(page);
+  });
+
+  test("auto-scrolls to page containing selected palette on reload", async ({
+    page,
+  }) => {
+    // Start a conversation to get access to the brand panel
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for color palette test");
+
+    // Wait for URL update
+    await page.waitForFunction(
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Open the brand personalization panel
+    await page.getByTestId("brand-personalization-toggle").click();
+    await page.getByTestId("brand-personalization-content").waitFor({ state: "visible" });
+
+    // Wait for color palettes to load (not skeleton)
+    await page.waitForFunction(
+      () => !document.querySelector('[data-slot="skeleton"]'),
+      { timeout: 10000 }
+    );
+
+    // Get the pagination label to see how many pages we have
+    const paginationLabel = page.getByTestId("color-pagination-label");
+    const labelText = await paginationLabel.textContent();
+    const totalPages = parseInt(labelText?.split("/")[1] || "1", 10);
+
+    // If there are multiple pages, navigate to page 2 and select a palette there
+    if (totalPages >= 2) {
+      // Navigate to page 2
+      await page.getByTestId("color-pagination-next").click();
+      await expect(paginationLabel).toHaveText(/^2\//);
+
+      // Select the first palette on page 2 (which should be the 4th palette overall)
+      const palettesOnPage2 = page.locator('[data-testid^="color-palette-"]');
+      const firstPaletteOnPage2 = palettesOnPage2.first();
+      await firstPaletteOnPage2.click();
+
+      // Verify it's selected
+      await expect(firstPaletteOnPage2).toHaveAttribute("data-selected", "true");
+
+      // Get the selected palette's test ID for later verification
+      const selectedPaletteTestId = await firstPaletteOnPage2.getAttribute("data-testid");
+
+      // Reload the page
+      await page.reload();
+      await page.getByTestId("chat-input").waitFor({ state: "visible", timeout: 10000 });
+
+      // Open the brand panel again
+      await page.getByTestId("brand-personalization-toggle").click();
+      await page.getByTestId("brand-personalization-content").waitFor({ state: "visible" });
+
+      // Wait for palettes to load
+      await page.waitForFunction(
+        () => !document.querySelector('[data-slot="skeleton"]'),
+        { timeout: 10000 }
+      );
+
+      // Verify we're still on page 2 (not page 1)
+      await expect(paginationLabel).toHaveText(/^2\//);
+
+      // Verify the palette is still selected and visible
+      const selectedPalette = page.getByTestId(selectedPaletteTestId!);
+      await expect(selectedPalette).toBeVisible();
+      await expect(selectedPalette).toHaveAttribute("data-selected", "true");
+    } else {
+      // If only one page of palettes, just verify the basic functionality works
+      const palettes = page.locator('[data-testid^="color-palette-"]');
+      const paletteCount = await palettes.count();
+      expect(paletteCount).toBeGreaterThan(0);
+    }
+  });
+});
+
+test.describe("Brand Personalization Panel Auto-Open", () => {
+  let brainstormPage: BrainstormPage;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await loginUser(page);
+    brainstormPage = new BrainstormPage(page);
+  });
+
+  test("panel is collapsed by default on new conversation", async ({ page }) => {
+    // Start a conversation to get the brand panel visible
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for brand panel");
+
+    // Wait for URL update and conversation to load
+    await page.waitForFunction(
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Wait for brand panel to be visible
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+
+    // Panel should be collapsed by default
+    const isExpanded = await brainstormPage.isBrandPanelExpanded();
+    expect(isExpanded).toBe(false);
+  });
+
+  test("auto-opens panel when a color palette is selected", async ({ page }) => {
+    // Start a conversation
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for color palette auto-open");
+
+    // Wait for conversation to load
+    await page.waitForFunction(
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Wait for brand panel to be visible
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+
+    // Open the panel manually to select a color
+    await brainstormPage.openBrandPanel();
+
+    // Wait for color palettes to load
+    await page.waitForFunction(
+      () => !document.querySelector('[data-slot="skeleton"]'),
+      { timeout: 10000 }
+    );
+
+    // Select a color palette
+    await brainstormPage.selectColorPalette(0);
+
+    // Close the panel
+    await brainstormPage.closeBrandPanel();
+    expect(await brainstormPage.isBrandPanelExpanded()).toBe(false);
+
+    // Reload the page
+    await page.reload();
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+
+    // Panel should auto-open because a personalization has been applied
+    // Note: The auto-open happens on initial render, not on reload
+    // Since the theme is persisted and loaded, the panel should auto-open
+    const isExpanded = await brainstormPage.isBrandPanelExpanded();
+    expect(isExpanded).toBe(true);
+  });
+
+  test("panel can be manually toggled", async ({ page }) => {
+    // Start a conversation
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for toggle");
+
+    // Wait for conversation to load
+    await page.waitForFunction(
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Wait for brand panel to be visible
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+
+    // Initially collapsed
+    expect(await brainstormPage.isBrandPanelExpanded()).toBe(false);
+
+    // Open
+    await brainstormPage.openBrandPanel();
+    expect(await brainstormPage.isBrandPanelExpanded()).toBe(true);
+
+    // Content should be visible
+    await expect(brainstormPage.brandPersonalizationContent).toBeVisible();
+
+    // Close
+    await brainstormPage.closeBrandPanel();
+    expect(await brainstormPage.isBrandPanelExpanded()).toBe(false);
+  });
+
+  test("shows brand panel sections when expanded", async ({ page }) => {
+    // Start a conversation
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for sections");
+
+    // Wait for conversation to load
+    await page.waitForFunction(
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Wait for and open brand panel
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    // Verify all sections are present
+    await expect(page.getByRole("heading", { name: "Logo" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Colors" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Social Links" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Images" })).toBeVisible();
+  });
+});
+
 test.describe("Brainstorm Loading States", () => {
   let brainstormPage: BrainstormPage;
 

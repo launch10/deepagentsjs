@@ -160,3 +160,19 @@ export const selectProductImages = (s: BrandPersonalizationState) => s.productIm
 export const selectError = (s: BrandPersonalizationState) => s.error;
 export const selectIsUploadingLogo = (s: BrandPersonalizationState) => s.isUploadingLogo;
 export const selectUploadingImageIds = (s: BrandPersonalizationState) => s.uploadingImageIds;
+
+/**
+ * Selector to check if any brand personalizations have been applied.
+ * Returns true if logo, theme, social links, or product images have been set.
+ */
+export const selectHasAnyPersonalizations = (s: BrandPersonalizationState): boolean => {
+  const hasSocialLinks = Boolean(
+    s.socialLinks.twitter || s.socialLinks.instagram || s.socialLinks.youtube
+  );
+  return Boolean(
+    s.logo ||
+    s.selectedThemeId !== null ||
+    hasSocialLinks ||
+    s.productImages.length > 0
+  );
+};

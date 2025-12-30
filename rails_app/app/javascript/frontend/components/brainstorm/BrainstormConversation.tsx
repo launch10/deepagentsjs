@@ -1,11 +1,18 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { router } from "@inertiajs/react";
+import { Brainstorm } from "@shared";
 import {
   useBrainstormChatIsLoadingHistory,
   useBrainstormChatMessages,
   useBrainstormChatState,
   useBrainstormChatThreadId,
 } from "@hooks/useBrainstormChat";
+import {
+  BrandPersonalizationProvider,
+  useBrandPersonalizationStore,
+  selectHasAnyPersonalizations,
+} from "@context/BrandPersonalizationProvider";
+import { useWebsite } from "@api/websites.hooks";
 import { BrainstormInputProvider } from "./BrainstormInputContext";
 import { BrainstormMessages } from "./BrainstormMessages";
 import { BrainstormInput } from "./BrainstormInput";
@@ -13,6 +20,85 @@ import { BrandPersonalizationPanel } from "./BrandPersonalizationPanel";
 import { BrainstormChatSkeleton } from "./BrainstormChatSkeleton";
 
 const SKELETON_DELAY_MS = 200;
+
+/**
+ * Compute the current question number from messages.
+ * Finds the last AI message with a topic and returns its question number.
+ */
+function useCurrentQuestionNumber(messages: any[]): number {
+  return useMemo(() => {
+    // Find the last topic mentioned in AI messages (reverse search)
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (message.role !== "user") {
+        const topic = message.metadata?.currentTopic as Brainstorm.TopicName | undefined;
+        if (topic) {
+          return Brainstorm.getQuestionNumberForTopic(topic);
+        }
+      }
+    }
+    return 1; // Default to question 1
+  }, [messages]);
+}
+
+/**
+ * Inner component that uses brand personalization context.
+ * Must be rendered inside BrandPersonalizationProvider.
+ */
+function BrainstormConversationContent({
+  contentVisible,
+  currentQuestionNumber,
+}: {
+  contentVisible: boolean;
+  currentQuestionNumber: number;
+}) {
+  const hasPersonalizations = useBrandPersonalizationStore(selectHasAnyPersonalizations);
+  const setTheme = useBrandPersonalizationStore((s) => s.setTheme);
+
+  // Load website data to check if a theme has been set
+  const { data: website } = useWebsite();
+  const hasInitializedThemeRef = useRef(false);
+
+  // Initialize theme from website data (before checking hasPersonalizations)
+  useEffect(() => {
+    if (!hasInitializedThemeRef.current && website?.theme_id != null) {
+      setTheme(website.theme_id);
+      hasInitializedThemeRef.current = true;
+    }
+  }, [website?.theme_id, setTheme]);
+
+  // Auto-open panel if we've reached question 5 or if any personalizations have been applied
+  const shouldAutoOpen = currentQuestionNumber >= 5 || hasPersonalizations;
+
+  return (
+    <div
+      className={`h-full flex flex-col transition-opacity duration-300 ease-out ${
+        contentVisible ? "opacity-100" : "opacity-0"
+      }`}
+    >
+      <BrainstormInputProvider>
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Left sidebar - Brand Personalization Panel */}
+          <div className="hidden lg:block pl-[72px] pt-[46px] shrink-0">
+            <BrandPersonalizationPanel shouldAutoOpen={shouldAutoOpen} />
+          </div>
+
+          {/* Main chat area */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* Scrollable messages area */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <BrainstormMessages />
+            </div>
+            {/* Fixed bottom input area */}
+            <div className="shrink-0 bg-neutral-background">
+              <BrainstormInput />
+            </div>
+          </div>
+        </div>
+      </BrainstormInputProvider>
+    </div>
+  );
+}
 
 /**
  * View for existing brainstorm conversations.
@@ -25,6 +111,9 @@ export function BrainstormConversation() {
   const isLoadingHistory = useBrainstormChatIsLoadingHistory();
   const redirect = useBrainstormChatState("redirect");
   const messages = useBrainstormChatMessages();
+
+  // Compute current question number from messages
+  const currentQuestionNumber = useCurrentQuestionNumber(messages);
 
   // Determine if we're waiting for history to load
   const isEmpty = messages.length === 0;
@@ -85,33 +174,13 @@ export function BrainstormConversation() {
     return <div className="h-full" />;
   }
 
-  // Content ready - fade in
+  // Wrap content in BrandPersonalizationProvider so inner components can access the store
   return (
-    <div
-      className={`h-full flex flex-col transition-opacity duration-300 ease-out ${
-        contentVisible ? "opacity-100" : "opacity-0"
-      }`}
-    >
-      <BrainstormInputProvider>
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Left sidebar - Brand Personalization Panel */}
-          <div className="hidden lg:block p-4 shrink-0">
-            <BrandPersonalizationPanel />
-          </div>
-
-          {/* Main chat area */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* Scrollable messages area */}
-            <div className="flex-1 overflow-y-auto min-h-0">
-              <BrainstormMessages />
-            </div>
-            {/* Fixed bottom input area */}
-            <div className="shrink-0 bg-neutral-background">
-              <BrainstormInput />
-            </div>
-          </div>
-        </div>
-      </BrainstormInputProvider>
-    </div>
+    <BrandPersonalizationProvider>
+      <BrainstormConversationContent
+        contentVisible={contentVisible}
+        currentQuestionNumber={currentQuestionNumber}
+      />
+    </BrandPersonalizationProvider>
   );
 }

@@ -31,6 +31,11 @@ export class BrainstormPage {
   readonly examplesPanel: Locator;
   readonly howItWorksPanel: Locator;
 
+  // Brand Personalization Panel elements
+  readonly brandPersonalizationPanel: Locator;
+  readonly brandPersonalizationToggle: Locator;
+  readonly brandPersonalizationContent: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
@@ -68,6 +73,11 @@ export class BrainstormPage {
     this.howItWorksPanel = page.locator(
       'ol:has(li:has-text("You tell us your big idea"))'
     );
+
+    // Brand Personalization Panel elements
+    this.brandPersonalizationPanel = page.getByTestId("brand-personalization-panel");
+    this.brandPersonalizationToggle = page.getByTestId("brand-personalization-toggle");
+    this.brandPersonalizationContent = page.getByTestId("brand-personalization-content");
   }
 
   /**
@@ -222,5 +232,43 @@ export class BrainstormPage {
   async gotoConversationImmediate(threadId: string): Promise<void> {
     await this.page.goto(`/projects/${threadId}/brainstorm`);
     // Don't wait for networkidle - we want to observe loading state
+  }
+
+  /**
+   * Check if the brand personalization panel is expanded
+   */
+  async isBrandPanelExpanded(): Promise<boolean> {
+    const expanded = await this.brandPersonalizationToggle.getAttribute("aria-expanded");
+    return expanded === "true";
+  }
+
+  /**
+   * Open the brand personalization panel if it's not already open
+   */
+  async openBrandPanel(): Promise<void> {
+    const isExpanded = await this.isBrandPanelExpanded();
+    if (!isExpanded) {
+      await this.brandPersonalizationToggle.click();
+      await this.brandPersonalizationContent.waitFor({ state: "visible" });
+    }
+  }
+
+  /**
+   * Close the brand personalization panel if it's open
+   */
+  async closeBrandPanel(): Promise<void> {
+    const isExpanded = await this.isBrandPanelExpanded();
+    if (isExpanded) {
+      await this.brandPersonalizationToggle.click();
+      await this.brandPersonalizationContent.waitFor({ state: "hidden" });
+    }
+  }
+
+  /**
+   * Select a color palette by index (0-based) on the current page
+   */
+  async selectColorPalette(index: number = 0): Promise<void> {
+    const palettes = this.page.locator('[data-testid^="color-palette-"]');
+    await palettes.nth(index).click();
   }
 }

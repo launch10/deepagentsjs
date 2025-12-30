@@ -13,30 +13,34 @@ interface SocialLinksSectionProps {
 // Local platforms we support in the UI
 type LocalSocialPlatform = "twitter" | "instagram" | "youtube";
 
-// Platform-specific URL patterns (backend will normalize to include https://)
-const PLATFORM_PATTERNS: Record<LocalSocialPlatform, { pattern: RegExp; example: string }> = {
+// Flexible validation - accepts usernames, @usernames, or full URLs
+// Backend will normalize to canonical format (e.g., @johndoe -> https://twitter.com/johndoe)
+const PLATFORM_PATTERNS: Record<LocalSocialPlatform, { pattern: RegExp; hint: string }> = {
   twitter: {
-    pattern: /^(https?:\/\/)?(www\.)?(twitter\.com|x\.com)\/[a-zA-Z0-9_]+\/?$/i,
-    example: "twitter.com/username",
+    // Accepts: @username, username, twitter.com/username, x.com/username (with or without protocol/www)
+    pattern: /^(@?[a-zA-Z0-9_]+|(https?:\/\/)?(www\.)?(twitter\.com|x\.com)\/[a-zA-Z0-9_]+\/?)?$/i,
+    hint: "@username or full URL",
   },
   instagram: {
-    pattern: /^(https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9_.]+\/?$/i,
-    example: "instagram.com/username",
+    // Accepts: @username, username, instagram.com/username (with or without protocol/www)
+    pattern: /^(@?[a-zA-Z0-9_.]+|(https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9_.]+\/?)?$/i,
+    hint: "@username or full URL",
   },
   youtube: {
-    pattern: /^(https?:\/\/)?(www\.)?youtube\.com\/(channel\/|c\/|user\/|@)?[a-zA-Z0-9_-]+\/?$/i,
-    example: "youtube.com/@channel",
+    // Accepts: @channel, channel, youtube.com/@channel, youtube.com/channel/ID, youtube.com/c/name
+    pattern: /^(@?[a-zA-Z0-9_-]+|(https?:\/\/)?(www\.)?youtube\.com\/(channel\/|c\/|user\/|@)?[a-zA-Z0-9_-]+\/?)?$/i,
+    hint: "@channel or full URL",
   },
 };
 
-// Platform-specific validation schemas
+// Platform-specific validation schemas - very permissive, backend handles normalization
 const createPlatformSchema = (platform: LocalSocialPlatform) =>
   z.string().refine(
     (val) => {
       if (!val || val.trim() === "") return true;
       return PLATFORM_PATTERNS[platform].pattern.test(val.trim());
     },
-    { message: `Enter a valid URL (e.g. ${PLATFORM_PATTERNS[platform].example})` }
+    { message: `Enter ${PLATFORM_PATTERNS[platform].hint}` }
   );
 
 const socialLinksSchema = z.object({
@@ -48,19 +52,14 @@ const socialLinksSchema = z.object({
 type SocialLinksFormData = z.infer<typeof socialLinksSchema>;
 
 const SOCIAL_PLATFORMS: { platform: LocalSocialPlatform; placeholder: string }[] = [
-  { platform: "twitter", placeholder: "twitter.com/username" },
-  { platform: "instagram", placeholder: "instagram.com/username" },
-  { platform: "youtube", placeholder: "youtube.com/@channel" },
+  { platform: "twitter", placeholder: "Twitter URL" },
+  { platform: "instagram", placeholder: "Instagram URL" },
+  { platform: "youtube", placeholder: "Youtube URL" },
 ];
 
 export function SocialLinksSection({ className }: SocialLinksSectionProps) {
   // Fetch existing social links from API
   const { data: existingSocialLinks = [], isLoading: isFetching } = useSocialLinks();
-  const bulkUpsertMutation = useBulkUpsertSocialLinks();
-
-  // Use a ref to store the mutate function to avoid it being a dependency
-  const mutateRef = useRef(bulkUpsertMutation.mutate);
-  mutateRef.current = bulkUpsertMutation.mutate;
 
   // Track whether user has made changes (prevents auto-save on initial load)
   const hasMountedRef = useRef(false);
@@ -69,6 +68,8 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
   // Separate debounce timers for validation and autosave
   const validateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track form methods ref for use in mutation callback
+  const methodsRef = useRef<ReturnType<typeof useForm<SocialLinksFormData>> | null>(null);
 
   const methods = useForm<SocialLinksFormData>({
     resolver: zodResolver(socialLinksSchema),
@@ -79,6 +80,37 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
       youtube: "",
     },
   });
+
+  // Keep methodsRef in sync
+  methodsRef.current = methods;
+
+  // Mutation with onSuccess to sync normalized URLs back to form
+  const bulkUpsertMutation = useBulkUpsertSocialLinks({
+    onSuccess: (data) => {
+      // Update form with normalized URLs from backend
+      if (methodsRef.current && data) {
+        const normalizedValues: SocialLinksFormData = {
+          twitter: "",
+          instagram: "",
+          youtube: "",
+        };
+        data.forEach((link) => {
+          const platform = link.platform as LocalSocialPlatform;
+          if (platform in normalizedValues && link.url) {
+            normalizedValues[platform] = link.url;
+          }
+        });
+        // Update lastSavedRef to prevent re-saving the same data
+        lastSavedRef.current = JSON.stringify(normalizedValues);
+        // Reset form with normalized values (without triggering validation)
+        methodsRef.current.reset(normalizedValues, { keepDirty: false });
+      }
+    },
+  });
+
+  // Use a ref to store the mutate function to avoid it being a dependency
+  const mutateRef = useRef(bulkUpsertMutation.mutate);
+  mutateRef.current = bulkUpsertMutation.mutate;
 
   // Initialize form from API data
   useEffect(() => {

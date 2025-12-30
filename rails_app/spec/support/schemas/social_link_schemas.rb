@@ -3,6 +3,7 @@
 module APISchemas
   module SocialLink
     PLATFORMS = %w[twitter instagram facebook linkedin youtube tiktok website other].freeze
+    NORMALIZABLE_PLATFORMS = %w[twitter instagram youtube].freeze
 
     def self.response
       {
@@ -14,12 +15,16 @@ module APISchemas
             enum: PLATFORMS,
             description: 'Social platform type'
           },
-          url: {type: :string, nullable: true, description: 'URL to the social profile'},
+          url: {
+            type: :string,
+            description: 'URL to the social profile. For twitter, instagram, and youtube, URLs are ' \
+                         'automatically normalized (e.g., @username -> https://twitter.com/username)'
+          },
           handle: {type: :string, nullable: true, description: 'Social handle/username'},
           project_id: APISchemas.id_field,
           **APISchemas.timestamps
         },
-        required: %w[id platform project_id created_at updated_at]
+        required: %w[id platform url project_id created_at updated_at]
       }
     end
 
@@ -44,14 +49,16 @@ module APISchemas
               },
               url: {
                 type: :string,
-                description: 'URL to the social profile'
+                description: 'URL to the social profile. For twitter, instagram, and youtube: accepts full URLs ' \
+                             '(http/https, with/without www), usernames, or @usernames. Automatically normalized ' \
+                             'to canonical format (e.g., @johndoe -> https://twitter.com/johndoe)'
               },
               handle: {
                 type: :string,
                 description: 'Social handle/username'
               }
             },
-            required: ['platform']
+            required: %w[platform url]
           }
         },
         required: ['social_link']
@@ -74,14 +81,16 @@ module APISchemas
                 },
                 url: {
                   type: :string,
-                  description: 'URL to the social profile'
+                  description: 'URL to the social profile. For twitter, instagram, and youtube: accepts full URLs ' \
+                               '(http/https, with/without www), usernames, or @usernames. Automatically normalized ' \
+                               'to canonical format (e.g., @johndoe -> https://twitter.com/johndoe)'
                 },
                 handle: {
                   type: :string,
                   description: 'Social handle/username'
                 }
               },
-              required: ['platform']
+              required: %w[platform url]
             }
           }
         },

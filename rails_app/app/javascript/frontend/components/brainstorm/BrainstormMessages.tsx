@@ -83,18 +83,16 @@ export function BrainstormMessages() {
 
       // AI message - check if it starts a new topic
       const messageTopic = (message as any).metadata?.currentTopic as string | undefined;
-      debugger;
       const startsNewTopic = Boolean(messageTopic && messageTopic !== lastSeenTopic);
 
       if (messageTopic) {
         lastSeenTopic = messageTopic;
       }
-
       return {
         isUser,
         isLastMessage,
         startsNewTopic,
-        questionNumber: startsNewTopic ? Brainstorm.getQuestionNumberForTopic(messageTopic) : 0,
+        questionNumber: startsNewTopic && messageTopic ? Brainstorm.getQuestionNumberForTopic(messageTopic as Brainstorm.TopicName) : 0,
       };
     });
   }, [messages]);

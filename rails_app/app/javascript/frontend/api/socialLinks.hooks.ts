@@ -121,12 +121,15 @@ export function useBulkUpsertSocialLinks(
       }
       return service.bulkUpsert(projectUuid, socialLinks);
     },
-    onSuccess: (data) => {
-      // Update the cache with the new data
+    ...options,
+    onSuccess: (...args) => {
+      const [data] = args;
+      // Always update the cache with the new data
       if (projectUuid) {
         queryClient.setQueryData(socialLinksKeys.list(projectUuid), data);
       }
+      // Then call user's onSuccess if provided
+      options?.onSuccess?.(...args);
     },
-    ...options,
   });
 }
