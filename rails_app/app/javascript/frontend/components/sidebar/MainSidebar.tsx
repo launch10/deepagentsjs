@@ -41,13 +41,13 @@ export default function MainSidebar() {
       className="h-screen flex flex-col transition-all duration-300 sticky top-0 shrink-0"
     >
       {/* Collapse button */}
-      <div className="p-4 flex justify-end">
+      <div className={twMerge("p-4 flex", isCollapsed ? "justify-center" : "justify-end")}>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="text-white hover:opacity-70 transition-opacity"
         >
           <ArrowRightStartOnRectangleIcon
-            className={twMerge("w-6 h-6", isCollapsed && "rotate-180")}
+            className={twMerge("w-6 h-6", !isCollapsed && "rotate-180")}
           />
         </button>
       </div>
