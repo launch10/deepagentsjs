@@ -25,7 +25,7 @@ namespace :api, defaults: {format: :json} do
     resources :website_urls, only: [:index, :show, :create, :update]
 
     scope "projects/:project_uuid" do
-      resource :website, only: [:update]
+      resource :website, only: [:show, :update]
       resources :social_links, only: [:index, :show, :create, :update, :destroy] do
         collection do
           post :bulk_upsert

@@ -1,8 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Link, Check, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useSocialLinks, useBulkUpsertSocialLinks } from "@api/socialLinks.hooks";
-import { useDebounce } from "@hooks/useDebounce";
 
 interface SocialLinksSectionProps {
   className?: string;
@@ -11,16 +13,44 @@ interface SocialLinksSectionProps {
 // Local platforms we support in the UI
 type LocalSocialPlatform = "twitter" | "instagram" | "youtube";
 
-interface SocialLinks {
-  twitter: string;
-  instagram: string;
-  youtube: string;
-}
+// Platform-specific URL patterns (backend will normalize to include https://)
+const PLATFORM_PATTERNS: Record<LocalSocialPlatform, { pattern: RegExp; example: string }> = {
+  twitter: {
+    pattern: /^(https?:\/\/)?(www\.)?(twitter\.com|x\.com)\/[a-zA-Z0-9_]+\/?$/i,
+    example: "twitter.com/username",
+  },
+  instagram: {
+    pattern: /^(https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9_.]+\/?$/i,
+    example: "instagram.com/username",
+  },
+  youtube: {
+    pattern: /^(https?:\/\/)?(www\.)?youtube\.com\/(channel\/|c\/|user\/|@)?[a-zA-Z0-9_-]+\/?$/i,
+    example: "youtube.com/@channel",
+  },
+};
+
+// Platform-specific validation schemas
+const createPlatformSchema = (platform: LocalSocialPlatform) =>
+  z.string().refine(
+    (val) => {
+      if (!val || val.trim() === "") return true;
+      return PLATFORM_PATTERNS[platform].pattern.test(val.trim());
+    },
+    { message: `Enter a valid URL (e.g. ${PLATFORM_PATTERNS[platform].example})` }
+  );
+
+const socialLinksSchema = z.object({
+  twitter: createPlatformSchema("twitter"),
+  instagram: createPlatformSchema("instagram"),
+  youtube: createPlatformSchema("youtube"),
+});
+
+type SocialLinksFormData = z.infer<typeof socialLinksSchema>;
 
 const SOCIAL_PLATFORMS: { platform: LocalSocialPlatform; placeholder: string }[] = [
-  { platform: "twitter", placeholder: "Twitter URL" },
-  { platform: "instagram", placeholder: "Instagram URL" },
-  { platform: "youtube", placeholder: "Youtube URL" },
+  { platform: "twitter", placeholder: "twitter.com/username" },
+  { platform: "instagram", placeholder: "instagram.com/username" },
+  { platform: "youtube", placeholder: "youtube.com/@channel" },
 ];
 
 export function SocialLinksSection({ className }: SocialLinksSectionProps) {
@@ -33,21 +63,27 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
   mutateRef.current = bulkUpsertMutation.mutate;
 
   // Track whether user has made changes (prevents auto-save on initial load)
-  const hasUserEditedRef = useRef(false);
+  const hasMountedRef = useRef(false);
   // Track the last saved value to prevent duplicate saves
   const lastSavedRef = useRef<string>("");
+  // Separate debounce timers for validation and autosave
+  const validateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Local state for form
-  const [localLinks, setLocalLinks] = useState<SocialLinks>({
-    twitter: "",
-    instagram: "",
-    youtube: "",
+  const methods = useForm<SocialLinksFormData>({
+    resolver: zodResolver(socialLinksSchema),
+    mode: "onChange",
+    defaultValues: {
+      twitter: "",
+      instagram: "",
+      youtube: "",
+    },
   });
 
-  // Initialize local state from API data
+  // Initialize form from API data
   useEffect(() => {
     if (existingSocialLinks.length > 0) {
-      const linksMap: SocialLinks = {
+      const linksMap: SocialLinksFormData = {
         twitter: "",
         instagram: "",
         youtube: "",
@@ -60,46 +96,83 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
           }
         }
       });
-      setLocalLinks(linksMap);
+      methods.reset(linksMap);
       // Set the last saved value to prevent re-saving the same data
       lastSavedRef.current = JSON.stringify(linksMap);
     }
-  }, [existingSocialLinks]);
+  }, [existingSocialLinks, methods]);
 
-  // Debounce the local links for auto-save
-  const debouncedLinks = useDebounce(localLinks, 1000);
-
-  // Auto-save when debounced links change
+  // Watch form changes with separate debounces for validation and autosave
   useEffect(() => {
-    // Only save if user has made changes (prevents auto-save on initial load)
-    if (!hasUserEditedRef.current) return;
+    const subscription = methods.watch(() => {
+      // Skip first mount
+      if (!hasMountedRef.current) {
+        hasMountedRef.current = true;
+        return;
+      }
 
-    // Only save if we have any non-empty values
-    const hasValues = Object.values(debouncedLinks).some((v) => v.trim().length > 0);
-    if (!hasValues) return;
+      // Clear existing timers
+      if (validateTimerRef.current) {
+        clearTimeout(validateTimerRef.current);
+      }
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
 
-    // Check if the links have actually changed from last save
-    const currentValue = JSON.stringify(debouncedLinks);
-    if (currentValue === lastSavedRef.current) return;
+      // Debounce validation (200ms)
+      validateTimerRef.current = setTimeout(() => {
+        methods.trigger();
+      }, 200);
 
-    // Convert to API format and save
-    const socialLinksToSave = SOCIAL_PLATFORMS.filter(
-      ({ platform }) => debouncedLinks[platform].trim().length > 0
-    ).map(({ platform }) => ({
-      platform,
-      url: debouncedLinks[platform],
-    }));
+      // Debounce autosave (750ms)
+      autosaveTimerRef.current = setTimeout(async () => {
+        // Trigger validation and check result
+        const isValid = await methods.trigger();
+        if (!isValid) return;
 
-    if (socialLinksToSave.length > 0) {
-      lastSavedRef.current = currentValue;
-      mutateRef.current({ socialLinks: socialLinksToSave });
-    }
-  }, [debouncedLinks]);
+        const formData = methods.getValues();
 
-  const handleLinkChange = useCallback((platform: LocalSocialPlatform, url: string) => {
-    hasUserEditedRef.current = true;
-    setLocalLinks((prev) => ({ ...prev, [platform]: url }));
-  }, []);
+        // Check if anything changed from last save
+        const currentValue = JSON.stringify(formData);
+        if (currentValue === lastSavedRef.current) return;
+
+        // Only save if we have any non-empty values
+        const hasValues = Object.values(formData).some((v) => v.trim().length > 0);
+        if (!hasValues) return;
+
+        // Convert to API format and save
+        const socialLinksToSave = SOCIAL_PLATFORMS.filter(
+          ({ platform }) => formData[platform].trim().length > 0
+        ).map(({ platform }) => ({
+          platform,
+          url: formData[platform],
+        }));
+
+        if (socialLinksToSave.length > 0) {
+          lastSavedRef.current = currentValue;
+          mutateRef.current({ socialLinks: socialLinksToSave });
+        }
+      }, 750);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      if (validateTimerRef.current) {
+        clearTimeout(validateTimerRef.current);
+      }
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, [methods]);
+
+  const handleLinkChange = useCallback(
+    (platform: LocalSocialPlatform, url: string) => {
+      // Don't validate immediately - let the debounced validation handle it
+      methods.setValue(platform, url, { shouldDirty: true });
+    },
+    [methods]
+  );
 
   if (isFetching) {
     return (
@@ -118,6 +191,9 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
     );
   }
 
+  const watchedValues = methods.watch();
+  const { errors } = methods.formState;
+
   return (
     <div className={twMerge("space-y-2", className)}>
       <div className="flex items-center justify-between">
@@ -133,11 +209,12 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
             key={platform}
             platform={platform}
             placeholder={placeholder}
-            value={localLinks[platform]}
+            value={watchedValues[platform]}
             onChange={(value) => handleLinkChange(platform, value)}
+            error={errors[platform]?.message}
             isSaved={
               existingSocialLinks.some(
-                (link) => link.platform === platform && link.url === localLinks[platform]
+                (link) => link.platform === platform && link.url === watchedValues[platform]
               ) && !bulkUpsertMutation.isPending
             }
           />
@@ -154,6 +231,7 @@ interface SocialLinkInputProps {
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
+  error?: string;
   isSaved: boolean;
 }
 
@@ -162,52 +240,18 @@ function SocialLinkInput({
   placeholder,
   value,
   onChange,
+  error,
   isSaved,
 }: SocialLinkInputProps) {
-  const [localValue, setLocalValue] = useState(value);
-  const [isValid, setIsValid] = useState(true);
-
-  // Sync local value when prop changes
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
-  const validateUrl = (url: string): boolean => {
-    if (!url) return true; // Empty is valid (optional)
-    try {
-      const parsed = new URL(url);
-      return parsed.protocol === "http:" || parsed.protocol === "https:";
-    } catch {
-      return false;
-    }
-  };
-
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value;
-      setLocalValue(newValue);
-
-      // Clear invalid state while typing
-      if (!isValid) {
-        setIsValid(true);
-      }
-
-      // Validate and propagate to parent
-      const valid = validateUrl(newValue);
-      if (valid) {
-        onChange(newValue);
-      }
+      onChange(e.target.value);
     },
-    [isValid, onChange]
+    [onChange]
   );
 
-  const handleBlur = useCallback(() => {
-    const valid = validateUrl(localValue);
-    setIsValid(valid);
-  }, [localValue]);
-
-  // Show checkmark when URL is valid, has content, and is saved
-  const hasValidContent = isValid && localValue.trim().length > 0;
+  const isValid = !error;
+  const hasValidContent = isValid && value.trim().length > 0;
   const showCheckmark = hasValidContent && isSaved;
 
   return (
@@ -221,9 +265,8 @@ function SocialLinkInput({
       </div>
       <input
         type="url"
-        value={localValue}
+        value={value}
         onChange={handleChange}
-        onBlur={handleBlur}
         placeholder={placeholder}
         className={twMerge(
           "w-full pl-8 pr-3 py-2 text-sm border rounded-lg",
@@ -234,9 +277,9 @@ function SocialLinkInput({
         aria-label={placeholder}
         aria-invalid={!isValid}
       />
-      {!isValid && (
+      {error && (
         <p className="text-xs text-red-500 mt-1" role="alert">
-          Please enter a valid URL
+          {error}
         </p>
       )}
     </div>

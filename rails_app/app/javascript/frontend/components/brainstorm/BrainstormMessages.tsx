@@ -42,6 +42,8 @@ export function BrainstormMessages() {
   const { sendMessage } = useBrainstormChatActions();
   const { setInput, textareaRef } = useBrainstormInput();
 
+  const totalQuestions = Brainstorm.TotalQuestions;
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom on new messages
@@ -61,17 +63,38 @@ export function BrainstormMessages() {
     sendMessage(prompt);
   }, [sendMessage]);
 
-  // Pre-compute message metadata in a single O(n) pass instead of O(n^2)
+  // Pre-compute message metadata in a single O(n) pass
+  // Detect topic changes to show question badge on first message of each topic
   const messageMetadata = useMemo(() => {
-    let aiCount = 0;
+    let lastSeenTopic: string | undefined;
+
     return messages.map((message, index) => {
       const isUser = message.role === "user";
-      if (!isUser) aiCount++;
+      const isLastMessage = index === messages.length - 1;
+
+      if (isUser) {
+        return {
+          isUser,
+          isLastMessage,
+          startsNewTopic: false,
+          questionNumber: 0,
+        };
+      }
+
+      // AI message - check if it starts a new topic
+      const messageTopic = (message as any).metadata?.currentTopic as string | undefined;
+      debugger;
+      const startsNewTopic = Boolean(messageTopic && messageTopic !== lastSeenTopic);
+
+      if (messageTopic) {
+        lastSeenTopic = messageTopic;
+      }
+
       return {
         isUser,
-        isLastMessage: index === messages.length - 1,
-        questionNumber: isUser ? 0 : aiCount,
-        isFirstAIMessage: !isUser && aiCount === 1,
+        isLastMessage,
+        startsNewTopic,
+        questionNumber: startsNewTopic ? Brainstorm.getQuestionNumberForTopic(messageTopic) : 0,
       };
     });
   }, [messages]);
@@ -81,12 +104,10 @@ export function BrainstormMessages() {
     return null;
   }
 
-  const totalQuestions = Brainstorm.BrainstormTopics.length;
-
   return (
     <Chat.MessageList.Root className="flex-1 p-4 space-y-4 mx-auto" style={{ maxWidth: "808px" }}>
       {messages.map((message, index) => {
-        const { isUser, isLastMessage, questionNumber } = messageMetadata[index];
+        const { isUser, isLastMessage, startsNewTopic, questionNumber } = messageMetadata[index];
 
         if (isUser) {
           return (
@@ -118,8 +139,10 @@ export function BrainstormMessages() {
 
         return (
           <div key={message.id} className="space-y-3">
-            {/* Question badge appears before AI message content */}
-            <QuestionBadge current={questionNumber} total={totalQuestions} />
+            {/* Question badge appears on first AI message of each topic */}
+            {startsNewTopic && (
+              <QuestionBadge current={questionNumber} total={totalQuestions} />
+            )}
             <BrainstormMessage
               blocks={message.blocks as BrainstormBlock[]}
               isActive={isLastMessage}

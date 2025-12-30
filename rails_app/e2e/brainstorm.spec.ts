@@ -94,7 +94,8 @@ test.describe("Brainstorm Flow", () => {
 
       // Reload the page to simulate coming back to conversation
       await page.reload();
-      await page.waitForLoadState("networkidle");
+      // Wait for chat input instead of networkidle (Vite HMR keeps websocket active)
+      await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
 
       // Verify we're still on the same conversation
       const currentThreadId = brainstormPage.getThreadIdFromUrl();
@@ -306,7 +307,8 @@ test.describe("Brainstorm URL Handling", () => {
 
     // Navigate back to the bookmarked URL
     await page.goto(url);
-    await page.waitForLoadState("networkidle");
+    // Wait for chat input instead of networkidle (Vite HMR keeps websocket active)
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
 
     // Should load the conversation
     const messageCount = await brainstormPage.getUserMessageCount();
@@ -330,7 +332,8 @@ test.describe("Brainstorm URL Handling", () => {
     await page.goBack();
 
     // Should return to previous page or handle gracefully
-    await page.waitForLoadState("networkidle");
+    // Wait for chat input instead of networkidle (Vite HMR keeps websocket active)
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
   });
 });
 
@@ -357,8 +360,8 @@ test.describe("New Project Route (/projects/new)", () => {
     // Start on root
     await brainstormPage.goto();
 
-    // Click the New Project button in sidebar
-    await page.click('a[href="/projects/new"]');
+    // Click the New Project button in sidebar using data-testid
+    await page.getByTestId("new-project-link").click();
 
     // Verify navigation
     await page.waitForURL("**/projects/new");
@@ -572,7 +575,8 @@ test.describe("Brainstorm Loading States", () => {
     await brainstormPage.expectLandingPageNotVisible();
 
     // Eventually the messages should load
-    await page.waitForLoadState("networkidle");
+    // Wait for chat input instead of networkidle (Vite HMR keeps websocket active)
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
     const messageCount = await brainstormPage.getUserMessageCount();
     expect(messageCount).toBeGreaterThan(0);
   });

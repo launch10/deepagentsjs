@@ -544,6 +544,33 @@ describe.sequential("Brainstorming Flow", () => {
       expect(result2.state.memories.solution).toBeTruthy();
       expect(result2.state.memories.socialProof).toBeTruthy();
     });
+
+    it("attaches currentTopic to AI messages in additional_kwargs for question badge display", async () => {
+      const graph = await restartChatFrom("idea", SimpleChatHistory);
+
+      // Send a message to get the first AI response
+      const result1 = await graph.withPrompt(validAnswers.idea).execute();
+
+      // Get the last AI message and check it has currentTopic in additional_kwargs
+      const aiMessage1 = lastAIMessage(result1.state);
+      assertDefined(aiMessage1, "AI message should be defined");
+
+      // The AI message should have currentTopic tagged
+      expect(aiMessage1.additional_kwargs).toBeDefined();
+      expect(aiMessage1.additional_kwargs?.currentTopic).toBe("solution");
+
+      // Continue to next topic
+      const result2 = await graph
+        .withPrompt(validAnswers.solution)
+        .withState(result1.state)
+        .execute();
+
+      const aiMessage2 = lastAIMessage(result2.state);
+      assertDefined(aiMessage2, "AI message should be defined");
+
+      expect(aiMessage2.additional_kwargs).toBeDefined();
+      expect(aiMessage2.additional_kwargs?.currentTopic).toBe("socialProof");
+    });
   });
 
   describe("Actions", () => {

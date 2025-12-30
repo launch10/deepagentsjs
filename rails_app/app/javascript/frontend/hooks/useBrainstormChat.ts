@@ -1,5 +1,5 @@
 import { usePage } from "@inertiajs/react";
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
 import type { BrainstormBridgeType, BrainstormGraphState, InertiaProps } from "@shared";
 
@@ -11,8 +11,22 @@ type BrainstormPageProps = NewBrainstormProps | UpdateBrainstormProps;
 
 export type BrainstormSnapshot = ChatSnapshot<BrainstormGraphState>;
 
+/**
+ * Extract threadId from URL path like /projects/{uuid}/brainstorm
+ */
+function getThreadIdFromUrl(): string | undefined {
+  const match = window.location.pathname.match(/^\/projects\/([^/]+)\/brainstorm$/);
+  return match?.[1];
+}
+
 function useBrainstormChatOptions() {
   const { thread_id, jwt, langgraph_path } = usePage<BrainstormPageProps>().props;
+
+  const onThreadIdAvailable = useCallback((threadId: string) => {
+    // Update URL without full navigation so new components can read the threadId
+    const newUrl = `/projects/${threadId}/brainstorm`;
+    window.history.pushState({ threadId }, "", newUrl);
+  }, []);
 
   return useMemo(() => {
     const url = langgraph_path
@@ -24,9 +38,11 @@ function useBrainstormChatOptions() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
       },
-      getInitialThreadId: () => (thread_id ? thread_id : undefined),
+      // Check URL first (for after history.pushState), then fall back to Inertia props
+      getInitialThreadId: () => getThreadIdFromUrl() ?? (thread_id ? thread_id : undefined),
+      onThreadIdAvailable,
     };
-  }, [thread_id, jwt, langgraph_path]);
+  }, [thread_id, jwt, langgraph_path, onThreadIdAvailable]);
 }
 
 export function useBrainstormChat<TSelected = BrainstormSnapshot>(
@@ -72,12 +88,12 @@ export function useBrainstormChatThreadId() {
 
 /**
  * Returns whether this is a new conversation (should show landing page).
- * Uses server props (thread_id) as the source of truth for routing.
- * This avoids complex state syncing issues when switching components.
+ * Uses messages.length === 0 as the source of truth for routing.
+ * This allows the UI to switch from Landing to Conversation when the first message is sent,
+ * without needing an Inertia navigation.
  */
 export function useBrainstormIsNewConversation() {
-  const { thread_id } = usePage<BrainstormPageProps>().props;
-  return thread_id === undefined || thread_id === null;
+  return useBrainstormChat((s) => s.messages.length === 0);
 }
 
 /**

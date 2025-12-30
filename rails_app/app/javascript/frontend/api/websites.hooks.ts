@@ -1,7 +1,13 @@
-import { useMutation, useQueryClient, type UseMutationOptions } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type UseQueryOptions,
+  type UseMutationOptions,
+} from "@tanstack/react-query";
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
-import { WebsiteService, type UpdateWebsiteResponse } from "./websites";
+import { WebsiteService, type GetWebsiteResponse, type UpdateWebsiteResponse } from "./websites";
 
 // ============================================================================
 // Query Keys
@@ -32,6 +38,42 @@ export function useWebsiteService() {
 export function useProjectUuid(): string | null {
   const { project } = usePage<{ project?: { uuid: string } }>().props;
   return project?.uuid ?? null;
+}
+
+// ============================================================================
+// Query Hooks
+// ============================================================================
+
+type WebsiteQueryOptions = Omit<
+  UseQueryOptions<GetWebsiteResponse, Error>,
+  "queryKey" | "queryFn"
+>;
+
+/**
+ * Hook for fetching website data with caching.
+ * First checks Inertia page props for initial data, then falls back to API.
+ *
+ * @example
+ * ```tsx
+ * const { data: website, isLoading, error } = useWebsite();
+ * console.log(website?.theme_id);
+ * ```
+ */
+export function useWebsite(options?: WebsiteQueryOptions) {
+  const service = useWebsiteService();
+  const projectUuid = useProjectUuid();
+  // Get initial data from Inertia props if available
+  const { website: initialWebsite } = usePage<{ website?: GetWebsiteResponse }>().props;
+
+  return useQuery({
+    queryKey: websiteKeys.detail(projectUuid ?? ""),
+    queryFn: () => service.get(projectUuid!),
+    enabled: !!projectUuid,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    // Use Inertia props as initial data if available
+    initialData: initialWebsite ?? undefined,
+    ...options,
+  });
 }
 
 // ============================================================================

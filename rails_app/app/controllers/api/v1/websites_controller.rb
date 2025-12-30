@@ -2,6 +2,10 @@ class API::V1::WebsitesController < API::BaseController
   before_action :set_project
   before_action :set_website
 
+  def show
+    render json: @website.as_json(only: [:id, :name, :theme_id])
+  end
+
   def update
     if @website.update(website_params)
       render json: @website.as_json(only: [:id, :name, :theme_id])

@@ -72,6 +72,11 @@ export const brainstormAgent = NodeMiddleware.use(
 
     let messages = state.messages || [];
     if (message) {
+      // Tag the AI message with the current topic for frontend question badge display
+      message.additional_kwargs = {
+        ...message.additional_kwargs,
+        currentTopic,
+      };
       messages = [...(messages as any[]), message];
     }
 

@@ -3143,6 +3143,53 @@ paths:
       required: true
       schema:
         type: string
+    get:
+      summary: Retrieves a website
+      tags:
+      - Websites
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: website found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    nullable: true
+                    description: Website name
+                  theme_id:
+                    type: integer
+                    nullable: true
+                    description: Theme ID
+                required:
+                - id
+        '401':
+          description: unauthorized - missing token
+        '404':
+          description: project not found
     patch:
       summary: Cannot update other account website
       tags:

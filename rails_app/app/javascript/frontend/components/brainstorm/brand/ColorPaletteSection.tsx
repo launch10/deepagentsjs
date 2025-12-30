@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import {
@@ -6,7 +6,7 @@ import {
   selectSelectedThemeId,
 } from "@context/BrandPersonalizationProvider";
 import { useThemes, useCreateTheme } from "@api/themes.hooks";
-import { useUpdateWebsiteTheme } from "@api/websites.hooks";
+import { useWebsite, useUpdateWebsiteTheme } from "@api/websites.hooks";
 import { CustomColorPicker } from "./CustomColorPicker";
 import type { GetThemesResponse } from "@api/themes";
 
@@ -23,12 +23,26 @@ export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
   const setTheme = useBrandPersonalizationStore((s) => s.setTheme);
 
   // TanStack Query hooks for caching
-  const { data: themes = [], isLoading } = useThemes();
+  const { data: themes = [], isLoading: isLoadingThemes } = useThemes();
+  const { data: website, isLoading: isLoadingWebsite } = useWebsite();
   const createThemeMutation = useCreateTheme();
   const updateWebsiteThemeMutation = useUpdateWebsiteTheme();
 
+  // Track if we've initialized the theme from the website data
+  const hasInitializedRef = useRef(false);
+
+  // Initialize theme from website data (props or API)
+  useEffect(() => {
+    if (!hasInitializedRef.current && website?.theme_id != null) {
+      setTheme(website.theme_id);
+      hasInitializedRef.current = true;
+    }
+  }, [website?.theme_id, setTheme]);
+
   const [currentPage, setCurrentPage] = useState(0);
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+
+  const isLoading = isLoadingThemes || isLoadingWebsite;
 
   const totalPages = Math.max(1, Math.ceil(themes.length / PALETTES_PER_PAGE));
   const visibleThemes = themes.slice(

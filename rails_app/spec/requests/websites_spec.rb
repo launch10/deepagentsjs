@@ -19,6 +19,54 @@ RSpec.describe "Websites API", type: :request do
   path '/api/v1/projects/{project_uuid}/website' do
     parameter name: :project_uuid, in: :path, type: :string, description: 'Project UUID'
 
+    get 'Retrieves a website' do
+      tags 'Websites'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+
+      let(:project_uuid) { project.uuid }
+
+      response '200', 'website found' do
+        schema APISchemas::Website.response
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+
+        before do
+          website.update!(theme_id: theme.id)
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['id']).to eq(website.id)
+          expect(data['theme_id']).to eq(theme.id)
+        end
+      end
+
+      response '401', 'unauthorized - missing token' do
+        let(:Authorization) { nil }
+
+        run_test! do |response|
+          expect(response.code).to eq("401")
+        end
+      end
+
+      response '404', 'project not found' do
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:project_uuid) { 'non-existent-uuid' }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['error']).to eq('Record not found')
+        end
+      end
+    end
+
     patch 'Updates a website' do
       tags 'Websites'
       consumes 'application/json'

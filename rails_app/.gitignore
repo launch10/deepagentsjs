@@ -84,3 +84,8 @@ storybook-static
 # Overmind socket files
 .overmind.sock
 .overmind-test.sock
+
+# Playwright
+/playwright-report/
+/test-results/
+/.playwright-mcp/
