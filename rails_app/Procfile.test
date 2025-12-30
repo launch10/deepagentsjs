@@ -1,3 +1,3 @@
-web: RAILS_ENV=test bundle exec rails server -p $PORT
-vite: RAILS_ENV=test bin/vite dev
+web: RAILS_ENV=test LANGGRAPH_API_URL=http://localhost:4001 bundle exec rails server -p $PORT
+vite: RAILS_ENV=test VITE_LANGGRAPH_API_URL=http://localhost:4001 bin/vite dev
 langgraph: cd ../langgraph_app && NODE_ENV=test PORT=4001 pnpm run dev

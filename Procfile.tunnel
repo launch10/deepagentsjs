@@ -1,0 +1,8 @@
+# Launch10 Tunnel - runs all services + cloudflare tunnels
+# Usage: overmind start -f Procfile.tunnel (or foreman start -f Procfile.tunnel)
+
+rails: cd rails_app && PORT=3000 bundle exec rails server -p 3000
+vite: cd rails_app && bundle exec vite dev
+langgraph: cd langgraph_app && PORT=8080 pnpm run dev
+tunnel_rails: sleep 5 && cloudflared tunnel --url http://localhost:3000
+tunnel_api: sleep 5 && cloudflared tunnel --url http://localhost:8080

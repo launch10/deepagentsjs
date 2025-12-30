@@ -77,10 +77,9 @@ export class BrainstormPage {
     this.learnHowItWorksButton = page.getByRole("button", {
       name: "Learn how it works",
     });
-    this.examplesPanel = page.locator('text="Example structure:"').locator("..");
-    this.howItWorksPanel = page.locator(
-      'ol:has(li:has-text("You tell us your big idea"))'
-    );
+    // Use data-testid with data-expanded for proper visibility check
+    this.examplesPanel = page.getByTestId("examples-panel");
+    this.howItWorksPanel = page.getByTestId("how-it-works-panel");
 
     // Brand Personalization Panel elements
     this.brandPersonalizationPanel = page.getByTestId("brand-personalization-panel");
@@ -248,6 +247,22 @@ export class BrainstormPage {
   async gotoConversationImmediate(threadId: string): Promise<void> {
     await this.page.goto(`/projects/${threadId}/brainstorm`);
     // Don't wait for networkidle - we want to observe loading state
+  }
+
+  /**
+   * Check if the examples panel is expanded
+   */
+  async isExamplesPanelExpanded(): Promise<boolean> {
+    const expanded = await this.examplesPanel.getAttribute("data-expanded");
+    return expanded === "true";
+  }
+
+  /**
+   * Check if the how it works panel is expanded
+   */
+  async isHowItWorksPanelExpanded(): Promise<boolean> {
+    const expanded = await this.howItWorksPanel.getAttribute("data-expanded");
+    return expanded === "true";
   }
 
   /**

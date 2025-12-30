@@ -42,6 +42,8 @@ export function ExampleAnswers() {
 
       {/* Examples expandable content */}
       <div
+        data-testid="examples-panel"
+        data-expanded={isExamplesExpanded}
         className={`overflow-hidden transition-all duration-300 ease-out ${
           isExamplesExpanded ? "max-h-[400px] opacity-100 mt-4" : "max-h-0 opacity-0"
         }`}
@@ -78,6 +80,8 @@ export function ExampleAnswers() {
 
       {/* How it works expandable content */}
       <div
+        data-testid="how-it-works-panel"
+        data-expanded={isHowItWorksExpanded}
         className={`overflow-hidden transition-all duration-300 ease-out ${
           isHowItWorksExpanded ? "max-h-[400px] opacity-100 mt-4" : "max-h-0 opacity-0"
         }`}

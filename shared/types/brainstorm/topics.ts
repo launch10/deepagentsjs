@@ -108,6 +108,7 @@ export function getCurrentQuestionNumber(memories: MemoriesType | undefined | nu
 
     for (let i = 0; i < MemoryFields.length; i++) {
         const field = MemoryFields[i];
+        if (!field) continue; // TypeScript guard for array access
         const value = memories[field];
         if (value === undefined || value === null) {
             return i + 1;

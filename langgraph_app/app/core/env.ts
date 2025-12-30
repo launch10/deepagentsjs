@@ -23,6 +23,7 @@ export const envSchema = z.object({
   JWT_SECRET: z.string().min(1),
   USE_CACHE: z.coerce.boolean().default(false),
   NODE_ENV: z.enum(Environments).default("development"),
+  ALLOWED_ORIGINS: z.string().optional(),
 });
 
 export const testEnvSchema = envSchema.extend({

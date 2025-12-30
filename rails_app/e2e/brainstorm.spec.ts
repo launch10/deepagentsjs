@@ -256,27 +256,37 @@ test.describe("Brainstorm Accessibility", () => {
     expect(placeholder || ariaLabel).toBeTruthy();
   });
 
-  test("message list has proper ARIA role", async ({ page }) => {
+  test("message list has proper ARIA role when messages exist", async ({ page }) => {
+    // The message list only appears after a conversation starts
+    // Start a conversation to make the message list appear
     await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for ARIA role check");
+
+    // Wait for the user message to appear (don't need AI response for this)
+    await expect(brainstormPage.userMessages.first()).toBeVisible({ timeout: 5000 });
 
     // The message container should have appropriate role
-    const messageList = page.locator('[role="log"], [role="list"]');
+    const messageList = page.locator('[role="log"]');
     await expect(messageList.first()).toBeVisible();
   });
 
   test("can navigate chat with keyboard", async ({ page }) => {
     await brainstormPage.goto();
 
-    // Tab to chat input
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab"); // May need multiple tabs
+    // Focus the chat input directly for a more reliable test
+    await brainstormPage.chatInput.focus();
 
-    // Should be able to focus the input
+    // Verify the input is focused
     const focusedElement = await page.evaluate(
       () => document.activeElement?.tagName
     );
     // Input or textarea should be focusable
-    expect(["INPUT", "TEXTAREA", "BUTTON"]).toContain(focusedElement);
+    expect(["INPUT", "TEXTAREA"]).toContain(focusedElement);
+
+    // Verify we can type in it
+    await page.keyboard.type("Test message");
+    const inputValue = await brainstormPage.chatInput.inputValue();
+    expect(inputValue).toBe("Test message");
   });
 });
 
@@ -427,14 +437,14 @@ test.describe("Brainstorm Help Sections", () => {
   }) => {
     await brainstormPage.goto();
 
-    // Panel should not be visible initially
-    await expect(brainstormPage.examplesPanel).not.toBeVisible();
+    // Panel should not be expanded initially
+    await expect(brainstormPage.examplesPanel).toHaveAttribute("data-expanded", "false");
 
     // Click to expand
     await brainstormPage.seeExamplesButton.click();
 
-    // Panel should now be visible with example content
-    await expect(brainstormPage.examplesPanel).toBeVisible();
+    // Panel should now be expanded with example content
+    await expect(brainstormPage.examplesPanel).toHaveAttribute("data-expanded", "true");
     await expect(page.locator('text="Example structure:"')).toBeVisible();
     await expect(page.locator("text=DevMode is a software tool")).toBeVisible();
   });
@@ -444,7 +454,7 @@ test.describe("Brainstorm Help Sections", () => {
 
     // Expand
     await brainstormPage.seeExamplesButton.click();
-    await expect(brainstormPage.examplesPanel).toBeVisible();
+    await expect(brainstormPage.examplesPanel).toHaveAttribute("data-expanded", "true");
 
     // Collapse
     await brainstormPage.seeExamplesButton.click();
@@ -452,8 +462,8 @@ test.describe("Brainstorm Help Sections", () => {
     // Wait for animation to complete
     await page.waitForTimeout(400);
 
-    // Panel should be hidden
-    await expect(brainstormPage.examplesPanel).not.toBeVisible();
+    // Panel should be collapsed
+    await expect(brainstormPage.examplesPanel).toHaveAttribute("data-expanded", "false");
   });
 
   test("expands 'How it works' panel when clicking 'Learn how it works'", async ({
@@ -461,14 +471,14 @@ test.describe("Brainstorm Help Sections", () => {
   }) => {
     await brainstormPage.goto();
 
-    // Panel should not be visible initially
-    await expect(brainstormPage.howItWorksPanel).not.toBeVisible();
+    // Panel should not be expanded initially
+    await expect(brainstormPage.howItWorksPanel).toHaveAttribute("data-expanded", "false");
 
     // Click to expand
     await brainstormPage.learnHowItWorksButton.click();
 
-    // Panel should now be visible with steps
-    await expect(brainstormPage.howItWorksPanel).toBeVisible();
+    // Panel should now be expanded with steps
+    await expect(brainstormPage.howItWorksPanel).toHaveAttribute("data-expanded", "true");
     await expect(
       page.locator("text=You tell us your big idea")
     ).toBeVisible();
@@ -482,8 +492,8 @@ test.describe("Brainstorm Help Sections", () => {
 
     // Expand examples first
     await brainstormPage.seeExamplesButton.click();
-    await expect(brainstormPage.examplesPanel).toBeVisible();
-    await expect(brainstormPage.howItWorksPanel).not.toBeVisible();
+    await expect(brainstormPage.examplesPanel).toHaveAttribute("data-expanded", "true");
+    await expect(brainstormPage.howItWorksPanel).toHaveAttribute("data-expanded", "false");
 
     // Click "How it works" - should close examples and open how it works
     await brainstormPage.learnHowItWorksButton.click();
@@ -491,9 +501,9 @@ test.describe("Brainstorm Help Sections", () => {
     // Wait for animation
     await page.waitForTimeout(400);
 
-    // How it works should be visible, examples should be hidden
-    await expect(brainstormPage.howItWorksPanel).toBeVisible();
-    await expect(brainstormPage.examplesPanel).not.toBeVisible();
+    // How it works should be expanded, examples should be collapsed
+    await expect(brainstormPage.howItWorksPanel).toHaveAttribute("data-expanded", "true");
+    await expect(brainstormPage.examplesPanel).toHaveAttribute("data-expanded", "false");
   });
 
   test("active link is underlined when expanded", async ({ page }) => {

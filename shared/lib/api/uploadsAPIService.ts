@@ -23,18 +23,16 @@ export interface CreateUploadRequest {
   websiteId?: number;
 }
 
+/** Upload type matching the GET /api/v1/uploads response */
 export interface Upload {
   id: number;
+  uuid: string;
   url: string;
-  thumb_url: string | null;
-  medium_url: string | null;
+  thumb_url?: string | null;
+  medium_url?: string | null;
   media_type: "image" | "video" | "document";
-  filename: string;
-  content_type: string;
-  file_size: number;
   is_logo: boolean;
-  website_id: number | null;
-  account_id: number;
+  filename: string;
   created_at: string;
   updated_at: string;
 }
@@ -83,7 +81,7 @@ export class UploadsAPIService extends RailsAPIBase {
    * @param ids - Array of upload IDs to fetch
    * @returns List of uploads matching the IDs
    */
-  async getByIds(ids: number[]): Promise<Upload[]> {
+  async getByIds(ids: number[]): Promise<GetUploadsResponse> {
     if (ids.length === 0) {
       return [];
     }
@@ -110,7 +108,7 @@ export class UploadsAPIService extends RailsAPIBase {
       return [];
     }
 
-    return response.data as Upload[];
+    return response.data;
   }
 
   /**

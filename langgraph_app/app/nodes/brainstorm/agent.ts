@@ -7,7 +7,7 @@ import { saveAnswersTool, finishedTool } from "@tools";
 import { Brainstorm } from "@types";
 import { type BrainstormGraphState } from "@state";
 import z from "zod";
-import { BrainstormNextStepsService } from "@services";
+import { BrainstormNextStepsService, UploadInjectionService } from "@services";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { lastAIMessage } from "@types";
 import { BrainstormBridge } from "@annotation";
@@ -51,6 +51,22 @@ export const brainstormAgent = NodeMiddleware.use(
       throw new Error("websiteId is required");
     }
 
+    // Inject uploaded files into the last human message as multimodal content
+    let messagesWithUploads = state.messages || [];
+    if (state.jwt && state.uploadIds && state.uploadIds.length > 0) {
+      const uploadService = new UploadInjectionService(state.jwt);
+      messagesWithUploads = await uploadService.injectUploads(
+        messagesWithUploads,
+        state.uploadIds
+      );
+    }
+
+    // Create state with injected uploads for the agent
+    const stateWithUploads = {
+      ...state,
+      messages: messagesWithUploads,
+    };
+
     // Now invoke agent with updated state
     const llm = getLLM().withConfig({ tags: ["notify"] });
     const tools = [saveAnswersTool, finishedTool];
@@ -60,7 +76,7 @@ export const brainstormAgent = NodeMiddleware.use(
       tools,
       middleware: [dynamicPromptMiddleware],
     });
-    const result = (await agent.invoke(state as any, config)) as BrainstormGraphState;
+    const result = (await agent.invoke(stateWithUploads as any, config)) as BrainstormGraphState;
     const lastMessage = lastAIMessage(result);
     if (!lastMessage) {
       throw new Error("Agent did not return an AI message");

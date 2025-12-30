@@ -7,7 +7,8 @@ let crypto: typeof import('crypto') | null = null;
 
 async function loadBackendModules() {
   if (isBackend() && !jwt) {
-    jwt = await import('jsonwebtoken');
+    const jwtModule = await import('jsonwebtoken');
+    jwt = jwtModule.default || jwtModule;
     crypto = await import('crypto');
   }
 }
