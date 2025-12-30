@@ -1,6 +1,5 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useEffect, useRef } from "react";
 import { FieldGroup } from "@components/ui/field";
 import AdCampaignHeadlineInput from "./AdCampaignHeadlineInput";
@@ -14,15 +13,6 @@ import type { UpdateCampaignRequestBody } from "@api/campaigns";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 
-const headlinesFormSchema = z.object({
-  headlines: z
-    .array(Ads.AssetSchema)
-    .min(3, "At least 3 headlines required")
-    .max(15, "Maximum 15 headlines allowed"),
-});
-
-type HeadlinesFormData = z.infer<typeof headlinesFormSchema>;
-
 export default function HeadlinesForm() {
   const headlines = useAdsChatState("headlines");
   const { setState, updateState } = useAdsChatActions();
@@ -30,8 +20,8 @@ export default function HeadlinesForm() {
   const filteredHeadlines = (headlines || []).filter((h) => !h.rejected);
   const prevIdsRef = useRef<string[]>([]);
 
-  const methods = useForm<HeadlinesFormData>({
-    resolver: zodResolver(headlinesFormSchema) as any,
+  const methods = useForm<Ads.HeadlinesOutput>({
+    resolver: zodResolver(Ads.HeadlinesOutputSchema) as any,
     mode: "onChange",
     defaultValues: {
       headlines: filteredHeadlines,
@@ -84,7 +74,7 @@ export default function HeadlinesForm() {
     });
   };
 
-  const { saveNow } = useAutosaveCampaign<HeadlinesFormData>({
+  const { saveNow } = useAutosaveCampaign<Ads.HeadlinesOutput>({
     methods,
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const transformed = defaultAssetTransform(data.headlines);
