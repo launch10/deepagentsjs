@@ -50,9 +50,7 @@ class SvgSanitizer
       sanitized = remove_dangerous_urls(sanitized)
 
       # Remove use of external entities that could load remote content
-      sanitized = remove_external_entities(sanitized)
-
-      sanitized
+      remove_external_entities(sanitized)
     end
 
     private

@@ -70,10 +70,10 @@ module SocialLinkConcerns
       return normalize_youtube_full_url(input) if input.match?(%r{\A(https?://)?(www\.)?youtube\.com/})
 
       # Handle @username format
-      return "https://youtube.com/#{input.chomp('/')}" if input.start_with?("@")
+      return "https://youtube.com/#{input.chomp("/")}" if input.start_with?("@")
 
       # Handle plain username (assumes @ handle)
-      return "https://youtube.com/@#{input.chomp('/')}" unless input.include?("/") || input.include?(".")
+      return "https://youtube.com/@#{input.chomp("/")}" unless input.include?("/") || input.include?(".")
 
       input
     end

@@ -46,7 +46,7 @@ RSpec.describe "Uploads API", type: :request do
       parameter name: 'upload[file]', in: :formData, type: :file, required: true
       parameter name: 'upload[is_logo]', in: :formData, type: :boolean, required: false
       parameter name: 'upload[website_id]', in: :formData, type: :integer, required: false,
-                description: 'Associate upload with a website (also sets project_id from website)'
+        description: 'Associate upload with a website (also sets project_id from website)'
 
       before do
         switch_account_to(user1_owned_account)
@@ -233,7 +233,7 @@ RSpec.describe "Uploads API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
       parameter name: :website_id, in: :query, type: :integer, required: false, description: 'Filter by website'
       parameter name: :is_logo, in: :query, type: :boolean, required: false,
-                description: 'Filter by logo status (true for logos, false for product images)'
+        description: 'Filter by logo status (true for logos, false for product images)'
 
       let!(:upload1_owned) { create(:upload, account: user1_owned_account, is_logo: false) }
       let!(:upload2_owned) { create(:upload, account: user1_owned_account, is_logo: true) }
