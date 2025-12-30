@@ -34,6 +34,7 @@ cleanup() {
     fi
 
     rm -f /tmp/tunnel_output.log
+    rm -f /tmp/tunnel_urls_ready
 
     log_info "Cleanup complete"
 }
@@ -161,20 +162,20 @@ monitor_tunnels() {
 
     log_info "Waiting for tunnel URLs..."
 
-    # Give services time to start
-    sleep 8
-
     # Watch the log for URLs (timeout after 60 seconds)
+    # Use process names (tunnel_rails, tunnel_api) to identify which URL is which
     local attempts=0
     while [ $attempts -lt 60 ]; do
         if [ -z "$rails_url" ]; then
-            rails_url=$(grep -o 'https://[^[:space:]]*\.trycloudflare\.com' /tmp/tunnel_output.log 2>/dev/null | head -1)
+            # Look for URL on lines containing "tunnel_rails"
+            rails_url=$(grep 'tunnel_rails' /tmp/tunnel_output.log 2>/dev/null | grep -o 'https://[^[:space:]|]*\.trycloudflare\.com' | head -1)
         fi
         if [ -z "$api_url" ]; then
-            api_url=$(grep -o 'https://[^[:space:]]*\.trycloudflare\.com' /tmp/tunnel_output.log 2>/dev/null | tail -1)
+            # Look for URL on lines containing "tunnel_api"
+            api_url=$(grep 'tunnel_api' /tmp/tunnel_output.log 2>/dev/null | grep -o 'https://[^[:space:]|]*\.trycloudflare\.com' | head -1)
         fi
 
-        if [ -n "$rails_url" ] && [ -n "$api_url" ] && [ "$rails_url" != "$api_url" ]; then
+        if [ -n "$rails_url" ] && [ -n "$api_url" ]; then
             break
         fi
 
@@ -185,15 +186,20 @@ monitor_tunnels() {
     if [ -z "$rails_url" ] || [ -z "$api_url" ]; then
         log_warn "Could not detect tunnel URLs automatically"
         log_warn "Check the output above for .trycloudflare.com URLs"
+        log_warn "Services are waiting - create /tmp/tunnel_urls_ready manually after updating .env"
         return
     fi
 
-    # Update .env files
+    # Update .env files BEFORE signaling services to start
+    # Rails app needs: langgraph URL + its own URL for frontend API calls
     sed -i '' '/^VITE_LANGGRAPH_API_URL=/d' "$PROJECT_ROOT/rails_app/.env"
     sed -i '' '/^LANGGRAPH_API_URL=/d' "$PROJECT_ROOT/rails_app/.env"
+    sed -i '' '/^VITE_RAILS_API_URL=/d' "$PROJECT_ROOT/rails_app/.env"
     echo "VITE_LANGGRAPH_API_URL=$api_url" >> "$PROJECT_ROOT/rails_app/.env"
     echo "LANGGRAPH_API_URL=$api_url" >> "$PROJECT_ROOT/rails_app/.env"
+    echo "VITE_RAILS_API_URL=$rails_url" >> "$PROJECT_ROOT/rails_app/.env"
 
+    # Langgraph app needs: rails URL for callbacks + CORS origins
     sed -i '' '/^RAILS_API_URL=/d' "$PROJECT_ROOT/langgraph_app/.env"
     sed -i '' '/^ALLOWED_ORIGINS=/d' "$PROJECT_ROOT/langgraph_app/.env"
     echo "RAILS_API_URL=$rails_url" >> "$PROJECT_ROOT/langgraph_app/.env"
@@ -201,15 +207,17 @@ monitor_tunnels() {
 
     echo ""
     echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}  TUNNEL URLS READY${NC}"
+    echo -e "${GREEN}  TUNNEL URLS READY - Starting services...${NC}"
     echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
     echo ""
     echo -e "  ${BLUE}Share with cofounder:${NC}  ${YELLOW}$rails_url${NC}"
     echo -e "  ${BLUE}API URL:${NC}              $api_url"
     echo ""
-    echo -e "  ${YELLOW}NOTE: Restart services (Ctrl+C, then run again) to use new URLs${NC}"
     echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
     echo ""
+
+    # Signal services to start
+    touch /tmp/tunnel_urls_ready
 }
 
 main() {
@@ -245,11 +253,14 @@ main() {
 
     cd "$PROJECT_ROOT"
 
-    # Start URL monitoring in background
+    # Clean up any stale signal file
+    rm -f /tmp/tunnel_urls_ready
     > /tmp/tunnel_output.log
-    (sleep 5 && monitor_tunnels) &
 
-    log_info "Starting services with tunnels..."
+    # Start URL monitoring in background (no delay - tunnels start immediately)
+    monitor_tunnels &
+
+    log_info "Starting tunnels first, services will wait for URLs..."
     echo ""
 
     # Use overmind if available, otherwise foreman

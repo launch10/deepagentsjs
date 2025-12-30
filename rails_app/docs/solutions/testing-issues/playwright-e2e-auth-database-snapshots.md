@@ -249,7 +249,157 @@ export default defineConfig({
 | `app/controllers/test/database_controller.rb` | Replaced puts with Rails.logger |
 | `app/services/database/snapshotter.rb` | Replaced puts with Rails.logger |
 
+---
+
+## Part 2: Vite HMR, Port Conflicts, and Selector Best Practices (2025-12-29)
+
+### Additional Problems Discovered
+
+After the initial fixes, tests still had issues:
+
+1. **Tests hitting dev server** - Port 3000 instead of test port 3001
+2. **`networkidle` waits hanging** - Vite HMR websocket keeps connection active
+3. **Selectors timing out** - CSS selectors not matching elements
+4. **Port conflicts** - Dev and test servers fighting for same port
+5. **Overmind socket conflicts** - Single socket file for both environments
+
+### Root Causes
+
+| Problem | Cause |
+|---------|-------|
+| Wrong server | `database.ts` hardcoded to port 3000 |
+| Hanging waits | Vite HMR websocket never "idle" |
+| Selector failures | Missing `data-testid` attributes |
+| Port conflicts | No separate test server setup |
+| Overmind conflicts | Shared `.overmind.sock` |
+
+### Solutions
+
+#### 1. Separate Test Server Environment
+
+Created `bin/dev-test`:
+
+```bash
+#!/usr/bin/env sh
+export PORT="${PORT:-3001}"
+export RAILS_ENV=test
+export OVERMIND_SOCKET=./.overmind-test.sock
+
+overmind start -f Procfile.test -s "$OVERMIND_SOCKET" "$@"
+```
+
+Created `Procfile.test`:
+
+```
+web: RAILS_ENV=test bundle exec rails server -p $PORT
+vite: RAILS_ENV=test bin/vite dev
+```
+
+#### 2. Centralized E2E Config
+
+Created `e2e/config.ts`:
+
+```typescript
+export const e2eConfig = {
+  railsBaseUrl: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3001",
+  langgraphBaseUrl: process.env.LANGGRAPH_TEST_URL || "http://localhost:4001",
+  timeouts: { navigation: 10000, response: 30000 },
+} as const;
+```
+
+Updated `database.ts`:
+
+```typescript
+import { e2eConfig } from "../config";
+const BASE_URL = e2eConfig.railsBaseUrl;
+```
+
+#### 3. Avoid `networkidle` with Vite
+
+**Problem**: Vite's HMR maintains a WebSocket connection that never becomes idle.
+
+**Before (hangs):**
+```typescript
+await page.waitForLoadState("networkidle");
+```
+
+**After (works):**
+```typescript
+// Use domcontentloaded + element waits
+await page.waitForLoadState("domcontentloaded");
+await page.getByTestId("chat-input").waitFor({ state: "visible", timeout: 10000 });
+```
+
+#### 4. Playwright Selector Best Practices
+
+**Priority order (most to least stable):**
+
+| Selector Type | Example | When to Use |
+|---------------|---------|-------------|
+| `getByRole()` | `page.getByRole('button', { name: 'Submit' })` | Buttons, links with accessible names |
+| `getByTestId()` | `page.getByTestId('chat-input')` | Any element without semantic role |
+| `getByLabel()` | `page.getByLabel('Email')` | Form fields with labels |
+| `getByPlaceholder()` | `page.getByPlaceholder('Enter email')` | Inputs with placeholders |
+| `getByText()` | `page.getByText('Sign up')` | Text content |
+
+**Avoid:** Raw CSS selectors like `page.locator('.btn-primary')`
+
+#### 5. Add `data-testid` to Components
+
+Updated `BrainstormInput.tsx`:
+
+```tsx
+<textarea
+  data-testid="chat-input"
+  // ...
+/>
+
+<button
+  data-testid="send-button"
+  aria-label={isStreaming ? "Stop" : "Send message"}
+  // ...
+>
+```
+
+#### 6. Cleanup Script for Stale Processes
+
+Added to `package.json`:
+
+```json
+{
+  "scripts": {
+    "test:e2e": "npm run test:e2e:cleanup && playwright test",
+    "test:e2e:cleanup": "(lsof -ti :3001 | xargs kill -9; lsof -ti :3037 | xargs kill -9; rm -f .overmind-test.sock) 2>/dev/null; exit 0"
+  }
+}
+```
+
+### Updated Files
+
+| File | Change |
+|------|--------|
+| `bin/dev-test` | NEW: Test server startup with separate socket |
+| `Procfile.test` | NEW: Test-specific processes |
+| `e2e/config.ts` | NEW: Centralized test config |
+| `e2e/fixtures/database.ts` | Use centralized config |
+| `e2e/fixtures/auth.ts` | Remove networkidle, use element waits |
+| `e2e/pages/brainstorm.page.ts` | Use getByTestId selectors |
+| `playwright.config.ts` | Port 3001, reuseExistingServer: false |
+| `package.json` | Cleanup scripts |
+| `BrainstormInput.tsx` | Added data-testid, aria-label |
+
+### Prevention Best Practices (Updated)
+
+1. **Never use `networkidle`** with Vite HMR - always use element-based waits
+2. **Always add `data-testid`** to interactive elements
+3. **Add `aria-label`** to icon-only buttons for accessibility AND testability
+4. **Use `getByTestId()` or `getByRole()`** - avoid CSS selectors
+5. **Centralize config** in `e2e/config.ts` for consistency
+6. **Use separate ports** for test environment (3001, 3037)
+7. **Clean up stale processes** before running tests
+
 ## Related Documentation
 
 - [Database Snapshots Feature](../features/snapshots.md) - How snapshots work
 - [Plan: Fix Playwright Auth](../../plans/fix-playwright-authentication-via-database-snapshots.md) - Original plan
+- [Testing Decisions](../decisions/testing.md) - Architectural decisions for testing
