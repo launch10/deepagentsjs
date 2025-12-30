@@ -179,6 +179,7 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
             src={logo.thumbUrl || logo.url}
             alt="Brand logo"
             className="w-full h-full object-contain p-2"
+            crossOrigin="anonymous"
           />
 
           {/* Hover overlay with actions */}

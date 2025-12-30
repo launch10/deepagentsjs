@@ -9,6 +9,12 @@ class API::V1::UploadsController < API::BaseController
       @uploads = website.uploads.order(id: :desc)
     end
 
+    # Filter by specific IDs if provided
+    if params[:ids].present?
+      ids = Array(params[:ids]).map(&:to_i)
+      @uploads = @uploads.where(id: ids)
+    end
+
     # Filter by is_logo if specified
     if params[:is_logo].present?
       @uploads = @uploads.where(is_logo: params[:is_logo])

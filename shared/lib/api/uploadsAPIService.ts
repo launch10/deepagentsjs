@@ -79,6 +79,41 @@ export class UploadsAPIService extends RailsAPIBase {
   }
 
   /**
+   * Get uploads by their IDs
+   * @param ids - Array of upload IDs to fetch
+   * @returns List of uploads matching the IDs
+   */
+  async getByIds(ids: number[]): Promise<Upload[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const client = await this.getClient();
+    // Pass ids as array - openapi-fetch serializes arrays as ids[]=1&ids[]=2
+    const response = await client.GET("/api/v1/uploads", {
+      params: {
+        query: { ids: ids } as unknown as GetUploadsRequest,
+      },
+    });
+
+    if (response.response.status !== 200) {
+      throw new Error(
+        `Failed to get uploads by IDs: ${response.response.status} ${response.response.statusText}`
+      );
+    }
+
+    if (response.error) {
+      throw new Error(`Failed to get uploads by IDs: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      return [];
+    }
+
+    return response.data as Upload[];
+  }
+
+  /**
    * Create a new upload
    * @param options - The upload options (file, isLogo, websiteId)
    * @returns The created upload

@@ -5,7 +5,7 @@
 #  id         :bigint           not null, primary key
 #  handle     :string
 #  platform   :string           not null
-#  url        :string
+#  url        :string           not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
 #  project_id :bigint           not null

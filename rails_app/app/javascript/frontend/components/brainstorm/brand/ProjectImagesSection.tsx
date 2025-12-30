@@ -195,6 +195,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
                 <img
                   src={image.thumbUrl || image.url}
                   alt="Project image"
+                  crossOrigin="anonymous"
                   className={twMerge(
                     "w-full h-full object-cover",
                     isImageDeleting && "opacity-50"
