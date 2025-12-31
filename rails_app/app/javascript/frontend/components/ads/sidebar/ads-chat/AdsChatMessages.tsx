@@ -11,10 +11,9 @@ type Message = {
 
 export type AdsChatMessagesViewProps = {
   messages: Message[];
-  isLoading?: boolean;
 };
 
-export function AdsChatMessagesView({ messages, isLoading = false }: AdsChatMessagesViewProps) {
+export function AdsChatMessagesView({ messages }: AdsChatMessagesViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,10 +23,6 @@ export function AdsChatMessagesView({ messages, isLoading = false }: AdsChatMess
       container.scrollTop = container.scrollHeight;
     }
   }, [messages]);
-
-  if (isLoading) {
-    return <Spinner />;
-  }
 
   return (
     <div ref={containerRef} className="space-y-4">
@@ -65,7 +60,6 @@ export function AdsChatMessagesView({ messages, isLoading = false }: AdsChatMess
 export default function AdsChatMessages() {
   // Use context hooks (requires Chat.Root ancestor)
   const messages = useChatMessages();
-  const isLoading = useChatIsLoading();
 
-  return <AdsChatMessagesView messages={messages} isLoading={isLoading} />;
+  return <AdsChatMessagesView messages={messages} />;
 }

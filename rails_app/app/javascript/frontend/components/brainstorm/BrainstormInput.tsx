@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useMemo } from "react";
 import { useBrainstormChatState } from "@hooks/useBrainstormChat";
-import { useChatComposer, useChatIsStreaming, useChatSendMessage } from "@components/chat";
+import { useChatComposer, useChatIsStreaming } from "@components/chat";
+import { useBrainstormSendMessage } from "@hooks/useBrainstormSendMessage";
 import { setTextareaRef } from "@lib/brainstormTextarea";
 import { DocumentPlusIcon, ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
 import { AttachmentList, DropZone } from "./attachments";
@@ -175,7 +176,7 @@ export function BrainstormInput() {
   // Use context hooks (requires Chat.Root ancestor)
   const composer = useChatComposer();
   const isStreaming = useChatIsStreaming();
-  const sendMessage = useChatSendMessage();
+  const { sendMessage } = useBrainstormSendMessage();
 
   // Brainstorm-specific state (placeholder comes from backend)
   const placeholderText = useBrainstormChatState("placeholderText");

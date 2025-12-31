@@ -13,13 +13,13 @@ export function NewProjectButton({ isCollapsed = false }: NewProjectButtonProps)
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
 
+    // Navigate to new project page
+    router.visit("/projects/new");
+
     // Clear workflow state before navigation
     if (clearWorkflow) {
       clearWorkflow();
     }
-
-    // Navigate to new project page
-    router.visit("/projects/new");
   };
 
   return (
