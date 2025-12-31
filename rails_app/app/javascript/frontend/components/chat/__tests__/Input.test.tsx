@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Input } from "../Input";
+import { Input } from "../input";
 import { Chat, ChatProvider } from "../index";
 import type { ChatSnapshot } from "langgraph-ai-sdk-react";
 

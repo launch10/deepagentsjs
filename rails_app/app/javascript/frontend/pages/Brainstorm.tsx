@@ -1,12 +1,19 @@
-import { usePage } from "@inertiajs/react";
-import { BrainstormChat } from "@components/brainstorm";
+import { useBrainstormChat, useBrainstormIsNewConversation } from "@hooks/useBrainstormChat";
+import { useBrainstormSendMessage } from "@hooks/useBrainstormSendMessage";
+import { Chat } from "@components/chat";
+import { BrainstormLandingPage, BrainstormConversationPage } from "@components/brainstorm";
 
 /**
- * Brainstorm page - thin layout component.
- * Key forces remount when navigating between conversations,
- * resetting the SDK's internal state.
+ * Brainstorm page (Landing page or Conversation based on chat state)
  */
 export default function Brainstorm() {
-  const { thread_id } = usePage<{ thread_id?: string }>().props;
-  return <BrainstormChat key={thread_id || "new"} />;
+  const chat = useBrainstormChat();
+  const isNewConversation = useBrainstormIsNewConversation();
+  const { sendMessage } = useBrainstormSendMessage();
+
+  return (
+    <Chat.Root chat={chat} onSubmit={sendMessage}>
+      {isNewConversation ? <BrainstormLandingPage /> : <BrainstormConversationPage />}
+    </Chat.Root>
+  );
 }

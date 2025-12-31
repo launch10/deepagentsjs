@@ -2,6 +2,46 @@ import { twMerge } from "tailwind-merge";
 import ReactMarkdown from "react-markdown";
 import type { ReactNode } from "react";
 
+// ============================================================================
+// AIMessage Compound Component
+// ============================================================================
+// Renders AI assistant messages with markdown support.
+//
+// Simple usage:
+//   <Chat.AIMessage.Root>
+//     <Chat.AIMessage.Content>{text}</Chat.AIMessage.Content>
+//   </Chat.AIMessage.Root>
+//
+// With bubble styling:
+//   <Chat.AIMessage.Bubble>
+//     <Chat.AIMessage.Content>{text}</Chat.AIMessage.Content>
+//   </Chat.AIMessage.Bubble>
+//
+// With custom content and commands:
+//   <Chat.AIMessage.Root>
+//     <Chat.BlockRenderer blocks={blocks} renderStructured={...} />
+//     <Chat.CommandButtons.Root>...</Chat.CommandButtons.Root>
+//   </Chat.AIMessage.Root>
+// ============================================================================
+
+// Root wrapper - consistent container for AI messages
+export interface AIMessageRootProps {
+  children: ReactNode;
+  className?: string;
+}
+
+function Root({ children, className }: AIMessageRootProps) {
+  return (
+    <div
+      data-testid="ai-message"
+      data-role="assistant"
+      className={twMerge("space-y-3", className)}
+    >
+      {children}
+    </div>
+  );
+}
+
 // Content component - renders markdown
 export interface AIMessageContentProps {
   children: ReactNode;
@@ -38,8 +78,8 @@ function Bubble({ children, className }: AIMessageBubbleProps) {
 }
 
 // Export as compound component
-// Note: AIMessage.Loading was removed - use ThinkingIndicator instead
 export const AIMessage = {
+  Root,
   Content,
   Bubble,
 };

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ThinkingIndicator } from "@components/chat/ThinkingIndicator";
+import { ThinkingIndicator } from "~/components/chat/ThinkingIndicator";
 
 const meta = {
   title: "Chat/ThinkingIndicator",

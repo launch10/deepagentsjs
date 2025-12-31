@@ -8,10 +8,10 @@ import {
 } from "@stores/brandPersonalization";
 import { useWebsite } from "@api/websites.hooks";
 import { useChatMessages } from "@components/chat";
-import { BrainstormMessages } from "./BrainstormMessages";
-import { BrainstormInput } from "./BrainstormInput";
-import { BrandPersonalizationPanel } from "./BrandPersonalizationPanel";
-import { BrainstormChatSkeleton } from "./BrainstormChatSkeleton";
+import { BrainstormMessages } from "./chat/BrainstormMessages";
+import { BrainstormInput } from "../shared/BrainstormInput";
+import { BrandPersonalizationPanel } from "./brand-panel/BrandPersonalizationPanel";
+import { BrainstormChatSkeleton } from "./chat/BrainstormChatSkeleton";
 
 const SKELETON_DELAY_MS = 200;
 
@@ -98,7 +98,7 @@ function BrainstormConversationContent({
  *
  * Chat.Root is provided by parent BrainstormChat component.
  */
-export function BrainstormConversation() {
+export function BrainstormConversationPage() {
   // Use context for messages (Chat.Root provided by BrainstormChat)
   const messages = useChatMessages();
 

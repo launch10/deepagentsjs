@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { AIMessage } from "@components/chat/AIMessage";
+import { AIMessage } from "~/components/chat/AIMessage";
+import { ThinkingIndicator } from "~/components/chat/ThinkingIndicator";
 
 // Content stories
 const contentMeta = {
@@ -66,7 +67,18 @@ export const WithoutBubble: ContentStory = {
   ),
 };
 
-// Loading story
+// Root wrapper story
+export const WithRoot: ContentStory = {
+  render: () => (
+    <AIMessage.Root>
+      <AIMessage.Content>
+        This message is wrapped in AIMessage.Root for consistent spacing.
+      </AIMessage.Content>
+    </AIMessage.Root>
+  ),
+};
+
+// Loading story - use ThinkingIndicator instead of deprecated AIMessage.Loading
 export const Loading: ContentStory = {
-  render: () => <AIMessage.Loading />,
+  render: () => <ThinkingIndicator text="Thinking" />,
 };

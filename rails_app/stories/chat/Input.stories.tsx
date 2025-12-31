@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Input } from "@components/chat/Input";
+import { Input } from "~/components/chat/input";
 
 const meta = {
   title: "Chat/Input",

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { CommandButtons } from "@components/chat/CommandButtons";
+import { CommandButtons } from "~/components/chat/CommandButtons";
 
 const meta = {
   title: "Chat/CommandButtons",

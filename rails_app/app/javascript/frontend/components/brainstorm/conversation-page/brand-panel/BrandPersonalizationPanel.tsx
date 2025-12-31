@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { LogoUploadSection } from "./brand/LogoUploadSection";
-import { ColorPaletteSection } from "./brand/ColorPaletteSection";
-import { SocialLinksSection } from "./brand/SocialLinksSection";
-import { ProjectImagesSection } from "./brand/ProjectImagesSection";
+import { LogoUploadSection } from "./LogoUploadSection";
+import { ColorPaletteSection } from "./ColorPaletteSection";
+import { SocialLinksSection } from "./SocialLinksSection";
+import { ProjectImagesSection } from "./ProjectImagesSection";
 
 interface BrandPersonalizationPanelProps {
   className?: string;

@@ -10,7 +10,13 @@
 //
 //   <Chat.Root chat={chat}>
 //     <Chat.Messages.List>
-//       {/* your message rendering */}
+//       {messages.map(msg =>
+//         msg.role === 'user'
+//           ? <Chat.UserMessage key={msg.id} blocks={msg.blocks} />
+//           : <Chat.AIMessage.Root key={msg.id}>
+//               <Chat.BlockRenderer blocks={msg.blocks} />
+//             </Chat.AIMessage.Root>
+//       )}
 //       <Chat.Messages.StreamingIndicator />
 //       <Chat.Messages.ScrollAnchor />
 //     </Chat.Messages.List>
@@ -37,6 +43,9 @@ export {
   useChatStatus,
   type ChatContextValue,
 } from "./ChatContext";
+
+// Utility hooks
+export { useMessageMetadata, type MessageMetadata } from "./hooks";
 
 // Root provider
 export { Root, type RootProps } from "./Root";
@@ -68,8 +77,10 @@ export {
 } from "./messages";
 
 // Primitive components (no context, just styling)
-export { UserMessage, type UserMessageProps } from "./UserMessage";
-export { AIMessage, type AIMessageContentProps, type AIMessageBubbleProps } from "./AIMessage";
+export { UserMessage, type UserMessageProps, type UserMessageSimpleProps, type UserMessageBlocksProps } from "./UserMessage";
+export { AIMessage, type AIMessageRootProps, type AIMessageContentProps, type AIMessageBubbleProps } from "./AIMessage";
+export { BlockRenderer, type BlockRendererProps } from "./BlockRenderer";
+export { Suggestions, type SuggestionsRootProps, type SuggestionsItemProps } from "./Suggestions";
 export { CommandButtons, type CommandButtonsRootProps, type CommandButtonProps, type CommandButtonVariant } from "./CommandButtons";
 export { ThinkingIndicator, type ThinkingIndicatorProps, type ThinkingIndicatorVariant } from "./ThinkingIndicator";
 export { MessageList, type MessageListRootProps } from "./MessageList";
@@ -95,6 +106,8 @@ import { Input } from "./input";
 import { Messages } from "./messages";
 import { UserMessage } from "./UserMessage";
 import { AIMessage } from "./AIMessage";
+import { BlockRenderer } from "./BlockRenderer";
+import { Suggestions } from "./Suggestions";
 import { CommandButtons } from "./CommandButtons";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { MessageList } from "./MessageList";
@@ -107,9 +120,11 @@ export const Chat = {
   Input,
   Messages,
 
-  // Primitives (backwards compatible)
+  // Primitives
   UserMessage,
   AIMessage,
+  BlockRenderer,
+  Suggestions,
   MessageList,
   CommandButtons,
   ThinkingIndicator,

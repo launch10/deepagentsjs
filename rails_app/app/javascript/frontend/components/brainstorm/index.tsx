@@ -1,13 +1,2 @@
-/**
- * Brainstorm component exports
- *
- * Each component is responsible for its own data via hooks.
- * Following the Campaign.tsx pattern where components fetch their own state.
- */
-export { BrainstormChat } from "./BrainstormChat";
-export { BrainstormLanding } from "./BrainstormLanding";
-export { BrainstormConversation } from "./BrainstormConversation";
-export { BrainstormMessages } from "./BrainstormMessages";
-export { BrainstormInput } from "./BrainstormInput";
-export { BrainstormMessage } from "./BrainstormMessage";
-export { BrainstormChatSkeleton } from "./BrainstormChatSkeleton";
+export { BrainstormConversationPage } from "./conversation-page/BrainstormConversationPage";
+export { BrainstormLandingPage } from "./landing-page/BrainstormLandingPage";

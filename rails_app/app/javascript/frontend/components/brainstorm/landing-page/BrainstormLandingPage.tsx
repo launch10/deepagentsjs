@@ -1,4 +1,4 @@
-import { BrainstormInput } from "./BrainstormInput";
+import { BrainstormInput } from "../shared/BrainstormInput";
 import { ExampleAnswers } from "./ExampleAnswers";
 
 /**
@@ -10,7 +10,7 @@ import { ExampleAnswers } from "./ExampleAnswers";
  * to render BrainstormConversation instead of this component.
  * URL is updated via history.pushState (not Inertia navigation) so streaming continues.
  */
-export function BrainstormLanding() {
+export function BrainstormLandingPage() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex-1 flex flex-col items-center justify-center px-4">

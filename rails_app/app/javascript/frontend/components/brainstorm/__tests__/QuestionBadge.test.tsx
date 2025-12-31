@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { QuestionBadge } from "../QuestionBadge";
+import { QuestionBadge } from "../conversation-page/QuestionBadge";
 
 describe("QuestionBadge", () => {
   it("renders the question count", () => {

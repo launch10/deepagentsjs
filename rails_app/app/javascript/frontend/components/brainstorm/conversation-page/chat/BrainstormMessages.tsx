@@ -1,12 +1,11 @@
 import { useEffect, useRef, useMemo, useCallback } from "react";
-import type { MessageBlock, InferBridgeData, AnyMessageWithBlocks, ImageMessageBlock } from "langgraph-ai-sdk-types";
+import type { MessageBlock, InferBridgeData, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
 import { useBrainstormChatState } from "@hooks/useBrainstormChat";
 import { Chat, useChatMessages, useChatIsStreaming, useChatSendMessage, useChatComposer } from "@components/chat";
 import { BrainstormMessage } from "./BrainstormMessage";
 import { QuestionBadge } from "./QuestionBadge";
 import { getTextareaRef } from "@lib/brainstormTextarea";
-import { MessageImages } from "./attachments/MessageImages";
 
 // The LanggraphData type for the Brainstorm graph (used for MessageBlock generic)
 type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
@@ -110,23 +109,9 @@ export function BrainstormMessagesView({
       {messages.map((message, index) => {
         const { isUser, isLastMessage, startsNewTopic, questionNumber } = messageMetadata[index];
 
+        // User messages - use blocks-aware UserMessage
         if (isUser) {
-          const textContent = message.blocks
-            .filter((b) => b.type === "text")
-            .map((b) => ("text" in b ? b.text : ""))
-            .join("");
-          const imageBlocks = message.blocks.filter(
-            (b): b is ImageMessageBlock => b.type === "image"
-          );
-
-          return (
-            <div key={message.id} className="flex flex-col items-end">
-              <Chat.UserMessage>
-                {textContent}
-              </Chat.UserMessage>
-              {imageBlocks.length > 0 && <MessageImages images={imageBlocks} />}
-            </div>
-          );
+          return <Chat.UserMessage key={message.id} blocks={message.blocks} />;
         }
 
         // AI message - check if it has content

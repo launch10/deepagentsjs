@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { MessageList } from "@components/chat/MessageList";
+import { MessageList } from "~/components/chat/MessageList";
 import { UserMessage } from "@components/chat/UserMessage";
-import { AIMessage } from "@components/chat/AIMessage";
+import { AIMessage } from "~/components/chat/AIMessage";
+import { ThinkingIndicator } from "~/components/chat/ThinkingIndicator";
 
 const meta = {
   title: "Chat/MessageList",
@@ -82,7 +83,7 @@ export const WithLoading: Story = {
     <MessageList.Root className="h-full p-4">
       <AIMessage.Content>What would you like to build today?</AIMessage.Content>
       <UserMessage>A subscription box service for coffee enthusiasts</UserMessage>
-      <AIMessage.Loading />
+      <ThinkingIndicator text="Thinking" />
     </MessageList.Root>
   ),
 };
