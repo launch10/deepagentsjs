@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo, useCallback } from "react";
-import type { MessageBlock, InferBridgeData, MessageWithBlocks, LanggraphData, ValidGraphState, ImageMessageBlock } from "langgraph-ai-sdk-types";
+import type { MessageBlock, InferBridgeData, AnyMessageWithBlocks, ImageMessageBlock } from "langgraph-ai-sdk-types";
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
 import { useBrainstormChatState } from "@hooks/useBrainstormChat";
 import { Chat, useChatMessages, useChatIsStreaming, useChatSendMessage, useChatComposer } from "@components/chat";
@@ -11,9 +11,6 @@ import { MessageImages } from "./attachments/MessageImages";
 // The LanggraphData type for the Brainstorm graph (used for MessageBlock generic)
 type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
 type BrainstormBlock = MessageBlock<BrainstormLanggraphData>;
-// Use the generic message type that ChatSnapshot returns (not the specific Brainstorm type)
-// to avoid type compatibility issues between the specific and generic LanggraphData types
-type BrainstormMessage_ = MessageWithBlocks<LanggraphData<ValidGraphState, undefined>>;
 
 /**
  * User-friendly labels for each command
@@ -36,7 +33,7 @@ const PrimaryCommands: Brainstorm.CommandName[] = ["finished", "doTheRest"];
  */
 export interface BrainstormMessagesViewProps {
   /** Array of chat messages to display */
-  messages: BrainstormMessage_[];
+  messages: AnyMessageWithBlocks[];
   /** Whether the chat is currently streaming a response */
   isStreaming: boolean;
   /** Available command buttons to show (e.g., helpMe, skip, doTheRest, finished) */
@@ -88,7 +85,7 @@ export function BrainstormMessagesView({
       }
 
       // AI message - check if it starts a new topic
-      const messageTopic = message.metadata?.currentTopic;
+      const messageTopic = (message as any).metadata?.currentTopic;
       const startsNewTopic = Boolean(messageTopic && messageTopic !== lastSeenTopic);
 
       if (messageTopic) {
@@ -190,8 +187,7 @@ export function BrainstormMessagesView({
  */
 export function BrainstormMessages() {
   // Use context hooks (requires Chat.Root ancestor)
-  // Cast messages to the expected type - the underlying data is compatible
-  const messages = useChatMessages() as unknown as BrainstormMessage_[];
+  const messages = useChatMessages();
   const isStreaming = useChatIsStreaming();
   const sendMessage = useChatSendMessage();
   const composer = useChatComposer();

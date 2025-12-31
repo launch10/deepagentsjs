@@ -5,7 +5,7 @@ import AIMessage from "./AIMessage";
 import HumanMessage from "./HumanMessage";
 
 type Message = {
-  role: "assistant" | "user";
+  role: "assistant" | "user" | "system";
   blocks: { id: string; type: string; text?: string }[];
 };
 
@@ -64,8 +64,7 @@ export function AdsChatMessagesView({ messages, isLoading = false }: AdsChatMess
  */
 export default function AdsChatMessages() {
   // Use context hooks (requires Chat.Root ancestor)
-  // Cast messages to expected type - the underlying data is compatible
-  const messages = useChatMessages() as unknown as Message[];
+  const messages = useChatMessages();
   const isLoading = useChatIsLoading();
 
   return <AdsChatMessagesView messages={messages} isLoading={isLoading} />;
