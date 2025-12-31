@@ -32,6 +32,8 @@ export {
   useChatIsStreaming,
   useChatIsLoading,
   useChatSendMessage,
+  useChatSubmit,
+  useChatStop,
   useChatStatus,
   type ChatContextValue,
 } from "./ChatContext";
@@ -52,7 +54,7 @@ export {
   type FileButtonProps,
   type DropZoneProps,
   type AttachmentListProps,
-} from "./Input";
+} from "./input";
 
 // Context-aware message components
 export {
@@ -89,7 +91,7 @@ export {
 // This is the main export - use Chat.Root, Chat.Input.Textarea, etc.
 
 import { Root } from "./Root";
-import { Input } from "./Input";
+import { Input } from "./input";
 import { Messages } from "./messages";
 import { UserMessage } from "./UserMessage";
 import { AIMessage } from "./AIMessage";

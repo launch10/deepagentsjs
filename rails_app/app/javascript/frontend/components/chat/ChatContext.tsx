@@ -17,8 +17,12 @@ export interface ChatContextValue<TState extends Record<string, unknown> = Recor
   isStreaming: boolean;
   isLoading: boolean;
 
-  // Send message action
+  // Actions
+  /** Raw sendMessage from snapshot - use `submit` for UI components */
   sendMessage: ChatSnapshot<TState>["sendMessage"];
+  /** Submit action for UI components - uses custom onSubmit if provided, else sendMessage */
+  submit: () => void;
+  stop: ChatSnapshot<TState>["stop"];
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -70,11 +74,21 @@ export function useChatIsLoading(): boolean {
 }
 
 /**
- * Get the send message function.
+ * Get the send message function (raw snapshot function).
+ * For UI submit actions, prefer useChatSubmit which respects custom onSubmit.
  */
 export function useChatSendMessage(): ChatContextValue["sendMessage"] {
   const { sendMessage } = useChatContext();
   return sendMessage;
+}
+
+/**
+ * Get the submit function for UI components.
+ * Uses custom onSubmit from Chat.Root if provided, otherwise sendMessage.
+ */
+export function useChatSubmit(): () => void {
+  const { submit } = useChatContext();
+  return submit;
 }
 
 /**
@@ -85,10 +99,24 @@ export function useChatStatus(): ChatContextValue["status"] {
   return status;
 }
 
+/**
+ * Get the stop function to cancel streaming.
+ */
+export function useChatStop(): ChatContextValue["stop"] {
+  const { stop } = useChatContext();
+  return stop;
+}
+
 // Provider component props
 export interface ChatProviderProps<TState extends Record<string, unknown>> {
   snapshot: ChatSnapshot<TState>;
   children: ReactNode;
+  /**
+   * Optional custom submit handler. When provided, all Chat.Input components
+   * will use this instead of the snapshot's sendMessage for submit actions.
+   * Useful for wrapping sendMessage with additional behavior (e.g., workflow sync).
+   */
+  onSubmit?: () => void;
 }
 
 /**
@@ -97,10 +125,14 @@ export interface ChatProviderProps<TState extends Record<string, unknown>> {
 export function ChatProvider<TState extends Record<string, unknown>>({
   snapshot,
   children,
+  onSubmit,
 }: ChatProviderProps<TState>) {
   // Cast messages to AnyMessageWithBlocks[] - the types are compatible at runtime
   // but TypeScript has trouble with the StructuredMessageBlock generic
   const messages = snapshot.messages as unknown as AnyMessageWithBlocks[];
+
+  // Submit uses custom handler if provided, otherwise raw sendMessage
+  const submit = onSubmit ?? (() => snapshot.sendMessage());
 
   const value: ChatContextValue<TState> = {
     snapshot,
@@ -110,6 +142,8 @@ export function ChatProvider<TState extends Record<string, unknown>>({
     isStreaming: snapshot.status === "streaming" || snapshot.status === "submitted",
     isLoading: snapshot.isLoading,
     sendMessage: snapshot.sendMessage,
+    submit,
+    stop: snapshot.stop,
   };
 
   return (

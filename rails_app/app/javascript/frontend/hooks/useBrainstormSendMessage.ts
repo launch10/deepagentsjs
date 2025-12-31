@@ -35,6 +35,7 @@ export function useBrainstormSendMessage() {
   const sendMessageWithWorkflowSync = useCallback(
     (...args: Parameters<typeof sendMessage>) => {
       // Optimistically set page to brainstorm if this is the first message
+      console.log(`did we get here? ${isNewConversation}`);
       if (isNewConversation && setPage) {
         setPage("brainstorm");
       }

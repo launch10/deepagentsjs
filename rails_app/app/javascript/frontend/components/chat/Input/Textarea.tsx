@@ -30,7 +30,7 @@ export interface TextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaE
  */
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, placeholder, value, onChange, onKeyDown, disabled, ...props }, ref) => {
-    const { composer, isStreaming, sendMessage } = useChatContext();
+    const { composer, isStreaming, submit } = useChatContext();
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       if (onChange) {
@@ -44,7 +44,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         if (composer.isReady && !isStreaming) {
-          sendMessage();
+          submit();
         }
       }
       onKeyDown?.(e);

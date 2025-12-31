@@ -109,37 +109,7 @@ export function useBrainstormChatComposer() {
  * - sendMessage("text", { additionalState }) - sends text with state
  */
 export function useBrainstormChatActions() {
-  return useBrainstormChat((s) => {
-    const { sendMessage, ...rest } = s.actions;
-    const { composer } = s;
-
-    const guardedSendMessage: typeof sendMessage = (...args: Parameters<typeof sendMessage>) => {
-      // No-arg call uses composer - check composer.isReady
-      if (args.length === 0 || args[0] === undefined) {
-        if (!composer.isReady) {
-          console.warn("[useBrainstormChatActions] Blocked: composer not ready");
-          return;
-        }
-        return sendMessage();
-      }
-
-      // Text-based call - existing guard logic
-      const [message, additionalState] = args;
-      if (typeof message === "string") {
-        const hasMessage = message.trim().length > 0;
-        const hasAdditionalState = additionalState && Object.keys(additionalState).length > 0;
-
-        if (!hasMessage && !hasAdditionalState) {
-          console.warn("[useBrainstormChatActions] Blocked empty message submission");
-          return;
-        }
-      }
-
-      sendMessage(message, additionalState);
-    };
-
-    return { sendMessage: guardedSendMessage, ...rest };
-  });
+  return useBrainstormChat((s) => s.actions);
 }
 
 export function useBrainstormChatThreadId() {

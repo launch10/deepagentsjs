@@ -4,49 +4,70 @@ import { useChatContext } from "../ChatContext";
 
 export interface SubmitButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type" | "onClick"> {
   /**
-   * Custom click handler. If not provided, uses sendMessage from context.
+   * Custom stop handler. If not provided, uses stop from context.
+   * Only called when streaming and stopIcon is provided.
    */
-  onClick?: () => void;
+  onStop?: () => void;
   /**
-   * Button children. If not provided, renders nothing (expected to pass icon as child).
+   * Submit icon/content shown when not streaming.
    */
   children?: ReactNode;
+  /**
+   * Stop icon shown when streaming. When provided, the button becomes a
+   * submit/stop toggle - enabled during streaming to allow cancellation.
+   * When not provided, button is disabled during streaming (backward compatible).
+   */
+  stopIcon?: ReactNode;
 }
 
 /**
- * Chat.Input.SubmitButton - Context-aware submit button.
+ * Chat.Input.SubmitButton - Context-aware submit/stop button.
  *
- * Automatically disables when:
- * - Composer is not ready (no text and no completed attachments)
- * - Chat is streaming
- *
- * @example
+ * Basic usage (disables during streaming):
  * ```tsx
- * <Chat.Root chat={chat}>
- *   <Chat.Input.SubmitButton>
- *     <ArrowUpIcon className="w-4 h-4" />
- *   </Chat.Input.SubmitButton>
- * </Chat.Root>
+ * <Chat.Input.SubmitButton>
+ *   <ArrowUpIcon className="w-4 h-4" />
+ * </Chat.Input.SubmitButton>
+ * ```
+ *
+ * With stop support (toggles between submit/stop):
+ * ```tsx
+ * <Chat.Input.SubmitButton stopIcon={<StopIcon className="w-4 h-4" />}>
+ *   <ArrowUpIcon className="w-4 h-4" />
+ * </Chat.Input.SubmitButton>
  * ```
  */
 export function SubmitButton({
-  onClick,
+  onStop,
   disabled,
   className,
   children,
+  stopIcon,
   ...props
 }: SubmitButtonProps) {
-  const { composer, isStreaming, sendMessage } = useChatContext();
+  const { composer, isStreaming, submit, stop } = useChatContext();
 
+  // When stopIcon is provided, button is enabled during streaming for stop action
+  const hasStopMode = stopIcon !== undefined;
+  const isInStopMode = hasStopMode && isStreaming;
+
+  // Can submit when composer is ready and not streaming
   const canSubmit = composer.isReady && !isStreaming;
 
-  const handleClick = () => {
-    if (!canSubmit) return;
+  // Button is enabled when: can submit OR in stop mode
+  const isEnabled = canSubmit || isInStopMode;
 
-    if (onClick) {
-      onClick();
-    } else {
-      sendMessage();
+  const handleClick = () => {
+    if (isInStopMode) {
+      // Stop streaming
+      if (onStop) {
+        onStop();
+      } else {
+        stop();
+      }
+    } else if (canSubmit) {
+      // Send message using context's submit (respects Chat.Root onSubmit)
+      submit();
     }
   };
 
@@ -54,7 +75,7 @@ export function SubmitButton({
     <button
       type="button"
       onClick={handleClick}
-      disabled={disabled ?? !canSubmit}
+      disabled={disabled ?? !isEnabled}
       className={twMerge(
         "flex items-center justify-center",
         "transition-colors",
@@ -62,9 +83,10 @@ export function SubmitButton({
         className
       )}
       data-testid="send-button"
+      aria-label={isInStopMode ? "Stop" : "Send message"}
       {...props}
     >
-      {children}
+      {isInStopMode ? stopIcon : children}
     </button>
   );
 }

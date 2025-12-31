@@ -9,6 +9,12 @@ export interface RootProps<TState extends Record<string, unknown> = Record<strin
   children: ReactNode;
   /** Optional className for the root container */
   className?: string;
+  /**
+   * Optional custom submit handler for all Chat.Input components.
+   * Use this to wrap sendMessage with additional behavior (e.g., workflow sync).
+   * If not provided, components use the snapshot's sendMessage directly.
+   */
+  onSubmit?: any;
 }
 
 /**
@@ -31,9 +37,10 @@ export function Root<TState extends Record<string, unknown>>({
   chat,
   children,
   className,
+  onSubmit,
 }: RootProps<TState>) {
   return (
-    <ChatProvider snapshot={chat}>
+    <ChatProvider snapshot={chat} onSubmit={onSubmit}>
       {className ? <div className={className}>{children}</div> : children}
     </ChatProvider>
   );
