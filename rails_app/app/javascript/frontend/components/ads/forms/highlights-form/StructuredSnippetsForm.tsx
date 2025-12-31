@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
@@ -22,21 +21,11 @@ import {
 } from "@components/ui/select";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import type { UpdateCampaignRequestBody } from "@api/campaigns";
-import { mapApiErrorsToForm } from "@helpers/formErrorMapper";
-import { useDebounce } from "@hooks/useDebounce";
-import { detailsInputSchema } from "../shared/AdCampaignForm.schema";
 
 const STRUCTURED_SNIPPET_CATEGORIES = Ads.StructuredSnippetCategoryKeys.map((key) => ({
   value: Ads.StructuredSnippetCategories[key].key,
   label: Ads.StructuredSnippetCategories[key].key,
 }));
-
-const structuredSnippetsFormSchema = z.object({
-  category: z.string(),
-  details: z.array(detailsInputSchema),
-});
-
-type StructuredSnippetsFormData = z.infer<typeof structuredSnippetsFormSchema>;
 
 export default function StructuredSnippetsForm() {
   const structuredSnippets = useAdsChatState("structuredSnippets");
@@ -47,8 +36,8 @@ export default function StructuredSnippetsForm() {
   const filteredDetails = (details || []).filter((d) => !d.rejected);
   const prevIdsRef = useRef<string[]>([]);
 
-  const methods = useForm<StructuredSnippetsFormData>({
-    resolver: zodResolver(structuredSnippetsFormSchema) as any,
+  const methods = useForm<Ads.StructuredSnippetsOutput>({
+    resolver: zodResolver(Ads.StructuredSnippetsOutputSchema) as any,
     mode: "onChange",
     defaultValues: {
       category: category,
@@ -68,12 +57,12 @@ export default function StructuredSnippetsForm() {
 
   useEffect(() => {
     if (category && methods.getValues("category") !== category) {
-      methods.setValue("category", category);
+      methods.setValue("category", category as Ads.StructuredSnippetCategoryName);
     }
   }, [category, methods]);
 
   const handleCategoryChange = (value: string) => {
-    methods.setValue("category", value);
+    methods.setValue("category", value as Ads.StructuredSnippetCategoryName);
     setState({
       structuredSnippets: {
         ...structuredSnippets,
@@ -161,7 +150,7 @@ export default function StructuredSnippetsForm() {
     });
   };
 
-  const { saveNow } = useAutosaveCampaign<StructuredSnippetsFormData>({
+  const { saveNow } = useAutosaveCampaign<Ads.StructuredSnippetsOutput>({
     methods,
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const values = data.details?.filter((d) => d.text?.trim()).map((d) => d.text) ?? [];

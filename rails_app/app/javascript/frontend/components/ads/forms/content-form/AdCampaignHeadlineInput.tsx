@@ -2,8 +2,8 @@ import { Badge } from "@components/ui/badge";
 import { Field, FieldError } from "@components/ui/field";
 import { Info, Plus } from "lucide-react";
 import { useState } from "react";
-import { headlineSchema } from "../shared/AdCampaignForm.schema";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
+import { Ads } from "@shared";
 
 interface AdCampaignHeadlineInputProps {
   onAdd: (value: string) => void;
@@ -36,7 +36,7 @@ export default function AdCampaignHeadlineInput({
       return;
     }
 
-    const result = headlineSchema.shape.text.safeParse(trimmed);
+    const result = Ads.headlineSchema.shape.text.safeParse(trimmed);
     if (!result.success) {
       setError(result.error.errors[0]?.message ?? "Invalid headline");
       return;
