@@ -58,12 +58,13 @@ export default function LaunchForm() {
     return () => subscription.unsubscribe();
   }, [methods, setValues]);
 
-  const { saveNow } = useAutosaveCampaign<LaunchFormData>({
+  const { getData } = useAutosaveCampaign<LaunchFormData>({
     methods,
+    formId: "launch",
     transformFn: transformLaunchFormToApi,
   });
 
-  useFormRegistration("launch", methods, saveNow);
+  useFormRegistration("launch", methods, getData);
 
   const googleAdvertisingChannelType = methods.watch("googleAdvertisingChannelType");
   const googleBiddingStrategy = methods.watch("googleBiddingStrategy");

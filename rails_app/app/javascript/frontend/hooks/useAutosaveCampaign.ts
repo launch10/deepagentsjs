@@ -10,6 +10,7 @@ import type { UpdateCampaignResponse } from "@api/campaigns";
 export type useAutosaveCampaignOptions<TFormData extends FieldValues> = {
   methods: UseFormReturn<TFormData>;
   transformFn: (formData: TFormData) => Partial<UpdateCampaignRequestBody> | null;
+  formId: string; // Unique identifier to prevent mutation key collisions between forms
   debounceMs?: number;
   onSuccess?: (data: { ready_for_next_stage?: boolean }) => void;
   enabled?: boolean;
@@ -19,11 +20,13 @@ export type useAutosaveCampaignReturn = {
   isAutosaving: boolean;
   autosaveError: Error | null;
   saveNow: () => Promise<void>;
+  getData: () => Partial<UpdateCampaignRequestBody> | null;
 };
 
 export function useAutosaveCampaign<TFormData extends FieldValues>({
   methods,
   transformFn,
+  formId,
   debounceMs = 750,
   onSuccess,
   enabled,
@@ -47,9 +50,15 @@ export function useAutosaveCampaign<TFormData extends FieldValues>({
   const campaignIdRef = useRef(campaignId);
   campaignIdRef.current = campaignId;
 
-  const getApiData = useCallback((): Partial<UpdateCampaignRequestBody> | null => {
+  // getData returns transformed data without checking lastSavedValue (for merged saves)
+  const getData = useCallback((): Partial<UpdateCampaignRequestBody> | null => {
     const formData = methodsRef.current.getValues() as TFormData;
-    const apiData = transformFnRef.current(formData);
+    return transformFnRef.current(formData);
+  }, []);
+
+  // getApiData checks lastSavedValue to skip unnecessary individual autosaves
+  const getApiData = useCallback((): Partial<UpdateCampaignRequestBody> | null => {
+    const apiData = getData();
 
     if (!apiData) {
       return null;
@@ -61,13 +70,13 @@ export function useAutosaveCampaign<TFormData extends FieldValues>({
     }
 
     return apiData;
-  }, []);
+  }, [getData]);
 
   const { mutateDebounced, mutateNowAsync, cancel, isPending, error } = useLatestMutation<
     UpdateCampaignResponse,
     void
   >({
-    mutationKey: ["campaigns", campaignId, "autosave"],
+    mutationKey: ["campaigns", campaignId, "autosave", formId],
     mutationFn: async (_: void, signal: AbortSignal) => {
       const currentCampaignId = campaignIdRef.current;
       if (!currentCampaignId) {
@@ -79,8 +88,11 @@ export function useAutosaveCampaign<TFormData extends FieldValues>({
         throw new Error("No data to save");
       }
 
-      lastSavedValue.current = JSON.stringify(apiData);
-      return service.update(currentCampaignId, apiData as UpdateCampaignRequestBody, signal);
+      const serializedData = JSON.stringify(apiData);
+      const result = await service.update(currentCampaignId, apiData as UpdateCampaignRequestBody, signal);
+      // Only mark as saved AFTER successful API call - prevents skipping retries on failures
+      lastSavedValue.current = serializedData;
+      return result;
     },
     debounceMs,
     onSuccess: (data) => {
@@ -133,5 +145,6 @@ export function useAutosaveCampaign<TFormData extends FieldValues>({
     isAutosaving: isPending,
     autosaveError: error,
     saveNow,
+    getData,
   };
 }

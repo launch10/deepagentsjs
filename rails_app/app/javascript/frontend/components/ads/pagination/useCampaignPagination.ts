@@ -8,14 +8,16 @@ import {
   selectReturnToReview,
   useWorkflowSteps,
 } from "@context/WorkflowStepsProvider";
-import { useAdvanceCampaign, useBackCampaign } from "@api/campaigns.hooks";
-import { selectValidate, selectSave, useFormRegistry } from "@stores/formRegistry";
+import { useAdvanceCampaign, useBackCampaign, useCampaignService } from "@api/campaigns.hooks";
+import { selectValidate, selectCollectData, useFormRegistry } from "@stores/formRegistry";
 import { useAdsChatState } from "@hooks/useAdsChat";
+import type { UpdateCampaignRequestBody } from "@api/campaigns";
 
 export function useCampaignPagination() {
   const validateForm = useFormRegistry(selectValidate);
-  const saveForm = useFormRegistry(selectSave);
+  const collectData = useFormRegistry(selectCollectData);
   const campaignId = useAdsChatState("campaignId");
+  const service = useCampaignService();
 
   const substep = useWorkflowSteps(selectSubstep);
   const workflowContinue = useWorkflowSteps(selectContinue)!;
@@ -36,10 +38,14 @@ export function useCampaignPagination() {
     const isValid = await validateForm(substep);
     if (!isValid) return;
 
-    try {
-      await saveForm(substep);
-    } catch {
-      return;
+    // Collect and merge all form data, then send a single API call
+    const mergedData = collectData(substep);
+    if (mergedData && campaignId) {
+      try {
+        await service.update(campaignId, mergedData as UpdateCampaignRequestBody);
+      } catch {
+        return;
+      }
     }
 
     advanceCampaign(undefined, {

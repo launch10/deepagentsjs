@@ -66,8 +66,9 @@ export default function DescriptionsForm() {
     });
   };
 
-  const { saveNow } = useAutosaveCampaign<Ads.DescriptionsOutput>({
+  const { getData } = useAutosaveCampaign<Ads.DescriptionsOutput>({
     methods,
+    formId: "descriptions",
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const transformed = defaultAssetTransform(data.descriptions);
       if (transformed.length === 0) return null;
@@ -75,7 +76,7 @@ export default function DescriptionsForm() {
     },
   });
 
-  useFormRegistration("content", methods, saveNow);
+  useFormRegistration("content", methods, getData);
 
   const fields = filteredDescriptions.map((d) => ({ ...d, id: d.id }));
 

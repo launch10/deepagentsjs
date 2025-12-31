@@ -154,7 +154,7 @@ export const StructuredSnippetCategories: Record<
 } as const;
 
 export const StructuredSnippetsSchema = z.object({
-  category: z.enum(StructuredSnippetCategoryNames),
+  category: z.enum(StructuredSnippetCategoryKeys),
   details: z.array(AssetSchema),
 });
 
@@ -221,14 +221,14 @@ export const DescriptionsOutputSchema = z.object({
 });
 export type DescriptionsOutput = z.infer<typeof DescriptionsOutputSchema>;
 
-export const callousSchema = AssetSchema.extend({
+export const calloutsSchema = AssetSchema.extend({
   text: z
     .string()
     .min(1, "Callouts cannot be empty")
     .max(AssetLengths.callouts, `Callouts must be ${AssetLengths.callouts} characters or less`),
 });
 export const CalloutsOutputSchema = z.object({
-  callouts: z.array(callousSchema),
+  callouts: z.array(calloutsSchema),
 });
 export type CalloutsOutput = z.infer<typeof CalloutsOutputSchema>;
 
@@ -242,7 +242,7 @@ const detailsSchema = AssetSchema.extend({
     ),
 });
 export const StructuredSnippetsOutputSchema = z.object({
-  category: z.enum(StructuredSnippetCategoryNames),
+  category: z.enum(StructuredSnippetCategoryKeys),
   details: z.array(detailsSchema),
 });
 export type StructuredSnippetsOutput = z.infer<typeof StructuredSnippetsOutputSchema>;
@@ -256,7 +256,7 @@ export type KeywordsOutput = z.infer<typeof KeywordsOutputSchema>;
 export const StreamedAssetSchema = z.array(z.string());
 export type StreamedAsset = z.infer<typeof StreamedAssetSchema>;
 export const StreamedSnippetsSchema = z.object({
-  category: z.enum(StructuredSnippetCategoryNames),
+  category: z.enum(StructuredSnippetCategoryKeys),
   details: StreamedAssetSchema,
 });
 export type StreamedSnippets = z.infer<typeof StreamedSnippetsSchema>;

@@ -103,8 +103,9 @@ export default function KeywordTargetingForm() {
 
   const resolveIndex = (id: string) => fields.findIndex((f) => f.id === id);
 
-  const { saveNow } = useAutosaveCampaign<KeywordsFormData>({
+  const { getData } = useAutosaveCampaign<KeywordsFormData>({
     methods,
+    formId: "keywords",
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const transformed = data.keywords
         ?.filter((k) => k.text?.trim())
@@ -114,7 +115,7 @@ export default function KeywordTargetingForm() {
     },
   });
 
-  useFormRegistration("keywords", methods, saveNow);
+  useFormRegistration("keywords", methods, getData);
 
   return (
     <FieldGroup className="gap-4">

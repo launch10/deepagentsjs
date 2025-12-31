@@ -51,12 +51,13 @@ export default function SettingsForm() {
     return () => subscription.unsubscribe();
   }, [methods, setValues]);
 
-  const { saveNow } = useAutosaveCampaign<SettingsFormData>({
+  const { getData } = useAutosaveCampaign<SettingsFormData>({
     methods,
+    formId: "settings",
     transformFn: transformSettingsFormToApi,
   });
 
-  useFormRegistration("settings", methods, saveNow);
+  useFormRegistration("settings", methods, getData);
 
   return (
     <FormProvider {...methods}>
