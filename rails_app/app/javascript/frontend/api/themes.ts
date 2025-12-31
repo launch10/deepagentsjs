@@ -34,7 +34,7 @@ export class ThemeService extends RailsAPIBase {
 
   async create(options: CreateThemeRequest): Promise<CreateThemeResponse> {
     const client = await this.getClient();
-    const response = await client.POST("/api/v1/themes", options);
+    const response = await client.POST("/api/v1/themes", { body: options });
 
     if (response.error) {
       throw new Error(`Failed to create theme: ${JSON.stringify(response.error)}`);

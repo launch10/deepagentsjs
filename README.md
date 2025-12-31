@@ -88,13 +88,12 @@ bundle install
 bundle exec rake db:create db:migrate db:seed
 ```
 
-## Running NGrok For Local Sharing
+## Running Cloudflared For Local Sharing
 
 Install prerequisites:
 
 ```bash
-brew install ngrok jq
-ngrok config add-authtoken YOUR_TOKEN  # Get from ngrok dashboard
+brew install cloudflared
 ```
 
 Run the tunnel script:
