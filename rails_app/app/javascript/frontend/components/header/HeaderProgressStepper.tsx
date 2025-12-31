@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { usePage } from "@inertiajs/react";
 import { twMerge } from "tailwind-merge";
 import { useWorkflowSteps, selectPageNumber, selectPages } from "@context/WorkflowStepsProvider";
 import { Workflow } from "@shared";
@@ -26,7 +25,7 @@ export function HeaderProgressStepperView({ steps, currentStepIndex, className }
   }, [activeLabelRef.current, currentStepIndex, steps]);
 
   return (
-    <div className={twMerge("w-full", className)}>
+    <div className={twMerge("w-full", className)} data-testid="workflow-progress-stepper">
       <div className="bg-[#EDEDEC] relative h-2 w-full rounded-full">
         <div
           className="absolute top-0 left-0 h-2 bg-linear-to-r from-[#7F8CDF] to-[#3748B8] rounded-full"
@@ -68,13 +67,18 @@ type HeaderProgressStepperProps = {
   className?: string;
 };
 
-const HIDE_URLS = ["/", "/projects/new"];
-
 export default function HeaderProgressStepper({ className }: HeaderProgressStepperProps) {
-  const { url } = usePage();
   const pages = useWorkflowSteps(selectPages);
   const currentPageNumber = useWorkflowSteps(selectPageNumber);
-  const shouldShow = !HIDE_URLS.includes(url);
+
+  // Show the stepper if we have a valid workflow page (pageNumber >= 0)
+  // The store is the source of truth for whether we're in a workflow.
+  // When navigating to hidden URLs via Inertia, the WorkflowStepsProvider clears the store,
+  // which will set pageNumber to -1 and hide the stepper.
+  const hasValidPage = currentPageNumber != null && currentPageNumber >= 0;
+
+  // Show stepper only if we have a valid page in the workflow store
+  const shouldShow = hasValidPage;
 
   if (!pages || currentPageNumber == null || !shouldShow) {
     return null;

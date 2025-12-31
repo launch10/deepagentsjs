@@ -73,14 +73,14 @@ function BrainstormConversationContent({
         contentVisible ? "opacity-100" : "opacity-0"
       }`}
     >
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden mx-auto container max-w-7xl grid grid-cols-1 lg:grid-cols-[288px_1fr] gap-8 px-8">
         {/* Left sidebar - Brand Personalization Panel */}
-        <div className="hidden lg:block pl-[72px] pt-[46px] shrink-0">
-          <BrandPersonalizationPanel shouldAutoOpen={shouldAutoOpen} />
+        <div className="hidden lg:block pt-[46px]">
+          <BrandPersonalizationPanel shouldAutoOpen={shouldAutoOpen} className="sticky top-24" />
         </div>
 
         {/* Main chat area */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex flex-col min-h-0 overflow-hidden">
           {/* Scrollable messages area */}
           <div className="flex-1 overflow-y-auto min-h-0">
             <BrainstormMessages />

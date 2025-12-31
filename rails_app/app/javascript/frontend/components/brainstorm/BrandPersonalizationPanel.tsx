@@ -32,7 +32,7 @@ export function BrandPersonalizationPanel({ className, shouldAutoOpen = false }:
   return (
     <div
       className={twMerge(
-        "bg-background border border-neutral-300 rounded-2xl px-3 py-4 w-[288px]",
+        "bg-background border border-neutral-300 rounded-2xl px-3 py-4 w-[288px] shadow-[0px_0px_8px_4px_rgba(167,165,161,0.08)]",
         className
       )}
       data-testid="brand-personalization-panel"

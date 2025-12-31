@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import {
-  PlusIcon,
   RocketLaunchIcon,
   MegaphoneIcon,
   UserPlusIcon,
@@ -10,6 +9,7 @@ import {
   ArrowRightStartOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 import { twMerge } from "tailwind-merge";
+import { NewProjectButton } from "./NewProjectButton";
 
 interface NavItem {
   label: string;
@@ -64,19 +64,7 @@ export default function MainSidebar() {
 
       {/* New Project button */}
       <div className={twMerge("p-6", isCollapsed && "p-4 flex justify-center")}>
-        <Link
-          href="/projects/new"
-          data-testid="new-project-link"
-          className={twMerge(
-            "flex items-center gap-3 text-white font-sans",
-            isCollapsed && "justify-center"
-          )}
-        >
-          <span className="flex items-center justify-center w-6 h-6 shrink-0 bg-white rounded-full">
-            <PlusIcon className="w-4 h-4" style={{ color: "#12183d" }} strokeWidth={2.5} />
-          </span>
-          {!isCollapsed && <span>New Project</span>}
-        </Link>
+        <NewProjectButton isCollapsed={isCollapsed} />
       </div>
 
       {/* Navigation items */}

@@ -153,6 +153,9 @@ export function useBrainstormChatThreadId() {
  * without needing an Inertia navigation.
  */
 export function useBrainstormIsNewConversation() {
+  const { thread_id } = usePage<BrainstormPageProps>().props;
+  if (thread_id) return false;
+
   return useBrainstormChat((s) => s.messages.length === 0);
 }
 

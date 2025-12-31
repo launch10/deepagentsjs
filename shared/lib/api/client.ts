@@ -71,8 +71,6 @@ const headers = (jwtToken?: string) => {
   
   if (jwtToken && isBackend()) {
     headers = addBackendHeaders(headers, jwtToken);
-  } else {
-    console.log('[Rails API Client] NOT adding backend headers - jwtToken:', !!jwtToken, 'isBackend:', isBackend());
   }
   return headers;
 }

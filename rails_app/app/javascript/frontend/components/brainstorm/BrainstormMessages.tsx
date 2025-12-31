@@ -115,7 +115,7 @@ export function BrainstormMessagesView({
   }
 
   return (
-    <Chat.MessageList.Root className="flex-1 p-4 space-y-4 mx-auto" style={{ maxWidth: "808px" }}>
+    <Chat.MessageList.Root className="flex-1 py-4 space-y-4 max-w-3xl mx-auto">
       {messages.map((message, index) => {
         const { isUser, isLastMessage, startsNewTopic, questionNumber } = messageMetadata[index];
 

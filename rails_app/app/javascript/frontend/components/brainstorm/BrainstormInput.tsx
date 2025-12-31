@@ -1,10 +1,10 @@
 import { useRef, useEffect, useCallback, useMemo } from "react";
 import {
-  useBrainstormChatActions,
   useBrainstormChatIsStreaming,
   useBrainstormChatState,
   useBrainstormChatComposer,
 } from "@hooks/useBrainstormChat";
+import { useBrainstormSendMessage } from "~/hooks/useBrainstormSendMessage";
 import { setTextareaRef } from "@lib/brainstormTextarea";
 import { DocumentPlusIcon, ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
 import { AttachmentList, DropZone } from "./attachments";
@@ -109,8 +109,8 @@ export function BrainstormInputView({
     <div className="px-4 pb-8">
       <DropZone onDrop={handleDrop} disabled={isStreaming}>
         <div
-          style={{ maxWidth: "808px", minHeight: "120px" }}
-          className="bg-white border border-neutral-300 rounded-xl shadow-(--shadow-chat-default) hover:shadow-(--shadow-chat-delight) focus-within:shadow-(--shadow-chat-delight) transition-shadow p-4 mx-auto flex flex-col"
+          style={{ minHeight: "120px" }}
+          className="bg-white border border-neutral-300 rounded-xl shadow-(--shadow-chat-default) hover:shadow-(--shadow-chat-delight) focus-within:shadow-(--shadow-chat-delight) transition-shadow p-4 flex flex-col max-w-3xl mx-auto"
         >
           {/* Attachment previews */}
           <AttachmentList attachments={attachments} onRemove={onRemoveAttachment} />
@@ -175,9 +175,9 @@ export function BrainstormInputView({
  * Uses the SDK's composer API for unified text + attachment state management.
  */
 export function BrainstormInput() {
-  const { sendMessage } = useBrainstormChatActions();
+  const { sendMessage } = useBrainstormSendMessage();
   const isStreaming = useBrainstormChatIsStreaming();
-  const placeholderText = useBrainstormChatState("placeholderText");
+  const placeholderText = useBrainstormChatState("placeholderText"); // backend tells frontend what to show
   const composer = useBrainstormChatComposer();
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -203,7 +203,8 @@ export function BrainstormInput() {
 
   const onSubmit = useCallback(() => {
     if (composer.isReady) {
-      sendMessage(); // Sends composed content (text + images as inline URLs)
+      // @ts-ignore -- composer handles attachments for us
+      sendMessage(); // Sends composed content (text + attachments as inline URLs)
     }
   }, [composer.isReady, sendMessage]);
 

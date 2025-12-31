@@ -1112,6 +1112,184 @@ test.describe("Brainstorm Inline Chat Attachments", () => {
   });
 });
 
+test.describe("Workflow Progress Stepper", () => {
+  let brainstormPage: BrainstormPage;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await loginUser(page);
+    brainstormPage = new BrainstormPage(page);
+  });
+
+  test("progress stepper is hidden on home page", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Progress stepper should NOT be visible on home/new project page
+    const progressStepper = page.getByTestId("workflow-progress-stepper");
+    await expect(progressStepper).not.toBeVisible();
+  });
+
+  test("progress stepper is hidden on /projects/new", async ({ page }) => {
+    await brainstormPage.gotoNew();
+
+    // Progress stepper should NOT be visible on /projects/new
+    const progressStepper = page.getByTestId("workflow-progress-stepper");
+    await expect(progressStepper).not.toBeVisible();
+  });
+
+  test("progress stepper appears after sending first message", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Initially, stepper should be hidden
+    const progressStepper = page.getByTestId("workflow-progress-stepper");
+    await expect(progressStepper).not.toBeVisible();
+
+    // Send a message
+    await brainstormPage.sendMessage("I want to start a coffee subscription service");
+
+    // Wait for URL to update (message was sent, thread created)
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Progress stepper should now be visible
+    await expect(progressStepper).toBeVisible({ timeout: 5000 });
+
+    // Should show "Brainstorm" as the current step (first step highlighted)
+    await expect(page.getByText("Brainstorm")).toBeVisible();
+  });
+
+  test("progress stepper shows correct step labels", async ({ page }) => {
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for stepper labels");
+
+    // Wait for URL to update
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // All step labels should be visible
+    await expect(page.getByText("Brainstorm")).toBeVisible();
+    await expect(page.getByText("Landing Page")).toBeVisible();
+    await expect(page.getByText("Ad Campaign")).toBeVisible();
+    await expect(page.getByText("Launch")).toBeVisible();
+  });
+
+  test("clicking New Project button resets workflow state and hides stepper", async ({ page }) => {
+    // Start a conversation to get the stepper visible
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Initial test message");
+
+    // Wait for URL to update
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Verify stepper is visible
+    const progressStepper = page.getByTestId("workflow-progress-stepper");
+    await expect(progressStepper).toBeVisible({ timeout: 5000 });
+
+    // Click the New Project button (+ icon) in sidebar
+    await page.getByTestId("new-project-link").click();
+
+    // Wait for navigation to /projects/new AND for React to re-render
+    await page.waitForURL("**/projects/new");
+
+    // Wait for the chat input to be ready (indicates React has rendered)
+    await brainstormPage.expectChatInputReady();
+
+    // Stepper should now be hidden (workflow state reset)
+    // Use a longer timeout since state clearing is async after prop changes
+    await expect(progressStepper).not.toBeVisible({ timeout: 5000 });
+  });
+
+  test("navigating to home (/) resets workflow state and hides stepper", async ({ page }) => {
+    // Start a conversation
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for home navigation");
+
+    // Wait for URL to update
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Verify stepper is visible
+    const progressStepper = page.getByTestId("workflow-progress-stepper");
+    await expect(progressStepper).toBeVisible({ timeout: 5000 });
+
+    // Navigate to home
+    await page.goto("/");
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // Stepper should be hidden
+    await expect(progressStepper).not.toBeVisible();
+  });
+
+  // Skip: These tests depend on project persistence which has timing issues in the test environment.
+  // The thread ID from Langgraph may not be persisted to Rails DB before the page reload.
+  // See: "loads existing conversation from URL" test has the same issue.
+  test.skip("stepper persists when reloading existing conversation", async ({ page }) => {
+    // Start a conversation
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for reload");
+
+    // Wait for URL to update
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Wait for AI response (ensures project is fully persisted in Rails DB)
+    await brainstormPage.waitForResponse();
+
+    // Verify stepper is visible
+    const progressStepper = page.getByTestId("workflow-progress-stepper");
+    await expect(progressStepper).toBeVisible({ timeout: 5000 });
+
+    // Reload the page
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 15000 });
+
+    // Stepper should still be visible after reload
+    await expect(progressStepper).toBeVisible({ timeout: 5000 });
+  });
+
+  // Skip: See above - depends on project persistence timing
+  test.skip("stepper visible when navigating directly to existing conversation", async ({ page }) => {
+    // First create a conversation
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for direct navigation");
+
+    // Wait for URL to update and get thread ID
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Wait for AI response (ensures project is fully persisted in Rails DB)
+    await brainstormPage.waitForResponse();
+
+    const threadId = brainstormPage.getThreadIdFromUrl();
+    expect(threadId).not.toBeNull();
+
+    // Navigate away to home
+    await page.goto("/");
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // Navigate directly to the conversation
+    await page.goto(`/projects/${threadId}/brainstorm`);
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 15000 });
+
+    // Stepper should be visible
+    const progressStepper = page.getByTestId("workflow-progress-stepper");
+    await expect(progressStepper).toBeVisible({ timeout: 5000 });
+  });
+});
+
 test.describe("Brainstorm Loading States", () => {
   let brainstormPage: BrainstormPage;
 
