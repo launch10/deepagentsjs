@@ -37,35 +37,9 @@ function Bubble({ children, className }: AIMessageBubbleProps) {
   );
 }
 
-// Loading component
-export interface AIMessageLoadingProps {
-  className?: string;
-}
-
-function Loading({ className }: AIMessageLoadingProps) {
-  return (
-    <div className={twMerge("flex items-center gap-2", className)}>
-      <div className="flex gap-1">
-        <span
-          className="w-2 h-2 bg-base-300 rounded-full animate-bounce"
-          style={{ animationDelay: "0ms" }}
-        />
-        <span
-          className="w-2 h-2 bg-base-300 rounded-full animate-bounce"
-          style={{ animationDelay: "150ms" }}
-        />
-        <span
-          className="w-2 h-2 bg-base-300 rounded-full animate-bounce"
-          style={{ animationDelay: "300ms" }}
-        />
-      </div>
-    </div>
-  );
-}
-
 // Export as compound component
+// Note: AIMessage.Loading was removed - use ThinkingIndicator instead
 export const AIMessage = {
   Content,
   Bubble,
-  Loading,
 };

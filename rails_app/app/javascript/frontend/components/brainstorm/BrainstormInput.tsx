@@ -1,10 +1,6 @@
 import { useRef, useEffect, useCallback, useMemo } from "react";
-import {
-  useBrainstormChatIsStreaming,
-  useBrainstormChatState,
-  useBrainstormChatComposer,
-} from "@hooks/useBrainstormChat";
-import { useBrainstormSendMessage } from "~/hooks/useBrainstormSendMessage";
+import { useBrainstormChatState } from "@hooks/useBrainstormChat";
+import { useChatComposer, useChatIsStreaming, useChatSendMessage } from "@components/chat";
 import { setTextareaRef } from "@lib/brainstormTextarea";
 import { DocumentPlusIcon, ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
 import { AttachmentList, DropZone } from "./attachments";
@@ -169,16 +165,20 @@ export function BrainstormInputView({
 
 /**
  * Container component for brainstorm input.
- * Fetches data via hooks and delegates rendering to BrainstormInputView.
+ * Fetches data via context hooks and delegates rendering to BrainstormInputView.
  * Supports file uploads via FilePlus button and drag & drop.
  *
  * Uses the SDK's composer API for unified text + attachment state management.
+ * Now uses Chat context instead of direct brainstorm hooks for portability.
  */
 export function BrainstormInput() {
-  const { sendMessage } = useBrainstormSendMessage();
-  const isStreaming = useBrainstormChatIsStreaming();
-  const placeholderText = useBrainstormChatState("placeholderText"); // backend tells frontend what to show
-  const composer = useBrainstormChatComposer();
+  // Use context hooks (requires Chat.Root ancestor)
+  const composer = useChatComposer();
+  const isStreaming = useChatIsStreaming();
+  const sendMessage = useChatSendMessage();
+
+  // Brainstorm-specific state (placeholder comes from backend)
+  const placeholderText = useBrainstormChatState("placeholderText");
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -203,7 +203,6 @@ export function BrainstormInput() {
 
   const onSubmit = useCallback(() => {
     if (composer.isReady) {
-      // @ts-ignore -- composer handles attachments for us
       sendMessage(); // Sends composed content (text + attachments as inline URLs)
     }
   }, [composer.isReady, sendMessage]);

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Spinner } from "@components/ui/spinner";
-import { useAdsChatMessages, useAdsChatIsLoadingHistory } from "@hooks/useAdsChat";
+import { useChatMessages, useChatIsLoading } from "@components/chat";
 import AIMessage from "./AIMessage";
 import HumanMessage from "./HumanMessage";
 
@@ -58,9 +58,15 @@ export function AdsChatMessagesView({ messages, isLoading = false }: AdsChatMess
   );
 }
 
+/**
+ * Container component for ads chat messages.
+ * Uses Chat context instead of direct ads hooks for portability.
+ */
 export default function AdsChatMessages() {
-  const messages = useAdsChatMessages();
-  const isLoadingHistory = useAdsChatIsLoadingHistory();
+  // Use context hooks (requires Chat.Root ancestor)
+  // Cast messages to expected type - the underlying data is compatible
+  const messages = useChatMessages() as unknown as Message[];
+  const isLoading = useChatIsLoading();
 
-  return <AdsChatMessagesView messages={messages} isLoading={isLoadingHistory} />;
+  return <AdsChatMessagesView messages={messages} isLoading={isLoading} />;
 }

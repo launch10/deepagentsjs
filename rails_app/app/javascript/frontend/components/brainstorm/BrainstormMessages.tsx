@@ -1,14 +1,8 @@
 import { useEffect, useRef, useMemo, useCallback } from "react";
 import type { MessageBlock, InferBridgeData, MessageWithBlocks, LanggraphData, ValidGraphState, ImageMessageBlock } from "langgraph-ai-sdk-types";
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
-import {
-  useBrainstormChatMessages,
-  useBrainstormChatIsStreaming,
-  useBrainstormChatState,
-  useBrainstormChatActions,
-  useBrainstormChatComposer,
-} from "@hooks/useBrainstormChat";
-import { Chat } from "@components/chat";
+import { useBrainstormChatState } from "@hooks/useBrainstormChat";
+import { Chat, useChatMessages, useChatIsStreaming, useChatSendMessage, useChatComposer } from "@components/chat";
 import { BrainstormMessage } from "./BrainstormMessage";
 import { QuestionBadge } from "./QuestionBadge";
 import { getTextareaRef } from "@lib/brainstormTextarea";
@@ -191,14 +185,19 @@ export function BrainstormMessagesView({
 
 /**
  * Container component for brainstorm messages.
- * Fetches data via hooks and delegates rendering to BrainstormMessagesView.
+ * Fetches data via context hooks and delegates rendering to BrainstormMessagesView.
+ * Now uses Chat context instead of direct brainstorm hooks for portability.
  */
 export function BrainstormMessages() {
-  const messages = useBrainstormChatMessages();
-  const isStreaming = useBrainstormChatIsStreaming();
+  // Use context hooks (requires Chat.Root ancestor)
+  // Cast messages to the expected type - the underlying data is compatible
+  const messages = useChatMessages() as unknown as BrainstormMessage_[];
+  const isStreaming = useChatIsStreaming();
+  const sendMessage = useChatSendMessage();
+  const composer = useChatComposer();
+
+  // Brainstorm-specific state (available commands comes from backend)
   const availableCommands = useBrainstormChatState("availableCommands");
-  const { sendMessage } = useBrainstormChatActions();
-  const composer = useBrainstormChatComposer();
 
   // Handle clicking on example suggestions - memoized to prevent unnecessary re-renders
   const handleExampleClick = useCallback(

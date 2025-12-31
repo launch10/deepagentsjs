@@ -1,17 +1,13 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { router } from "@inertiajs/react";
 import { Brainstorm } from "@shared";
-import {
-  useBrainstormChatIsLoadingHistory,
-  useBrainstormChatMessages,
-  useBrainstormChatState,
-  useBrainstormChatThreadId,
-} from "@hooks/useBrainstormChat";
+import { useBrainstormChat, type BrainstormSnapshot } from "@hooks/useBrainstormChat";
 import {
   useBrandPersonalizationStore,
   selectHasAnyPersonalizations,
 } from "@stores/brandPersonalization";
 import { useWebsite } from "@api/websites.hooks";
+import { Chat } from "@components/chat";
 import { BrainstormMessages } from "./BrainstormMessages";
 import { BrainstormInput } from "./BrainstormInput";
 import { BrandPersonalizationPanel } from "./BrandPersonalizationPanel";
@@ -23,29 +19,30 @@ const SKELETON_DELAY_MS = 200;
  * Compute the current question number from messages.
  * Finds the last AI message with a topic and returns its question number.
  */
-function useCurrentQuestionNumber(messages: any[]): number {
-  return useMemo(() => {
-    // Find the last topic mentioned in AI messages (reverse search)
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const message = messages[i];
-      if (message.role !== "user") {
-        const topic = message.metadata?.currentTopic as Brainstorm.TopicName | undefined;
-        if (topic) {
-          return Brainstorm.getQuestionNumberForTopic(topic);
-        }
+function computeQuestionNumber(messages: BrainstormSnapshot["messages"]): number {
+  // Find the last topic mentioned in AI messages (reverse search)
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role !== "user") {
+      const topic = (message as any).metadata?.currentTopic as Brainstorm.TopicName | undefined;
+      if (topic) {
+        return Brainstorm.getQuestionNumberForTopic(topic);
       }
     }
-    return 1; // Default to question 1
-  }, [messages]);
+  }
+  return 1; // Default to question 1
 }
 
 /**
  * Inner component that uses brand personalization store.
+ * Wrapped in Chat.Root to provide context to all child components.
  */
 function BrainstormConversationContent({
+  chat,
   contentVisible,
   currentQuestionNumber,
 }: {
+  chat: BrainstormSnapshot;
   contentVisible: boolean;
   currentQuestionNumber: number;
 }) {
@@ -68,30 +65,32 @@ function BrainstormConversationContent({
   const shouldAutoOpen = currentQuestionNumber >= 5 || hasPersonalizations;
 
   return (
-    <div
-      className={`h-full flex flex-col transition-opacity duration-300 ease-out ${
-        contentVisible ? "opacity-100" : "opacity-0"
-      }`}
-    >
-      <div className="flex-1 min-h-0 overflow-hidden mx-auto container max-w-7xl grid grid-cols-1 lg:grid-cols-[288px_1fr] gap-8 px-8">
-        {/* Left sidebar - Brand Personalization Panel */}
-        <div className="hidden lg:block pt-[46px]">
-          <BrandPersonalizationPanel shouldAutoOpen={shouldAutoOpen} className="sticky top-24" />
-        </div>
+      <div
+        className={`h-full flex flex-col transition-opacity duration-300 ease-out ${
+          contentVisible ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <div className="flex-1 min-h-0 overflow-hidden mx-auto container max-w-7xl grid grid-cols-1 lg:grid-cols-[288px_1fr] gap-8 px-8">
+          {/* Left sidebar - Brand Personalization Panel */}
+          <div className="hidden lg:block pt-[46px]">
+            <BrandPersonalizationPanel shouldAutoOpen={shouldAutoOpen} className="sticky top-24" />
+          </div>
 
-        {/* Main chat area */}
-        <div className="flex flex-col min-h-0 overflow-hidden">
-          {/* Scrollable messages area */}
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <BrainstormMessages />
-          </div>
-          {/* Fixed bottom input area */}
-          <div className="shrink-0 bg-neutral-background">
-            <BrainstormInput />
-          </div>
+          <Chat.Root chat={chat}>
+            {/* Main chat area */}
+            <div className="flex flex-col min-h-0 overflow-hidden">
+              {/* Scrollable messages area */}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                <BrainstormMessages />
+              </div>
+              {/* Fixed bottom input area */}
+              <div className="shrink-0 bg-neutral-background">
+                <BrainstormInput />
+              </div>
+            </div>
+          </Chat.Root>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -102,13 +101,18 @@ function BrainstormConversationContent({
  * - Slow loads (>200ms): Skeleton appears, then crossfades to content
  */
 export function BrainstormConversation() {
-  const threadId = useBrainstormChatThreadId();
-  const isLoadingHistory = useBrainstormChatIsLoadingHistory();
-  const redirect = useBrainstormChatState("redirect");
-  const messages = useBrainstormChatMessages();
+  // Get the full chat snapshot to pass to Chat.Root
+  const chat = useBrainstormChat();
 
-  // Compute current question number from messages
-  const currentQuestionNumber = useCurrentQuestionNumber(messages);
+  // Extract values for loading logic
+  const { threadId, isLoadingHistory, messages, state } = chat;
+  const redirect = state.redirect;
+
+  // Compute current question number from messages (memoized)
+  const currentQuestionNumber = useMemo(
+    () => computeQuestionNumber(messages),
+    [messages]
+  );
 
   // Determine if we're waiting for history to load
   const isEmpty = messages.length === 0;
@@ -174,9 +178,10 @@ export function BrainstormConversation() {
     return <div className="h-full" />;
   }
 
-  // No provider wrappers needed - stores are singletons
+  // Chat.Root inside BrainstormConversationContent provides context to children
   return (
     <BrainstormConversationContent
+      chat={chat}
       contentVisible={contentVisible}
       currentQuestionNumber={currentQuestionNumber}
     />

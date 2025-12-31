@@ -68,3 +68,21 @@ export function useAdsChatActions() {
 export function useAdsChatThreadId() {
   return useAdsChat((s) => s.threadId);
 }
+
+/**
+ * Returns the composer for managing message input.
+ * Use composer.text, composer.setText, etc.
+ */
+export function useAdsChatComposer() {
+  return useAdsChat((s) => s.composer);
+}
+
+/**
+ * Returns whether the chat is currently streaming a response.
+ */
+export function useAdsChatIsStreaming() {
+  return useAdsChat((s) => {
+    const { status } = s;
+    return status === "streaming" || status === "submitted";
+  });
+}

@@ -67,7 +67,7 @@ export {
 
 // Primitive components (no context, just styling)
 export { UserMessage, type UserMessageProps } from "./UserMessage";
-export { AIMessage, type AIMessageContentProps, type AIMessageBubbleProps, type AIMessageLoadingProps } from "./AIMessage";
+export { AIMessage, type AIMessageContentProps, type AIMessageBubbleProps } from "./AIMessage";
 export { CommandButtons, type CommandButtonsRootProps, type CommandButtonProps, type CommandButtonVariant } from "./CommandButtons";
 export { ThinkingIndicator, type ThinkingIndicatorProps, type ThinkingIndicatorVariant } from "./ThinkingIndicator";
 export { MessageList, type MessageListRootProps } from "./MessageList";
