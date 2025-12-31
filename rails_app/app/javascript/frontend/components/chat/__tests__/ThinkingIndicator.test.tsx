@@ -9,15 +9,16 @@ describe("ThinkingIndicator", () => {
   });
 
   it("accepts custom text", () => {
-    render(<ThinkingIndicator text="Generating ideas..." />);
+    render(<ThinkingIndicator text="Generating ideas" />);
+    // Component adds "..." after text, so "Generating ideas" becomes "Generating ideas..."
     expect(screen.getByText("Generating ideas...")).toBeInTheDocument();
   });
 
-  it("shows animated dots", () => {
+  it("shows spinner animation", () => {
     render(<ThinkingIndicator />);
-    const container = screen.getByText(/thinking/i).closest("div")?.parentElement;
-    const dots = container?.querySelectorAll("span.animate-bounce");
-    expect(dots?.length).toBe(3);
+    // Component uses a spinning SVG circle animation instead of bouncing dots
+    const spinner = screen.getByTestId("thinking-indicator").querySelector("svg.animate-spin");
+    expect(spinner).toBeInTheDocument();
   });
 
   it("applies custom className", () => {
@@ -45,7 +46,8 @@ describe("ThinkingIndicator", () => {
 
     it("shows both text and stage", () => {
       render(<ThinkingIndicator text="Working" stage="Analyzing data" />);
-      expect(screen.getByText("Working")).toBeInTheDocument();
+      // Component adds "..." after text
+      expect(screen.getByText("Working...")).toBeInTheDocument();
       expect(screen.getByText("Analyzing data")).toBeInTheDocument();
     });
   });
