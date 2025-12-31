@@ -27,11 +27,6 @@ export const BrainstormAnnotation = Annotation.Root({
     default: () => [...Brainstorm.BrainstormTopics],
     reducer: (current, next) => next,
   }),
-  /** IDs of uploads to include with the current message (single-message scope) */
-  uploadIds: Annotation<number[]>({
-    default: () => [],
-    reducer: (current, next) => next,
-  }),
 });
 
 // Just a convenience to ensure the annotation matches the state type

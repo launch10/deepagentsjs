@@ -21,14 +21,19 @@ export const envSchema = z.object({
   LLM_PAID: z.enum(["free", "paid"]).default("paid"),
   LLM_SPEED: z.enum(["fast", "slow"]).default("slow"),
   JWT_SECRET: z.string().min(1),
-  USE_CACHE: z.coerce.boolean().default(false),
+  USE_CACHE: z
+    .string()
+    .transform((val) => val === "true" || val === "1")
+    .default("false"),
   NODE_ENV: z.enum(Environments).default("development"),
   ALLOWED_ORIGINS: z.string().optional(),
 });
 
 export const testEnvSchema = envSchema.extend({
-  REBUILD_SNAPSHOTS: z.coerce.boolean().default(false),
-  VITEST: z.coerce.boolean().default(true),
+  VITEST: z
+    .string()
+    .transform((val) => val === "true" || val === "1")
+    .default("true"),
 });
 
 const environmentConfigSchema = z.discriminatedUnion("NODE_ENV", [

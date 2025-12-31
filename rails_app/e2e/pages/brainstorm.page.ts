@@ -44,6 +44,11 @@ export class BrainstormPage {
   readonly projectImagesGrid: Locator;
   readonly projectImagesUploadArea: Locator;
 
+  // Chat attachment elements (inline uploads)
+  readonly chatFileInput: Locator;
+  readonly chatAttachmentList: Locator;
+  readonly chatAttachmentItems: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
@@ -93,6 +98,11 @@ export class BrainstormPage {
     this.projectImagesInput = page.getByTestId("project-images-input");
     this.projectImagesGrid = page.getByTestId("project-images-grid");
     this.projectImagesUploadArea = page.getByTestId("project-images-upload-area");
+
+    // Chat attachment elements - the file input in the chat input area
+    this.chatFileInput = page.locator('input[type="file"]').first();
+    this.chatAttachmentList = page.getByTestId("attachment-list");
+    this.chatAttachmentItems = page.getByTestId("attachment-item");
   }
 
   /**
@@ -366,5 +376,75 @@ export class BrainstormPage {
         response.status() === 200,
       { timeout: 10000 }
     );
+  }
+
+  /**
+   * Add a file attachment to the chat input (inline upload)
+   * @param filePath - Path to the file to attach
+   */
+  async addChatAttachment(filePath: string): Promise<void> {
+    await this.chatFileInput.setInputFiles(filePath);
+  }
+
+  /**
+   * Add multiple file attachments to the chat input
+   * @param filePaths - Array of file paths to attach
+   */
+  async addChatAttachments(filePaths: string[]): Promise<void> {
+    await this.chatFileInput.setInputFiles(filePaths);
+  }
+
+  /**
+   * Get the count of chat attachments currently shown
+   */
+  async getChatAttachmentCount(): Promise<number> {
+    return await this.chatAttachmentItems.count();
+  }
+
+  /**
+   * Wait for all chat attachments to finish uploading
+   * Checks that no attachments have "uploading" status
+   */
+  async waitForChatAttachmentsUploaded(): Promise<void> {
+    // Wait for uploading indicators to disappear
+    await this.page.waitForFunction(
+      () => {
+        const uploadingItems = document.querySelectorAll('[data-status="uploading"]');
+        return uploadingItems.length === 0;
+      },
+      { timeout: 15000 }
+    );
+  }
+
+  /**
+   * Check if the send button is enabled
+   */
+  async isSendButtonEnabled(): Promise<boolean> {
+    return await this.sendButton.isEnabled();
+  }
+
+  /**
+   * Send a message with attachments (fills input and clicks send)
+   * @param message - Optional message text (can be empty if attachments present)
+   */
+  async sendMessageWithAttachments(message: string = ""): Promise<void> {
+    if (message) {
+      await this.chatInput.fill(message);
+    }
+    await this.sendButton.click();
+  }
+
+  /**
+   * Check if an image is displayed in a user message
+   * Returns the count of images in user messages
+   */
+  async getUserMessageImageCount(): Promise<number> {
+    const userMessages = await this.userMessages.all();
+    let imageCount = 0;
+    for (const message of userMessages) {
+      const images = await message.locator("img").count();
+      imageCount += images;
+    }
+    return imageCount;
   }
 }

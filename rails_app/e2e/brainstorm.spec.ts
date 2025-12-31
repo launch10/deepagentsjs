@@ -957,6 +957,161 @@ test.describe("Brand Personalization Uploads", () => {
   });
 });
 
+test.describe("Brainstorm Inline Chat Attachments", () => {
+  let brainstormPage: BrainstormPage;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await loginUser(page);
+    brainstormPage = new BrainstormPage(page);
+  });
+
+  test("can add an image attachment to chat input", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add an image attachment
+    await brainstormPage.addChatAttachment("e2e/fixtures/files/test-image-1.jpg");
+
+    // Wait for upload to complete
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Verify attachment appears
+    const attachmentCount = await brainstormPage.getChatAttachmentCount();
+    expect(attachmentCount).toBe(1);
+  });
+
+  test("send button is enabled when only attachments are present (no text)", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Initially, send button should be disabled
+    expect(await brainstormPage.isSendButtonEnabled()).toBe(false);
+
+    // Add an image attachment
+    await brainstormPage.addChatAttachment("e2e/fixtures/files/test-image-1.jpg");
+
+    // Wait for upload to complete
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Send button should now be enabled (attachments present)
+    expect(await brainstormPage.isSendButtonEnabled()).toBe(true);
+  });
+
+  test("can add multiple image attachments", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add multiple image attachments
+    await brainstormPage.addChatAttachments([
+      "e2e/fixtures/files/test-image-1.jpg",
+      "e2e/fixtures/files/test-image-2.jpg",
+    ]);
+
+    // Wait for uploads to complete
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Verify both attachments appear
+    const attachmentCount = await brainstormPage.getChatAttachmentCount();
+    expect(attachmentCount).toBe(2);
+  });
+
+  test("can send message with image attachment", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add an image attachment
+    await brainstormPage.addChatAttachment("e2e/fixtures/files/test-image-1.jpg");
+
+    // Wait for upload to complete
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Type a message
+    await brainstormPage.chatInput.fill("Here is my logo");
+
+    // Send the message
+    await brainstormPage.sendButton.click();
+
+    // Wait for URL to update (message sent)
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/"),
+      { timeout: 10000 }
+    );
+
+    // Verify user message appears
+    const messageCount = await brainstormPage.getUserMessageCount();
+    expect(messageCount).toBeGreaterThan(0);
+  });
+
+  test("can send image-only message (no text)", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add an image attachment
+    await brainstormPage.addChatAttachment("e2e/fixtures/files/test-logo.jpg");
+
+    // Wait for upload to complete
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Send without text
+    await brainstormPage.sendMessageWithAttachments();
+
+    // Wait for URL to update (message sent)
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/"),
+      { timeout: 10000 }
+    );
+
+    // Verify message was sent
+    const messageCount = await brainstormPage.getUserMessageCount();
+    expect(messageCount).toBeGreaterThan(0);
+  });
+
+  test("attachments are cleared after sending message", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add an image attachment
+    await brainstormPage.addChatAttachment("e2e/fixtures/files/test-image-1.jpg");
+
+    // Wait for upload to complete
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Verify attachment is visible
+    let attachmentCount = await brainstormPage.getChatAttachmentCount();
+    expect(attachmentCount).toBe(1);
+
+    // Send the message
+    await brainstormPage.chatInput.fill("Test message");
+    await brainstormPage.sendButton.click();
+
+    // Wait for message to be sent
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/"),
+      { timeout: 10000 }
+    );
+
+    // Attachments should be cleared
+    attachmentCount = await brainstormPage.getChatAttachmentCount();
+    expect(attachmentCount).toBe(0);
+  });
+
+  test("shows loading state while image is uploading", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add an image attachment
+    await brainstormPage.addChatAttachment("e2e/fixtures/files/test-image-1.jpg");
+
+    // Check that we can find attachment items (may show uploading state briefly)
+    // The test for complete state is covered in waitForChatAttachmentsUploaded
+    await page.waitForSelector('[data-testid="attachment-item"]', { timeout: 5000 });
+
+    // Wait for upload to complete
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Verify status is completed
+    const status = await page.$eval(
+      '[data-testid="attachment-item"]',
+      (el) => el.getAttribute('data-status')
+    );
+    expect(status).toBe('completed');
+  });
+});
+
 test.describe("Brainstorm Loading States", () => {
   let brainstormPage: BrainstormPage;
 

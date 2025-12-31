@@ -1,25 +1,18 @@
 import { NodeMiddleware } from "@middleware";
-import type { BrainstormGraphState, CoreGraphState } from "@state";
+import type { BrainstormGraphState } from "@state";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { isHumanMessage } from "@types";
+import { isHumanMessage, getMessageText } from "@types";
 import { Brainstorm } from "@types";
 import { BrainstormNextStepsService } from "@services";
 import { BaseMessage } from "@langchain/core/messages";
-import { is } from "drizzle-orm";
 
 const getCommand = async (state: BrainstormGraphState): Promise<Brainstorm.Command | undefined> => {
   const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
-  if (
-    !lastHumanMessage ||
-    !lastHumanMessage.content ||
-    typeof lastHumanMessage.content !== "string"
-  ) {
-    throw new Error("No human message found");
-  }
+  const messageText = getMessageText(lastHumanMessage);
 
-  if (!Brainstorm.promptIsCommand(lastHumanMessage.content)) return undefined;
+  if (!Brainstorm.promptIsCommand(messageText)) return undefined;
 
-  const command = Brainstorm.promptToCommand(lastHumanMessage.content) as Brainstorm.Command;
+  const command = Brainstorm.promptToCommand(messageText) as Brainstorm.Command;
 
   if (!state.availableCommands.includes(command.name)) {
     return undefined;

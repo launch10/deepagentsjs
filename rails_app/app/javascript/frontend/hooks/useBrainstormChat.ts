@@ -2,6 +2,8 @@ import { usePage } from "@inertiajs/react";
 import { useMemo, useCallback } from "react";
 import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
 import type { BrainstormBridgeType, BrainstormGraphState, InertiaProps } from "@shared";
+import { UploadService } from "@api/uploads";
+import { validateFile } from "~/types/attachment";
 
 type NewBrainstormProps =
   InertiaProps.paths["/projects/new"]["get"]["responses"]["200"]["content"]["application/json"];
@@ -32,6 +34,8 @@ function useBrainstormChatOptions() {
     const url = langgraph_path
       ? new URL("api/brainstorm/stream", langgraph_path).toString()
       : "";
+    const uploadService = new UploadService({ jwt });
+
     return {
       api: url,
       headers: {
@@ -41,6 +45,17 @@ function useBrainstormChatOptions() {
       // Check URL first (for after history.pushState), then fall back to Inertia props
       getInitialThreadId: () => getThreadIdFromUrl() ?? (thread_id ? thread_id : undefined),
       onThreadIdAvailable,
+      // Composer attachments config - uploads return URLs directly
+      attachments: {
+        upload: async (file: File) => {
+          const response = await uploadService.create({
+            "upload[file]": file,
+            "upload[is_logo]": false,
+          });
+          return { url: response.url };
+        },
+        validate: validateFile,
+      },
     };
   }, [thread_id, jwt, langgraph_path, onThreadIdAvailable]);
 }
@@ -79,22 +94,45 @@ export function useBrainstormChatIsLoadingHistory() {
 }
 
 /**
+ * Returns the composer for managing message input and attachments.
+ * Use composer.text, composer.setText, composer.addFiles, etc.
+ */
+export function useBrainstormChatComposer() {
+  return useBrainstormChat((s) => s.composer);
+}
+
+/**
  * Returns chat actions with sendMessage guarded against empty messages.
- * Empty messages (whitespace-only) are blocked unless additional state is provided
- * (e.g., uploadIds for file attachments). This prevents the Langgraph backend
- * from becoming unresponsive when receiving empty message payloads.
+ * Supports three calling patterns:
+ * - sendMessage() - sends composer content (checks composer.isReady)
+ * - sendMessage("text") - sends text directly
+ * - sendMessage("text", { additionalState }) - sends text with state
  */
 export function useBrainstormChatActions() {
   return useBrainstormChat((s) => {
     const { sendMessage, ...rest } = s.actions;
+    const { composer } = s;
 
-    const guardedSendMessage: typeof sendMessage = (message, additionalState) => {
-      const hasMessage = message.trim().length > 0;
-      const hasAdditionalState = additionalState && Object.keys(additionalState).length > 0;
+    const guardedSendMessage: typeof sendMessage = (...args: Parameters<typeof sendMessage>) => {
+      // No-arg call uses composer - check composer.isReady
+      if (args.length === 0 || args[0] === undefined) {
+        if (!composer.isReady) {
+          console.warn("[useBrainstormChatActions] Blocked: composer not ready");
+          return;
+        }
+        return sendMessage();
+      }
 
-      if (!hasMessage && !hasAdditionalState) {
-        console.warn("[useBrainstormChatActions] Blocked empty message submission");
-        return;
+      // Text-based call - existing guard logic
+      const [message, additionalState] = args;
+      if (typeof message === "string") {
+        const hasMessage = message.trim().length > 0;
+        const hasAdditionalState = additionalState && Object.keys(additionalState).length > 0;
+
+        if (!hasMessage && !hasAdditionalState) {
+          console.warn("[useBrainstormChatActions] Blocked empty message submission");
+          return;
+        }
       }
 
       sendMessage(message, additionalState);

@@ -1,5 +1,16 @@
 import { BaseMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 
+export const getMessageText = (message: BaseMessage | undefined): string => {
+    if (!message) throw new Error(`couldn't find message`);
+
+    if (isString(message.content)) {
+        return message.content;
+    } else if (Array.isArray(message.content)) {
+        return message.content.map((content) => content.text).join("\n");
+    }
+    throw new Error(`Don't know how to handle message content type ${typeof message.content}`);
+}
+
 export const isHumanMessage = (message: unknown): message is HumanMessage => {
     return HumanMessage.isInstance(message);
 }

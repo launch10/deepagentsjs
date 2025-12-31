@@ -1,18 +1,11 @@
-import { useRef, useEffect, useCallback } from "react";
-import { usePage } from "@inertiajs/react";
-import { useBrainstormChatActions, useBrainstormChatIsStreaming, useBrainstormChatState } from "@hooks/useBrainstormChat";
+import { useRef, useEffect, useCallback, useMemo } from "react";
 import {
-  useBrainstormInputStore,
-  setTextareaRef,
-  selectInput,
-  selectSetInput,
-  selectAttachments,
-  selectAddFiles,
-  selectRemoveAttachment,
-  selectClearAttachments,
-  selectGetUploadIds,
-  selectIsUploading,
-} from "@stores/brainstormInput";
+  useBrainstormChatActions,
+  useBrainstormChatIsStreaming,
+  useBrainstormChatState,
+  useBrainstormChatComposer,
+} from "@hooks/useBrainstormChat";
+import { setTextareaRef } from "@lib/brainstormTextarea";
 import { DocumentPlusIcon, ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
 import { AttachmentList, DropZone } from "./attachments";
 import { FILE_INPUT_ACCEPT, type Attachment } from "~/types/attachment";
@@ -178,56 +171,59 @@ export function BrainstormInputView({
  * Container component for brainstorm input.
  * Fetches data via hooks and delegates rendering to BrainstormInputView.
  * Supports file uploads via FilePlus button and drag & drop.
+ *
+ * Uses the SDK's composer API for unified text + attachment state management.
  */
 export function BrainstormInput() {
-  const { jwt } = usePage<{ jwt: string }>().props;
   const { sendMessage } = useBrainstormChatActions();
   const isStreaming = useBrainstormChatIsStreaming();
   const placeholderText = useBrainstormChatState("placeholderText");
-
-  // Subscribe to store state with selectors
-  const input = useBrainstormInputStore(selectInput);
-  const setInput = useBrainstormInputStore(selectSetInput);
-  const attachments = useBrainstormInputStore(selectAttachments);
-  const addFiles = useBrainstormInputStore(selectAddFiles);
-  const removeAttachment = useBrainstormInputStore(selectRemoveAttachment);
-  const clearAttachments = useBrainstormInputStore(selectClearAttachments);
-  const getUploadIds = useBrainstormInputStore(selectGetUploadIds);
-  const isUploading = useBrainstormInputStore(selectIsUploading);
+  const composer = useBrainstormChatComposer();
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Register the textarea ref with the store module for external access
+  // Register the textarea ref for external access (e.g., from BrainstormMessages)
   useEffect(() => {
     setTextareaRef(textareaRef);
   }, []);
 
-  const handleSubmit = useCallback(() => {
-    const uploadIds = getUploadIds();
-    const message = input.trim();
+  // Map composer attachments to the Attachment type expected by AttachmentList
+  const attachments: Attachment[] = useMemo(
+    () =>
+      composer.attachments.map((a) => ({
+        id: a.id,
+        file: a.file!,
+        status: a.status,
+        type: a.file?.type.startsWith("image/") ? "image" : "document",
+        url: a.url,
+        errorMessage: a.errorMessage,
+      })),
+    [composer.attachments]
+  );
 
-    // Send message with uploadIds if any
-    if (message || uploadIds.length > 0) {
-      sendMessage(message, { uploadIds });
-      setInput("");
-      clearAttachments();
+  const onSubmit = useCallback(() => {
+    if (composer.isReady) {
+      sendMessage(); // Sends composed content (text + images as inline URLs)
     }
-  }, [input, getUploadIds, sendMessage, setInput, clearAttachments]);
+  }, [composer.isReady, sendMessage]);
 
-  const handleFilesAdd = useCallback((files: FileList) => {
-    addFiles(files, jwt);
-  }, [addFiles, jwt]);
+  const onFilesAdd = useCallback(
+    (files: FileList) => {
+      composer.addFiles(files);
+    },
+    [composer]
+  );
 
   return (
     <BrainstormInputView
-      input={input}
-      onInputChange={setInput}
+      input={composer.text}
+      onInputChange={composer.setText}
       attachments={attachments}
-      onRemoveAttachment={removeAttachment}
-      onSubmit={handleSubmit}
-      onFilesAdd={handleFilesAdd}
+      onRemoveAttachment={composer.removeAttachment}
+      onSubmit={onSubmit}
+      onFilesAdd={onFilesAdd}
       isStreaming={isStreaming}
-      isUploading={isUploading}
+      isUploading={composer.isUploading}
       placeholder={placeholderText || DEFAULT_PLACEHOLDER}
       textareaRef={textareaRef}
     />

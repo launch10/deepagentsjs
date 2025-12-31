@@ -6,15 +6,12 @@ import {
   useBrainstormChatIsStreaming,
   useBrainstormChatState,
   useBrainstormChatActions,
+  useBrainstormChatComposer,
 } from "@hooks/useBrainstormChat";
 import { Chat } from "@components/chat";
 import { BrainstormMessage } from "./BrainstormMessage";
 import { QuestionBadge } from "./QuestionBadge";
-import {
-  useBrainstormInputStore,
-  getTextareaRef,
-  selectSetInput,
-} from "@stores/brainstormInput";
+import { getTextareaRef } from "@lib/brainstormTextarea";
 
 // The LanggraphData type for the Brainstorm graph (used for MessageBlock generic)
 type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
@@ -192,20 +189,26 @@ export function BrainstormMessages() {
   const isStreaming = useBrainstormChatIsStreaming();
   const availableCommands = useBrainstormChatState("availableCommands");
   const { sendMessage } = useBrainstormChatActions();
-  const setInput = useBrainstormInputStore(selectSetInput);
+  const composer = useBrainstormChatComposer();
 
   // Handle clicking on example suggestions - memoized to prevent unnecessary re-renders
-  const handleExampleClick = useCallback((text: string) => {
-    setInput(text);
-    const textareaRef = getTextareaRef();
-    textareaRef.current?.focus();
-  }, [setInput]);
+  const handleExampleClick = useCallback(
+    (text: string) => {
+      composer.setText(text);
+      const textareaRef = getTextareaRef();
+      textareaRef.current?.focus();
+    },
+    [composer]
+  );
 
   // Handle clicking on command buttons
-  const handleCommandClick = useCallback((commandName: Brainstorm.CommandName) => {
-    const prompt = Brainstorm.commandToPrompt(commandName);
-    sendMessage(prompt);
-  }, [sendMessage]);
+  const handleCommandClick = useCallback(
+    (commandName: Brainstorm.CommandName) => {
+      const prompt = Brainstorm.commandToPrompt(commandName);
+      sendMessage(prompt);
+    },
+    [sendMessage]
+  );
 
   return (
     <BrainstormMessagesView
