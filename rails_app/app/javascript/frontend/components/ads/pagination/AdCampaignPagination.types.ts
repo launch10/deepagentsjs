@@ -19,6 +19,8 @@ export interface AdCampaignPaginationViewProps {
   showPrimaryAction?: boolean;
   primaryLabel?: string;
   secondaryLabel?: string;
+  validationFailed?: boolean;
+  onValidationAnimationEnd?: () => void;
 }
 
 export const VARIANT_CONFIG: Record<PaginationVariant, VariantConfig> = {

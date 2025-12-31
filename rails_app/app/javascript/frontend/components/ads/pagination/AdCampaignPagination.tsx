@@ -16,6 +16,8 @@ export default function AdCampaignPagination({ className }: AdCampaignPagination
     canGoForward,
     isPending,
     showPrimaryAction,
+    validationFailed,
+    clearValidationFailed,
   } = useCampaignPagination();
 
   const substep = useWorkflowSteps(selectSubstep);
@@ -33,6 +35,8 @@ export default function AdCampaignPagination({ className }: AdCampaignPagination
       canGoForward={canGoForward}
       isPending={isPending}
       showPrimaryAction={showPrimaryAction}
+      validationFailed={validationFailed}
+      onValidationAnimationEnd={clearValidationFailed}
     />
   );
 }

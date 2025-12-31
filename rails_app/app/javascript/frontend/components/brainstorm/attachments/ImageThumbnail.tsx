@@ -65,6 +65,8 @@ export function ImageThumbnail({ attachment, onRemove }: ImageThumbnailProps) {
         hasError ? "border-2 border-error-300" : "border border-neutral-100"
       }`}
       style={{ backgroundColor: "#EDEDEC" }}
+      data-testid="attachment-item"
+      data-status={attachment.status}
     >
       {/* Image preview - only show when upload is complete */}
       {previewUrl && isComplete && (

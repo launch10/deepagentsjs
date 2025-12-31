@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import {
   selectBack,
   selectCanGoBack,
@@ -9,15 +10,15 @@ import {
   useWorkflowSteps,
 } from "@context/WorkflowStepsProvider";
 import { useAdvanceCampaign, useBackCampaign, useCampaignService } from "@api/campaigns.hooks";
-import { selectValidate, selectCollectData, useFormRegistry } from "@stores/formRegistry";
+import { selectValidateAndSave, useFormRegistry } from "@stores/formRegistry";
 import { useAdsChatState } from "@hooks/useAdsChat";
 import type { UpdateCampaignRequestBody } from "@api/campaigns";
 
 export function useCampaignPagination() {
-  const validateForm = useFormRegistry(selectValidate);
-  const collectData = useFormRegistry(selectCollectData);
+  const validateAndSave = useFormRegistry(selectValidateAndSave);
   const campaignId = useAdsChatState("campaignId");
   const service = useCampaignService();
+  const [validationFailed, setValidationFailed] = useState(false);
 
   const substep = useWorkflowSteps(selectSubstep);
   const workflowContinue = useWorkflowSteps(selectContinue)!;
@@ -32,20 +33,20 @@ export function useCampaignPagination() {
   const { mutate: advanceCampaign, isPending: isAdvancing } = useAdvanceCampaign(campaignId);
   const { mutate: backCampaign, isPending: isGoingBack } = useBackCampaign(campaignId);
 
+  const clearValidationFailed = useCallback(() => {
+    setValidationFailed(false);
+  }, []);
+
   const handleContinue = async () => {
-    if (!substep) return;
+    if (!substep || !campaignId) return;
 
-    const isValid = await validateForm(substep);
-    if (!isValid) return;
+    const result = await validateAndSave(substep, async (data) => {
+      await service.update(campaignId, data as UpdateCampaignRequestBody);
+    });
 
-    // Collect and merge all form data, then send a single API call
-    const mergedData = collectData(substep);
-    if (mergedData && campaignId) {
-      try {
-        await service.update(campaignId, mergedData as UpdateCampaignRequestBody);
-      } catch {
-        return;
-      }
+    if (!result.valid) {
+      setValidationFailed(true);
+      return;
     }
 
     advanceCampaign(undefined, {
@@ -67,5 +68,7 @@ export function useCampaignPagination() {
     canGoForward,
     isPending: isAdvancing || isGoingBack,
     showPrimaryAction,
+    validationFailed,
+    clearValidationFailed,
   };
 }

@@ -172,6 +172,7 @@
   --color-accent-500: var(--color-primary-500);
   --color-accent-600: var(--color-primary-600);
   --color-accent-700: var(--color-primary-700);
+
 }
 
 @import "./themes/dark.css" layer(theme);

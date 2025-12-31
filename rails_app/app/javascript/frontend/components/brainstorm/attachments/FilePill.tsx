@@ -29,6 +29,8 @@ export function FilePill({ attachment, onRemove }: FilePillProps) {
           ? "bg-error-50 border border-error-300"
           : "bg-neutral-100 border border-neutral-300"
       }`}
+      data-testid="attachment-item"
+      data-status={attachment.status}
     >
       {/* Icon or spinner */}
       {isUploading ? (

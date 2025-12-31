@@ -17,7 +17,7 @@ export function AttachmentList({ attachments, onRemove }: AttachmentListProps) {
   }
 
   return (
-    <div className="flex flex-wrap gap-2 mb-3">
+    <div className="flex flex-wrap gap-2 mb-3" data-testid="attachment-list">
       {attachments.map((attachment) =>
         attachment.type === "image" ? (
           <ImageThumbnail
