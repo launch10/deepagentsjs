@@ -1,7 +1,7 @@
 import { cn } from "@lib/utils";
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import type { ComponentType, SVGProps } from "react";
-import LoaderSpinner from "@components/ui/loader-spinner";
+import { Spinner } from "@components/ui/spinner";
 
 export type LoadingStepStatus = "completed" | "in_progress" | "pending";
 
@@ -25,13 +25,10 @@ export default function LoadingStepPill({ icon: Icon, label, status }: LoadingSt
           {label}
         </span>
       </div>
-      {status === "completed" && <CheckCircleIcon className="size-6 text-success-500" />}
-      {status === "in_progress" && (
-        <div className="size-4 aspect-square">
-          {/* TODO: Fix sizing */}
-          <LoaderSpinner />
-        </div>
-      )}
+      <div className="size-6 flex items-center justify-center">
+        {status === "completed" && <CheckCircleIcon className="size-6 text-success-500" />}
+        {status === "in_progress" && <Spinner className="size-4" />}
+      </div>
     </div>
   );
 }
