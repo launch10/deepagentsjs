@@ -1,3 +1,7 @@
+import AwsLogo from "@assets/aws-logo.png";
+import CloudflareLogo from "@assets/cloudflare-logo.png";
+import GoDaddyLogo from "@assets/godaddy-logo.png";
+import NamecheapLogo from "@assets/namecheap-logo.svg";
 import { Input } from "@components/ui/input";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@components/ui/item";
 import { Label } from "@components/ui/label";
@@ -15,22 +19,22 @@ interface DnsProvider {
 const DNS_PROVIDERS: DnsProvider[] = [
   {
     name: "Cloudflare",
-    // logo: <CloudflareLogo />,
+    logo: <img src={CloudflareLogo} alt="Cloudflare" className="w-4" />,
     guideUrl: "#",
   },
   {
     name: "GoDaddy",
-    // logo: <GoDaddyLogo />,
+    logo: <img src={GoDaddyLogo} alt="GoDaddy" className="w-4" />,
     guideUrl: "#",
   },
   {
     name: "Namecheap",
-    // logo: <NamecheapLogo />,
+    logo: <img src={NamecheapLogo} alt="Namecheap" className="w-4" />,
     guideUrl: "#",
   },
   {
     name: "AWS Route 53",
-    // logo: <AwsLogo />,
+    logo: <img src={AwsLogo} alt="AWS Route 53" className="w-4" />,
     guideUrl: "#",
   },
 ];
@@ -107,13 +111,13 @@ export default function SetupCustomDomain() {
       </Item>
 
       <Item variant="outline" className="max-w-[651px]">
-        <ItemContent className="gap-2">
+        <ItemContent className="gap-1">
           <ItemTitle>Guides for common providers</ItemTitle>
           <ItemDescription className="flex flex-col gap-2">
             <span>We've prepared guides for popular DNS providers</span>
-            <div className="flex flex-wrap gap-x-[30px] gap-y-5">
+            <div className="grid grid-cols-4 gap-5">
               {DNS_PROVIDERS.map((provider) => (
-                <div key={provider.name} className="flex w-[130px] flex-col">
+                <div key={provider.name} className="flex flex-col gap-1">
                   <div className="flex items-center gap-1">
                     {provider.logo}
                     <span className="text-sm font-semibold leading-[18px] text-base-600">
