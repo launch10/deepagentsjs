@@ -28,7 +28,7 @@ interface BrainstormMessageProps {
  * Uses the generic Chat.BlockRenderer with a custom structured renderer.
  * Memoized to prevent unnecessary re-renders during streaming.
  */
-export const BrainstormMessage = React.memo(function BrainstormMessage({
+export const BrainstormAIMessage = React.memo(function BrainstormMessage({
   blocks,
   isActive = true,
   onExampleClick,

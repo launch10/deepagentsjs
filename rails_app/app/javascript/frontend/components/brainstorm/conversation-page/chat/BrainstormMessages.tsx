@@ -3,7 +3,7 @@ import type { MessageBlock, InferBridgeData, AnyMessageWithBlocks } from "langgr
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
 import { useBrainstormChatState } from "@hooks/useBrainstormChat";
 import { Chat, useChatMessages, useChatIsStreaming, useChatSendMessage, useChatComposer } from "@components/chat";
-import { BrainstormMessage } from "./BrainstormMessage";
+import { BrainstormAIMessage } from "./BrainstormAIMessage";
 import { QuestionBadge } from "./QuestionBadge";
 import { getTextareaRef } from "@lib/brainstormTextarea";
 
@@ -65,7 +65,6 @@ export function BrainstormMessagesView({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Pre-compute message metadata in a single O(n) pass
   // Detect topic changes to show question badge on first message of each topic
   const messageMetadata = useMemo(() => {
     let lastSeenTopic: string | undefined;
@@ -137,7 +136,7 @@ export function BrainstormMessagesView({
             {startsNewTopic && (
               <QuestionBadge current={questionNumber} total={totalQuestions} />
             )}
-            <BrainstormMessage
+            <BrainstormAIMessage
               blocks={message.blocks as BrainstormBlock[]}
               isActive={isLastMessage}
               onExampleClick={onExampleClick}

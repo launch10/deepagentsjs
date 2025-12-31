@@ -5,6 +5,8 @@ import type { AdsBridgeType, AdsGraphState } from "@shared";
 import { Ads } from "@shared";
 import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
 import { useChatRegistration } from "./useChatRegistration";
+import { UploadService } from "@api/uploads";
+import { validateFile } from "~/types/attachment";
 
 export type AdsSnapshot = ChatSnapshot<AdsGraphState>;
 
@@ -13,6 +15,8 @@ function useAdsChatOptions() {
 
   return useMemo(() => {
     const url = new URL("api/ads/stream", langgraph_path).toString();
+    const uploadService = new UploadService({ jwt });
+
     return {
       api: url,
       headers: {
@@ -21,6 +25,17 @@ function useAdsChatOptions() {
       },
       merge: Ads.MergeReducer as any,
       getInitialThreadId: () => (thread_id ? thread_id : undefined),
+      // Composer attachments config - uploads return URLs directly
+      attachments: {
+        upload: async (file: File) => {
+          const response = await uploadService.create({
+            "upload[file]": file,
+            "upload[is_logo]": false,
+          });
+          return { url: response.url };
+        },
+        validate: validateFile,
+      },
     };
   }, [thread_id, jwt, langgraph_path]);
 }
