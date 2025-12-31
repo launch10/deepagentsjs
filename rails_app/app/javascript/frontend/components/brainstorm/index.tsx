@@ -7,7 +7,6 @@
 export { BrainstormChat } from "./BrainstormChat";
 export { BrainstormLanding } from "./BrainstormLanding";
 export { BrainstormConversation } from "./BrainstormConversation";
-export { BrainstormTopic } from "./BrainstormTopic";
 export { BrainstormMessages } from "./BrainstormMessages";
 export { BrainstormInput } from "./BrainstormInput";
 export { BrainstormMessage } from "./BrainstormMessage";

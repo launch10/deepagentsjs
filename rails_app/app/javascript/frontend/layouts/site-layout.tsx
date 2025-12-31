@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import Header from "@components/header/Header";
 import MainSidebar from "@components/sidebar/MainSidebar";
 import { usePage } from "@inertiajs/react";
@@ -7,7 +8,13 @@ import { WorkflowStepsProvider } from "@context/WorkflowStepsProvider";
 const queryClient = new QueryClient();
 
 export const SiteLayout = ({ children }: { children: React.ReactNode }): React.ReactNode => {
-  const { workflow, project } = usePage().props;
+  const { workflow, project, url } = usePage().props;
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Scroll to top on route change
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [url]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -19,7 +26,7 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
           <MainSidebar />
           <div className="flex-1 flex flex-col bg-background overflow-hidden">
             <Header />
-            <main className="flex-1 overflow-hidden">{children}</main>
+            <main ref={mainRef} className="flex-1 overflow-auto">{children}</main>
           </div>
         </div>
       </WorkflowStepsProvider>

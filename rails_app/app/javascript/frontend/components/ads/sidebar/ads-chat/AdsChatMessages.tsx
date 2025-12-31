@@ -15,10 +15,14 @@ export type AdsChatMessagesViewProps = {
 };
 
 export function AdsChatMessagesView({ messages, isLoading = false }: AdsChatMessagesViewProps) {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll container to bottom without affecting parent scroll containers
+    const container = containerRef.current?.parentElement;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
   }, [messages]);
 
   if (isLoading) {
@@ -26,7 +30,7 @@ export function AdsChatMessagesView({ messages, isLoading = false }: AdsChatMess
   }
 
   return (
-    <div className="space-y-4">
+    <div ref={containerRef} className="space-y-4">
       {messages.map((message, index) => {
         if (message.role === "assistant") {
           // Explicitly filter out tool calls here, we're only looking for text blocks
@@ -50,7 +54,6 @@ export function AdsChatMessagesView({ messages, isLoading = false }: AdsChatMess
         }
         return null;
       })}
-      <div ref={messagesEndRef} />
     </div>
   );
 }
