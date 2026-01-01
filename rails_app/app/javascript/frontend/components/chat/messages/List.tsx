@@ -28,7 +28,7 @@ export const List = forwardRef<HTMLDivElement, ListProps>(
         ref={ref}
         role="log"
         data-testid="message-list"
-        className={twMerge("flex flex-col gap-4", className)}
+        className={twMerge("flex flex-col gap-4 overflow-y-auto", className)}
         {...props}
       >
         {children}

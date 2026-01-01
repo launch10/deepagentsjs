@@ -113,7 +113,7 @@ export function BrainstormMessagesView({
   }
 
   return (
-    <Chat.MessageList.Root className="flex-1 py-4 space-y-4 max-w-3xl mx-auto">
+    <Chat.Messages.List className="flex-1 py-4 space-y-4 max-w-3xl mx-auto">
       {messages.map((message, index) => {
         const { isUser, isLastMessage, startsNewTopic, questionNumber } = messageMetadata[index];
 
@@ -164,7 +164,7 @@ export function BrainstormMessagesView({
       })}
 
       <div ref={messagesEndRef} />
-    </Chat.MessageList.Root>
+    </Chat.Messages.List>
   );
 }
 

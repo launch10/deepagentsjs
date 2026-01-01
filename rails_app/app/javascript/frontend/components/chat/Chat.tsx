@@ -102,7 +102,6 @@ export {
   type ThinkingIndicatorProps,
   type ThinkingIndicatorVariant,
 } from "./ThinkingIndicator";
-export { MessageList, type MessageListRootProps } from "./MessageList";
 
 // Attachment components (shared infrastructure)
 export {
@@ -129,7 +128,6 @@ import { BlockRenderer } from "./BlockRenderer";
 import { Suggestions } from "./Suggestions";
 import { CommandButtons } from "./CommandButtons";
 import { ThinkingIndicator } from "./ThinkingIndicator";
-import { MessageList } from "./MessageList";
 
 export const Chat = {
   // Provider
@@ -144,7 +142,6 @@ export const Chat = {
   AIMessage,
   BlockRenderer,
   Suggestions,
-  MessageList,
   CommandButtons,
   ThinkingIndicator,
 };

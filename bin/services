@@ -62,6 +62,12 @@ start_rails() {
 
   # Start Rails in daemon mode
   cd "$RAILS_APP_DIR"
+
+  # Set master key for test/CI environments
+  if [[ "$RAILS_ENV" == "test" && -f "config/credentials/test.key" ]]; then
+    export RAILS_MASTER_KEY=$(cat config/credentials/test.key)
+  fi
+
   RAILS_ENV=$RAILS_ENV bundle exec rails server -p $RAILS_PORT -d --pid tmp/pids/server-${RAILS_PORT}.pid
 
   # Wait for it to be ready

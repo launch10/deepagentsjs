@@ -1,34 +1,34 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MessageList } from "../MessageList";
+import { Messages } from "../messages";
 import { UserMessage } from "../UserMessage";
 import { AIMessage } from "../AIMessage";
 
-describe("MessageList", () => {
-  describe("Root", () => {
+describe("Messages.List", () => {
+  describe("basic rendering", () => {
     it("renders children", () => {
       render(
-        <MessageList.Root>
+        <Messages.List>
           <div data-testid="child">Message content</div>
-        </MessageList.Root>
+        </Messages.List>
       );
       expect(screen.getByTestId("child")).toBeInTheDocument();
     });
 
     it("applies custom className", () => {
       render(
-        <MessageList.Root className="custom-class" data-testid="list">
+        <Messages.List className="custom-class" data-testid="list">
           <div>Content</div>
-        </MessageList.Root>
+        </Messages.List>
       );
       expect(screen.getByTestId("list")).toHaveClass("custom-class");
     });
 
     it("has overflow-y-auto for scrolling", () => {
       render(
-        <MessageList.Root data-testid="list">
+        <Messages.List data-testid="list">
           <div>Content</div>
-        </MessageList.Root>
+        </Messages.List>
       );
       expect(screen.getByTestId("list")).toHaveClass("overflow-y-auto");
     });
@@ -37,11 +37,11 @@ describe("MessageList", () => {
   describe("compound usage", () => {
     it("renders multiple messages in order", () => {
       render(
-        <MessageList.Root>
+        <Messages.List>
           <UserMessage>User message 1</UserMessage>
           <AIMessage.Content>AI response 1</AIMessage.Content>
           <UserMessage>User message 2</UserMessage>
-        </MessageList.Root>
+        </Messages.List>
       );
 
       const messages = screen.getAllByText(/message|response/i);
@@ -50,10 +50,10 @@ describe("MessageList", () => {
 
     it("renders brainstorm style (no bubbles)", () => {
       render(
-        <MessageList.Root>
+        <Messages.List>
           <UserMessage>What about a coffee app?</UserMessage>
           <AIMessage.Content>Great idea! Let's explore that.</AIMessage.Content>
-        </MessageList.Root>
+        </Messages.List>
       );
 
       expect(screen.getByText("What about a coffee app?")).toBeInTheDocument();
@@ -62,12 +62,12 @@ describe("MessageList", () => {
 
     it("renders campaign style (with bubbles)", () => {
       render(
-        <MessageList.Root>
+        <Messages.List>
           <UserMessage>Make the header blue</UserMessage>
           <AIMessage.Bubble>
             <AIMessage.Content>I've updated the header color.</AIMessage.Content>
           </AIMessage.Bubble>
-        </MessageList.Root>
+        </Messages.List>
       );
 
       expect(screen.getByText("Make the header blue")).toBeInTheDocument();

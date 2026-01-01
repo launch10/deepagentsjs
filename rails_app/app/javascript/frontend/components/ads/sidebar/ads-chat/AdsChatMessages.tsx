@@ -31,7 +31,7 @@ export function AdsChatMessagesView({ messages, isStreaming }: AdsChatMessagesVi
   }, [messages]);
 
   return (
-    <Chat.MessageList.Root ref={containerRef} className="space-y-4">
+    <Chat.Messages.List ref={containerRef} className="space-y-4">
       {messages.map((message, index) => {
         const isLastMessage = index === messages.length - 1;
 
@@ -63,7 +63,7 @@ export function AdsChatMessagesView({ messages, isStreaming }: AdsChatMessagesVi
 
         return null;
       })}
-    </Chat.MessageList.Root>
+    </Chat.Messages.List>
   );
 }
 
