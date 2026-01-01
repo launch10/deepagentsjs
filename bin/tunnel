@@ -1,35 +1,40 @@
 #!/usr/bin/env bash
 
 # Launch10 Tunnel Script
-# Uses Foreman/Overmind to manage all services + Cloudflare tunnels.
-# Clean output, proper process management, easy cleanup with Ctrl+C.
+# Uses Overmind to manage all services + Cloudflare tunnels for remote sharing.
+# Built on the unified service infrastructure (config/services.sh).
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+# Use development environment for tunnels (external access to dev setup)
+export LAUNCH10_ENV=development
+source "$PROJECT_ROOT/config/services.sh"
+
+# Colors for output (shared with bin/services)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+log_info() { echo -e "${BLUE}[tunnel]${NC} $1"; }
+log_success() { echo -e "${GREEN}[tunnel]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[tunnel]${NC} $1"; }
+log_error() { echo -e "${RED}[tunnel]${NC} $1"; }
 
 cleanup() {
     log_info "Cleaning up..."
 
     # Restore .env files
-    if [ -f "$PROJECT_ROOT/rails_app/.env.backup" ]; then
-        mv "$PROJECT_ROOT/rails_app/.env.backup" "$PROJECT_ROOT/rails_app/.env"
+    if [ -f "$RAILS_APP_DIR/.env.backup" ]; then
+        mv "$RAILS_APP_DIR/.env.backup" "$RAILS_APP_DIR/.env"
         log_info "Restored rails_app/.env"
     fi
-    if [ -f "$PROJECT_ROOT/langgraph_app/.env.backup" ]; then
-        mv "$PROJECT_ROOT/langgraph_app/.env.backup" "$PROJECT_ROOT/langgraph_app/.env"
+    if [ -f "$LANGGRAPH_APP_DIR/.env.backup" ]; then
+        mv "$LANGGRAPH_APP_DIR/.env.backup" "$LANGGRAPH_APP_DIR/.env"
         log_info "Restored langgraph_app/.env"
     fi
 
@@ -52,9 +57,13 @@ show_help() {
     echo "  --kill, -k    Kill any existing processes on required ports"
     echo "  --help, -h    Show this help"
     echo ""
+    echo "Ports (from config/services.sh):"
+    echo "  Rails:     $RAILS_PORT"
+    echo "  Langgraph: $LANGGRAPH_PORT"
+    echo "  Vite:      $VITE_PORT"
+    echo ""
     echo "Requires:"
-    echo "  brew install cloudflared"
-    echo "  gem install foreman (or brew install overmind)"
+    echo "  brew install cloudflared overmind"
 }
 
 check_dependencies() {
@@ -66,9 +75,8 @@ check_dependencies() {
         missing+=("cloudflared (brew install cloudflared)")
     fi
 
-    # Check for process manager
-    if ! command -v overmind &> /dev/null && ! command -v foreman &> /dev/null; then
-        missing+=("foreman (gem install foreman) or overmind (brew install overmind)")
+    if ! command -v overmind &> /dev/null; then
+        missing+=("overmind (brew install overmind)")
     fi
 
     if [ ${#missing[@]} -gt 0 ]; then
@@ -98,6 +106,10 @@ check_infrastructure() {
     log_success "Redis running"
 }
 
+is_port_in_use() {
+    lsof -ti :$1 >/dev/null 2>&1
+}
+
 kill_port() {
     local port=$1
     local pid=$(lsof -ti :$port 2>/dev/null)
@@ -111,8 +123,8 @@ check_ports() {
     log_info "Checking ports..."
 
     local ports_in_use=()
-    for port in 3000 5173 8080; do
-        if lsof -i :$port > /dev/null 2>&1; then
+    for port in $RAILS_PORT $LANGGRAPH_PORT $VITE_PORT; do
+        if is_port_in_use $port; then
             ports_in_use+=($port)
         fi
     done
@@ -130,7 +142,7 @@ check_ports() {
             echo ""
             echo "Options:"
             echo "  1. Run with --kill to auto-kill existing processes"
-            echo "  2. Kill manually: kill \$(lsof -ti :3000,:5173,:8080)"
+            echo "  2. Kill manually: kill \$(lsof -ti :${RAILS_PORT},:${LANGGRAPH_PORT},:${VITE_PORT})"
             echo ""
             read -p "Kill them now? [y/N] " -n 1 -r
             echo
@@ -150,8 +162,8 @@ check_ports() {
 }
 
 backup_env_files() {
-    cp "$PROJECT_ROOT/rails_app/.env" "$PROJECT_ROOT/rails_app/.env.backup"
-    cp "$PROJECT_ROOT/langgraph_app/.env" "$PROJECT_ROOT/langgraph_app/.env.backup"
+    cp "$RAILS_APP_DIR/.env" "$RAILS_APP_DIR/.env.backup"
+    cp "$LANGGRAPH_APP_DIR/.env" "$LANGGRAPH_APP_DIR/.env.backup"
     log_info "Backed up .env files"
 }
 
@@ -163,15 +175,12 @@ monitor_tunnels() {
     log_info "Waiting for tunnel URLs..."
 
     # Watch the log for URLs (timeout after 60 seconds)
-    # Use process names (tunnel_rails, tunnel_api) to identify which URL is which
     local attempts=0
     while [ $attempts -lt 60 ]; do
         if [ -z "$rails_url" ]; then
-            # Look for URL on lines containing "tunnel_rails"
             rails_url=$(grep 'tunnel_rails' /tmp/tunnel_output.log 2>/dev/null | grep -o 'https://[^[:space:]|]*\.trycloudflare\.com' | head -1)
         fi
         if [ -z "$api_url" ]; then
-            # Look for URL on lines containing "tunnel_api"
             api_url=$(grep 'tunnel_api' /tmp/tunnel_output.log 2>/dev/null | grep -o 'https://[^[:space:]|]*\.trycloudflare\.com' | head -1)
         fi
 
@@ -192,18 +201,18 @@ monitor_tunnels() {
 
     # Update .env files BEFORE signaling services to start
     # Rails app needs: langgraph URL + its own URL for frontend API calls
-    sed -i '' '/^VITE_LANGGRAPH_API_URL=/d' "$PROJECT_ROOT/rails_app/.env"
-    sed -i '' '/^LANGGRAPH_API_URL=/d' "$PROJECT_ROOT/rails_app/.env"
-    sed -i '' '/^VITE_RAILS_API_URL=/d' "$PROJECT_ROOT/rails_app/.env"
-    echo "VITE_LANGGRAPH_API_URL=$api_url" >> "$PROJECT_ROOT/rails_app/.env"
-    echo "LANGGRAPH_API_URL=$api_url" >> "$PROJECT_ROOT/rails_app/.env"
-    echo "VITE_RAILS_API_URL=$rails_url" >> "$PROJECT_ROOT/rails_app/.env"
+    sed -i '' '/^VITE_LANGGRAPH_API_URL=/d' "$RAILS_APP_DIR/.env"
+    sed -i '' '/^LANGGRAPH_API_URL=/d' "$RAILS_APP_DIR/.env"
+    sed -i '' '/^VITE_RAILS_API_URL=/d' "$RAILS_APP_DIR/.env"
+    echo "VITE_LANGGRAPH_API_URL=$api_url" >> "$RAILS_APP_DIR/.env"
+    echo "LANGGRAPH_API_URL=$api_url" >> "$RAILS_APP_DIR/.env"
+    echo "VITE_RAILS_API_URL=$rails_url" >> "$RAILS_APP_DIR/.env"
 
     # Langgraph app needs: rails URL for callbacks + CORS origins
-    sed -i '' '/^RAILS_API_URL=/d' "$PROJECT_ROOT/langgraph_app/.env"
-    sed -i '' '/^ALLOWED_ORIGINS=/d' "$PROJECT_ROOT/langgraph_app/.env"
-    echo "RAILS_API_URL=$rails_url" >> "$PROJECT_ROOT/langgraph_app/.env"
-    echo "ALLOWED_ORIGINS=$rails_url" >> "$PROJECT_ROOT/langgraph_app/.env"
+    sed -i '' '/^RAILS_API_URL=/d' "$LANGGRAPH_APP_DIR/.env"
+    sed -i '' '/^ALLOWED_ORIGINS=/d' "$LANGGRAPH_APP_DIR/.env"
+    echo "RAILS_API_URL=$rails_url" >> "$LANGGRAPH_APP_DIR/.env"
+    echo "ALLOWED_ORIGINS=$rails_url" >> "$LANGGRAPH_APP_DIR/.env"
 
     echo ""
     echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
@@ -257,18 +266,21 @@ main() {
     rm -f /tmp/tunnel_urls_ready
     > /tmp/tunnel_output.log
 
-    # Start URL monitoring in background (no delay - tunnels start immediately)
+    # Export ports for Procfile.tunnel
+    export RAILS_PORT
+    export LANGGRAPH_PORT
+    export VITE_PORT
+    export RAILS_APP_DIR
+    export LANGGRAPH_APP_DIR
+
+    # Start URL monitoring in background
     monitor_tunnels &
 
     log_info "Starting tunnels first, services will wait for URLs..."
+    log_info "Ports: Rails=$RAILS_PORT, Langgraph=$LANGGRAPH_PORT, Vite=$VITE_PORT"
     echo ""
 
-    # Use overmind if available, otherwise foreman
-    if command -v overmind &> /dev/null; then
-        overmind start -f Procfile.tunnel 2>&1 | tee -a /tmp/tunnel_output.log
-    else
-        foreman start -f Procfile.tunnel 2>&1 | tee -a /tmp/tunnel_output.log
-    fi
+    overmind start -f Procfile.tunnel 2>&1 | tee -a /tmp/tunnel_output.log
 }
 
 main "$@"
