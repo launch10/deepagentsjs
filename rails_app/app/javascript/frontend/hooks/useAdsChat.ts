@@ -11,11 +11,11 @@ import { validateFile } from "~/types/attachment";
 export type AdsSnapshot = ChatSnapshot<AdsGraphState>;
 
 function useAdsChatOptions() {
-  const { thread_id, jwt, langgraph_path } = usePage<CampaignProps>().props;
+  const { thread_id, jwt, langgraph_path, root_path } = usePage<CampaignProps>().props;
 
   return useMemo(() => {
     const url = new URL("api/ads/stream", langgraph_path).toString();
-    const uploadService = new UploadsAPIService({ jwt });
+    const uploadService = new UploadsAPIService({ jwt, baseUrl: root_path });
 
     return {
       api: url,
@@ -37,7 +37,7 @@ function useAdsChatOptions() {
         validate: validateFile,
       },
     };
-  }, [thread_id, jwt, langgraph_path]);
+  }, [thread_id, jwt, langgraph_path, root_path]);
 }
 
 export function useAdsChat<TSelected = AdsSnapshot>(

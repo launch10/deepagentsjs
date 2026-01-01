@@ -8,6 +8,7 @@ import {
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
 import { WebsiteAPIService, type GetWebsiteResponse, type UpdateWebsiteResponse } from "@rails_api_base";
+import { useBrainstormChatThreadId } from "~/hooks/useBrainstormChat";
 
 // Re-export for backwards compatibility
 export { WebsiteAPIService as WebsiteService } from "@rails_api_base";
@@ -36,11 +37,14 @@ export function useWebsiteService() {
 }
 
 /**
- * Hook to get the current project UUID from page props
+ * Hook to get the current project UUID from chat state (primary) or page props (fallback).
+ * Chat state is primary because after history.pushState, Inertia props don't update.
+ * The threadId in chat state IS the project UUID.
  */
 function useProjectUuid(): string | null {
+  const chatThreadId = useBrainstormChatThreadId();
   const { project } = usePage<{ project?: { uuid: string } }>().props;
-  return project?.uuid ?? null;
+  return chatThreadId ?? project?.uuid ?? null;
 }
 
 // ============================================================================

@@ -234,7 +234,7 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
 
   if (isFetching) {
     return (
-      <div className={twMerge("space-y-2", className)}>
+      <div className={twMerge("space-y-2", className)} data-testid="social-links">
         <h3 className="text-sm font-semibold text-base-500">Social Links</h3>
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => (
@@ -253,7 +253,7 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
   const { errors } = methods.formState;
 
   return (
-    <div className={twMerge("space-y-2", className)}>
+    <div className={twMerge("space-y-2", className)} data-testid="social-links">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-base-500">Social Links</h3>
         {(bulkUpsertMutation.isPending || deleteMutation.isPending) && (

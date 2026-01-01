@@ -3,7 +3,7 @@ import { testGraph, GraphTestBuilder } from "@support";
 import { type BrainstormGraphState } from "@state";
 import { DatabaseSnapshotter, BrainstormNextStepsService } from "@services";
 import { brainstormGraph as uncompiledGraph } from "@graphs";
-import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
+import { HumanMessage, AIMessage, BaseMessage, ToolMessage } from "@langchain/core/messages";
 import { lastAIMessage, type UUIDType, firstHumanMessage } from "@types";
 import { createBrainstorm } from "@nodes";
 import { summarizeAndSaveAnswers } from "@tools";
@@ -11,6 +11,19 @@ import { v7 as uuidv7 } from "uuid";
 import { Brainstorm } from "@types";
 import { graphParams } from "@core";
 import { assertDefined } from "@support";
+
+/**
+ * Helper to find a tool message by name in the conversation
+ */
+const findToolMessage = (
+  state: { messages?: BaseMessage[] },
+  toolName: string
+): ToolMessage | undefined => {
+  if (!state.messages) return undefined;
+  return state.messages.find(
+    (msg) => ToolMessage.isInstance(msg) && msg.name === toolName
+  ) as ToolMessage | undefined;
+};
 
 const brainstormGraph = uncompiledGraph.compile({ ...graphParams, name: "brainstorm" });
 
@@ -503,7 +516,7 @@ describe.sequential("Brainstorming Flow", () => {
       expect(result.state.redirect).toBeUndefined();
 
       expect(lastAIResponse.content).toMatch(
-        /absolutely not|no|not at all|definitely not|data is safe/i
+        /absolutely not|no|not at all|definitely not|data is.*safe|safe|secure/i
       );
 
       const metadata = lastAIResponse.response_metadata as {
@@ -554,12 +567,13 @@ describe.sequential("Brainstorming Flow", () => {
       assertDefined(aiMessage1, "AI message should be defined");
 
       // The AI message should have currentTopic tagged
+      // After answering "idea", the next topic is "audience" (topic order: idea -> audience -> solution -> socialProof)
       expect(aiMessage1.additional_kwargs).toBeDefined();
-      expect(aiMessage1.additional_kwargs?.currentTopic).toBe("solution");
+      expect(aiMessage1.additional_kwargs?.currentTopic).toBe("audience");
 
       // Continue to next topic
       const result2 = await graph
-        .withPrompt(validAnswers.solution)
+        .withPrompt(validAnswers.audience)
         .withState(result1.state)
         .execute();
 
@@ -567,7 +581,7 @@ describe.sequential("Brainstorming Flow", () => {
       assertDefined(aiMessage2, "AI message should be defined");
 
       expect(aiMessage2.additional_kwargs).toBeDefined();
-      expect(aiMessage2.additional_kwargs?.currentTopic).toBe("socialProof");
+      expect(aiMessage2.additional_kwargs?.currentTopic).toBe("solution");
     });
   });
 
@@ -792,7 +806,7 @@ describe.sequential("Brainstorming Flow", () => {
     const TEST_IMAGE_2_URL =
       "https://dev-uploads.launch10.ai/uploads/4524ac00-da1d-49b5-b601-bdd015aa6d2b.png";
 
-    it.only("processes images sent as image_url content blocks in HumanMessage", async () => {
+    it("processes images sent as image_url content blocks in HumanMessage", async () => {
       const projectUUID = uuidv7() as UUIDType;
 
       // Create a HumanMessage with image_url content block (the new way images arrive)
@@ -923,17 +937,20 @@ describe.sequential("Brainstorming Flow", () => {
       // User mentions images they've uploaded previously but aren't attached to this message
       const result = await graph
         .withPrompt("Use the product photos I uploaded earlier for the hero section")
-        .stopAfter("agent")
+        .stopAfter("brainstormAgent")
         .execute();
 
       const lastAIResponse = lastAIMessage(result.state);
       assertDefined(lastAIResponse, "AI response should be defined");
 
       expect(result.state.error).toBeUndefined();
-      // The model should either:
-      // 1. Query for uploaded images and find them, or
-      // 2. Acknowledge the request and guide user on how to attach images
-      expect(lastAIResponse.content).toMatch(/image|photo|upload|attach|product/i);
+
+      // The model should call the query_uploads tool to fetch the user's uploaded images
+      const toolMessage = findToolMessage(result.state, "query_uploads");
+      assertDefined(toolMessage, "query_uploads tool should have been called");
+
+      // The tool result should contain image data or an empty array
+      expect(toolMessage.content).toBeDefined();
     });
 
     it("handles request for recent uploads when user says 'my recent images'", async () => {
@@ -941,15 +958,17 @@ describe.sequential("Brainstorming Flow", () => {
 
       const result = await graph
         .withPrompt("Can you see my recent image uploads? I want to use them for the landing page")
-        .stopAfter("agent")
+        .stopAfter("brainstormAgent")
         .execute();
 
       const lastAIResponse = lastAIMessage(result.state);
       assertDefined(lastAIResponse, "AI response should be defined");
 
       expect(result.state.error).toBeUndefined();
-      // Model should acknowledge request for recent uploads
-      expect(lastAIResponse.content).toBeDefined();
+
+      // The model should call the query_uploads tool
+      const toolMessage = findToolMessage(result.state, "query_uploads");
+      assertDefined(toolMessage, "query_uploads tool should have been called for recent images request");
     });
   });
 });

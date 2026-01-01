@@ -22,7 +22,7 @@ function getThreadIdFromUrl(): string | undefined {
 }
 
 function useBrainstormChatOptions() {
-  const { thread_id, jwt, langgraph_path } = usePage<BrainstormPageProps>().props;
+  const { thread_id, jwt, langgraph_path, root_path } = usePage<BrainstormPageProps>().props;
 
   const onThreadIdAvailable = useCallback((threadId: string) => {
     // Update URL without full navigation so new components can read the threadId
@@ -34,7 +34,7 @@ function useBrainstormChatOptions() {
     const url = langgraph_path
       ? new URL("api/brainstorm/stream", langgraph_path).toString()
       : "";
-    const uploadService = new UploadsAPIService({ jwt });
+    const uploadService = new UploadsAPIService({ jwt, baseUrl: root_path });
 
     return {
       api: url,
@@ -57,7 +57,7 @@ function useBrainstormChatOptions() {
         validate: validateFile,
       },
     };
-  }, [thread_id, jwt, langgraph_path, onThreadIdAvailable]);
+  }, [thread_id, jwt, langgraph_path, onThreadIdAvailable, root_path]);
 }
 
 export function useBrainstormChat<TSelected = BrainstormSnapshot>(
