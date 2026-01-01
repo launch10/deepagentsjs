@@ -7,6 +7,8 @@ import type { Simplify } from "type-fest";
 export type GetUploadsRequest = {
   website_id?: number;
   is_logo?: boolean;
+  order?: "recent";
+  limit?: number;
 };
 
 export type GetUploadsResponse = NonNullable<
@@ -157,6 +159,7 @@ export class UploadsAPIService extends RailsAPIBase {
 
   /**
    * Find recent images for a website (excludes logos by default)
+   * Sorting and limiting is now done at the database level for efficiency.
    */
   async findRecent(options: {
     websiteId: number;
@@ -165,32 +168,33 @@ export class UploadsAPIService extends RailsAPIBase {
   }): Promise<Upload[]> {
     const { websiteId, limit = 10, includeLogos = false } = options;
 
+    // Use database-level sorting and limiting for efficiency
     const uploads = (await this.get({
       website_id: websiteId,
       is_logo: includeLogos ? undefined : false,
+      order: "recent",
+      limit,
     })) as Upload[];
 
-    return uploads
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, limit);
+    return uploads;
   }
 
   /**
    * Find logo images for a website
+   * Sorting and limiting is now done at the database level for efficiency.
    */
   async findLogos(options: { websiteId: number; limit?: number }): Promise<Upload[]> {
     const { websiteId, limit } = options;
 
+    // Use database-level sorting and limiting for efficiency
     const uploads = (await this.get({
       website_id: websiteId,
       is_logo: true,
+      order: "recent",
+      limit,
     })) as Upload[];
 
-    const sorted = uploads.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-
-    return limit ? sorted.slice(0, limit) : sorted;
+    return uploads;
   }
 
   /**

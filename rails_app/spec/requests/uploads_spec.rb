@@ -234,6 +234,10 @@ RSpec.describe "Uploads API", type: :request do
       parameter name: :website_id, in: :query, type: :integer, required: false, description: 'Filter by website'
       parameter name: :is_logo, in: :query, type: :boolean, required: false,
         description: 'Filter by logo status (true for logos, false for product images)'
+      parameter name: :order, in: :query, type: :string, required: false,
+        description: 'Sort order (recent for created_at desc)'
+      parameter name: :limit, in: :query, type: :integer, required: false,
+        description: 'Limit number of results'
 
       let!(:upload1_owned) { create(:upload, account: user1_owned_account, is_logo: false) }
       let!(:upload2_owned) { create(:upload, account: user1_owned_account, is_logo: true) }
@@ -322,6 +326,84 @@ RSpec.describe "Uploads API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data["errors"]).to include("Website not found")
+        end
+      end
+
+      response "200", "returns uploads sorted by created_at desc when order=recent" do
+        # Create uploads and then update their timestamps to avoid factory validation issues
+        let!(:old_upload) do
+          upload = create(:upload, account: user1_owned_account, is_logo: false)
+          upload.update_column(:created_at, 10.days.ago)
+          upload
+        end
+        let!(:new_upload) do
+          upload = create(:upload, account: user1_owned_account, is_logo: false)
+          upload.update_column(:created_at, 1.second.from_now)
+          upload
+        end
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:order) { 'recent' }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          # Should be ordered by created_at desc (newest first)
+          ids = data.map { |u| u["id"] }
+          # new_upload should be first since it has the newest created_at
+          expect(ids.first).to eq(new_upload.id)
+          # old_upload should be last since it has the oldest created_at
+          expect(ids.last).to eq(old_upload.id)
+        end
+      end
+
+      response "200", "returns limited number of uploads when limit is specified" do
+        # Create 5 more uploads for this test
+        let!(:extra_uploads) do
+          5.times.map { |i| create(:upload, account: user1_owned_account, is_logo: false, created_at: i.hours.ago) }
+        end
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:limit) { 3 }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data.length).to eq(3)
+        end
+      end
+
+      response "200", "returns uploads with order=recent and limit combined" do
+        # Create uploads and then update their timestamps to avoid factory validation issues
+        let!(:upload_old) do
+          upload = create(:upload, account: user1_owned_account, is_logo: false)
+          upload.update_column(:created_at, 10.days.ago)
+          upload
+        end
+        let!(:upload_mid) do
+          upload = create(:upload, account: user1_owned_account, is_logo: false)
+          upload.update_column(:created_at, 1.second.from_now)
+          upload
+        end
+        let!(:upload_new) do
+          upload = create(:upload, account: user1_owned_account, is_logo: false)
+          upload.update_column(:created_at, 2.seconds.from_now)
+          upload
+        end
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:order) { 'recent' }
+        let(:limit) { 2 }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data.length).to eq(2)
+          # Should be the 2 most recent (newest first)
+          ids = data.map { |u| u["id"] }
+          expect(ids).to include(upload_new.id)
+          expect(ids).to include(upload_mid.id)
+          expect(ids).not_to include(upload_old.id)
         end
       end
     end

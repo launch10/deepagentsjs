@@ -65,6 +65,19 @@ RSpec.describe "Websites API", type: :request do
           expect(data['error']).to eq('Record not found')
         end
       end
+
+      response '404', 'website not found for project' do
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let!(:project_without_website) { create(:project, account: account) }
+        let(:project_uuid) { project_without_website.uuid }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['error']).to eq('Record not found')
+        end
+      end
     end
 
     patch 'Updates a website' do
@@ -118,6 +131,26 @@ RSpec.describe "Websites API", type: :request do
         let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
         let(:project_uuid) { 'non-existent-uuid' }
+        let(:website_params) do
+          {
+            website: {
+              theme_id: theme.id
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['error']).to eq('Record not found')
+        end
+      end
+
+      response '404', 'website not found for project' do
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let!(:project_without_website) { create(:project, account: account) }
+        let(:project_uuid) { project_without_website.uuid }
         let(:website_params) do
           {
             website: {

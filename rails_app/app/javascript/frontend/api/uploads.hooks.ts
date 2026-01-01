@@ -47,7 +47,6 @@ function useWebsiteId(): number | null {
   const propsWebsiteId = website?.id ?? null;
 
   const result = chatWebsiteId ?? propsWebsiteId;
-  console.log("[useWebsiteId]", { chatWebsiteId, propsWebsiteId, result });
   return result;
 }
 
@@ -145,11 +144,6 @@ export function useUploadLogo(options?: MutationOptions<UploadResult, UploadLogo
   return useMutation({
     mutationFn: async ({ file, websiteId: explicitWebsiteId }: UploadLogoVariables) => {
       const currentWebsiteId = explicitWebsiteId ?? websiteId ?? undefined;
-      console.log("[useUploadLogo] mutationFn called", {
-        explicitWebsiteId,
-        websiteId,
-        currentWebsiteId,
-      });
       const response = await service.create({
         file,
         isLogo: true,
@@ -162,7 +156,6 @@ export function useUploadLogo(options?: MutationOptions<UploadResult, UploadLogo
       };
     },
     onSuccess: () => {
-      console.log("[useUploadLogo] onSuccess", { websiteId });
       if (websiteId) {
         queryClient.invalidateQueries({ queryKey: uploadsKeys.websiteUploads(websiteId) });
       }
@@ -190,11 +183,6 @@ export function useUploadProjectImage(
   return useMutation({
     mutationFn: async ({ file, websiteId: explicitWebsiteId }: UploadProjectImageVariables) => {
       const currentWebsiteId = explicitWebsiteId ?? websiteId ?? undefined;
-      console.log("[useUploadProjectImage] mutationFn called", {
-        explicitWebsiteId,
-        websiteId,
-        currentWebsiteId,
-      });
       const response = await service.create({
         file,
         isLogo: false,
@@ -207,7 +195,6 @@ export function useUploadProjectImage(
       };
     },
     onSuccess: () => {
-      console.log("[useUploadProjectImage] onSuccess", { websiteId });
       if (websiteId) {
         queryClient.invalidateQueries({ queryKey: uploadsKeys.websiteUploads(websiteId) });
       }

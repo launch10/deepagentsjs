@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { ChatSnapshot } from "langgraph-ai-sdk-react";
+import type { ChatSnapshot, ChatActions } from "langgraph-ai-sdk-react";
 import { ChatProvider } from "./ChatContext";
 
 export interface RootProps<TState extends Record<string, unknown> = Record<string, unknown>> {
@@ -14,7 +14,7 @@ export interface RootProps<TState extends Record<string, unknown> = Record<strin
    * Use this to wrap sendMessage with additional behavior (e.g., workflow sync).
    * If not provided, components use the snapshot's sendMessage directly.
    */
-  onSubmit?: any;
+  onSubmit?: ChatActions<TState>["sendMessage"];
 }
 
 /**

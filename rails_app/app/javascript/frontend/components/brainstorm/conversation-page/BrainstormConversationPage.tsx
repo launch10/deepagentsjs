@@ -7,7 +7,7 @@ import {
   selectHasAnyPersonalizations,
 } from "@stores/brandPersonalization";
 import { useWebsite } from "@api/websites.hooks";
-import { useChatMessages } from "@components/chat/Chat";
+import { useChatContext } from "@components/chat/Chat";
 import { BrainstormMessages } from "./chat/BrainstormMessages";
 import { BrainstormInput } from "../shared/BrainstormInput";
 import { BrandPersonalizationPanel } from "./brand-panel/BrandPersonalizationPanel";
@@ -102,7 +102,7 @@ function BrainstormConversationContent({
  */
 export function BrainstormConversationPage() {
   // Use context for messages (Chat.Root provided by BrainstormChat)
-  const messages = useChatMessages();
+  const { messages } = useChatContext();
 
   // Get additional values from brainstorm-specific hook
   const chat = useBrainstormChat();

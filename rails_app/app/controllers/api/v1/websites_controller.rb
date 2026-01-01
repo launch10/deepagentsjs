@@ -22,7 +22,7 @@ class API::V1::WebsitesController < API::BaseController
 
   def set_website
     @website = @project.website
-    head :not_found unless @website
+    raise ActiveRecord::RecordNotFound, "Website not found" unless @website
   end
 
   def website_params

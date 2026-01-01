@@ -2,13 +2,7 @@ import { useEffect, useRef, useMemo, useCallback } from "react";
 import type { MessageBlock, InferBridgeData, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
 import { useBrainstormChatState } from "@hooks/useBrainstormChat";
-import {
-  Chat,
-  useChatMessages,
-  useChatIsStreaming,
-  useChatSendMessage,
-  useChatComposer,
-} from "@components/chat/Chat";
+import { Chat, useChatContext } from "@components/chat/Chat";
 import { BrainstormAIMessage } from "./BrainstormAIMessage";
 import { QuestionBadge } from "./QuestionBadge";
 import { getTextareaRef } from "@lib/brainstormTextarea";
@@ -175,10 +169,7 @@ export function BrainstormMessagesView({
  */
 export function BrainstormMessages() {
   // Use context hooks (requires Chat.Root ancestor)
-  const messages = useChatMessages();
-  const isStreaming = useChatIsStreaming();
-  const sendMessage = useChatSendMessage();
-  const composer = useChatComposer();
+  const { messages, isStreaming, sendMessage, composer } = useChatContext();
 
   // Brainstorm-specific state (available commands comes from backend)
   const availableCommands = useBrainstormChatState("availableCommands");

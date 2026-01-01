@@ -3,12 +3,6 @@ import { render, screen, renderHook } from "@testing-library/react";
 import {
   ChatProvider,
   useChatContext,
-  useChatMessages,
-  useChatComposer,
-  useChatIsStreaming,
-  useChatIsLoading,
-  useChatSendMessage,
-  useChatStatus,
 } from "../ChatContext";
 import type { ChatSnapshot } from "langgraph-ai-sdk-react";
 
@@ -110,82 +104,6 @@ describe("ChatContext", () => {
       expect(result.current.composer).toBe(snapshot.composer);
       expect(result.current.status).toBe(snapshot.status);
       expect(result.current.sendMessage).toBe(snapshot.sendMessage);
-    });
-  });
-
-  describe("useChatMessages", () => {
-    it("returns messages from context", () => {
-      const snapshot = createMockSnapshot();
-      const { result } = renderHook(() => useChatMessages(), {
-        wrapper: createWrapper(snapshot),
-      });
-      expect(result.current).toBe(snapshot.messages);
-    });
-  });
-
-  describe("useChatComposer", () => {
-    it("returns composer from context", () => {
-      const snapshot = createMockSnapshot();
-      const { result } = renderHook(() => useChatComposer(), {
-        wrapper: createWrapper(snapshot),
-      });
-      expect(result.current).toBe(snapshot.composer);
-    });
-  });
-
-  describe("useChatIsStreaming", () => {
-    it("returns false when status is ready", () => {
-      const snapshot = createMockSnapshot({ status: "ready" });
-      const { result } = renderHook(() => useChatIsStreaming(), {
-        wrapper: createWrapper(snapshot),
-      });
-      expect(result.current).toBe(false);
-    });
-
-    it("returns true when status is streaming", () => {
-      const snapshot = createMockSnapshot({ status: "streaming" });
-      const { result } = renderHook(() => useChatIsStreaming(), {
-        wrapper: createWrapper(snapshot),
-      });
-      expect(result.current).toBe(true);
-    });
-
-    it("returns true when status is submitted", () => {
-      const snapshot = createMockSnapshot({ status: "submitted" });
-      const { result } = renderHook(() => useChatIsStreaming(), {
-        wrapper: createWrapper(snapshot),
-      });
-      expect(result.current).toBe(true);
-    });
-  });
-
-  describe("useChatIsLoading", () => {
-    it("returns isLoading from context", () => {
-      const snapshot = createMockSnapshot({ isLoading: true });
-      const { result } = renderHook(() => useChatIsLoading(), {
-        wrapper: createWrapper(snapshot),
-      });
-      expect(result.current).toBe(true);
-    });
-  });
-
-  describe("useChatSendMessage", () => {
-    it("returns sendMessage from context", () => {
-      const snapshot = createMockSnapshot();
-      const { result } = renderHook(() => useChatSendMessage(), {
-        wrapper: createWrapper(snapshot),
-      });
-      expect(result.current).toBe(snapshot.sendMessage);
-    });
-  });
-
-  describe("useChatStatus", () => {
-    it("returns status from context", () => {
-      const snapshot = createMockSnapshot({ status: "streaming" });
-      const { result } = renderHook(() => useChatStatus(), {
-        wrapper: createWrapper(snapshot),
-      });
-      expect(result.current).toBe("streaming");
     });
   });
 

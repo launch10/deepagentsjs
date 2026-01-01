@@ -1,4 +1,6 @@
 import { useCallback } from "react";
+import type { ChatActions } from "langgraph-ai-sdk-react";
+import type { BrainstormGraphState } from "@shared";
 import {
   useBrainstormChatActions,
   useBrainstormIsNewConversation,
@@ -32,17 +34,17 @@ export function useBrainstormSendMessage() {
   const isNewConversation = useBrainstormIsNewConversation();
   const setPage = useWorkflowSteps(selectSetPage);
 
-  const sendMessageWithWorkflowSync = useCallback(
-    (...args: Parameters<typeof sendMessage>) => {
+  // Create a properly typed wrapper that preserves the overloaded signature
+  const sendMessageWithWorkflowSync: ChatActions<BrainstormGraphState>["sendMessage"] = useCallback(
+    (...args: Parameters<ChatActions<BrainstormGraphState>["sendMessage"]>) => {
       // Optimistically set page to brainstorm if this is the first message
-      console.log(`did we get here? ${isNewConversation}`);
       if (isNewConversation && setPage) {
         setPage("brainstorm");
       }
       return sendMessage(...args);
     },
     [sendMessage, isNewConversation, setPage]
-  );
+  ) as ChatActions<BrainstormGraphState>["sendMessage"];
 
   return { sendMessage: sendMessageWithWorkflowSync, ...rest };
 }

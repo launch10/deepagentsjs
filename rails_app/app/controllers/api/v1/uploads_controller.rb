@@ -22,10 +22,17 @@ class API::V1::UploadsController < API::BaseController
       @uploads = @uploads.where(is_logo: params[:is_logo])
     end
 
+    # Apply sorting - order=recent sorts by created_at desc
+    @uploads = @uploads.reorder(created_at: :desc) if params[:order] == 'recent'
+
+    # Apply limit if specified
+    @uploads = @uploads.limit(params[:limit].to_i) if params[:limit].present?
+
     render json: @uploads.map(&:to_json)
   end
 
   def create
+    authorize Upload
     result = Upload.create_upload!(current_account, upload_params)
     upload = result[:upload]
     render json: upload.to_json, status: :created

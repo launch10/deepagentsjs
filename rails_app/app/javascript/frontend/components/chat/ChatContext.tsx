@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
-import type { ChatSnapshot } from "langgraph-ai-sdk-react";
+import type { ChatSnapshot, ChatActions } from "langgraph-ai-sdk-react";
 import type { Composer, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
 
 /**
@@ -39,74 +39,6 @@ export function useChatContext<TState extends Record<string, unknown> = Record<s
   return ctx as ChatContextValue<TState>;
 }
 
-// Granular selectors for performance - components can import only what they need
-
-/**
- * Access just the messages array from chat context.
- */
-export function useChatMessages(): AnyMessageWithBlocks[] {
-  const { messages } = useChatContext();
-  return messages;
-}
-
-/**
- * Access the composer for managing message input and attachments.
- */
-export function useChatComposer(): Composer {
-  const { composer } = useChatContext();
-  return composer;
-}
-
-/**
- * Check if chat is currently streaming a response.
- */
-export function useChatIsStreaming(): boolean {
-  const { isStreaming } = useChatContext();
-  return isStreaming;
-}
-
-/**
- * Check if chat is loading (initial load or history).
- */
-export function useChatIsLoading(): boolean {
-  const { isLoading } = useChatContext();
-  return isLoading;
-}
-
-/**
- * Get the send message function (raw snapshot function).
- * For UI submit actions, prefer useChatSubmit which respects custom onSubmit.
- */
-export function useChatSendMessage(): ChatContextValue["sendMessage"] {
-  const { sendMessage } = useChatContext();
-  return sendMessage;
-}
-
-/**
- * Get the submit function for UI components.
- * Uses custom onSubmit from Chat.Root if provided, otherwise sendMessage.
- */
-export function useChatSubmit(): () => void {
-  const { submit } = useChatContext();
-  return submit;
-}
-
-/**
- * Get the chat status.
- */
-export function useChatStatus(): ChatContextValue["status"] {
-  const { status } = useChatContext();
-  return status;
-}
-
-/**
- * Get the stop function to cancel streaming.
- */
-export function useChatStop(): ChatContextValue["stop"] {
-  const { stop } = useChatContext();
-  return stop;
-}
-
 // Provider component props
 export interface ChatProviderProps<TState extends Record<string, unknown>> {
   snapshot: ChatSnapshot<TState>;
@@ -116,7 +48,7 @@ export interface ChatProviderProps<TState extends Record<string, unknown>> {
    * will use this instead of the snapshot's sendMessage for submit actions.
    * Useful for wrapping sendMessage with additional behavior (e.g., workflow sync).
    */
-  onSubmit?: () => void;
+  onSubmit?: ChatActions<TState>["sendMessage"];
 }
 
 /**
