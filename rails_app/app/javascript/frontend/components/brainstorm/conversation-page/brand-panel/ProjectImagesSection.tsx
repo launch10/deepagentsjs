@@ -1,16 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { usePage } from "@inertiajs/react";
 import {
   useBrandPersonalizationStore,
-  uploadProjectImage as uploadProjectImageApi,
-  deleteProjectImage as deleteProjectImageApi,
   selectProjectImages,
-  selectUploadingImageIds,
   selectProjectImagesError,
 } from "@stores/brandPersonalization";
-import { useProjectImages } from "@api/uploads.hooks";
+import { useProjectImages, useUploadProjectImage, useDeleteUpload } from "@api/uploads.hooks";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.webp";
@@ -21,23 +17,34 @@ interface ProjectImagesSectionProps {
 }
 
 export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
-  const { jwt, website } = usePage<{ jwt: string; website?: { id: number } }>().props;
-
   const projectImages = useBrandPersonalizationStore(selectProjectImages);
-  const uploadingIds = useBrandPersonalizationStore(selectUploadingImageIds);
   const error = useBrandPersonalizationStore(selectProjectImagesError);
 
   const addProjectImage = useBrandPersonalizationStore((s) => s.addProjectImage);
   const setProjectImages = useBrandPersonalizationStore((s) => s.setProjectImages);
   const removeProjectImage = useBrandPersonalizationStore((s) => s.removeProjectImage);
-  const addUploadingImageId = useBrandPersonalizationStore((s) => s.addUploadingImageId);
-  const removeUploadingImageId = useBrandPersonalizationStore((s) => s.removeUploadingImageId);
   const setError = useBrandPersonalizationStore((s) => s.setProjectImagesError);
 
   const [isDragging, setIsDragging] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
+  const [uploadingCount, setUploadingCount] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Mutation hooks
+  const uploadImageMutation = useUploadProjectImage({
+    onSuccess: (uploadedImage) => {
+      addProjectImage(uploadedImage);
+      setUploadingCount((c) => Math.max(0, c - 1));
+    },
+    onError: (err) => {
+      console.error("Project image upload failed:", err);
+      setError("Upload failed. Please try again.");
+      setUploadingCount((c) => Math.max(0, c - 1));
+    },
+  });
+
+  const deleteUploadMutation = useDeleteUpload();
 
   // Fetch existing images from API
   const { data: existingImages } = useProjectImages();
@@ -57,7 +64,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
   }, [existingImages, hasInitialized, setProjectImages]);
 
   const canAddMore = projectImages.length < MAX_IMAGES;
-  const isUploading = uploadingIds.size > 0;
+  const isUploading = uploadingCount > 0;
 
   const validateFile = (file: File): string | null => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
@@ -70,7 +77,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
   };
 
   const handleUpload = useCallback(
-    async (file: File) => {
+    (file: File) => {
       if (!canAddMore) {
         setError(`Maximum ${MAX_IMAGES} images allowed`);
         return;
@@ -82,29 +89,11 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
         return;
       }
 
-      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       setError(null);
-      addUploadingImageId(tempId);
-
-      try {
-        const uploadedImage = await uploadProjectImageApi(file, tempId, jwt, website?.id);
-        addProjectImage(uploadedImage);
-      } catch (err) {
-        console.error("Project image upload failed:", err);
-        setError("Upload failed. Please try again.");
-      } finally {
-        removeUploadingImageId(tempId);
-      }
+      setUploadingCount((c) => c + 1);
+      uploadImageMutation.mutate({ file });
     },
-    [
-      canAddMore,
-      jwt,
-      website?.id,
-      addProjectImage,
-      setError,
-      addUploadingImageId,
-      removeUploadingImageId,
-    ]
+    [canAddMore, setError, uploadImageMutation]
   );
 
   const handleFileSelect = useCallback(
@@ -147,7 +136,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
       setError(null);
 
       try {
-        await deleteProjectImageApi(uploadId, jwt);
+        await deleteUploadMutation.mutateAsync({ uploadId });
         removeProjectImage(uploadId);
       } catch (err) {
         console.error("Project image delete failed:", err);
@@ -160,7 +149,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
         });
       }
     },
-    [jwt, removeProjectImage, setError]
+    [deleteUploadMutation, removeProjectImage, setError]
   );
 
   return (
@@ -183,7 +172,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
       />
 
       {/* Image grid */}
-      {(projectImages.length > 0 || uploadingIds.size > 0) && (
+      {(projectImages.length > 0 || uploadingCount > 0) && (
         <div className="grid grid-cols-3 gap-2" data-testid="project-images-grid">
           {projectImages.map((image) => {
             const isImageDeleting = deletingIds.has(image.uploadId);
@@ -221,9 +210,9 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
           })}
 
           {/* Upload placeholder slots */}
-          {Array.from(uploadingIds).map((id) => (
+          {Array.from({ length: uploadingCount }).map((_, i) => (
             <div
-              key={id}
+              key={`uploading-${i}`}
               className="aspect-square rounded-lg border border-dashed border-neutral-300 bg-neutral-50 flex items-center justify-center"
             >
               <Loader2 className="w-5 h-5 text-base-300 animate-spin" />

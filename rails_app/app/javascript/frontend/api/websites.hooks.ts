@@ -31,8 +31,8 @@ export const websiteKeys = {
  * Uses JWT from page props for authentication
  */
 export function useWebsiteService() {
-  const { jwt } = usePage<{ jwt: string }>().props;
-  return useMemo(() => new WebsiteAPIService({ jwt }), [jwt]);
+  const { jwt, root_path } = usePage<{ jwt: string; root_path: string }>().props;
+  return useMemo(() => new WebsiteAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
 }
 
 /**

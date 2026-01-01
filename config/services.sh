@@ -23,6 +23,7 @@ case "${LAUNCH10_ENV:-development}" in
     VITE_PORT=3037
     RAILS_ENV=test
     NODE_ENV=test
+    USE_LOCAL_STORAGE=true  # Use local disk for uploads instead of R2
     ;;
   *)  # development
     RAILS_PORT=3000
@@ -33,10 +34,16 @@ case "${LAUNCH10_ENV:-development}" in
     ;;
 esac
 
-# Derived URLs - ALWAYS computed from ports (never hardcode these elsewhere!)
+# Derived URLs - computed from ports
+# Only set VITE_* URLs for test environment (Playwright needs explicit URLs)
+# In development, frontend uses default localhost:3000/4000
 RAILS_API_URL="http://localhost:${RAILS_PORT}"
 LANGGRAPH_API_URL="http://localhost:${LANGGRAPH_PORT}"
-VITE_LANGGRAPH_API_URL="$LANGGRAPH_API_URL"
+
+if [[ "${LAUNCH10_ENV:-development}" == "test" || "${LAUNCH10_ENV:-development}" == "e2e" || "${LAUNCH10_ENV:-development}" == "ci" ]]; then
+  VITE_RAILS_API_URL="$RAILS_API_URL"
+  VITE_LANGGRAPH_API_URL="$LANGGRAPH_API_URL"
+fi
 
 # All managed ports - used by cleanup scripts
 MANAGED_PORTS="${RAILS_PORT} ${LANGGRAPH_PORT} ${VITE_PORT}"
@@ -53,12 +60,14 @@ set +a  # Stop auto-exporting
 # Debug output if requested
 if [[ "${LAUNCH10_DEBUG:-}" == "true" ]]; then
   echo "=== Launch10 Service Config ==="
-  echo "LAUNCH10_ENV:      ${LAUNCH10_ENV:-development}"
-  echo "LAUNCH10_ROOT:     $LAUNCH10_ROOT"
-  echo "RAILS_PORT:        $RAILS_PORT"
-  echo "LANGGRAPH_PORT:    $LANGGRAPH_PORT"
-  echo "RAILS_API_URL:     $RAILS_API_URL"
+  echo "LAUNCH10_ENV:           ${LAUNCH10_ENV:-development}"
+  echo "LAUNCH10_ROOT:          $LAUNCH10_ROOT"
+  echo "RAILS_PORT:             $RAILS_PORT"
+  echo "LANGGRAPH_PORT:         $LANGGRAPH_PORT"
+  echo "RAILS_API_URL:          $RAILS_API_URL"
   echo "LANGGRAPH_API_URL:      $LANGGRAPH_API_URL"
-  echo "VITE_LANGGRAPH_API_URL: $VITE_LANGGRAPH_API_URL"
+  echo "VITE_RAILS_API_URL:     ${VITE_RAILS_API_URL:-(not set)}"
+  echo "VITE_LANGGRAPH_API_URL: ${VITE_LANGGRAPH_API_URL:-(not set)}"
+  echo "USE_LOCAL_STORAGE:      ${USE_LOCAL_STORAGE:-false}"
   echo "==============================="
 fi

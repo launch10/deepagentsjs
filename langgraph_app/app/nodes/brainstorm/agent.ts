@@ -3,7 +3,7 @@ import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
 import { chooseBrainstormPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
-import { saveAnswersTool, finishedTool } from "@tools";
+import { saveAnswersTool, finishedTool, queryUploadsTool } from "@tools";
 import { Brainstorm } from "@types";
 import { type BrainstormGraphState } from "@state";
 import z from "zod";
@@ -23,6 +23,7 @@ const dynamicPromptMiddleware = createMiddleware({
     redirect: z.string().optional(),
     availableCommands: z.array(z.string()).default([]),
     command: z.string().optional(),
+    jwt: z.string().optional(),
   }),
   wrapModelCall: async (request, handler) => {
     const state = request.state as BrainstormGraphState;
@@ -53,7 +54,7 @@ export const brainstormAgent = NodeMiddleware.use(
     }
 
     const llm = getLLM().withConfig({ tags: ["notify"] });
-    const tools = [saveAnswersTool, finishedTool];
+    const tools = [saveAnswersTool, finishedTool, queryUploadsTool];
 
     const agent = await createAgent({
       model: llm,
@@ -71,6 +72,20 @@ export const brainstormAgent = NodeMiddleware.use(
       await new BrainstormNextStepsService(state).nextSteps();
 
     let messages = state.messages || [];
+
+    // Preserve all new messages from the agent result except the last AI message
+    // (which we'll add as a processed version below). This ensures tool calls have
+    // their corresponding AIMessage with tool_use preserved alongside ToolMessages.
+    const resultMessages = (result as any).messages || [];
+    const originalMessageCount = (state.messages || []).length;
+    const newMessages = resultMessages.slice(originalMessageCount);
+
+    // Add all new messages except the last one (which is the final AI message we'll process)
+    if (newMessages.length > 1) {
+      const intermediateMessages = newMessages.slice(0, -1);
+      messages = [...(messages as any[]), ...intermediateMessages];
+    }
+
     if (message) {
       // Tag the AI message with the current topic for frontend question badge display
       message.additional_kwargs = {

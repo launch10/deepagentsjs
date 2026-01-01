@@ -1,5 +1,6 @@
 # Core services for development and testing
 # Ports configured via config/services.sh (RAILS_PORT, LANGGRAPH_PORT)
+# Environment variables (LANGGRAPH_API_URL, etc.) come from .env or .env.test via dotenv
 web: bundle exec rails server -p ${RAILS_PORT:-3000}
-vite: bin/vite dev
+vite: echo "[VITE DEBUG] RAILS_ENV=$RAILS_ENV VITE_RAILS_API_URL=$VITE_RAILS_API_URL" && VITE_RAILS_API_URL=${VITE_RAILS_API_URL:-http://localhost:3000} VITE_LANGGRAPH_API_URL=${VITE_LANGGRAPH_API_URL:-http://localhost:4000} bin/vite dev --mode ${RAILS_ENV:-development}
 langgraph: cd ../langgraph_app && PORT=${LANGGRAPH_PORT:-4000} RAILS_API_URL=${RAILS_API_URL:-http://localhost:3000} pnpm run dev

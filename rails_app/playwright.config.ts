@@ -14,6 +14,8 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${testPort}
 
 export default defineConfig({
   testDir: "./e2e",
+  /* Clean up uploads after tests */
+  globalTeardown: "./e2e/global-teardown.ts",
   /* Single worker to prevent database race conditions */
   fullyParallel: false,
   workers: 1,

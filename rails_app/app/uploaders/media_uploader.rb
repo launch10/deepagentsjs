@@ -5,7 +5,7 @@ class MediaUploader < CarrierWave::Uploader::Base
   # Using process instead of callback to ensure file content is modified
   process :sanitize_svg_file
 
-  if Rails.env.test?
+  if Rails.env.test? || ENV["USE_LOCAL_STORAGE"] == "true"
     storage :file
   else
     storage :aws

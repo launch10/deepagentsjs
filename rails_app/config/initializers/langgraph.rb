@@ -6,4 +6,6 @@ module Langgraph
   end
 end
 
-Langgraph.url # Throw on app load if not set
+# Debug: Show what URL is being used on startup
+Rails.logger.info "[Langgraph] RAILS_ENV=#{Rails.env}, LANGGRAPH_API_URL=#{Langgraph.url}"
+puts "[Langgraph] RAILS_ENV=#{Rails.env}, LANGGRAPH_API_URL=#{Langgraph.url}"

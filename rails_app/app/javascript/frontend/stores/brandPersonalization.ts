@@ -1,13 +1,6 @@
 import { create } from "zustand";
 import { useStore } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import {
-  UploadsAPIService,
-  ThemeAPIService,
-  type CreateUploadResponse,
-  type GetThemesResponse,
-  type CreateThemeResponse,
-} from "@rails_api_base";
 
 export interface BrandLogo {
   uploadId: number;
@@ -54,16 +47,6 @@ export interface BrandPersonalizationState {
   addUploadingImageId: (id: string) => void;
   removeUploadingImageId: (id: string) => void;
   reset: () => void;
-}
-
-// API action types (these need jwt and optionally websiteId)
-export interface BrandPersonalizationApiActions {
-  uploadLogo: (file: File, jwt: string, websiteId?: number) => Promise<BrandLogo>;
-  uploadProjectImage: (file: File, tempId: string, jwt: string, websiteId?: number) => Promise<ProjectImage>;
-  deleteLogo: (uploadId: number, jwt: string) => Promise<void>;
-  deleteProjectImage: (uploadId: number, jwt: string) => Promise<void>;
-  fetchThemes: (jwt: string) => Promise<GetThemesResponse>;
-  createTheme: (name: string, colors: string[], jwt: string) => Promise<CreateThemeResponse>;
 }
 
 export type BrandPersonalizationStore = BrandPersonalizationState;
@@ -154,95 +137,6 @@ export function useBrandPersonalizationStore<T>(
   selector: (state: BrandPersonalizationState) => T
 ): T {
   return useStore(brandPersonalizationStore, selector);
-}
-
-// API functions that need jwt passed as parameter
-// These are NOT part of the store - they're standalone functions
-
-/**
- * Upload a logo file. Returns the uploaded logo data.
- */
-export async function uploadLogo(
-  file: File,
-  jwt: string,
-  websiteId?: number
-): Promise<BrandLogo> {
-  const uploadService = new UploadsAPIService({ jwt });
-  const response: CreateUploadResponse = await uploadService.create({
-    file,
-    isLogo: true,
-    websiteId,
-  });
-
-  return {
-    uploadId: response.id,
-    url: response.url,
-    thumbUrl: response.thumb_url ?? undefined,
-  };
-}
-
-/**
- * Upload a project image file. Returns the uploaded image data.
- */
-export async function uploadProjectImage(
-  file: File,
-  _tempId: string,
-  jwt: string,
-  websiteId?: number
-): Promise<ProjectImage> {
-  const uploadService = new UploadsAPIService({ jwt });
-  const response: CreateUploadResponse = await uploadService.create({
-    file,
-    isLogo: false,
-    websiteId,
-  });
-
-  return {
-    uploadId: response.id,
-    url: response.url,
-    thumbUrl: response.thumb_url ?? undefined,
-  };
-}
-
-/**
- * Delete a logo by upload ID.
- */
-export async function deleteLogo(uploadId: number, jwt: string): Promise<void> {
-  const uploadService = new UploadsAPIService({ jwt });
-  await uploadService.delete(uploadId);
-}
-
-/**
- * Delete a project image by upload ID.
- */
-export async function deleteProjectImage(uploadId: number, jwt: string): Promise<void> {
-  const uploadService = new UploadsAPIService({ jwt });
-  await uploadService.delete(uploadId);
-}
-
-/**
- * Fetch all themes.
- */
-export async function fetchThemes(jwt: string): Promise<GetThemesResponse> {
-  const themeService = new ThemeAPIService({ jwt });
-  return themeService.get();
-}
-
-/**
- * Create a new theme.
- */
-export async function createTheme(
-  name: string,
-  colors: string[],
-  jwt: string
-): Promise<CreateThemeResponse> {
-  const themeService = new ThemeAPIService({ jwt });
-  return themeService.create({
-    theme: {
-      name,
-      colors,
-    },
-  });
 }
 
 // Selectors for fine-grained subscriptions

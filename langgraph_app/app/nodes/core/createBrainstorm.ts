@@ -14,6 +14,8 @@ export const createBrainstorm = NodeMiddleware.use(
     state: BrainstormGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<BrainstormGraphState>> => {
+    console.log(`let's look at the state....`)
+    console.log(state.jwt)
     // No need to create a new brainstorm
     if (state.websiteId) {
       return state;

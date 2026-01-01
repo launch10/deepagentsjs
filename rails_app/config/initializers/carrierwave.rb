@@ -1,7 +1,12 @@
 CarrierWave.configure do |config|
-  if Rails.env.test?
+  # Use local file storage for test environment or when explicitly requested
+  # Set USE_LOCAL_STORAGE=true for E2E tests to avoid hitting R2
+  use_local_storage = Rails.env.test? || ENV["USE_LOCAL_STORAGE"] == "true"
+
+  if use_local_storage
     config.storage = :file
-    config.enable_processing = false
+    # Disable processing in unit tests for speed, but keep it for E2E (USE_LOCAL_STORAGE)
+    config.enable_processing = ENV["USE_LOCAL_STORAGE"] == "true"
   else
     config.storage = :aws
     config.aws_bucket = ENV.fetch("CLOUDFLARE_UPLOADS_BUCKET") do

@@ -35,8 +35,8 @@ export const socialLinksKeys = {
  * Uses JWT from page props for authentication
  */
 export function useSocialLinksService() {
-  const { jwt } = usePage<{ jwt: string }>().props;
-  return useMemo(() => new SocialLinksAPIService({ jwt }), [jwt]);
+  const { jwt, root_path } = usePage<{ jwt: string; root_path: string }>().props;
+  return useMemo(() => new SocialLinksAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
 }
 
 /**

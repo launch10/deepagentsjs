@@ -834,8 +834,8 @@ test.describe("Brand Personalization Uploads", () => {
     // Verify it's the same image (src should contain similar URL pattern)
     const logoSrcAfter = await brainstormPage.getLogoSrc();
     expect(logoSrcAfter).toBeTruthy();
-    // Both should be valid image URLs (from S3 or similar)
-    expect(logoSrcAfter).toMatch(/^https?:\/\//);
+    // Both should be valid image URLs (from S3/R2 or local storage)
+    expect(logoSrcAfter).toMatch(/^(https?:\/\/|\/uploads\/)/);  // http(s):// or /uploads/
   });
 
   test("project images upload persists across page reload", async ({ page }) => {

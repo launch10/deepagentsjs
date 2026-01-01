@@ -154,6 +154,54 @@ export class UploadsAPIService extends RailsAPIBase {
       );
     }
   }
+
+  /**
+   * Find recent images for a website (excludes logos by default)
+   */
+  async findRecent(options: {
+    websiteId: number;
+    limit?: number;
+    includeLogos?: boolean;
+  }): Promise<Upload[]> {
+    const { websiteId, limit = 10, includeLogos = false } = options;
+
+    const uploads = (await this.get({
+      website_id: websiteId,
+      is_logo: includeLogos ? undefined : false,
+    })) as Upload[];
+
+    return uploads
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, limit);
+  }
+
+  /**
+   * Find logo images for a website
+   */
+  async findLogos(options: { websiteId: number; limit?: number }): Promise<Upload[]> {
+    const { websiteId, limit } = options;
+
+    const uploads = (await this.get({
+      website_id: websiteId,
+      is_logo: true,
+    })) as Upload[];
+
+    const sorted = uploads.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    return limit ? sorted.slice(0, limit) : sorted;
+  }
+
+  /**
+   * Format uploads as image_url content blocks for LLM consumption
+   */
+  static formatForModel(images: Upload[]): Array<{ type: "image_url"; image_url: { url: string } }> {
+    return images.map((image) => ({
+      type: "image_url" as const,
+      image_url: { url: image.url },
+    }));
+  }
 }
 
 // Re-export with old name for backwards compatibility during migration

@@ -238,6 +238,24 @@ dev_mode() {
     exit 1
   fi
 
+  # Skip overmind's automatic .env loading - let Rails/dotenv handle it
+  # with proper environment-specific precedence (.env.test > .env)
+  export OVERMIND_SKIP_ENV=1
+
+  # Export environment variables explicitly for overmind child processes
+  export RAILS_PORT
+  export RAILS_ENV
+  export LANGGRAPH_PORT
+  export LANGGRAPH_API_URL
+  export RAILS_API_URL
+  export NODE_ENV
+
+  # Export VITE URLs for test environment
+  if [[ -n "$VITE_LANGGRAPH_API_URL" ]]; then
+    export VITE_LANGGRAPH_API_URL
+    export VITE_RAILS_API_URL
+  fi
+
   exec overmind start -f "$procfile" -s "$OVERMIND_SOCKET"
 }
 

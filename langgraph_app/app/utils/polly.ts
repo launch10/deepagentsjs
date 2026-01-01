@@ -135,9 +135,14 @@ class PollyManager {
   private static configureRails() {
     const { server } = PollyManager.polly!;
 
-    // Passthrough for both dev (3000) and test (3001) Rails servers
-    server.any("http://localhost:3000/*").passthrough();
-    server.any("http://localhost:3001/*").passthrough();
+    // Passthrough to Rails on whatever port it's running (from config/services.sh)
+    const railsPort = process.env.RAILS_PORT || '3000';
+    server.any(`http://localhost:${railsPort}/*`).passthrough();
+
+    // Also passthrough common test port if different
+    if (railsPort !== '3001') {
+      server.any("http://localhost:3001/*").passthrough();
+    }
   }
 
   private static configureLlms() {

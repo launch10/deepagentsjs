@@ -1,16 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, RefreshCw, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { usePage } from "@inertiajs/react";
 import {
   useBrandPersonalizationStore,
-  uploadLogo as uploadLogoApi,
-  deleteLogo as deleteLogoApi,
   selectLogo,
-  selectIsUploadingLogo,
   selectLogoError,
 } from "@stores/brandPersonalization";
-import { useProjectLogo } from "@api/uploads.hooks";
+import { useProjectLogo, useUploadLogo, useDeleteUpload } from "@api/uploads.hooks";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/svg+xml"];
 const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.svg";
@@ -20,24 +16,43 @@ interface LogoUploadSectionProps {
 }
 
 export function LogoUploadSection({ className }: LogoUploadSectionProps) {
-  const { jwt, website } = usePage<{ jwt: string; website?: { id: number } }>().props;
-
   const logo = useBrandPersonalizationStore(selectLogo);
-  const isUploading = useBrandPersonalizationStore(selectIsUploadingLogo);
   const error = useBrandPersonalizationStore(selectLogoError);
 
   const setLogo = useBrandPersonalizationStore((s) => s.setLogo);
   const removeLogo = useBrandPersonalizationStore((s) => s.removeLogo);
-  const setIsUploadingLogo = useBrandPersonalizationStore((s) => s.setIsUploadingLogo);
   const setError = useBrandPersonalizationStore((s) => s.setLogoError);
 
   const [isDragging, setIsDragging] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Mutation hooks
+  const uploadLogoMutation = useUploadLogo({
+    onSuccess: (uploadedLogo) => {
+      setLogo(uploadedLogo);
+    },
+    onError: (err) => {
+      console.error("Logo upload failed:", err);
+      setError("Upload failed. Please try again.");
+    },
+  });
+
+  const deleteUploadMutation = useDeleteUpload({
+    onSuccess: () => {
+      removeLogo();
+    },
+    onError: (err) => {
+      console.error("Logo delete failed:", err);
+      setError("Failed to remove logo. Please try again.");
+    },
+  });
+
+  const isUploading = uploadLogoMutation.isPending;
+  const isDeleting = deleteUploadMutation.isPending;
+
   // Fetch existing logo from API
-  const { data: existingLogos, isLoading: isFetchingLogo } = useProjectLogo();
+  const { data: existingLogos } = useProjectLogo();
 
   // Initialize store with existing logo
   useEffect(() => {
@@ -63,7 +78,7 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
   };
 
   const handleUpload = useCallback(
-    async (file: File) => {
+    (file: File) => {
       const validationError = validateFile(file);
       if (validationError) {
         setError(validationError);
@@ -71,19 +86,9 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
       }
 
       setError(null);
-      setIsUploadingLogo(true);
-
-      try {
-        const uploadedLogo = await uploadLogoApi(file, jwt, website?.id);
-        setLogo(uploadedLogo);
-      } catch (err) {
-        console.error("Logo upload failed:", err);
-        setError("Upload failed. Please try again.");
-      } finally {
-        setIsUploadingLogo(false);
-      }
+      uploadLogoMutation.mutate({ file });
     },
-    [jwt, website?.id, setLogo, setError, setIsUploadingLogo]
+    [setError, uploadLogoMutation]
   );
 
   const handleFileSelect = useCallback(
@@ -126,24 +131,14 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
   }, []);
 
   const handleRemove = useCallback(
-    async (e: React.MouseEvent) => {
+    (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!logo) return;
 
-      setIsDeleting(true);
       setError(null);
-
-      try {
-        await deleteLogoApi(logo.uploadId, jwt);
-        removeLogo();
-      } catch (err) {
-        console.error("Logo delete failed:", err);
-        setError("Failed to remove logo. Please try again.");
-      } finally {
-        setIsDeleting(false);
-      }
+      deleteUploadMutation.mutate({ uploadId: logo.uploadId });
     },
-    [logo, jwt, removeLogo, setError]
+    [logo, setError, deleteUploadMutation]
   );
 
   const handleReplace = useCallback(

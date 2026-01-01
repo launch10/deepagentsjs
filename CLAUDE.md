@@ -96,13 +96,45 @@ pnpm run db:migrate
 
 ### Running Development Servers
 
-```bash
-# Rails (from rails_app/)
-bin/dev
-# This runs Rails server, Vite, Sidekiq, and Stripe CLI
+All services are managed through a unified infrastructure in `config/services.sh` and `bin/services`.
 
-# Langgraph (from langgraph_app/)
-pnpm run dev
+#### Environments & Ports
+
+| Environment | Rails Port | Langgraph Port | Vite Port |
+|-------------|------------|----------------|-----------|
+| development | 3000       | 4000           | 3036      |
+| test/e2e    | 3001       | 4001           | 3037      |
+
+#### Development Mode
+
+```bash
+# From project root - runs Rails, Vite, and Langgraph together
+cd rails_app
+bin/dev
+
+# Or use the unified services command
+bin/services dev          # Core services (rails + vite + langgraph)
+bin/services dev --full   # All services (+ sidekiq, zhong, stripe)
+```
+
+#### Test/E2E Mode
+
+```bash
+# For running Playwright e2e tests
+cd rails_app
+bin/dev-test              # Starts all services on test ports
+
+# Or run Playwright directly (auto-starts services)
+pnpm test:e2e             # Headless
+pnpm test:e2e:ui          # With Playwright UI
+```
+
+#### Service Management
+
+```bash
+bin/services status       # Check what's running
+bin/services cleanup      # Kill all managed services
+bin/services env          # Show current environment config
 ```
 
 ### Database Commands
@@ -213,6 +245,28 @@ JWT tokens are issued by Rails and validated by Langgraph:
 2. **Langgraph logs**: Check terminal running `pnpm run dev`
 3. **Browser DevTools**: Network tab for API calls
 4. **Database**: Use Rails console or psql to inspect data
+
+#### Debugging Rails with `binding.pry` (E2E Tests)
+
+When running e2e tests, services run via Overmind. To use `binding.pry` in Rails:
+
+```bash
+# Terminal 1: Start services in test mode
+cd rails_app
+bin/dev-test
+
+# Terminal 2: Attach to the Rails process
+cd rails_app
+OVERMIND_SOCKET=.overmind-test.sock overmind connect web
+```
+
+Now when your code hits a `binding.pry`, you can interact with it in Terminal 2.
+
+**To detach**: Press `Ctrl+B` then `D` (it's a tmux session).
+
+**Socket paths by environment**:
+- Development: `.overmind-dev.sock`
+- Test/E2E: `.overmind-test.sock`
 
 ### Adding New Features
 

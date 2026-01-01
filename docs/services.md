@@ -17,24 +17,24 @@ bin/services dev --full
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `bin/services dev` | Foreground: rails + vite + langgraph |
-| `bin/services dev --full` | Foreground: + sidekiq, zhong, stripe |
-| `bin/services start` | Background: rails + langgraph (daemon) |
-| `bin/services stop` | Stop background services |
-| `bin/services cleanup` | Force kill all managed ports |
-| `bin/services status` | Show what's running |
-| `bin/services env` | Show current config |
+| Command                   | Description                            |
+| ------------------------- | -------------------------------------- |
+| `bin/services dev`        | Foreground: rails + vite + langgraph   |
+| `bin/services dev --full` | Foreground: + sidekiq, zhong, stripe   |
+| `bin/services start`      | Background: rails + langgraph (daemon) |
+| `bin/services stop`       | Stop background services               |
+| `bin/services cleanup`    | Force kill all managed ports           |
+| `bin/services status`     | Show what's running                    |
+| `bin/services env`        | Show current config                    |
 
 ## Environments
 
 Set `LAUNCH10_ENV` to switch between configurations:
 
-| Environment | Rails Port | Langgraph Port | Use Case |
-|-------------|------------|----------------|----------|
-| `development` (default) | 3000 | 4000 | Normal development |
-| `test` | 3001 | 4001 | E2E tests, playwright |
+| Environment             | Rails Port | Langgraph Port | Use Case              |
+| ----------------------- | ---------- | -------------- | --------------------- |
+| `development` (default) | 3000       | 4000           | Normal development    |
+| `test`                  | 3001       | 4001           | E2E tests, playwright |
 
 ## From Subdirectories
 
@@ -61,6 +61,13 @@ pnpm test:e2e:headed # Headed browser
 
 Playwright automatically starts `bin/dev-test` via its `webServer` config.
 
+## Attaching to Particular Services While Running Playwright
+
+```bash
+overmind connect -s .overmind-test.sock web
+overmind connect -s .overmind-test.sock langgraph # etc
+```
+
 ## Configuration
 
 All ports and URLs flow from `config/services.sh`:
@@ -77,25 +84,28 @@ Procfiles read these env vars - never hardcode ports.
 
 ## Procfiles
 
-| File | Services | Used By |
-|------|----------|---------|
-| `Procfile.dev` | web, vite, langgraph | `bin/services dev` |
+| File            | Services                                     | Used By                   |
+| --------------- | -------------------------------------------- | ------------------------- |
+| `Procfile.dev`  | web, vite, langgraph                         | `bin/services dev`        |
 | `Procfile.full` | web, vite, langgraph, sidekiq, zhong, stripe | `bin/services dev --full` |
-| `Procfile` | web, sidekiq, zhong | Production |
+| `Procfile`      | web, sidekiq, zhong                          | Production                |
 
 ## Troubleshooting
 
 **Port already in use:**
+
 ```bash
 bin/services cleanup
 ```
 
 **Check what's running:**
+
 ```bash
 bin/services status
 ```
 
 **See current config:**
+
 ```bash
 bin/services env
 LAUNCH10_ENV=test bin/services env

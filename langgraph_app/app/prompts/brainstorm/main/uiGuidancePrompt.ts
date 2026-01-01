@@ -1,6 +1,6 @@
 import { type BrainstormGraphState } from "@state";
 import { type LangGraphRunnableConfig, Brainstorm } from "@types";
-import { finishedTool } from "@tools";
+import { finishedTool, queryUploadsTool } from "@tools";
 import { toolsPrompt } from "@prompts";
 import { structuredOutputPrompt } from "@prompts";
 import { collectedAnswersPrompt, backgroundPrompt } from "../shared";
@@ -11,7 +11,7 @@ export const uiGuidancePrompt = async (
 ) => {
   const [background, availableTools, collectedAnswers, outputInstructions] = await Promise.all([
     backgroundPrompt(state, config),
-    toolsPrompt({ tools: [finishedTool] }),
+    toolsPrompt({ tools: [finishedTool, queryUploadsTool] }),
     collectedAnswersPrompt(state, config),
     structuredOutputPrompt({ schema: Brainstorm.replySchema }),
   ]);
@@ -38,7 +38,7 @@ export const uiGuidancePrompt = async (
         </role>
 
         <task>
-            Complete 1 of 3 tasks:
+            Complete 1 of 4 tasks:
 
             1. Explain the user's options to them
                 - Use when: The user has just finished brainstorming
@@ -50,6 +50,11 @@ export const uiGuidancePrompt = async (
 
             3. Call the finishedTool to automatically redirect to the website builder
                 - Use when: The user has indicated they are ready to move on.
+
+            4. Query the user's uploaded images
+                - Use when: The user mentions images they've uploaded previously
+                - Examples: "use my product photos", "my uploaded images", "the images I uploaded earlier"
+                - Call the query_uploads tool to fetch their images
         </task>
 
         <available_options>
@@ -158,7 +163,7 @@ export const uiGuidancePrompt = async (
         </communication_approach>
 
         <task>
-            Complete 1 of 3 tasks:
+            Complete 1 of 4 tasks:
 
             1. Explain the user's options to them
                 - Use when: The user has just finished brainstorming
@@ -168,6 +173,10 @@ export const uiGuidancePrompt = async (
 
             3. Call the finishedTool to automatically redirect to the website builder
                 - Use when: The user has indicated they are ready to move on.
+
+            4. Query the user's uploaded images
+                - Use when: The user mentions images they've uploaded previously
+                - Call the query_uploads tool to fetch their images
         </task>
 
         ${availableTools}

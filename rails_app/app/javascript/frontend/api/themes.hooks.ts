@@ -29,8 +29,8 @@ export const themeKeys = {
  * Uses JWT from page props for authentication
  */
 export function useThemeService() {
-  const { jwt } = usePage<{ jwt: string }>().props;
-  return useMemo(() => new ThemeAPIService({ jwt }), [jwt]);
+  const { jwt, root_path } = usePage<{ jwt: string; root_path: string }>().props;
+  return useMemo(() => new ThemeAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
 }
 
 // ============================================================================

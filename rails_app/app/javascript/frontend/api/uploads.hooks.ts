@@ -1,7 +1,7 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
-import { UploadsAPIService, type GetUploadsResponse } from "@rails_api_base";
+import { UploadsAPIService, type GetUploadsResponse, type CreateUploadResponse } from "@rails_api_base";
 import { useWebsite } from "./websites.hooks";
 
 // Re-export for backwards compatibility
@@ -23,8 +23,8 @@ export const uploadsKeys = {
 // ============================================================================
 
 export function useUploadService() {
-  const { jwt } = usePage<{ jwt: string }>().props;
-  return useMemo(() => new UploadsAPIService({ jwt }), [jwt]);
+  const { jwt, root_path } = usePage<{ jwt: string; root_path: string }>().props;
+  return useMemo(() => new UploadsAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
 }
 
 function useWebsiteId(): number | null {
@@ -91,4 +91,127 @@ export function useProjectImages(options?: UploadsQueryOptions) {
     ...query,
     data: productImages,
   };
+}
+
+// ============================================================================
+// Mutation Hooks
+// ============================================================================
+
+type MutationOptions<TData, TVariables> = Omit<
+  UseMutationOptions<TData, Error, TVariables>,
+  "mutationFn"
+>;
+
+/** Result type for upload mutations */
+export interface UploadResult {
+  uploadId: number;
+  url: string;
+  thumbUrl?: string;
+}
+
+interface UploadLogoVariables {
+  file: File;
+  websiteId?: number;
+}
+
+/**
+ * Hook for uploading a logo.
+ * Automatically invalidates the uploads cache on success.
+ */
+export function useUploadLogo(
+  options?: MutationOptions<UploadResult, UploadLogoVariables>
+) {
+  const service = useUploadService();
+  const websiteId = useWebsiteId();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ file, websiteId: explicitWebsiteId }: UploadLogoVariables) => {
+      const response = await service.create({
+        file,
+        isLogo: true,
+        websiteId: explicitWebsiteId ?? websiteId ?? undefined,
+      });
+      return {
+        uploadId: response.id,
+        url: response.url,
+        thumbUrl: response.thumb_url ?? undefined,
+      };
+    },
+    onSuccess: () => {
+      if (websiteId) {
+        queryClient.invalidateQueries({ queryKey: uploadsKeys.websiteUploads(websiteId) });
+      }
+    },
+    ...options,
+  });
+}
+
+interface UploadProjectImageVariables {
+  file: File;
+  websiteId?: number;
+}
+
+/**
+ * Hook for uploading a project image (non-logo).
+ * Automatically invalidates the uploads cache on success.
+ */
+export function useUploadProjectImage(
+  options?: MutationOptions<UploadResult, UploadProjectImageVariables>
+) {
+  const service = useUploadService();
+  const websiteId = useWebsiteId();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ file, websiteId: explicitWebsiteId }: UploadProjectImageVariables) => {
+      const response = await service.create({
+        file,
+        isLogo: false,
+        websiteId: explicitWebsiteId ?? websiteId ?? undefined,
+      });
+      return {
+        uploadId: response.id,
+        url: response.url,
+        thumbUrl: response.thumb_url ?? undefined,
+      };
+    },
+    onSuccess: () => {
+      if (websiteId) {
+        queryClient.invalidateQueries({ queryKey: uploadsKeys.websiteUploads(websiteId) });
+      }
+    },
+    ...options,
+  });
+}
+
+interface DeleteUploadVariables {
+  uploadId: number;
+}
+
+/**
+ * Hook for deleting an upload (logo or image).
+ * Automatically removes from cache on success.
+ */
+export function useDeleteUpload(
+  options?: MutationOptions<void, DeleteUploadVariables>
+) {
+  const service = useUploadService();
+  const websiteId = useWebsiteId();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ uploadId }: DeleteUploadVariables) => {
+      await service.delete(uploadId);
+    },
+    onSuccess: (_, { uploadId }) => {
+      if (websiteId) {
+        queryClient.setQueryData<GetUploadsResponse>(
+          uploadsKeys.websiteUploads(websiteId),
+          (oldData) => oldData?.filter((upload) => upload.id !== uploadId) ?? []
+        );
+      }
+    },
+    ...options,
+  });
 }

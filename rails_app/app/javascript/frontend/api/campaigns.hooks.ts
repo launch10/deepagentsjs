@@ -25,8 +25,8 @@ export { CampaignAPIService as CampaignService } from "@rails_api_base";
  * Uses JWT from page props for authentication
  */
 export function useCampaignService() {
-  const { jwt } = usePage<CampaignProps>().props;
-  return useMemo(() => new CampaignAPIService({ jwt }), [jwt]);
+  const { jwt, root_path } = usePage<CampaignProps>().props;
+  return useMemo(() => new CampaignAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
 }
 
 // ============================================================================
