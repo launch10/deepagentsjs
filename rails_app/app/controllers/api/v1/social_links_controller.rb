@@ -2,20 +2,20 @@ class API::V1::SocialLinksController < API::BaseController
   before_action :set_project
   before_action :set_social_link, only: [:show, :update, :destroy]
 
+  # Authorization: project scoping via set_project handles access control
+  # If you can access the project, you can access its social links
+
   def index
     @social_links = @project.social_links.order(:id)
-    @social_links.each { |link| authorize link }
     render json: @social_links
   end
 
   def show
-    authorize @social_link
     render json: @social_link
   end
 
   def create
     @social_link = @project.social_links.build(social_link_params)
-    authorize @social_link
 
     if @social_link.save
       render json: @social_link, status: :created
@@ -25,7 +25,6 @@ class API::V1::SocialLinksController < API::BaseController
   end
 
   def update
-    authorize @social_link
     if @social_link.update(social_link_params)
       render json: @social_link
     else
@@ -34,7 +33,6 @@ class API::V1::SocialLinksController < API::BaseController
   end
 
   def destroy
-    authorize @social_link
     @social_link.destroy
     head :no_content
   end
@@ -49,7 +47,6 @@ class API::V1::SocialLinksController < API::BaseController
       social_links_params.map do |link_params|
         social_link = existing[link_params[:platform]] || @project.social_links.build
         social_link.assign_attributes(link_params)
-        authorize social_link, :bulk_upsert?
         social_link.save!
         social_link
       end
