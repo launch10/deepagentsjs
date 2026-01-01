@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
 import { UploadsAPIService, type GetUploadsResponse, type CreateUploadResponse } from "@rails_api_base";
 import { useWebsite } from "./websites.hooks";
+import { useBrainstormChatWebsiteId } from "~/hooks/useBrainstormChat";
 
 // Re-export for backwards compatibility
 export { UploadsAPIService as UploadService } from "@rails_api_base";
@@ -27,9 +28,17 @@ export function useUploadService() {
   return useMemo(() => new UploadsAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
 }
 
+/**
+ * Hook to get website ID - uses chat state (primary) with page props fallback.
+ */
 function useWebsiteId(): number | null {
+  const chatWebsiteId = useBrainstormChatWebsiteId();
   const { data: website } = useWebsite();
-  return website?.id ?? null;
+  const propsWebsiteId = website?.id ?? null;
+
+  const result = chatWebsiteId ?? propsWebsiteId;
+  console.log('[useWebsiteId]', { chatWebsiteId, propsWebsiteId, result });
+  return result;
 }
 
 // ============================================================================
@@ -127,10 +136,12 @@ export function useUploadLogo(
 
   return useMutation({
     mutationFn: async ({ file, websiteId: explicitWebsiteId }: UploadLogoVariables) => {
+      const currentWebsiteId = explicitWebsiteId ?? websiteId ?? undefined;
+      console.log('[useUploadLogo] mutationFn called', { explicitWebsiteId, websiteId, currentWebsiteId });
       const response = await service.create({
         file,
         isLogo: true,
-        websiteId: explicitWebsiteId ?? websiteId ?? undefined,
+        websiteId: currentWebsiteId,
       });
       return {
         uploadId: response.id,
@@ -139,6 +150,7 @@ export function useUploadLogo(
       };
     },
     onSuccess: () => {
+      console.log('[useUploadLogo] onSuccess', { websiteId });
       if (websiteId) {
         queryClient.invalidateQueries({ queryKey: uploadsKeys.websiteUploads(websiteId) });
       }
@@ -165,10 +177,12 @@ export function useUploadProjectImage(
 
   return useMutation({
     mutationFn: async ({ file, websiteId: explicitWebsiteId }: UploadProjectImageVariables) => {
+      const currentWebsiteId = explicitWebsiteId ?? websiteId ?? undefined;
+      console.log('[useUploadProjectImage] mutationFn called', { explicitWebsiteId, websiteId, currentWebsiteId });
       const response = await service.create({
         file,
         isLogo: false,
-        websiteId: explicitWebsiteId ?? websiteId ?? undefined,
+        websiteId: currentWebsiteId,
       });
       return {
         uploadId: response.id,
@@ -177,6 +191,7 @@ export function useUploadProjectImage(
       };
     },
     onSuccess: () => {
+      console.log('[useUploadProjectImage] onSuccess', { websiteId });
       if (websiteId) {
         queryClient.invalidateQueries({ queryKey: uploadsKeys.websiteUploads(websiteId) });
       }

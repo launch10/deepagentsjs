@@ -116,6 +116,10 @@ export function useBrainstormChatThreadId() {
   return useBrainstormChat((s) => s.threadId);
 }
 
+export function useBrainstormChatWebsiteId() {
+  return useBrainstormChat((s) => s.state.websiteId);
+}
+
 /**
  * Returns whether this is a new conversation (should show landing page).
  * Uses messages.length === 0 as the source of truth for routing.

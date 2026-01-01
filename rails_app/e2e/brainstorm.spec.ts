@@ -182,10 +182,9 @@ test.describe("Brainstorm Flow", () => {
   });
 
   test.describe("Command Buttons", () => {
-    test.skip("shows command buttons after AI response completes", async ({
+    test("shows command buttons after AI response completes", async ({
       page,
     }) => {
-      // Skip for now - depends on specific AI response structure
       await brainstormPage.goto();
 
       await brainstormPage.sendMessage("Generate marketing headlines");
@@ -228,7 +227,7 @@ test.describe("Brainstorm Social Links", () => {
     brainstormPage = new BrainstormPage(page);
   });
 
-  test.skip("displays social links section", async ({ page }) => {
+  test("displays social links section", async ({ page }) => {
     // This test depends on social links UI being implemented
     await brainstormPage.goto();
     await brainstormPage.sendMessage("Test message");
@@ -821,11 +820,20 @@ test.describe("Brand Personalization Uploads", () => {
     await page.reload();
     await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
 
-    // Open the brand panel again
+    // Set up response waiter BEFORE opening the panel (which triggers the API call)
+    const uploadsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/v1/uploads") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+      { timeout: 10000 }
+    );
+
+    // Open the brand panel (this triggers the uploads query)
     await brainstormPage.openBrandPanel();
 
     // Wait for uploads API to complete
-    await brainstormPage.waitForUploadsLoaded();
+    await uploadsPromise;
 
     // Verify logo is still displayed after reload
     await expect(brainstormPage.logoPreview).toBeVisible({ timeout: 10000 });
@@ -875,11 +883,20 @@ test.describe("Brand Personalization Uploads", () => {
     await page.reload();
     await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
 
+    // Set up response waiter BEFORE opening the panel
+    const uploadsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/v1/uploads") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+      { timeout: 10000 }
+    );
+
     // Open brand panel again
     await brainstormPage.openBrandPanel();
 
     // Wait for uploads to load
-    await brainstormPage.waitForUploadsLoaded();
+    await uploadsPromise;
 
     // Verify images are still displayed
     await expect(brainstormPage.projectImagesGrid).toBeVisible({ timeout: 10000 });
@@ -917,11 +934,20 @@ test.describe("Brand Personalization Uploads", () => {
     await page.goto(conversationUrl);
     await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
 
+    // Set up response waiter BEFORE opening the panel
+    const uploadsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/v1/uploads") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+      { timeout: 10000 }
+    );
+
     // Open brand panel
     await brainstormPage.openBrandPanel();
 
     // Wait for uploads to load
-    await brainstormPage.waitForUploadsLoaded();
+    await uploadsPromise;
 
     // Verify logo is displayed
     await expect(brainstormPage.logoPreview).toBeVisible({ timeout: 10000 });
@@ -950,12 +976,21 @@ test.describe("Brand Personalization Uploads", () => {
     // Navigate directly to the conversation URL without waiting
     await brainstormPage.gotoConversationImmediate(threadId!);
 
+    // Set up response waiter BEFORE opening the panel
+    const uploadsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/v1/uploads") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+      { timeout: 10000 }
+    );
+
     // The brand panel should not show the empty upload area initially
     // (it should show the preview or be loading)
     await brainstormPage.openBrandPanel();
 
     // Wait for uploads to finish loading
-    await brainstormPage.waitForUploadsLoaded();
+    await uploadsPromise;
 
     // After loading, the logo preview should be visible
     await expect(brainstormPage.logoPreview).toBeVisible({ timeout: 10000 });
@@ -1234,10 +1269,7 @@ test.describe("Workflow Progress Stepper", () => {
     await expect(progressStepper).not.toBeVisible();
   });
 
-  // Skip: These tests depend on project persistence which has timing issues in the test environment.
-  // The thread ID from Langgraph may not be persisted to Rails DB before the page reload.
-  // See: "loads existing conversation from URL" test has the same issue.
-  test.skip("stepper persists when reloading existing conversation", async ({ page }) => {
+  test("stepper persists when reloading existing conversation", async ({ page }) => {
     // Start a conversation
     await brainstormPage.goto();
     await brainstormPage.sendMessage("Test message for reload");
@@ -1263,8 +1295,7 @@ test.describe("Workflow Progress Stepper", () => {
     await expect(progressStepper).toBeVisible({ timeout: 5000 });
   });
 
-  // Skip: See above - depends on project persistence timing
-  test.skip("stepper visible when navigating directly to existing conversation", async ({ page }) => {
+  test("stepper visible when navigating directly to existing conversation", async ({ page }) => {
     // First create a conversation
     await brainstormPage.goto();
     await brainstormPage.sendMessage("Test message for direct navigation");

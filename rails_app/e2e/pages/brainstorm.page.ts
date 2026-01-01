@@ -143,11 +143,22 @@ export class BrainstormPage {
    * Wait for AI response to complete
    */
   async waitForResponse(timeout: number = 30000): Promise<void> {
-    // Wait for thinking indicator to appear
-    await this.thinkingIndicator.waitFor({ state: "visible", timeout: 5000 });
+    // Race condition handling: the response might come back so fast that
+    // the thinking indicator is never visible, or is already gone.
+    // Wait for EITHER: thinking indicator to appear, OR an AI message to exist.
+    const thinkingOrMessage = await Promise.race([
+      this.thinkingIndicator.waitFor({ state: "visible", timeout: 5000 }).then(() => "thinking"),
+      this.aiMessages.first().waitFor({ state: "visible", timeout: 5000 }).then(() => "message"),
+    ]).catch(() => "timeout");
 
-    // Wait for thinking indicator to disappear (response complete)
-    await this.thinkingIndicator.waitFor({ state: "hidden", timeout });
+    // If thinking indicator appeared, wait for it to disappear
+    if (thinkingOrMessage === "thinking") {
+      await this.thinkingIndicator.waitFor({ state: "hidden", timeout });
+    }
+    // If message already appeared or we timed out, just ensure thinking is done
+    else {
+      await this.thinkingIndicator.waitFor({ state: "hidden", timeout: 1000 }).catch(() => {});
+    }
   }
 
   /**
@@ -287,11 +298,47 @@ export class BrainstormPage {
    * Open the brand personalization panel if it's not already open
    */
   async openBrandPanel(): Promise<void> {
+    // First, wait a moment for any auto-open to trigger
+    await this.page.waitForTimeout(100);
+
     const isExpanded = await this.isBrandPanelExpanded();
     if (!isExpanded) {
       await this.brandPersonalizationToggle.click();
-      await this.brandPersonalizationContent.waitFor({ state: "visible" });
     }
+    // Always wait for content to be visible (handles both cases)
+    await this.brandPersonalizationContent.waitFor({ state: "visible", timeout: 5000 });
+  }
+
+  /**
+   * Open the brand panel and wait for uploads API to complete.
+   * Use this after page reload or navigation to ensure uploads are loaded.
+   */
+  async openBrandPanelAndWaitForUploads(): Promise<void> {
+    // Wait a moment for any auto-open to trigger
+    await this.page.waitForTimeout(100);
+
+    const isExpanded = await this.isBrandPanelExpanded();
+    if (isExpanded) {
+      // Panel already open, just wait for uploads
+      await this.waitForUploadsLoaded();
+      return;
+    }
+
+    // Set up response waiter BEFORE opening the panel (which triggers the API call)
+    const uploadsPromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/v1/uploads") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+      { timeout: 10000 }
+    );
+
+    // Open the panel
+    await this.brandPersonalizationToggle.click();
+    await this.brandPersonalizationContent.waitFor({ state: "visible", timeout: 5000 });
+
+    // Wait for uploads to complete
+    await uploadsPromise;
   }
 
   /**
@@ -329,9 +376,24 @@ export class BrainstormPage {
    * @param filePaths - Array of paths to the image files to upload
    */
   async uploadProjectImages(filePaths: string[]): Promise<void> {
+    const expectedCount = filePaths.length;
+
     await this.projectImagesInput.setInputFiles(filePaths);
-    // Wait for the grid to appear (indicates at least one image uploaded)
+
+    // Wait for the grid to appear
     await this.projectImagesGrid.waitFor({ state: "visible", timeout: 10000 });
+
+    // Wait for all images to actually appear in the grid (not just loading placeholders)
+    await this.page.waitForFunction(
+      (count) => {
+        const grid = document.querySelector('[data-testid="project-images-grid"]');
+        if (!grid) return false;
+        const images = grid.querySelectorAll("img");
+        return images.length >= count;
+      },
+      expectedCount,
+      { timeout: 15000 }
+    );
   }
 
   /**
