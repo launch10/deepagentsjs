@@ -49,6 +49,9 @@ export class BrainstormPage {
   readonly chatAttachmentList: Locator;
   readonly chatAttachmentItems: Locator;
 
+  // Command buttons for workflow actions
+  readonly buildMySiteButton: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
@@ -103,6 +106,9 @@ export class BrainstormPage {
     this.chatFileInput = page.locator('input[type="file"]').first();
     this.chatAttachmentList = page.getByTestId("attachment-list");
     this.chatAttachmentItems = page.getByTestId("attachment-item");
+
+    // Command buttons for workflow actions - scope to command buttons container to avoid matching examples panel
+    this.buildMySiteButton = page.getByTestId("command-buttons").getByRole("button", { name: "Build My Site" });
   }
 
   /**
@@ -508,5 +514,21 @@ export class BrainstormPage {
       imageCount += images;
     }
     return imageCount;
+  }
+
+  /**
+   * Click the "Build My Site" command button
+   * This triggers the finished command which redirects to website builder
+   */
+  async clickBuildMySite(): Promise<void> {
+    await this.buildMySiteButton.click();
+  }
+
+  /**
+   * Wait for navigation to the website page
+   * @param threadId - The project thread ID
+   */
+  async waitForWebsiteRedirect(threadId: string): Promise<void> {
+    await this.page.waitForURL(`**/projects/${threadId}/website`, { timeout: 30000 });
   }
 }

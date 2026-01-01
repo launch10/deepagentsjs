@@ -51,7 +51,7 @@ export function WorkflowStepsProvider({
     }
   }, [store, url]);
 
-  // Sync store when Inertia props change (e.g., navigating to a different project)
+  // Sync store when Inertia props change (e.g., navigating to a different project or page)
   // This handles cases where the layout doesn't remount but the page props change
   useEffect(() => {
     const page = (workflow?.page as Workflow.WorkflowPage) ?? null;
@@ -64,8 +64,11 @@ export function WorkflowStepsProvider({
       return;
     }
 
-    // If the projectUUID changed (different project), update the store
-    if (uuid !== currentState.projectUUID) {
+    // Update store if projectUUID or page changed
+    const projectChanged = uuid !== currentState.projectUUID;
+    const pageChanged = page !== currentState.page;
+
+    if (projectChanged || pageChanged) {
       if (page) {
         store.getState().setPage(page, uuid ?? undefined, false);
       }

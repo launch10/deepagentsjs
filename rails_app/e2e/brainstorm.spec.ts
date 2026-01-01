@@ -1394,3 +1394,106 @@ test.describe("Brainstorm Loading States", () => {
 // > Okay let's begin dreaming up things for this - currently, we have a killer snapshot builder system which
 //   interacts with our tests in useful ways - we can load from existing snapshots to get known states of the
 //   world. One good example is the loads existing conversation from URL playwright test.
+
+test.describe("Brainstorm to Website Redirect", () => {
+  // These tests involve multiple AI responses, so need longer timeout
+  test.setTimeout(120000);
+
+  let brainstormPage: BrainstormPage;
+
+  // Complete business idea that provides enough detail for the AI to accept
+  // and move past the idea question (includes unique differentiation)
+  const COMPLETE_BUSINESS_IDEA = `
+    I'm building InvoiceZen, an invoice management tool specifically for freelance designers.
+    Unlike QuickBooks or FreshBooks, we're the only tool that integrates directly with Figma and
+    Adobe Creative Cloud. When a designer finishes a project, they can generate an invoice with
+    one click, automatically pulling project details, time tracked, and deliverables. We also
+    have beautiful, designer-grade invoice templates that match their brand aesthetic.
+  `.trim();
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await loginUser(page);
+    brainstormPage = new BrainstormPage(page);
+  });
+
+  test("redirects to website page when user completes brainstorm", async ({ page }) => {
+    // Start a new conversation
+    await brainstormPage.goto();
+
+    // Provide a complete business idea with differentiation
+    // The AI needs enough detail to move past the "idea" question
+    await brainstormPage.sendMessage(COMPLETE_BUSINESS_IDEA);
+    await brainstormPage.waitForResponse();
+
+    // Get the thread ID now that we have a conversation
+    const threadId = brainstormPage.getThreadIdFromUrl();
+    expect(threadId).not.toBeNull();
+
+    // Now "Do the rest" should be available as a command
+    // This will complete the remaining questions (audience, solution, social proof)
+    await brainstormPage.sendMessage("Do the rest for me");
+    await brainstormPage.waitForResponse();
+
+    // Now we should be at the lookAndFeel stage with "Build My Site" available
+    // The AI shows the button when ready - clicking it triggers the redirect
+    await expect(brainstormPage.buildMySiteButton).toBeVisible({ timeout: 10000 });
+
+    // Click Build My Site - this sends "I'm finished" to the AI
+    await brainstormPage.clickBuildMySite();
+
+    // Wait for AI to process the message and trigger redirect
+    // The AI should call finishedTool which sets redirect: "website"
+    await brainstormPage.waitForResponse(60000);
+
+    // Wait for redirect to website page
+    await brainstormPage.waitForWebsiteRedirect(threadId!);
+
+    // Verify we're on the website page
+    expect(page.url()).toContain(`/projects/${threadId}/website`);
+  });
+
+  test("workflow stepper progresses to Landing Page when redirected", async ({ page }) => {
+    // Start a new conversation
+    await brainstormPage.goto();
+
+    // Provide a complete business idea
+    await brainstormPage.sendMessage(COMPLETE_BUSINESS_IDEA);
+    await brainstormPage.waitForResponse();
+
+    const threadId = brainstormPage.getThreadIdFromUrl();
+    expect(threadId).not.toBeNull();
+
+    // Complete the brainstorm
+    await brainstormPage.sendMessage("Do the rest for me");
+    await brainstormPage.waitForResponse();
+
+    // Verify workflow stepper is visible
+    const progressStepper = page.getByTestId("workflow-progress-stepper");
+    await expect(progressStepper).toBeVisible({ timeout: 5000 });
+
+    // Verify "Brainstorm" step is currently active (has font-semibold class)
+    const brainstormStep = progressStepper.getByText("Brainstorm");
+    await expect(brainstormStep).toHaveClass(/font-semibold/);
+
+    // Trigger redirect via Build My Site button
+    await expect(brainstormPage.buildMySiteButton).toBeVisible({ timeout: 10000 });
+    await brainstormPage.clickBuildMySite();
+
+    // Wait for AI to process and trigger redirect
+    await brainstormPage.waitForResponse(60000);
+
+    // Wait for redirect to website page
+    await brainstormPage.waitForWebsiteRedirect(threadId!);
+
+    // The workflow stepper should still be visible on the website page
+    await expect(progressStepper).toBeVisible({ timeout: 5000 });
+
+    // Verify "Landing Page" step is now active (has font-semibold class)
+    const landingPageStep = progressStepper.getByText("Landing Page");
+    await expect(landingPageStep).toHaveClass(/font-semibold/);
+
+    // Verify "Brainstorm" is no longer the active step
+    await expect(brainstormStep).not.toHaveClass(/font-semibold/);
+  });
+});

@@ -1,5 +1,6 @@
 import { createStore } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
+import { router } from "@inertiajs/react";
 import { Workflow } from "@shared";
 import {
   getPageIndex,
@@ -268,27 +269,52 @@ export const createWorkflowStore = (
       },
 
       continue: () => {
-        const { page, substep, projectUUID } = get();
+        let { page, substep, projectUUID } = get();
+
+        // If projectUUID is missing, try to sync from URL (handles pushState navigation)
+        if (!projectUUID) {
+          const parsed = parseUrlToPosition();
+          if (parsed.projectUUID) {
+            projectUUID = parsed.projectUUID;
+            set({ projectUUID });
+          }
+          if (parsed.page) {
+            page = parsed.page;
+          }
+        }
+
         const current: WorkflowPosition = { page, substep };
         const next = continueWorkflow(current);
 
         // Don't do anything if we're at the end
         if (next.page === page && next.substep === substep) return;
 
-        const hasVisitedReview = next.substep === "review" ? true : get().hasVisitedReview;
-        const derivedNav = deriveNavigationState(next.page, next.substep);
-
-        set({
-          page: next.page,
-          substep: next.substep,
-          pageNumber: getPageIndex(next.page),
-          ...deriveSubstepState(next.substep),
-          ...derivedNav,
-          hasVisitedReview,
-        });
-
         const url = getWorkflowUrl(next.page, next.substep, projectUUID);
-        pushUrl(url);
+        if (!url) return;
+
+        // Crossing page boundaries requires Inertia navigation (full component swap)
+        // Substep navigation within same page uses pushState (no server round-trip)
+        const crossingPageBoundary = next.page !== page;
+
+        if (crossingPageBoundary) {
+          // Let Inertia handle the navigation - store will sync from new props
+          router.visit(url);
+        } else {
+          // Same page, just update substep with pushState
+          const hasVisitedReview = next.substep === "review" ? true : get().hasVisitedReview;
+          const derivedNav = deriveNavigationState(next.page, next.substep);
+
+          set({
+            page: next.page,
+            substep: next.substep,
+            pageNumber: getPageIndex(next.page),
+            ...deriveSubstepState(next.substep),
+            ...derivedNav,
+            hasVisitedReview,
+          });
+
+          pushUrl(url);
+        }
       },
 
       back: () => {
@@ -299,18 +325,28 @@ export const createWorkflowStore = (
         // Don't do anything if we're at the beginning
         if (prev.page === page && prev.substep === substep) return;
 
-        const derivedNav = deriveNavigationState(prev.page, prev.substep);
-
-        set({
-          page: prev.page,
-          substep: prev.substep,
-          pageNumber: getPageIndex(prev.page),
-          ...deriveSubstepState(prev.substep),
-          ...derivedNav,
-        });
-
         const url = getWorkflowUrl(prev.page, prev.substep, projectUUID);
-        pushUrl(url);
+        if (!url) return;
+
+        // Crossing page boundaries requires Inertia navigation (full component swap)
+        // Substep navigation within same page uses pushState (no server round-trip)
+        const crossingPageBoundary = prev.page !== page;
+
+        if (crossingPageBoundary) {
+          router.visit(url);
+        } else {
+          const derivedNav = deriveNavigationState(prev.page, prev.substep);
+
+          set({
+            page: prev.page,
+            substep: prev.substep,
+            pageNumber: getPageIndex(prev.page),
+            ...deriveSubstepState(prev.substep),
+            ...derivedNav,
+          });
+
+          pushUrl(url);
+        }
       },
 
       returnToReview: () => {

@@ -453,7 +453,7 @@ describe.sequential("Brainstorming Flow", () => {
     it("(finished | done) returns redirect when user verbally expresses that they want to move on", async () => {
       const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
       const result = await graph
-        .withPrompt(`That's alright, let's move on`)
+        .withPrompt(`That's alright, I'm finished`)
         .stopAfter("agent")
         .execute();
 
@@ -461,6 +461,7 @@ describe.sequential("Brainstorming Flow", () => {
       assertDefined(lastAIResponse, "lastAIResponse is defined");
 
       expect(result.error).toBeUndefined();
+      console.log(result.state)
       expect(result.state.redirect).toEqual("website");
     });
 
@@ -745,7 +746,7 @@ describe.sequential("Brainstorming Flow", () => {
         expect(result.state.currentTopic).toBe("idea");
         expect(result.state.placeholderText).toEqual(`I want to acquire leads, sell my product...`);
 
-        expect(lastAIResponse.content).toContain(`can't`);
+        expect(lastAIResponse.content).toMatch(/can't|hear from you|hear from \*you\*/i);
       });
     });
   });

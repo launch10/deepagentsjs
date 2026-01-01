@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { router } from "@inertiajs/react";
 import { Brainstorm } from "@shared";
 import { useBrainstormChat } from "@hooks/useBrainstormChat";
+import { useWorkflowSteps } from "@context/WorkflowStepsProvider";
 import {
   useBrandPersonalizationStore,
   selectHasAnyPersonalizations,
@@ -155,12 +155,21 @@ export function BrainstormConversationPage() {
     };
   }, [isLoading]);
 
+  // Get workflow store actions
+  const workflowContinue = useWorkflowSteps((s) => s.continue);
+  const workflowSetPage = useWorkflowSteps((s) => s.setPage);
+
   // Handle redirect when brainstorm is complete
+  // Backend returns redirect: "website" (a WorkflowPage) to authorize navigation
   useEffect(() => {
-    if (redirect === "website_builder" && threadId) {
-      router.visit(`/projects/${threadId}/website`);
+    if (redirect === "website" && threadId && workflowSetPage && workflowContinue) {
+      // Sync projectUUID from chat state to workflow store (needed for new projects
+      // where Inertia props don't have it yet due to pushState navigation)
+      workflowSetPage("brainstorm", threadId, false);
+      // Then navigate to next step
+      workflowContinue();
     }
-  }, [redirect, threadId]);
+  }, [redirect, threadId, workflowSetPage, workflowContinue]);
 
   // Show skeleton with fade (only if delay has passed)
   if (isLoading && showSkeleton) {
