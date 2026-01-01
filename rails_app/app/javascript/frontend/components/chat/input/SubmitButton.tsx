@@ -2,7 +2,10 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
 import { useChatContext } from "../ChatContext";
 
-export interface SubmitButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type" | "onClick"> {
+export interface SubmitButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "type" | "onClick"
+> {
   /**
    * Custom stop handler. If not provided, uses stop from context.
    * Only called when streaming and stopIcon is provided.

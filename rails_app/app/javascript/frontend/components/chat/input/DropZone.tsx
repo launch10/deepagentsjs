@@ -49,11 +49,7 @@ export function DropZone({ children, onDrop, disabled, className }: DropZoneProp
   };
 
   return (
-    <BaseDropZone
-      onDrop={handleDrop}
-      disabled={disabled ?? isStreaming}
-      className={className}
-    >
+    <BaseDropZone onDrop={handleDrop} disabled={disabled ?? isStreaming} className={className}>
       {children}
     </BaseDropZone>
   );

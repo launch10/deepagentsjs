@@ -3,6 +3,4 @@ node_modules/
 *.log
 .env
 .env.local
-.env.backup
-.claude/me
 keys/

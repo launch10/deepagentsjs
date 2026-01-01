@@ -2,7 +2,10 @@ import { forwardRef, type TextareaHTMLAttributes } from "react";
 import { twMerge } from "tailwind-merge";
 import { useChatContext } from "../ChatContext";
 
-export interface TextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange"> {
+export interface TextareaProps extends Omit<
+  TextareaHTMLAttributes<HTMLTextAreaElement>,
+  "value" | "onChange"
+> {
   /**
    * Optional override for the value.
    * If not provided, uses composer.text from context.
