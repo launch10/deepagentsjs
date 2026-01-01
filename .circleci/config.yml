@@ -178,7 +178,7 @@ jobs:
           command: |
             sleep 5
             cat ~/rails_server.log
-            npx wait-on http://localhost:${RAILS_PORT:-3000} -t 30000 --verbose
+            dockerize -wait http://localhost:${RAILS_PORT:-3000} -timeout 60s
           environment:
             <<: *rails-env
       - run:
@@ -437,11 +437,11 @@ jobs:
           name: Wait for all services
           command: |
             echo "Waiting for Rails on :3001..."
-            npx wait-on http://localhost:3001/up -t 60000 --verbose
+            dockerize -wait http://localhost:3001/up -timeout 60s
             echo "Rails is ready!"
 
             echo "Waiting for Langgraph on :4001..."
-            npx wait-on http://localhost:4001/health -t 60000 --verbose
+            dockerize -wait http://localhost:4001/health -timeout 60s
             echo "Langgraph is ready!"
 
             echo "All services are healthy!"
