@@ -1,32 +1,6 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
+# Run services in test mode for e2e/playwright tests
+# This is a thin wrapper around bin/services dev
 
-# Run the Rails app in test mode for e2e tests
-# Uses port 3001 to avoid conflicts with development server
-
-export PORT="${PORT:-3001}"
-export RAILS_ENV=test
-export OVERMIND_SOCKET=./.overmind-test.sock
-
-# Langgraph test server on port 4001 to avoid conflicts with dev server
-export LANGGRAPH_API_URL="http://localhost:4001"
-export VITE_LANGGRAPH_API_URL="http://localhost:4001"
-
-if command -v overmind 1> /dev/null 2>&1
-then
-  overmind start -f Procfile.test -s "$OVERMIND_SOCKET" "$@"
-  exit $?
-fi
-
-if command -v hivemind 1> /dev/null 2>&1
-then
-  echo "Hivemind is installed. Running the application with Hivemind..."
-  exec hivemind Procfile.test "$@"
-  exit $?
-fi
-
-if gem list --no-installed --exact --silent foreman; then
-  echo "Installing foreman..."
-  gem install foreman
-fi
-
-foreman start -f Procfile.test "$@"
+export LAUNCH10_ENV=test
+exec "$(dirname "$0")/../../bin/services" dev "$@"

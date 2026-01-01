@@ -5,14 +5,22 @@ orbs:
   ruby: circleci/ruby@2.1.0
 
 # Shared environment configuration
+# Port configuration: CI uses standard ports (3000, 8080) since there's no dev/test conflict
 rails-env: &rails-env
+  RAILS_PORT: "3000"
+  LANGGRAPH_PORT: "8080"
   LANGGRAPH_API_URL: http://localhost:8080
+  VITE_LANGGRAPH_API_URL: http://localhost:8080
+  RAILS_API_URL: http://localhost:3000
   DATABASE_URL: postgres://postgres:postgres@localhost:5432/launch10_test
   REDIS_URL: redis://localhost:6379
   RAILS_ENV: test
   CI: true
 
 langgraph-env: &langgraph-env
+  RAILS_PORT: "3000"
+  LANGGRAPH_PORT: "8080"
+  RAILS_API_URL: http://localhost:3000
   DATABASE_URL: postgres://postgres:postgres@localhost:5432/launch10_test
   REDIS_URL: redis://localhost:6379
   NODE_ENV: test
@@ -145,7 +153,7 @@ jobs:
           name: Start Rails test server
           command: |
             cd ~/project/rails_app
-            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rails server -e test -p 3000 2>&1 | tee ~/rails_server.log
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rails server -e test -p ${RAILS_PORT:-3000} 2>&1 | tee ~/rails_server.log
           background: true
           environment:
             <<: *rails-env
@@ -154,7 +162,9 @@ jobs:
           command: |
             sleep 5
             cat ~/rails_server.log
-            npx wait-on http://localhost:3000 -t 30000 --verbose
+            npx wait-on http://localhost:${RAILS_PORT:-3000} -t 30000 --verbose
+          environment:
+            <<: *rails-env
       - run:
           name: Run tests
           command: pnpm run test
@@ -169,7 +179,6 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: launch10_test
-          LANGGRAPH_API_URL: http://localhost:8080
       - image: cimg/redis:7.2
     working_directory: ~/project/rails_app
     steps:

@@ -1,0 +1,276 @@
+#!/bin/bash
+# bin/services - Unified service manager for Launch10
+#
+# Usage:
+#   bin/services dev             # Foreground: rails + vite + langgraph (default)
+#   bin/services dev --full      # Foreground: all services including sidekiq, zhong, stripe
+#   bin/services start           # Background: Rails + Langgraph (daemon mode)
+#   bin/services stop            # Stop all services
+#   bin/services cleanup         # Kill all managed services
+#   bin/services status          # Check what's running
+#   bin/services env             # Show current environment config
+#
+# Environment:
+#   LAUNCH10_ENV=test|development  (default: development)
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../config/services.sh"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+log_info()  { echo -e "${GREEN}[services]${NC} $1"; }
+log_warn()  { echo -e "${YELLOW}[services]${NC} $1"; }
+log_error() { echo -e "${RED}[services]${NC} $1"; }
+log_step()  { echo -e "${BLUE}[services]${NC} $1"; }
+
+is_port_in_use() {
+  lsof -ti :$1 >/dev/null 2>&1
+}
+
+wait_for_url() {
+  local url=$1
+  local max_attempts=${2:-30}
+
+  for ((i=1; i<=max_attempts; i++)); do
+    if curl -sf "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+start_rails() {
+  if is_port_in_use $RAILS_PORT; then
+    log_info "Rails already running on :${RAILS_PORT}"
+    return 0
+  fi
+
+  log_step "Starting Rails server on :${RAILS_PORT} (env: $RAILS_ENV)..."
+
+  if [[ ! -d "$RAILS_APP_DIR" ]]; then
+    log_error "Rails app not found at: $RAILS_APP_DIR"
+    return 1
+  fi
+
+  # Start Rails in daemon mode
+  cd "$RAILS_APP_DIR"
+  RAILS_ENV=$RAILS_ENV bundle exec rails server -p $RAILS_PORT -d --pid tmp/pids/server-${RAILS_PORT}.pid
+
+  # Wait for it to be ready
+  log_info "Waiting for Rails to be ready..."
+  if wait_for_url "http://localhost:${RAILS_PORT}/up" 30; then
+    log_info "Rails ready at http://localhost:${RAILS_PORT}"
+    return 0
+  else
+    log_error "Rails failed to start within 30 seconds"
+    return 1
+  fi
+}
+
+stop_rails() {
+  local pidfile="$RAILS_APP_DIR/tmp/pids/server-${RAILS_PORT}.pid"
+
+  if [[ -f "$pidfile" ]]; then
+    local pid=$(cat "$pidfile")
+    if kill -0 "$pid" 2>/dev/null; then
+      log_info "Stopping Rails (PID: $pid)..."
+      kill "$pid"
+      rm -f "$pidfile"
+      return 0
+    fi
+  fi
+
+  # Fallback: kill by port
+  if is_port_in_use $RAILS_PORT; then
+    log_info "Stopping process on :${RAILS_PORT}..."
+    lsof -ti :$RAILS_PORT | xargs kill -9 2>/dev/null || true
+  else
+    log_info "Rails not running on :${RAILS_PORT}"
+  fi
+}
+
+start_langgraph() {
+  if is_port_in_use $LANGGRAPH_PORT; then
+    log_info "Langgraph already running on :${LANGGRAPH_PORT}"
+    return 0
+  fi
+
+  log_step "Starting Langgraph server on :${LANGGRAPH_PORT} (env: $NODE_ENV)..."
+
+  if [[ ! -d "$LANGGRAPH_APP_DIR" ]]; then
+    log_error "Langgraph app not found at: $LANGGRAPH_APP_DIR"
+    return 1
+  fi
+
+  # Start Langgraph in background
+  cd "$LANGGRAPH_APP_DIR"
+  NODE_ENV=$NODE_ENV PORT=$LANGGRAPH_PORT RAILS_API_URL=$RAILS_API_URL \
+    nohup pnpm run dev > /tmp/langgraph-${LANGGRAPH_PORT}.log 2>&1 &
+
+  # Wait for it to be ready
+  log_info "Waiting for Langgraph to be ready..."
+  if wait_for_url "http://localhost:${LANGGRAPH_PORT}/health" 30; then
+    log_info "Langgraph ready at http://localhost:${LANGGRAPH_PORT}"
+    return 0
+  else
+    log_error "Langgraph failed to start within 30 seconds"
+    log_error "Check /tmp/langgraph-${LANGGRAPH_PORT}.log for details"
+    return 1
+  fi
+}
+
+stop_langgraph() {
+  if is_port_in_use $LANGGRAPH_PORT; then
+    log_info "Stopping Langgraph on :${LANGGRAPH_PORT}..."
+    lsof -ti :$LANGGRAPH_PORT | xargs kill -9 2>/dev/null || true
+  else
+    log_info "Langgraph not running on :${LANGGRAPH_PORT}"
+  fi
+}
+
+start_all() {
+  log_step "Starting all services (${LAUNCH10_ENV:-development})..."
+  start_rails
+  start_langgraph
+  log_info "All services started"
+}
+
+stop_all() {
+  log_step "Stopping all services..."
+  stop_rails
+  stop_langgraph
+  log_info "All services stopped"
+}
+
+cleanup() {
+  log_step "Cleaning up ports: $MANAGED_PORTS"
+  for port in $MANAGED_PORTS; do
+    if is_port_in_use $port; then
+      log_info "Killing process on :${port}..."
+      lsof -ti :$port | xargs kill -9 2>/dev/null || true
+    fi
+  done
+
+  # Also clean up any pid files
+  rm -f "$RAILS_APP_DIR/tmp/pids/server-"*.pid 2>/dev/null || true
+  rm -f "$OVERMIND_SOCKET" 2>/dev/null || true
+  log_info "Cleanup complete"
+}
+
+status() {
+  echo "=== Service Status (${LAUNCH10_ENV:-development}) ==="
+  echo ""
+
+  # Rails
+  if is_port_in_use $RAILS_PORT; then
+    local proc=$(lsof -ti :$RAILS_PORT | head -1 | xargs ps -p 2>/dev/null | tail -1 | awk '{print $4}')
+    echo -e "  Rails     :${RAILS_PORT} - ${GREEN}running${NC} ($proc)"
+  else
+    echo -e "  Rails     :${RAILS_PORT} - ${RED}stopped${NC}"
+  fi
+
+  # Langgraph
+  if is_port_in_use $LANGGRAPH_PORT; then
+    local proc=$(lsof -ti :$LANGGRAPH_PORT | head -1 | xargs ps -p 2>/dev/null | tail -1 | awk '{print $4}')
+    echo -e "  Langgraph :${LANGGRAPH_PORT} - ${GREEN}running${NC} ($proc)"
+  else
+    echo -e "  Langgraph :${LANGGRAPH_PORT} - ${RED}stopped${NC}"
+  fi
+  echo ""
+}
+
+show_env() {
+  echo "=== Launch10 Environment Config ==="
+  echo ""
+  echo "Environment:       ${LAUNCH10_ENV:-development}"
+  echo ""
+  echo "=== Ports ==="
+  echo "RAILS_PORT:        $RAILS_PORT"
+  echo "LANGGRAPH_PORT:    $LANGGRAPH_PORT"
+  echo ""
+  echo "=== Environment Variables ==="
+  echo "RAILS_ENV:         $RAILS_ENV"
+  echo "NODE_ENV:          $NODE_ENV"
+  echo ""
+  echo "=== Derived URLs ==="
+  echo "RAILS_API_URL:     $RAILS_API_URL"
+  echo "LANGGRAPH_API_URL: $LANGGRAPH_API_URL"
+  echo ""
+  echo "=== Paths ==="
+  echo "LAUNCH10_ROOT:     $LAUNCH10_ROOT"
+  echo "RAILS_APP_DIR:     $RAILS_APP_DIR"
+  echo "LANGGRAPH_APP_DIR: $LANGGRAPH_APP_DIR"
+}
+
+# Run services in foreground with overmind
+dev_mode() {
+  local profile="default"
+
+  # Parse arguments
+  for arg in "$@"; do
+    case $arg in
+      --full) profile="full" ;;
+    esac
+  done
+
+  # Select Procfile based on profile
+  local procfile
+  case "$profile" in
+    full) procfile="Procfile.full" ;;
+    *)    procfile="Procfile.dev" ;;
+  esac
+
+  log_step "Starting services (${LAUNCH10_ENV:-development}, profile: $profile)..."
+  log_info "Using $procfile"
+
+  cd "$RAILS_APP_DIR"
+
+  if ! command -v overmind &> /dev/null; then
+    log_error "overmind not found. Install with: brew install overmind"
+    exit 1
+  fi
+
+  exec overmind start -f "$procfile" -s "$OVERMIND_SOCKET"
+}
+
+case "${1:-help}" in
+  dev)              shift; dev_mode "$@" ;;
+  start)            start_all ;;
+  stop)             stop_all ;;
+  start-rails)      start_rails ;;
+  stop-rails)       stop_rails ;;
+  start-langgraph)  start_langgraph ;;
+  stop-langgraph)   stop_langgraph ;;
+  cleanup)          cleanup ;;
+  status)           status ;;
+  env)              show_env ;;
+  help|*)
+    echo "Usage: $0 <command>"
+    echo ""
+    echo "Commands:"
+    echo "  dev              Run in foreground (rails + vite + langgraph)"
+    echo "  dev --full       Run all services (+ sidekiq, zhong, stripe)"
+    echo "  start            Start in background (Rails + Langgraph daemon)"
+    echo "  stop             Stop all services"
+    echo "  cleanup          Kill all managed services (force)"
+    echo "  status           Check what's running"
+    echo "  env              Show current environment config"
+    echo ""
+    echo "Environment:"
+    echo "  LAUNCH10_ENV=test|development  (default: development)"
+    echo ""
+    echo "Examples:"
+    echo "  $0 dev                      # Dev mode (foreground)"
+    echo "  LAUNCH10_ENV=test $0 dev    # Test mode for e2e/playwright"
+    echo "  $0 dev --full               # All services including workers"
+    echo "  $0 status                   # Check status"
+    ;;
+esac

@@ -150,7 +150,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run test:e2e:cleanup && playwright test",
-    "test:e2e:cleanup": "(lsof -ti :3001 | xargs kill -9; lsof -ti :3037 | xargs kill -9; rm -f .overmind-test.sock) 2>/dev/null; exit 0",
+    "test:e2e:cleanup": "LAUNCH10_ENV=test ../bin/services cleanup",
     "test:e2e:ui": "npm run test:e2e:cleanup && playwright test --ui",
     "test:e2e:headed": "npm run test:e2e:cleanup && playwright test --headed",
     "test:e2e:debug": "npm run test:e2e:cleanup && playwright test --debug",

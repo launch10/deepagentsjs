@@ -1,0 +1,82 @@
+#!/bin/bash
+# bin/test - Run tests with automatic Rails server management
+#
+# Usage:
+#   bin/test                    # Run tests once
+#   bin/test --watch            # Watch mode
+#   bin/test --no-rails         # Skip Rails server management
+#   bin/test tests/foo.test.ts  # Run specific test file
+#
+# Debugging:
+#   NODE_OPTIONS="--inspect-brk" bin/test
+#
+# Environment:
+#   LAUNCH10_ENV=test is set automatically
+#   RAILS_API_URL, etc. are configured via config/services.sh
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+export LAUNCH10_ENV=test
+source "$ROOT_DIR/config/services.sh"
+
+# Parse arguments
+WATCH=false
+MANAGE_RAILS=true
+VITEST_ARGS=()
+
+for arg in "$@"; do
+  case $arg in
+    --watch|-w)
+      WATCH=true
+      ;;
+    --no-rails)
+      MANAGE_RAILS=false
+      ;;
+    --help|-h)
+      echo "Usage: $0 [options] [vitest args...]"
+      echo ""
+      echo "Options:"
+      echo "  --watch, -w     Run in watch mode"
+      echo "  --no-rails      Don't manage Rails server (use if running manually)"
+      echo "  --help, -h      Show this help"
+      echo ""
+      echo "Examples:"
+      echo "  $0                           # Run all tests once"
+      echo "  $0 --watch                   # Watch mode"
+      echo "  $0 tests/foo.test.ts         # Run specific file"
+      echo "  $0 --no-rails --watch        # Watch mode, manage Rails yourself"
+      echo ""
+      echo "Debugging:"
+      echo "  NODE_OPTIONS=\"--inspect-brk\" $0"
+      exit 0
+      ;;
+    *)
+      VITEST_ARGS+=("$arg")
+      ;;
+  esac
+done
+
+# Start Rails if needed
+if $MANAGE_RAILS; then
+  "$ROOT_DIR/bin/services" start-rails
+fi
+
+# Trap to optionally stop Rails on exit (only if we started it and not in watch mode)
+cleanup_on_exit() {
+  if $MANAGE_RAILS && ! $WATCH; then
+    # Don't stop Rails in watch mode - user might want to keep it running
+    # Only stop if we're doing a single test run
+    :  # No-op for now - let Rails keep running
+  fi
+}
+trap cleanup_on_exit EXIT
+
+# Run vitest
+cd "$SCRIPT_DIR/.."
+if $WATCH; then
+  exec pnpm vitest "${VITEST_ARGS[@]}"
+else
+  exec pnpm vitest run "${VITEST_ARGS[@]}"
+fi

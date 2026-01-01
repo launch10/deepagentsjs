@@ -3,7 +3,15 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * Playwright configuration for Launch10 E2E tests.
  * See https://playwright.dev/docs/test-configuration
+ *
+ * Port configuration comes from config/services.sh via RAILS_PORT env var.
+ * Test environment uses port 3001 by default.
  */
+
+// Test environment defaults to port 3001 (set via config/services.sh with LAUNCH10_ENV=test)
+const testPort = process.env.RAILS_PORT || "3001";
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${testPort}`;
+
 export default defineConfig({
   testDir: "./e2e",
   /* Single worker to prevent database race conditions */
@@ -18,7 +26,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3001",
+    baseURL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "on-first-retry",
@@ -49,7 +57,7 @@ export default defineConfig({
     ? undefined
     : {
         command: "bin/dev-test",
-        url: "http://localhost:3001",
+        url: baseURL,
         reuseExistingServer: true, // Reuse existing server if running
         timeout: 120 * 1000,
       },

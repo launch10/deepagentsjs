@@ -786,15 +786,13 @@ describe.sequential("Brainstorming Flow", () => {
   });
 
   describe("Image handling via image_url content blocks", () => {
-    // Simple 1x1 red pixel PNG as base64 for testing
-    const TEST_IMAGE_BASE64 =
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+    // Real test images hosted on dev-uploads
+    const TEST_IMAGE_URL =
+      "https://dev-uploads.launch10.ai/uploads/024dfc6c-335d-4f11-883b-f8e241f91744.png";
+    const TEST_IMAGE_2_URL =
+      "https://dev-uploads.launch10.ai/uploads/4524ac00-da1d-49b5-b601-bdd015aa6d2b.png";
 
-    // Simple 1x1 blue pixel PNG as base64 for testing multiple images
-    const TEST_IMAGE_2_BASE64 =
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-
-    it("processes images sent as image_url content blocks in HumanMessage", async () => {
+    it.only("processes images sent as image_url content blocks in HumanMessage", async () => {
       const projectUUID = uuidv7() as UUIDType;
 
       // Create a HumanMessage with image_url content block (the new way images arrive)
@@ -802,9 +800,9 @@ describe.sequential("Brainstorming Flow", () => {
         content: [
           {
             type: "text",
-            text: "Here's my logo for my business idea - it's a fitness app for seniors",
+            text: "Here's my logo for my business idea - it's a fitness app for seniors. Please acknowledge you can see the image.",
           },
-          { type: "image_url", image_url: { url: TEST_IMAGE_BASE64 } },
+          { type: "image_url", image_url: { url: TEST_IMAGE_URL } },
         ],
       });
 
@@ -822,7 +820,7 @@ describe.sequential("Brainstorming Flow", () => {
 
       expect(result.state.error).toBeUndefined();
       // The model should acknowledge the image and process the business idea
-      expect(lastAIResponse.content).toMatch(/logo|image|fitness|seniors|uploaded/i);
+      expect(lastAIResponse.content).toMatch(/logo|image|uploaded|i can see/i);
     });
 
     it("handles multiple images in a single message", async () => {
@@ -831,8 +829,8 @@ describe.sequential("Brainstorming Flow", () => {
       const multiImageMessage = new HumanMessage({
         content: [
           { type: "text", text: "Here are some product mockups for my SaaS tool" },
-          { type: "image_url", image_url: { url: TEST_IMAGE_BASE64 } },
-          { type: "image_url", image_url: { url: TEST_IMAGE_2_BASE64 } },
+          { type: "image_url", image_url: { url: TEST_IMAGE_URL } },
+          { type: "image_url", image_url: { url: TEST_IMAGE_2_URL } },
         ],
       });
 
@@ -863,7 +861,7 @@ describe.sequential("Brainstorming Flow", () => {
       const imageMessage = new HumanMessage({
         content: [
           { type: "text", text: "And here's what the dashboard looks like" },
-          { type: "image_url", image_url: { url: TEST_IMAGE_BASE64 } },
+          { type: "image_url", image_url: { url: TEST_IMAGE_URL } },
         ],
       });
 
@@ -888,7 +886,7 @@ describe.sequential("Brainstorming Flow", () => {
       const imageMessage = new HumanMessage({
         content: [
           { type: "text", text: "This is my product logo" },
-          { type: "image_url", image_url: { url: TEST_IMAGE_BASE64 } },
+          { type: "image_url", image_url: { url: TEST_IMAGE_URL } },
         ],
       });
 

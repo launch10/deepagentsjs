@@ -1,5 +1,8 @@
-# Core services for development and testing
+# Full stack with all services
 # Ports configured via config/services.sh (RAILS_PORT, LANGGRAPH_PORT)
 web: bundle exec rails server -p ${RAILS_PORT:-3000}
 vite: bin/vite dev
 langgraph: cd ../langgraph_app && PORT=${LANGGRAPH_PORT:-4000} RAILS_API_URL=${RAILS_API_URL:-http://localhost:3000} pnpm run dev
+worker: bundle exec sidekiq
+zhong: zhong schedule.rb
+stripe: bin/stripe-listen
