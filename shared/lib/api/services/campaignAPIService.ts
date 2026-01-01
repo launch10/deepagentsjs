@@ -1,4 +1,4 @@
-import { RailsAPIBase, type paths } from "@rails_api_base";
+import { RailsAPIBase, type paths } from "../index";
 import type { Simplify } from "type-fest";
 
 // ============================================================================
@@ -73,6 +73,28 @@ export type CampaignUpdateRequest = {
 export type CreateCampaignParams = NonNullable<CreateCampaignRequest["campaign"]>;
 
 // ============================================================================
+// Helper Types (simpler interfaces for service usage)
+// ============================================================================
+
+/** Simple params for creating a campaign (camelCase, service wraps for API) */
+export interface SimpleCreateCampaignParams {
+  name: string;
+  projectId: number;
+  threadId: string;
+}
+
+export interface Campaign {
+  id: number;
+  name: string;
+  project_id: number;
+  website_id: number;
+  account_id: number;
+  thread_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -109,18 +131,34 @@ export function parseCampaignErrorMessage(error: unknown): string {
 // Campaign Service Class
 // ============================================================================
 
-export class CampaignService extends RailsAPIBase {
+export class CampaignAPIService extends RailsAPIBase {
   constructor(options: Simplify<ConstructorParameters<typeof RailsAPIBase>[0]>) {
     super(options);
   }
 
   /**
    * Creates a new campaign
+   * Accepts either the simple camelCase params or the full API request format
    */
-  async create(options: CreateCampaignRequest): Promise<CreateCampaignResponse> {
+  async create(
+    options: SimpleCreateCampaignParams | CreateCampaignRequest
+  ): Promise<CreateCampaignResponse> {
     const client = await this.getClient();
+
+    // Convert simple params to API format if needed
+    const body: CreateCampaignRequest =
+      "campaign" in options
+        ? options
+        : {
+            campaign: {
+              name: options.name,
+              project_id: options.projectId,
+              thread_id: options.threadId,
+            },
+          };
+
     const response = await client.POST("/api/v1/campaigns", {
-      body: options,
+      body,
     });
 
     if (response.error) {
@@ -208,3 +246,6 @@ export class CampaignService extends RailsAPIBase {
     return response.data satisfies BackCampaignResponse;
   }
 }
+
+// Re-export with old name for backwards compatibility during migration
+export { CampaignAPIService as CampaignService };

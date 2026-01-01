@@ -1,9 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CommandButtons } from "~/components/chat/CommandButtons";
 
-const meta = {
+const meta: Meta = {
   title: "Chat/CommandButtons",
-  component: CommandButtons.Root,
   tags: ["autodocs"],
   parameters: {
     layout: "centered",
@@ -15,10 +14,10 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof CommandButtons.Root>;
+};
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj;
 
 // Single primary action
 export const SinglePrimary: Story = {

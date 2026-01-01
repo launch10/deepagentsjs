@@ -135,7 +135,9 @@ class PollyManager {
   private static configureRails() {
     const { server } = PollyManager.polly!;
 
+    // Passthrough for both dev (3000) and test (3001) Rails servers
     server.any("http://localhost:3000/*").passthrough();
+    server.any("http://localhost:3001/*").passthrough();
   }
 
   private static configureLlms() {

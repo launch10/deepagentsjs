@@ -7,7 +7,10 @@ import {
 } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
-import { WebsiteService, type GetWebsiteResponse, type UpdateWebsiteResponse } from "./websites";
+import { WebsiteAPIService, type GetWebsiteResponse, type UpdateWebsiteResponse } from "@rails_api_base";
+
+// Re-export for backwards compatibility
+export { WebsiteAPIService as WebsiteService } from "@rails_api_base";
 
 // ============================================================================
 // Query Keys
@@ -29,7 +32,7 @@ export const websiteKeys = {
  */
 export function useWebsiteService() {
   const { jwt } = usePage<{ jwt: string }>().props;
-  return useMemo(() => new WebsiteService({ jwt }), [jwt]);
+  return useMemo(() => new WebsiteAPIService({ jwt }), [jwt]);
 }
 
 /**

@@ -1,7 +1,9 @@
-import { RailsAPIBase, type paths } from "@rails_api_base";
+import { RailsAPIBase, type paths } from "../index";
 import type { Simplify } from "type-fest";
 
-export type GetThemesRequest = NonNullable<paths["/api/v1/themes"]["get"]["parameters"]["path"]>;
+export type GetThemesRequest = NonNullable<
+  paths["/api/v1/themes"]["get"]["parameters"]["path"]
+>;
 export type GetThemesResponse = NonNullable<
   paths["/api/v1/themes"]["get"]["responses"][200]["content"]["application/json"]
 >;
@@ -12,7 +14,10 @@ export type CreateThemeResponse = NonNullable<
   paths["/api/v1/themes"]["post"]["responses"][200]["content"]["application/json"]
 >;
 
-export class ThemeService extends RailsAPIBase {
+/**
+ * Service for interacting with the Rails Themes API
+ */
+export class ThemeAPIService extends RailsAPIBase {
   constructor(options: Simplify<ConstructorParameters<typeof RailsAPIBase>[0]>) {
     super(options);
   }
@@ -26,7 +31,7 @@ export class ThemeService extends RailsAPIBase {
     }
 
     if (!response.data) {
-      throw new Error(`Failed to get themes: ${JSON.stringify(response.error)}`);
+      throw new Error("Failed to get themes: No data returned");
     }
 
     return response.data satisfies GetThemesResponse;
@@ -41,9 +46,12 @@ export class ThemeService extends RailsAPIBase {
     }
 
     if (!response.data) {
-      throw new Error(`Failed to create theme: ${JSON.stringify(response.error)}`);
+      throw new Error("Failed to create theme: No data returned");
     }
 
     return response.data satisfies CreateThemeResponse;
   }
 }
+
+// Re-export with old name for backwards compatibility during migration
+export { ThemeAPIService as ThemeService };

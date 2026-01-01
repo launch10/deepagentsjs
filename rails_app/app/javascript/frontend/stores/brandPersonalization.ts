@@ -1,8 +1,13 @@
 import { create } from "zustand";
 import { useStore } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import { UploadService, type CreateUploadResponse } from "@api/uploads";
-import { ThemeService, type GetThemesResponse, type CreateThemeResponse } from "@api/themes";
+import {
+  UploadsAPIService,
+  ThemeAPIService,
+  type CreateUploadResponse,
+  type GetThemesResponse,
+  type CreateThemeResponse,
+} from "@rails_api_base";
 
 export interface BrandLogo {
   uploadId: number;
@@ -162,11 +167,11 @@ export async function uploadLogo(
   jwt: string,
   websiteId?: number
 ): Promise<BrandLogo> {
-  const uploadService = new UploadService({ jwt });
+  const uploadService = new UploadsAPIService({ jwt });
   const response: CreateUploadResponse = await uploadService.create({
-    "upload[file]": file,
-    "upload[is_logo]": true,
-    "upload[website_id]": websiteId,
+    file,
+    isLogo: true,
+    websiteId,
   });
 
   return {
@@ -185,11 +190,11 @@ export async function uploadProjectImage(
   jwt: string,
   websiteId?: number
 ): Promise<ProjectImage> {
-  const uploadService = new UploadService({ jwt });
+  const uploadService = new UploadsAPIService({ jwt });
   const response: CreateUploadResponse = await uploadService.create({
-    "upload[file]": file,
-    "upload[is_logo]": false,
-    "upload[website_id]": websiteId,
+    file,
+    isLogo: false,
+    websiteId,
   });
 
   return {
@@ -203,7 +208,7 @@ export async function uploadProjectImage(
  * Delete a logo by upload ID.
  */
 export async function deleteLogo(uploadId: number, jwt: string): Promise<void> {
-  const uploadService = new UploadService({ jwt });
+  const uploadService = new UploadsAPIService({ jwt });
   await uploadService.delete(uploadId);
 }
 
@@ -211,7 +216,7 @@ export async function deleteLogo(uploadId: number, jwt: string): Promise<void> {
  * Delete a project image by upload ID.
  */
 export async function deleteProjectImage(uploadId: number, jwt: string): Promise<void> {
-  const uploadService = new UploadService({ jwt });
+  const uploadService = new UploadsAPIService({ jwt });
   await uploadService.delete(uploadId);
 }
 
@@ -219,7 +224,7 @@ export async function deleteProjectImage(uploadId: number, jwt: string): Promise
  * Fetch all themes.
  */
 export async function fetchThemes(jwt: string): Promise<GetThemesResponse> {
-  const themeService = new ThemeService({ jwt });
+  const themeService = new ThemeAPIService({ jwt });
   return themeService.get();
 }
 
@@ -231,7 +236,7 @@ export async function createTheme(
   colors: string[],
   jwt: string
 ): Promise<CreateThemeResponse> {
-  const themeService = new ThemeService({ jwt });
+  const themeService = new ThemeAPIService({ jwt });
   return themeService.create({
     theme: {
       name,

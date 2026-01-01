@@ -1,8 +1,11 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
-import { UploadService, type GetUploadsResponse } from "./uploads";
+import { UploadsAPIService, type GetUploadsResponse } from "@rails_api_base";
 import { useWebsite } from "./websites.hooks";
+
+// Re-export for backwards compatibility
+export { UploadsAPIService as UploadService } from "@rails_api_base";
 
 // ============================================================================
 // Query Keys
@@ -21,7 +24,7 @@ export const uploadsKeys = {
 
 export function useUploadService() {
   const { jwt } = usePage<{ jwt: string }>().props;
-  return useMemo(() => new UploadService({ jwt }), [jwt]);
+  return useMemo(() => new UploadsAPIService({ jwt }), [jwt]);
 }
 
 function useWebsiteId(): number | null {

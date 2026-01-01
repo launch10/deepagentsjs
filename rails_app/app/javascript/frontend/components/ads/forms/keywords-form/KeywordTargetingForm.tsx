@@ -10,7 +10,7 @@ import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
-import type { UpdateCampaignRequestBody } from "@api/campaigns";
+import type { UpdateCampaignRequestBody } from "@rails_api_base";
 import AdCampaignFieldList from "../shared/AdCampaignFieldList";
 
 const keywordsFormSchema = z.object({

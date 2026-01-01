@@ -13,7 +13,7 @@ import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
-import type { UpdateCampaignRequestBody } from "@api/campaigns";
+import type { UpdateCampaignRequestBody } from "@rails_api_base";
 
 export default function CalloutsForm() {
   const callouts = useAdsChatState("callouts");

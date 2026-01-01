@@ -4,5 +4,7 @@ export * from "./client";
 export * from "./railsApiBase";
 export * from "./env";
 export * from "./snapshotter";
-export * from "./uploadsAPIService";
 export * from "./paths";
+
+// API Services
+export * from "./services";

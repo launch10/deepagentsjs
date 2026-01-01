@@ -5,9 +5,9 @@ import { Search, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { usePage } from "@inertiajs/react";
 import {
-  GeoTargetConstantsService,
+  GeoTargetConstantsAPIService,
   type SearchGeoTargetConstantsResponse,
-} from "@api/geoTargetConstants";
+} from "@rails_api_base";
 import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
 import type { SettingsFormData, LocationWithSettings } from "./settingsForm.schema";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/input-group";
@@ -46,7 +46,7 @@ export default function LocationTargeting() {
   });
 
   const { jwt } = usePage<CampaignProps>().props;
-  const service = useMemo(() => new GeoTargetConstantsService({ jwt }), [jwt]);
+  const service = useMemo(() => new GeoTargetConstantsAPIService({ jwt }), [jwt]);
 
   const { data: suggestions = [], isLoading } = useQuery({
     queryKey: ["geoTargetConstants", debouncedSearchValue],

@@ -88,6 +88,9 @@ test.describe("Brainstorm Flow", () => {
         { timeout: 10000 }
       );
 
+      // Wait for AI response (ensures project is created in Rails DB)
+      await brainstormPage.waitForResponse();
+
       // Get the thread ID from URL
       const threadId = brainstormPage.getThreadIdFromUrl();
       expect(threadId).not.toBeNull();
@@ -96,6 +99,8 @@ test.describe("Brainstorm Flow", () => {
       await page.reload();
       // Wait for chat input instead of networkidle (Vite HMR keeps websocket active)
       await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+      // Wait for message history to load
+      await brainstormPage.userMessages.first().waitFor({ state: "visible", timeout: 10000 });
 
       // Verify we're still on the same conversation
       const currentThreadId = brainstormPage.getThreadIdFromUrl();
@@ -1338,3 +1343,7 @@ test.describe("Brainstorm Loading States", () => {
     await expect(brainstormPage.skeleton.first()).not.toBeVisible();
   });
 });
+
+// > Okay let's begin dreaming up things for this - currently, we have a killer snapshot builder system which
+//   interacts with our tests in useful ways - we can load from existing snapshots to get known states of the
+//   world. One good example is the loads existing conversation from URL playwright test.

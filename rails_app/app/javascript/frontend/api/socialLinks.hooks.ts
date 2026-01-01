@@ -8,10 +8,13 @@ import {
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
 import {
-  SocialLinksService,
+  SocialLinksAPIService,
   type GetSocialLinksResponse,
   type BulkUpsertSocialLinksResponse,
-} from "./socialLinks";
+} from "@rails_api_base";
+
+// Re-export for backwards compatibility
+export { SocialLinksAPIService as SocialLinksService } from "@rails_api_base";
 
 // ============================================================================
 // Query Keys
@@ -33,7 +36,7 @@ export const socialLinksKeys = {
  */
 export function useSocialLinksService() {
   const { jwt } = usePage<{ jwt: string }>().props;
-  return useMemo(() => new SocialLinksService({ jwt }), [jwt]);
+  return useMemo(() => new SocialLinksAPIService({ jwt }), [jwt]);
 }
 
 /**

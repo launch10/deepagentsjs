@@ -1,4 +1,4 @@
-import { RailsAPIBase, type paths } from "@rails_api_base";
+import { RailsAPIBase, type paths } from "../index";
 import type { Simplify } from "type-fest";
 
 // ============================================================================
@@ -23,7 +23,10 @@ export type SocialLink = GetSocialLinksResponse[number];
 // Service Class
 // ============================================================================
 
-export class SocialLinksService extends RailsAPIBase {
+/**
+ * Service for interacting with the Rails Social Links API
+ */
+export class SocialLinksAPIService extends RailsAPIBase {
   constructor(options: Simplify<ConstructorParameters<typeof RailsAPIBase>[0]>) {
     super(options);
   }
@@ -83,3 +86,6 @@ export class SocialLinksService extends RailsAPIBase {
     }
   }
 }
+
+// Re-export with old name for backwards compatibility during migration
+export { SocialLinksAPIService as SocialLinksService };

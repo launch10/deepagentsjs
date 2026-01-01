@@ -1,12 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MessageList } from "~/components/chat/MessageList";
-import { UserMessage } from "@components/chat/UserMessage";
+import { UserMessage } from "~/components/chat/UserMessage";
 import { AIMessage } from "~/components/chat/AIMessage";
 import { ThinkingIndicator } from "~/components/chat/ThinkingIndicator";
 
-const meta = {
+const meta: Meta = {
   title: "Chat/MessageList",
-  component: MessageList.Root,
   tags: ["autodocs"],
   parameters: {
     layout: "centered",
@@ -18,10 +17,10 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof MessageList.Root>;
+};
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj;
 
 // Empty state
 export const Empty: Story = {

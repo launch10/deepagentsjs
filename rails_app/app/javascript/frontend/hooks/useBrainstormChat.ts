@@ -2,7 +2,7 @@ import { usePage } from "@inertiajs/react";
 import { useMemo, useCallback } from "react";
 import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
 import type { BrainstormBridgeType, BrainstormGraphState, InertiaProps } from "@shared";
-import { UploadService } from "@api/uploads";
+import { UploadsAPIService } from "@rails_api_base";
 import { validateFile } from "~/types/attachment";
 
 type NewBrainstormProps =
@@ -34,7 +34,7 @@ function useBrainstormChatOptions() {
     const url = langgraph_path
       ? new URL("api/brainstorm/stream", langgraph_path).toString()
       : "";
-    const uploadService = new UploadService({ jwt });
+    const uploadService = new UploadsAPIService({ jwt });
 
     return {
       api: url,
@@ -49,8 +49,8 @@ function useBrainstormChatOptions() {
       attachments: {
         upload: async (file: File) => {
           const response = await uploadService.create({
-            "upload[file]": file,
-            "upload[is_logo]": false,
+            file,
+            isLogo: false,
           });
           return { url: response.url };
         },

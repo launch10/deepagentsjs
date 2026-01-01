@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { UseFormReturn, FieldValues } from "react-hook-form";
 import { useCampaignService } from "@api/campaigns.hooks";
-import type { UpdateCampaignRequestBody } from "@api/campaigns";
+import type { UpdateCampaignRequestBody, UpdateCampaignResponse } from "@rails_api_base";
 import { mapApiErrorsToForm } from "@helpers/formErrorMapper";
 import { useAdsChatState } from "./useAdsChat";
 import { useLatestMutation } from "./useLatestMutation";
-import type { UpdateCampaignResponse } from "@api/campaigns";
 
 export type useAutosaveCampaignOptions<TFormData extends FieldValues> = {
   methods: UseFormReturn<TFormData>;

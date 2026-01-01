@@ -81,7 +81,7 @@ export function transformLocationsFromApi(
         canonical_name: loc.location_name || "",
         target_type: loc.location_type || "COUNTRY",
         country_code: loc.country_code || "",
-        isTargeted: loc.targeted,
+        isTargeted: loc.targeted ?? false,
       };
     });
 }
@@ -115,17 +115,18 @@ export function transformScheduleFromApi(
       selectedDays: ["Mon", "Tues", "Wed", "Thu", "Fri", "Sat", "Sun", "Always On"],
       startTime: "00:00",
       endTime: "23:59",
-      timezone: REVERSE_TIMEZONE_MAP[schedule.time_zone] || settingsFormDefaults.timezone,
+      timezone: (schedule.time_zone && REVERSE_TIMEZONE_MAP[schedule.time_zone]) || settingsFormDefaults.timezone,
     };
   }
 
-  const selectedDays = schedule.day_of_week.map((day) => REVERSE_DAY_NAME_MAP[day]).filter(Boolean);
+  const dayOfWeek = schedule.day_of_week ?? [];
+  const selectedDays = dayOfWeek.map((day) => REVERSE_DAY_NAME_MAP[day]).filter(Boolean);
 
   return {
     selectedDays: selectedDays.length > 0 ? selectedDays : settingsFormDefaults.selectedDays,
-    startTime: parseTimeToHHMM(schedule.start_time),
-    endTime: parseTimeToHHMM(schedule.end_time),
-    timezone: REVERSE_TIMEZONE_MAP[schedule.time_zone] || settingsFormDefaults.timezone,
+    startTime: parseTimeToHHMM(schedule.start_time ?? null),
+    endTime: parseTimeToHHMM(schedule.end_time ?? null),
+    timezone: (schedule.time_zone && REVERSE_TIMEZONE_MAP[schedule.time_zone]) || settingsFormDefaults.timezone,
   };
 }
 

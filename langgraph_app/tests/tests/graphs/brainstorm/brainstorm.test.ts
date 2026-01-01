@@ -14,8 +14,6 @@ import { assertDefined } from "@support";
 
 const brainstormGraph = uncompiledGraph.compile({ ...graphParams, name: "brainstorm" });
 
-// TODO:
-// Name project in the background when first message is submitted
 const validAnswers: Record<Brainstorm.TopicName, string> = {
   idea: `Friend of the Pod is a podcast matchmaking service.
             We help both sides: hosts get great content, guests get exposure,
@@ -787,154 +785,173 @@ describe.sequential("Brainstorming Flow", () => {
     });
   });
 
-  describe("File uploads", () => {
-    // These tests verify uploadIds flow through the brainstorm graph correctly.
-    // We use mock upload IDs since the actual file upload is tested in Rails specs.
-    // This avoids Polly serialization issues with FormData/Blob in Node.js.
+  describe("Image handling via image_url content blocks", () => {
+    // Simple 1x1 red pixel PNG as base64 for testing
+    const TEST_IMAGE_BASE64 =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
 
-    it("accepts uploadIds in state without errors", async () => {
+    // Simple 1x1 blue pixel PNG as base64 for testing multiple images
+    const TEST_IMAGE_2_BASE64 =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+    it("processes images sent as image_url content blocks in HumanMessage", async () => {
       const projectUUID = uuidv7() as UUIDType;
 
-      // Pass uploadIds with the message - the graph should accept this state
-      const result = await testGraph<BrainstormGraphState>()
-        .withGraph(brainstormGraph)
-        .withState({
-          projectUUID,
-          uploadIds: [1, 2, 3],
-        })
-        .withPrompt("Here are some brand assets I'd like to use for my landing page")
-        .stopAfter("agent")
-        .execute();
-
-      // No errors and uploadIds should be cleared after processing (single-message scope)
-      expect(result.error).toBeUndefined();
-      expect(result.state.uploadIds).toEqual([]);
-    });
-
-    it("accepts image upload IDs", async () => {
-      const projectUUID = uuidv7() as UUIDType;
-
-      // Use mock upload IDs (actual upload tested in Rails)
-      const uploadIds = [101]; // Mock image upload ID
+      // Create a HumanMessage with image_url content block (the new way images arrive)
+      const imageMessage = new HumanMessage({
+        content: [
+          {
+            type: "text",
+            text: "Here's my logo for my business idea - it's a fitness app for seniors",
+          },
+          { type: "image_url", image_url: { url: TEST_IMAGE_BASE64 } },
+        ],
+      });
 
       const result = await testGraph<BrainstormGraphState>()
         .withGraph(brainstormGraph)
         .withState({
           projectUUID,
-          uploadIds,
+          messages: [imageMessage],
         })
-        .withPrompt("Here is my brand logo")
         .stopAfter("agent")
         .execute();
 
-      expect(result.error).toBeUndefined();
-      expect(result.state.uploadIds).toEqual([]);
+      const lastAIResponse = lastAIMessage(result.state);
+      assertDefined(lastAIResponse, "AI response should be defined");
+
+      expect(result.state.error).toBeUndefined();
+      // The model should acknowledge the image and process the business idea
+      expect(lastAIResponse.content).toMatch(/logo|image|fitness|seniors|uploaded/i);
     });
 
-    it("accepts PDF upload IDs", async () => {
+    it("handles multiple images in a single message", async () => {
       const projectUUID = uuidv7() as UUIDType;
 
-      // Use mock upload IDs (actual upload tested in Rails)
-      const uploadIds = [102]; // Mock PDF upload ID
+      const multiImageMessage = new HumanMessage({
+        content: [
+          { type: "text", text: "Here are some product mockups for my SaaS tool" },
+          { type: "image_url", image_url: { url: TEST_IMAGE_BASE64 } },
+          { type: "image_url", image_url: { url: TEST_IMAGE_2_BASE64 } },
+        ],
+      });
 
       const result = await testGraph<BrainstormGraphState>()
         .withGraph(brainstormGraph)
         .withState({
           projectUUID,
-          uploadIds,
+          messages: [multiImageMessage],
         })
-        .withPrompt("Here is my business plan document")
         .stopAfter("agent")
         .execute();
 
-      expect(result.error).toBeUndefined();
-      expect(result.state.uploadIds).toEqual([]);
+      const lastAIResponse = lastAIMessage(result.state);
+      assertDefined(lastAIResponse, "AI response should be defined");
+
+      expect(result.state.error).toBeUndefined();
+      // Model should acknowledge seeing multiple images
+      expect(lastAIResponse.content).toMatch(/mockup|product|images|SaaS/i);
     });
 
-    it("accepts mixed upload IDs", async () => {
-      const projectUUID = uuidv7() as UUIDType;
+    it("continues conversation after image message", async () => {
+      const graph = await restartChatFrom("idea", SimpleChatHistory);
 
-      // Use mock upload IDs for mixed content
-      const uploadIds = [101, 102]; // Mock image + PDF upload IDs
+      // Send text first, then follow up with an image in context
+      const result1 = await graph.withPrompt(validAnswers.idea).stopAfter("agent").execute();
 
-      const result = await testGraph<BrainstormGraphState>()
-        .withGraph(brainstormGraph)
+      // Follow-up message with image showing the product
+      const imageMessage = new HumanMessage({
+        content: [
+          { type: "text", text: "And here's what the dashboard looks like" },
+          { type: "image_url", image_url: { url: TEST_IMAGE_BASE64 } },
+        ],
+      });
+
+      const result2 = await graph
         .withState({
-          projectUUID,
-          uploadIds,
+          ...result1.state,
+          messages: [...(result1.state.messages || []), imageMessage],
         })
-        .withPrompt("Here are my brand assets - a logo and business plan")
         .stopAfter("agent")
         .execute();
 
-      expect(result.error).toBeUndefined();
-      expect(result.state.uploadIds).toEqual([]);
+      const lastAIResponse = lastAIMessage(result2.state);
+      assertDefined(lastAIResponse, "AI response should be defined");
+
+      expect(result2.state.error).toBeUndefined();
+      expect(lastAIResponse.content).toBeDefined();
     });
 
-    it("clears uploadIds after processing the message", async () => {
+    it("preserves image_url blocks through conversation history", async () => {
       const projectUUID = uuidv7() as UUIDType;
 
-      // First message with uploads
+      const imageMessage = new HumanMessage({
+        content: [
+          { type: "text", text: "This is my product logo" },
+          { type: "image_url", image_url: { url: TEST_IMAGE_BASE64 } },
+        ],
+      });
+
       const result1 = await testGraph<BrainstormGraphState>()
         .withGraph(brainstormGraph)
         .withState({
           projectUUID,
-          uploadIds: [1, 2],
+          messages: [imageMessage],
         })
-        .withPrompt("Here are my brand images")
         .stopAfter("agent")
         .execute();
 
-      // uploadIds should be cleared after processing (single-message scope)
-      expect(result1.state.uploadIds).toEqual([]);
-
-      // Second message without uploads
+      // Continue the conversation
       const result2 = await testGraph<BrainstormGraphState>()
         .withGraph(brainstormGraph)
-        .withState({
-          ...result1.state,
-        })
-        .withPrompt("My business helps people with fitness")
+        .withState(result1.state)
+        .withPrompt("What do you think about the logo I shared?")
         .stopAfter("agent")
         .execute();
 
-      // No uploads in subsequent message
-      expect(result2.state.uploadIds).toEqual([]);
+      const lastAIResponse = lastAIMessage(result2.state);
+      assertDefined(lastAIResponse, "AI response should be defined");
+
+      expect(result2.state.error).toBeUndefined();
+      // Model should remember and reference the previously shared image
+      expect(lastAIResponse.content).toMatch(/logo|image|shared|earlier|above/i);
+    });
+  });
+
+  describe("Project image query service", () => {
+    it("queries user's uploaded images when user mentions images not in current message", async () => {
+      const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
+
+      // User mentions images they've uploaded previously but aren't attached to this message
+      const result = await graph
+        .withPrompt("Use the product photos I uploaded earlier for the hero section")
+        .stopAfter("agent")
+        .execute();
+
+      const lastAIResponse = lastAIMessage(result.state);
+      assertDefined(lastAIResponse, "AI response should be defined");
+
+      expect(result.state.error).toBeUndefined();
+      // The model should either:
+      // 1. Query for uploaded images and find them, or
+      // 2. Acknowledge the request and guide user on how to attach images
+      expect(lastAIResponse.content).toMatch(/image|photo|upload|attach|product/i);
     });
 
-    it("handles empty uploadIds gracefully", async () => {
-      const projectUUID = uuidv7() as UUIDType;
+    it("handles request for recent uploads when user says 'my recent images'", async () => {
+      const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
 
-      const result = await testGraph<BrainstormGraphState>()
-        .withGraph(brainstormGraph)
-        .withState({
-          projectUUID,
-          uploadIds: [],
-        })
-        .withPrompt("Tell me about my business idea")
+      const result = await graph
+        .withPrompt("Can you see my recent image uploads? I want to use them for the landing page")
         .stopAfter("agent")
         .execute();
 
-      expect(result.error).toBeUndefined();
-      expect(result.state.uploadIds).toEqual([]);
-    });
+      const lastAIResponse = lastAIMessage(result.state);
+      assertDefined(lastAIResponse, "AI response should be defined");
 
-    it("handles undefined uploadIds gracefully", async () => {
-      const projectUUID = uuidv7() as UUIDType;
-
-      const result = await testGraph<BrainstormGraphState>()
-        .withGraph(brainstormGraph)
-        .withState({
-          projectUUID,
-          // uploadIds not provided
-        })
-        .withPrompt("Tell me about my business idea")
-        .stopAfter("agent")
-        .execute();
-
-      expect(result.error).toBeUndefined();
-      // Should default to empty array
-      expect(result.state.uploadIds ?? []).toEqual([]);
+      expect(result.state.error).toBeUndefined();
+      // Model should acknowledge request for recent uploads
+      expect(lastAIResponse.content).toBeDefined();
     });
   });
 });

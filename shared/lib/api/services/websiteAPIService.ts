@@ -1,4 +1,4 @@
-import { RailsAPIBase, type paths } from "@rails_api_base";
+import { RailsAPIBase, type paths } from "../index";
 import type { Simplify } from "type-fest";
 
 // ============================================================================
@@ -21,7 +21,10 @@ export type UpdateWebsiteResponse = NonNullable<
 // Service Class
 // ============================================================================
 
-export class WebsiteService extends RailsAPIBase {
+/**
+ * Service for interacting with the Rails Website API
+ */
+export class WebsiteAPIService extends RailsAPIBase {
   constructor(options: Simplify<ConstructorParameters<typeof RailsAPIBase>[0]>) {
     super(options);
   }
@@ -68,3 +71,6 @@ export class WebsiteService extends RailsAPIBase {
     return response.data satisfies UpdateWebsiteResponse;
   }
 }
+
+// Re-export with old name for backwards compatibility during migration
+export { WebsiteAPIService as WebsiteService };

@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
-import type { UpdateCampaignRequestBody } from "@api/campaigns";
+import type { UpdateCampaignRequestBody } from "@rails_api_base";
 
 const STRUCTURED_SNIPPET_CATEGORIES = Ads.StructuredSnippetCategoryKeys.map((key) => ({
   value: key, // Backend expects keys like "services", not display names like "Service catalog"

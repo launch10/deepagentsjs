@@ -12,7 +12,7 @@ import { Info } from "lucide-react";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
-import type { UpdateCampaignRequestBody } from "@api/campaigns";
+import type { UpdateCampaignRequestBody } from "@rails_api_base";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 
 export default function DescriptionsForm() {

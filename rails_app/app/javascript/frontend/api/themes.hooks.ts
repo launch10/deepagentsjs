@@ -2,11 +2,14 @@ import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type UseMu
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
 import {
-  ThemeService,
+  ThemeAPIService,
   type GetThemesResponse,
   type CreateThemeRequest,
   type CreateThemeResponse,
-} from "./themes";
+} from "@rails_api_base";
+
+// Re-export for backwards compatibility
+export { ThemeAPIService as ThemeService } from "@rails_api_base";
 
 // ============================================================================
 // Query Keys
@@ -27,7 +30,7 @@ export const themeKeys = {
  */
 export function useThemeService() {
   const { jwt } = usePage<{ jwt: string }>().props;
-  return useMemo(() => new ThemeService({ jwt }), [jwt]);
+  return useMemo(() => new ThemeAPIService({ jwt }), [jwt]);
 }
 
 // ============================================================================

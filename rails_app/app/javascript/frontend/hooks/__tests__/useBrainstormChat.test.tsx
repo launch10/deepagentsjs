@@ -31,8 +31,19 @@ vi.mock("@api/uploads", () => ({
   })),
 }));
 
+// Mock composer type
+interface MockComposer {
+  text: string;
+  setText: ReturnType<typeof vi.fn>;
+  attachments: unknown[];
+  addFiles: ReturnType<typeof vi.fn>;
+  removeAttachment: ReturnType<typeof vi.fn>;
+  isReady: boolean;
+  isUploading: boolean;
+}
+
 // Create mock composer with all methods
-const createMockComposer = (overrides: Partial<ReturnType<typeof createMockComposer>> = {}) => ({
+const createMockComposer = (overrides: Partial<MockComposer> = {}): MockComposer => ({
   text: "",
   setText: vi.fn(),
   attachments: [],
@@ -311,7 +322,8 @@ describe("useBrainstormChat", () => {
         });
 
         const { result } = renderHook(() => useBrainstormChatActions());
-        result.current.sendMessage(undefined);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (result.current.sendMessage as any)(undefined);
 
         expect(mockSendMessage).not.toHaveBeenCalled();
         expect(consoleSpy).toHaveBeenCalledWith(
@@ -323,19 +335,16 @@ describe("useBrainstormChat", () => {
 
     it("exposes other actions unchanged", () => {
       const mockStop = vi.fn();
-      const mockReload = vi.fn();
       mockSnapshot = createMockSnapshot({
         actions: {
           sendMessage: mockSendMessage,
           stop: mockStop,
-          reload: mockReload,
         },
       });
 
       const { result } = renderHook(() => useBrainstormChatActions());
 
       expect(result.current.stop).toBe(mockStop);
-      expect(result.current.reload).toBe(mockReload);
     });
   });
 });

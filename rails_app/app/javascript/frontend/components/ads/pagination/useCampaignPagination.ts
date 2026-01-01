@@ -12,7 +12,7 @@ import {
 import { useAdvanceCampaign, useBackCampaign, useCampaignService } from "@api/campaigns.hooks";
 import { selectValidateAndSave, useFormRegistry } from "@stores/formRegistry";
 import { useAdsChatState } from "@hooks/useAdsChat";
-import type { UpdateCampaignRequestBody } from "@api/campaigns";
+import type { UpdateCampaignRequestBody } from "@rails_api_base";
 
 export function useCampaignPagination() {
   const validateAndSave = useFormRegistry(selectValidateAndSave);

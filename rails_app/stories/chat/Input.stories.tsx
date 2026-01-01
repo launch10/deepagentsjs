@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Input } from "~/components/chat/input";
+import { Textarea, FileButton } from "~/components/chat/input";
+import { BaseDropZone, BaseAttachmentList } from "~/components/chat/attachments";
 
-const meta = {
+const meta: Meta = {
   title: "Chat/Input",
-  component: Input.Root,
   tags: ["autodocs"],
   parameters: {
     layout: "centered",
@@ -15,82 +15,73 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof Input.Root>;
+};
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj;
 
-// Basic textarea and submit
-export const Default: Story = {
+// Basic textarea - showing raw components for visual reference
+// Note: Context-aware Input.* components require Chat.Root wrapper
+export const TextareaOnly: Story = {
   render: () => (
-    <Input.Root>
-      <Input.Textarea placeholder="Type a message..." />
-      <Input.SubmitButton />
-    </Input.Root>
+    <div className="flex gap-2 items-end border rounded-lg p-2">
+      <Textarea placeholder="Type a message..." />
+    </div>
   ),
 };
 
-// Brainstorm style (simple)
-export const BrainstormStyle: Story = {
+// With file button
+export const WithFileButton: Story = {
   render: () => (
-    <Input.Root>
-      <Input.Textarea placeholder="What kind of business are you thinking about?" />
-      <Input.SubmitButton />
-    </Input.Root>
+    <div className="flex gap-2 items-end border rounded-lg p-2">
+      <FileButton onFilesSelected={() => {}}>📎</FileButton>
+      <Textarea placeholder="Type a message..." />
+    </div>
   ),
 };
 
-// Campaign style with file upload
-export const CampaignStyle: Story = {
+// BaseDropZone wrapper (for drag and drop without context)
+export const WithDropZone: Story = {
   render: () => (
-    <Input.Root>
-      <Input.FileUpload />
-      <Input.Textarea placeholder="Ask for changes..." />
-      <Input.SubmitButton />
-    </Input.Root>
+    <BaseDropZone onDrop={() => {}} className="border rounded-lg p-2">
+      <Textarea placeholder="Drag files here or type..." />
+    </BaseDropZone>
   ),
 };
 
-// With refresh button
-export const WithRefreshButton: Story = {
+// With BaseAttachmentList (showing attachments without context)
+export const WithAttachments: Story = {
   render: () => (
-    <Input.Root>
-      <Input.Textarea placeholder="Ask for changes..." />
-      <Input.SubmitButton />
-      <Input.RefreshButton />
-    </Input.Root>
-  ),
-};
-
-// Loading state
-export const Loading: Story = {
-  render: () => (
-    <Input.Root>
-      <Input.Textarea placeholder="Type a message..." />
-      <Input.SubmitButton loading />
-    </Input.Root>
+    <div className="border rounded-lg p-2 space-y-2">
+      <BaseAttachmentList
+        attachments={[
+          { id: "1", type: "document", status: "completed" },
+          { id: "2", type: "image", status: "completed", previewUrl: "https://picsum.photos/100" },
+        ]}
+        onRemove={() => {}}
+      />
+      <Textarea placeholder="Files attached above..." />
+    </div>
   ),
 };
 
 // Disabled state
 export const Disabled: Story = {
   render: () => (
-    <Input.Root>
-      <Input.Textarea placeholder="Type a message..." disabled />
-      <Input.SubmitButton disabled />
-    </Input.Root>
+    <div className="flex gap-2 items-end border rounded-lg p-2">
+      <Textarea placeholder="Type a message..." disabled />
+    </div>
   ),
 };
 
 // With value
 export const WithValue: Story = {
   render: () => (
-    <Input.Root>
-      <Input.Textarea
+    <div className="flex gap-2 items-end border rounded-lg p-2">
+      <Textarea
         value="I want to build an app that helps people find local farmers markets"
         onChange={() => {}}
       />
-      <Input.SubmitButton />
-    </Input.Root>
+    </div>
   ),
 };

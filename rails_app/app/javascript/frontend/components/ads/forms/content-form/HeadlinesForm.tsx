@@ -9,7 +9,7 @@ import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
-import type { UpdateCampaignRequestBody } from "@api/campaigns";
+import type { UpdateCampaignRequestBody } from "@rails_api_base";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 

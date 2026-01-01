@@ -41,7 +41,12 @@ const meta = {
         resolver: zodResolver(settingsFormSchema) as any,
         mode: "onChange",
         defaultValues: {
-          settings: [],
+          locations: [],
+          selectedDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+          startTime: "09:00",
+          endTime: "17:00",
+          timezone: "America/Los_Angeles",
+          budget: 50,
         },
       });
       return (

@@ -5,7 +5,7 @@ import type { AdsBridgeType, AdsGraphState } from "@shared";
 import { Ads } from "@shared";
 import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
 import { useChatRegistration } from "./useChatRegistration";
-import { UploadService } from "@api/uploads";
+import { UploadsAPIService } from "@rails_api_base";
 import { validateFile } from "~/types/attachment";
 
 export type AdsSnapshot = ChatSnapshot<AdsGraphState>;
@@ -15,7 +15,7 @@ function useAdsChatOptions() {
 
   return useMemo(() => {
     const url = new URL("api/ads/stream", langgraph_path).toString();
-    const uploadService = new UploadService({ jwt });
+    const uploadService = new UploadsAPIService({ jwt });
 
     return {
       api: url,
@@ -29,8 +29,8 @@ function useAdsChatOptions() {
       attachments: {
         upload: async (file: File) => {
           const response = await uploadService.create({
-            "upload[file]": file,
-            "upload[is_logo]": false,
+            file,
+            isLogo: false,
           });
           return { url: response.url };
         },

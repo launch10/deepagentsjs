@@ -8,7 +8,7 @@ import {
 import { useThemes, useCreateTheme } from "@api/themes.hooks";
 import { useWebsite, useUpdateWebsiteTheme } from "@api/websites.hooks";
 import { CustomColorPicker } from "./CustomColorPicker";
-import type { GetThemesResponse } from "@api/themes";
+import type { GetThemesResponse } from "@rails_api_base";
 
 type Theme = GetThemesResponse[number];
 

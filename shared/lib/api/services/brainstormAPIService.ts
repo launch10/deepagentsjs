@@ -1,5 +1,4 @@
-import { RailsAPIBase, type paths } from "@rails_api";
-import type { ThreadIDType, UUIDType } from "@types";
+import { RailsAPIBase, type paths } from "../index";
 import type { Simplify } from "type-fest";
 
 /**
@@ -25,7 +24,7 @@ export type GetBrainstormResponse = NonNullable<
   paths["/api/v1/brainstorms/{thread_id}"]["get"]["responses"][200]["content"]
 >["application/json"];
 
-export interface Brainstorm {
+export interface BrainstormRecord {
   id: number;
   website_id: number;
   project_id: number;
@@ -36,17 +35,15 @@ export interface Brainstorm {
   updated_at: string;
 }
 
-export interface BrainstormServiceOptions {
-  jwt: string;
-}
-
 export interface CreateBrainstormParams {
-  threadId: ThreadIDType;
-  projectUUID: UUIDType;
+  threadId: string;
+  projectUUID: string;
   name?: string;
 }
+
 /**
  * Service for interacting with the Rails Brainstorm API
+ * Can be used from both frontend and backend (langgraph)
  */
 export class BrainstormAPIService extends RailsAPIBase {
   constructor(options: Simplify<ConstructorParameters<typeof RailsAPIBase>[0]>) {
@@ -56,10 +53,11 @@ export class BrainstormAPIService extends RailsAPIBase {
   /**
    * Creates a new brainstorm
    * @param threadId - The LangGraph thread ID
+   * @param projectUUID - The project UUID
    * @param name - Optional name for the brainstorm
    * @returns The created brainstorm
    */
-  async create({ threadId, projectUUID, name }: CreateBrainstormParams): Promise<Brainstorm> {
+  async create({ threadId, projectUUID, name }: CreateBrainstormParams): Promise<BrainstormRecord> {
     const client = await this.getClient();
     const response = await client.POST("/api/v1/brainstorms", {
       body: {
@@ -81,7 +79,7 @@ export class BrainstormAPIService extends RailsAPIBase {
       throw new Error(`Failed to create brainstorm: ${JSON.stringify(response.error)}`);
     }
 
-    return response.data satisfies Brainstorm;
+    return response.data satisfies BrainstormRecord;
   }
 
   /**
@@ -89,7 +87,7 @@ export class BrainstormAPIService extends RailsAPIBase {
    * @param threadId - The LangGraph thread ID
    * @returns The brainstorm
    */
-  async get(threadId: ThreadIDType): Promise<Brainstorm> {
+  async get(threadId: string): Promise<BrainstormRecord> {
     const client = await this.getClient();
     const response = await client.GET("/api/v1/brainstorms/{thread_id}", {
       params: {
@@ -105,7 +103,7 @@ export class BrainstormAPIService extends RailsAPIBase {
       throw new Error(`Failed to get brainstorm: ${JSON.stringify(response.error)}`);
     }
 
-    return response.data satisfies Brainstorm;
+    return response.data satisfies BrainstormRecord;
   }
 
   /**
@@ -115,9 +113,9 @@ export class BrainstormAPIService extends RailsAPIBase {
    * @returns The updated brainstorm
    */
   async update(
-    threadId: ThreadIDType,
+    threadId: string,
     updates: UpdateBrainstormRequest["brainstorm"]
-  ): Promise<Brainstorm> {
+  ): Promise<BrainstormRecord> {
     const client = await this.getClient();
     const response = await client.PATCH("/api/v1/brainstorms/{thread_id}", {
       params: {
@@ -136,6 +134,6 @@ export class BrainstormAPIService extends RailsAPIBase {
       throw new Error(`Failed to update brainstorm: ${JSON.stringify(response.error)}`);
     }
 
-    return response.data satisfies Brainstorm;
+    return response.data satisfies BrainstormRecord;
   }
 }
