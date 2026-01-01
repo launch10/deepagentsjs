@@ -3,7 +3,7 @@ import { useMemo, useCallback } from "react";
 import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
 import type { BrainstormBridgeType, BrainstormGraphState, InertiaProps } from "@shared";
 import { UploadsAPIService } from "@rails_api_base";
-import { validateFile } from "~/types/attachment";
+import { validateFile } from "@types/attachment";
 
 type NewBrainstormProps =
   InertiaProps.paths["/projects/new"]["get"]["responses"]["200"]["content"]["application/json"];
@@ -31,9 +31,7 @@ function useBrainstormChatOptions() {
   }, []);
 
   return useMemo(() => {
-    const url = langgraph_path
-      ? new URL("api/brainstorm/stream", langgraph_path).toString()
-      : "";
+    const url = langgraph_path ? new URL("api/brainstorm/stream", langgraph_path).toString() : "";
     const uploadService = new UploadsAPIService({ jwt, baseUrl: root_path });
 
     return {

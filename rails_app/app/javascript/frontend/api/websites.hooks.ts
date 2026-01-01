@@ -7,8 +7,12 @@ import {
 } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
-import { WebsiteAPIService, type GetWebsiteResponse, type UpdateWebsiteResponse } from "@rails_api_base";
-import { useBrainstormChatThreadId } from "~/hooks/useBrainstormChat";
+import {
+  WebsiteAPIService,
+  type GetWebsiteResponse,
+  type UpdateWebsiteResponse,
+} from "@rails_api_base";
+import { useBrainstormChatThreadId } from "@hooks/useBrainstormChat";
 
 // Re-export for backwards compatibility
 export { WebsiteAPIService as WebsiteService } from "@rails_api_base";
@@ -51,10 +55,7 @@ function useProjectUuid(): string | null {
 // Query Hooks
 // ============================================================================
 
-type WebsiteQueryOptions = Omit<
-  UseQueryOptions<GetWebsiteResponse, Error>,
-  "queryKey" | "queryFn"
->;
+type WebsiteQueryOptions = Omit<UseQueryOptions<GetWebsiteResponse, Error>, "queryKey" | "queryFn">;
 
 /**
  * Hook for fetching website data with caching.

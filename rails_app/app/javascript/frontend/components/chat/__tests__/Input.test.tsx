@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Input } from "../input";
-import { Chat, ChatProvider } from "../index";
+import { Chat, ChatProvider } from "../Chat";
 import type { ChatSnapshot } from "langgraph-ai-sdk-react";
 
 // Mock composer for testing context-aware components
@@ -24,7 +24,9 @@ function createMockComposer() {
 }
 
 // Mock chat snapshot for testing
-function createMockSnapshot(overrides?: Partial<ChatSnapshot<Record<string, unknown>>>): ChatSnapshot<Record<string, unknown>> {
+function createMockSnapshot(
+  overrides?: Partial<ChatSnapshot<Record<string, unknown>>>
+): ChatSnapshot<Record<string, unknown>> {
   const composer = createMockComposer();
   return {
     messages: [],
@@ -59,13 +61,12 @@ function createMockSnapshot(overrides?: Partial<ChatSnapshot<Record<string, unkn
 }
 
 // Wrapper to provide chat context
-function renderWithContext(ui: React.ReactElement, snapshot?: ChatSnapshot<Record<string, unknown>>) {
+function renderWithContext(
+  ui: React.ReactElement,
+  snapshot?: ChatSnapshot<Record<string, unknown>>
+) {
   const mockSnapshot = snapshot ?? createMockSnapshot();
-  return render(
-    <ChatProvider snapshot={mockSnapshot}>
-      {ui}
-    </ChatProvider>
-  );
+  return render(<ChatProvider snapshot={mockSnapshot}>{ui}</ChatProvider>);
 }
 
 describe("Input", () => {

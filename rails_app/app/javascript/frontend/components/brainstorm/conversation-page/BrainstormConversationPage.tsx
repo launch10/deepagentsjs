@@ -7,7 +7,7 @@ import {
   selectHasAnyPersonalizations,
 } from "@stores/brandPersonalization";
 import { useWebsite } from "@api/websites.hooks";
-import { useChatMessages } from "@components/chat";
+import { useChatMessages } from "@components/chat/Chat";
 import { BrainstormMessages } from "./chat/BrainstormMessages";
 import { BrainstormInput } from "../shared/BrainstormInput";
 import { BrandPersonalizationPanel } from "./brand-panel/BrandPersonalizationPanel";
@@ -19,7 +19,9 @@ const SKELETON_DELAY_MS = 200;
  * Compute the current question number from messages.
  * Finds the last AI message with a topic and returns its question number.
  */
-function computeQuestionNumber(messages: { role: string; metadata?: { currentTopic?: string } }[]): number {
+function computeQuestionNumber(
+  messages: { role: string; metadata?: { currentTopic?: string } }[]
+): number {
   // Find the last topic mentioned in AI messages (reverse search)
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
@@ -108,10 +110,7 @@ export function BrainstormConversationPage() {
   const redirect = state.redirect;
 
   // Compute current question number from messages (memoized)
-  const currentQuestionNumber = useMemo(
-    () => computeQuestionNumber(messages),
-    [messages]
-  );
+  const currentQuestionNumber = useMemo(() => computeQuestionNumber(messages), [messages]);
 
   // Determine if we're waiting for history to load
   const isEmpty = messages.length === 0;

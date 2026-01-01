@@ -1,9 +1,12 @@
 import { useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
 import { useChatContext } from "../ChatContext";
-import { FILE_INPUT_ACCEPT } from "~/types/attachment";
+import { FILE_INPUT_ACCEPT } from "@types/attachment";
 
-export interface FileButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type" | "onClick"> {
+export interface FileButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "type" | "onClick"
+> {
   /**
    * Button children (usually an icon).
    */

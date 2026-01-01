@@ -2,7 +2,13 @@ import { useEffect, useRef, useMemo, useCallback } from "react";
 import type { MessageBlock, InferBridgeData, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
 import { useBrainstormChatState } from "@hooks/useBrainstormChat";
-import { Chat, useChatMessages, useChatIsStreaming, useChatSendMessage, useChatComposer } from "@components/chat";
+import {
+  Chat,
+  useChatMessages,
+  useChatIsStreaming,
+  useChatSendMessage,
+  useChatComposer,
+} from "@components/chat/Chat";
 import { BrainstormAIMessage } from "./BrainstormAIMessage";
 import { QuestionBadge } from "./QuestionBadge";
 import { getTextareaRef } from "@lib/brainstormTextarea";
@@ -93,7 +99,10 @@ export function BrainstormMessagesView({
         isUser,
         isLastMessage,
         startsNewTopic,
-        questionNumber: startsNewTopic && messageTopic ? Brainstorm.getQuestionNumberForTopic(messageTopic as Brainstorm.TopicName) : 0,
+        questionNumber:
+          startsNewTopic && messageTopic
+            ? Brainstorm.getQuestionNumberForTopic(messageTopic as Brainstorm.TopicName)
+            : 0,
       };
     });
   }, [messages]);
@@ -125,17 +134,12 @@ export function BrainstormMessagesView({
 
         // Show command buttons only on last AI message when not streaming
         const showCommandButtons =
-          isLastMessage &&
-          !isStreaming &&
-          availableCommands &&
-          availableCommands.length > 0;
+          isLastMessage && !isStreaming && availableCommands && availableCommands.length > 0;
 
         return (
           <div key={message.id} className="space-y-3">
             {/* Question badge appears on first AI message of each topic */}
-            {startsNewTopic && (
-              <QuestionBadge current={questionNumber} total={totalQuestions} />
-            )}
+            {startsNewTopic && <QuestionBadge current={questionNumber} total={totalQuestions} />}
             <BrainstormAIMessage
               blocks={message.blocks as BrainstormBlock[]}
               isActive={isLastMessage}

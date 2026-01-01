@@ -77,12 +77,31 @@ export {
 } from "./messages";
 
 // Primitive components (no context, just styling)
-export { UserMessage, type UserMessageProps, type UserMessageSimpleProps, type UserMessageBlocksProps } from "./UserMessage";
-export { AIMessage, type AIMessageRootProps, type AIMessageContentProps, type AIMessageBubbleProps } from "./AIMessage";
+export {
+  UserMessage,
+  type UserMessageProps,
+  type UserMessageSimpleProps,
+  type UserMessageBlocksProps,
+} from "./UserMessage";
+export {
+  AIMessage,
+  type AIMessageRootProps,
+  type AIMessageContentProps,
+  type AIMessageBubbleProps,
+} from "./AIMessage";
 export { BlockRenderer, type BlockRendererProps } from "./BlockRenderer";
 export { Suggestions, type SuggestionsRootProps, type SuggestionsItemProps } from "./Suggestions";
-export { CommandButtons, type CommandButtonsRootProps, type CommandButtonProps, type CommandButtonVariant } from "./CommandButtons";
-export { ThinkingIndicator, type ThinkingIndicatorProps, type ThinkingIndicatorVariant } from "./ThinkingIndicator";
+export {
+  CommandButtons,
+  type CommandButtonsRootProps,
+  type CommandButtonProps,
+  type CommandButtonVariant,
+} from "./CommandButtons";
+export {
+  ThinkingIndicator,
+  type ThinkingIndicatorProps,
+  type ThinkingIndicatorVariant,
+} from "./ThinkingIndicator";
 export { MessageList, type MessageListRootProps } from "./MessageList";
 
 // Attachment components (shared infrastructure)

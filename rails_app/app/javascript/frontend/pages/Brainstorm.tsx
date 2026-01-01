@@ -1,6 +1,6 @@
 import { useBrainstormChat, useBrainstormIsNewConversation } from "@hooks/useBrainstormChat";
 import { useBrainstormSendMessage } from "@hooks/useBrainstormSendMessage";
-import { Chat } from "@components/chat";
+import { Chat } from "@components/chat/Chat";
 import { BrainstormLandingPage, BrainstormConversationPage } from "@components/brainstorm";
 
 /**

@@ -1,11 +1,7 @@
 import React from "react";
-import type {
-  MessageBlock,
-  InferBridgeData,
-  InferMessage,
-} from "langgraph-ai-sdk-types";
+import type { MessageBlock, InferBridgeData, InferMessage } from "langgraph-ai-sdk-types";
 import type { BrainstormBridgeType } from "@shared";
-import { Chat } from "@components/chat";
+import { Chat } from "@components/chat/Chat";
 
 // The LanggraphData type for the Brainstorm graph (used for MessageBlock generic)
 type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
@@ -82,11 +78,7 @@ function BrainstormStructuredRenderer({
       {"examples" in data && Array.isArray(data.examples) && data.examples.length > 0 && (
         <Chat.Suggestions.Root label="Example answers:">
           {data.examples.map((example, i) => (
-            <Chat.Suggestions.Item
-              key={i}
-              index={i}
-              onClick={() => onExampleClick?.(example)}
-            >
+            <Chat.Suggestions.Item key={i} index={i} onClick={() => onExampleClick?.(example)}>
               {example}
             </Chat.Suggestions.Item>
           ))}

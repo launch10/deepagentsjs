@@ -1,13 +1,14 @@
 import { useRef, useEffect } from "react";
 import { useBrainstormChatState } from "@hooks/useBrainstormChat";
-import { Chat } from "@components/chat";
+import { Chat } from "@components/chat/Chat";
 import { setTextareaRef } from "@lib/brainstormTextarea";
 import { DocumentPlusIcon, ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
 
 /**
  * Default placeholder text for the input.
  */
-const DEFAULT_PLACEHOLDER = 'e.g. "FreshFund is a budgeting tool that helps freelancers track income and expenses."';
+const DEFAULT_PLACEHOLDER =
+  'e.g. "FreshFund is a budgeting tool that helps freelancers track income and expenses."';
 
 /**
  * Brainstorm chat input using Chat compound components.

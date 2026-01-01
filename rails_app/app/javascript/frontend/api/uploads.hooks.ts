@@ -1,9 +1,19 @@
-import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type UseQueryOptions,
+  type UseMutationOptions,
+} from "@tanstack/react-query";
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
-import { UploadsAPIService, type GetUploadsResponse, type CreateUploadResponse } from "@rails_api_base";
+import {
+  UploadsAPIService,
+  type GetUploadsResponse,
+  type CreateUploadResponse,
+} from "@rails_api_base";
 import { useWebsite } from "./websites.hooks";
-import { useBrainstormChatWebsiteId } from "~/hooks/useBrainstormChat";
+import { useBrainstormChatWebsiteId } from "@hooks/useBrainstormChat";
 
 // Re-export for backwards compatibility
 export { UploadsAPIService as UploadService } from "@rails_api_base";
@@ -37,7 +47,7 @@ function useWebsiteId(): number | null {
   const propsWebsiteId = website?.id ?? null;
 
   const result = chatWebsiteId ?? propsWebsiteId;
-  console.log('[useWebsiteId]', { chatWebsiteId, propsWebsiteId, result });
+  console.log("[useWebsiteId]", { chatWebsiteId, propsWebsiteId, result });
   return result;
 }
 
@@ -127,9 +137,7 @@ interface UploadLogoVariables {
  * Hook for uploading a logo.
  * Automatically invalidates the uploads cache on success.
  */
-export function useUploadLogo(
-  options?: MutationOptions<UploadResult, UploadLogoVariables>
-) {
+export function useUploadLogo(options?: MutationOptions<UploadResult, UploadLogoVariables>) {
   const service = useUploadService();
   const websiteId = useWebsiteId();
   const queryClient = useQueryClient();
@@ -137,7 +145,11 @@ export function useUploadLogo(
   return useMutation({
     mutationFn: async ({ file, websiteId: explicitWebsiteId }: UploadLogoVariables) => {
       const currentWebsiteId = explicitWebsiteId ?? websiteId ?? undefined;
-      console.log('[useUploadLogo] mutationFn called', { explicitWebsiteId, websiteId, currentWebsiteId });
+      console.log("[useUploadLogo] mutationFn called", {
+        explicitWebsiteId,
+        websiteId,
+        currentWebsiteId,
+      });
       const response = await service.create({
         file,
         isLogo: true,
@@ -150,7 +162,7 @@ export function useUploadLogo(
       };
     },
     onSuccess: () => {
-      console.log('[useUploadLogo] onSuccess', { websiteId });
+      console.log("[useUploadLogo] onSuccess", { websiteId });
       if (websiteId) {
         queryClient.invalidateQueries({ queryKey: uploadsKeys.websiteUploads(websiteId) });
       }
@@ -178,7 +190,11 @@ export function useUploadProjectImage(
   return useMutation({
     mutationFn: async ({ file, websiteId: explicitWebsiteId }: UploadProjectImageVariables) => {
       const currentWebsiteId = explicitWebsiteId ?? websiteId ?? undefined;
-      console.log('[useUploadProjectImage] mutationFn called', { explicitWebsiteId, websiteId, currentWebsiteId });
+      console.log("[useUploadProjectImage] mutationFn called", {
+        explicitWebsiteId,
+        websiteId,
+        currentWebsiteId,
+      });
       const response = await service.create({
         file,
         isLogo: false,
@@ -191,7 +207,7 @@ export function useUploadProjectImage(
       };
     },
     onSuccess: () => {
-      console.log('[useUploadProjectImage] onSuccess', { websiteId });
+      console.log("[useUploadProjectImage] onSuccess", { websiteId });
       if (websiteId) {
         queryClient.invalidateQueries({ queryKey: uploadsKeys.websiteUploads(websiteId) });
       }
@@ -208,9 +224,7 @@ interface DeleteUploadVariables {
  * Hook for deleting an upload (logo or image).
  * Automatically removes from cache on success.
  */
-export function useDeleteUpload(
-  options?: MutationOptions<void, DeleteUploadVariables>
-) {
+export function useDeleteUpload(options?: MutationOptions<void, DeleteUploadVariables>) {
   const service = useUploadService();
   const websiteId = useWebsiteId();
   const queryClient = useQueryClient();
