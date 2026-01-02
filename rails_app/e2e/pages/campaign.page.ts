@@ -279,6 +279,24 @@ export class CampaignPage {
   }
 
   /**
+   * Get lockable inputs for a specific field type by name attribute.
+   * Field names follow the pattern: headlines.0.text, descriptions.0.text, etc.
+   */
+  getInputsByFieldName(fieldName: "headlines" | "descriptions" | "callouts" | "details"): Locator {
+    return this.page.locator(`[data-testid="lockable-input"][name^="${fieldName}."]`);
+  }
+
+  /**
+   * Get the lock button for a specific field type and index.
+   */
+  getLockButtonForField(fieldName: "headlines" | "descriptions" | "callouts" | "details", index: number): Locator {
+    // Structure: div.flex > [Button(lock), Button(delete), InputGroup > input]
+    // So from input, go up to InputGroup, then find preceding-sibling lock button
+    const input = this.getInputsByFieldName(fieldName).nth(index);
+    return input.locator("xpath=ancestor::*[@data-testid='lockable-input-group']/preceding-sibling::button[@data-testid='lock-toggle-button']");
+  }
+
+  /**
    * Get all lock toggle buttons.
    */
   getLockButtons(): Locator {
@@ -350,35 +368,129 @@ export class CampaignPage {
     await this.waitForStreamingComplete();
   }
 
-  // ============ Content Form Methods ============
+  // ============ Step Completion Helpers ============
+  // These helpers fill and lock the required fields for each step.
+  // Use these to properly complete a step before calling clickContinue().
 
   /**
-   * Fill all headlines with valid data.
+   * Fill and lock a specific field type with valid test data.
+   * @param fieldName - The field type to fill (headlines, descriptions, callouts, details)
+   * @param testData - Array of valid test data strings
+   * @param minCount - Minimum number of fields to fill (default: 3)
    */
-  async fillValidHeadlines(): Promise<void> {
-    await this.contentForm.waitFor({ state: "visible" });
-    const inputs = this.getLockableInputs();
+  async fillAndLockFieldType(
+    fieldName: "headlines" | "descriptions" | "callouts" | "details",
+    testData: readonly string[],
+    minCount: number = 3
+  ): Promise<void> {
+    const inputs = this.getInputsByFieldName(fieldName);
     const count = await inputs.count();
+    const fillCount = Math.min(count, minCount, testData.length);
 
-    // Fill each headline with valid data
-    for (let i = 0; i < Math.min(count, VALID_TEST_DATA.headlines.length); i++) {
-      await this.fillNthInput(i, VALID_TEST_DATA.headlines[i]);
-      // Lock each one after filling
-      await this.toggleLock(i);
+    for (let i = 0; i < fillCount; i++) {
+      const input = inputs.nth(i);
+      await input.clear();
+      await input.fill(testData[i]);
+      // Find the lock button for this input
+      // Structure: div.flex > [Button(lock), Button(delete), InputGroup > input]
+      // So from input, go up to InputGroup, then find preceding-sibling lock button
+      const lockButton = input.locator("xpath=ancestor::*[@data-testid='lockable-input-group']/preceding-sibling::button[@data-testid='lock-toggle-button']");
+      await lockButton.click();
+      await this.page.waitForTimeout(100);
     }
   }
 
   /**
+   * Complete the content step by filling headlines and descriptions.
+   * Requires: At least 3 headlines (max 30 chars) and 2 descriptions (max 90 chars).
+   */
+  async completeContentStep(): Promise<void> {
+    await this.contentForm.waitFor({ state: "visible" });
+    await this.page.waitForTimeout(1000); // Wait for inputs to render
+
+    // Fill headlines (need at least 3, max 30 chars each)
+    await this.fillAndLockFieldType("headlines", VALID_TEST_DATA.headlines, 3);
+
+    // Fill descriptions (need at least 2, max 90 chars each)
+    await this.fillAndLockFieldType("descriptions", VALID_TEST_DATA.descriptions, 2);
+  }
+
+  /**
+   * Complete the highlights step by filling callouts and structured snippet details.
+   * Requires: At least 4 callouts (max 25 chars) and 3 snippet details (max 25 chars).
+   */
+  async completeHighlightsStep(): Promise<void> {
+    await this.highlightsForm.waitFor({ state: "visible" });
+    await this.page.waitForTimeout(1000); // Wait for inputs to render
+
+    // Fill callouts (need at least 4, max 25 chars each)
+    await this.fillAndLockFieldType("callouts", VALID_TEST_DATA.callouts, 4);
+
+    // Fill structured snippet details (need at least 3, max 25 chars each)
+    await this.fillAndLockFieldType("details", VALID_TEST_DATA.snippets, 3);
+  }
+
+  /**
+   * Complete the settings step by configuring location, schedule, and budget.
+   */
+  async completeSettingsStep(): Promise<void> {
+    await this.settingsForm.waitFor({ state: "visible" });
+
+    // Set schedule to "Always On" (simplest valid option)
+    await this.setAlwaysOn();
+
+    // Set a valid budget
+    await this.setBudget(25);
+  }
+
+  /**
+   * Complete all steps from content to review.
+   * Useful for tests that need to be on a later step.
+   */
+  async completeAllStepsToReview(): Promise<void> {
+    // Content step
+    await this.completeContentStep();
+    await this.clickContinue();
+    await this.page.waitForTimeout(1000);
+
+    // Highlights step
+    await this.completeHighlightsStep();
+    await this.clickContinue();
+    await this.page.waitForTimeout(1000);
+
+    // Keywords step (no required fields to fill)
+    await this.clickContinue();
+    await this.page.waitForTimeout(1000);
+
+    // Settings step
+    await this.completeSettingsStep();
+    await this.clickContinue();
+    await this.page.waitForTimeout(1000);
+
+    // Launch step (no required fields to fill)
+    await this.clickContinue();
+    await this.page.waitForTimeout(1000);
+
+    // Now on review step
+    await this.expectFormVisible("review");
+  }
+
+  // ============ Content Form Methods ============
+
+  /**
+   * Fill all headlines with valid data.
+   * @deprecated Use completeContentStep() instead for proper step completion.
+   */
+  async fillValidHeadlines(): Promise<void> {
+    await this.fillAndLockFieldType("headlines", VALID_TEST_DATA.headlines, 3);
+  }
+
+  /**
    * Fill descriptions with valid data.
-   * Note: Descriptions start after headlines in the DOM.
+   * @deprecated Use completeContentStep() instead for proper step completion.
    */
   async fillValidDescriptions(): Promise<void> {
-    // Descriptions have their own section - scroll down if needed
-    await this.page.getByText("Details").first().scrollIntoViewIfNeeded();
-
-    // Find description inputs - they're in a separate section
-    const descriptionSection = this.page.locator('text=Details').locator('..').locator('..');
-    await descriptionSection.waitFor({ state: "visible" });
+    await this.fillAndLockFieldType("descriptions", VALID_TEST_DATA.descriptions, 2);
   }
 
   // ============ Settings Form Methods ============

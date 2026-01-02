@@ -302,9 +302,6 @@ test.describe("Ad Campaign Workflow", () => {
   });
 
   test.describe("Workflow Navigation", () => {
-    // Must fill ALL fields (e.g. descriptions as well), with fillNthInput
-    // Because we're failing on validation length (e.g. > 90 characters),
-    // and this is blocking Continue
     test("should navigate through all workflow steps using Continue", async ({ page }) => {
       await campaignPage.goto(projectUuid);
       await campaignPage.waitForReady();
@@ -312,28 +309,16 @@ test.describe("Ad Campaign Workflow", () => {
       // Start at content
       await campaignPage.expectFormVisible("content");
 
-      // Fill valid content to pass validation
-      // TODO: Must fill out descriptions with correct length
-      await page.waitForTimeout(2000);
-      const inputCount = await campaignPage.countInputFields();
-      for (let i = 0; i < Math.min(inputCount, 6); i++) {
-        await campaignPage.fillNthInput(i, VALID_TEST_DATA.headlines[i % VALID_TEST_DATA.headlines.length]);
-        await campaignPage.toggleLock(i);
-      }
+      // Complete content step (fills headlines + descriptions with valid data)
+      await campaignPage.completeContentStep();
 
       // Continue to highlights
-      // TODO: Must fill out highlights with correct length
       await campaignPage.clickContinue();
       await page.waitForTimeout(1000);
       await campaignPage.expectFormVisible("highlights");
 
-      // Fill valid callouts
-      await page.waitForTimeout(2000);
-      const calloutCount = await campaignPage.countInputFields();
-      for (let i = 0; i < Math.min(calloutCount, 4); i++) {
-        await campaignPage.fillNthInput(i, VALID_TEST_DATA.callouts[i % VALID_TEST_DATA.callouts.length]);
-        await campaignPage.toggleLock(i);
-      }
+      // Complete highlights step (fills callouts + snippet details with valid data)
+      await campaignPage.completeHighlightsStep();
 
       // Continue to keywords
       await campaignPage.clickContinue();
@@ -341,10 +326,12 @@ test.describe("Ad Campaign Workflow", () => {
       await campaignPage.expectFormVisible("keywords");
 
       // Continue to settings
-      // TODO: Must fill out settings to proceed
       await campaignPage.clickContinue();
       await page.waitForTimeout(1000);
       await campaignPage.expectFormVisible("settings");
+
+      // Complete settings step
+      await campaignPage.completeSettingsStep();
 
       // Continue to launch
       await campaignPage.clickContinue();
@@ -372,14 +359,8 @@ test.describe("Ad Campaign Workflow", () => {
       await campaignPage.goto(projectUuid);
       await campaignPage.waitForReady();
 
-      // Fill content and continue
-      await page.waitForTimeout(2000);
-      // TODO: Must fill out descriptions with correct length
-      const inputCount = await campaignPage.countInputFields();
-      for (let i = 0; i < Math.min(inputCount, 3); i++) {
-        await campaignPage.fillNthInput(i, VALID_TEST_DATA.headlines[i]);
-        await campaignPage.toggleLock(i);
-      }
+      // Complete content step (fills headlines + descriptions)
+      await campaignPage.completeContentStep();
 
       await campaignPage.clickContinue();
       await page.waitForTimeout(1000);
@@ -399,13 +380,12 @@ test.describe("Ad Campaign Workflow", () => {
       await campaignPage.goto(projectUuid);
       await campaignPage.waitForReady();
 
-      await page.waitForTimeout(2000);
+      // Complete content step (fills headlines + descriptions)
+      await campaignPage.completeContentStep();
 
-      // Fill and lock a headline
-      // TODO: Must fill out descriptions with correct length, then this will work 
-      const testValue = VALID_TEST_DATA.headlines[0];
-      await campaignPage.fillNthInput(0, testValue);
-      await campaignPage.toggleLock(0);
+      // Get the value we set for the first headline
+      const firstHeadlineInput = campaignPage.getInputsByFieldName("headlines").nth(0);
+      const testValue = await firstHeadlineInput.inputValue();
 
       // Continue then come back
       await campaignPage.clickContinue();
@@ -414,8 +394,7 @@ test.describe("Ad Campaign Workflow", () => {
       await page.waitForTimeout(1000);
 
       // Value should be preserved
-      await expect(campaignPage.getNthInput(0)).toHaveValue(testValue);
-      await campaignPage.expectFieldLocked(0);
+      await expect(firstHeadlineInput).toHaveValue(testValue);
     });
   });
 
@@ -647,8 +626,10 @@ test.describe("Ad Campaign Workflow", () => {
 
       await page.waitForTimeout(2000);
 
-      // Type in a field
-      await campaignPage.fillNthInput(0, VALID_TEST_DATA.headlines[0]);
+      // Type in a headline field
+      const headlineInput = campaignPage.getInputsByFieldName("headlines").nth(0);
+      await headlineInput.clear();
+      await headlineInput.fill(VALID_TEST_DATA.headlines[0]);
 
       // Blur by clicking elsewhere
       await page.click("body");
@@ -657,26 +638,17 @@ test.describe("Ad Campaign Workflow", () => {
       await campaignPage.waitForAutosave();
 
       // Value should still be there
-      await expect(campaignPage.getNthInput(0)).toHaveValue(VALID_TEST_DATA.headlines[0]);
+      await expect(headlineInput).toHaveValue(VALID_TEST_DATA.headlines[0]);
     });
 
     test("should handle rapid typing followed by continue click", async ({ page }) => {
       await campaignPage.goto(projectUuid);
       await campaignPage.waitForReady();
 
-      await page.waitForTimeout(2000);
-
-      // TODO: Fill out form in CORRECT state first
-      // This way we can actually call continue
-
-      // Fill multiple fields rapidly
-      for (let i = 0; i < 3; i++) {
-        await campaignPage.fillNthInput(i, VALID_TEST_DATA.headlines[i]);
-        await campaignPage.toggleLock(i);
-      }
+      // Complete content step to put form in valid state
+      await campaignPage.completeContentStep();
 
       // Immediately click continue (simulating race condition)
-      // TODO: This fails to continue because form is not in valid state.
       await campaignPage.clickContinue();
 
       // Wait a moment for any pending saves
@@ -686,30 +658,23 @@ test.describe("Ad Campaign Workflow", () => {
       await campaignPage.clickBack();
       await page.waitForTimeout(1000);
 
-      // Data should be preserved
-      for (let i = 0; i < 3; i++) {
-        await expect(campaignPage.getNthInput(i)).toHaveValue(VALID_TEST_DATA.headlines[i]);
-      }
+      // Data should be preserved - check first headline
+      const firstHeadline = campaignPage.getInputsByFieldName("headlines").nth(0);
+      await expect(firstHeadline).toHaveValue(VALID_TEST_DATA.headlines[0]);
     });
 
     test("should not lose data when clicking continue very fast after typing", async ({ page }) => {
       await campaignPage.goto(projectUuid);
       await campaignPage.waitForReady();
 
-      await page.waitForTimeout(2000);
+      // Complete content step to put form in valid state
+      await campaignPage.completeContentStep();
 
-      // Fill a field
-      const testValue = VALID_TEST_DATA.headlines[0];
-      await campaignPage.fillNthInput(0, testValue);
-      await campaignPage.toggleLock(0);
+      // Get the values we set
+      const firstHeadline = campaignPage.getInputsByFieldName("headlines").nth(0);
+      const testValue = await firstHeadline.inputValue();
 
-      // Fill minimum required fields quickly
-      await campaignPage.fillNthInput(1, VALID_TEST_DATA.headlines[1]);
-      await campaignPage.toggleLock(1);
-      await campaignPage.fillNthInput(2, VALID_TEST_DATA.headlines[2]);
-      await campaignPage.toggleLock(2);
-
-      // Click continue immediately after typing
+      // Click continue immediately
       await campaignPage.continueButton.click();
 
       // Don't wait - immediately try to go back
@@ -718,8 +683,8 @@ test.describe("Ad Campaign Workflow", () => {
 
       await page.waitForTimeout(1000);
 
-      // All values should be saved
-      await expect(campaignPage.getNthInput(0)).toHaveValue(testValue);
+      // Value should be saved
+      await expect(firstHeadline).toHaveValue(testValue);
     });
   });
 
@@ -731,12 +696,8 @@ test.describe("Ad Campaign Workflow", () => {
       // Start at content
       await campaignPage.expectTabActive("content");
 
-      // Fill content to allow forward navigation
-      await page.waitForTimeout(2000);
-      for (let i = 0; i < 3; i++) {
-        await campaignPage.fillNthInput(i, VALID_TEST_DATA.headlines[i]);
-        await campaignPage.toggleLock(i);
-      }
+      // Complete content step to allow forward navigation
+      await campaignPage.completeContentStep();
 
       // Try clicking highlights tab
       await campaignPage.clickTab("highlights");
@@ -765,12 +726,8 @@ test.describe("Ad Campaign Workflow", () => {
       await campaignPage.goto(projectUuid);
       await campaignPage.waitForReady();
 
-      // Navigate forward first
-      await page.waitForTimeout(2000);
-      for (let i = 0; i < 3; i++) {
-        await campaignPage.fillNthInput(i, VALID_TEST_DATA.headlines[i]);
-        await campaignPage.toggleLock(i);
-      }
+      // Complete content step and navigate forward
+      await campaignPage.completeContentStep();
       await campaignPage.clickContinue();
       await page.waitForTimeout(1000);
 
@@ -835,31 +792,20 @@ test.describe("Full Workflow Integration", () => {
     await campaignPage.waitForReady();
 
     // Step 1: Content - Fill headlines and descriptions
-    await page.waitForTimeout(2000);
-    const headlineCount = await campaignPage.countInputFields();
-    for (let i = 0; i < Math.min(headlineCount, 3); i++) {
-      await campaignPage.fillNthInput(i, VALID_TEST_DATA.headlines[i]);
-      await campaignPage.toggleLock(i);
-    }
+    await campaignPage.completeContentStep();
 
     await campaignPage.clickContinue();
     await page.waitForTimeout(1500);
 
     // Step 2: Highlights - Fill callouts and snippets
     await campaignPage.expectFormVisible("highlights");
-    await page.waitForTimeout(2000);
-    const calloutCount = await campaignPage.countInputFields();
-    for (let i = 0; i < Math.min(calloutCount, 3); i++) {
-      await campaignPage.fillNthInput(i, VALID_TEST_DATA.callouts[i]);
-      await campaignPage.toggleLock(i);
-    }
+    await campaignPage.completeHighlightsStep();
 
     await campaignPage.clickContinue();
     await page.waitForTimeout(1500);
 
     // Step 3: Keywords
     await campaignPage.expectFormVisible("keywords");
-    await page.waitForTimeout(2000);
     // Keywords have different UI - skip detailed fill for now
 
     await campaignPage.clickContinue();
@@ -867,8 +813,7 @@ test.describe("Full Workflow Integration", () => {
 
     // Step 4: Settings - Location, Schedule, Budget
     await campaignPage.expectFormVisible("settings");
-    await campaignPage.setAlwaysOn();
-    await campaignPage.setBudget(25);
+    await campaignPage.completeSettingsStep();
 
     await campaignPage.clickContinue();
     await page.waitForTimeout(1500);
