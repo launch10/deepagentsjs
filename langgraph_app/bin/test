@@ -1,10 +1,10 @@
 #!/bin/bash
-# bin/test - Run tests with automatic Rails server management
+# bin/test - Run tests with optional Rails server management
 #
 # Usage:
-#   bin/test                    # Run tests once
+#   bin/test                    # Run tests once (assumes Rails is running)
 #   bin/test --watch            # Watch mode
-#   bin/test --no-rails         # Skip Rails server management
+#   bin/test --with-rails       # Start Rails server automatically
 #   bin/test tests/foo.test.ts  # Run specific test file
 #
 # Debugging:
@@ -23,7 +23,7 @@ source "$ROOT_DIR/config/services.sh"
 
 # Parse arguments
 WATCH=false
-MANAGE_RAILS=true
+MANAGE_RAILS=false
 VITEST_ARGS=()
 
 for arg in "$@"; do
@@ -31,22 +31,22 @@ for arg in "$@"; do
     --watch|-w)
       WATCH=true
       ;;
-    --no-rails)
-      MANAGE_RAILS=false
+    --with-rails)
+      MANAGE_RAILS=true
       ;;
     --help|-h)
       echo "Usage: $0 [options] [vitest args...]"
       echo ""
       echo "Options:"
       echo "  --watch, -w     Run in watch mode"
-      echo "  --no-rails      Don't manage Rails server (use if running manually)"
+      echo "  --with-rails    Start Rails server automatically"
       echo "  --help, -h      Show this help"
       echo ""
       echo "Examples:"
       echo "  $0                           # Run all tests once"
       echo "  $0 --watch                   # Watch mode"
       echo "  $0 tests/foo.test.ts         # Run specific file"
-      echo "  $0 --no-rails --watch        # Watch mode, manage Rails yourself"
+      echo "  $0 --with-rails              # Auto-start Rails server"
       echo ""
       echo "Debugging:"
       echo "  NODE_OPTIONS=\"--inspect-brk\" $0"
@@ -76,7 +76,7 @@ trap cleanup_on_exit EXIT
 # Run vitest
 cd "$SCRIPT_DIR/.."
 if $WATCH; then
-  exec pnpm vitest "${VITEST_ARGS[@]}"
+  exec pnpm vitest "${VITEST_ARGS[@]} tests/tests --no-file-parallelism"
 else
-  exec pnpm vitest run "${VITEST_ARGS[@]}"
+  exec pnpm vitest run "${VITEST_ARGS[@]} tests/tests --no-file-parallelism"
 fi

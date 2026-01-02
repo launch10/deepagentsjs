@@ -16,7 +16,7 @@
     "dev:debug": "NODE_OPTIONS=--inspect-brk tsx ./server.ts",
     "test": "bin/test",
     "test:watch": "bin/test --watch",
-    "test:no-rails": "bin/test --no-rails",
+    "test:with-rails": "bin/test --with-rails",
     "test:debug": "NODE_OPTIONS=--inspect-brk bin/test",
     "test:vitest": "vitest tests/tests --run --no-file-parallelism",
     "test:vitest:watch": "vitest",
