@@ -33,6 +33,7 @@ export default function DailyBudget() {
                   const val = e.target.value;
                   field.onChange(val === "" ? "" : Number(val));
                 }}
+                data-testid="budget-input"
               />
             )}
           />

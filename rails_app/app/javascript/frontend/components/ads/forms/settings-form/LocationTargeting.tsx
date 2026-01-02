@@ -141,6 +141,7 @@ export default function LocationTargeting() {
               value={searchValue}
               onChange={handleSearchChange}
               onFocus={() => setIsDropdownOpen(true)}
+              data-testid="location-search-input"
             />
             <InputGroupAddon align="inline-end">
               <Search className="size-3.5 text-base-600" />

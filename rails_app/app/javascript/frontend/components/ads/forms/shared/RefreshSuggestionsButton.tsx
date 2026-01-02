@@ -16,6 +16,7 @@ export default function RefreshSuggestionsButton({
       variant="link"
       className={cn("text-base-400 font-normal text-xs", className)}
       onClick={onClick}
+      data-testid="refresh-suggestions-button"
     >
       <Sparkles /> Refresh Suggestions
     </Button>

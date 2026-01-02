@@ -33,7 +33,14 @@ const InputLockable = forwardRef<HTMLInputElement, InputLockableProps>(
     return (
       <div className="flex items-center gap-1">
         {onLockToggle ? (
-          <Button type="button" onClick={onLockToggle} variant="ghost" size="icon">
+          <Button
+            type="button"
+            onClick={onLockToggle}
+            variant="ghost"
+            size="icon"
+            data-testid="lock-toggle-button"
+            data-locked={isLocked}
+          >
             {isLocked ? (
               <Lock size={12} className="text-base" />
             ) : (
@@ -42,11 +49,11 @@ const InputLockable = forwardRef<HTMLInputElement, InputLockableProps>(
           </Button>
         ) : null}
         {onDelete ? (
-          <Button type="button" onClick={onDelete} variant="ghost" size="icon">
+          <Button type="button" onClick={onDelete} variant="ghost" size="icon" data-testid="delete-button">
             <Trash2 size={14} className="text-[#96989B]" />
           </Button>
         ) : null}
-        <InputGroup className={`h-10 ${isLocked ? "border-[#2E3238]" : ""}`}>
+        <InputGroup className={`h-10 ${isLocked ? "border-[#2E3238]" : ""}`} data-testid="lockable-input-group">
           <InputGroupInput
             ref={ref}
             name={name}
@@ -57,6 +64,7 @@ const InputLockable = forwardRef<HTMLInputElement, InputLockableProps>(
             disabled={isLocked}
             className="disabled:opacity-100"
             aria-invalid={isInvalid}
+            data-testid="lockable-input"
           />
         </InputGroup>
       </div>

@@ -6,12 +6,244 @@
 
 ## Current State
 
-Database snapshots at known work points + Polly HTTP recording = deterministic, fast, cheap tests. Snapshots let tests start from any point in the user journey. Polly replays AI API responses.
-Frontend uses Vitest + React Testing Library with TDD approach. Every component has matching test file. Backend uses RSpec with request specs for API testing.
+**E2E Testing (Playwright):** Page Object Model pattern with database snapshots. Data-testid selectors for stability. Never use `networkidle` - wait for specific elements/attributes instead. AI streaming state tracked via data attributes.
+
+**Unit/Integration Testing:** Database snapshots at known work points + Polly HTTP recording = deterministic, fast, cheap tests. Snapshots let tests start from any point in the user journey. Polly replays AI API responses.
+
+**Frontend (Vitest):** Vitest + React Testing Library with TDD approach. Every component has matching test file.
+
+**Backend (RSpec):** Request specs for API testing.
+
+**Service Management:** Unified `bin/services` script manages Rails/Langgraph for all environments. `langgraph_app/bin/test` auto-starts Rails before running Vitest. Master key handling is automatic in test/CI.
 
 ---
 
 ## Decision Log
+
+### 2026-01-02: Playwright E2E Testing Patterns
+
+**Context:** Built comprehensive E2E tests for Brainstorm and Campaign workflows. These workflows involve AI streaming, multi-step wizards, file uploads, autosave, and complex state management. Lessons learned should be codified for future workflows.
+
+**Decision:** Establish standardized Playwright E2E patterns:
+
+#### 1. Page Object Model Structure
+
+Every workflow gets a Page Object class that encapsulates all interactions:
+
+```typescript
+export class SomePage {
+  readonly page: Page;
+  readonly element: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.element = page.getByTestId("element-id");
+  }
+
+  async goto(): Promise<void> {
+    await this.page.goto("/path");
+    await this.element.waitFor({ state: "visible", timeout: 10000 });
+  }
+}
+```
+
+#### 2. NEVER Use `networkidle`
+
+Vite HMR keeps websocket active forever. Instead:
+
+```typescript
+// Wait for specific elements
+await element.waitFor({ state: "visible", timeout: 10000 });
+
+// Wait for data attributes
+await expect(element).toHaveAttribute("data-ready", "true", { timeout: 30000 });
+
+// Wait for API responses (set up BEFORE triggering action)
+const responsePromise = page.waitForResponse(
+  (response) => response.url().includes("/api/v1/something") && response.status() === 200,
+  { timeout: 10000 }
+);
+await triggerAction();
+await responsePromise;
+```
+
+#### 3. AI/Streaming State Tracking
+
+Add data attributes to streaming components:
+
+```tsx
+<div
+  data-testid="chat"
+  data-loading-history={isLoadingHistory}
+  data-streaming={isStreaming}
+  data-ready={!isLoadingHistory && !isStreaming}
+>
+```
+
+Handle race conditions (response may arrive before thinking indicator):
+
+```typescript
+async waitForResponse(timeout: number = 30000): Promise<void> {
+  const result = await Promise.race([
+    this.thinkingIndicator.waitFor({ state: "visible", timeout: 5000 }).then(() => "thinking"),
+    this.aiMessages.first().waitFor({ state: "visible", timeout: 5000 }).then(() => "message"),
+  ]).catch(() => "timeout");
+
+  if (result === "thinking") {
+    await this.thinkingIndicator.waitFor({ state: "hidden", timeout });
+  }
+}
+```
+
+#### 4. Database Snapshots for E2E
+
+```typescript
+test.beforeEach(async ({ page }) => {
+  await DatabaseSnapshotter.restoreSnapshot("snapshot_name");
+  // IMPORTANT: Project UUIDs are dynamic after restore
+  const project = await DatabaseSnapshotter.getFirstProject();
+  projectUuid = project.uuid;
+  await loginUser(page);
+});
+```
+
+#### 5. Pre-Verified Test Data
+
+Never trust AI-generated content for validation tests:
+
+```typescript
+export const VALID_TEST_DATA = {
+  headlines: [
+    "Save 20% on First Order", // 22 chars (max 30)
+  ],
+} as const;
+```
+
+#### 6. Required `data-testid` Attributes
+
+- Form containers: `{form-name}-form`
+- Navigation: `{action}-button`
+- Tabs: `tab-switcher`, `tab-{name}`
+- Chat: `chat`, `chat-input`, `chat-messages`, `thinking-indicator`
+- Inputs: `lockable-input`, `lock-toggle-button`
+- Uploads: `{purpose}-file-input`, `{purpose}-preview`
+- Panels: `{name}-panel`, `{name}-toggle`, `{name}-content`
+
+#### 7. Loading State Testing
+
+Test that wrong states don't flicker:
+
+```typescript
+test("shows skeleton not landing page when loading", async ({ page }) => {
+  await page.goto(`/projects/${threadId}/something`);
+  // Immediately assert wrong state isn't visible
+  await expect(landingPageHero).not.toBeVisible();
+  // Eventually correct content loads
+  await expect(content).toBeVisible();
+});
+```
+
+#### 8. Multi-Step Workflow Testing
+
+Navigate systematically:
+
+```typescript
+test("navigates through all steps", async ({ page }) => {
+  await pageObject.goto(projectUuid);
+  await pageObject.waitForReady();
+
+  await pageObject.expectFormVisible("step1");
+  await fillStep1Data();
+  await pageObject.clickContinue();
+
+  await pageObject.expectFormVisible("step2");
+  // ... continue
+});
+```
+
+#### 9. Autosave/Race Condition Testing
+
+```typescript
+test("handles rapid typing then continue", async ({ page }) => {
+  for (let i = 0; i < 3; i++) {
+    await pageObject.fillNthInput(i, VALID_TEST_DATA.items[i]);
+  }
+  await pageObject.clickContinue();
+  await pageObject.clickBack();
+
+  for (let i = 0; i < 3; i++) {
+    await expect(pageObject.getNthInput(i)).toHaveValue(VALID_TEST_DATA.items[i]);
+  }
+});
+```
+
+**Why:**
+
+- Consistent patterns across all E2E tests
+- Avoid common pitfalls (networkidle, race conditions, dynamic IDs)
+- Page Objects provide reusable, maintainable test infrastructure
+- Data attributes provide stable, semantic selectors
+- Pre-verified data eliminates flaky validation tests
+
+**Files establishing pattern:**
+
+- `rails_app/e2e/pages/brainstorm.page.ts` - Comprehensive POM example
+- `rails_app/e2e/pages/campaign.page.ts` - Multi-step workflow POM
+- `rails_app/e2e/brainstorm.spec.ts` - Full test suite example
+- `rails_app/e2e/campaign.spec.ts` - Workflow test suite
+- `rails_app/e2e/fixtures/database.ts` - Snapshot integration
+- `rails_app/e2e/CAMPAIGN_TEST_NOTES.md` - Pattern documentation
+
+**Status:** Current
+
+---
+
+### 2026-01-01: Unified Service Management for Tests
+
+**Context:** Langgraph tests require Rails to be running (for API calls). Previously, CI had to manually start Rails with the master key. Local developers had to remember to start Rails before running langgraph tests. This led to:
+
+- Inconsistent test environments between local and CI
+- Duplication of service startup logic
+- CI failures when master key handling wasn't synchronized
+
+**Decision:** Create unified service management via `bin/services` and `langgraph_app/bin/test`:
+
+1. `bin/services` - Single source of truth for starting Rails/Langgraph in any environment
+2. `langgraph_app/bin/test` - Wrapper that auto-starts Rails before running Vitest
+3. `config/services.sh` - Environment config (ports, URLs) for dev/test/CI
+4. Automatic `RAILS_MASTER_KEY` handling in test mode (reads from `config/credentials/test.key`)
+
+**Why:**
+
+- **One command**: `bin/test` just works, no manual Rails startup
+- **Environment parity**: Same scripts run locally and in CI
+- **Port isolation**: Dev uses 3000/4000, test uses 3001/4001 (can run simultaneously)
+- **Credentials handled**: Test master key automatically loaded in test/CI environments
+
+**Usage:**
+
+```bash
+# Run langgraph tests (Rails starts automatically)
+cd langgraph_app
+bin/test                    # Run once
+bin/test --watch            # Watch mode
+bin/test --no-rails         # Skip Rails if running manually
+
+# Service management
+bin/services status         # Check what's running
+bin/services cleanup        # Kill all managed services
+bin/services env            # Show current config
+```
+
+**Files:**
+
+- `bin/services` - Unified service manager
+- `config/services.sh` - Port/URL configuration
+- `langgraph_app/bin/test` - Test wrapper with Rails auto-start
+
+**Status:** Current
+
+---
 
 ### 2025-12-28: Use Database Snapshots for Testing
 

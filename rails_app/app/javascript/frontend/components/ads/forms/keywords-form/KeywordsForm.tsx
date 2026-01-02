@@ -6,7 +6,7 @@ export default function KeywordsForm() {
   useStageInit("keywords");
 
   return (
-    <div className="border border-neutral-300 border-t-0 rounded-b-2xl bg-white">
+    <div className="border border-neutral-300 border-t-0 rounded-b-2xl bg-white" data-testid="keywords-form">
       <div className="py-8 pl-9 pr-[97px] flex flex-col gap-6">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-lg font-semibold leading-[22px]">Keyword Targeting</h2>

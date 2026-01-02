@@ -76,7 +76,7 @@ export default function LaunchForm() {
 
   return (
     <FormProvider {...methods}>
-      <div className="border border-neutral-300 bg-white p-6 rounded-2xl">
+      <div className="border border-neutral-300 bg-white p-6 rounded-2xl" data-testid="launch-form">
         <div className="py-8 px-9 flex flex-col gap-6">
           <FieldSet className="md:max-w-2/3 lg:max-w-1/2">
             <Field>

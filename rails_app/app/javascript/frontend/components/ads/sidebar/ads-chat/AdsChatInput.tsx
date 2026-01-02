@@ -27,12 +27,13 @@ export default function AdsChatInput() {
 
   return (
     <div className="flex flex-col gap-1 w-full">
-      <Chat.Input.DropZone className="relative bg-white border border-neutral-300 rounded-2xl p-3 flex flex-col min-h-[80px]">
+      <Chat.Input.DropZone className="relative bg-white border border-neutral-300 rounded-2xl p-3 flex flex-col min-h-[80px]" data-testid="ads-chat-dropzone">
         <Chat.Input.AttachmentList className="flex flex-wrap gap-2 mb-2" />
 
         <Chat.Input.Textarea
           placeholder="Ask me for changes..."
           className="flex-1 text-xs min-h-[40px]"
+          data-testid="ads-chat-input"
         />
 
         <div className="flex items-center justify-between mt-auto pt-2">
@@ -43,6 +44,7 @@ export default function AdsChatInput() {
           <Chat.Input.SubmitButton
             stopIcon={<Square className="size-3" fill="currentColor" />}
             className="rounded-full bg-secondary-500 text-white hover:bg-secondary-600 size-6 flex items-center justify-center"
+            data-testid="ads-chat-submit"
           >
             <ArrowUp className="size-4" />
           </Chat.Input.SubmitButton>
@@ -53,6 +55,7 @@ export default function AdsChatInput() {
         variant="link"
         className="text-base-400 font-normal text-xs px-0 py-1 h-auto justify-start gap-1"
         onClick={onRefreshSuggestions}
+        data-testid="refresh-all-suggestions"
       >
         <Sparkles className="size-3.5" /> Refresh All Suggestions
       </Button>

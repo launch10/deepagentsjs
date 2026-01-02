@@ -96,7 +96,7 @@ export default function ReviewForm() {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" data-testid="review-form">
       <ReviewFormSection id={SECTION_IDS.content} title="Ad Content & Highlights">
         <FieldSet className="gap-6">
           {/* Ad Group Name */}

@@ -73,7 +73,7 @@ export const DatabaseSnapshotter = {
   async listSnapshots(): Promise<string[]> {
     const response = await fetch(`${BASE_URL}/test/database/snapshots`, {
       method: "GET",
-      headers: { "Accept": "application/json" },
+      headers: { Accept: "application/json" },
     });
 
     if (!response.ok) {
@@ -83,5 +83,24 @@ export const DatabaseSnapshotter = {
 
     const data = await response.json();
     return data.snapshots;
+  },
+
+  /**
+   * Gets the first project from the database.
+   * Useful for getting the project UUID after restoring a snapshot.
+   */
+  async getFirstProject(): Promise<{ uuid: string; name: string }> {
+    const response = await fetch(`${BASE_URL}/test/database/first_project`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to get first project: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.project;
   },
 };

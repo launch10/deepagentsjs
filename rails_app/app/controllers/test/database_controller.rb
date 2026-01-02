@@ -75,6 +75,24 @@ class Test::DatabaseController < Test::TestController
     end
   end
 
+  def first_project
+    project = Project.first
+    if project
+      render json: {
+        status: "ok",
+        project: {
+          uuid: project.uuid,
+          name: project.name
+        }
+      }, status: :ok
+    else
+      render json: {
+        status: "error",
+        errors: ["No project found"]
+      }, status: :not_found
+    end
+  end
+
   private
 
   def snapshot_params

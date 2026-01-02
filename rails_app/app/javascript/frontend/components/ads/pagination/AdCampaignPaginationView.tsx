@@ -53,7 +53,12 @@ export function AdCampaignPaginationView({
         )}
       >
         {config.showPreviousStep && (
-          <Button variant="link" onClick={onBack} disabled={!campaignId || !canGoBack || isPending}>
+          <Button
+            variant="link"
+            onClick={onBack}
+            disabled={!campaignId || !canGoBack || isPending}
+            data-testid="campaign-back-button"
+          >
             Previous Step
           </Button>
         )}
@@ -64,13 +69,14 @@ export function AdCampaignPaginationView({
               disabled={!campaignId || !canGoForward || isPending}
               style={validationFailed ? { animation: "shake 0.5s ease-in-out" } : undefined}
               onAnimationEnd={onValidationAnimationEnd}
+              data-testid="campaign-continue-button"
             >
               {isPending && variant === "workflow" && <Spinner />}
               {resolvedSecondaryLabel}
             </Button>
           )}
           {showPrimaryButton && (
-            <Button onClick={onPrimary} disabled={!campaignId || isPending}>
+            <Button onClick={onPrimary} disabled={!campaignId || isPending} data-testid="campaign-review-button">
               {isPending && variant !== "workflow" && <Spinner />}
               {resolvedPrimaryLabel}
             </Button>

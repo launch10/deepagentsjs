@@ -18,6 +18,7 @@ const ReviewFormSection = forwardRef<HTMLDivElement, ReviewFormSectionProps>(
         id={id}
         ref={ref}
         className="border border-neutral-300 bg-white p-6 rounded-2xl scroll-mt-4"
+        data-testid={`review-section-${id?.replace('review-section-', '') || 'unknown'}`}
       >
         <div className="py-8 px-9 flex flex-col gap-6">
           <div className="flex items-center justify-between">
@@ -26,7 +27,7 @@ const ReviewFormSection = forwardRef<HTMLDivElement, ReviewFormSectionProps>(
               <span>{title}</span>
             </h2>
             {showEditSection && (
-              <Button variant="ghost" size="sm" onClick={onEditSection}>
+              <Button variant="ghost" size="sm" onClick={onEditSection} data-testid="edit-section-button">
                 <Pencil size={16} />
                 <span>Edit Section</span>
               </Button>
