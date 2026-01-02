@@ -520,16 +520,22 @@ export class BrainstormPage {
 
   /**
    * Check if an image is displayed in a user message
-   * Returns the count of images in user messages
+   * Returns the count of images displayed via MessageImages component
+   * Note: Images are rendered as siblings to the user-message div, not inside it
    */
   async getUserMessageImageCount(): Promise<number> {
-    const userMessages = await this.userMessages.all();
-    let imageCount = 0;
-    for (const message of userMessages) {
-      const images = await message.locator("img").count();
-      imageCount += images;
+    const imageContainers = this.page.getByTestId("message-images");
+    const count = await imageContainers.count();
+    if (count === 0) {
+      return 0;
     }
-    return imageCount;
+
+    let totalImages = 0;
+    for (let i = 0; i < count; i++) {
+      const images = await imageContainers.nth(i).locator("img").count();
+      totalImages += images;
+    }
+    return totalImages;
   }
 
   /**
@@ -663,5 +669,32 @@ export class BrainstormPage {
         response.status() === 200,
       { timeout: 10000 }
     );
+  }
+
+  /**
+   * Get the count of documents (PDFs, etc.) displayed in user messages
+   */
+  async getUserMessageDocumentCount(): Promise<number> {
+    const documentContainers = this.page.getByTestId("message-documents");
+    const count = await documentContainers.count();
+    if (count === 0) {
+      return 0;
+    }
+
+    let totalDocs = 0;
+    for (let i = 0; i < count; i++) {
+      const docs = await documentContainers.nth(i).getByTestId("message-document").count();
+      totalDocs += docs;
+    }
+    return totalDocs;
+  }
+
+  /**
+   * Check if a document with a specific mime type is displayed
+   * @param mimeType - The mime type to look for (e.g., 'application/pdf')
+   */
+  async hasDocumentWithMimeType(mimeType: string): Promise<boolean> {
+    const doc = this.page.locator(`[data-testid="message-document"][data-mime-type="${mimeType}"]`);
+    return await doc.count() > 0;
   }
 }

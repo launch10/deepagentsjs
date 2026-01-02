@@ -1,7 +1,7 @@
 import { twMerge } from "tailwind-merge";
 import type { ReactNode } from "react";
-import type { ImageMessageBlock } from "langgraph-ai-sdk-types";
-import { MessageImages } from "./attachments";
+import type { ImageMessageBlock, FileMessageBlock } from "langgraph-ai-sdk-types";
+import { MessageImages, MessageDocuments } from "./attachments";
 
 // ============================================================================
 // UserMessage Component
@@ -21,11 +21,12 @@ interface MinimalBlock {
   id: string;
   text?: string;
   url?: string;
+  mimeType?: string;
 }
 
 /**
  * Props for UserMessage component.
- * Can be used with either children (simple text) or blocks (extracts text + images).
+ * Can be used with either children (simple text) or blocks (extracts text + images + files).
  */
 export interface UserMessageProps {
   /** Simple text content (mutually exclusive with blocks) */
@@ -57,6 +58,13 @@ function extractImagesFromBlocks(blocks: MinimalBlock[]): ImageMessageBlock[] {
   return blocks.filter((b): b is ImageMessageBlock => b.type === "image");
 }
 
+/**
+ * Extract file blocks from message blocks (PDFs, etc.)
+ */
+function extractFilesFromBlocks(blocks: MinimalBlock[]): FileMessageBlock[] {
+  return blocks.filter((b): b is FileMessageBlock => b.type === "file");
+}
+
 export function UserMessage(props: UserMessageProps) {
   const { className } = props;
 
@@ -64,6 +72,7 @@ export function UserMessage(props: UserMessageProps) {
   if ("blocks" in props && props.blocks) {
     const textContent = extractTextFromBlocks(props.blocks);
     const imageBlocks = extractImagesFromBlocks(props.blocks);
+    const fileBlocks = extractFilesFromBlocks(props.blocks);
 
     return (
       <div className="flex flex-col items-end">
@@ -80,6 +89,7 @@ export function UserMessage(props: UserMessageProps) {
           </div>
         )}
         {imageBlocks.length > 0 && <MessageImages images={imageBlocks} />}
+        {fileBlocks.length > 0 && <MessageDocuments files={fileBlocks} />}
       </div>
     );
   }
@@ -99,5 +109,6 @@ export function UserMessage(props: UserMessageProps) {
   );
 }
 
-// Also re-export MessageImages for standalone use
+// Also re-export MessageImages and MessageDocuments for standalone use
 UserMessage.Images = MessageImages;
+UserMessage.Documents = MessageDocuments;

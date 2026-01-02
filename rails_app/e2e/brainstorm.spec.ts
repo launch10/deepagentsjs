@@ -1080,6 +1080,148 @@ test.describe("Brand Personalization Uploads", () => {
   });
 });
 
+test.describe("Brainstorm PDF Attachments", () => {
+  let brainstormPage: BrainstormPage;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await loginUser(page);
+    brainstormPage = new BrainstormPage(page);
+  });
+
+  test("can add a PDF attachment to chat input", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add a PDF attachment
+    await brainstormPage.addChatAttachment("e2e/fixtures/files/test-document.pdf");
+
+    // Wait for upload to complete
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Verify attachment appears (as a FilePill)
+    const attachmentCount = await brainstormPage.getChatAttachmentCount();
+    expect(attachmentCount).toBe(1);
+  });
+
+  test("PDF attachment displays in sent message", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add a PDF attachment
+    await brainstormPage.addChatAttachment("e2e/fixtures/files/test-document.pdf");
+
+    // Wait for upload to complete
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Type a message
+    await brainstormPage.chatInput.fill("Here is my PDF document");
+
+    // Send the message
+    await brainstormPage.sendButton.click();
+
+    // Wait for URL to update (message sent)
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/"),
+      { timeout: 10000 }
+    );
+
+    // Wait for the response so we know message is fully rendered
+    await brainstormPage.waitForResponse();
+
+    // Verify PDF document is displayed with the user message
+    const docCount = await brainstormPage.getUserMessageDocumentCount();
+    expect(docCount).toBe(1);
+
+    // Verify the document has the correct mime type
+    const hasPdf = await brainstormPage.hasDocumentWithMimeType("application/pdf");
+    expect(hasPdf).toBe(true);
+  });
+
+  test("can send PDF-only message (no text)", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add a PDF attachment
+    await brainstormPage.addChatAttachment("e2e/fixtures/files/test-document.pdf");
+
+    // Wait for upload to complete
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Send without text
+    await brainstormPage.sendButton.click();
+
+    // Wait for URL to update (message sent)
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/"),
+      { timeout: 10000 }
+    );
+
+    // Wait for the response
+    await brainstormPage.waitForResponse();
+
+    // Verify PDF is displayed
+    const docCount = await brainstormPage.getUserMessageDocumentCount();
+    expect(docCount).toBe(1);
+  });
+
+  test("PDF document is clickable and opens in new tab", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add a PDF attachment
+    await brainstormPage.addChatAttachment("e2e/fixtures/files/test-document.pdf");
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Send the message
+    await brainstormPage.chatInput.fill("Check this PDF");
+    await brainstormPage.sendButton.click();
+
+    // Wait for message to be sent
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    // Verify the document link has correct attributes
+    const docLink = page.getByTestId("message-document");
+    await expect(docLink).toBeVisible();
+    await expect(docLink).toHaveAttribute("target", "_blank");
+    await expect(docLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  test("can send message with both image and PDF attachments", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add both image and PDF attachments
+    await brainstormPage.addChatAttachments([
+      "e2e/fixtures/files/test-image-1.jpg",
+      "e2e/fixtures/files/test-document.pdf",
+    ]);
+
+    // Wait for uploads to complete
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Verify both attachments appear in input
+    const attachmentCount = await brainstormPage.getChatAttachmentCount();
+    expect(attachmentCount).toBe(2);
+
+    // Send the message
+    await brainstormPage.chatInput.fill("Here are my files");
+    await brainstormPage.sendButton.click();
+
+    // Wait for message to be sent
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    // Verify both are displayed in the message
+    const imageCount = await brainstormPage.getUserMessageImageCount();
+    const docCount = await brainstormPage.getUserMessageDocumentCount();
+    expect(imageCount).toBe(1);
+    expect(docCount).toBe(1);
+  });
+});
+
 test.describe("Brainstorm Inline Chat Attachments", () => {
   let brainstormPage: BrainstormPage;
 
