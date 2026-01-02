@@ -472,9 +472,63 @@ test.describe("Ad Campaign Workflow", () => {
       // Click on the result to add it
       await californiaResult.click();
 
-      // Verify it was added to the targeting list
-      // The location should appear in the list with its name
-      await expect(page.getByText("California").first()).toBeVisible({ timeout: 5000 });
+      // Verify it was added to the targeting list using specific testid
+      // criteria_id 21137 is California from our mock data
+      const locationItem = page.getByTestId("location-item-21137");
+      await expect(locationItem).toBeVisible({ timeout: 5000 });
+
+      // Verify the location details are correct
+      await expect(locationItem.getByTestId("location-name")).toHaveText("California,United States");
+      await expect(locationItem.getByTestId("location-type")).toHaveText("State");
+
+      // New locations should default to targeted
+      await expect(locationItem).toHaveAttribute("data-targeted", "true");
+    });
+
+    test("should toggle location between targeted and excluded", async ({ page }) => {
+      await campaignPage.goto(projectUuid, "settings");
+      await campaignPage.waitForReady();
+      await campaignPage.expectFormVisible("settings");
+
+      // The default "United States" location should already be in the list (criteria_id 2840)
+      const usaItem = page.getByTestId("location-item-2840");
+      await expect(usaItem).toBeVisible({ timeout: 5000 });
+
+      // Should start as targeted
+      await expect(usaItem).toHaveAttribute("data-targeted", "true");
+
+      // Click toggle to switch to excluded
+      const toggle = page.getByTestId("location-toggle-2840");
+      await toggle.click();
+
+      // Should now be excluded
+      await expect(usaItem).toHaveAttribute("data-targeted", "false");
+
+      // Click again to switch back to targeted
+      await toggle.click();
+      await expect(usaItem).toHaveAttribute("data-targeted", "true");
+    });
+
+    test("should remove location from targeting list", async ({ page }) => {
+      await campaignPage.goto(projectUuid, "settings");
+      await campaignPage.waitForReady();
+      await campaignPage.expectFormVisible("settings");
+
+      // Add a new location first
+      await campaignPage.locationSearchInput.fill("New York");
+      const nyResult = page.locator('button:has-text("New York,New York,United States")').first();
+      await expect(nyResult).toBeVisible({ timeout: 5000 });
+      await nyResult.click();
+
+      // Verify it was added (criteria_id 1023191 is New York City from our mock)
+      const nyItem = page.getByTestId("location-item-1023191");
+      await expect(nyItem).toBeVisible({ timeout: 5000 });
+
+      // Click remove button
+      await page.getByTestId("location-remove-1023191").click();
+
+      // Verify it was removed
+      await expect(nyItem).not.toBeVisible();
     });
   });
 

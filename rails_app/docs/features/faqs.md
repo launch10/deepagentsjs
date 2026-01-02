@@ -50,6 +50,63 @@ These serve as context for AI models in the Brainstorm, Ads, and FAQs flows. Doc
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## Writing FAQs in Google Drive
+
+### Folder Structure
+
+FAQs are stored in Google Drive with this structure:
+
+```
+Google Drive
+└── FAQs
+    ├── Live/      ← Documents here are synced to the database
+    └── Drafts/    ← Work in progress (not synced)
+```
+
+Only documents in the **Live** folder are published. Use Drafts for work in progress.
+
+### Creating a New FAQ Document
+
+1. Navigate to **Google Drive > FAQs > Live**
+2. Create a new **Google Doc** (not Sheets, PDFs, etc.)
+3. Format using the Q&A structure below
+
+### Document Format
+
+Use `Question:` and `Answer:` prefixes for each Q&A pair:
+
+```
+Question: What is an Ad Group?
+Answer: An Ad Group is a container inside your Google Ads campaign that holds
+your ads and keywords. Think of it as a themed folder...
+
+Question: How many headlines should I write?
+Answer: Google recommends at least 3 headlines per ad, but you can add up to 15...
+```
+
+### Optional Frontmatter
+
+Add YAML frontmatter at the top for metadata (optional):
+
+```markdown
+---
+slug: campaign_builder_faq
+status: live
+type: q_and_a
+tags: [ads, campaigns, google_ads]
+---
+
+Question: What are Headlines in my ad?
+Answer: Headlines are short text snippets...
+```
+
+### Service Account Access
+
+The sync uses a service account. If you create a new folder that needs syncing:
+
+1. Share the folder with: `launch10@launch10-479317.iam.gserviceaccount.com`
+2. Grant **Viewer** access
+
 ## Syncing Documents Manually
 
 To sync documents from Google Drive, ensure you're running the following services:
