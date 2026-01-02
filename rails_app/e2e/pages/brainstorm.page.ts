@@ -53,6 +53,12 @@ export class BrainstormPage {
   // Command buttons for workflow actions
   readonly buildMySiteButton: Locator;
 
+  // Custom theme elements
+  readonly addCustomButton: Locator;
+  readonly customColorPicker: Locator;
+  readonly customColorDoneButton: Locator;
+  readonly colorInputs: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
@@ -112,6 +118,12 @@ export class BrainstormPage {
     this.buildMySiteButton = page
       .getByTestId("command-buttons")
       .getByRole("button", { name: "Build My Site" });
+
+    // Custom theme elements
+    this.addCustomButton = page.getByRole("button", { name: "Add Custom" });
+    this.customColorPicker = page.getByTestId("custom-color-picker-inline");
+    this.customColorDoneButton = page.getByTestId("custom-color-done-btn");
+    this.colorInputs = page.locator('input[aria-label="Hex color value"]');
   }
 
   /**
@@ -536,5 +548,120 @@ export class BrainstormPage {
     await this.page.waitForURL(`**/projects/${threadId}/website`, {
       timeout: e2eConfig.timeouts.navigation,
     });
+  }
+
+  /**
+   * Open the custom color picker by clicking "Add Custom"
+   */
+  async openCustomColorPicker(): Promise<void> {
+    await this.addCustomButton.click();
+    await this.customColorPicker.waitFor({ state: "visible", timeout: 5000 });
+  }
+
+  /**
+   * Set a custom color at the specified index (0-4)
+   * @param index - The color slot index (0-4)
+   * @param hexColor - The hex color without # prefix (e.g., "FF5733")
+   */
+  async setCustomColor(index: number, hexColor: string): Promise<void> {
+    const colorInput = this.colorInputs.nth(index);
+    await colorInput.clear();
+    await colorInput.fill(hexColor);
+  }
+
+  /**
+   * Save the custom color palette by clicking "Done"
+   */
+  async saveCustomPalette(): Promise<void> {
+    await this.customColorDoneButton.click();
+    // Wait for the custom picker to close and palettes to reload
+    await this.customColorPicker.waitFor({ state: "hidden", timeout: 10000 });
+  }
+
+  /**
+   * Create a custom theme with the specified colors
+   * @param colors - Array of hex colors without # prefix (e.g., ["FF5733", "33FF57", ...])
+   */
+  async createCustomTheme(colors: string[]): Promise<void> {
+    await this.openCustomColorPicker();
+
+    // Set each color
+    for (let i = 0; i < Math.min(colors.length, 5); i++) {
+      await this.setCustomColor(i, colors[i]);
+    }
+
+    await this.saveCustomPalette();
+  }
+
+  /**
+   * Check if the currently selected palette contains the specified colors
+   * @param colors - Array of hex colors to look for (without # prefix, e.g., "FF5733")
+   * @returns true if the selected palette contains these colors
+   */
+  async hasCustomThemeWithColors(colors: string[]): Promise<boolean> {
+    // Find the selected palette
+    const selectedPalette = this.page.locator('[data-testid^="color-palette-"][data-selected="true"]');
+    const isVisible = await selectedPalette.isVisible();
+    if (!isVisible) {
+      return false;
+    }
+
+    // Get all color divs in the selected palette
+    const colorDivs = selectedPalette.locator("div[style*='background-color']");
+    const divCount = await colorDivs.count();
+
+    // Extract RGB values from the style attributes
+    const paletteRgbColors: string[] = [];
+    for (let i = 0; i < divCount; i++) {
+      const style = await colorDivs.nth(i).getAttribute("style");
+      if (style) {
+        paletteRgbColors.push(style.toLowerCase());
+      }
+    }
+
+    // Convert input hex colors to RGB for comparison
+    const hexToRgb = (hex: string): string => {
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return `rgb(${r}, ${g}, ${b})`;
+    };
+
+    // Check if all input colors are found in the palette
+    const inputRgbColors = colors.map(c => hexToRgb(c.replace("#", "").toUpperCase()));
+
+    return inputRgbColors.every(inputRgb =>
+      paletteRgbColors.some(paletteStyle => paletteStyle.includes(inputRgb))
+    );
+  }
+
+  /**
+   * Get the count of color palettes currently displayed
+   */
+  async getColorPaletteCount(): Promise<number> {
+    const palettes = this.page.locator('[data-testid^="color-palette-"]');
+    return await palettes.count();
+  }
+
+  /**
+   * Check if the first palette (most recently created custom theme) is selected
+   */
+  async isFirstPaletteSelected(): Promise<boolean> {
+    const firstPalette = this.page.locator('[data-testid^="color-palette-"]').first();
+    const selected = await firstPalette.getAttribute("data-selected");
+    return selected === "true";
+  }
+
+  /**
+   * Wait for themes API to complete loading
+   */
+  async waitForThemesLoaded(): Promise<void> {
+    await this.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/v1/themes") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+      { timeout: 10000 }
+    );
   }
 }

@@ -656,6 +656,74 @@ test.describe("Brainstorm Color Palette", () => {
       expect(paletteCount).toBeGreaterThan(0);
     }
   });
+
+  test("can save a custom theme and it persists after page reload", async ({ page }) => {
+    // Start a conversation to get access to the brand panel
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("Test message for custom theme");
+
+    // Wait for URL update
+    await page.waitForFunction(
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // Wait for AI response (ensures project is persisted in Rails DB)
+    await brainstormPage.waitForResponse();
+
+    // Reload to ensure Inertia props are populated (required for API mutations to work)
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 15000 });
+
+    // Wait for the brand panel to be visible (it renders after messages load)
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+
+    // Open the brand panel
+    await brainstormPage.openBrandPanel();
+
+    // Wait for color palettes to load (not skeleton)
+    await page.waitForFunction(
+      () => !document.querySelector('[data-slot="skeleton"]'),
+      { timeout: 10000 }
+    );
+
+    // Create a custom theme with distinctive colors
+    const customColors = ["FF5733", "33FF57", "3357FF", "F3FF33", "FF33F3"];
+    await brainstormPage.createCustomTheme(customColors);
+
+    // Wait for themes to reload after creation
+    await page.waitForTimeout(1000);
+
+    // The custom theme should now be selected (UI navigates to page 1 after creation)
+    const selectedPaletteAfterCreate = page.locator('[data-testid^="color-palette-"][data-selected="true"]');
+    await expect(selectedPaletteAfterCreate).toBeVisible({ timeout: 5000 });
+
+    // --- PART 2: Verify persistence after reload ---
+
+    // Reload the page to simulate coming back later
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 15000 });
+
+    // Wait for brand panel to be visible and open it
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    // Wait for color palettes to load
+    await page.waitForFunction(
+      () => !document.querySelector('[data-slot="skeleton"]'),
+      { timeout: 10000 }
+    );
+
+    // Verify a palette is selected (the custom theme should auto-scroll to its page)
+    const selectedPalette = page.locator('[data-testid^="color-palette-"][data-selected="true"]');
+    await expect(selectedPalette).toBeVisible({ timeout: 5000 });
+
+    // Verify the selected palette contains our custom colors
+    const hasCustomColors = await brainstormPage.hasCustomThemeWithColors(customColors);
+    expect(hasCustomColors).toBe(true);
+  });
 });
 
 test.describe("Brand Personalization Panel Auto-Open", () => {
@@ -1395,6 +1463,7 @@ test.describe("Brainstorm Loading States", () => {
 // > Okay let's begin dreaming up things for this - currently, we have a killer snapshot builder system which
 //   interacts with our tests in useful ways - we can load from existing snapshots to get known states of the
 //   world. One good example is the loads existing conversation from URL playwright test.
+
 
 test.describe("Brainstorm to Website Redirect", () => {
   // These tests involve multiple AI responses, so need longer timeout

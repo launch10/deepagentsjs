@@ -18,9 +18,9 @@ rails-env: &rails-env
   CI: true
 
 langgraph-env: &langgraph-env
-  RAILS_PORT: "3000"
-  LANGGRAPH_PORT: "8080"
-  RAILS_API_URL: http://localhost:3000
+  RAILS_PORT: "3001"
+  LANGGRAPH_PORT: "4001"
+  RAILS_API_URL: http://localhost:3001
   DATABASE_URL: postgres://postgres:postgres@localhost:5432/launch10_test
   REDIS_URL: redis://localhost:6379
   NODE_ENV: test
@@ -169,18 +169,18 @@ jobs:
           name: Start Rails test server
           command: |
             cd ~/project/rails_app
-            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rails server -e test -p ${RAILS_PORT:-3000} 2>&1 | tee ~/rails_server.log
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rails server -e test -p ${RAILS_PORT:-3001} 2>&1 | tee ~/rails_server.log
           background: true
           environment:
-            <<: *rails-env
+            <<: *langgraph-env
       - run:
           name: Wait for Rails server
           command: |
             sleep 5
             cat ~/rails_server.log
-            dockerize -wait http://localhost:${RAILS_PORT:-3000} -timeout 60s
+            dockerize -wait http://localhost:${RAILS_PORT:-3001} -timeout 60s
           environment:
-            <<: *rails-env
+            <<: *langgraph-env
       - run:
           name: Run tests
           command: pnpm run test
