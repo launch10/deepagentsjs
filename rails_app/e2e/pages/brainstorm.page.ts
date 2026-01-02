@@ -1,4 +1,5 @@
 import { type Page, type Locator, expect } from "@playwright/test";
+import { e2eConfig } from "../config";
 
 /**
  * Page Object Model for the Brainstorm page.
@@ -56,9 +57,9 @@ export class BrainstormPage {
     this.page = page;
 
     // Chat input elements - use data-testid for stability
-    this.chatInput = page.getByTestId('chat-input');
+    this.chatInput = page.getByTestId("chat-input");
     // Send button - use data-testid or aria-label
-    this.sendButton = page.getByTestId('send-button');
+    this.sendButton = page.getByTestId("send-button");
 
     // Message list - using data-testid for stability
     this.messageList = page.getByTestId("message-list");
@@ -108,7 +109,9 @@ export class BrainstormPage {
     this.chatAttachmentItems = page.getByTestId("attachment-item");
 
     // Command buttons for workflow actions - scope to command buttons container to avoid matching examples panel
-    this.buildMySiteButton = page.getByTestId("command-buttons").getByRole("button", { name: "Build My Site" });
+    this.buildMySiteButton = page
+      .getByTestId("command-buttons")
+      .getByRole("button", { name: "Build My Site" });
   }
 
   /**
@@ -148,13 +151,16 @@ export class BrainstormPage {
   /**
    * Wait for AI response to complete
    */
-  async waitForResponse(timeout: number = 30000): Promise<void> {
+  async waitForResponse(timeout: number = e2eConfig.timeouts.aiResponse): Promise<void> {
     // Race condition handling: the response might come back so fast that
     // the thinking indicator is never visible, or is already gone.
     // Wait for EITHER: thinking indicator to appear, OR an AI message to exist.
     const thinkingOrMessage = await Promise.race([
       this.thinkingIndicator.waitFor({ state: "visible", timeout: 5000 }).then(() => "thinking"),
-      this.aiMessages.first().waitFor({ state: "visible", timeout: 5000 }).then(() => "message"),
+      this.aiMessages
+        .first()
+        .waitFor({ state: "visible", timeout: 5000 })
+        .then(() => "message"),
     ]).catch(() => "timeout");
 
     // If thinking indicator appeared, wait for it to disappear
@@ -175,7 +181,7 @@ export class BrainstormPage {
     if (messages.length === 0) {
       return "";
     }
-    return await messages[messages.length - 1].textContent() || "";
+    return (await messages[messages.length - 1].textContent()) || "";
   }
 
   /**
@@ -186,7 +192,7 @@ export class BrainstormPage {
     if (messages.length === 0) {
       return "";
     }
-    return await messages[messages.length - 1].textContent() || "";
+    return (await messages[messages.length - 1].textContent()) || "";
   }
 
   /**
@@ -247,9 +253,7 @@ export class BrainstormPage {
    * Assert that a message appears in the chat
    */
   async expectMessageContaining(text: string): Promise<void> {
-    await expect(
-      this.page.locator(`text=${text}`).first()
-    ).toBeVisible({ timeout: 30000 });
+    await expect(this.page.locator(`text=${text}`).first()).toBeVisible({ timeout: 30000 });
   }
 
   /**
@@ -529,6 +533,8 @@ export class BrainstormPage {
    * @param threadId - The project thread ID
    */
   async waitForWebsiteRedirect(threadId: string): Promise<void> {
-    await this.page.waitForURL(`**/projects/${threadId}/website`, { timeout: 30000 });
+    await this.page.waitForURL(`**/projects/${threadId}/website`, {
+      timeout: e2eConfig.timeouts.navigation,
+    });
   }
 }

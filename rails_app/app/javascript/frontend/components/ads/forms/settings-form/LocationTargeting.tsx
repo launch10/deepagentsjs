@@ -26,6 +26,9 @@ const DefaultLocationTarget: GeoTarget = {
   status: "Active",
 };
 
+// Criteria ID for the default US location - used to auto-exclude when more specific targets exist
+const US_CRITERIA_ID = 2840;
+
 export default function LocationTargeting() {
   const [searchValue, setSearchValue] = useState("");
   const [debouncedSearchValue, setDebouncedSearchValue] = useState("");
@@ -82,15 +85,63 @@ export default function LocationTargeting() {
       isTargeted: true,
     };
     append(newLocation);
+
+    // If a more specific US location is added, remove the US country target
+    if (location.country_code === "US" && location.criteria_id !== US_CRITERIA_ID) {
+      const usIndex = fields.findIndex((f) => f.criteria_id === US_CRITERIA_ID);
+      if (usIndex !== -1) {
+        remove(usIndex);
+      }
+    }
+
     setSearchValue("");
     debouncedSetSearch.cancel();
     setDebouncedSearchValue("");
     setIsDropdownOpen(false);
   };
 
+  // Track when we need to restore US after removing all specific US locations
+  const pendingRestoreUS = useRef(false);
+
   const handleRemoveLocation = (index: number) => {
+    const removedLocation = fields[index];
+
+    // If we just removed a specific US location, check if we should restore US country target
+    if (removedLocation.country_code === "US" && removedLocation.criteria_id !== US_CRITERIA_ID) {
+      // Check if there are any other specific US locations remaining (excluding the one being removed)
+      const remainingSpecificUSLocations = fields.filter(
+        (f, i) => i !== index && f.country_code === "US" && f.criteria_id !== US_CRITERIA_ID
+      );
+
+      // If no more specific US locations remain, mark for restoring US
+      if (remainingSpecificUSLocations.length === 0) {
+        // Check if US is not already in the list
+        const usExists = fields.some((f) => f.criteria_id === US_CRITERIA_ID);
+        if (!usExists) {
+          pendingRestoreUS.current = true;
+        }
+      }
+    }
+
     remove(index);
   };
+
+  // Effect to restore US after fields array is updated from remove
+  useEffect(() => {
+    if (pendingRestoreUS.current) {
+      pendingRestoreUS.current = false;
+      // Add US back to the list as targeted
+      const usLocation: LocationWithSettings = {
+        criteria_id: DefaultLocationTarget.criteria_id,
+        name: DefaultLocationTarget.name,
+        canonical_name: DefaultLocationTarget.canonical_name,
+        target_type: DefaultLocationTarget.target_type,
+        country_code: DefaultLocationTarget.country_code,
+        isTargeted: true,
+      };
+      append(usLocation);
+    }
+  }, [fields, append]);
 
   const handleToggleTargeted = (index: number) => {
     const current = fields[index];

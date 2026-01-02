@@ -385,9 +385,7 @@ describe.sequential("Ads Flow", () => {
 
         const structuredSnippets = result.state.structuredSnippets;
         expect(structuredSnippets).toBeDefined();
-        expect(structuredSnippets?.category).toBeOneOf(
-          Ads.StructuredSnippetCategoryKeys
-        );
+        expect(structuredSnippets?.category).toBeOneOf([...Ads.StructuredSnippetCategoryKeys]);
         expect(structuredSnippets?.details?.length).toEqual(
           Ads.DefaultNumAssets.structuredSnippets
         );

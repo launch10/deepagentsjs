@@ -400,12 +400,44 @@ test.describe("Ad Campaign Workflow", () => {
     // Mock geo target constants data - similar to RSpec's mock_google_ads_api
     const MOCK_GEO_TARGETS = {
       "New York": [
-        { id: 1, criteria_id: 1023191, name: "New York", canonical_name: "New York,New York,United States", country_code: "US", target_type: "City", status: "Active" },
-        { id: 2, criteria_id: 21167, name: "New York", canonical_name: "New York,United States", country_code: "US", target_type: "State", status: "Active" },
+        {
+          id: 1,
+          criteria_id: 1023191,
+          name: "New York",
+          canonical_name: "New York,New York,United States",
+          country_code: "US",
+          target_type: "City",
+          status: "Active",
+        },
+        {
+          id: 2,
+          criteria_id: 21167,
+          name: "New York",
+          canonical_name: "New York,United States",
+          country_code: "US",
+          target_type: "State",
+          status: "Active",
+        },
       ],
-      "California": [
-        { id: 3, criteria_id: 21137, name: "California", canonical_name: "California,United States", country_code: "US", target_type: "State", status: "Active" },
-        { id: 4, criteria_id: 1013962, name: "Los Angeles", canonical_name: "Los Angeles,California,United States", country_code: "US", target_type: "City", status: "Active" },
+      California: [
+        {
+          id: 3,
+          criteria_id: 21137,
+          name: "California",
+          canonical_name: "California,United States",
+          country_code: "US",
+          target_type: "State",
+          status: "Active",
+        },
+        {
+          id: 4,
+          criteria_id: 1013962,
+          name: "Los Angeles",
+          canonical_name: "Los Angeles,California,United States",
+          country_code: "US",
+          target_type: "City",
+          status: "Active",
+        },
       ],
     };
 
@@ -422,10 +454,12 @@ test.describe("Ad Campaign Workflow", () => {
         const query = url.searchParams.get("location_query") || "";
 
         // Find matching mock data
-        let results: typeof MOCK_GEO_TARGETS["New York"] = [];
+        let results: (typeof MOCK_GEO_TARGETS)["New York"] = [];
         for (const [key, data] of Object.entries(MOCK_GEO_TARGETS)) {
-          if (key.toLowerCase().includes(query.toLowerCase()) ||
-              query.toLowerCase().includes(key.toLowerCase())) {
+          if (
+            key.toLowerCase().includes(query.toLowerCase()) ||
+            query.toLowerCase().includes(key.toLowerCase())
+          ) {
             results = [...results, ...data];
           }
         }
@@ -478,11 +512,17 @@ test.describe("Ad Campaign Workflow", () => {
       await expect(locationItem).toBeVisible({ timeout: 5000 });
 
       // Verify the location details are correct
-      await expect(locationItem.getByTestId("location-name")).toHaveText("California,United States");
+      await expect(locationItem.getByTestId("location-name")).toHaveText(
+        "California,United States"
+      );
       await expect(locationItem.getByTestId("location-type")).toHaveText("State");
 
       // New locations should default to targeted
       await expect(locationItem).toHaveAttribute("data-targeted", "true");
+
+      // United States should be removed when a more specific target is added
+      const usaItem = page.getByTestId("location-item-2840");
+      await expect(usaItem).not.toBeVisible();
     });
 
     test("should toggle location between targeted and excluded", async ({ page }) => {
@@ -514,6 +554,8 @@ test.describe("Ad Campaign Workflow", () => {
       await campaignPage.waitForReady();
       await campaignPage.expectFormVisible("settings");
 
+      const usaItem = page.getByTestId("location-item-2840");
+
       // Add a new location first
       await campaignPage.locationSearchInput.fill("New York");
       const nyResult = page.locator('button:has-text("New York,New York,United States")').first();
@@ -524,11 +566,125 @@ test.describe("Ad Campaign Workflow", () => {
       const nyItem = page.getByTestId("location-item-1023191");
       await expect(nyItem).toBeVisible({ timeout: 5000 });
 
+      // United States should be removed when a more specific target is added
+      await expect(usaItem).not.toBeVisible();
+
       // Click remove button
       await page.getByTestId("location-remove-1023191").click();
 
       // Verify it was removed
       await expect(nyItem).not.toBeVisible();
+
+      // United States should be restored after removing all specific targets
+      await expect(usaItem).toBeVisible({ timeout: 5000 });
+    });
+
+    test("should show United States as targeted on initial page load", async ({ page }) => {
+      await campaignPage.goto(projectUuid, "settings");
+      await campaignPage.waitForReady();
+      await campaignPage.expectFormVisible("settings");
+
+      // The default "United States" location should already be in the list (criteria_id 2840)
+      const usaItem = page.getByTestId("location-item-2840");
+      await expect(usaItem).toBeVisible({ timeout: 5000 });
+
+      // Should be targeted on initial load
+      await expect(usaItem).toHaveAttribute("data-targeted", "true");
+    });
+
+    test("should remove United States when more specific US target is added", async ({ page }) => {
+      await campaignPage.goto(projectUuid, "settings");
+      await campaignPage.waitForReady();
+      await campaignPage.expectFormVisible("settings");
+
+      // Verify United States starts as targeted
+      const usaItem = page.getByTestId("location-item-2840");
+      await expect(usaItem).toBeVisible({ timeout: 5000 });
+      await expect(usaItem).toHaveAttribute("data-targeted", "true");
+
+      // Add a more specific US location (California - a US state)
+      await campaignPage.locationSearchInput.fill("California");
+      const californiaResult = page.locator('button:has-text("California,United States")').first();
+      await expect(californiaResult).toBeVisible({ timeout: 5000 });
+      await californiaResult.click();
+
+      // California should be added and targeted
+      const californiaItem = page.getByTestId("location-item-21137");
+      await expect(californiaItem).toBeVisible({ timeout: 5000 });
+      await expect(californiaItem).toHaveAttribute("data-targeted", "true");
+
+      // United States should be removed because a more specific target exists
+      await expect(usaItem).not.toBeVisible();
+    });
+
+    test("should restore United States after removing all specific US targets", async ({
+      page,
+    }) => {
+      await campaignPage.goto(projectUuid, "settings");
+      await campaignPage.waitForReady();
+      await campaignPage.expectFormVisible("settings");
+
+      const usaItem = page.getByTestId("location-item-2840");
+      await expect(usaItem).toBeVisible({ timeout: 5000 });
+
+      // Add a more specific location (California)
+      await campaignPage.locationSearchInput.fill("California");
+      const californiaResult = page.locator('button:has-text("California,United States")').first();
+      await expect(californiaResult).toBeVisible({ timeout: 5000 });
+      await californiaResult.click();
+
+      // Wait for California to be added
+      const californiaItem = page.getByTestId("location-item-21137");
+      await expect(californiaItem).toBeVisible({ timeout: 5000 });
+
+      // United States should be removed when more specific target exists
+      await expect(usaItem).not.toBeVisible();
+
+      // Remove California
+      await page.getByTestId("location-remove-21137").click();
+
+      // California should be removed
+      await expect(californiaItem).not.toBeVisible();
+
+      // United States should be restored and targeted automatically
+      await expect(usaItem).toBeVisible({ timeout: 5000 });
+      await expect(usaItem).toHaveAttribute("data-targeted", "true");
+    });
+
+    test("should preserve targeted locations when navigating between tabs", async ({ page }) => {
+      await campaignPage.goto(projectUuid, "settings");
+      await campaignPage.waitForReady();
+      await campaignPage.expectFormVisible("settings");
+
+      // Add California to targeting
+      await campaignPage.locationSearchInput.fill("California");
+      const californiaResult = page.locator('button:has-text("California,United States")').first();
+      await expect(californiaResult).toBeVisible({ timeout: 5000 });
+      await californiaResult.click();
+
+      // Verify California was added
+      const californiaItem = page.getByTestId("location-item-21137");
+      await expect(californiaItem).toBeVisible({ timeout: 5000 });
+      await expect(californiaItem).toHaveAttribute("data-targeted", "true");
+
+      // Navigate to a different tab (keywords)
+      await campaignPage.clickTab("keywords");
+      await page.waitForTimeout(1000);
+      await campaignPage.expectFormVisible("keywords");
+
+      // Navigate back to settings
+      await campaignPage.clickTab("settings");
+      await page.waitForTimeout(1000);
+      await campaignPage.expectFormVisible("settings");
+
+      // California should still be present after navigating back
+      const californiaItemAfterNav = page.getByTestId("location-item-21137");
+      await expect(californiaItemAfterNav).toBeVisible({ timeout: 5000 });
+      await expect(californiaItemAfterNav).toHaveAttribute("data-targeted", "true");
+
+      // United States should NOT be present because a more specific target exists
+      const usaItemAfterNav = page.getByTestId("location-item-2840");
+      await expect(usaItemAfterNav).not.toBeVisible();
     });
   });
 
