@@ -4,12 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { FieldGroup } from "@components/ui/field";
 import AdCampaignKeywordInput from "./AdCampaignKeywordInput";
-import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
+import { useAdsChatState, useAdsChatActions, useAutosaveCampaign } from "@components/ads/hooks";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
-import { useAutosaveCampaign } from "@api/campaigns.hooks";
 import type { UpdateCampaignRequestBody } from "@rails_api_base";
 import AdCampaignFieldList from "../shared/AdCampaignFieldList";
 

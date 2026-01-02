@@ -1,6 +1,6 @@
 import type { SettingsFormData, LocationWithSettings } from "./settingsForm.schema";
 import { settingsFormDefaults } from "./settingsForm.schema";
-import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
+import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
 
 type ApiLocationTarget = NonNullable<CampaignProps["location_targets"]>[number];
 type ApiSchedule = NonNullable<CampaignProps["ad_schedule"]>;

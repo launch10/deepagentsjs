@@ -62,14 +62,17 @@ function useBrainstormChatOptions() {
       // Check URL first (for after history.pushState), then fall back to Inertia props
       getInitialThreadId: () => getThreadIdFromUrl() ?? (thread_id ? thread_id : undefined),
       onThreadIdAvailable,
-      // Composer attachments config - uploads return URLs directly
+      // Composer attachments config - uploads return URLs and original filename
       attachments: {
         upload: async (file: File) => {
           const response = await uploadService.create({
             file,
             isLogo: false,
           });
-          return { url: response.url };
+          return {
+            url: response.url,
+            meta: { filename: response.filename },
+          };
         },
         validate: validateFile,
       },

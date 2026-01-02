@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useCampaignService } from "@api/campaigns.hooks";
 import type { UpdateCampaignRequestBody, UpdateCampaignResponse } from "@rails_api_base";
 import { useAdsChatState } from "./useAdsChat";
-import { useLatestMutation } from "./useLatestMutation";
+import { useLatestMutation } from "@hooks/useLatestMutation";
 import { Ads } from "@shared";
 
 type StepName = "content" | "highlights" | "keywords" | "settings" | "launch";

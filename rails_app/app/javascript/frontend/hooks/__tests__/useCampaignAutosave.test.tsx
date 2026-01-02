@@ -3,9 +3,9 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import type { ReactNode } from "react";
-import { useAutosaveCampaign } from "../useAutosaveCampaign";
+import { useAutosaveCampaign } from "@components/ads/hooks/useAutosaveCampaign";
 
-vi.mock("../useAdsChat", () => ({
+vi.mock("@components/ads/hooks/useAdsChat", () => ({
   useAdsChatState: vi.fn(() => "campaign-123"),
 }));
 

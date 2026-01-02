@@ -9,7 +9,7 @@ import {
   useWorkflow,
 } from "@context/WorkflowProvider";
 import { Cog8ToothIcon, CursorArrowRippleIcon } from "@heroicons/react/24/solid";
-import { useAdsChatState } from "@hooks/useAdsChat";
+import { useAdsChatState } from "@components/ads/hooks";
 import { useStageInit } from "@hooks/useStageInit";
 import { useScrollToSection } from "@hooks/useScrollToSection";
 import { useSettingsFormStore } from "@stores/settingsFormStore";

@@ -6,7 +6,7 @@ import { FieldSet } from "@components/ui/field";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { useSettingsFormStore } from "@stores/settingsFormStore";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
-import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
+import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
 import LocationTargeting from "./LocationTargeting";
 import AdSchedule from "./AdSchedule";
 import DailyBudget from "./DailyBudget";

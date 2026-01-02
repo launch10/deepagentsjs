@@ -9,12 +9,12 @@ import {
   selectReturnToReview,
   useWorkflow,
 } from "@context/WorkflowProvider";
-import { useAdvanceCampaign, useBackCampaign, useCampaignService } from "@api/campaigns.hooks";
+import { useAdvanceCampaign, useBackCampaign, useCampaignService } from "@components/ads/hooks";
 import { selectValidateAndSave, useFormRegistry } from "@stores/formRegistry";
-import { useAdsChatState } from "@hooks/useAdsChat";
+import { useAdsChatState } from "@components/ads/hooks";
 import type { UpdateCampaignRequestBody } from "@rails_api_base";
 
-export function useCampaignPagination() {
+export function usePaginationFooter() {
   const validateAndSave = useFormRegistry(selectValidateAndSave);
   const campaignId = useAdsChatState("campaignId");
   const service = useCampaignService();

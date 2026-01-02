@@ -3,7 +3,7 @@ import {
   defaultAssetTransform,
   buildUpdateRequest,
   type FieldMapping,
-} from "../campaignAutosave.transforms";
+} from "@components/ads/hooks/autosave.transforms";
 
 describe("campaignAutosave.transforms", () => {
   describe("defaultAssetTransform", () => {

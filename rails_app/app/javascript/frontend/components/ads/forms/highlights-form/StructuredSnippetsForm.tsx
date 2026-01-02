@@ -5,7 +5,7 @@ import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldLis
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
-import { useAdsChatActions, useAdsChatState } from "@hooks/useAdsChat";
+import { useAdsChatActions, useAdsChatState } from "@components/ads/hooks";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID, keyBy } from "@shared";
 import { Info, Plus } from "lucide-react";

@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
 import type { AdsBridgeType, AdsGraphState } from "@shared";
 import { Ads } from "@shared";
-import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
-import { useChatRegistration } from "./useChatRegistration";
+import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
+import { useChatRegistration } from "@hooks/useChatRegistration";
 import { UploadsAPIService } from "@rails_api_base";
 import { validateFile } from "@types/attachment";
 
@@ -25,14 +25,17 @@ function useAdsChatOptions() {
       },
       merge: Ads.MergeReducer as any,
       getInitialThreadId: () => (thread_id ? thread_id : undefined),
-      // Composer attachments config - uploads return URLs directly
+      // Composer attachments config - uploads return URLs and original filename
       attachments: {
         upload: async (file: File) => {
           const response = await uploadService.create({
             file,
             isLogo: false,
           });
-          return { url: response.url };
+          return {
+            url: response.url,
+            meta: { filename: response.filename },
+          };
         },
         validate: validateFile,
       },

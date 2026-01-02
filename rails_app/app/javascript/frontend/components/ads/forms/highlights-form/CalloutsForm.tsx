@@ -4,15 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
 import { Badge } from "@components/ui/badge";
 import { Field, FieldGroup } from "@components/ui/field";
-import { useAdsChatActions, useAdsChatState } from "@hooks/useAdsChat";
+import { useAdsChatActions, useAdsChatState, useAutosaveCampaign, defaultAssetTransform } from "@components/ads/hooks";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads } from "@shared";
 import { Info } from "lucide-react";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
-import { useAutosaveCampaign } from "@api/campaigns.hooks";
-import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
 import type { UpdateCampaignRequestBody } from "@rails_api_base";
 
 export default function CalloutsForm() {

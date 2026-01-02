@@ -24,7 +24,7 @@ const navItems: NavItem[] = [
   { label: "Analytics", href: "/analytics", icon: ChartBarIcon },
 ];
 
-export default function MainSidebar() {
+export default function AppSidebar() {
   const { url } = usePage();
   const [isCollapsed, setIsCollapsed] = useState(() => url !== "/");
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Chat, useChatContext } from "@components/chat/Chat";
+import { Chat, useChatContext } from "@components/shared/chat/Chat";
 
 /**
  * Props for the AdsChatMessagesView presentation component.

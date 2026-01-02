@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { Button } from "@components/ui/button";
 import { ArrowUp, FilePlus, Sparkles, Square } from "lucide-react";
-import { useAdsChatActions } from "@hooks/useAdsChat";
-import { Chat } from "@components/chat/Chat";
+import { useAdsChatActions } from "@components/ads/hooks";
+import { Chat } from "@components/shared/chat/Chat";
 import { useWorkflow, selectSubstep } from "@context/WorkflowProvider";
 import { Ads } from "@shared";
 

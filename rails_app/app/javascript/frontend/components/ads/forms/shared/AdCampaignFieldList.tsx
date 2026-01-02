@@ -1,4 +1,4 @@
-import InputLockable from "@components/forms/input-lockable";
+import InputLockable from "@components/shared/forms/input-lockable";
 import { Field, FieldError } from "@components/ui/field";
 import { Ads } from "@shared";
 import type { Control, FieldArrayWithId } from "react-hook-form";

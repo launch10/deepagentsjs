@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import Header from "@components/header/Header";
-import MainSidebar from "@components/sidebar/MainSidebar";
+import Header from "@components/shared/header/Header";
+import { AppSidebar } from "@components/navigation";
 import { usePage } from "@inertiajs/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WorkflowProvider } from "@context/WorkflowProvider";
@@ -20,7 +20,7 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
     <QueryClientProvider client={queryClient}>
       <WorkflowProvider>
         <div className="flex h-screen overflow-hidden">
-          <MainSidebar />
+          <AppSidebar />
           <div className="flex-1 flex flex-col bg-background overflow-hidden">
             <Header />
             <main ref={mainRef} className="flex-1 overflow-auto">{children}</main>

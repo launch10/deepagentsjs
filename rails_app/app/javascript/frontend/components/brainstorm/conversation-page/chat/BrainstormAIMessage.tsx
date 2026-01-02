@@ -1,7 +1,7 @@
 import React from "react";
 import type { MessageBlock, InferBridgeData, InferMessage } from "langgraph-ai-sdk-types";
 import type { BrainstormBridgeType } from "@shared";
-import { Chat } from "@components/chat/Chat";
+import { Chat } from "@components/shared/chat/Chat";
 
 // The LanggraphData type for the Brainstorm graph (used for MessageBlock generic)
 type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;

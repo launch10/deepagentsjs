@@ -1,6 +1,6 @@
 import { useFormContext, Controller, useFormState } from "react-hook-form";
 import { Sparkles } from "lucide-react";
-import { useAdsChatActions } from "@hooks/useAdsChat";
+import { useAdsChatActions } from "@components/ads/hooks";
 import type { SettingsFormData } from "./settingsForm.schema";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/input-group";
 import { Field, FieldError, FieldLabel } from "@components/ui/field";

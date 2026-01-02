@@ -4,7 +4,7 @@ import { useCampaignService } from "@api/campaigns.hooks";
 import type { UpdateCampaignRequestBody, UpdateCampaignResponse } from "@rails_api_base";
 import { mapApiErrorsToForm } from "@helpers/formErrorMapper";
 import { useAdsChatState } from "./useAdsChat";
-import { useLatestMutation } from "./useLatestMutation";
+import { useLatestMutation } from "@hooks/useLatestMutation";
 
 export type useAutosaveCampaignOptions<TFormData extends FieldValues> = {
   methods: UseFormReturn<TFormData>;

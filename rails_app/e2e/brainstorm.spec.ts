@@ -1220,6 +1220,37 @@ test.describe("Brainstorm PDF Attachments", () => {
     expect(imageCount).toBe(1);
     expect(docCount).toBe(1);
   });
+
+  test("PDF document displays original filename instead of URL-derived name", async ({ page }) => {
+    await brainstormPage.goto();
+
+    // Add a PDF attachment with a specific filename
+    await brainstormPage.addChatAttachment("e2e/fixtures/files/test-document.pdf");
+    await brainstormPage.waitForChatAttachmentsUploaded();
+
+    // Send the message
+    await brainstormPage.chatInput.fill("Check this document");
+    await brainstormPage.sendButton.click();
+
+    // Wait for message to be sent
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    // Get the displayed filename
+    const displayedFilename = await brainstormPage.getFirstDocumentFilename();
+    expect(displayedFilename).not.toBeNull();
+
+    // The displayed filename should be the original filename (test-document.pdf)
+    // NOT a URL-derived UUID like "abc123-uuid.pdf"
+    expect(displayedFilename).toContain("test-document");
+
+    // Verify the data-filename attribute is set (original filename from upload)
+    const originalFilename = await brainstormPage.getFirstDocumentOriginalFilename();
+    expect(originalFilename).toBe("test-document.pdf");
+  });
 });
 
 test.describe("Brainstorm Inline Chat Attachments", () => {

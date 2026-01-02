@@ -1,6 +1,6 @@
 import { CardContent, CardFooter } from "@components/ui/card";
-import { useAdsChat } from "@hooks/useAdsChat";
-import { Chat } from "@components/chat/Chat";
+import { useAdsChat } from "@components/ads/hooks";
+import { Chat } from "@components/shared/chat/Chat";
 import AdsChatMessages from "./ads-chat/AdsChatMessages";
 import AdsChatInput from "./ads-chat/AdsChatInput";
 

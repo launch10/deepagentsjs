@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, type Mock } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { BrainstormInput } from "../shared/BrainstormInput";
-import { ChatContext, type ChatContextValue } from "@components/chat/ChatContext";
+import { ChatContext, type ChatContextValue } from "@components/shared/chat/ChatContext";
 import type { ReactNode } from "react";
 
 // Mock the hooks used by BrainstormInput
-vi.mock("@hooks/useBrainstormChat", () => ({
+vi.mock("@components/brainstorm/hooks/useBrainstormChat", () => ({
   useBrainstormChatState: () => null, // No custom placeholder
 }));
 
-vi.mock("@hooks/useBrainstormSendMessage", () => ({
+vi.mock("@components/brainstorm/hooks/useBrainstormSendMessage", () => ({
   useBrainstormSendMessage: () => ({
     sendMessage: vi.fn(),
   }),

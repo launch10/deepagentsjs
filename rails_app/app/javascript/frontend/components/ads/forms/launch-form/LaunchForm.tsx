@@ -13,7 +13,7 @@ import { Sparkles } from "lucide-react";
 import { useEffect, useEffectEvent } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { usePage } from "@inertiajs/react";
-import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
+import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
 import {
   GOOGLE_ADVERTISING_CHANNEL_TYPES,
   GOOGLE_BIDDING_STRATEGIES,

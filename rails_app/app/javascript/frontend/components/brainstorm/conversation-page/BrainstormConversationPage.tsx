@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Brainstorm } from "@shared";
-import { useBrainstormChat } from "@hooks/useBrainstormChat";
+import { useBrainstormChat } from "@components/brainstorm/hooks";
 import { useWorkflow, selectContinue } from "@context/WorkflowProvider";
-import { useHasAnyPersonalizations } from "@hooks/useHasAnyPersonalizations";
-import { useChatContext } from "@components/chat/Chat";
+import { useHasAnyPersonalizations } from "@components/brainstorm/hooks";
+import { useChatContext } from "@components/shared/chat/Chat";
 import { BrainstormMessages } from "./chat/BrainstormMessages";
 import { BrainstormInput } from "../shared/BrainstormInput";
 import { BrandPersonalizationPanel } from "./brand-panel/BrandPersonalizationPanel";

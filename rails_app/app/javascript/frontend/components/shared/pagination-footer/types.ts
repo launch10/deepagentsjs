@@ -7,7 +7,7 @@ export interface VariantConfig {
   showSecondaryButton: boolean;
 }
 
-export interface AdCampaignPaginationViewProps {
+export interface PaginationFooterViewProps {
   className?: string;
   variant?: PaginationVariant;
   onBack?: () => void;

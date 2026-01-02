@@ -12,8 +12,8 @@ import {
   type GetUploadsResponse,
   type CreateUploadResponse,
 } from "@rails_api_base";
-import { useWebsite } from "./websites.hooks";
-import { useBrainstormChatWebsiteId } from "@components/brainstorm/hooks/useBrainstormChat";
+import { useWebsite } from "@api/websites.hooks";
+import { useBrainstormChatWebsiteId } from "./useBrainstormChat";
 
 // Re-export for backwards compatibility
 export { UploadsAPIService as UploadService } from "@rails_api_base";

@@ -1,10 +1,10 @@
 import { Button } from "@components/ui/button";
 import { twMerge } from "tailwind-merge";
 import { Spinner } from "@components/ui/spinner";
-import { useAdsChatState } from "@hooks/useAdsChat";
-import { type AdCampaignPaginationViewProps, VARIANT_CONFIG } from "./AdCampaignPagination.types";
+import { useAdsChatState } from "@components/ads/hooks";
+import { type PaginationFooterViewProps, VARIANT_CONFIG } from "./types";
 
-export function AdCampaignPaginationView({
+export function PaginationFooterView({
   className,
   variant = "workflow",
   onBack,
@@ -18,7 +18,7 @@ export function AdCampaignPaginationView({
   secondaryLabel,
   validationFailed,
   onValidationAnimationEnd,
-}: AdCampaignPaginationViewProps) {
+}: PaginationFooterViewProps) {
   const campaignId = useAdsChatState("campaignId");
   const config = VARIANT_CONFIG[variant];
 

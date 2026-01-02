@@ -2,7 +2,7 @@ import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
 import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
-export { useAutosaveCampaign } from "@components/ads/hooks/useAutosaveCampaign";
+export { useAutosaveCampaign } from "./useAutosaveCampaign";
 import {
   CampaignAPIService,
   type CreateCampaignRequest,

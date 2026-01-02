@@ -1,13 +1,13 @@
-import { AdCampaignPaginationView } from "./AdCampaignPaginationView";
-import { useCampaignPagination } from "./useCampaignPagination";
+import { PaginationFooterView } from "./PaginationFooterView";
+import { usePaginationFooter } from "./usePaginationFooter";
 import { selectSubstep, useWorkflow } from "@context/WorkflowProvider";
-import type { PaginationVariant } from "./AdCampaignPagination.types";
+import type { PaginationVariant } from "./types";
 
-interface AdCampaignPaginationProps {
+interface PaginationFooterProps {
   className?: string;
 }
 
-export default function AdCampaignPagination({ className }: AdCampaignPaginationProps) {
+export default function PaginationFooter({ className }: PaginationFooterProps) {
   const {
     handleBack,
     handleContinue,
@@ -18,14 +18,14 @@ export default function AdCampaignPagination({ className }: AdCampaignPagination
     showPrimaryAction,
     validationFailed,
     clearValidationFailed,
-  } = useCampaignPagination();
+  } = usePaginationFooter();
 
   const substep = useWorkflow(selectSubstep);
   const variant: PaginationVariant = substep === "review" ? "review" : "workflow";
   const primaryAction = variant === "review" ? handleContinue : returnToReview;
 
   return (
-    <AdCampaignPaginationView
+    <PaginationFooterView
       className={className}
       variant={variant}
       onBack={handleBack}

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useMemo, useCallback } from "react";
 import type { MessageBlock, InferBridgeData, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
-import { useBrainstormChatState } from "@hooks/useBrainstormChat";
-import { Chat, useChatContext } from "@components/chat/Chat";
+import { useBrainstormChatState } from "@components/brainstorm/hooks";
+import { Chat, useChatContext } from "@components/shared/chat/Chat";
 import { BrainstormAIMessage } from "./BrainstormAIMessage";
 import { QuestionBadge } from "./QuestionBadge";
 import { getTextareaRef } from "@lib/brainstormTextarea";

@@ -1,6 +1,6 @@
 import { useRef, useEffect } from "react";
-import { useBrainstormChatState } from "@hooks/useBrainstormChat";
-import { Chat } from "@components/chat/Chat";
+import { useBrainstormChatState } from "@components/brainstorm/hooks";
+import { Chat } from "@components/shared/chat/Chat";
 import { setTextareaRef } from "@lib/brainstormTextarea";
 import { DocumentPlusIcon, ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
 

@@ -697,4 +697,30 @@ export class BrainstormPage {
     const doc = this.page.locator(`[data-testid="message-document"][data-mime-type="${mimeType}"]`);
     return await doc.count() > 0;
   }
+
+  /**
+   * Get the displayed filename for the first document in user messages
+   * @returns The filename text displayed in the document link
+   */
+  async getFirstDocumentFilename(): Promise<string | null> {
+    const doc = this.page.getByTestId("message-document").first();
+    const isVisible = await doc.isVisible();
+    if (!isVisible) {
+      return null;
+    }
+    return await doc.textContent();
+  }
+
+  /**
+   * Get the original filename attribute from the first document
+   * @returns The data-filename attribute value (original filename from upload)
+   */
+  async getFirstDocumentOriginalFilename(): Promise<string | null> {
+    const doc = this.page.getByTestId("message-document").first();
+    const isVisible = await doc.isVisible();
+    if (!isVisible) {
+      return null;
+    }
+    return await doc.getAttribute("data-filename");
+  }
 }

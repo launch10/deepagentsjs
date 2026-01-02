@@ -9,7 +9,7 @@ import {
   useBrainstormChatStatus,
   useBrainstormIsNewConversation,
   useBrainstormChatIsStreaming,
-} from "../useBrainstormChat";
+} from "@components/brainstorm/hooks/useBrainstormChat";
 import type { BrainstormGraphState } from "@shared";
 
 // Mock Inertia's usePage
