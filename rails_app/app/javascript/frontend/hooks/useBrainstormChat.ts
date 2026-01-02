@@ -25,7 +25,26 @@ function useBrainstormChatOptions() {
   const { thread_id, jwt, langgraph_path, root_path } = usePage<BrainstormPageProps>().props;
 
   const onThreadIdAvailable = useCallback((threadId: string) => {
-    // Update URL without full navigation so new components can read the threadId
+    // We use native pushState instead of Inertia's router.replace for several reasons:
+    //
+    // 1. Stream continuity: When the user sends their first message, the backend starts
+    //    streaming a response. Inertia's router.replace triggers page lifecycle callbacks
+    //    (onSuccess, onFinish) and updates Inertia's internal page state, which can cause
+    //    React re-renders that interrupt the active stream connection.
+    //
+    // 2. No server request needed: Inertia v2's router.replace({ url }) is client-side only,
+    //    but it still updates Inertia's page object and triggers lifecycle hooks. We only
+    //    need to update the browser URL without any side effects.
+    //
+    // 3. Integration with WorkflowProvider: The app's WorkflowProvider already patches
+    //    history.pushState to dispatch custom 'urlchange' events, ensuring the workflow
+    //    store stays in sync. Using native pushState integrates with this existing pattern.
+    //
+    // 4. Back button consistency: pushState adds a history entry, allowing users to
+    //    navigate back to /projects/new. This is intentional - starting a new brainstorm
+    //    creates a recoverable navigation point.
+    //
+    // Investigated as part of TODO-003. See: v2 Inertia docs on router.push/replace.
     const newUrl = `/projects/${threadId}/brainstorm`;
     window.history.pushState({ threadId }, "", newUrl);
   }, []);

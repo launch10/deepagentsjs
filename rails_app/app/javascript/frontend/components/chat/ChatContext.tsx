@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type { ChatSnapshot, ChatActions } from "langgraph-ai-sdk-react";
 import type { Composer, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
 
@@ -59,24 +59,35 @@ export function ChatProvider<TState extends Record<string, unknown>>({
   children,
   onSubmit,
 }: ChatProviderProps<TState>) {
-  // Cast messages to AnyMessageWithBlocks[] - the types are compatible at runtime
-  // but TypeScript has trouble with the StructuredMessageBlock generic
+  // Type cast explanation:
+  // ChatSnapshot.messages is typed as MessageWithBlocks<LanggraphData<ValidGraphState, undefined>>[]
+  // which has blocks typed as MessageBlock<T>[]. When T has undefined schema, StructuredMessageBlock<T>
+  // has `data: string` (from InferMessage<T> fallback). However, AnyMessageWithBlocks expects
+  // `data: Record<string, unknown>` in AnyStructuredMessageBlock.
+  //
+  // At runtime, structured blocks always contain object data (parsed JSON), so the types are compatible.
+  // The type mismatch is a library design issue where the undefined schema case falls back to `string`
+  // instead of a more permissive type. The double cast is necessary because TypeScript correctly
+  // identifies that `string` is not assignable to `Record<string, unknown>`.
   const messages = snapshot.messages as unknown as AnyMessageWithBlocks[];
 
   // Submit uses custom handler if provided, otherwise raw sendMessage
   const submit = onSubmit ?? (() => snapshot.sendMessage());
 
-  const value: ChatContextValue<TState> = {
-    snapshot,
-    messages,
-    composer: snapshot.composer,
-    status: snapshot.status,
-    isStreaming: snapshot.status === "streaming" || snapshot.status === "submitted",
-    isLoading: snapshot.isLoading,
-    sendMessage: snapshot.sendMessage,
-    submit,
-    stop: snapshot.stop,
-  };
+  const value = useMemo<ChatContextValue<TState>>(
+    () => ({
+      snapshot,
+      messages,
+      composer: snapshot.composer,
+      status: snapshot.status,
+      isStreaming: snapshot.status === "streaming" || snapshot.status === "submitted",
+      isLoading: snapshot.isLoading,
+      sendMessage: snapshot.sendMessage,
+      submit,
+      stop: snapshot.stop,
+    }),
+    [snapshot, onSubmit]
+  );
 
   return (
     <ChatContext.Provider value={value as ChatContextValue}>
