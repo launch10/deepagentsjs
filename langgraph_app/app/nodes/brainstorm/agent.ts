@@ -1,5 +1,6 @@
 import { createAgent, createMiddleware } from "langchain";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { type BaseMessage } from "@langchain/core/messages";
 import { getLLM } from "@core";
 import { chooseBrainstormPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
@@ -11,6 +12,7 @@ import { BrainstormNextStepsService } from "@services";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { lastAIMessage } from "@types";
 import { BrainstormBridge } from "@annotation";
+import { filterPseudoMessages } from "@utils";
 
 const dynamicPromptMiddleware = createMiddleware({
   name: "DynamicPromptMiddleware",
@@ -95,10 +97,14 @@ export const brainstormAgent = NodeMiddleware.use(
       messages = [...(messages as any[]), message];
     }
 
+    // Filter out pseudo messages before saving to history
+    // These are injected by tools for model vision but shouldn't appear in chat
+    const filteredMessages = filterPseudoMessages(messages as BaseMessage[]);
+
     return {
       redirect: result.redirect as Brainstorm.RedirectType,
       skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
-      messages,
+      messages: filteredMessages,
       memories,
       currentTopic,
       remainingTopics,

@@ -1,10 +1,10 @@
-class WebsiteDeployed < BaseBuilder
+class WebsiteStepFinished < BaseBuilder
   def base_snapshot
-    "website_created"
+    "website_step"
   end
 
   def output_name
-    "website_deployed"
+    "website_step_finished"
   end
 
   def build

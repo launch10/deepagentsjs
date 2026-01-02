@@ -3,6 +3,7 @@ import { tool, ToolMessage } from "langchain";
 import { getCurrentTaskInput, Command } from "@langchain/langgraph";
 import { type BrainstormGraphState } from "@state";
 import { UploadsAPIService } from "@rails_api";
+import { createMultimodalPseudoMessage } from "@utils";
 
 const queryUploadsSchema = z.object({
   query_type: z
@@ -80,9 +81,10 @@ export const queryUploadsTool = tool(
           break;
       }
 
-      // Format for model consumption
+      // Format for model consumption - creates { type: "image_url", image_url: { url: "..." } } blocks
       const formattedImages = UploadsAPIService.formatForModel(images);
 
+      // ToolMessage provides metadata about what was fetched
       const toolMessage = new ToolMessage({
         content: JSON.stringify({
           success: true,
@@ -93,14 +95,29 @@ export const queryUploadsTool = tool(
             is_logo: img.is_logo,
             created_at: img.created_at,
           })),
-          image_blocks: formattedImages,
         }),
         tool_call_id: config?.toolCall.id,
         name: "query_uploads",
       });
+
+      // If we have images, inject a pseudo message with the actual image blocks
+      // so Claude can "see" the images (not just read URLs as text).
+      // Pseudo messages are filtered from history before saving.
+      const messages: ToolMessage[] = [toolMessage];
+      const pseudoMessage =
+        images.length > 0
+          ? createMultimodalPseudoMessage([
+              {
+                type: "text" as const,
+                text: `Here are the ${images.length} image(s) you requested:`,
+              },
+              ...formattedImages,
+            ])
+          : null;
+
       return new Command({
         update: {
-          messages: [toolMessage],
+          messages: pseudoMessage ? [...messages, pseudoMessage] : messages,
         },
       });
     } catch (error) {

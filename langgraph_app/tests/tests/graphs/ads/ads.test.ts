@@ -386,7 +386,7 @@ describe.sequential("Ads Flow", () => {
         const structuredSnippets = result.state.structuredSnippets;
         expect(structuredSnippets).toBeDefined();
         expect(structuredSnippets?.category).toBeOneOf(
-          Object.values(Ads.StructuredSnippetCategoryNames)
+          Ads.StructuredSnippetCategoryKeys
         );
         expect(structuredSnippets?.details?.length).toEqual(
           Ads.DefaultNumAssets.structuredSnippets
@@ -1115,7 +1115,7 @@ describe.sequential("Ads Flow", () => {
         const message = getPseudoMessage(state);
 
         expect(message).not.toBeNull();
-        expect(message?.content).toContain("__SYSTEM__");
+        expect(message?.additional_kwargs?.isPseudo).toBe(true);
         expect(message?.content).toContain("switched to");
         expect(message?.content).toContain("callouts and structured snippets");
       });
@@ -1183,6 +1183,33 @@ describe.sequential("Ads Flow", () => {
     });
 
     describe("Integration: Page switch triggers correct context", () => {
+      it("does not include pseudomessages in final messages output", async () => {
+        // First generate content
+        const contentResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            projectUUID,
+            threadId,
+            stage: "content",
+          })
+          .execute();
+
+        // Switch to highlights (triggers PAGE_SWITCH pseudomessage)
+        const highlightsResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            ...contentResult.state,
+            stage: "highlights",
+            previousStage: "content",
+          })
+          .execute();
+
+        // Verify NO messages have isPseudo flag
+        const messages = highlightsResult.state.messages || [];
+        expect(messages.length).toBeGreaterThan(0);
+        expect(messages.every((m) => !m.additional_kwargs?.isPseudo)).toBe(true);
+      });
+
       it("generates new assets when switching from keywords back to highlights", async () => {
         const contentResult = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)

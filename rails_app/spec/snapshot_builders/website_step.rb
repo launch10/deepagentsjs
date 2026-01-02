@@ -4,7 +4,7 @@ class WebsiteCreated < BaseBuilder
   end
 
   def output_name
-    "website_created"
+    "website_step"
   end
 
   def build
@@ -15,9 +15,8 @@ class WebsiteCreated < BaseBuilder
     end
 
     project = account.projects.first
-    unless project
+    if project.nil?
       data = Brainstorm.create_brainstorm!(account, name: "Test Project", thread_id: SecureRandom.uuid)
-      data[:project]
 
       brainstorm = data[:brainstorm]
       brainstorm.update!(
@@ -26,7 +25,10 @@ class WebsiteCreated < BaseBuilder
         solution: "Connect your calendar, share your availability preferences, and we handle the rest—suggesting optimal times that work for everyone instantly. Your team just clicks yes.",
         social_proof: "Used by 2,000+ distributed teams who've cut meeting coordination time by 80%. Companies like TechCorp save 15 hours per week on scheduling alone."
       )
+      project = data[:project]
     end
+
+    project.current_workflow.update!(step: "website") # Ready to do website builder
 
     puts "Created website with brainstorm: #{brainstorm.id}"
   end

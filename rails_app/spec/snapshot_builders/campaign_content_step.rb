@@ -1,10 +1,10 @@
-class CampaignCreated < BaseBuilder
+class CampaignContentStep < BaseBuilder
   def base_snapshot
-    "website_created"
+    "website_step_finished"
   end
 
   def output_name
-    "campaign_created"
+    "campaign_content_step"
   end
 
   def build

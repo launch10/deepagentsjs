@@ -6,13 +6,13 @@
 
 ## Current Stack
 
-| Layer | Tool | Notes |
-|-------|------|-------|
-| E2E | Playwright | Page Object Model, database snapshots |
-| Frontend Unit | Vitest + React Testing Library | TDD, component-level |
-| Backend | RSpec | Request specs, FactoryBot |
-| AI Mocking | Polly | HTTP recording/replay |
-| Data | Database Snapshots | Known states for any workflow stage |
+| Layer         | Tool                           | Notes                                 |
+| ------------- | ------------------------------ | ------------------------------------- |
+| E2E           | Playwright                     | Page Object Model, database snapshots |
+| Frontend Unit | Vitest + React Testing Library | TDD, component-level                  |
+| Backend       | RSpec                          | Request specs, FactoryBot             |
+| AI Mocking    | Polly                          | HTTP recording/replay                 |
+| Data          | Database Snapshots             | Known states for any workflow stage   |
 
 ---
 
@@ -113,16 +113,16 @@ export const VALID_TEST_DATA = {
 
 ### 6. Required `data-testid` Attributes
 
-| Element Type | Pattern | Example |
-|-------------|---------|---------|
-| Form containers | `{form-name}-form` | `content-form` |
-| Navigation | `{action}-button` | `continue-button` |
-| Tabs | `tab-switcher`, `tab-{name}` | `tab-content` |
-| Chat | `chat`, `chat-input`, `chat-messages` | |
-| Loading | `thinking-indicator` | |
-| Inputs | `lockable-input`, `lock-toggle-button` | |
-| Uploads | `{purpose}-file-input`, `{purpose}-preview` | `logo-file-input` |
-| Panels | `{name}-panel`, `{name}-toggle`, `{name}-content` | `brand-panel` |
+| Element Type    | Pattern                                           | Example           |
+| --------------- | ------------------------------------------------- | ----------------- |
+| Form containers | `{form-name}-form`                                | `content-form`    |
+| Navigation      | `{action}-button`                                 | `continue-button` |
+| Tabs            | `tab-switcher`, `tab-{name}`                      | `tab-content`     |
+| Chat            | `chat`, `chat-input`, `chat-messages`             |                   |
+| Loading         | `thinking-indicator`                              |                   |
+| Inputs          | `lockable-input`, `lock-toggle-button`            |                   |
+| Uploads         | `{purpose}-file-input`, `{purpose}-preview`       | `logo-file-input` |
+| Panels          | `{name}-panel`, `{name}-toggle`, `{name}-content` | `brand-panel`     |
 
 ### 7. Loading State Testing
 
@@ -176,12 +176,12 @@ test("handles rapid typing then continue", async ({ page }) => {
 
 ## Database Snapshots
 
-| Snapshot | State | Use Case |
-|----------|-------|----------|
-| `core_data` | Plans, templates, themes | Base data |
-| `basic_account` | Subscribed user | Most common starting point |
-| `website_created` | Website with brainstorm data | Website features |
-| `campaign_created` | Campaign with ad groups | Ads features |
+| Snapshot                | State                        | Use Case                   |
+| ----------------------- | ---------------------------- | -------------------------- |
+| `core_data`             | Plans, templates, themes     | Base data                  |
+| `basic_account`         | Subscribed user              | Most common starting point |
+| `website_step`          | Website with brainstorm data | Website features           |
+| `campaign_content_step` | Campaign with ad groups      | Ads features               |
 
 ```bash
 # Load snapshot in development for manual testing
@@ -189,6 +189,7 @@ rake snapshots:load[completed_brainstorm]
 ```
 
 **Trade-offs:**
+
 - Snapshots can become stale as schema changes
 - Need discipline to update snapshots when flows change
 
@@ -292,17 +293,17 @@ end
 
 ## Key Files
 
-| Purpose | Location |
-|---------|----------|
-| E2E Page Objects | `rails_app/e2e/pages/*.page.ts` |
-| E2E Test Specs | `rails_app/e2e/*.spec.ts` |
-| E2E Database Fixtures | `rails_app/e2e/fixtures/database.ts` |
-| Database Snapshots | `rails_app/test/fixtures/database/snapshots/` |
-| Snapshot Rake Tasks | `rails_app/lib/tasks/snapshot.rake` |
-| Polly Recordings | `langgraph_app/tests/__recordings__/` |
-| Vitest Config | `rails_app/vitest.config.ts` |
+| Purpose               | Location                                          |
+| --------------------- | ------------------------------------------------- |
+| E2E Page Objects      | `rails_app/e2e/pages/*.page.ts`                   |
+| E2E Test Specs        | `rails_app/e2e/*.spec.ts`                         |
+| E2E Database Fixtures | `rails_app/e2e/fixtures/database.ts`              |
+| Database Snapshots    | `rails_app/test/fixtures/database/snapshots/`     |
+| Snapshot Rake Tasks   | `rails_app/lib/tasks/snapshot.rake`               |
+| Polly Recordings      | `langgraph_app/tests/__recordings__/`             |
+| Vitest Config         | `rails_app/vitest.config.ts`                      |
 | Testing Library Setup | `rails_app/app/javascript/frontend/test/setup.ts` |
-| Service Manager | `bin/services`, `config/services.sh` |
+| Service Manager       | `bin/services`, `config/services.sh`              |
 
 ---
 
