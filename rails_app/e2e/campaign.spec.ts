@@ -73,10 +73,8 @@ test.describe("Ad Campaign Workflow", () => {
       await campaignPage.goto(projectUuid);
       await campaignPage.waitForReady();
 
-      // Back button should be disabled on first step
-      // TODO: Research if this should actually be enabled because Website Builder is
-      // the previous step. I believe clicking it should go to website builder
-      await expect(campaignPage.backButton).toBeDisabled();
+      // Back button should be enabled - it navigates to the Website Builder step
+      await expect(campaignPage.backButton).toBeEnabled();
 
       // Continue button should be enabled
       await expect(campaignPage.continueButton).toBeEnabled();
@@ -399,12 +397,45 @@ test.describe("Ad Campaign Workflow", () => {
   });
 
   test.describe("Geo Targeting API", () => {
+    // Mock geo target constants data - similar to RSpec's mock_google_ads_api
+    const MOCK_GEO_TARGETS = {
+      "New York": [
+        { id: 1, criteria_id: 1023191, name: "New York", canonical_name: "New York,New York,United States", country_code: "US", target_type: "City", status: "Active" },
+        { id: 2, criteria_id: 21167, name: "New York", canonical_name: "New York,United States", country_code: "US", target_type: "State", status: "Active" },
+      ],
+      "California": [
+        { id: 3, criteria_id: 21137, name: "California", canonical_name: "California,United States", country_code: "US", target_type: "State", status: "Active" },
+        { id: 4, criteria_id: 1013962, name: "Los Angeles", canonical_name: "Los Angeles,California,United States", country_code: "US", target_type: "City", status: "Active" },
+      ],
+    };
+
     // Use campaign_settings_step snapshot to start directly on the settings page
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("campaign_settings_step");
       const project = await DatabaseSnapshotter.getFirstProject();
       projectUuid = project.uuid;
       campaignPage = new CampaignPage(page);
+
+      // Mock the geo_target_constants API endpoint (similar to RSpec's mock_google_ads_api)
+      await page.route("**/api/v1/geo_target_constants*", async (route) => {
+        const url = new URL(route.request().url());
+        const query = url.searchParams.get("location_query") || "";
+
+        // Find matching mock data
+        let results: typeof MOCK_GEO_TARGETS["New York"] = [];
+        for (const [key, data] of Object.entries(MOCK_GEO_TARGETS)) {
+          if (key.toLowerCase().includes(query.toLowerCase()) ||
+              query.toLowerCase().includes(key.toLowerCase())) {
+            results = [...results, ...data];
+          }
+        }
+
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(results),
+        });
+      });
     });
 
     test("should search for locations and show results", async ({ page }) => {
@@ -415,11 +446,15 @@ test.describe("Ad Campaign Workflow", () => {
       // Search for a location
       await campaignPage.locationSearchInput.fill("New York");
 
-      // Wait for dropdown to appear
-      await page.waitForTimeout(500);
+      // Wait for search results to load (mocked API should respond immediately)
+      // Look for canonical_name which is displayed in the dropdown
+      await expect(
+        page.locator('button:has-text("New York,New York,United States")').first()
+      ).toBeVisible({ timeout: 5000 });
 
-      // Should show search results
-      await expect(page.getByText("New York")).toBeVisible();
+      // Should show both City and State results (use exact match for target_type badges)
+      await expect(page.locator(".rounded:has-text('City')").first()).toBeVisible();
+      await expect(page.locator(".rounded:has-text('State')").first()).toBeVisible();
     });
 
     test("should add selected location to targeting list", async ({ page }) => {
@@ -429,16 +464,17 @@ test.describe("Ad Campaign Workflow", () => {
 
       // Search and select a location
       await campaignPage.locationSearchInput.fill("California");
-      await page.waitForTimeout(500);
 
-      // Click on a result
-      const californiaResult = page.locator('button:has-text("California")').first();
-      if (await californiaResult.isVisible()) {
-        await californiaResult.click();
-      }
+      // Wait for search results to load (mocked API)
+      const californiaResult = page.locator('button:has-text("California,United States")').first();
+      await expect(californiaResult).toBeVisible({ timeout: 5000 });
 
-      // Verify it was added (look for it in the list)
-      await expect(page.getByText("California")).toBeVisible();
+      // Click on the result to add it
+      await californiaResult.click();
+
+      // Verify it was added to the targeting list
+      // The location should appear in the list with its name
+      await expect(page.getByText("California").first()).toBeVisible({ timeout: 5000 });
     });
   });
 
@@ -456,12 +492,24 @@ test.describe("Ad Campaign Workflow", () => {
       await campaignPage.waitForReady();
       await campaignPage.expectFormVisible("settings");
 
-      // Click Monday
-      await campaignPage.clickScheduleDay("mon");
+      // Get a day button to test toggling
+      const tuesButton = page.getByTestId("schedule-day-tues");
 
-      // Verify it's selected
-      const monButton = page.getByTestId("schedule-day-mon");
-      await expect(monButton).toHaveAttribute("data-selected", "true");
+      // Get the initial state (may vary based on snapshot data)
+      const initialState = await tuesButton.getAttribute("data-selected");
+
+      // Click to toggle
+      await campaignPage.clickScheduleDay("tues");
+
+      // Verify state changed to opposite
+      const expectedAfterFirstClick = initialState === "true" ? "false" : "true";
+      await expect(tuesButton).toHaveAttribute("data-selected", expectedAfterFirstClick);
+
+      // Click again to toggle back
+      await campaignPage.clickScheduleDay("tues");
+
+      // Verify it's back to original state
+      await expect(tuesButton).toHaveAttribute("data-selected", initialState!);
     });
 
     test("should select all days when clicking Always On", async ({ page }) => {
@@ -603,13 +651,28 @@ test.describe("Ad Campaign Workflow", () => {
       // The snapshot has known data - verify something is shown
       // Click edit on content section
       await page.getByTestId("edit-field-group-button").first().click();
-      await page.waitForTimeout(1000);
 
-      // Change the first headline
-      const newHeadline = "Updated Headline 1";
-      await campaignPage.toggleLock(0); // Unlock first
-      await campaignPage.fillNthInput(0, newHeadline);
-      await campaignPage.toggleLock(0); // Lock again
+      // Wait for content form to appear
+      await campaignPage.expectFormVisible("content");
+      await page.waitForTimeout(1000); // Give time for inputs to fully render
+
+      // Use the second headline (index 1) which is already unlocked based on snapshot data
+      const newHeadline = "Updated Headline 2";
+      const secondHeadlineInput = campaignPage.getInputsByFieldName("headlines").nth(1);
+
+      // The second headline should already be unlocked - verify and fill
+      await expect(secondHeadlineInput).toBeEnabled({ timeout: 5000 });
+
+      // Fill with new value
+      await secondHeadlineInput.clear();
+      await secondHeadlineInput.fill(newHeadline);
+
+      // Lock it to save the value
+      const secondHeadlineLock = secondHeadlineInput.locator(
+        "xpath=ancestor::*[@data-testid='lockable-input-group']/preceding-sibling::button[@data-testid='lock-toggle-button']"
+      );
+      await secondHeadlineLock.click();
+      await expect(secondHeadlineInput).toBeDisabled({ timeout: 5000 });
 
       // Return to review
       await campaignPage.clickReturnToReview();
@@ -804,9 +867,10 @@ test.describe("Full Workflow Integration", () => {
     await campaignPage.clickContinue();
     await page.waitForTimeout(1500);
 
-    // Step 3: Keywords
+    // Step 3: Keywords - need at least 5 keywords selected
     await campaignPage.expectFormVisible("keywords");
-    // Keywords have different UI - skip detailed fill for now
+    // Keywords need to be filled and locked - fill all available keyword inputs
+    await campaignPage.completeKeywordsStep();
 
     await campaignPage.clickContinue();
     await page.waitForTimeout(1500);

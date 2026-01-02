@@ -167,10 +167,19 @@ export class CampaignPage {
   /**
    * Wait for page to be fully loaded and ready for interaction.
    * This waits for the chat to finish loading history and any streaming.
+   *
+   * Note: Tab switcher is hidden on launch/review substeps, so we check URL
+   * to determine if we should wait for it.
    */
   async waitForReady(): Promise<void> {
-    // Wait for the tab switcher to be visible
-    await this.tabSwitcher.waitFor({ state: "visible", timeout: 10000 });
+    // Check if we're on launch or review page (tab switcher is hidden on these)
+    const url = this.page.url();
+    const isLaunchOrReview = url.includes("/launch") || url.includes("/review");
+
+    // Only wait for tab switcher if not on launch/review pages
+    if (!isLaunchOrReview) {
+      await this.tabSwitcher.waitFor({ state: "visible", timeout: 10000 });
+    }
     // Wait for chat to be visible
     await this.adsChat.waitFor({ state: "visible", timeout: 10000 });
     // Wait for chat to be ready (not loading history, not streaming)
@@ -282,14 +291,14 @@ export class CampaignPage {
    * Get lockable inputs for a specific field type by name attribute.
    * Field names follow the pattern: headlines.0.text, descriptions.0.text, etc.
    */
-  getInputsByFieldName(fieldName: "headlines" | "descriptions" | "callouts" | "details"): Locator {
+  getInputsByFieldName(fieldName: "headlines" | "descriptions" | "callouts" | "details" | "keywords"): Locator {
     return this.page.locator(`[data-testid="lockable-input"][name^="${fieldName}."]`);
   }
 
   /**
    * Get the lock button for a specific field type and index.
    */
-  getLockButtonForField(fieldName: "headlines" | "descriptions" | "callouts" | "details", index: number): Locator {
+  getLockButtonForField(fieldName: "headlines" | "descriptions" | "callouts" | "details" | "keywords", index: number): Locator {
     // Structure: div.flex > [Button(lock), Button(delete), InputGroup > input]
     // So from input, go up to InputGroup, then find preceding-sibling lock button
     const input = this.getInputsByFieldName(fieldName).nth(index);
@@ -374,18 +383,19 @@ export class CampaignPage {
 
   /**
    * Fill and lock a specific field type with valid test data.
-   * @param fieldName - The field type to fill (headlines, descriptions, callouts, details)
+   * @param fieldName - The field type to fill (headlines, descriptions, callouts, details, keywords)
    * @param testData - Array of valid test data strings
    * @param minCount - Minimum number of fields to fill (default: 3)
    */
   async fillAndLockFieldType(
-    fieldName: "headlines" | "descriptions" | "callouts" | "details",
+    fieldName: "headlines" | "descriptions" | "callouts" | "details" | "keywords",
     testData: readonly string[],
-    minCount: number = 3
+    _minCount: number = 3
   ): Promise<void> {
     const inputs = this.getInputsByFieldName(fieldName);
     const count = await inputs.count();
-    const fillCount = Math.min(count, minCount, testData.length);
+    // Fill ALL existing inputs (not just minCount) to prevent validation errors from AI suggestions
+    const fillCount = Math.min(count, testData.length);
 
     for (let i = 0; i < fillCount; i++) {
       const input = inputs.nth(i);
@@ -431,6 +441,18 @@ export class CampaignPage {
   }
 
   /**
+   * Complete the keywords step by filling and locking keyword inputs.
+   * Keywords need at least 5 selected to pass validation.
+   */
+  async completeKeywordsStep(): Promise<void> {
+    await this.keywordsForm.waitFor({ state: "visible" });
+    await this.page.waitForTimeout(1000); // Wait for inputs to render
+
+    // Fill and lock keyword inputs similar to headlines/descriptions
+    await this.fillAndLockFieldType("keywords", VALID_TEST_DATA.keywords, 5);
+  }
+
+  /**
    * Complete the settings step by configuring location, schedule, and budget.
    */
   async completeSettingsStep(): Promise<void> {
@@ -458,7 +480,8 @@ export class CampaignPage {
     await this.clickContinue();
     await this.page.waitForTimeout(1000);
 
-    // Keywords step (no required fields to fill)
+    // Keywords step
+    await this.completeKeywordsStep();
     await this.clickContinue();
     await this.page.waitForTimeout(1000);
 
