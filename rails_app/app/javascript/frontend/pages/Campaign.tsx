@@ -5,12 +5,12 @@ import AdPreview from "@components/ads/AdPreview";
 import AdsForm from "@components/ads/forms/AdsForm";
 import AdCampaignPagination from "@components/ads/pagination/AdCampaignPagination";
 import Sidebar from "@components/ads/Sidebar";
-import { selectSubstep, useWorkflowSteps } from "@context/WorkflowStepsProvider";
+import { selectSubstep, useWorkflow } from "@context/WorkflowProvider";
 import { cn } from "@lib/utils";
 
 export default function Campaign() {
   const isLoadingHistory = useAdsChatIsLoadingHistory();
-  const substep = useWorkflowSteps(selectSubstep);
+  const substep = useWorkflow(selectSubstep);
   const shouldHideTabSwitcher = substep === "launch" || substep === "review"; // Hide tab switcher on Launch/Review steps
 
   return (

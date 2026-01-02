@@ -7,8 +7,8 @@ import {
   selectSubstep,
   selectHasVisitedReview,
   selectReturnToReview,
-  useWorkflowSteps,
-} from "@context/WorkflowStepsProvider";
+  useWorkflow,
+} from "@context/WorkflowProvider";
 import { useAdvanceCampaign, useBackCampaign, useCampaignService } from "@api/campaigns.hooks";
 import { selectValidateAndSave, useFormRegistry } from "@stores/formRegistry";
 import { useAdsChatState } from "@hooks/useAdsChat";
@@ -20,13 +20,13 @@ export function useCampaignPagination() {
   const service = useCampaignService();
   const [validationFailed, setValidationFailed] = useState(false);
 
-  const substep = useWorkflowSteps(selectSubstep);
-  const workflowContinue = useWorkflowSteps(selectContinue)!;
-  const workflowBack = useWorkflowSteps(selectBack)!;
-  const canGoBack = useWorkflowSteps(selectCanGoBack)!;
-  const canGoForward = useWorkflowSteps(selectCanGoForward) || true;
-  const hasVisitedReview = useWorkflowSteps(selectHasVisitedReview) ?? false;
-  const returnToReview = useWorkflowSteps(selectReturnToReview)!;
+  const substep = useWorkflow(selectSubstep);
+  const workflowContinue = useWorkflow(selectContinue);
+  const workflowBack = useWorkflow(selectBack);
+  const canGoBack = useWorkflow(selectCanGoBack);
+  const canGoForward = useWorkflow(selectCanGoForward);
+  const hasVisitedReview = useWorkflow(selectHasVisitedReview);
+  const returnToReview = useWorkflow(selectReturnToReview);
 
   const showPrimaryAction = hasVisitedReview && substep !== "review";
 

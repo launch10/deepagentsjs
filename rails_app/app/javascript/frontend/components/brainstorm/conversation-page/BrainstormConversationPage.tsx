@@ -1,12 +1,8 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Brainstorm } from "@shared";
 import { useBrainstormChat } from "@hooks/useBrainstormChat";
-import { useWorkflowSteps } from "@context/WorkflowStepsProvider";
-import {
-  useBrandPersonalizationStore,
-  selectHasAnyPersonalizations,
-} from "@stores/brandPersonalization";
-import { useWebsite } from "@api/websites.hooks";
+import { useWorkflow, selectContinue } from "@context/WorkflowProvider";
+import { useHasAnyPersonalizations } from "@hooks/useHasAnyPersonalizations";
 import { useChatContext } from "@components/chat/Chat";
 import { BrainstormMessages } from "./chat/BrainstormMessages";
 import { BrainstormInput } from "../shared/BrainstormInput";
@@ -36,7 +32,7 @@ function computeQuestionNumber(
 }
 
 /**
- * Inner component that uses brand personalization store.
+ * Inner component for brainstorm conversation content.
  * Chat.Root is provided by parent BrainstormChat component.
  */
 function BrainstormConversationContent({
@@ -46,20 +42,8 @@ function BrainstormConversationContent({
   contentVisible: boolean;
   currentQuestionNumber: number;
 }) {
-  const hasPersonalizations = useBrandPersonalizationStore(selectHasAnyPersonalizations);
-  const setTheme = useBrandPersonalizationStore((s) => s.setTheme);
-
-  // Load website data to check if a theme has been set
-  const { data: website } = useWebsite();
-  const hasInitializedThemeRef = useRef(false);
-
-  // Initialize theme from website data (before checking hasPersonalizations)
-  useEffect(() => {
-    if (!hasInitializedThemeRef.current && website?.theme_id != null) {
-      setTheme(website.theme_id);
-      hasInitializedThemeRef.current = true;
-    }
-  }, [website?.theme_id, setTheme]);
+  // Check if any personalizations exist (reads directly from TanStack Query cache)
+  const hasPersonalizations = useHasAnyPersonalizations();
 
   // Auto-open panel if we've reached question 5 or if any personalizations have been applied
   const shouldAutoOpen = currentQuestionNumber >= 5 || hasPersonalizations;
@@ -155,21 +139,17 @@ export function BrainstormConversationPage() {
     };
   }, [isLoading]);
 
-  // Get workflow store actions
-  const workflowContinue = useWorkflowSteps((s) => s.continue);
-  const workflowSetPage = useWorkflowSteps((s) => s.setPage);
+  // Get workflow continue action
+  const workflowContinue = useWorkflow(selectContinue);
 
   // Handle redirect when brainstorm is complete
   // Backend returns redirect: "website" (a WorkflowPage) to authorize navigation
   useEffect(() => {
-    if (redirect === "website" && threadId && workflowSetPage && workflowContinue) {
-      // Sync projectUUID from chat state to workflow store (needed for new projects
-      // where Inertia props don't have it yet due to pushState navigation)
-      workflowSetPage("brainstorm", threadId, false);
-      // Then navigate to next step
+    if (redirect === "website") {
+      // URL-as-truth: store derives projectUUID from URL, so just continue
       workflowContinue();
     }
-  }, [redirect, threadId, workflowSetPage, workflowContinue]);
+  }, [redirect, workflowContinue]);
 
   // Show skeleton with fade (only if delay has passed)
   if (isLoading && showSkeleton) {

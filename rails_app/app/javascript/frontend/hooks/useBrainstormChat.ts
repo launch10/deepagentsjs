@@ -100,11 +100,7 @@ export function useBrainstormChatComposer() {
 }
 
 /**
- * Returns chat actions with sendMessage guarded against empty messages.
- * Supports three calling patterns:
- * - sendMessage() - sends composer content (checks composer.isReady)
- * - sendMessage("text") - sends text directly
- * - sendMessage("text", { additionalState }) - sends text with state
+ * Returns chat actions from the snapshot.
  */
 export function useBrainstormChatActions() {
   return useBrainstormChat((s) => s.actions);

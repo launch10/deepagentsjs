@@ -1,99 +1,79 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Upload, X, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import {
-  useBrandPersonalizationStore,
-  selectProjectImages,
-  selectProjectImagesError,
-} from "@stores/brandPersonalization";
 import { useProjectImages, useUploadProjectImage, useDeleteUpload } from "@api/uploads.hooks";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.webp";
 const MAX_IMAGES = 10;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 interface ProjectImagesSectionProps {
   className?: string;
 }
 
 export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
-  const projectImages = useBrandPersonalizationStore(selectProjectImages);
-  const error = useBrandPersonalizationStore(selectProjectImagesError);
+  // Read directly from query - no store
+  const { data: existingImages = [] } = useProjectImages();
 
-  const addProjectImage = useBrandPersonalizationStore((s) => s.addProjectImage);
-  const setProjectImages = useBrandPersonalizationStore((s) => s.setProjectImages);
-  const removeProjectImage = useBrandPersonalizationStore((s) => s.removeProjectImage);
-  const setError = useBrandPersonalizationStore((s) => s.setProjectImagesError);
+  // Map to component's expected format
+  const projectImages = existingImages.map((img) => ({
+    uploadId: img.id,
+    url: img.url,
+    thumbUrl: img.thumb_url ?? undefined,
+  }));
 
+  // Mutations
+  const uploadMutation = useUploadProjectImage();
+  const deleteMutation = useDeleteUpload();
+
+  // Local state for UI
   const [isDragging, setIsDragging] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
-  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Mutation hooks
-  const uploadImageMutation = useUploadProjectImage({
-    onSuccess: (uploadedImage) => {
-      addProjectImage(uploadedImage);
-      setUploadingCount((c) => Math.max(0, c - 1));
-    },
-    onError: (err) => {
-      console.error("Project image upload failed:", err);
-      setError("Upload failed. Please try again.");
-      setUploadingCount((c) => Math.max(0, c - 1));
-    },
-  });
-
-  const deleteUploadMutation = useDeleteUpload();
-
-  // Fetch existing images from API
-  const { data: existingImages } = useProjectImages();
-
-  // Initialize store with existing images
-  useEffect(() => {
-    if (existingImages && existingImages.length > 0 && !hasInitialized) {
-      setProjectImages(
-        existingImages.map((img) => ({
-          uploadId: img.id,
-          url: img.url,
-          thumbUrl: img.thumb_url ?? undefined,
-        }))
-      );
-      setHasInitialized(true);
-    }
-  }, [existingImages, hasInitialized, setProjectImages]);
-
-  const canAddMore = projectImages.length < MAX_IMAGES;
+  const canAddMore = projectImages.length + uploadingCount < MAX_IMAGES;
   const isUploading = uploadingCount > 0;
+  const error = validationError ?? uploadMutation.error?.message ?? null;
 
-  const validateFile = (file: File): string | null => {
+  const validateFile = useCallback((file: File): string | null => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
       return "Invalid file type. Please use PNG, JPG, or WebP.";
     }
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > MAX_FILE_SIZE) {
       return "File too large. Maximum size is 10MB.";
     }
     return null;
-  };
+  }, []);
 
   const handleUpload = useCallback(
     (file: File) => {
       if (!canAddMore) {
-        setError(`Maximum ${MAX_IMAGES} images allowed`);
+        setValidationError(`Maximum ${MAX_IMAGES} images allowed`);
         return;
       }
 
-      const validationError = validateFile(file);
-      if (validationError) {
-        setError(validationError);
+      const error = validateFile(file);
+      if (error) {
+        setValidationError(error);
         return;
       }
 
-      setError(null);
+      setValidationError(null);
       setUploadingCount((c) => c + 1);
-      uploadImageMutation.mutate({ file });
+
+      uploadMutation.mutate(
+        { file },
+        {
+          onSettled: () => {
+            setUploadingCount((c) => Math.max(0, c - 1));
+          },
+        }
+      );
     },
-    [canAddMore, setError, uploadImageMutation]
+    [canAddMore, validateFile, uploadMutation]
   );
 
   const handleFileSelect = useCallback(
@@ -119,7 +99,6 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-
       const files = Array.from(e.dataTransfer.files);
       files.forEach((file) => handleUpload(file));
     },
@@ -133,14 +112,13 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
   const handleRemove = useCallback(
     async (uploadId: number) => {
       setDeletingIds((prev) => new Set([...prev, uploadId]));
-      setError(null);
+      setValidationError(null);
 
       try {
-        await deleteUploadMutation.mutateAsync({ uploadId });
-        removeProjectImage(uploadId);
+        await deleteMutation.mutateAsync({ uploadId });
       } catch (err) {
         console.error("Project image delete failed:", err);
-        setError("Failed to remove image. Please try again.");
+        setValidationError("Failed to remove image. Please try again.");
       } finally {
         setDeletingIds((prev) => {
           const newSet = new Set(prev);
@@ -149,7 +127,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
         });
       }
     },
-    [deleteUploadMutation, removeProjectImage, setError]
+    [deleteMutation]
   );
 
   return (

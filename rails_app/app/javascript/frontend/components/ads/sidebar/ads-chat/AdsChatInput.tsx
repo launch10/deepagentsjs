@@ -3,7 +3,7 @@ import { Button } from "@components/ui/button";
 import { ArrowUp, FilePlus, Sparkles, Square } from "lucide-react";
 import { useAdsChatActions } from "@hooks/useAdsChat";
 import { Chat } from "@components/chat/Chat";
-import { useWorkflowSteps, selectSubstep } from "@context/WorkflowStepsProvider";
+import { useWorkflow, selectSubstep } from "@context/WorkflowProvider";
 import { Ads } from "@shared";
 
 /**
@@ -18,7 +18,7 @@ import { Ads } from "@shared";
 export default function AdsChatInput() {
   // Ads-specific actions for refresh suggestions
   const { updateState } = useAdsChatActions();
-  const substep = useWorkflowSteps(selectSubstep);
+  const substep = useWorkflow(selectSubstep);
 
   const onRefreshSuggestions = useCallback(() => {
     const refresh = Ads.refreshAllCommand(substep as Ads.StageName);

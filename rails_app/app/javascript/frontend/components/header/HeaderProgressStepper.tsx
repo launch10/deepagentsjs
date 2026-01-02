@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
-import { useWorkflowSteps, selectPageNumber, selectPages } from "@context/WorkflowStepsProvider";
+import { useWorkflowOptional, selectPageNumber, selectPages } from "@context/WorkflowProvider";
 import { Workflow } from "@shared";
 
 export type HeaderProgressStepperViewProps = {
@@ -68,13 +68,11 @@ type HeaderProgressStepperProps = {
 };
 
 export default function HeaderProgressStepper({ className }: HeaderProgressStepperProps) {
-  const pages = useWorkflowSteps(selectPages);
-  const currentPageNumber = useWorkflowSteps(selectPageNumber);
+  const pages = useWorkflowOptional(selectPages);
+  const currentPageNumber = useWorkflowOptional(selectPageNumber);
 
   // Show the stepper if we have a valid workflow page (pageNumber >= 0)
-  // The store is the source of truth for whether we're in a workflow.
-  // When navigating to hidden URLs via Inertia, the WorkflowStepsProvider clears the store,
-  // which will set pageNumber to -1 and hide the stepper.
+  // The store derives from URL, so pageNumber is -1 when not on a workflow URL.
   const hasValidPage = currentPageNumber != null && currentPageNumber >= 0;
 
   // Show stepper only if we have a valid page in the workflow store

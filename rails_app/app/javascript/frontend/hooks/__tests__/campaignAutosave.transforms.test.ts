@@ -18,8 +18,8 @@ describe("campaignAutosave.transforms", () => {
       const result = defaultAssetTransform(assets);
 
       expect(result).toEqual([
-        { id: "1", text: "Valid headline" },
-        { id: "4", text: "Another valid" },
+        { text: "Valid headline" },
+        { text: "Another valid" },
       ]);
     });
 
@@ -36,7 +36,7 @@ describe("campaignAutosave.transforms", () => {
 
       const result = defaultAssetTransform(assets);
 
-      expect(result).toEqual([{ id: "1", text: "Headline" }]);
+      expect(result).toEqual([{ text: "Headline" }]);
       expect(result[0]).not.toHaveProperty("locked");
       expect(result[0]).not.toHaveProperty("rejected");
     });
@@ -49,7 +49,7 @@ describe("campaignAutosave.transforms", () => {
 
       const result = defaultAssetTransform(assets);
 
-      expect(result).toEqual([{ id: "2", text: "Valid" }]);
+      expect(result).toEqual([{ text: "Valid" }]);
     });
   });
 
@@ -69,7 +69,7 @@ describe("campaignAutosave.transforms", () => {
 
       expect(result).toEqual({
         campaign: {
-          headlines: [{ id: "1", text: "Test headline" }],
+          headlines: [{ text: "Test headline" }],
         },
       });
     });
@@ -85,8 +85,8 @@ describe("campaignAutosave.transforms", () => {
 
       expect(result).toEqual({
         campaign: {
-          headlines: [{ id: "1", text: "Headline 1" }],
-          descriptions: [{ id: "2", text: "Description 1" }],
+          headlines: [{ text: "Headline 1" }],
+          descriptions: [{ text: "Description 1" }],
         },
       });
     });
@@ -168,7 +168,7 @@ describe("campaignAutosave.transforms", () => {
 
       expect(result).toEqual({
         campaign: {
-          headlines: [{ id: "1", text: "Valid headline" }],
+          headlines: [{ text: "Valid headline" }],
           descriptions: [],
         },
       });

@@ -6,8 +6,8 @@ import {
   selectSetSubstep,
   selectReturnToSection,
   selectClearReturnToSection,
-  useWorkflowSteps,
-} from "@context/WorkflowStepsProvider";
+  useWorkflow,
+} from "@context/WorkflowProvider";
 import { Cog8ToothIcon, CursorArrowRippleIcon } from "@heroicons/react/24/solid";
 import { useAdsChatState } from "@hooks/useAdsChat";
 import { useStageInit } from "@hooks/useStageInit";
@@ -54,9 +54,9 @@ export default function ReviewForm() {
   const { campaignName, googleAdvertisingChannelType, googleBiddingStrategy, startDate, endDate } =
     launchValues;
 
-  const setSubstep = useWorkflowSteps(selectSetSubstep);
-  const returnToSection = useWorkflowSteps(selectReturnToSection);
-  const clearReturnToSection = useWorkflowSteps(selectClearReturnToSection);
+  const setSubstep = useWorkflow(selectSetSubstep);
+  const returnToSection = useWorkflow(selectReturnToSection);
+  const clearReturnToSection = useWorkflow(selectClearReturnToSection);
 
   useScrollToSection(returnToSection, clearReturnToSection);
 

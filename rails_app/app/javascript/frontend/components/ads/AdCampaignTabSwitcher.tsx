@@ -1,20 +1,20 @@
 import { twMerge } from "tailwind-merge";
 import {
-  useWorkflowSteps,
+  useWorkflow,
   selectStep,
   selectSubstep,
   selectSetSubstep,
   selectCanGoBack,
-} from "@context/WorkflowStepsProvider";
+} from "@context/WorkflowProvider";
 import { useFormRegistry, selectValidate } from "@stores/formRegistry";
 import { Workflow } from "@shared";
 
 export default function AdCampaignTabSwitcher({ disabled }: { disabled?: boolean }) {
   const validateForm = useFormRegistry(selectValidate);
-  const step = useWorkflowSteps(selectStep);
-  const activeTab = useWorkflowSteps(selectSubstep) || "content";
-  const setSubstep = useWorkflowSteps(selectSetSubstep)!;
-  const canGoBack = useWorkflowSteps(selectCanGoBack)!;
+  const step = useWorkflow(selectStep);
+  const activeTab = useWorkflow(selectSubstep) || "content";
+  const setSubstep = useWorkflow(selectSetSubstep);
+  const canGoBack = useWorkflow(selectCanGoBack);
 
   if (!step || !Workflow.isTabGroupName(step)) return null;
 

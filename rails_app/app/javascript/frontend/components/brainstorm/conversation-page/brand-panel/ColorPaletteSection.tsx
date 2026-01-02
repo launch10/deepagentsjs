@@ -1,10 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import {
-  useBrandPersonalizationStore,
-  selectSelectedThemeId,
-} from "@stores/brandPersonalization";
 import { useThemes, useCreateTheme } from "@api/themes.hooks";
 import { useWebsite, useUpdateWebsiteTheme } from "@api/websites.hooks";
 import { CustomColorPicker } from "./CustomColorPicker";
@@ -19,36 +15,30 @@ interface ColorPaletteSectionProps {
 }
 
 export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
-  const selectedThemeId = useBrandPersonalizationStore(selectSelectedThemeId);
-  const setTheme = useBrandPersonalizationStore((s) => s.setTheme);
-
-  // TanStack Query hooks for caching
+  // Read directly from queries - no store
   const { data: themes = [], isLoading: isLoadingThemes } = useThemes();
   const { data: website, isLoading: isLoadingWebsite } = useWebsite();
   const createThemeMutation = useCreateTheme();
-  const updateWebsiteThemeMutation = useUpdateWebsiteTheme();
+  const updateThemeMutation = useUpdateWebsiteTheme();
 
-  // Track if we've initialized the theme from the website data
-  const hasInitializedRef = useRef(false);
+  // Selected theme comes directly from website query
+  const selectedThemeId = website?.theme_id ?? null;
 
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
-
-  // Initialize theme from website data and scroll to the page containing the selected palette
-  useEffect(() => {
-    if (!hasInitializedRef.current && website?.theme_id != null && themes.length > 0) {
-      setTheme(website.theme_id);
-
-      // Find the index of the selected theme and calculate which page it's on
-      const themeIndex = themes.findIndex((t) => t.id === website.theme_id);
-      if (themeIndex !== -1) {
-        const targetPage = Math.floor(themeIndex / PALETTES_PER_PAGE);
-        setCurrentPage(targetPage);
-      }
-
-      hasInitializedRef.current = true;
-    }
-  }, [website?.theme_id, themes, setTheme]);
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+
+  // Auto-scroll to selected theme's page on initial load
+  const hasScrolledRef = useRef(false);
+  useEffect(() => {
+    if (!hasScrolledRef.current && selectedThemeId && themes.length > 0) {
+      const themeIndex = themes.findIndex((t) => t.id === selectedThemeId);
+      if (themeIndex !== -1) {
+        setCurrentPage(Math.floor(themeIndex / PALETTES_PER_PAGE));
+        hasScrolledRef.current = true;
+      }
+    }
+  }, [selectedThemeId, themes]);
 
   const isLoading = isLoadingThemes || isLoadingWebsite;
 
@@ -69,11 +59,10 @@ export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
   const handleSelectTheme = useCallback(
     (themeId: number) => {
       const newThemeId = selectedThemeId === themeId ? null : themeId;
-      setTheme(newThemeId);
-      // Persist to backend
-      updateWebsiteThemeMutation.mutate({ themeId: newThemeId });
+      // Mutation updates backend, cache invalidation updates UI
+      updateThemeMutation.mutate({ themeId: newThemeId });
     },
-    [setTheme, selectedThemeId, updateWebsiteThemeMutation]
+    [selectedThemeId, updateThemeMutation]
   );
 
   const handleCreateCustomPalette = useCallback(
@@ -82,15 +71,13 @@ export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
         name: "Custom Palette",
         colors,
       });
-      // Select the new theme and close the picker
-      setTheme(newTheme.id);
-      // Persist to backend
-      updateWebsiteThemeMutation.mutate({ themeId: newTheme.id });
+      // Select the new theme
+      updateThemeMutation.mutate({ themeId: newTheme.id });
       setShowCustomPicker(false);
       // Navigate to the first page to show the new palette (it's prepended)
       setCurrentPage(0);
     },
-    [createThemeMutation, setTheme, updateWebsiteThemeMutation]
+    [createThemeMutation, updateThemeMutation]
   );
 
   if (isLoading) {

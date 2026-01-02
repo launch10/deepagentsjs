@@ -13,14 +13,16 @@ import {
 import type { BrainstormGraphState } from "@shared";
 
 // Mock Inertia's usePage
+const mockUsePage = vi.fn(() => ({
+  props: {
+    thread_id: "test-thread-123",
+    jwt: "test-jwt-token",
+    langgraph_path: "http://localhost:3001",
+  },
+}));
+
 vi.mock("@inertiajs/react", () => ({
-  usePage: vi.fn(() => ({
-    props: {
-      thread_id: "test-thread-123",
-      jwt: "test-jwt-token",
-      langgraph_path: "http://localhost:3001",
-    },
-  })),
+  usePage: () => mockUsePage(),
 }));
 
 // Mock the upload service
@@ -105,6 +107,14 @@ describe("useBrainstormChat", () => {
     mockSnapshot = createMockSnapshot();
     mockUploadCreate.mockReset();
     mockSendMessage.mockReset();
+    // Reset usePage to default mock
+    mockUsePage.mockReturnValue({
+      props: {
+        thread_id: "test-thread-123",
+        jwt: "test-jwt-token",
+        langgraph_path: "http://localhost:3001",
+      },
+    });
   });
 
   describe("useBrainstormChat selector", () => {
@@ -174,7 +184,15 @@ describe("useBrainstormChat", () => {
 
   describe("useBrainstormIsNewConversation", () => {
     it("returns true when messages is empty", () => {
-      mockSnapshot = createMockSnapshot({ messages: [] });
+      // Override usePage to return no thread_id (new conversation)
+      mockUsePage.mockReturnValue({
+        props: {
+          thread_id: undefined,
+          jwt: "test-jwt-token",
+          langgraph_path: "http://localhost:3001",
+        },
+      });
+      mockSnapshot = createMockSnapshot({ messages: [], threadId: null });
 
       const { result } = renderHook(() => useBrainstormIsNewConversation());
 
@@ -219,121 +237,7 @@ describe("useBrainstormChat", () => {
   });
 
   describe("useBrainstormChatActions", () => {
-    describe("guardedSendMessage", () => {
-      it("blocks no-arg calls when composer is not ready", () => {
-        const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-        mockSnapshot = createMockSnapshot({
-          composer: createMockComposer({ isReady: false }),
-        });
-
-        const { result } = renderHook(() => useBrainstormChatActions());
-        result.current.sendMessage();
-
-        expect(mockSendMessage).not.toHaveBeenCalled();
-        expect(consoleSpy).toHaveBeenCalledWith(
-          "[useBrainstormChatActions] Blocked: composer not ready"
-        );
-        consoleSpy.mockRestore();
-      });
-
-      it("allows no-arg calls when composer is ready", () => {
-        mockSnapshot = createMockSnapshot({
-          composer: createMockComposer({ isReady: true, text: "Hello" }),
-        });
-
-        const { result } = renderHook(() => useBrainstormChatActions());
-        result.current.sendMessage();
-
-        expect(mockSendMessage).toHaveBeenCalledTimes(1);
-        expect(mockSendMessage).toHaveBeenCalledWith();
-      });
-
-      it("allows no-arg calls when composer has attachments only", () => {
-        mockSnapshot = createMockSnapshot({
-          composer: createMockComposer({
-            isReady: true,
-            text: "",
-            attachments: [{ id: "1", status: "completed", url: "http://example.com/image.jpg" }],
-          }),
-        });
-
-        const { result } = renderHook(() => useBrainstormChatActions());
-        result.current.sendMessage();
-
-        expect(mockSendMessage).toHaveBeenCalledTimes(1);
-      });
-
-      it("blocks empty text-based calls", () => {
-        const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-        mockSnapshot = createMockSnapshot();
-
-        const { result } = renderHook(() => useBrainstormChatActions());
-        result.current.sendMessage("");
-
-        expect(mockSendMessage).not.toHaveBeenCalled();
-        expect(consoleSpy).toHaveBeenCalledWith(
-          "[useBrainstormChatActions] Blocked empty message submission"
-        );
-        consoleSpy.mockRestore();
-      });
-
-      it("blocks whitespace-only text-based calls", () => {
-        const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-        mockSnapshot = createMockSnapshot();
-
-        const { result } = renderHook(() => useBrainstormChatActions());
-        result.current.sendMessage("   ");
-
-        expect(mockSendMessage).not.toHaveBeenCalled();
-        consoleSpy.mockRestore();
-      });
-
-      it("allows text-based calls with content", () => {
-        mockSnapshot = createMockSnapshot();
-
-        const { result } = renderHook(() => useBrainstormChatActions());
-        result.current.sendMessage("Hello world");
-
-        expect(mockSendMessage).toHaveBeenCalledWith("Hello world", undefined);
-      });
-
-      it("allows text-based calls with additional state", () => {
-        mockSnapshot = createMockSnapshot();
-
-        const { result } = renderHook(() => useBrainstormChatActions());
-        result.current.sendMessage("Hello", { command: "helpMe" });
-
-        expect(mockSendMessage).toHaveBeenCalledWith("Hello", { command: "helpMe" });
-      });
-
-      it("allows empty text with additional state", () => {
-        mockSnapshot = createMockSnapshot();
-
-        const { result } = renderHook(() => useBrainstormChatActions());
-        result.current.sendMessage("", { command: "skip" });
-
-        expect(mockSendMessage).toHaveBeenCalledWith("", { command: "skip" });
-      });
-
-      it("treats undefined first arg same as no-arg call", () => {
-        const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-        mockSnapshot = createMockSnapshot({
-          composer: createMockComposer({ isReady: false }),
-        });
-
-        const { result } = renderHook(() => useBrainstormChatActions());
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (result.current.sendMessage as any)(undefined);
-
-        expect(mockSendMessage).not.toHaveBeenCalled();
-        expect(consoleSpy).toHaveBeenCalledWith(
-          "[useBrainstormChatActions] Blocked: composer not ready"
-        );
-        consoleSpy.mockRestore();
-      });
-    });
-
-    it("exposes other actions unchanged", () => {
+    it("returns actions from snapshot", () => {
       const mockStop = vi.fn();
       mockSnapshot = createMockSnapshot({
         actions: {
@@ -344,6 +248,7 @@ describe("useBrainstormChat", () => {
 
       const { result } = renderHook(() => useBrainstormChatActions());
 
+      expect(result.current.sendMessage).toBe(mockSendMessage);
       expect(result.current.stop).toBe(mockStop);
     });
   });

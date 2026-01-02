@@ -1,4 +1,4 @@
-import { selectSubstep, useWorkflowSteps } from "@context/WorkflowStepsProvider";
+import { selectSubstep, useWorkflow } from "@context/WorkflowProvider";
 import { Workflow } from "@shared";
 import ContentForm from "./content-form/ContentForm";
 import HighlightsForm from "./highlights-form/HighlightsForm";
@@ -17,7 +17,7 @@ const FORMS: Partial<Record<Workflow.AdCampaignSubstepName, React.ComponentType>
 };
 
 export default function AdsForm() {
-  const substep = useWorkflowSteps(selectSubstep);
+  const substep = useWorkflow(selectSubstep);
   const FormComponent = substep ? FORMS[substep as Workflow.AdCampaignSubstepName] : null;
   if (!FormComponent) return null;
 

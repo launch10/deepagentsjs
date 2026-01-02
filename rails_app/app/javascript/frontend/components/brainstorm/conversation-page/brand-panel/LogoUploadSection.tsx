@@ -1,94 +1,56 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Upload, X, RefreshCw, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import {
-  useBrandPersonalizationStore,
-  selectLogo,
-  selectLogoError,
-} from "@stores/brandPersonalization";
 import { useProjectLogo, useUploadLogo, useDeleteUpload } from "@api/uploads.hooks";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/svg+xml"];
 const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.svg";
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface LogoUploadSectionProps {
   className?: string;
 }
 
 export function LogoUploadSection({ className }: LogoUploadSectionProps) {
-  const logo = useBrandPersonalizationStore(selectLogo);
-  const error = useBrandPersonalizationStore(selectLogoError);
+  // Read directly from query - no store
+  const { data: existingLogos = [] } = useProjectLogo();
+  const logo = existingLogos[0] ?? null;
 
-  const setLogo = useBrandPersonalizationStore((s) => s.setLogo);
-  const removeLogo = useBrandPersonalizationStore((s) => s.removeLogo);
-  const setError = useBrandPersonalizationStore((s) => s.setLogoError);
+  // Mutations provide their own loading state
+  const uploadMutation = useUploadLogo();
+  const deleteMutation = useDeleteUpload();
 
+  // Local state for UI
   const [isDragging, setIsDragging] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Mutation hooks
-  const uploadLogoMutation = useUploadLogo({
-    onSuccess: (uploadedLogo) => {
-      setLogo(uploadedLogo);
-    },
-    onError: (err) => {
-      console.error("Logo upload failed:", err);
-      setError("Upload failed. Please try again.");
-    },
-  });
+  const isUploading = uploadMutation.isPending;
+  const isDeleting = deleteMutation.isPending;
+  const error = validationError ?? uploadMutation.error?.message ?? deleteMutation.error?.message ?? null;
 
-  const deleteUploadMutation = useDeleteUpload({
-    onSuccess: () => {
-      removeLogo();
-    },
-    onError: (err) => {
-      console.error("Logo delete failed:", err);
-      setError("Failed to remove logo. Please try again.");
-    },
-  });
-
-  const isUploading = uploadLogoMutation.isPending;
-  const isDeleting = deleteUploadMutation.isPending;
-
-  // Fetch existing logo from API
-  const { data: existingLogos } = useProjectLogo();
-
-  // Initialize store with existing logo
-  useEffect(() => {
-    if (existingLogos && existingLogos.length > 0 && !logo) {
-      const existingLogo = existingLogos[0];
-      setLogo({
-        uploadId: existingLogo.id,
-        url: existingLogo.url,
-        thumbUrl: existingLogo.thumb_url ?? undefined,
-      });
-    }
-  }, [existingLogos, logo, setLogo]);
-
-  const validateFile = (file: File): string | null => {
+  const validateFile = useCallback((file: File): string | null => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
       return "Invalid file type. Please use PNG, JPG, or SVG.";
     }
-    // 5MB limit
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_FILE_SIZE) {
       return "File too large. Maximum size is 5MB.";
     }
     return null;
-  };
+  }, []);
 
   const handleUpload = useCallback(
     (file: File) => {
-      const validationError = validateFile(file);
-      if (validationError) {
-        setError(validationError);
+      const error = validateFile(file);
+      if (error) {
+        setValidationError(error);
         return;
       }
-
-      setError(null);
-      uploadLogoMutation.mutate({ file });
+      setValidationError(null);
+      uploadMutation.mutate({ file });
     },
-    [setError, uploadLogoMutation]
+    [validateFile, uploadMutation]
   );
 
   const handleFileSelect = useCallback(
@@ -117,7 +79,6 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-
       const file = e.dataTransfer.files[0];
       if (file) {
         handleUpload(file);
@@ -134,20 +95,16 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!logo) return;
-
-      setError(null);
-      deleteUploadMutation.mutate({ uploadId: logo.uploadId });
+      setValidationError(null);
+      deleteMutation.mutate({ uploadId: logo.id });
     },
-    [logo, setError, deleteUploadMutation]
+    [logo, deleteMutation]
   );
 
-  const handleReplace = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      inputRef.current?.click();
-    },
-    []
-  );
+  const handleReplace = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    inputRef.current?.click();
+  }, []);
 
   return (
     <div className={twMerge("space-y-2", className)}>
@@ -171,7 +128,7 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
           data-testid="logo-preview"
         >
           <img
-            src={logo.thumbUrl || logo.url}
+            src={logo.thumb_url || logo.url}
             alt="Brand logo"
             className="w-full h-full object-contain p-2"
             crossOrigin="anonymous"

@@ -1,7 +1,7 @@
 import { CardTitle, CardDescription, CardHeader } from "@components/ui/card";
 import AdCampaignStep from "./workflow-buddy/AdCampaignStep";
 import { Workflow } from "@shared";
-import { useWorkflowSteps, selectStep, selectSubstep } from "@context/WorkflowStepsProvider";
+import { useWorkflow, selectStep, selectSubstep } from "@context/WorkflowProvider";
 
 const adCampaignSteps = Workflow.workflows.launch.steps.find(
   (step) => step.name === "ad_campaign"
@@ -58,8 +58,8 @@ export function WorkflowBuddyView({ activeStep, activeSubstep }: WorkflowBuddyVi
 }
 
 export default function WorkflowBuddy() {
-  const activeStep = useWorkflowSteps(selectStep);
-  const activeSubstep = useWorkflowSteps(selectSubstep);
+  const activeStep = useWorkflow(selectStep);
+  const activeSubstep = useWorkflow(selectSubstep);
 
   return <WorkflowBuddyView activeStep={activeStep} activeSubstep={activeSubstep} />;
 }

@@ -1,25 +1,16 @@
 import { router } from "@inertiajs/react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { twMerge } from "tailwind-merge";
-import { useWorkflowSteps, selectClear } from "@context/WorkflowStepsProvider";
 
 interface NewProjectButtonProps {
   isCollapsed?: boolean;
 }
 
 export function NewProjectButton({ isCollapsed = false }: NewProjectButtonProps) {
-  const clearWorkflow = useWorkflowSteps(selectClear);
-
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-
-    // Navigate to new project page
+    // URL-as-truth: navigating changes URL, store derives state from URL
     router.visit("/projects/new");
-
-    // Clear workflow state before navigation
-    if (clearWorkflow) {
-      clearWorkflow();
-    }
   };
 
   return (

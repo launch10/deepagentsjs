@@ -1,50 +1,18 @@
-import { useCallback } from "react";
-import type { ChatActions } from "langgraph-ai-sdk-react";
-import type { BrainstormGraphState } from "@shared";
-import {
-  useBrainstormChatActions,
-  useBrainstormIsNewConversation,
-} from "./useBrainstormChat";
-import {
-  useWorkflowSteps,
-  selectSetPage,
-} from "@context/WorkflowStepsProvider";
+import { useBrainstormChatActions } from "./useBrainstormChat";
 
 /**
- * Hook that wraps brainstorm chat actions with workflow state synchronization.
+ * Hook that provides brainstorm chat actions.
  *
- * When the first message is sent (transitioning from BrainstormLanding to BrainstormConversation),
- * this hook optimistically updates the workflow store to `{page: 'brainstorm'}`.
- *
- * This ensures the HeaderProgressStepper and other workflow-aware components
- * reflect the correct state immediately, without waiting for server response.
+ * URL-as-Truth: When the first message is sent, the chat hook receives the new
+ * threadId from the backend and updates the URL via onThreadIdAvailable.
+ * The workflow store derives its state from URL, so no manual sync is needed.
  *
  * @example
  * ```tsx
- * // In BrainstormInput.tsx
  * const { sendMessage } = useBrainstormSendMessage();
- *
- * const onSubmit = () => {
- *   sendMessage(); // Automatically syncs workflow state on first message
- * };
+ * sendMessage("Hello!");
  * ```
  */
 export function useBrainstormSendMessage() {
-  const { sendMessage, ...rest } = useBrainstormChatActions();
-  const isNewConversation = useBrainstormIsNewConversation();
-  const setPage = useWorkflowSteps(selectSetPage);
-
-  // Create a properly typed wrapper that preserves the overloaded signature
-  const sendMessageWithWorkflowSync: ChatActions<BrainstormGraphState>["sendMessage"] = useCallback(
-    (...args: Parameters<ChatActions<BrainstormGraphState>["sendMessage"]>) => {
-      // Optimistically set page to brainstorm if this is the first message
-      if (isNewConversation && setPage) {
-        setPage("brainstorm");
-      }
-      return sendMessage(...args);
-    },
-    [sendMessage, isNewConversation, setPage]
-  ) as ChatActions<BrainstormGraphState>["sendMessage"];
-
-  return { sendMessage: sendMessageWithWorkflowSync, ...rest };
+  return useBrainstormChatActions();
 }

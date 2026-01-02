@@ -1,6 +1,6 @@
 import { AdCampaignPaginationView } from "./AdCampaignPaginationView";
 import { useCampaignPagination } from "./useCampaignPagination";
-import { selectSubstep, useWorkflowSteps } from "@context/WorkflowStepsProvider";
+import { selectSubstep, useWorkflow } from "@context/WorkflowProvider";
 import type { PaginationVariant } from "./AdCampaignPagination.types";
 
 interface AdCampaignPaginationProps {
@@ -20,7 +20,7 @@ export default function AdCampaignPagination({ className }: AdCampaignPagination
     clearValidationFailed,
   } = useCampaignPagination();
 
-  const substep = useWorkflowSteps(selectSubstep);
+  const substep = useWorkflow(selectSubstep);
   const variant: PaginationVariant = substep === "review" ? "review" : "workflow";
   const primaryAction = variant === "review" ? handleContinue : returnToReview;
 
