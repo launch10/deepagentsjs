@@ -198,11 +198,10 @@ rake snapshots:load[completed_brainstorm]
 ## Service Management
 
 ```bash
-# Run langgraph tests (Rails starts automatically)
 cd langgraph_app
 bin/test                    # Run once
 bin/test --watch            # Watch mode
-bin/test --no-rails         # Skip Rails if running manually
+bin/test --with-rails       # Run with Rails server
 
 # Service management
 bin/services status         # Check what's running

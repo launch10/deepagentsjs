@@ -290,7 +290,7 @@ class SvgSanitizer
       # Process all attribute nodes
       node.attribute_nodes.to_a.each do |attr|
         # Get the full attribute name including namespace prefix
-        full_name = if attr.namespace && attr.namespace.prefix
+        full_name = if attr.namespace&.prefix
           "#{attr.namespace.prefix}:#{attr.name}"
         else
           attr.name
@@ -322,16 +322,14 @@ class SvgSanitizer
 
     def remove_attribute_safely(node, attr)
       # Handle namespaced attributes properly
+      node.remove_attribute(attr.name)
       if attr.namespace
-        node.remove_attribute(attr.name)
         # Also try the prefixed version
         if attr.namespace.prefix
           node.remove_attribute("#{attr.namespace.prefix}:#{attr.name}")
         end
-      else
-        node.remove_attribute(attr.name)
       end
-    rescue StandardError
+    rescue
       # If removal fails, try to set it to empty
       attr.value = ""
     end

@@ -23,7 +23,7 @@ class API::V1::UploadsController < API::BaseController
     end
 
     # Apply sorting - order=recent sorts by created_at desc
-    @uploads = @uploads.reorder(created_at: :desc) if params[:order] == 'recent'
+    @uploads = @uploads.reorder(created_at: :desc) if params[:order] == "recent"
 
     # Apply limit if specified
     @uploads = @uploads.limit(params[:limit].to_i) if params[:limit].present?

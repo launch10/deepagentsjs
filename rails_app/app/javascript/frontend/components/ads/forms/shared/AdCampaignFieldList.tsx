@@ -62,7 +62,7 @@ export default function AdCampaignFieldList({
         return (
           <Controller
             key={field.id}
-            name={`${fieldName}.${index}.text` as any}
+            name={`${fieldName}.${originalIndex}.text` as any}
             control={control}
             render={({ field: controllerField, fieldState }) => (
               <Field className="gap-1">
@@ -72,7 +72,7 @@ export default function AdCampaignFieldList({
                   onChange={(e) => {
                     controllerField.onChange(e);
                     if (onInputChange) {
-                      onInputChange(index, e.target.value);
+                      onInputChange(originalIndex, e.target.value);
                     }
                   }}
                   onBlur={controllerField.onBlur}

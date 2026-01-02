@@ -26,7 +26,7 @@ class CampaignHighlightsStep < BaseBuilder
 
     campaign.update_idempotently!({
       headlines: [{text: "Headline 1"}, {text: "Headline 2"}, {text: "Headline 3"}],
-      descriptions: [{text: "Description 1"}, {text: "Description 2"}, {text: "Description 3"}],
+      descriptions: [{text: "Description 1"}, {text: "Description 2"}, {text: "Description 3"}]
     })
     campaign.advance_stage!
 

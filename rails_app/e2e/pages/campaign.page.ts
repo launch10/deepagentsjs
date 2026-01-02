@@ -38,12 +38,7 @@ export const VALID_TEST_DATA = {
     "Custom Solutions", // 16 chars
   ],
   // Keywords: max 90 chars
-  keywords: [
-    "marketing automation",
-    "email marketing tools",
-    "crm software",
-    "lead generation",
-  ],
+  keywords: ["marketing automation", "email marketing tools", "crm software", "lead generation"],
 } as const;
 
 /**
@@ -52,8 +47,7 @@ export const VALID_TEST_DATA = {
  */
 export const INVALID_TEST_DATA = {
   // Headlines: exceeds 30 chars
-  headlineTooLong:
-    "This headline is way too long and will fail validation", // 55 chars
+  headlineTooLong: "This headline is way too long and will fail validation", // 55 chars
   // Descriptions: exceeds 90 chars
   descriptionTooLong:
     "This description is intentionally made extremely long to exceed the ninety character limit that Google Ads enforces on descriptions.", // 133 chars
@@ -104,6 +98,10 @@ export class CampaignPage {
   readonly budgetInput: Locator;
   readonly scheduleDays: Locator;
 
+  // Keywords elements
+  readonly keywordInput: Locator;
+  readonly keywordAddButton: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
@@ -140,6 +138,10 @@ export class CampaignPage {
     this.locationSearchInput = page.getByTestId("location-search-input");
     this.budgetInput = page.getByTestId("budget-input");
     this.scheduleDays = page.getByTestId("schedule-days");
+
+    // Keywords elements
+    this.keywordInput = page.locator('input[placeholder="Enter keywords, separated by commas"]');
+    this.keywordAddButton = page.locator("button:has-text('Add')").first();
   }
 
   /**
@@ -231,7 +233,9 @@ export class CampaignPage {
   /**
    * Click a specific tab.
    */
-  async clickTab(tabName: "content" | "highlights" | "keywords" | "settings" | "launch" | "review"): Promise<void> {
+  async clickTab(
+    tabName: "content" | "highlights" | "keywords" | "settings" | "launch" | "review"
+  ): Promise<void> {
     await this.page.getByTestId(`tab-${tabName}`).click();
     await this.page.waitForTimeout(300);
   }
@@ -291,18 +295,25 @@ export class CampaignPage {
    * Get lockable inputs for a specific field type by name attribute.
    * Field names follow the pattern: headlines.0.text, descriptions.0.text, etc.
    */
-  getInputsByFieldName(fieldName: "headlines" | "descriptions" | "callouts" | "details" | "keywords"): Locator {
+  getInputsByFieldName(
+    fieldName: "headlines" | "descriptions" | "callouts" | "details" | "keywords"
+  ): Locator {
     return this.page.locator(`[data-testid="lockable-input"][name^="${fieldName}."]`);
   }
 
   /**
    * Get the lock button for a specific field type and index.
    */
-  getLockButtonForField(fieldName: "headlines" | "descriptions" | "callouts" | "details" | "keywords", index: number): Locator {
+  getLockButtonForField(
+    fieldName: "headlines" | "descriptions" | "callouts" | "details" | "keywords",
+    index: number
+  ): Locator {
     // Structure: div.flex > [Button(lock), Button(delete), InputGroup > input]
     // So from input, go up to InputGroup, then find preceding-sibling lock button
     const input = this.getInputsByFieldName(fieldName).nth(index);
-    return input.locator("xpath=ancestor::*[@data-testid='lockable-input-group']/preceding-sibling::button[@data-testid='lock-toggle-button']");
+    return input.locator(
+      "xpath=ancestor::*[@data-testid='lockable-input-group']/preceding-sibling::button[@data-testid='lock-toggle-button']"
+    );
   }
 
   /**
@@ -404,7 +415,9 @@ export class CampaignPage {
       // Find the lock button for this input
       // Structure: div.flex > [Button(lock), Button(delete), InputGroup > input]
       // So from input, go up to InputGroup, then find preceding-sibling lock button
-      const lockButton = input.locator("xpath=ancestor::*[@data-testid='lockable-input-group']/preceding-sibling::button[@data-testid='lock-toggle-button']");
+      const lockButton = input.locator(
+        "xpath=ancestor::*[@data-testid='lockable-input-group']/preceding-sibling::button[@data-testid='lock-toggle-button']"
+      );
       await lockButton.click();
       await this.page.waitForTimeout(100);
     }
@@ -559,10 +572,13 @@ export class CampaignPage {
   /**
    * Click an "Edit Section" button on the review page.
    */
-  async clickEditSection(section: "content" | "highlights" | "keywords" | "settings" | "launch"): Promise<void> {
-    await this.page.getByRole("button", { name: "Edit Section" }).nth(
-      ["content", "highlights", "keywords", "settings", "launch"].indexOf(section)
-    ).click();
+  async clickEditSection(
+    section: "content" | "highlights" | "keywords" | "settings" | "launch"
+  ): Promise<void> {
+    await this.page
+      .getByRole("button", { name: "Edit Section" })
+      .nth(["content", "highlights", "keywords", "settings", "launch"].indexOf(section))
+      .click();
     await this.page.waitForTimeout(500);
   }
 
@@ -589,7 +605,9 @@ export class CampaignPage {
   /**
    * Assert that a specific form is visible.
    */
-  async expectFormVisible(formName: "content" | "highlights" | "keywords" | "settings" | "launch" | "review"): Promise<void> {
+  async expectFormVisible(
+    formName: "content" | "highlights" | "keywords" | "settings" | "launch" | "review"
+  ): Promise<void> {
     const forms: Record<string, Locator> = {
       content: this.contentForm,
       highlights: this.highlightsForm,
@@ -630,5 +648,32 @@ export class CampaignPage {
    */
   async countInputFields(): Promise<number> {
     return await this.getLockableInputs().count();
+  }
+
+  // ============ Keyword Methods ============
+
+  /**
+   * Add a new keyword via the keyword input field.
+   * @param keyword - The keyword text to add
+   */
+  async addKeyword(keyword: string): Promise<void> {
+    await this.keywordInput.fill(keyword);
+    await this.keywordAddButton.click();
+    await this.page.waitForTimeout(200);
+  }
+
+  /**
+   * Get all keyword input values currently displayed.
+   * @returns Array of keyword text values
+   */
+  async getKeywordValues(): Promise<string[]> {
+    const inputs = this.getInputsByFieldName("keywords");
+    const count = await inputs.count();
+    const values: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const value = await inputs.nth(i).inputValue();
+      values.push(value);
+    }
+    return values;
   }
 }

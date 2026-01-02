@@ -76,7 +76,7 @@ trap cleanup_on_exit EXIT
 # Run vitest
 cd "$SCRIPT_DIR/.."
 if $WATCH; then
-  exec pnpm vitest "${VITEST_ARGS[@]} tests/tests --no-file-parallelism"
+  exec pnpm vitest "${VITEST_ARGS[@]}" tests/tests --no-file-parallelism
 else
-  exec pnpm vitest run "${VITEST_ARGS[@]} tests/tests --no-file-parallelism"
+  exec pnpm vitest run "${VITEST_ARGS[@]}" tests/tests --no-file-parallelism
 fi

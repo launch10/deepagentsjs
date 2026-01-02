@@ -1046,6 +1046,78 @@ test.describe("Ad Campaign Workflow", () => {
       // but the field should remain after deletion attempt
     });
   });
+
+  test.describe("Keyword Addition", () => {
+    // Use campaign_keywords_step snapshot to start directly on the keywords page
+    test.beforeEach(async ({ page }) => {
+      await DatabaseSnapshotter.restoreSnapshot("campaign_keywords_step");
+      const project = await DatabaseSnapshotter.getFirstProject();
+      projectUuid = project.uuid;
+      campaignPage = new CampaignPage(page);
+    });
+
+    test("should add a new keyword via the input field", async ({ page }) => {
+      await campaignPage.goto(projectUuid, "keywords");
+      await campaignPage.waitForReady();
+      await campaignPage.expectFormVisible("keywords");
+
+      // Get the initial keywords
+      const initialKeywords = await campaignPage.getKeywordValues();
+      const initialCount = initialKeywords.length;
+
+      // Add a new unique keyword
+      const newKeyword = "brand new test keyword";
+      await campaignPage.addKeyword(newKeyword);
+
+      // Verify the count increased
+      const afterKeywords = await campaignPage.getKeywordValues();
+      expect(afterKeywords.length).toBe(initialCount + 1);
+
+      // Verify the new keyword was added with the correct value
+      // The bug we're testing: when adding a keyword, the previous keyword
+      // value gets duplicated instead of the new keyword being added
+      expect(afterKeywords).toContain(newKeyword);
+
+      // Verify no duplicate of the last initial keyword was added
+      const lastInitialKeyword = initialKeywords[initialKeywords.length - 1];
+      if (lastInitialKeyword) {
+        const countOfLastKeyword = afterKeywords.filter((k) => k === lastInitialKeyword).length;
+        const wasLastKeywordInInitial = initialKeywords.filter(
+          (k) => k === lastInitialKeyword
+        ).length;
+        expect(countOfLastKeyword).toBe(wasLastKeywordInInitial);
+      }
+    });
+
+    test("should add keyword with correct value not duplicate previous", async ({ page }) => {
+      await campaignPage.goto(projectUuid, "keywords");
+      await campaignPage.waitForReady();
+      await campaignPage.expectFormVisible("keywords");
+
+      // Add first keyword
+      const keyword1 = "first test keyword";
+      await campaignPage.addKeyword(keyword1);
+
+      // Get values after first add
+      const afterFirst = await campaignPage.getKeywordValues();
+      expect(afterFirst).toContain(keyword1);
+
+      // Add second keyword - this should NOT duplicate keyword1
+      const keyword2 = "second test keyword";
+      await campaignPage.addKeyword(keyword2);
+
+      // Get values after second add
+      const afterSecond = await campaignPage.getKeywordValues();
+
+      // Should contain both keywords
+      expect(afterSecond).toContain(keyword1);
+      expect(afterSecond).toContain(keyword2);
+
+      // Count occurrences of keyword1 - should still be 1, not 2
+      const keyword1Count = afterSecond.filter((k) => k === keyword1).length;
+      expect(keyword1Count).toBe(1);
+    });
+  });
 });
 
 /**

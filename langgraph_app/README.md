@@ -30,7 +30,7 @@ The easiest way to run tests is with `bin/test`, which automatically starts Rail
 ```bash
 bin/test                    # Run all tests once
 bin/test --watch            # Watch mode
-bin/test --no-rails         # Skip Rails auto-start (if running manually)
+bin/test --with-rails       # Run with Rails server
 bin/test tests/foo.test.ts  # Run specific test file
 ```
 
