@@ -1,6 +1,6 @@
 class CampaignComplete < BaseBuilder
   def base_snapshot
-    "website_deployed"
+    "campaign_review_step"
   end
 
   def output_name

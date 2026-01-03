@@ -11,17 +11,47 @@ basic_account:
   base_snapshot: core_data
   description: "Creates a subscribed test user account"
 
-website_created:
+website_step:
   class: WebsiteCreated
   base_snapshot: basic_account
   description: "Creates a website with brainstorm data"
 
-website_deployed:
-  class: WebsiteDeployed
-  base_snapshot: website_created
-  description: "Sets workflow to ad_campaign:content"
+website_step_finished:
+  class: WebsiteStepFinished
+  base_snapshot: website_step
+  description: "Finishes website step and advances workflow to ad_campaign:content"
+
+campaign_content_step:
+  class: CampaignContentStep
+  base_snapshot: website_step_finished
+  description: "Campaign content step with headlines and descriptions"
+
+campaign_highlights_step:
+  class: CampaignHighlightsStep
+  base_snapshot: campaign_content_step
+  description: "Campaign highlights step with callouts and snippets"
+
+campaign_keywords_step:
+  class: CampaignKeywordsStep
+  base_snapshot: campaign_highlights_step
+  description: "Campaign keywords step with ad groups and keywords"
+
+campaign_settings_step:
+  class: CampaignSettingsStep
+  base_snapshot: campaign_keywords_step
+  description: "Campaign settings step with budget, geo targets, and schedules"
+
+campaign_launch_step:
+  class: CampaignLaunchStep
+  base_snapshot: campaign_settings_step
+  description: "Campaign launch step ready for review"
+
+campaign_review_step:
+  class: CampaignReviewStep
+  base_snapshot: campaign_launch_step
+  description: "Campaign review step ready for deployment"
 
 campaign_complete:
   class: CampaignComplete
-  base_snapshot: website_deployed
+  base_snapshot: campaign_review_step
   description: "Creates a complete campaign with favicon, budget, geo targets, schedules, headlines, descriptions, callouts, snippets, ad groups, and keywords"
