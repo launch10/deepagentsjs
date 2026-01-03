@@ -279,6 +279,88 @@ RSpec.describe GoogleAds::Keyword do
         expect(result.error?).to be true
       end
     end
+
+    context 'when remote criterion exists but needs update (match_type changed)' do
+      let(:mock_update_resource) { double("UpdateResource") }
+
+      before do
+        ad_keyword.platform_settings["google"]["criterion_id"] = 333
+        ad_keyword.match_type = "exact"  # Local is EXACT
+        ad_keyword.save!
+        allow(@mock_operation).to receive(:update_resource).and_return(mock_update_resource)
+      end
+
+      it 'updates the criterion with the new match_type' do
+        # Remote has BROAD, local has EXACT - should trigger update
+        remote_broad_response = mock_search_response_with_keyword(
+          criterion_id: 333,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          keyword_text: "test keyword",
+          match_type: :BROAD,
+          status: :ENABLED
+        )
+
+        # After update, remote should have EXACT
+        updated_response = mock_search_response_with_keyword(
+          criterion_id: 333,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          keyword_text: "test keyword",
+          match_type: :EXACT,
+          status: :ENABLED
+        )
+
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(remote_broad_response, updated_response)
+
+        mock_criterion = mock_ad_group_criterion_resource
+        mock_keyword_info = mock_keyword_info_resource
+        allow(@mock_resource).to receive(:keyword_info).and_yield(mock_keyword_info).and_return(mock_keyword_info)
+        allow(mock_update_resource).to receive(:ad_group_criterion)
+          .with("customers/1234567890/adGroupCriteria/999~333")
+          .and_yield(mock_criterion)
+
+        mutate_response = mock_mutate_ad_group_criterion_response(
+          criterion_id: 333,
+          ad_group_id: 999,
+          customer_id: 1234567890
+        )
+        allow(@mock_ad_group_criterion_service).to receive(:mutate_ad_group_criteria)
+          .and_return(mutate_response)
+
+        result = keyword_syncer.sync
+        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+        expect(result.updated?).to be true
+        expect(result.synced?).to be true
+        expect(result.resource_name).to eq("customers/1234567890/adGroupCriteria/999~333")
+      end
+
+      it 'returns error result when update API call fails' do
+        remote_broad_response = mock_search_response_with_keyword(
+          criterion_id: 333,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          keyword_text: "test keyword",
+          match_type: :BROAD,
+          status: :ENABLED
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(remote_broad_response)
+
+        mock_criterion = mock_ad_group_criterion_resource
+        mock_keyword_info = mock_keyword_info_resource
+        allow(@mock_resource).to receive(:keyword_info).and_yield(mock_keyword_info).and_return(mock_keyword_info)
+        allow(mock_update_resource).to receive(:ad_group_criterion)
+          .with("customers/1234567890/adGroupCriteria/999~333")
+          .and_yield(mock_criterion)
+
+        allow(@mock_ad_group_criterion_service).to receive(:mutate_ad_group_criteria)
+          .and_raise(mock_google_ads_error(message: "Criterion update failed"))
+
+        result = keyword_syncer.sync
+        expect(result.error?).to be true
+      end
+    end
   end
 
   describe '#delete' do

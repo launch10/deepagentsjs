@@ -7,7 +7,8 @@ module GoogleAds
     private
 
     def active_records
-      campaign.ad_schedules
+      # Query directly to avoid cached association returning soft-deleted records
+      ::AdSchedule.where(campaign_id: campaign.id)
     end
 
     def deleted_records

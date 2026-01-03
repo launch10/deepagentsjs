@@ -7,7 +7,9 @@ module GoogleAds
     private
 
     def active_records
-      campaign.structured_snippet ? [campaign.structured_snippet] : []
+      # Query directly to avoid cached association returning soft-deleted records
+      snippet = ::AdStructuredSnippet.where(campaign_id: campaign.id).first
+      snippet ? [snippet] : []
     end
 
     def deleted_records

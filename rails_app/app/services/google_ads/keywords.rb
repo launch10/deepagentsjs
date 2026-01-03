@@ -11,7 +11,8 @@ module GoogleAds
     private
 
     def active_records
-      ad_group.keywords
+      # Query directly to avoid cached association returning soft-deleted records
+      ::AdKeyword.where(ad_group_id: ad_group.id)
     end
 
     def deleted_records

@@ -191,7 +191,7 @@ module GoogleAds
           operations: [operation]
         )
       rescue => e
-        binding.pry
+        return error_result(:campaign, e)
       end
 
       verify_sync(:updated, resource_name)

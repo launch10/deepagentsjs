@@ -87,6 +87,12 @@ module GoogleAds
           customer_id: google_customer_id,
           operations: [operation]
         )
+      rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
+        # If the resource is already removed/not found, treat as success and clear local ID
+        resource_not_found = e.failure.errors.any? do |error|
+          error.error_code.to_h[:mutate_error] == :RESOURCE_NOT_FOUND
+        end
+        return error_result(:campaign_asset, e) unless resource_not_found
       rescue => e
         return error_result(:campaign_asset, e)
       end

@@ -170,6 +170,7 @@ module GoogleAds
       MATCH_TYPE_TO_SYMBOL = ->(match_type) { match_type.upcase.to_sym }
 
       STATUS_TO_GOOGLE = ->(status) { (status == "active") ? :ENABLED : :PAUSED }
+      EMPTY_STRING_TO_NIL = ->(value) { value.to_s.empty? ? nil : value }
 
       AD_FIELDS = {
         status: {
@@ -181,12 +182,14 @@ module GoogleAds
           our_field: :display_path_1,
           their_field: :path1,
           transform: ITSELF,
+          their_value_transform: EMPTY_STRING_TO_NIL,
           nested_fields: [:ad, :responsive_search_ad]
         },
         display_path_2: {
           our_field: :display_path_2,
           their_field: :path2,
           transform: ITSELF,
+          their_value_transform: EMPTY_STRING_TO_NIL,
           nested_fields: [:ad, :responsive_search_ad]
         }
       }.freeze
@@ -196,13 +199,15 @@ module GoogleAds
           our_field: :text,
           their_field: :text,
           transform: ITSELF,
-          nested_field: :keyword
+          nested_field: :keyword,
+          immutable: true  # Keyword text cannot be changed after creation - must delete and recreate
         },
         match_type: {
           our_field: :match_type,
           their_field: :match_type,
           transform: MATCH_TYPE_TO_SYMBOL,
-          nested_field: :keyword
+          nested_field: :keyword,
+          immutable: true  # Match type cannot be changed after creation - must delete and recreate
         }
       }.freeze
 

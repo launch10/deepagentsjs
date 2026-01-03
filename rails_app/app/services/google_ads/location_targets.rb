@@ -7,7 +7,8 @@ module GoogleAds
     private
 
     def active_records
-      campaign.location_targets
+      # Query directly to avoid cached association returning soft-deleted records
+      ::AdLocationTarget.where(campaign_id: campaign.id)
     end
 
     def deleted_records

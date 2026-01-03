@@ -7,7 +7,8 @@ module GoogleAds
     private
 
     def active_records
-      campaign.callouts
+      # Query directly to avoid cached association returning soft-deleted records
+      ::AdCallout.where(campaign_id: campaign.id)
     end
 
     def deleted_records
