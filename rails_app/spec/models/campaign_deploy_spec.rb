@@ -80,8 +80,8 @@ RSpec.describe CampaignDeploy, type: :model do
       expect(step_instance).to respond_to(:finished?)
     end
 
-    it 'has :create_ads_account as the first step' do
-      expect(CampaignDeploy::STEPS.first.name).to eq(:create_ads_account)
+    it 'has :connect_google_account as the first step' do
+      expect(CampaignDeploy::STEPS.first.name).to eq(:connect_google_account)
     end
   end
 
@@ -91,7 +91,7 @@ RSpec.describe CampaignDeploy, type: :model do
         campaign_deploy.current_step = nil
         step = campaign_deploy.next_step
         expect(step).to be_a(CampaignDeploy::Step)
-        expect(step.class.step_name).to eq(:create_ads_account)
+        expect(step.class.step_name).to eq(:connect_google_account)
       end
     end
 
@@ -867,7 +867,7 @@ RSpec.describe CampaignDeploy, type: :model do
 
         before do
           allow(@mock_google_ads_service).to receive(:search).and_return(
-            mock_search_response_with_ad_group(ad_group_id: 999, customer_id: 456, name: "Test Ad Group")
+            mock_search_response_with_ad_group(ad_group_id: 999, customer_id: 456, name: "Test Ad Group", status: :PAUSED)
           )
         end
 

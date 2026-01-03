@@ -121,7 +121,7 @@ class CampaignDeploy < ApplicationRecord
   # Needs a sharper definition of parallelizable group
   #
   STEPS = Steps.new([
-    Steps.define(:connect_google_account) do
+    Step.define(:connect_google_account) do
       def ready?
         true
       end

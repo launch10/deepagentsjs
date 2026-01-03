@@ -2814,6 +2814,40 @@ CREATE TABLE public.schema_migrations (
 
 
 --
+-- Name: social_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.social_links (
+    id bigint NOT NULL,
+    project_id bigint NOT NULL,
+    platform character varying NOT NULL,
+    url character varying NOT NULL,
+    handle character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: social_links_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.social_links_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: social_links_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.social_links_id_seq OWNED BY public.social_links.id;
+
+
+--
 -- Name: store; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3927,6 +3961,13 @@ ALTER TABLE ONLY public.projects ALTER COLUMN id SET DEFAULT nextval('public.pro
 
 
 --
+-- Name: social_links id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.social_links ALTER COLUMN id SET DEFAULT nextval('public.social_links_id_seq'::regclass);
+
+
+--
 -- Name: tasks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4676,6 +4717,14 @@ ALTER TABLE ONLY public.runs
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: social_links social_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.social_links
+    ADD CONSTRAINT social_links_pkey PRIMARY KEY (id);
 
 
 --
@@ -7005,6 +7054,20 @@ CREATE UNIQUE INDEX index_projects_on_uuid ON public.projects USING btree (uuid)
 
 
 --
+-- Name: index_social_links_on_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_social_links_on_project_id ON public.social_links USING btree (project_id);
+
+
+--
+-- Name: index_social_links_on_project_id_and_platform; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_social_links_on_project_id_and_platform ON public.social_links USING btree (project_id, platform);
+
+
+--
 -- Name: index_tasks_on_action; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8078,6 +8141,14 @@ ALTER TABLE ONLY public.document_chunks
 
 
 --
+-- Name: social_links fk_rails_9c390957fe; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.social_links
+    ADD CONSTRAINT fk_rails_9c390957fe FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+
+--
 -- Name: pay_charges fk_rails_b19d32f835; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8132,6 +8203,8 @@ ALTER TABLE ONLY public.website_urls
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20251230152039'),
+('20251229001513'),
 ('20251223152858'),
 ('20251223010445'),
 ('20251220160359'),
