@@ -19,6 +19,34 @@ From an engineering perspective, it is a full-stack application that consists of
 
 The Rails app manages users, authentication, and project metadata. The Langgraph service handles AI-powered landing page generation and updates.
 
+## Design System
+
+Figma files (accessible via Figma MCP):
+- **Launch10 Design System** - Component library, design tokens, states/variants
+- **Launch10 Phase 2 Designs** - Screen designs and mockups
+
+When implementing UI: check Design System for existing components first, then reference Phase 2 Designs for screen layouts.
+
+## Project Management
+
+ClickUp board: **Launch10**
+
+| Tag | Meaning |
+|-----|---------|
+| `mvp` | **Most important** - Must finish for v1 release |
+| `derisk` | Could sink the business - needs due diligence first |
+| `v1.5` | Before public release (ok during family & friends) |
+| `engineering-future` | Velocity unlocks - do after MVP |
+| `v2` / `v3` | Future work, mild prioritization between them |
+
+### Team Visibility
+
+When starting or completing **meaningful features** (not one-off fixes), post to `#claude-activity`:
+- **Starting**: `🚀 Starting: [feature name] - [brief description]`
+- **Completed**: `✅ Completed: [feature name] - [what was done]`
+
+Skip this for quick fixes, typos, or minor tweaks.
+
 ## Architecture
 
 ### Frontend (Rails)
@@ -29,7 +57,7 @@ The Rails app manages users, authentication, and project metadata. The Langgraph
 - **Background Jobs**: Sidekiq
 - **Styling**: Tailwind CSS v4
 - **Authentication**: Devise with JWT support
-- **File System**: WebContainers API for in-browser code execution
+- **Frontend File System**: WebContainers API for in-browser code execution
 
 ### Backend (Langgraph)
 
@@ -101,7 +129,7 @@ All services are managed through a unified infrastructure in `config/services.sh
 #### Environments & Ports
 
 | Environment | Rails Port | Langgraph Port | Vite Port |
-|-------------|------------|----------------|-----------|
+| ----------- | ---------- | -------------- | --------- |
 | development | 3000       | 4000           | 3036      |
 | test/e2e    | 3001       | 4001           | 3037      |
 
@@ -163,35 +191,56 @@ pnpm run lint
 pnpm run typecheck
 ```
 
-### Docker Development
+### Claude Code MCP Servers
 
 ```bash
-# Build and run all services
-docker compose up
-
-# Run with custom Postgres/Redis
-# Update langgraph_app/.env.docker with host.docker.internal URLs
-docker build -t launch10 ./langgraph_app
-docker compose up
+# Slack (for #claude-activity updates)
+claude mcp add slack \
+  -e SLACK_BOT_TOKEN=$(rails credentials:show | grep slack_bot_token | awk '{print $2}') \
+  -e SLACK_TEAM_ID=T09K6AU3TPG \
+  -- npx -y @modelcontextprotocol/server-slack
 ```
+
+Restart Claude Code after adding MCP servers.
 
 ## Key Models & Concepts
 
-### Rails Models
-
+### Core (Multi-tenancy)
+- **Account**: Team/organization (multi-tenant root)
 - **User**: Authenticated users (Devise + JWT)
-- **Account**: Multi-tenant accounts (teams/organizations)
-- **Project**: User's landing page projects
-  - Has a `thread_id` that links to Langgraph conversation
-  - Contains project metadata and file references
-- **ProjectFile**: Individual files within a project
-- **Template**: Base templates for landing pages
-- **Page/Section**: Page structure and content
+- **Project**: Container for a single business idea test
+  - Has one Website, one Brainstorm, many Campaigns
+- **ProjectWorkflow**: Tracks user's current step (brainstorm → website → ads)
+- **Chat**: Polymorphic conversation context (linked to Brainstorm or Campaign)
+  - Has `thread_id` that links to Langgraph
+
+### A. Brainstorm Agent
+- **Brainstorm**: Captures idea, audience, solution, social proof
+  - `belongs_to :website`, `has_one :chat`
+
+### B. Landing Page Generator
+- **Website**: The landing page being built
+  - `belongs_to :project`
+  - `has_many :code_files` (the actual source files)
+  - `has_many :domains`, `has_many :deploys`
+- **CodeFile**: Individual source files (HTML, CSS, JS, images)
+- **Template** / **Theme**: Base templates and visual themes
+- **Deploy**: Deployment record (pending → building → completed)
+- **Domain**: Custom domain configuration
+
+### C. Ads Platform
+- **Campaign**: Ad campaign (Google Ads, Meta)
+  - `has_many :ad_groups`, `location_targets`, `languages`, `schedules`
+- **AdGroup**: Contains ads and keywords
+- **Ad**: Individual ad with headlines/descriptions
+- **AdKeyword**, **AdLocationTarget**, **AdSchedule**, **AdBudget**
+
+### D. Analytics
+- **AccountRequestCount** / **DomainRequestCount**: Traffic metrics per account/domain
 
 ### Langgraph Concepts
-
-- **Graphs**: AI agent workflows (router, create, update)
-- **Threads**: Conversation contexts linked to Rails projects
+- **Graphs**: AI agent workflows (router, brainstorm, website, ads)
+- **Threads**: Conversation contexts linked to Chat records
 - **Checkpoints**: State snapshots for each conversation
 - **WebContainers**: In-browser Node.js environment for code execution
 
@@ -265,6 +314,7 @@ Now when your code hits a `binding.pry`, you can interact with it in Terminal 2.
 **To detach**: Press `Ctrl+B` then `D` (it's a tmux session).
 
 **Socket paths by environment**:
+
 - Development: `.overmind-dev.sock`
 - Test/E2E: `.overmind-test.sock`
 
