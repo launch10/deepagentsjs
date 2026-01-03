@@ -22,7 +22,7 @@ jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
   }
 
   const payload: JobRunCallbackPayload = JSON.parse(body);
-  const client = new Client({ apiUrl: env.RAILS_API_URL });
+  const client = new Client({ apiUrl: env.LANGGRAPH_API_URL });
 
   try {
     // Update thread state with job result
