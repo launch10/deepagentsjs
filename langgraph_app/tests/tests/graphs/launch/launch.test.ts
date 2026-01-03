@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { MemorySaver, isGraphInterrupt } from "@langchain/langgraph";
+import { MemorySaver } from "@langchain/langgraph";
 import { launchGraph } from "@graphs";
 import type { LaunchGraphState } from "@annotation";
-import type { ThreadIDType } from "@types";
+import type { ThreadIDType, AsyncTask } from "@types";
 
 // Mock the JobRunAPIService
 vi.mock("@services", () => ({
@@ -11,119 +11,177 @@ vi.mock("@services", () => ({
   })),
 }));
 
-describe("Launch Graph", () => {
+describe("Launch Graph (idempotent pattern)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("Full workflow: interrupt and resume pattern", () => {
-    it("interrupts on first invocation, completes on second invocation with job result", async () => {
+  describe("Full workflow: fire-and-forget + webhook pattern", () => {
+    it("first invocation fires job and returns pending, second invocation with result completes", async () => {
       const checkpointer = new MemorySaver();
       const graph = launchGraph.compile({ checkpointer });
       const threadId = "test-thread-123";
 
-      // First invocation - should trigger job and interrupt
+      // First invocation - should trigger job and return pending
       const initialState: Partial<LaunchGraphState> = {
         jwt: "test-jwt",
         threadId: "thread_123" as ThreadIDType,
         campaignId: 456,
+        tasks: [],
       };
 
-      let firstResult: any = null;
-      let interruptError: any = null;
-
-      try {
-        firstResult = await graph.invoke(initialState, {
-          configurable: { thread_id: threadId },
-        });
-      } catch (error: any) {
-        interruptError = error;
-      }
-
-      // Verify interrupt occurred
-      const wasInterrupted =
-        (firstResult && firstResult.__interrupt__) || isGraphInterrupt(interruptError);
-      expect(!!wasInterrupted).toBe(true);
-
-      // Get the interrupt value
-      let interruptValue: any;
-      if (firstResult && firstResult.__interrupt__) {
-        interruptValue = firstResult.__interrupt__[0].value;
-      } else if (interruptError) {
-        interruptValue = interruptError.interrupts[0].value;
-      }
-
-      expect(interruptValue).toEqual({
-        reason: "waiting_for_job",
-        jobRunId: 123,
-        jobClass: "CampaignDeployWorker",
-      });
-
-      // Second invocation - resume with job completion data
-      // This simulates what the webhook callback does: update state and resume
-      const resumeState: Partial<LaunchGraphState> = {
-        jobRunComplete: {
-          jobRunId: 123,
-          status: "completed",
-          result: {
-            campaign_id: 456,
-            external_id: "ext_789",
-            deployed_at: "2024-01-15T10:00:00Z",
-          },
-        },
-      };
-
-      const finalResult = await graph.invoke(resumeState, {
+      const firstResult = await graph.invoke(initialState, {
         configurable: { thread_id: threadId },
       });
 
-      expect(finalResult.deployStatus).toBe("completed");
-      expect(finalResult.deployResult).toEqual({
+      // Should have pending status and task
+      expect(firstResult.deployStatus).toBe("pending");
+      expect(firstResult.tasks).toHaveLength(1);
+      expect(firstResult.tasks[0]!.name).toBe("deployCampaign");
+      expect(firstResult.tasks[0]!.status).toBe("pending");
+      expect(firstResult.tasks[0]!.jobId).toBe(123);
+
+      // Simulate webhook updating the task with result
+      // This is what the webhook handler does
+      await graph.updateState(
+        { configurable: { thread_id: threadId } },
+        {
+          tasks: [
+            {
+              ...firstResult.tasks[0]!,
+              status: "running",
+              result: {
+                campaign_id: 456,
+                external_id: "ext_789",
+                deployed_at: "2024-01-15T10:00:00Z",
+              },
+            },
+          ],
+        }
+      );
+
+      // Second invocation (e.g., from frontend poll or webhook graph run)
+      const secondResult = await graph.invoke(
+        {},
+        { configurable: { thread_id: threadId } }
+      );
+
+      // Should have processed the result
+      expect(secondResult.deployStatus).toBe("completed");
+      expect(secondResult.deployResult).toEqual({
         campaign_id: 456,
         external_id: "ext_789",
         deployed_at: "2024-01-15T10:00:00Z",
       });
-      expect(finalResult.jobRunComplete).toBeUndefined();
+      expect(secondResult.tasks[0]!.status).toBe("completed");
     });
 
-    it("handles job failure on resume", async () => {
+    it("handles job failure from webhook", async () => {
       const checkpointer = new MemorySaver();
       const graph = launchGraph.compile({ checkpointer });
       const threadId = "test-thread-failure";
 
-      // First invocation - trigger and interrupt
+      // First invocation
       const initialState: Partial<LaunchGraphState> = {
         jwt: "test-jwt",
         threadId: "thread_123" as ThreadIDType,
         campaignId: 456,
+        tasks: [],
       };
 
-      try {
-        await graph.invoke(initialState, {
-          configurable: { thread_id: threadId },
-        });
-      } catch {
-        // Expected interrupt
-      }
-
-      // Resume with failure
-      const resumeState: Partial<LaunchGraphState> = {
-        jobRunComplete: {
-          jobRunId: 123,
-          status: "failed",
-          error: "API rate limit exceeded",
-        },
-      };
-
-      const finalResult = await graph.invoke(resumeState, {
+      const firstResult = await graph.invoke(initialState, {
         configurable: { thread_id: threadId },
       });
 
-      expect(finalResult.deployStatus).toBe("failed");
-      expect(finalResult.error).toEqual({
+      expect(firstResult.deployStatus).toBe("pending");
+
+      // Simulate webhook with error
+      await graph.updateState(
+        { configurable: { thread_id: threadId } },
+        {
+          tasks: [
+            {
+              ...firstResult.tasks[0]!,
+              status: "running",
+              error: "API rate limit exceeded",
+            },
+          ],
+        }
+      );
+
+      // Next invocation processes the error
+      const secondResult = await graph.invoke(
+        {},
+        { configurable: { thread_id: threadId } }
+      );
+
+      expect(secondResult.deployStatus).toBe("failed");
+      expect(secondResult.error).toEqual({
         message: "API rate limit exceeded",
         node: "deployCampaignNode",
       });
+      expect(secondResult.tasks[0]!.status).toBe("failed");
+    });
+  });
+
+  describe("Polling behavior (frontend check messages)", () => {
+    it("returns no-op when task is pending and waiting", async () => {
+      const checkpointer = new MemorySaver();
+      const graph = launchGraph.compile({ checkpointer });
+      const threadId = "test-thread-polling";
+
+      // First invocation - fires job
+      const firstResult = await graph.invoke(
+        {
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          campaignId: 456,
+          tasks: [],
+        },
+        { configurable: { thread_id: threadId } }
+      );
+
+      expect(firstResult.deployStatus).toBe("pending");
+
+      // Get current state (simulates what frontend would see)
+      const state = await graph.getState({ configurable: { thread_id: threadId } });
+
+      // Status should still be pending - the state persists between invocations
+      expect(state?.values?.deployStatus).toBe("pending");
+      expect(state?.values?.tasks[0]!.status).toBe("pending");
+    });
+  });
+
+  describe("Idempotency (multiple invocations after completion)", () => {
+    it("returns no-op when already completed", async () => {
+      const checkpointer = new MemorySaver();
+      const graph = launchGraph.compile({ checkpointer });
+      const threadId = "test-thread-idempotent";
+
+      // Start with already completed state
+      const completedTask: AsyncTask = {
+        id: "uuid-123",
+        name: "deployCampaign",
+        jobId: 123,
+        status: "completed",
+        result: { success: true },
+      };
+
+      const result = await graph.invoke(
+        {
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          campaignId: 456,
+          tasks: [completedTask],
+          deployStatus: "completed",
+          deployResult: { success: true },
+        },
+        { configurable: { thread_id: threadId } }
+      );
+
+      // Should not change anything
+      expect(result.deployStatus).toBe("completed");
+      expect(result.tasks[0]!.status).toBe("completed");
     });
   });
 
@@ -136,8 +194,9 @@ describe("Launch Graph", () => {
         {
           threadId: "thread_123" as ThreadIDType,
           campaignId: 456,
+          tasks: [],
         },
-        { configurable: { thread_id: "test" } }
+        { configurable: { thread_id: "test-jwt-missing" } }
       );
 
       expect(result.error).toBeDefined();
@@ -152,8 +211,9 @@ describe("Launch Graph", () => {
         {
           jwt: "test-jwt",
           campaignId: 456,
+          tasks: [],
         },
-        { configurable: { thread_id: "test" } }
+        { configurable: { thread_id: "test-threadid-missing" } }
       );
 
       expect(result.error).toBeDefined();
@@ -168,38 +228,13 @@ describe("Launch Graph", () => {
         {
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          tasks: [],
         },
-        { configurable: { thread_id: "test" } }
+        { configurable: { thread_id: "test-campaignid-missing" } }
       );
 
       expect(result.error).toBeDefined();
       expect(result.error!.message).toBe("Campaign ID is required");
-    });
-  });
-
-  describe("Direct completion (when jobRunComplete already present)", () => {
-    it("skips job creation when jobRunComplete is already in state", async () => {
-      const checkpointer = new MemorySaver();
-      const graph = launchGraph.compile({ checkpointer });
-
-      // Invoke directly with jobRunComplete (as if resuming after webhook)
-      const result = await graph.invoke(
-        {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: 456,
-          jobRunComplete: {
-            jobRunId: 999,
-            status: "completed",
-            result: { success: true },
-          },
-        },
-        { configurable: { thread_id: "direct-completion" } }
-      );
-
-      expect(result.deployStatus).toBe("completed");
-      expect(result.deployResult).toEqual({ success: true });
-      expect(result.jobRunComplete).toBeUndefined();
     });
   });
 });

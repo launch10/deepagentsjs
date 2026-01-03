@@ -1,50 +1,70 @@
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { interrupt } from "@langchain/langgraph";
 import type { LaunchGraphState } from "@annotation";
 import { JobRunAPIService } from "@shared";
 import { NodeMiddleware } from "@middleware";
 import { env } from "@core";
+import { createAsyncTask, findAsyncTask, updateAsyncTask } from "@types";
 
+const TASK_NAME = "deployCampaign";
+
+/**
+ * Deploy Campaign Node (Idempotent Pattern)
+ *
+ * This node uses the fire-and-forget + idempotent pattern:
+ * 1. First invocation: fires Rails job, creates task with "pending" status
+ * 2. Subsequent invocations with pending/running task: returns {} (no-op)
+ * 3. When webhook updates task with result: processes result, marks completed
+ * 4. Already completed/failed: returns {} (no-op)
+ *
+ * The node is fully idempotent - safe to run multiple times without side effects.
+ */
 export const deployCampaignNode = NodeMiddleware.use(
   {},
   async (
     state: LaunchGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<LaunchGraphState>> => {
-    // If we have a job result from webhook callback, process it
-    if (state.jobRunComplete) {
-      if (state.jobRunComplete.status === "failed") {
-        return {
-          error: {
-            message: state.jobRunComplete.error || "Campaign deployment failed",
-            node: "deployCampaignNode",
-          },
-          deployStatus: "failed",
-          jobRunComplete: undefined,
-        };
-      }
+    const task = findAsyncTask(state.tasks, TASK_NAME);
 
+    // 1. Already completed or failed? No-op (idempotent)
+    if (task?.status === "completed" || task?.status === "failed") {
+      return {};
+    }
+
+    // 2. Task exists with result? Process it
+    if (task?.status === "running" && task.result) {
       return {
-        deployResult: state.jobRunComplete.result,
+        tasks: updateAsyncTask(state.tasks, TASK_NAME, { status: "completed" }),
         deployStatus: "completed",
-        jobRunComplete: undefined,
+        deployResult: task.result,
       };
     }
 
-    // Validate required state
+    // 3. Task exists with error? Mark failed
+    if (task?.status === "running" && task.error) {
+      return {
+        tasks: updateAsyncTask(state.tasks, TASK_NAME, { status: "failed" }),
+        deployStatus: "failed",
+        error: { message: task.error, node: "deployCampaignNode" },
+      };
+    }
+
+    // 4. Task already pending/running? Just waiting, no-op
+    if (task?.status === "pending" || task?.status === "running") {
+      return {};
+    }
+
+    // 5. First run: validate and fire-and-forget
     if (!state.jwt) {
       throw new Error("JWT token is required for API authentication");
     }
-
     if (!state.threadId) {
       throw new Error("Thread ID is required");
     }
-
     if (!state.campaignId) {
       throw new Error("Campaign ID is required");
     }
 
-    // Trigger the job via Rails API
     const callbackUrl = `${env.LANGGRAPH_API_URL}/webhooks/job_run_callback`;
     const apiService = new JobRunAPIService({ jwt: state.jwt });
 
@@ -55,11 +75,9 @@ export const deployCampaignNode = NodeMiddleware.use(
       callbackUrl,
     });
 
-    // Interrupt and wait for webhook callback to resume
-    return interrupt({
-      reason: "waiting_for_job",
-      jobRunId: jobRun.id,
-      jobClass: "CampaignDeployWorker",
-    });
+    return {
+      tasks: [...state.tasks, createAsyncTask(TASK_NAME, jobRun.id)],
+      deployStatus: "pending",
+    };
   }
 );

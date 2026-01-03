@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { createHmac, timingSafeEqual } from "crypto";
-import { Client } from "@langchain/langgraph-sdk";
-import { env } from "@core";
+import { launchGraph } from "@graphs";
+import { graphParams, env } from "@core";
+import { updateAsyncTask, type AsyncTask } from "@types";
 
 interface JobRunCallbackPayload {
   job_run_id: number;
@@ -13,6 +14,15 @@ interface JobRunCallbackPayload {
 
 export const jobRunCallbackRoutes = new Hono();
 
+// Lazy initialization to avoid circular deps
+let _graph: ReturnType<typeof launchGraph.compile> | null = null;
+function getGraph() {
+  if (!_graph) {
+    _graph = launchGraph.compile({ ...graphParams });
+  }
+  return _graph;
+}
+
 jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
   const signature = c.req.header("X-Signature");
   const body = await c.req.text();
@@ -22,39 +32,64 @@ jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
   }
 
   const payload: JobRunCallbackPayload = JSON.parse(body);
-  const client = new Client({ apiUrl: env.LANGGRAPH_API_URL });
 
   try {
-    // Update thread state with job result
-    await client.threads.updateState(payload.thread_id, {
-      values: {
-        jobRunComplete: {
-          jobRunId: payload.job_run_id,
-          status: payload.status,
-          result: payload.result,
-          error: payload.error,
-        },
-      },
+    const graph = getGraph();
+
+    // Get current state to find the task by jobId
+    const currentState = await graph.getState({
+      configurable: { thread_id: payload.thread_id },
     });
 
-    // Resume thread execution
-    await client.runs.create(payload.thread_id, "launch");
+    if (!currentState?.values) {
+      console.error(`[jobRunCallback] Thread ${payload.thread_id} not found`);
+      return c.json({ error: "Thread not found" }, 404);
+    }
+
+    const tasks: AsyncTask[] = currentState.values.tasks || [];
+    const task = tasks.find((t) => t.jobId === payload.job_run_id);
+
+    if (!task) {
+      console.error(
+        `[jobRunCallback] Task with jobId ${payload.job_run_id} not found`
+      );
+      return c.json({ error: "Task not found" }, 404);
+    }
+
+    // Update the task with result/error
+    // Note: updateState RUNS the graph - this is intentional!
+    // The idempotent node will process the result
+    const updatedTasks = updateAsyncTask(tasks, task.name, {
+      status: "running", // Keep running until node processes it
+      result: payload.status === "completed" ? payload.result : undefined,
+      error: payload.status === "failed" ? payload.error : undefined,
+    });
+
+    await graph.updateState(
+      { configurable: { thread_id: payload.thread_id } },
+      { tasks: updatedTasks }
+    );
 
     return c.json({ success: true });
   } catch (error) {
-    console.error("[jobRunCallback] Failed to resume thread:", error);
-    return c.json({ error: "Failed to resume thread" }, 500);
+    console.error("[jobRunCallback] Failed to update state:", error);
+    return c.json({ error: "Failed to update state" }, 500);
   }
 });
 
 function verifySignature(body: string, signature: string | undefined): boolean {
   if (!signature) return false;
-
-  const expected = createHmac("sha256", env.JWT_SECRET).update(body).digest("hex");
-
+  if (!env.JWT_SECRET) {
+    console.error("[verifySignature] JWT_SECRET is not configured");
+    return false;
+  }
+  const expected = createHmac("sha256", env.JWT_SECRET)
+    .update(body)
+    .digest("hex");
   try {
     return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  } catch {
+  } catch (e) {
+    console.error("[verifySignature] Comparison failed:", e);
     return false;
   }
 }

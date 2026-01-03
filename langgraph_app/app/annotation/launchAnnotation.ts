@@ -1,31 +1,34 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 
-import type { PrimaryKeyType } from "@types";
-
-export interface JobRunCompleteState {
-  jobRunId: number;
-  status: "completed" | "failed";
-  result?: Record<string, unknown>;
-  error?: string;
-}
+import type { PrimaryKeyType, AsyncTask } from "@types";
 
 export const LaunchAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
 
+  // Campaign to deploy
   campaignId: Annotation<PrimaryKeyType | undefined>({
     default: () => undefined,
     reducer: (current, next) => next,
   }),
 
-  // Job run state from webhook callback
-  jobRunComplete: Annotation<JobRunCompleteState | undefined>({
-    default: () => undefined,
-    reducer: (current, next) => next,
+  // Task tracking for idempotency
+  // Each task represents a background job (e.g., deployCampaign)
+  // The merge reducer allows multiple updates to the same task
+  tasks: Annotation<AsyncTask[]>({
+    default: () => [],
+    reducer: (current, next) => {
+      // Merge by task name - next values override current
+      const taskMap = new Map(current.map((t) => [t.name, t]));
+      for (const task of next) {
+        taskMap.set(task.name, { ...taskMap.get(task.name), ...task });
+      }
+      return Array.from(taskMap.values());
+    },
   }),
 
-  // Deploy status
-  deployStatus: Annotation<"pending" | "running" | "completed" | "failed" | undefined>({
+  // Final deploy status for frontend
+  deployStatus: Annotation<"pending" | "completed" | "failed" | undefined>({
     default: () => undefined,
     reducer: (current, next) => next,
   }),
