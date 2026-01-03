@@ -10,6 +10,7 @@ export const envSchema = z.object({
   REDIS_URL: z.string().min(1).url(),
   RAILS_API_URL: z.string().min(1).url(),
   RAILS_PORT: z.string().optional(), // Set by config/services.sh, used for CORS
+  LANGGRAPH_API_URL: z.string().min(1).url().default("http://localhost:4000"),
   ANTHROPIC_API_KEY: z.string().min(1),
   COHERE_API_KEY: z.string().optional(),
   GROQ_API_KEY: z.string().min(1),

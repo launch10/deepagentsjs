@@ -2412,7 +2412,11 @@ CREATE TABLE public.job_runs (
     started_at timestamp(6) without time zone,
     completed_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    account_id bigint,
+    langgraph_thread_id character varying,
+    langgraph_callback_url character varying,
+    result_data jsonb DEFAULT '{}'::jsonb
 );
 
 
@@ -7603,6 +7607,13 @@ CREATE INDEX index_icon_query_caches_on_use_count ON public.icon_query_caches US
 
 
 --
+-- Name: index_job_runs_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_account_id ON public.job_runs USING btree (account_id);
+
+
+--
 -- Name: index_job_runs_on_job_class; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7614,6 +7625,13 @@ CREATE INDEX index_job_runs_on_job_class ON public.job_runs USING btree (job_cla
 --
 
 CREATE INDEX index_job_runs_on_job_class_and_status ON public.job_runs USING btree (job_class, status);
+
+
+--
+-- Name: index_job_runs_on_langgraph_thread_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_langgraph_thread_id ON public.job_runs USING btree (langgraph_thread_id);
 
 
 --
@@ -9681,6 +9699,14 @@ ALTER TABLE ONLY public.api_tokens
 
 ALTER TABLE ONLY public.website_urls
     ADD CONSTRAINT fk_rails_f97a85eb03 FOREIGN KEY (website_id) REFERENCES public.websites(id);
+
+
+--
+-- Name: job_runs fk_rails_fb366570a2; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_runs
+    ADD CONSTRAINT fk_rails_fb366570a2 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
 
 
 --

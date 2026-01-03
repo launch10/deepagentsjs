@@ -1,6 +1,7 @@
 import type { NodeFunction } from "../types";
 import type { CoreGraphState } from "@types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { isGraphInterrupt } from "@langchain/langgraph";
 import { getNodeContext } from "./withContext";
 import { ErrorReporters } from "@core";
 
@@ -24,6 +25,10 @@ export const withErrorHandling = <TState extends CoreGraphState>(
       }
       return await nodeFunction(state, config);
     } catch (error: unknown) {
+      // Let GraphInterrupt errors propagate - they are used for control flow
+      if (isGraphInterrupt(error)) {
+        throw error;
+      }
       if (!(error instanceof Error)) {
         throw new Error("Unknown error");
       }

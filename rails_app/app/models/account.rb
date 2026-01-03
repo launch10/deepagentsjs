@@ -56,6 +56,7 @@ class Account < ApplicationRecord
   has_many :uploads
   has_one :firewall, class_name: "Cloudflare::Firewall"
   has_many :ads_accounts, dependent: :destroy
+  has_many :job_runs, dependent: :destroy
 
   scope :personal, -> { where(personal: true) }
   scope :team, -> { where(personal: false) }
