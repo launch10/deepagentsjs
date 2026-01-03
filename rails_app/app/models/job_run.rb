@@ -83,9 +83,13 @@ class JobRun < ApplicationRecord
   end
 
   def pending? = status == "pending"
+
   def running? = status == "running"
+
   def completed? = status == "completed"
+
   def failed? = status == "failed"
+
   def finished? = completed? || failed?
 
   def duration

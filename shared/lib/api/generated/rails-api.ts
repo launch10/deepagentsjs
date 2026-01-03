@@ -1238,6 +1238,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/job_runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates job run scoped to requesting account */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description The worker class to execute (e.g., CampaignDeployWorker) */
+                        job_class: string;
+                        /** @description Arguments to pass to the worker */
+                        arguments: {
+                            [key: string]: unknown;
+                        };
+                        /** @description LangGraph thread ID for callback resumption */
+                        thread_id: string;
+                        /** @description URL to receive webhook callback when job completes */
+                        callback_url: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description job_run scoped to requesting account (job may fail later during execution) */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * @description Current status of the job run
+                             * @enum {string}
+                             */
+                            status: "pending" | "running" | "completed" | "failed";
+                        };
+                    };
+                };
+                /** @description unauthorized - expired token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description missing job_class */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Validation error messages */
+                            errors: string[];
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_uuid}/workflows/{id}": {
         parameters: {
             query?: never;

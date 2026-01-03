@@ -6,3 +6,4 @@ export * from "./themeAPIService";
 export * from "./websiteAPIService";
 export * from "./socialLinksAPIService";
 export * from "./geoTargetConstantsAPIService";
+export * from "./jobRunAPIService";

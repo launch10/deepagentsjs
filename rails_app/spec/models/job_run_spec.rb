@@ -137,8 +137,7 @@ RSpec.describe JobRun, type: :model do
       create(:job_run,
         account: account,
         langgraph_callback_url: "http://localhost:4000/webhooks/job_run_callback",
-        langgraph_thread_id: "thread_123"
-      )
+        langgraph_thread_id: "thread_123")
     end
 
     context "with a callback URL" do

@@ -86,7 +86,7 @@ RSpec.describe JobRunTrackable, type: :concern do
     it "uses atomic update to prevent race conditions" do
       # Create two workers trying to claim the same job
       worker1 = TestTrackableWorker.new
-      worker2 = TestTrackableWorker.new
+      TestTrackableWorker.new
 
       # First worker claims successfully
       expect(LanggraphCallbackWorker).to receive(:perform_async).once

@@ -1,14 +1,14 @@
 class API::V1::JobRunsController < API::BaseController
   # Explicit whitelist of allowed job classes - never use constantize on user input
   JOB_CLASS_MAP = {
-    'CampaignDeployWorker' => CampaignDeployWorker
+    "CampaignDeployWorker" => CampaignDeployWorker
   }.freeze
 
   def create
     job_class = JOB_CLASS_MAP[params[:job_class]]
 
     unless job_class
-      return render json: { errors: ['Invalid job class'] }, status: :unprocessable_entity
+      return render json: { errors: ["Invalid job class"] }, status: :unprocessable_entity
     end
 
     job_run = current_account.job_runs.create!(

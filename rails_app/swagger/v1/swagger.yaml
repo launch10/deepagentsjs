@@ -1547,6 +1547,92 @@ paths:
                   - status
         '401':
           description: unauthorized without token
+  "/api/v1/job_runs":
+    post:
+      summary: Creates job run scoped to requesting account
+      tags:
+      - Job Runs
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '201':
+          description: job_run scoped to requesting account (job may fail later during
+            execution)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  status:
+                    type: string
+                    enum:
+                    - pending
+                    - running
+                    - completed
+                    - failed
+                    description: Current status of the job run
+                required:
+                - id
+                - status
+        '422':
+          description: missing job_class
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    description: Validation error messages
+                required:
+                - errors
+        '401':
+          description: unauthorized - expired token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                job_class:
+                  type: string
+                  description: The worker class to execute (e.g., CampaignDeployWorker)
+                arguments:
+                  type: object
+                  additionalProperties: true
+                  description: Arguments to pass to the worker
+                thread_id:
+                  type: string
+                  description: LangGraph thread ID for callback resumption
+                callback_url:
+                  type: string
+                  description: URL to receive webhook callback when job completes
+              required:
+              - job_class
+              - arguments
+              - thread_id
+              - callback_url
   "/api/v1/projects/{project_uuid}/workflows/{id}":
     parameters:
     - name: project_uuid

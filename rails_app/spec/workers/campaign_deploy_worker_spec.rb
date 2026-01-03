@@ -9,8 +9,7 @@ RSpec.describe CampaignDeployWorker, type: :worker do
       :with_langgraph_callback,
       account: account,
       job_class: "CampaignDeployWorker",
-      job_args: { account_id: account.id, campaign_id: campaign.id }
-    )
+      job_args: { account_id: account.id, campaign_id: campaign.id })
   end
 
   describe "#perform" do
@@ -53,8 +52,7 @@ RSpec.describe CampaignDeployWorker, type: :worker do
           :with_langgraph_callback,
           account: account,
           job_class: "CampaignDeployWorker",
-          job_args: { account_id: account.id, campaign_id: 999999 }
-        )
+          job_args: { account_id: account.id, campaign_id: 999999 })
       end
 
       it "fails the job run with an error" do
