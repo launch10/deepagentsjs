@@ -12,6 +12,7 @@ import {
   type GetWebsiteResponse,
   type UpdateWebsiteResponse,
 } from "@rails_api_base";
+import { useBrainstormChatThreadId } from "@components/brainstorm/hooks/useBrainstormChat";
 
 // Re-export for backwards compatibility
 export { WebsiteAPIService as WebsiteService } from "@rails_api_base";
@@ -40,20 +41,23 @@ export function useWebsiteService() {
 }
 
 /**
- * Hook to get the current project UUID from page props.
+ * Hook to get the current project UUID - uses chat state (primary) with page props fallback.
  *
- * We ONLY return a UUID when we have Inertia props (meaning the page was loaded
- * via navigation, not just pushState). This prevents API calls for projects that
- * were just created (where the website/uploads may not exist yet).
+ * Previously, we only used Inertia props to prevent API calls for brand new projects
+ * (where website/uploads may not exist yet). However, this caused a bug: when navigating
+ * from / to /projects/{uuid}/brainstorm via pushState (after sending the first message),
+ * the Inertia props don't update, so API calls were disabled for themes and social links.
  *
- * The chatThreadId is NOT used here because:
- * 1. It becomes available immediately when a project is created
- * 2. But associated data (website, uploads) may not exist yet
- * 3. This would cause 404s for brand new projects
+ * Now we use the chat's threadId (which IS the project UUID) as the primary source,
+ * falling back to Inertia props. The langgraph backend ensures the website record
+ * is created before the threadId is set, so 404s are no longer a concern.
  */
 function useProjectUuid(): string | null {
+  const chatThreadId = useBrainstormChatThreadId();
   const { project } = usePage<{ project?: { uuid: string } }>().props;
-  return project?.uuid ?? null;
+  const propsProjectUuid = project?.uuid ?? null;
+
+  return chatThreadId ?? propsProjectUuid;
 }
 
 // ============================================================================

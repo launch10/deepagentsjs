@@ -1740,3 +1740,258 @@ test.describe("Brainstorm to Website Redirect", () => {
     await expect(brainstormStep).not.toHaveClass(/font-semibold/);
   });
 });
+
+/**
+ * Bug Reproduction Tests: Persistence Failures in Root Route Workflow
+ *
+ * These tests verify that personalization settings persist when following
+ * the standard user workflow: start on / (root), send message, wait for
+ * AI response, open brand panel, make changes, reload.
+ *
+ * The issue is that hooks may not be properly mounting when navigating
+ * through the app via pushState URL changes (as opposed to full page loads).
+ */
+test.describe("Root Route Workflow Persistence Bugs", () => {
+  let brainstormPage: BrainstormPage;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await loginUser(page);
+    brainstormPage = new BrainstormPage(page);
+  });
+
+  test("theme selection persists after reload when following root route workflow", async ({ page }) => {
+    // 1. Start on page / (root route)
+    await brainstormPage.goto();
+
+    // 2. Enter a message
+    await brainstormPage.sendMessage("I want to start a coffee subscription service");
+
+    // 3. Wait for the AI to respond
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    // 4. Open the brand personalization panel
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    // Wait for color palettes to load (not skeleton)
+    await page.waitForFunction(
+      () => !document.querySelector('[data-slot="skeleton"]'),
+      { timeout: 10000 }
+    );
+
+    // Navigate to page 2 of palettes and select one there (to make sure we're testing persistence properly)
+    const paginationLabel = page.getByTestId("color-pagination-label");
+    const labelText = await paginationLabel.textContent();
+    const totalPages = parseInt(labelText?.split("/")[1] || "1", 10);
+
+    if (totalPages >= 2) {
+      // Navigate to page 2
+      await page.getByTestId("color-pagination-next").click();
+      await expect(paginationLabel).toHaveText(/^2\//);
+    }
+
+    // Select the first palette on the current page
+    const palettes = page.locator('[data-testid^="color-palette-"]');
+    const firstPalette = palettes.first();
+    await firstPalette.click();
+
+    // Verify it's selected
+    await expect(firstPalette).toHaveAttribute("data-selected", "true");
+
+    // Get the selected palette's test ID
+    const selectedPaletteTestId = await firstPalette.getAttribute("data-testid");
+
+    // Wait for mutation to complete
+    await page.waitForTimeout(1000);
+
+    // Reload the page
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // Open brand panel again
+    await brainstormPage.openBrandPanel();
+
+    // Wait for palettes to load
+    await page.waitForFunction(
+      () => !document.querySelector('[data-slot="skeleton"]'),
+      { timeout: 10000 }
+    );
+
+    // Verify the palette is still selected
+    const selectedPalette = page.getByTestId(selectedPaletteTestId!);
+    await expect(selectedPalette).toBeVisible({ timeout: 5000 });
+    await expect(selectedPalette).toHaveAttribute("data-selected", "true");
+  });
+
+  test("social links persist after reload when following root route workflow", async ({ page }) => {
+    // 1. Start on page / (root route)
+    await brainstormPage.goto();
+
+    // 2. Enter a message
+    await brainstormPage.sendMessage("I want to start a coffee subscription service");
+
+    // 3. Wait for the AI to respond
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    // 4. Open the brand personalization panel
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    // Wait for content to be visible
+    await brainstormPage.brandPersonalizationContent.waitFor({ state: "visible", timeout: 5000 });
+
+    // Find and fill in social links
+    const socialLinksSection = page.getByTestId("social-links");
+    await expect(socialLinksSection).toBeVisible();
+
+    // Add a Twitter/X link
+    const twitterInput = socialLinksSection.locator('input[placeholder*="twitter" i], input[placeholder*="x.com" i], input[aria-label*="twitter" i]').first();
+    await twitterInput.fill("https://twitter.com/testuser");
+
+    // Wait for the mutation to complete (social links should auto-save on blur or after typing)
+    await twitterInput.blur();
+    await page.waitForTimeout(1000);
+
+    // Reload the page
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // Open brand panel again
+    await brainstormPage.openBrandPanel();
+
+    // Wait for content to load
+    await brainstormPage.brandPersonalizationContent.waitFor({ state: "visible", timeout: 5000 });
+
+    // Verify the social link is still there
+    const socialLinksSectionAfter = page.getByTestId("social-links");
+    const twitterInputAfter = socialLinksSectionAfter.locator('input[placeholder*="twitter" i], input[placeholder*="x.com" i], input[aria-label*="twitter" i]').first();
+    await expect(twitterInputAfter).toHaveValue("https://twitter.com/testuser");
+  });
+
+  test("project images persist after reload when following root route workflow", async ({ page }) => {
+    // 1. Start on page / (root route)
+    await brainstormPage.goto();
+
+    // 2. Enter a message
+    await brainstormPage.sendMessage("I want to start a coffee subscription service");
+
+    // 3. Wait for the AI to respond
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    // 4. Open the brand personalization panel
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    // Upload project images
+    const imagePaths = [
+      "e2e/fixtures/files/test-image-1.jpg",
+      "e2e/fixtures/files/test-image-2.jpg",
+    ];
+    await brainstormPage.uploadProjectImages(imagePaths);
+
+    // Verify images are displayed
+    await expect(brainstormPage.projectImagesGrid).toBeVisible();
+    const imageCountBefore = await brainstormPage.getProjectImageCount();
+    expect(imageCountBefore).toBe(2);
+
+    // Reload the page
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // Set up response waiter BEFORE opening the panel
+    const uploadsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/v1/uploads") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+      { timeout: 10000 }
+    );
+
+    // Open brand panel again
+    await brainstormPage.openBrandPanel();
+
+    // Wait for uploads to load
+    await uploadsPromise;
+
+    // Verify images are still displayed
+    await expect(brainstormPage.projectImagesGrid).toBeVisible({ timeout: 10000 });
+    const imageCountAfter = await brainstormPage.getProjectImageCount();
+    expect(imageCountAfter).toBe(2);
+  });
+
+  test("logo upload persists after reload when following root route workflow", async ({ page }) => {
+    // 1. Start on page / (root route)
+    await brainstormPage.goto();
+
+    // 2. Enter a message
+    await brainstormPage.sendMessage("I want to start a coffee subscription service");
+
+    // 3. Wait for the AI to respond
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    // 4. Open the brand personalization panel
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    // Initially, the upload area should be visible (no logo yet)
+    await expect(brainstormPage.logoUploadArea).toBeVisible();
+    await expect(brainstormPage.logoPreview).not.toBeVisible();
+
+    // Upload a logo
+    const logoPath = "e2e/fixtures/files/test-logo.jpg";
+    await brainstormPage.uploadLogo(logoPath);
+
+    // Verify logo preview is now visible
+    await expect(brainstormPage.logoPreview).toBeVisible();
+    await expect(brainstormPage.logoUploadArea).not.toBeVisible();
+
+    // Get the logo src for comparison after reload
+    const logoSrcBefore = await brainstormPage.getLogoSrc();
+    expect(logoSrcBefore).toBeTruthy();
+
+    // Reload the page
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // Set up response waiter BEFORE opening the panel
+    const uploadsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/v1/uploads") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+      { timeout: 10000 }
+    );
+
+    // Open the brand panel
+    await brainstormPage.openBrandPanel();
+
+    // Wait for uploads API to complete
+    await uploadsPromise;
+
+    // Verify logo is still displayed after reload
+    await expect(brainstormPage.logoPreview).toBeVisible({ timeout: 10000 });
+    await expect(brainstormPage.logoUploadArea).not.toBeVisible();
+
+    // Verify it's the same image
+    const logoSrcAfter = await brainstormPage.getLogoSrc();
+    expect(logoSrcAfter).toBeTruthy();
+    expect(logoSrcAfter).toMatch(/^(https?:\/\/|\/uploads\/)/);
+  });
+});

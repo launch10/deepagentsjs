@@ -12,6 +12,7 @@ import {
   type GetSocialLinksResponse,
   type BulkUpsertSocialLinksResponse,
 } from "@rails_api_base";
+import { useBrainstormChatThreadId } from "./useBrainstormChat";
 
 // Re-export for backwards compatibility
 export { SocialLinksAPIService as SocialLinksService } from "@rails_api_base";
@@ -40,11 +41,18 @@ export function useSocialLinksService() {
 }
 
 /**
- * Hook to get the current project UUID from page props
+ * Hook to get the current project UUID - uses chat state (primary) with page props fallback.
+ *
+ * When navigating from / to /projects/{uuid}/brainstorm via pushState (after sending
+ * the first message), the Inertia props don't update. We use the chat's threadId
+ * (which IS the project UUID) as the primary source.
  */
 function useProjectUuid(): string | null {
+  const chatThreadId = useBrainstormChatThreadId();
   const { project } = usePage<{ project?: { uuid: string } }>().props;
-  return project?.uuid ?? null;
+  const propsProjectUuid = project?.uuid ?? null;
+
+  return chatThreadId ?? propsProjectUuid;
 }
 
 // ============================================================================
