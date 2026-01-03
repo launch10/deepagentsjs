@@ -66,6 +66,35 @@ module GoogleAds
       end
     end
 
+    def delete
+      return not_found_result(:ad_group_ad) unless remote_resource
+
+      resource_name = remote_resource.resource_name
+
+      operation = client.operation.remove_resource.ad_group_ad(resource_name)
+
+      begin
+        client.service.ad_group_ad.mutate_ad_group_ads(
+          customer_id: google_customer_id,
+          operations: [operation]
+        )
+      rescue => e
+        return error_result(:ad_group_ad, e)
+      end
+
+      local_resource.google_ad_id = nil
+      local_resource.save!
+
+      clear_memoization
+
+      Sync::SyncResult.new(
+        resource_type: :ad_group_ad,
+        resource_name: nil,
+        action: :deleted,
+        comparisons: []
+      )
+    end
+
     private
 
     def remote_ad_id

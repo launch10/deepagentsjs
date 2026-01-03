@@ -75,7 +75,7 @@ module PlatformSettings
       if validation[:array]
         invalid = Array(value).map(&:to_s) - allowed
         if invalid.any?
-          errors.add(validation[:attribute], "contains invalid values: #{invalid.join(', ')}")
+          errors.add(validation[:attribute], "contains invalid values: #{invalid.join(", ")}")
         end
       elsif !allowed.include?(value.to_s)
         errors.add(validation[:attribute], "is not a valid option")

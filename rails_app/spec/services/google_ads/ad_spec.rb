@@ -307,6 +307,109 @@ RSpec.describe GoogleAds::Ad do
     end
   end
 
+  describe '#delete' do
+    context 'when remote ad does not exist' do
+      before do
+        ad.platform_settings["google"].delete("ad_id")
+        ad.save!
+      end
+
+      it 'returns not_found result' do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_empty_search_response)
+
+        result = ad_syncer.delete
+        expect(result.not_found?).to be true
+        expect(result.resource_type).to eq(:ad_group_ad)
+      end
+    end
+
+    context 'when remote ad exists' do
+      before do
+        ad.platform_settings["google"] = { "ad_id" => "12345" }
+        ad.save!
+      end
+
+      it 'deletes the ad and returns deleted result' do
+        ad_response = mock_search_response_with_ad_group_ad(
+          ad_id: 12345,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          status: :PAUSED,
+          final_urls: ["https://test-site.launch10.ai"],
+          path1: "Shop",
+          path2: "Now"
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:ad_group_ad)
+          .with("customers/1234567890/adGroupAds/999~12345")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_ad_group_ad_response(ad_id: 12345, ad_group_id: 999, customer_id: 1234567890)
+        allow(@mock_ad_group_ad_service).to receive(:mutate_ad_group_ads)
+          .and_return(mutate_response)
+
+        result = ad_syncer.delete
+        expect(result.deleted?).to be true
+        expect(result.resource_type).to eq(:ad_group_ad)
+        expect(ad_syncer.local_resource.google_ad_id).to be_nil
+      end
+
+      it 'persists the nil google_ad_id to the database' do
+        ad_response = mock_search_response_with_ad_group_ad(
+          ad_id: 12345,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          status: :PAUSED,
+          final_urls: ["https://test-site.launch10.ai"],
+          path1: "Shop",
+          path2: "Now"
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:ad_group_ad)
+          .with("customers/1234567890/adGroupAds/999~12345")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_ad_group_ad_response(ad_id: 12345, ad_group_id: 999, customer_id: 1234567890)
+        allow(@mock_ad_group_ad_service).to receive(:mutate_ad_group_ads)
+          .and_return(mutate_response)
+
+        ad_syncer.delete
+
+        fresh_ad = ::Ad.find(ad.id)
+        expect(fresh_ad.google_ad_id).to be_nil
+      end
+
+      it 'returns error result when API call fails' do
+        ad_response = mock_search_response_with_ad_group_ad(
+          ad_id: 12345,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          status: :PAUSED,
+          final_urls: ["https://test-site.launch10.ai"],
+          path1: "Shop",
+          path2: "Now"
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:ad_group_ad)
+          .with("customers/1234567890/adGroupAds/999~12345")
+          .and_return(mock_remove_operation)
+
+        allow(@mock_ad_group_ad_service).to receive(:mutate_ad_group_ads)
+          .and_raise(mock_google_ads_error(message: "Ad deletion failed"))
+
+        result = ad_syncer.delete
+        expect(result.error?).to be true
+      end
+    end
+  end
+
   describe 'Ad model helper methods' do
     before do
       ad.platform_settings["google"] = { "ad_id" => "12345" }

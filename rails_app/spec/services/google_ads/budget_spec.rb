@@ -313,6 +313,108 @@ RSpec.describe GoogleAds::Budget do
     end
   end
 
+  describe '#delete' do
+    let(:mock_budget_service) { double("CampaignBudgetService") }
+
+    before do
+      allow(@mock_client).to receive(:service).and_return(
+        double("Services",
+          customer: @mock_customer_service,
+          google_ads: @mock_google_ads_service,
+          campaign_budget: mock_budget_service)
+      )
+    end
+
+    context 'when remote budget does not exist' do
+      before do
+        ad_budget.google_budget_id = nil
+        ad_budget.save!
+      end
+
+      it 'returns not_found result' do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_empty_search_response)
+
+        result = budget_syncer.delete
+        expect(result.not_found?).to be true
+        expect(result.resource_type).to eq(:campaign_budget)
+      end
+    end
+
+    context 'when remote budget exists' do
+      before do
+        ad_budget.google_budget_id = 123
+        ad_budget.save!
+      end
+
+      it 'deletes the budget and returns deleted result' do
+        budget_response = mock_search_response_with_budget(
+          budget_id: 123,
+          name: ad_budget.google_budget_name,
+          amount_micros: 5_000_000
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_budget)
+          .with("customers/456/campaignBudgets/123")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_budget_response(budget_id: 123)
+        allow(mock_budget_service).to receive(:mutate_campaign_budgets)
+          .and_return(mutate_response)
+
+        result = budget_syncer.delete
+        expect(result.deleted?).to be true
+        expect(result.resource_type).to eq(:campaign_budget)
+        expect(budget_syncer.local_resource.google_budget_id).to be_nil
+      end
+
+      it 'persists the nil google_budget_id to the database' do
+        budget_response = mock_search_response_with_budget(
+          budget_id: 123,
+          name: ad_budget.google_budget_name,
+          amount_micros: 5_000_000
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_budget)
+          .with("customers/456/campaignBudgets/123")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_budget_response(budget_id: 123)
+        allow(mock_budget_service).to receive(:mutate_campaign_budgets)
+          .and_return(mutate_response)
+
+        budget_syncer.delete
+
+        fresh_budget = AdBudget.find(ad_budget.id)
+        expect(fresh_budget.google_budget_id).to be_nil
+      end
+
+      it 'returns error result when API call fails' do
+        budget_response = mock_search_response_with_budget(
+          budget_id: 123,
+          name: ad_budget.google_budget_name,
+          amount_micros: 5_000_000
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_budget)
+          .with("customers/456/campaignBudgets/123")
+          .and_return(mock_remove_operation)
+
+        allow(mock_budget_service).to receive(:mutate_campaign_budgets)
+          .and_raise(mock_google_ads_error(message: "Budget deletion failed"))
+
+        result = budget_syncer.delete
+        expect(result.error?).to be true
+      end
+    end
+  end
+
   describe 'AdBudget helper methods' do
     let(:mock_budget_service) { double("CampaignBudgetService") }
 

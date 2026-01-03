@@ -333,6 +333,100 @@ RSpec.describe GoogleAds::AdGroup do
     end
   end
 
+  describe '#delete' do
+    context 'when remote ad_group does not exist' do
+      before do
+        ad_group.google_ad_group_id = nil
+        ad_group.save!
+      end
+
+      it 'returns not_found result' do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_empty_search_response)
+
+        result = ad_group_syncer.delete
+        expect(result.not_found?).to be true
+        expect(result.resource_type).to eq(:ad_group)
+      end
+    end
+
+    context 'when remote ad_group exists' do
+      before do
+        ad_group.google_ad_group_id = 999
+        ad_group.save!
+      end
+
+      it 'deletes the ad_group and returns deleted result' do
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
+          ad_group_id: 999,
+          name: "Test Ad Group",
+          status: :PAUSED,
+          type: :SEARCH_STANDARD,
+          cpc_bid_micros: 1_000_000)
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:ad_group)
+          .with("customers/1234567890/adGroups/999")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_ad_group_response(ad_group_id: 999, customer_id: 1234567890)
+        allow(@mock_ad_group_service).to receive(:mutate_ad_groups)
+          .and_return(mutate_response)
+
+        result = ad_group_syncer.delete
+        expect(result.deleted?).to be true
+        expect(result.resource_type).to eq(:ad_group)
+        expect(ad_group_syncer.local_resource.google_ad_group_id).to be_nil
+      end
+
+      it 'persists the nil google_ad_group_id to the database' do
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
+          ad_group_id: 999,
+          name: "Test Ad Group",
+          status: :PAUSED,
+          type: :SEARCH_STANDARD,
+          cpc_bid_micros: 1_000_000)
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:ad_group)
+          .with("customers/1234567890/adGroups/999")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_ad_group_response(ad_group_id: 999, customer_id: 1234567890)
+        allow(@mock_ad_group_service).to receive(:mutate_ad_groups)
+          .and_return(mutate_response)
+
+        ad_group_syncer.delete
+
+        fresh_ad_group = AdGroup.find(ad_group.id)
+        expect(fresh_ad_group.google_ad_group_id).to be_nil
+      end
+
+      it 'returns error result when API call fails' do
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
+          ad_group_id: 999,
+          name: "Test Ad Group",
+          status: :PAUSED,
+          type: :SEARCH_STANDARD,
+          cpc_bid_micros: 1_000_000)
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:ad_group)
+          .with("customers/1234567890/adGroups/999")
+          .and_return(mock_remove_operation)
+
+        allow(@mock_ad_group_service).to receive(:mutate_ad_groups)
+          .and_raise(mock_google_ads_error(message: "Ad group deletion failed"))
+
+        result = ad_group_syncer.delete
+        expect(result.error?).to be true
+      end
+    end
+  end
+
   describe 'after_google_sync callback' do
     let(:mock_create_resource) { double("CreateResource") }
 

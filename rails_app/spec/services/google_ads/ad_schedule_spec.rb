@@ -290,6 +290,112 @@ RSpec.describe GoogleAds::AdSchedule do
     end
   end
 
+  describe '#delete' do
+    context 'when remote criterion does not exist' do
+      before do
+        ad_schedule.platform_settings["google"] = {}
+        ad_schedule.save!
+      end
+
+      it 'returns not_found result' do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_empty_search_response)
+
+        result = ad_schedule_syncer.delete
+        expect(result.not_found?).to be true
+        expect(result.resource_type).to eq(:campaign_criterion)
+      end
+    end
+
+    context 'when remote criterion exists' do
+      before do
+        ad_schedule.platform_settings["google"] = { "criterion_id" => 222 }
+        ad_schedule.save!
+      end
+
+      it 'deletes the criterion and returns deleted result' do
+        criterion_response = mock_search_response_with_ad_schedule(
+          criterion_id: 222,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          day_of_week: :MONDAY,
+          start_hour: 9,
+          start_minute: :ZERO,
+          end_hour: 17,
+          end_minute: :ZERO
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_criterion)
+          .with("customers/1234567890/campaignCriteria/789~222")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 222, campaign_id: 789, customer_id: 1234567890)
+        allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria)
+          .and_return(mutate_response)
+
+        result = ad_schedule_syncer.delete
+        expect(result.deleted?).to be true
+        expect(result.resource_type).to eq(:campaign_criterion)
+        expect(ad_schedule_syncer.local_resource.google_criterion_id).to be_nil
+      end
+
+      it 'persists the nil google_criterion_id to the database' do
+        criterion_response = mock_search_response_with_ad_schedule(
+          criterion_id: 222,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          day_of_week: :MONDAY,
+          start_hour: 9,
+          start_minute: :ZERO,
+          end_hour: 17,
+          end_minute: :ZERO
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_criterion)
+          .with("customers/1234567890/campaignCriteria/789~222")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 222, campaign_id: 789, customer_id: 1234567890)
+        allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria)
+          .and_return(mutate_response)
+
+        ad_schedule_syncer.delete
+
+        fresh_schedule = ::AdSchedule.find(ad_schedule.id)
+        expect(fresh_schedule.google_criterion_id).to be_nil
+      end
+
+      it 'returns error result when API call fails' do
+        criterion_response = mock_search_response_with_ad_schedule(
+          criterion_id: 222,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          day_of_week: :MONDAY,
+          start_hour: 9,
+          start_minute: :ZERO,
+          end_hour: 17,
+          end_minute: :ZERO
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_criterion)
+          .with("customers/1234567890/campaignCriteria/789~222")
+          .and_return(mock_remove_operation)
+
+        allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria)
+          .and_raise(mock_google_ads_error(message: "Criterion deletion failed"))
+
+        result = ad_schedule_syncer.delete
+        expect(result.error?).to be true
+      end
+    end
+  end
+
   describe 'AdSchedule model helper methods' do
     before do
       ad_schedule.platform_settings["google"] = { "criterion_id" => 222 }

@@ -307,6 +307,91 @@ RSpec.describe GoogleAds::StructuredSnippet do
     end
   end
 
+  describe '#delete' do
+    before do
+      allow(@mock_client).to receive(:service).and_return(
+        double("Services",
+          customer: @mock_customer_service,
+          google_ads: @mock_google_ads_service,
+          asset: @mock_asset_service,
+          campaign_asset: @mock_campaign_asset_service)
+      )
+    end
+
+    context 'when asset ID is not present' do
+      before do
+        structured_snippet.platform_settings["google"].delete("asset_id")
+        structured_snippet.save!
+      end
+
+      it 'returns not_found result' do
+        result = snippet_syncer.delete
+        expect(result.not_found?).to be true
+        expect(result.resource_type).to eq(:campaign_asset)
+      end
+    end
+
+    context 'when asset ID is present' do
+      before do
+        structured_snippet.platform_settings["google"]["asset_id"] = "88888"
+        structured_snippet.save!
+      end
+
+      it 'unlinks the campaign asset and returns deleted result' do
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_asset)
+          .with("customers/1234567890/campaignAssets/789~88888~STRUCTURED_SNIPPET")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_campaign_asset_response(
+          asset_id: 88888,
+          campaign_id: 789,
+          customer_id: 1234567890
+        )
+        allow(@mock_campaign_asset_service).to receive(:mutate_campaign_assets)
+          .and_return(mutate_response)
+
+        result = snippet_syncer.delete
+        expect(result.deleted?).to be true
+        expect(result.resource_type).to eq(:campaign_asset)
+        expect(snippet_syncer.local_resource.google_asset_id).to be_nil
+      end
+
+      it 'persists the nil google_asset_id to the database' do
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_asset)
+          .with("customers/1234567890/campaignAssets/789~88888~STRUCTURED_SNIPPET")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_campaign_asset_response(
+          asset_id: 88888,
+          campaign_id: 789,
+          customer_id: 1234567890
+        )
+        allow(@mock_campaign_asset_service).to receive(:mutate_campaign_assets)
+          .and_return(mutate_response)
+
+        snippet_syncer.delete
+
+        fresh_snippet = AdStructuredSnippet.find(structured_snippet.id)
+        expect(fresh_snippet.google_asset_id).to be_nil
+      end
+
+      it 'returns error result when API call fails' do
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_asset)
+          .with("customers/1234567890/campaignAssets/789~88888~STRUCTURED_SNIPPET")
+          .and_return(mock_remove_operation)
+
+        allow(@mock_campaign_asset_service).to receive(:mutate_campaign_assets)
+          .and_raise(mock_google_ads_error(message: "Campaign asset unlinking failed"))
+
+        result = snippet_syncer.delete
+        expect(result.error?).to be true
+      end
+    end
+  end
+
   describe 'AdStructuredSnippet helper methods' do
     before do
       structured_snippet.platform_settings["google"]["asset_id"] = 88888

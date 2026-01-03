@@ -278,6 +278,81 @@ RSpec.describe GoogleAds::Callout do
     end
   end
 
+  describe '#delete' do
+    context 'when asset ID is not present' do
+      before do
+        callout.platform_settings["google"].delete("asset_id")
+        callout.save!
+      end
+
+      it 'returns not_found result' do
+        result = callout_syncer.delete
+        expect(result.not_found?).to be true
+        expect(result.resource_type).to eq(:campaign_asset)
+      end
+    end
+
+    context 'when asset ID is present' do
+      before do
+        callout.platform_settings["google"]["asset_id"] = "88888"
+        callout.save!
+      end
+
+      it 'unlinks the campaign asset and returns deleted result' do
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_asset)
+          .with("customers/1234567890/campaignAssets/789~88888~CALLOUT")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_campaign_asset_response(
+          asset_id: 88888,
+          campaign_id: 789,
+          customer_id: 1234567890
+        )
+        allow(@mock_campaign_asset_service).to receive(:mutate_campaign_assets)
+          .and_return(mutate_response)
+
+        result = callout_syncer.delete
+        expect(result.deleted?).to be true
+        expect(result.resource_type).to eq(:campaign_asset)
+        expect(callout_syncer.local_resource.google_asset_id).to be_nil
+      end
+
+      it 'persists the nil google_asset_id to the database' do
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_asset)
+          .with("customers/1234567890/campaignAssets/789~88888~CALLOUT")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_campaign_asset_response(
+          asset_id: 88888,
+          campaign_id: 789,
+          customer_id: 1234567890
+        )
+        allow(@mock_campaign_asset_service).to receive(:mutate_campaign_assets)
+          .and_return(mutate_response)
+
+        callout_syncer.delete
+
+        fresh_callout = AdCallout.find(callout.id)
+        expect(fresh_callout.google_asset_id).to be_nil
+      end
+
+      it 'returns error result when API call fails' do
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_asset)
+          .with("customers/1234567890/campaignAssets/789~88888~CALLOUT")
+          .and_return(mock_remove_operation)
+
+        allow(@mock_campaign_asset_service).to receive(:mutate_campaign_assets)
+          .and_raise(mock_google_ads_error(message: "Campaign asset unlinking failed"))
+
+        result = callout_syncer.delete
+        expect(result.error?).to be true
+      end
+    end
+  end
+
   describe 'AdCallout model helper methods' do
     before do
       callout.platform_settings["google"]["asset_id"] = "88888"

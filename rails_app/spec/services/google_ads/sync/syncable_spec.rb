@@ -24,8 +24,7 @@ RSpec.describe GoogleAds::Sync::Syncable do
           currency_code: ads_account.google_currency_code,
           time_zone: ads_account.google_time_zone,
           status: :ENABLED,
-          auto_tagging_enabled: true
-        )
+          auto_tagging_enabled: true)
       end
 
       let(:syncable) { GoogleAds::Account.new(ads_account) }
@@ -62,17 +61,19 @@ RSpec.describe GoogleAds::Sync::Syncable do
           google_currency_code: nil,
           google_time_zone: nil,
           google_status: nil,
-          google_auto_tagging_enabled: nil
-        )
+          google_auto_tagging_enabled: nil)
         allow(local).to receive(:respond_to?).with(anything).and_return(true)
         allow(local).to receive(:send) do |method|
           case method
           when :google_descriptive_name then "Test"
-          else nil
           end
         end
 
-        syncable_class = Class.new(described_class) { def fetch_remote; nil; end }
+        syncable_class = Class.new(described_class) {
+          def fetch_remote
+            nil
+          end
+        }
         no_currency_syncable = syncable_class.new(local)
         allow(no_currency_syncable).to receive(:remote_resource).and_return(remote_resource)
 
@@ -97,8 +98,7 @@ RSpec.describe GoogleAds::Sync::Syncable do
           resource_name: "customers/123/adGroupCriteria/456~789",
           criterion_id: 789,
           keyword: keyword_info,
-          status: :ENABLED
-        )
+          status: :ENABLED)
       end
 
       let(:syncable) { GoogleAds::Keyword.new(keyword) }
@@ -133,16 +133,14 @@ RSpec.describe GoogleAds::Sync::Syncable do
         double("AdResource",
           id: ad.google_ad_id,
           final_urls: ad.final_urls,
-          responsive_search_ad: responsive_search_ad
-        )
+          responsive_search_ad: responsive_search_ad)
       end
 
       let(:remote_resource) do
         double("RemoteAdGroupAd",
           resource_name: "customers/123/adGroupAds/222~#{ad.google_ad_id}",
           ad: ad_resource,
-          status: :ENABLED
-        )
+          status: :ENABLED)
       end
 
       let(:syncable) { GoogleAds::Ad.new(ad) }
@@ -169,8 +167,7 @@ RSpec.describe GoogleAds::Sync::Syncable do
           currency_code: ads_account.google_currency_code,
           time_zone: ads_account.google_time_zone,
           status: :ENABLED,
-          auto_tagging_enabled: true
-        )
+          auto_tagging_enabled: true)
       end
 
       let(:syncable) { GoogleAds::Account.new(ads_account) }
@@ -198,8 +195,7 @@ RSpec.describe GoogleAds::Sync::Syncable do
           name: campaign.name,
           status: :PAUSED,
           advertising_channel_type: :SEARCH,
-          contains_eu_political_advertising: :UNSPECIFIED
-        )
+          contains_eu_political_advertising: :UNSPECIFIED)
       end
 
       let(:syncable) { GoogleAds::Campaign.new(campaign) }

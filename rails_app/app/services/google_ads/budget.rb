@@ -88,6 +88,35 @@ module GoogleAds
       end
     end
 
+    def delete
+      return not_found_result(:campaign_budget) unless remote_resource
+
+      resource_name = remote_resource.resource_name
+
+      operation = client.operation.remove_resource.campaign_budget(resource_name)
+
+      begin
+        client.service.campaign_budget.mutate_campaign_budgets(
+          customer_id: campaign.google_customer_id.to_s,
+          operations: [operation]
+        )
+      rescue => e
+        return error_result(:campaign_budget, e)
+      end
+
+      local_resource.google_budget_id = nil
+      local_resource.save!
+
+      clear_memoization
+
+      Sync::SyncResult.new(
+        resource_type: :campaign_budget,
+        resource_name: nil,
+        action: :deleted,
+        comparisons: []
+      )
+    end
+
     private
 
     def budget_id

@@ -178,7 +178,8 @@ RSpec.describe GoogleAds::Campaign do
         ad_budget.save!
 
         stub_const("Google::Ads::GoogleAds::V22::Common::TargetSpend", Class.new do
-          def initialize; end
+          def initialize
+          end
         end)
       end
 
@@ -283,6 +284,114 @@ RSpec.describe GoogleAds::Campaign do
         expect(result).to be_a(GoogleAds::Sync::SyncResult)
         expect(result.updated?).to be true
         expect(result.synced?).to be true
+      end
+    end
+  end
+
+  describe '#delete' do
+    let(:mock_campaign_service) { double("CampaignService") }
+
+    before do
+      allow(@mock_client).to receive(:service).and_return(
+        double("Services",
+          customer: @mock_customer_service,
+          google_ads: @mock_google_ads_service,
+          campaign: mock_campaign_service)
+      )
+    end
+
+    context 'when remote campaign does not exist' do
+      before do
+        campaign.google_campaign_id = nil
+        campaign.save!
+      end
+
+      it 'returns not_found result' do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_empty_search_response)
+
+        result = campaign_syncer.delete
+        expect(result.not_found?).to be true
+        expect(result.resource_type).to eq(:campaign)
+      end
+    end
+
+    context 'when remote campaign exists' do
+      before do
+        campaign.google_campaign_id = 789
+        campaign.save!
+      end
+
+      it 'deletes the campaign and returns deleted result' do
+        campaign_response = mock_search_response_with_campaign(
+          campaign_id: 789,
+          customer_id: 1234567890,
+          name: campaign.name,
+          status: :PAUSED,
+          advertising_channel_type: :SEARCH
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(campaign_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign)
+          .with("customers/1234567890/campaigns/789")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_campaign_response(campaign_id: 789, customer_id: 1234567890)
+        allow(mock_campaign_service).to receive(:mutate_campaigns)
+          .and_return(mutate_response)
+
+        result = campaign_syncer.delete
+        expect(result.deleted?).to be true
+        expect(result.resource_type).to eq(:campaign)
+        expect(campaign_syncer.local_resource.google_campaign_id).to be_nil
+      end
+
+      it 'persists the nil google_campaign_id to the database' do
+        campaign_response = mock_search_response_with_campaign(
+          campaign_id: 789,
+          customer_id: 1234567890,
+          name: campaign.name,
+          status: :PAUSED,
+          advertising_channel_type: :SEARCH
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(campaign_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign)
+          .with("customers/1234567890/campaigns/789")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_campaign_response(campaign_id: 789, customer_id: 1234567890)
+        allow(mock_campaign_service).to receive(:mutate_campaigns)
+          .and_return(mutate_response)
+
+        campaign_syncer.delete
+
+        fresh_campaign = ::Campaign.find(campaign.id)
+        expect(fresh_campaign.google_campaign_id).to be_nil
+      end
+
+      it 'returns error result when API call fails' do
+        campaign_response = mock_search_response_with_campaign(
+          campaign_id: 789,
+          customer_id: 1234567890,
+          name: campaign.name,
+          status: :PAUSED,
+          advertising_channel_type: :SEARCH
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(campaign_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign)
+          .with("customers/1234567890/campaigns/789")
+          .and_return(mock_remove_operation)
+
+        allow(mock_campaign_service).to receive(:mutate_campaigns)
+          .and_raise(mock_google_ads_error(message: "Campaign deletion failed"))
+
+        result = campaign_syncer.delete
+        expect(result.error?).to be true
       end
     end
   end

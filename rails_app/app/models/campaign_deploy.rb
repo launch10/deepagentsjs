@@ -81,6 +81,7 @@ class CampaignDeploy < ApplicationRecord
       @steps.size
     end
   end
+
   class StepRunner
     include TypeCheck
 

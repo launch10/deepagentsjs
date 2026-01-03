@@ -15,6 +15,7 @@ module GoogleAdsMocks
     @mock_operation = double("Operation")
     @mock_resource = double("Resource")
     @mock_update_resource = double("UpdateResource")
+    @mock_remove_resource = double("RemoveResource")
 
     allow(GoogleAds).to receive(:client).and_return(@mock_client)
     allow(GoogleAds).to receive(:config).and_return({ login_customer_id: "1234567890" })
@@ -38,6 +39,7 @@ module GoogleAdsMocks
 
     allow(@mock_client).to receive(:operation).and_return(@mock_operation)
     allow(@mock_operation).to receive(:update_resource).and_return(@mock_update_resource)
+    allow(@mock_operation).to receive(:remove_resource).and_return(@mock_remove_resource)
 
     @mock_client
   end

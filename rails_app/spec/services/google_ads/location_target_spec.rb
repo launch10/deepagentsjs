@@ -325,6 +325,114 @@ RSpec.describe GoogleAds::LocationTarget do
     end
   end
 
+  describe '#delete' do
+    let(:mock_campaign_criterion_service) { double("CampaignCriterionService") }
+
+    before do
+      allow(@mock_client).to receive(:service).and_return(
+        double("Services",
+          customer: @mock_customer_service,
+          google_ads: @mock_google_ads_service,
+          campaign_criterion: mock_campaign_criterion_service)
+      )
+    end
+
+    context 'when remote criterion does not exist' do
+      before do
+        ad_location_target.platform_settings["google"].delete("remote_criterion_id")
+        ad_location_target.save!
+      end
+
+      it 'returns not_found result' do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_empty_search_response)
+
+        result = location_target_syncer.delete
+        expect(result.not_found?).to be true
+        expect(result.resource_type).to eq(:campaign_criterion)
+      end
+    end
+
+    context 'when remote criterion exists' do
+      before do
+        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.save!
+      end
+
+      it 'deletes the criterion and returns deleted result' do
+        criterion_response = mock_search_response_with_campaign_criterion(
+          criterion_id: 111,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          location_id: 21167,
+          negative: false
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_criterion)
+          .with("customers/1234567890/campaignCriteria/789~111")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 111, campaign_id: 789, customer_id: 1234567890)
+        allow(mock_campaign_criterion_service).to receive(:mutate_campaign_criteria)
+          .and_return(mutate_response)
+
+        result = location_target_syncer.delete
+        expect(result.deleted?).to be true
+        expect(result.resource_type).to eq(:campaign_criterion)
+        expect(location_target_syncer.local_resource.google_remote_criterion_id).to be_nil
+      end
+
+      it 'persists the nil google_remote_criterion_id to the database' do
+        criterion_response = mock_search_response_with_campaign_criterion(
+          criterion_id: 111,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          location_id: 21167,
+          negative: false
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_criterion)
+          .with("customers/1234567890/campaignCriteria/789~111")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 111, campaign_id: 789, customer_id: 1234567890)
+        allow(mock_campaign_criterion_service).to receive(:mutate_campaign_criteria)
+          .and_return(mutate_response)
+
+        location_target_syncer.delete
+
+        fresh_target = AdLocationTarget.find(ad_location_target.id)
+        expect(fresh_target.google_remote_criterion_id).to be_nil
+      end
+
+      it 'returns error result when API call fails' do
+        criterion_response = mock_search_response_with_campaign_criterion(
+          criterion_id: 111,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          location_id: 21167,
+          negative: false
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_criterion)
+          .with("customers/1234567890/campaignCriteria/789~111")
+          .and_return(mock_remove_operation)
+
+        allow(mock_campaign_criterion_service).to receive(:mutate_campaign_criteria)
+          .and_raise(mock_google_ads_error(message: "Criterion deletion failed"))
+
+        result = location_target_syncer.delete
+        expect(result.error?).to be true
+      end
+    end
+  end
+
   describe 'AdLocationTarget helper methods' do
     let(:mock_campaign_criterion_service) { double("CampaignCriterionService") }
 

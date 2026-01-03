@@ -281,6 +281,115 @@ RSpec.describe GoogleAds::Keyword do
     end
   end
 
+  describe '#delete' do
+    before do
+      allow(@mock_client).to receive(:service).and_return(
+        double("Services",
+          customer: @mock_customer_service,
+          google_ads: @mock_google_ads_service,
+          ad_group_criterion: @mock_ad_group_criterion_service)
+      )
+    end
+
+    context 'when remote criterion does not exist' do
+      before do
+        ad_keyword.platform_settings["google"].delete("criterion_id")
+        ad_keyword.save!
+      end
+
+      it 'returns not_found result' do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_empty_search_response)
+
+        result = keyword_syncer.delete
+        expect(result.not_found?).to be true
+        expect(result.resource_type).to eq(:ad_group_criterion)
+      end
+    end
+
+    context 'when remote criterion exists' do
+      before do
+        ad_keyword.platform_settings["google"]["criterion_id"] = 333
+        ad_keyword.save!
+      end
+
+      it 'deletes the criterion and returns deleted result' do
+        criterion_response = mock_search_response_with_keyword(
+          criterion_id: 333,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          keyword_text: "test keyword",
+          match_type: :BROAD,
+          status: :ENABLED
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:ad_group_criterion)
+          .with("customers/1234567890/adGroupCriteria/999~333")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_ad_group_criterion_response(criterion_id: 333, ad_group_id: 999, customer_id: 1234567890)
+        allow(@mock_ad_group_criterion_service).to receive(:mutate_ad_group_criteria)
+          .and_return(mutate_response)
+
+        result = keyword_syncer.delete
+        expect(result.deleted?).to be true
+        expect(result.resource_type).to eq(:ad_group_criterion)
+        expect(keyword_syncer.local_resource.google_criterion_id).to be_nil
+      end
+
+      it 'persists the nil google_criterion_id to the database' do
+        criterion_response = mock_search_response_with_keyword(
+          criterion_id: 333,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          keyword_text: "test keyword",
+          match_type: :BROAD,
+          status: :ENABLED
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:ad_group_criterion)
+          .with("customers/1234567890/adGroupCriteria/999~333")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_ad_group_criterion_response(criterion_id: 333, ad_group_id: 999, customer_id: 1234567890)
+        allow(@mock_ad_group_criterion_service).to receive(:mutate_ad_group_criteria)
+          .and_return(mutate_response)
+
+        keyword_syncer.delete
+
+        fresh_keyword = AdKeyword.find(ad_keyword.id)
+        expect(fresh_keyword.google_criterion_id).to be_nil
+      end
+
+      it 'returns error result when API call fails' do
+        criterion_response = mock_search_response_with_keyword(
+          criterion_id: 333,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          keyword_text: "test keyword",
+          match_type: :BROAD,
+          status: :ENABLED
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:ad_group_criterion)
+          .with("customers/1234567890/adGroupCriteria/999~333")
+          .and_return(mock_remove_operation)
+
+        allow(@mock_ad_group_criterion_service).to receive(:mutate_ad_group_criteria)
+          .and_raise(mock_google_ads_error(message: "Criterion deletion failed"))
+
+        result = keyword_syncer.delete
+        expect(result.error?).to be true
+      end
+    end
+  end
+
   describe 'AdKeyword helper methods' do
     before do
       ad_keyword.platform_settings["google"]["criterion_id"] = 333
