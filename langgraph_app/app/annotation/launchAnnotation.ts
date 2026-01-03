@@ -1,7 +1,7 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 
-import type { PrimaryKeyType, AsyncTask } from "@types";
+import type { PrimaryKeyType, ChecklistTask } from "@types";
 
 export const LaunchAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
@@ -13,9 +13,9 @@ export const LaunchAnnotation = Annotation.Root({
   }),
 
   // Task tracking for idempotency
-  // Each task represents a background job (e.g., deployCampaign)
+  // Each task represents an idempotent unit of work in the graph
   // The merge reducer allows multiple updates to the same task
-  tasks: Annotation<AsyncTask[]>({
+  tasks: Annotation<ChecklistTask[]>({
     default: () => [],
     reducer: (current, next) => {
       // Merge by task name - next values override current

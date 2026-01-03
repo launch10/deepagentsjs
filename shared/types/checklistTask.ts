@@ -2,7 +2,7 @@ import { z } from "zod";
 import { v7 as uuid } from "uuid";
 
 /**
- * AsyncTask: Tracks long-running background jobs for idempotent graph execution.
+ * ChecklistTask: Any generic task for graphs where multiple tasks are needed
  *
  * This is used by the LangGraph ↔ Rails async job pattern where:
  * 1. A graph node fires a Rails background job
@@ -11,31 +11,24 @@ import { v7 as uuid } from "uuid";
  * 4. The idempotent node checks the task status before doing work
  */
 
-export const AsyncTaskStatus = {
-  pending: "pending",
-  running: "running",
-  completed: "completed",
-  failed: "failed",
-} as const;
+export const ChecklistTaskStatuses = ["pending", "running", "completed", "failed"] as const;
+export type ChecklistTaskStatus = typeof ChecklistTaskStatuses[number];
 
-export type AsyncTaskStatusType =
-  (typeof AsyncTaskStatus)[keyof typeof AsyncTaskStatus];
-
-export const asyncTaskSchema = z.object({
+export const ChecklistTaskSchema = z.object({
   id: z.string().uuid(),
   name: z.string(), // Node name that owns this task
   jobId: z.number().optional(), // Rails JobRun ID
-  status: z.enum(["pending", "running", "completed", "failed"]),
+  status: z.enum(ChecklistTaskStatuses),
   result: z.record(z.unknown()).optional(),
   error: z.string().optional(),
 });
 
-export type AsyncTask = z.infer<typeof asyncTaskSchema>;
+export type ChecklistTask = z.infer<typeof ChecklistTaskSchema>;
 
 /**
  * Create a new async task with pending status
  */
-export function createAsyncTask(name: string, jobId?: number): AsyncTask {
+export function createChecklistTask(name: string, jobId?: number): ChecklistTask {
   return {
     id: uuid(),
     name,
@@ -47,20 +40,20 @@ export function createAsyncTask(name: string, jobId?: number): AsyncTask {
 /**
  * Find a task by name in the tasks array
  */
-export function findAsyncTask(
-  tasks: AsyncTask[],
+export function findChecklistTask(
+  tasks: ChecklistTask[],
   name: string
-): AsyncTask | undefined {
+): ChecklistTask | undefined {
   return tasks.find((t) => t.name === name);
 }
 
 /**
  * Update a task by name, returning a new array with the updated task
  */
-export function updateAsyncTask(
-  tasks: AsyncTask[],
+export function updateChecklistTask(
+  tasks: ChecklistTask[],
   name: string,
-  updates: Partial<AsyncTask>
-): AsyncTask[] {
+  updates: Partial<ChecklistTask>
+): ChecklistTask[] {
   return tasks.map((t) => (t.name === name ? { ...t, ...updates } : t));
 }

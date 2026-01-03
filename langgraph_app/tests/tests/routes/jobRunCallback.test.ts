@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { createHmac } from "crypto";
 import { jobRunCallbackRoutes } from "../../../app/server/routes/webhooks/jobRunCallback";
 import { env } from "@core";
-import type { AsyncTask } from "@types";
+import type { ChecklistTask } from "@types";
 
 // Mock the launchGraph
 const mockGetState = vi.fn();
@@ -39,7 +39,7 @@ describe("jobRunCallback webhook route (tasks pattern)", () => {
     return createHmac("sha256", env.JWT_SECRET).update(body).digest("hex");
   };
 
-  const existingTask: AsyncTask = {
+  const existingTask: ChecklistTask = {
     id: "uuid-123",
     name: "deployCampaign",
     jobId: 123,

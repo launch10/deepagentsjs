@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { createHmac, timingSafeEqual } from "crypto";
 import { launchGraph } from "@graphs";
 import { graphParams, env } from "@core";
-import { updateAsyncTask, type AsyncTask } from "@types";
+import { updateChecklistTask, type ChecklistTask } from "@types";
 
 interface JobRunCallbackPayload {
   job_run_id: number;
@@ -46,7 +46,7 @@ jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
       return c.json({ error: "Thread not found" }, 404);
     }
 
-    const tasks: AsyncTask[] = currentState.values.tasks || [];
+    const tasks: ChecklistTask[] = currentState.values.tasks || [];
     const task = tasks.find((t) => t.jobId === payload.job_run_id);
 
     if (!task) {
@@ -59,7 +59,7 @@ jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
     // Update the task with result/error
     // Note: updateState RUNS the graph - this is intentional!
     // The idempotent node will process the result
-    const updatedTasks = updateAsyncTask(tasks, task.name, {
+    const updatedTasks = updateChecklistTask(tasks, task.name, {
       status: "running", // Keep running until node processes it
       result: payload.status === "completed" ? payload.result : undefined,
       error: payload.status === "failed" ? payload.error : undefined,

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { StateGraph, MemorySaver } from "@langchain/langgraph";
 import { LaunchAnnotation, type LaunchGraphState } from "@annotation";
 import { deployCampaignNode } from "@nodes";
-import type { ThreadIDType, AsyncTask } from "@types";
+import type { ThreadIDType, ChecklistTask } from "@types";
 
 // Mock the JobRunAPIService
 vi.mock("@services", () => ({
@@ -54,7 +54,7 @@ describe("deployCampaignNode (idempotent pattern)", () => {
         .addEdge("deployCampaign", "__end__")
         .compile({ checkpointer: new MemorySaver() });
 
-      const existingTask: AsyncTask = {
+      const existingTask: ChecklistTask = {
         id: "uuid-123",
         name: "deployCampaign",
         jobId: 123,
@@ -87,7 +87,7 @@ describe("deployCampaignNode (idempotent pattern)", () => {
         .addEdge("deployCampaign", "__end__")
         .compile({ checkpointer: new MemorySaver() });
 
-      const existingTask: AsyncTask = {
+      const existingTask: ChecklistTask = {
         id: "uuid-123",
         name: "deployCampaign",
         jobId: 123,
@@ -121,7 +121,7 @@ describe("deployCampaignNode (idempotent pattern)", () => {
         .compile({ checkpointer: new MemorySaver() });
 
       // Task has result from webhook
-      const taskWithResult: AsyncTask = {
+      const taskWithResult: ChecklistTask = {
         id: "uuid-123",
         name: "deployCampaign",
         jobId: 123,
@@ -165,7 +165,7 @@ describe("deployCampaignNode (idempotent pattern)", () => {
         .compile({ checkpointer: new MemorySaver() });
 
       // Task has error from webhook
-      const taskWithError: AsyncTask = {
+      const taskWithError: ChecklistTask = {
         id: "uuid-123",
         name: "deployCampaign",
         jobId: 123,
@@ -205,7 +205,7 @@ describe("deployCampaignNode (idempotent pattern)", () => {
         .addEdge("deployCampaign", "__end__")
         .compile({ checkpointer: new MemorySaver() });
 
-      const completedTask: AsyncTask = {
+      const completedTask: ChecklistTask = {
         id: "uuid-123",
         name: "deployCampaign",
         jobId: 123,
@@ -238,7 +238,7 @@ describe("deployCampaignNode (idempotent pattern)", () => {
         .addEdge("deployCampaign", "__end__")
         .compile({ checkpointer: new MemorySaver() });
 
-      const failedTask: AsyncTask = {
+      const failedTask: ChecklistTask = {
         id: "uuid-123",
         name: "deployCampaign",
         jobId: 123,

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemorySaver } from "@langchain/langgraph";
 import { launchGraph } from "@graphs";
 import type { LaunchGraphState } from "@annotation";
-import type { ThreadIDType, AsyncTask } from "@types";
+import type { ThreadIDType, ChecklistTask } from "@types";
 
 // Mock the JobRunAPIService
 vi.mock("@services", () => ({
@@ -159,7 +159,7 @@ describe("Launch Graph (idempotent pattern)", () => {
       const threadId = "test-thread-idempotent";
 
       // Start with already completed state
-      const completedTask: AsyncTask = {
+      const completedTask: ChecklistTask = {
         id: "uuid-123",
         name: "deployCampaign",
         jobId: 123,
