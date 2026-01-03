@@ -11,7 +11,7 @@ namespace :api, defaults: {format: :json} do
     resources :templates
     resources :themes, only: [:index, :create]
     resources :brainstorms, param: :thread_id, only: [:show, :create, :update]
-    resources :uploads, only: [:create, :index, :show]
+    resources :uploads, only: [:create, :index, :show, :destroy]
     patch "projects/:project_uuid/workflows/:id", to: "project_workflows#update"
     patch "projects/:project_uuid/workflows/:id/next", to: "project_workflows#next"
 
@@ -23,6 +23,15 @@ namespace :api, defaults: {format: :json} do
     resources :geo_target_constants, only: [:index]
     resources :domains, only: [:index, :show, :create]
     resources :website_urls, only: [:index, :show, :create, :update]
+
+    scope "projects/:project_uuid" do
+      resource :website, only: [:show, :update]
+      resources :social_links, only: [:index, :show, :create, :update, :destroy] do
+        collection do
+          post :bulk_upsert
+        end
+      end
+    end
   end
 end
 

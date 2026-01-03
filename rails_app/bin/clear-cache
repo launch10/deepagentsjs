@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Clear all development caches for Vite, Tailwind, and Rails
+
+set -e
+
+echo "🧹 Clearing all development caches..."
+
+# Vite caches
+echo "  → Clearing Vite caches..."
+rm -rf node_modules/.vite 2>/dev/null || true
+rm -rf .vite 2>/dev/null || true
+rm -rf app/javascript/node_modules/.vite 2>/dev/null || true
+rm -rf public/vite-dev/.vite 2>/dev/null || true
+rm -rf public/vite-test/.vite 2>/dev/null || true
+
+# Rails/Vite Ruby caches
+echo "  → Clearing Rails/Vite Ruby caches..."
+rm -rf tmp/cache/vite 2>/dev/null || true
+rm -rf tmp/cache/bootsnap 2>/dev/null || true
+
+# Rebuild Tailwind CSS
+echo "  → Rebuilding Tailwind CSS..."
+tailwindcss -i app/assets/tailwind/application.css -o app/assets/builds/tailwind.css --minify 2>/dev/null || true
+
+echo "✅ All caches cleared!"
+echo ""
+echo "Next steps:"
+echo "  1. Restart your dev server: bin/dev"
+echo "  2. Hard refresh browser: Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows)"

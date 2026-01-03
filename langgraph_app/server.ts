@@ -14,13 +14,20 @@ const app = new Hono();
 app.use("*", logger());
 app.use("*", prettyJSON());
 
+// CORS origins - use RAILS_PORT from config/services.sh for dynamic port support
+const railsPort = env.RAILS_PORT || "3000";
+const defaultOrigins =
+  env.NODE_ENV === "production"
+    ? ["https://launch10.ai"]
+    : [`http://localhost:${railsPort}`, `http://127.0.0.1:${railsPort}`];
+const allowedOrigins = env.ALLOWED_ORIGINS
+  ? [...env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()), ...defaultOrigins]
+  : defaultOrigins;
+
 app.use(
   "*",
   cors({
-    origin:
-      env.NODE_ENV === "production"
-        ? ["https://yourdomain.com"]
-        : ["http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: allowedOrigins,
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
@@ -37,7 +44,7 @@ app.onError(errorHandler);
 
 app.notFound((c) => c.json({ error: "Not Found" }, 404));
 
-const port = parseInt(process.env.PORT || "8080", 10);
+const port = parseInt(process.env.PORT || "4000", 10);
 
 export default {
   port,

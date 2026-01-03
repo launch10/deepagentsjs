@@ -1,6 +1,6 @@
 import { twMerge } from "tailwind-merge";
 import { Skeleton } from "@components/ui/skeleton";
-import { useAdsChatState } from "@hooks/useAdsChat";
+import { useAdsChatState } from "@components/ads/hooks";
 
 export default function AdPreview({ className }: { className?: string }) {
   const headlines = useAdsChatState("headlines");

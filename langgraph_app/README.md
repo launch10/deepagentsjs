@@ -25,7 +25,24 @@ pnpm worker
 
 ## Running Tests
 
+The easiest way to run tests is with `bin/test`, which automatically starts Rails:
+
+```bash
+bin/test                    # Run all tests once
+bin/test --watch            # Watch mode
+bin/test --with-rails       # Run with Rails server
+bin/test tests/foo.test.ts  # Run specific test file
 ```
+
+**Why `bin/test`?** Langgraph tests make API calls to Rails, so Rails must be running. `bin/test` handles this automatically, including setting up the correct test ports (3001/4001) and Rails master key.
+
+You can also run tests directly with `pnpm test`, but you'll need to start Rails yourself first:
+
+```bash
+# Terminal 1: Start Rails on test port
+cd ../rails_app && bin/dev-test
+
+# Terminal 2: Run tests
 pnpm test
 ```
 

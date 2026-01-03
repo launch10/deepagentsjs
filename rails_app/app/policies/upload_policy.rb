@@ -5,6 +5,11 @@ class UploadPolicy < ApplicationPolicy
     end
   end
 
+  def create?
+    # Uploads are always scoped to the current account
+    true
+  end
+
   def show?
     record.account_id == account_user.account_id
   end

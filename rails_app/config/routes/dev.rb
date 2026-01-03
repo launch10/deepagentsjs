@@ -13,4 +13,5 @@ namespace :test do
   post "database/snapshots", to: "database#create_snapshot"
   post "database/restore_snapshot", to: "database#restore_snapshot"
   get "database/snapshots", to: "database#index"
+  get "database/first_project", to: "database#first_project"
 end

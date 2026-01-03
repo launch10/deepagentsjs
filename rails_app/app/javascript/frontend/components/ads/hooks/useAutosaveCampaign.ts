@@ -1,0 +1,149 @@
+import { useCallback, useEffect, useRef } from "react";
+import type { UseFormReturn, FieldValues } from "react-hook-form";
+import { useCampaignService } from "@api/campaigns.hooks";
+import type { UpdateCampaignRequestBody, UpdateCampaignResponse } from "@rails_api_base";
+import { mapApiErrorsToForm } from "@helpers/formErrorMapper";
+import { useAdsChatState } from "./useAdsChat";
+import { useLatestMutation } from "@hooks/useLatestMutation";
+
+export type useAutosaveCampaignOptions<TFormData extends FieldValues> = {
+  methods: UseFormReturn<TFormData>;
+  transformFn: (formData: TFormData) => Partial<UpdateCampaignRequestBody> | null;
+  formId: string; // Unique identifier to prevent mutation key collisions between forms
+  debounceMs?: number;
+  onSuccess?: (data: { ready_for_next_stage?: boolean }) => void;
+  enabled?: boolean;
+};
+
+export type useAutosaveCampaignReturn = {
+  isAutosaving: boolean;
+  autosaveError: Error | null;
+  saveNow: () => Promise<void>;
+  getData: () => Partial<UpdateCampaignRequestBody> | null;
+};
+
+export function useAutosaveCampaign<TFormData extends FieldValues>({
+  methods,
+  transformFn,
+  formId,
+  debounceMs = 750,
+  onSuccess,
+  enabled,
+}: useAutosaveCampaignOptions<TFormData>): useAutosaveCampaignReturn {
+  const campaignId = useAdsChatState("campaignId");
+  const service = useCampaignService();
+  const shouldAutosave = enabled ?? !!campaignId;
+
+  const hasMounted = useRef(false);
+  const lastSavedValue = useRef<string | null>(null);
+
+  const methodsRef = useRef(methods);
+  methodsRef.current = methods;
+
+  const transformFnRef = useRef(transformFn);
+  transformFnRef.current = transformFn;
+
+  const onSuccessRef = useRef(onSuccess);
+  onSuccessRef.current = onSuccess;
+
+  const campaignIdRef = useRef(campaignId);
+  campaignIdRef.current = campaignId;
+
+  // getData returns transformed data without checking lastSavedValue (for merged saves)
+  const getData = useCallback((): Partial<UpdateCampaignRequestBody> | null => {
+    const formData = methodsRef.current.getValues() as TFormData;
+    return transformFnRef.current(formData);
+  }, []);
+
+  // getApiData checks lastSavedValue to skip unnecessary individual autosaves
+  const getApiData = useCallback((): Partial<UpdateCampaignRequestBody> | null => {
+    const apiData = getData();
+
+    if (!apiData) {
+      return null;
+    }
+
+    const serialized = JSON.stringify(apiData);
+    if (serialized === lastSavedValue.current) {
+      return null;
+    }
+
+    return apiData;
+  }, [getData]);
+
+  const { mutateDebounced, mutateNowAsync, cancel, isPending, error } = useLatestMutation<
+    UpdateCampaignResponse,
+    void
+  >({
+    mutationKey: ["campaigns", campaignId, "autosave", formId],
+    mutationFn: async (_: void, signal: AbortSignal) => {
+      const currentCampaignId = campaignIdRef.current;
+      if (!currentCampaignId) {
+        throw new Error("Campaign ID is required for autosave");
+      }
+
+      const apiData = getApiData();
+      if (!apiData) {
+        throw new Error("No data to save");
+      }
+
+      const serializedData = JSON.stringify(apiData);
+      const result = await service.update(currentCampaignId, apiData as UpdateCampaignRequestBody, signal);
+      // Only mark as saved AFTER successful API call - prevents skipping retries on failures
+      lastSavedValue.current = serializedData;
+      return result;
+    },
+    debounceMs,
+    onSuccess: (data) => {
+      onSuccessRef.current?.(data);
+    },
+    onError: (err) => {
+      if (err.message === "No data to save") {
+        return;
+      }
+      mapApiErrorsToForm(err, methodsRef.current);
+    },
+  });
+
+  useEffect(() => {
+    const subscription = methods.watch(() => {
+      if (!hasMounted.current) {
+        hasMounted.current = true;
+        return;
+      }
+
+      if (!shouldAutosave || !campaignId) {
+        return;
+      }
+
+      const apiData = getApiData();
+      if (apiData) {
+        mutateDebounced();
+      } else {
+        cancel();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [methods, shouldAutosave, campaignId, getApiData, mutateDebounced, cancel]);
+
+  const saveNow = useCallback(async () => {
+    if (!campaignId) {
+      return;
+    }
+
+    const apiData = getApiData();
+    if (!apiData) {
+      return;
+    }
+
+    await mutateNowAsync();
+  }, [campaignId, getApiData, mutateNowAsync]);
+
+  return {
+    isAutosaving: isPending,
+    autosaveError: error,
+    saveNow,
+    getData,
+  };
+}

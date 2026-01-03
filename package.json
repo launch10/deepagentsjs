@@ -14,11 +14,21 @@
     "test:rails": "cd rails_app && bundle exec rspec",
     "test:langgraph": "cd langgraph_app && pnpm run test",
     "test:all": "pnpm run test:rails && pnpm run test:langgraph",
+    "test:e2e": "cd rails_app && pnpm run test:e2e",
     "lint:rails": "cd rails_app && bundle exec rubocop",
     "lint:langgraph": "cd langgraph_app && pnpm run lint",
     "lint:all": "pnpm run lint:rails && pnpm run lint:langgraph",
     "format": "cd langgraph_app && pnpm run format && cd ../rails_app && pnpm run format",
-    "format:check": "cd langgraph_app && pnpm run format:check && cd ../rails_app && pnpm run format:check"
+    "format:check": "cd langgraph_app && pnpm run format:check && cd ../rails_app && pnpm run format:check",
+    "services": "bin/services",
+    "services:start": "bin/services start",
+    "services:stop": "bin/services stop",
+    "services:status": "bin/services status",
+    "services:cleanup": "bin/services cleanup",
+    "services:env": "bin/services env",
+    "services:test:start": "LAUNCH10_ENV=test bin/services start",
+    "services:test:status": "LAUNCH10_ENV=test bin/services status",
+    "services:test:cleanup": "LAUNCH10_ENV=test bin/services cleanup"
   },
   "devDependencies": {
     "husky": "^9.1.7"

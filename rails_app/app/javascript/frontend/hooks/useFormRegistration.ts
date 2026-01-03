@@ -20,7 +20,7 @@ function normalizeArrayErrors(methods: UseFormReturn<any>) {
 export function useFormRegistration(
   formName: string,
   methods: UseFormReturn<any>,
-  save?: () => Promise<void>
+  getData?: () => Record<string, unknown> | null
 ) {
   const register = useFormRegistry(selectRegister);
 
@@ -33,8 +33,8 @@ export function useFormRegistration(
         }
         return isValid;
       },
-      save,
+      getData,
     });
     return unregister;
-  }, [formName, methods, register, save]);
+  }, [formName, methods, register, getData]);
 }

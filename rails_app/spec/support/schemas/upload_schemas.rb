@@ -11,7 +11,7 @@ module APISchemas
           url: {type: :string, description: 'Full size file URL'},
           thumb_url: {type: :string, nullable: true, description: 'Thumbnail URL (images only)'},
           medium_url: {type: :string, nullable: true, description: 'Medium size URL (images only)'},
-          media_type: {type: :string, enum: ['image', 'video'], description: 'Media type'},
+          media_type: {type: :string, enum: ['image', 'video', 'document'], description: 'Media type'},
           is_logo: {type: :boolean, description: 'Whether this upload is a logo'},
           filename: {type: :string, description: 'Original filename'},
           created_at: {type: :string, format: 'date-time', description: 'Creation timestamp'},

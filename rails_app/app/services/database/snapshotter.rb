@@ -137,7 +137,7 @@ module Database
         connection.execute("SELECT setval('#{seq["schemaname"]}.#{seq["sequencename"]}', #{start_value}, false);")
       end
 
-      puts "Reset #{sequences.count} sequences to #{start_value}"
+      Rails.logger.info "[Database::Snapshotter] Reset #{sequences.count} sequences to #{start_value}"
     end
 
     def export_tables(file, **)
@@ -238,7 +238,7 @@ module Database
           PARTITION OF #{parent_table}
           FOR VALUES FROM ('#{start_time.to_fs(:db)}') TO ('#{end_time.to_fs(:db)}')
         SQL
-        puts "✅ Created partition #{partition_name}"
+        Rails.logger.info "[Database::Snapshotter] Created partition #{partition_name}"
       end
     rescue => e
       Rails.logger.warn "Failed to create partition #{partition_name}: #{e.message}"
@@ -280,22 +280,20 @@ module Database
     end
 
     def execute_command(command)
-      puts "Executing command..." # Don't log the full command if it contains secrets
+      Rails.logger.debug "[Database::Snapshotter] Executing command..."
       stdout, stderr, status = Open3.capture3(@env, command)
 
       # Always show stderr if there's any output, even on success
       # psql writes normal output to stderr, so only show if it looks like an error
       if stderr.present? && (stderr.include?("ERROR") || stderr.include?("FATAL") || !status.success?)
-        puts "\n⚠️  Database output:"
-        puts stderr
+        Rails.logger.warn "[Database::Snapshotter] Database output: #{stderr}"
       end
 
       if status.success?
-        puts "✅ Command successful."
+        Rails.logger.debug "[Database::Snapshotter] Command successful"
         Result.new(success?: true, stdout: stdout, stderr: stderr, status: status)
       else
-        puts "\n❌ Command failed!"
-        puts "Error output: #{stderr}" if stderr.present?
+        Rails.logger.error "[Database::Snapshotter] Command failed! Error output: #{stderr}"
 
         # Raise an error or return a failed result object
         raise CommandError.new(

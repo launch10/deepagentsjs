@@ -1,9 +1,11 @@
 module Langgraph
-  URL = ENV["LANGGRAPH_API_URL"]
   def self.url
-    throw "LANGGRAPH_API_URL must be set. Update .env" if URL.blank?
-    URL
+    url = ENV["LANGGRAPH_API_URL"]
+    throw "LANGGRAPH_API_URL must be set. Update .env" if url.blank?
+    url
   end
 end
 
-Langgraph.url # Throw on app load if not set
+# Debug: Show what URL is being used on startup
+Rails.logger.info "[Langgraph] RAILS_ENV=#{Rails.env}, LANGGRAPH_API_URL=#{Langgraph.url}"
+puts "[Langgraph] RAILS_ENV=#{Rails.env}, LANGGRAPH_API_URL=#{Langgraph.url}"

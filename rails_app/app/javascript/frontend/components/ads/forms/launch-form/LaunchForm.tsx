@@ -13,7 +13,7 @@ import { Sparkles } from "lucide-react";
 import { useEffect, useEffectEvent } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { usePage } from "@inertiajs/react";
-import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
+import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
 import {
   GOOGLE_ADVERTISING_CHANNEL_TYPES,
   GOOGLE_BIDDING_STRATEGIES,
@@ -58,12 +58,13 @@ export default function LaunchForm() {
     return () => subscription.unsubscribe();
   }, [methods, setValues]);
 
-  const { saveNow } = useAutosaveCampaign<LaunchFormData>({
+  const { getData } = useAutosaveCampaign<LaunchFormData>({
     methods,
+    formId: "launch",
     transformFn: transformLaunchFormToApi,
   });
 
-  useFormRegistration("launch", methods, saveNow);
+  useFormRegistration("launch", methods, getData);
 
   const googleAdvertisingChannelType = methods.watch("googleAdvertisingChannelType");
   const googleBiddingStrategy = methods.watch("googleBiddingStrategy");
@@ -75,7 +76,7 @@ export default function LaunchForm() {
 
   return (
     <FormProvider {...methods}>
-      <div className="border border-neutral-300 bg-white p-6 rounded-2xl">
+      <div className="border border-neutral-300 bg-white p-6 rounded-2xl" data-testid="launch-form">
         <div className="py-8 px-9 flex flex-col gap-6">
           <FieldSet className="md:max-w-2/3 lg:max-w-1/2">
             <Field>

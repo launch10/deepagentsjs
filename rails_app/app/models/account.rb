@@ -10,12 +10,14 @@
 #  name                :string           not null
 #  personal            :boolean          default(FALSE)
 #  subdomain           :string
+#  time_zone           :string           default("America/New_York")
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
 #  owner_id            :bigint
 #
 # Indexes
 #
+#  index_accounts_on_name      (name) UNIQUE
 #  index_accounts_on_owner_id  (owner_id)
 #
 # Foreign Keys

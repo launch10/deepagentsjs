@@ -87,3 +87,18 @@ cd ../rails_app
 bundle install
 bundle exec rake db:create db:migrate db:seed
 ```
+
+## Running Cloudflared For Local Sharing
+
+Install prerequisites:
+
+```bash
+brew install cloudflared
+```
+
+Run the tunnel script:
+
+```bash
+cd /path/to/launch10
+./bin/tunnel
+```

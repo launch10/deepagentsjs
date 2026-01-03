@@ -5,7 +5,7 @@ class Test::DatabaseController < Test::TestController
 
   def truncate
     actually_truncate
-    puts "Database truncated"
+    Rails.logger.info "[Test::DatabaseController] Database truncated"
     render json: {status: "ok", message: "Database truncated"}, status: :ok
   rescue => e
     render json: {
@@ -54,7 +54,7 @@ class Test::DatabaseController < Test::TestController
       end
       result = Database::Snapshotter.new.restore(input_path)
     rescue => e
-      puts "error restoring snapshot"
+      Rails.logger.error "[Test::DatabaseController] Error restoring snapshot: #{e.message}"
       render json: {
         status: "error",
         errors: ["Failed to restore snapshot: #{e.message}"]
@@ -62,7 +62,7 @@ class Test::DatabaseController < Test::TestController
     end
 
     if result.success?
-      puts "Database restored"
+      Rails.logger.info "[Test::DatabaseController] Snapshot '#{snapshot_name}' restored"
       render json: {
         status: "ok",
         message: "Snapshot '#{snapshot_name}' restored."
@@ -72,6 +72,24 @@ class Test::DatabaseController < Test::TestController
         status: "error",
         errors: ["Failed to restore snapshot: #{result.stderr}"]
       }, status: :unprocessable_content
+    end
+  end
+
+  def first_project
+    project = Project.first
+    if project
+      render json: {
+        status: "ok",
+        project: {
+          uuid: project.uuid,
+          name: project.name
+        }
+      }, status: :ok
+    else
+      render json: {
+        status: "error",
+        errors: ["No project found"]
+      }, status: :not_found
     end
   end
 

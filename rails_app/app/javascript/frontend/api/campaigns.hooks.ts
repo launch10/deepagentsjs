@@ -1,18 +1,20 @@
 import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
-import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
-export { useAutosaveCampaign } from "../hooks/useAutosaveCampaign";
+import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
+export { useAutosaveCampaign } from "@components/ads/hooks/useAutosaveCampaign";
 import {
-  CampaignService,
+  CampaignAPIService,
   type CreateCampaignRequest,
   type CreateCampaignResponse,
   type AdvanceCampaignResponse,
   type BackCampaignResponse,
-} from "./campaigns";
+  type CampaignUpdateRequest,
+} from "@rails_api_base";
 
-// Re-export types for convenience
-export type { CampaignUpdateRequest } from "./campaigns";
+// Re-export types and service for convenience
+export type { CampaignUpdateRequest };
+export { CampaignAPIService as CampaignService } from "@rails_api_base";
 
 // ============================================================================
 // Service Hook
@@ -23,8 +25,8 @@ export type { CampaignUpdateRequest } from "./campaigns";
  * Uses JWT from page props for authentication
  */
 export function useCampaignService() {
-  const { jwt } = usePage<CampaignProps>().props;
-  return useMemo(() => new CampaignService({ jwt }), [jwt]);
+  const { jwt, root_path } = usePage<CampaignProps>().props;
+  return useMemo(() => new CampaignAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
 }
 
 // ============================================================================

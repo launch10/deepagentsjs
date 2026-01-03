@@ -5,10 +5,10 @@ import { Search, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { usePage } from "@inertiajs/react";
 import {
-  GeoTargetConstantsService,
+  GeoTargetConstantsAPIService,
   type SearchGeoTargetConstantsResponse,
-} from "@api/geoTargetConstants";
-import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
+} from "@rails_api_base";
+import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
 import type { SettingsFormData, LocationWithSettings } from "./settingsForm.schema";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@components/ui/input-group";
 import LocationTargetingItem from "./LocationTargetingItem";
@@ -25,6 +25,9 @@ const DefaultLocationTarget: GeoTarget = {
   target_type: "Country",
   status: "Active",
 };
+
+// Criteria ID for the default US location - used to auto-exclude when more specific targets exist
+const US_CRITERIA_ID = 2840;
 
 export default function LocationTargeting() {
   const [searchValue, setSearchValue] = useState("");
@@ -46,7 +49,7 @@ export default function LocationTargeting() {
   });
 
   const { jwt } = usePage<CampaignProps>().props;
-  const service = useMemo(() => new GeoTargetConstantsService({ jwt }), [jwt]);
+  const service = useMemo(() => new GeoTargetConstantsAPIService({ jwt }), [jwt]);
 
   const { data: suggestions = [], isLoading } = useQuery({
     queryKey: ["geoTargetConstants", debouncedSearchValue],
@@ -82,15 +85,63 @@ export default function LocationTargeting() {
       isTargeted: true,
     };
     append(newLocation);
+
+    // If a more specific US location is added, remove the US country target
+    if (location.country_code === "US" && location.criteria_id !== US_CRITERIA_ID) {
+      const usIndex = fields.findIndex((f) => f.criteria_id === US_CRITERIA_ID);
+      if (usIndex !== -1) {
+        remove(usIndex);
+      }
+    }
+
     setSearchValue("");
     debouncedSetSearch.cancel();
     setDebouncedSearchValue("");
     setIsDropdownOpen(false);
   };
 
+  // Track when we need to restore US after removing all specific US locations
+  const pendingRestoreUS = useRef(false);
+
   const handleRemoveLocation = (index: number) => {
+    const removedLocation = fields[index];
+
+    // If we just removed a specific US location, check if we should restore US country target
+    if (removedLocation.country_code === "US" && removedLocation.criteria_id !== US_CRITERIA_ID) {
+      // Check if there are any other specific US locations remaining (excluding the one being removed)
+      const remainingSpecificUSLocations = fields.filter(
+        (f, i) => i !== index && f.country_code === "US" && f.criteria_id !== US_CRITERIA_ID
+      );
+
+      // If no more specific US locations remain, mark for restoring US
+      if (remainingSpecificUSLocations.length === 0) {
+        // Check if US is not already in the list
+        const usExists = fields.some((f) => f.criteria_id === US_CRITERIA_ID);
+        if (!usExists) {
+          pendingRestoreUS.current = true;
+        }
+      }
+    }
+
     remove(index);
   };
+
+  // Effect to restore US after fields array is updated from remove
+  useEffect(() => {
+    if (pendingRestoreUS.current) {
+      pendingRestoreUS.current = false;
+      // Add US back to the list as targeted
+      const usLocation: LocationWithSettings = {
+        criteria_id: DefaultLocationTarget.criteria_id,
+        name: DefaultLocationTarget.name,
+        canonical_name: DefaultLocationTarget.canonical_name,
+        target_type: DefaultLocationTarget.target_type,
+        country_code: DefaultLocationTarget.country_code,
+        isTargeted: true,
+      };
+      append(usLocation);
+    }
+  }, [fields, append]);
 
   const handleToggleTargeted = (index: number) => {
     const current = fields[index];
@@ -141,6 +192,7 @@ export default function LocationTargeting() {
               value={searchValue}
               onChange={handleSearchChange}
               onFocus={() => setIsDropdownOpen(true)}
+              data-testid="location-search-input"
             />
             <InputGroupAddon align="inline-end">
               <Search className="size-3.5 text-base-600" />

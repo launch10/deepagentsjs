@@ -14,6 +14,8 @@ class API::BaseController < ActionController::API
   include SetLocale
   include Sortable
 
+  rescue_from ActiveRecord::RecordNotFound, with: :not_found
+
   prepend_before_action :require_api_authentication
   prepend_before_action :verify_internal_api_signature, if: :internal_api_request?
 
@@ -54,5 +56,9 @@ class API::BaseController < ActionController::API
       api_token.touch(:last_used_at)
       api_token.user
     end
+  end
+
+  def not_found
+    render json: { error: "Record not found" }, status: :not_found
   end
 end

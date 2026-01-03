@@ -5,7 +5,7 @@ import { Info, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
-import InputAddable from "@components/forms/input-addable";
+import InputAddable from "@components/shared/forms/input-addable";
 
 const keywordSchema = z.object({
   text: z.string().min(1, "Keyword cannot be empty").max(80, "Maximum 80 characters"),

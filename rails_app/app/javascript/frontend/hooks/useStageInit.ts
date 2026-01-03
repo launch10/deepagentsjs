@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 import { usePage } from "@inertiajs/react";
-import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
-import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
+import { useAdsChatState, useAdsChatActions } from "@components/ads/hooks";
+import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
 import { Workflow, type UUIDType, Ads } from "@shared";
 
 export function useStageInit(stage: Workflow.AdCampaignSubstepName) {

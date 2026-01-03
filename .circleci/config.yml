@@ -5,20 +5,44 @@ orbs:
   ruby: circleci/ruby@2.1.0
 
 # Shared environment configuration
+# Port configuration: CI uses standard ports (3000, 8080) since there's no dev/test conflict
 rails-env: &rails-env
+  RAILS_PORT: "3000"
+  LANGGRAPH_PORT: "8080"
   LANGGRAPH_API_URL: http://localhost:8080
+  VITE_LANGGRAPH_API_URL: http://localhost:8080
+  RAILS_API_URL: http://localhost:3000
   DATABASE_URL: postgres://postgres:postgres@localhost:5432/launch10_test
   REDIS_URL: redis://localhost:6379
   RAILS_ENV: test
   CI: true
 
 langgraph-env: &langgraph-env
+  RAILS_PORT: "3001"
+  LANGGRAPH_PORT: "4001"
+  RAILS_API_URL: http://localhost:3001
   DATABASE_URL: postgres://postgres:postgres@localhost:5432/launch10_test
   REDIS_URL: redis://localhost:6379
   NODE_ENV: test
   USE_CACHE: false
   CI: true
   LLM_COST: paid # Use paid tier to avoid Ollama dependency in tests
+
+# Playwright tests use test ports (3001/4001) to match local dev-test setup
+playwright-env: &playwright-env
+  RAILS_PORT: "3001"
+  LANGGRAPH_PORT: "4001"
+  VITE_PORT: "3037"
+  RAILS_API_URL: http://localhost:3001
+  LANGGRAPH_API_URL: http://localhost:4001
+  VITE_RAILS_API_URL: http://localhost:3001
+  VITE_LANGGRAPH_API_URL: http://localhost:4001
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/launch10_test
+  REDIS_URL: redis://localhost:6379
+  RAILS_ENV: test
+  NODE_ENV: test
+  USE_LOCAL_STORAGE: "true"
+  CI: true
 
 commands:
   setup-database:
@@ -145,16 +169,18 @@ jobs:
           name: Start Rails test server
           command: |
             cd ~/project/rails_app
-            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rails server -e test -p 3000 2>&1 | tee ~/rails_server.log
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rails server -e test -p ${RAILS_PORT:-3001} 2>&1 | tee ~/rails_server.log
           background: true
           environment:
-            <<: *rails-env
+            <<: *langgraph-env
       - run:
           name: Wait for Rails server
           command: |
             sleep 5
             cat ~/rails_server.log
-            npx wait-on http://localhost:3000 -t 30000 --verbose
+            dockerize -wait http://localhost:${RAILS_PORT:-3001} -timeout 60s
+          environment:
+            <<: *langgraph-env
       - run:
           name: Run tests
           command: pnpm run test
@@ -169,7 +195,6 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: launch10_test
-          LANGGRAPH_API_URL: http://localhost:8080
       - image: cimg/redis:7.2
     working_directory: ~/project/rails_app
     steps:
@@ -285,6 +310,166 @@ jobs:
           name: Run frontend tests
           command: pnpm run test
 
+  playwright-tests:
+    docker:
+      - image: cimg/ruby:3.4.4-browsers
+      - image: pgvector/pgvector:pg16
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: launch10_test
+      - image: cimg/redis:7.2
+    working_directory: ~/project/rails_app
+    environment:
+      <<: *playwright-env
+    resource_class: large
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Add GitHub to known hosts
+          command: |
+            mkdir -p ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
+          name: Initialize submodules
+          command: |
+            cd ~/project
+            git submodule sync
+            git submodule update --init --recursive
+      - run:
+          name: Install Git LFS and pull files
+          command: |
+            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+            sudo apt-get update
+            sudo apt-get install -y git-lfs
+            git lfs install
+            cd ~/project
+            git lfs pull
+      - run:
+          name: Install PostgreSQL 16 client
+          command: |
+            sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client-16
+      - run:
+          name: Install pnpm
+          command: |
+            curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=9.15.0 SHELL=/bin/bash sh -
+            echo 'export PNPM_HOME="$HOME/.local/share/pnpm"' >> $BASH_ENV
+            echo 'export PATH="$PNPM_HOME:$PATH"' >> $BASH_ENV
+            source $BASH_ENV
+      # Install Ruby dependencies
+      - ruby/install-deps:
+          key: rails-gems-v1
+      # Install all Node dependencies
+      - restore_cache:
+          keys:
+            - playwright-deps-v1-{{ checksum "../pnpm-lock.yaml" }}
+            - playwright-deps-v1-
+      - run:
+          name: Install project dependencies
+          command: |
+            cd ~/project
+            pnpm install --frozen-lockfile
+      - save_cache:
+          key: playwright-deps-v1-{{ checksum "../pnpm-lock.yaml" }}
+          paths:
+            - node_modules
+            - ../langgraph_app/node_modules
+            - ~/.pnpm-store
+      # Install Playwright
+      - restore_cache:
+          keys:
+            - playwright-v1-{{ checksum "package.json" }}
+            - playwright-v1-
+      - run:
+          name: Install Playwright browsers
+          command: npx playwright install chromium --with-deps
+      - save_cache:
+          key: playwright-v1-{{ checksum "package.json" }}
+          paths:
+            - ~/.cache/ms-playwright
+      # Setup database
+      - run:
+          name: Wait for Postgres
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
+      - run:
+          name: Wait for Redis
+          command: dockerize -wait tcp://localhost:6379 -timeout 1m
+      - run:
+          name: Setup database
+          command: |
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rake db:create db:schema:load
+      # Setup Langgraph .env.ci
+      - run:
+          name: Setup Langgraph environment
+          command: |
+            cp ~/project/langgraph_app/.env.ci ~/project/langgraph_app/.env
+      # Start all services
+      - run:
+          name: Build assets
+          command: |
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rake assets:precompile
+      - run:
+          name: Start Rails server
+          command: |
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rails server -e test -p 3001 2>&1 | tee ~/rails_server.log
+          background: true
+      - run:
+          name: Start Vite dev server
+          command: |
+            bin/vite dev --mode test 2>&1 | tee ~/vite.log
+          background: true
+      - run:
+          name: Start Langgraph server
+          command: |
+            cd ~/project/langgraph_app
+            PORT=4001 pnpm run dev 2>&1 | tee ~/langgraph.log
+          background: true
+          environment:
+            PORT: "4001"
+            NODE_ENV: test
+            RAILS_API_URL: http://localhost:3001
+      # Wait for services
+      - run:
+          name: Wait for all services
+          command: |
+            echo "Waiting for Rails on :3001..."
+            dockerize -wait http://localhost:3001/up -timeout 60s
+            echo "Rails is ready!"
+
+            echo "Waiting for Langgraph on :4001..."
+            dockerize -wait http://localhost:4001/health -timeout 60s
+            echo "Langgraph is ready!"
+
+            echo "All services are healthy!"
+      # Run E2E tests
+      - run:
+          name: Run Playwright E2E tests
+          command: npx playwright test
+      # Artifacts
+      - store_artifacts:
+          path: playwright-report
+          destination: playwright-report
+      - store_artifacts:
+          path: test-results
+          destination: test-results
+      # Debug on failure
+      - run:
+          name: Show logs on failure
+          when: on_fail
+          command: |
+            echo "=== Rails logs ==="
+            cat ~/rails_server.log || true
+            echo ""
+            echo "=== Vite logs ==="
+            cat ~/vite.log || true
+            echo ""
+            echo "=== Langgraph logs ==="
+            cat ~/langgraph.log || true
+
 workflows:
   version: 2
   test:
@@ -293,3 +478,4 @@ workflows:
       - rails-tests
       - rails-frontend-tests
       - atlas-tests
+      - playwright-tests

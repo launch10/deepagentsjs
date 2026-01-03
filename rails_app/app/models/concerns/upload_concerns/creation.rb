@@ -5,12 +5,18 @@ module UploadConcerns
     class_methods do
       def create_upload!(account, upload_params)
         Upload.transaction do
-          upload = account.uploads.create!(upload_params.except(:website_id))
+          upload_attrs = upload_params.except(:website_id)
+          website = nil
 
           if upload_params[:website_id].present?
             website = account.websites.find_by!(id: upload_params[:website_id])
-            WebsiteUpload.create!(website: website, upload: upload)
           end
+
+          upload = account.uploads.create!(upload_attrs)
+
+          # Create website_upload association if website provided
+          # Project is derived through: upload -> websites -> project
+          WebsiteUpload.create!(website: website, upload: upload) if website.present?
 
           {
             upload: upload

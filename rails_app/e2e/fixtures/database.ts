@@ -1,0 +1,106 @@
+/**
+ * Database utilities for E2E tests.
+ * Mirrors the pattern from langgraph_app/app/services/core/railsApi/snapshotter.ts
+ */
+
+import { e2eConfig } from "../config";
+
+const BASE_URL = e2eConfig.railsBaseUrl;
+
+export interface DatabaseOperationResult {
+  status: string;
+  message: string;
+}
+
+/**
+ * Service for interacting with the Rails Test Database API.
+ * Used in beforeEach hooks to restore database to known state.
+ *
+ * @example
+ * test.beforeEach(async ({ page }) => {
+ *   await DatabaseSnapshotter.restoreSnapshot("basic_account");
+ *   await loginUser(page);
+ * });
+ */
+export const DatabaseSnapshotter = {
+  /**
+   * Restores the database from a snapshot
+   * @param name - Name of the snapshot to restore (without .sql extension)
+   * @param truncateFirst - Whether to truncate the database before restoring
+   */
+  async restoreSnapshot(
+    name: string,
+    truncateFirst: boolean = true
+  ): Promise<DatabaseOperationResult> {
+    const response = await fetch(`${BASE_URL}/test/database/restore_snapshot`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        snapshot: { name, truncate_first: truncateFirst },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(
+        `Failed to restore snapshot '${name}': ${response.status} - ${error}`
+      );
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Truncates all tables in the database
+   */
+  async truncate(): Promise<DatabaseOperationResult> {
+    const response = await fetch(`${BASE_URL}/test/database/truncate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to truncate database: ${response.status} - ${error}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Lists all available database snapshots
+   */
+  async listSnapshots(): Promise<string[]> {
+    const response = await fetch(`${BASE_URL}/test/database/snapshots`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to list snapshots: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.snapshots;
+  },
+
+  /**
+   * Gets the first project from the database.
+   * Useful for getting the project UUID after restoring a snapshot.
+   */
+  async getFirstProject(): Promise<{ uuid: string; name: string }> {
+    const response = await fetch(`${BASE_URL}/test/database/first_project`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to get first project: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.project;
+  },
+};

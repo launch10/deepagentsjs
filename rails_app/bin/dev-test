@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Run services in test mode for e2e/playwright tests
+# This is a thin wrapper around bin/services dev
+
+export LAUNCH10_ENV=test
+exec "$(dirname "$0")/../../bin/services" dev "$@"

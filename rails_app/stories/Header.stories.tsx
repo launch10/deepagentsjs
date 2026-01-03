@@ -1,6 +1,6 @@
-import Header from "@components/Header/Header";
+import Header from "@components/header/Header";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { WorkflowStepsProvider } from "@context/WorkflowStepsProvider";
+import { WorkflowProvider } from "@context/WorkflowProvider";
 
 const meta = {
   title: "Header",
@@ -11,12 +11,9 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <WorkflowStepsProvider
-        workflow={{ page: "ad_campaign", substep: "content" }}
-        projectUUID="test-uuid"
-      >
+      <WorkflowProvider>
         <Story />
-      </WorkflowStepsProvider>
+      </WorkflowProvider>
     ),
   ],
 } satisfies Meta<typeof Header>;
@@ -24,56 +21,21 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// Note: In storybook, the workflow state is derived from URL.
+// To test different states, use Storybook's URL parameters or
+// navigate to different URLs in the stories.
+
 export const Default: Story = {};
 
 export const BrainstormStep: Story = {
-  decorators: [
-    (Story) => (
-      <WorkflowStepsProvider
-        workflow={{ page: "brainstorm", substep: null }}
-        projectUUID="test-uuid"
-      >
-        <Story />
-      </WorkflowStepsProvider>
-    ),
-  ],
+  parameters: {
+    // URL-as-truth: state is derived from URL
+    // In Storybook, you can use router mocking or URL parameters
+  },
 };
 
-export const WebsiteStep: Story = {
-  decorators: [
-    (Story) => (
-      <WorkflowStepsProvider
-        workflow={{ page: "website", substep: null }}
-        projectUUID="test-uuid"
-      >
-        <Story />
-      </WorkflowStepsProvider>
-    ),
-  ],
-};
+export const WebsiteStep: Story = {};
 
-export const CampaignStep: Story = {
-  decorators: [
-    (Story) => (
-      <WorkflowStepsProvider
-        workflow={{ page: "ad_campaign", substep: null }}
-        projectUUID="test-uuid"
-      >
-        <Story />
-      </WorkflowStepsProvider>
-    ),
-  ],
-};
+export const CampaignStep: Story = {};
 
-export const LaunchStep: Story = {
-  decorators: [
-    (Story) => (
-      <WorkflowStepsProvider
-        workflow={{ page: "launch", substep: null }}
-        projectUUID="test-uuid"
-      >
-        <Story />
-      </WorkflowStepsProvider>
-    ),
-  ],
-};
+export const LaunchStep: Story = {};

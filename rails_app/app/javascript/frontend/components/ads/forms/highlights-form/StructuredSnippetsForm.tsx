@@ -5,7 +5,7 @@ import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldLis
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
-import { useAdsChatActions, useAdsChatState } from "@hooks/useAdsChat";
+import { useAdsChatActions, useAdsChatState } from "@components/ads/hooks";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID, keyBy } from "@shared";
 import { Info, Plus } from "lucide-react";
@@ -20,11 +20,11 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
-import type { UpdateCampaignRequestBody } from "@api/campaigns";
+import type { UpdateCampaignRequestBody } from "@rails_api_base";
 
 const STRUCTURED_SNIPPET_CATEGORIES = Ads.StructuredSnippetCategoryKeys.map((key) => ({
-  value: Ads.StructuredSnippetCategories[key].key,
-  label: Ads.StructuredSnippetCategories[key].key,
+  value: key, // Backend expects keys like "services", not display names like "Service catalog"
+  label: Ads.StructuredSnippetCategories[key].key, // Display names for UI
 }));
 
 export default function StructuredSnippetsForm() {
@@ -57,16 +57,16 @@ export default function StructuredSnippetsForm() {
 
   useEffect(() => {
     if (category && methods.getValues("category") !== category) {
-      methods.setValue("category", category as Ads.StructuredSnippetCategoryName);
+      methods.setValue("category", category as Ads.StructuredSnippetCategoryKey);
     }
   }, [category, methods]);
 
   const handleCategoryChange = (value: string) => {
-    methods.setValue("category", value as Ads.StructuredSnippetCategoryName);
+    methods.setValue("category", value as Ads.StructuredSnippetCategoryKey);
     setState({
       structuredSnippets: {
         ...structuredSnippets,
-        category: value as Ads.StructuredSnippetCategoryName,
+        category: value as Ads.StructuredSnippetCategoryKey,
         details: structuredSnippets?.details || [],
       },
     });
@@ -81,7 +81,7 @@ export default function StructuredSnippetsForm() {
       setState({
         structuredSnippets: {
           ...structuredSnippets,
-          category: structuredSnippets?.category as Ads.StructuredSnippetCategoryName,
+          category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
           details: updates.details || [],
         },
       });
@@ -93,7 +93,7 @@ export default function StructuredSnippetsForm() {
     setState({
       structuredSnippets: {
         ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryName,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
         details: [...(details || []), newDetail],
       },
     });
@@ -105,7 +105,7 @@ export default function StructuredSnippetsForm() {
     setState({
       structuredSnippets: {
         ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryName,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
         details: details?.filter((d) => d.id !== detailId) || [],
       },
     });
@@ -117,7 +117,7 @@ export default function StructuredSnippetsForm() {
     setState({
       structuredSnippets: {
         ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryName,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
         details: details?.map((d) => (d.id === detailId ? { ...d, text: input } : d)) || [],
       },
     });
@@ -144,14 +144,15 @@ export default function StructuredSnippetsForm() {
       ],
       structuredSnippets: {
         ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryName,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
         details: updatedDetails,
       },
     });
   };
 
-  const { saveNow } = useAutosaveCampaign<Ads.StructuredSnippetsOutput>({
+  const { getData } = useAutosaveCampaign<Ads.StructuredSnippetsOutput>({
     methods,
+    formId: "structured-snippets",
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const values = data.details?.filter((d) => d.text?.trim()).map((d) => d.text) ?? [];
 
@@ -166,7 +167,7 @@ export default function StructuredSnippetsForm() {
     },
   });
 
-  useFormRegistration("highlights", methods, saveNow);
+  useFormRegistration("highlights", methods, getData);
 
   const fields = filteredDetails.map((d) => ({ ...d, id: d.id }));
 
