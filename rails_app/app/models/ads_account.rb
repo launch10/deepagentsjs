@@ -35,7 +35,7 @@ class AdsAccount < ApplicationRecord
   validates :platform, presence: true, inclusion: { in: PLATFORMS }
 
   platform_setting :google, :customer_id
-  platform_setting :google, :descriptive_name, default: -> { account&.name }
+  platform_setting :google, :descriptive_name, default: -> { account&.owner&.email || EST.now.strftime("%Y-%m-%d %H:%M:%S Ads Account") }
   platform_setting :google, :currency_code, default: -> { account&.try(:currency_code).presence || "USD" }, in: CURRENCY_CODES
   platform_setting :google, :time_zone, default: -> { account&.try(:time_zone).presence || "America/New_York" }, in: TIME_ZONES
   platform_setting :google, :status, default: "ENABLED"
