@@ -64,6 +64,7 @@ module CampaignConcerns
           )
         end
       end
+      self.reload.location_targets
     end
 
     # Custom setter for location_targets to work with strong parameters

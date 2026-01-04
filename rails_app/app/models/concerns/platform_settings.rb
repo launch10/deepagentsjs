@@ -5,6 +5,12 @@ module PlatformSettings
     class_attribute :_platform_settings_validations, default: []
 
     validate :validate_platform_settings
+
+    after_initialize :ensure_platform_settings_initialized
+  end
+
+  def ensure_platform_settings_initialized
+    self.platform_settings ||= { "meta" => {}, "google" => {} }
   end
 
   class_methods do

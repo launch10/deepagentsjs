@@ -53,6 +53,11 @@ module GoogleAds
     end
 
     def sync_result
+      # For always_on schedules: no criterion in Google = always on (synced state)
+      if local_resource.always_on?
+        return always_on_sync_result
+      end
+
       return not_found_result(:campaign_criterion) unless remote_resource
 
       Sync::SyncResult.new(
@@ -64,6 +69,11 @@ module GoogleAds
     end
 
     def sync
+      # For always_on schedules: delete any existing criterion (no schedule = always on)
+      if local_resource.always_on?
+        return sync_always_on
+      end
+
       return sync_result if synced?
 
       if remote_resource
@@ -103,6 +113,43 @@ module GoogleAds
     end
 
     private
+
+    def always_on_sync_result
+      # If a criterion exists, we're not synced (need to delete it)
+      if remote_resource
+        Sync::SyncResult.new(
+          resource_type: :campaign_criterion,
+          resource_name: remote_resource.resource_name,
+          action: :needs_deletion,
+          comparisons: []
+        )
+      else
+        # No criterion = always on = synced
+        Sync::SyncResult.new(
+          resource_type: :campaign_criterion,
+          resource_name: nil,
+          action: :unchanged,
+          comparisons: [],
+          no_remote_needed: true
+        )
+      end
+    end
+
+    def sync_always_on
+      # If there's an existing criterion, delete it to achieve always-on state
+      if remote_resource
+        delete
+      else
+        # Already in always-on state (no criterion)
+        Sync::SyncResult.new(
+          resource_type: :campaign_criterion,
+          resource_name: nil,
+          action: :unchanged,
+          comparisons: [],
+          no_remote_needed: true
+        )
+      end
+    end
 
     def remote_criterion_id
       local_resource.google_criterion_id

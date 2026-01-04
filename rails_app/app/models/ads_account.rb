@@ -33,6 +33,7 @@ class AdsAccount < ApplicationRecord
   TIME_ZONES = ActiveSupport::TimeZone.all.map(&:tzinfo).map(&:name)
 
   validates :platform, presence: true, inclusion: { in: PLATFORMS }
+  validate :google_auto_tagging_must_be_enabled
 
   platform_setting :google, :customer_id
   platform_setting :google, :descriptive_name, default: -> { account&.owner&.email || EST.now.strftime("%Y-%m-%d %H:%M:%S Ads Account") }
@@ -71,5 +72,14 @@ class AdsAccount < ApplicationRecord
 
   def invitation_for(email_address)
     invitations.find_by(email_address: email_address, platform: platform)
+  end
+
+  private
+
+  def google_auto_tagging_must_be_enabled
+    return unless platform == "google"
+    return if google_auto_tagging_enabled == true
+
+    errors.add(:google_auto_tagging_enabled, "must be enabled for conversion tracking and analytics")
   end
 end

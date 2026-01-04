@@ -149,7 +149,7 @@ module GoogleAds
       local_resource.google_customer_id = new_customer_id
       local_resource.save!
 
-      enable_auto_tagging(new_customer_id)
+      update_auto_tagging(new_customer_id, local_resource.google_auto_tagging_enabled)
 
       verify_sync(:created, response.resource_name)
     end
@@ -158,8 +158,9 @@ module GoogleAds
       comparisons = build_comparisons
       resource_name = "customers/#{remote_resource.id}"
 
-      needs_auto_tagging = !remote_resource.auto_tagging_enabled && local_resource.google_auto_tagging_enabled
-      enable_auto_tagging(remote_resource.id.to_s) if needs_auto_tagging
+      if remote_resource.auto_tagging_enabled != local_resource.google_auto_tagging_enabled
+        update_auto_tagging(remote_resource.id.to_s, local_resource.google_auto_tagging_enabled)
+      end
 
       customer_updates_needed = comparisons.any? do |c|
         !c.values_match? && [:descriptive_name].include?(c.their_field)
@@ -185,9 +186,9 @@ module GoogleAds
       verify_sync(:updated, resource_name)
     end
 
-    def enable_auto_tagging(cid)
+    def update_auto_tagging(cid, enabled)
       operation = client.operation.update_resource.customer("customers/#{cid}") do |c|
-        c.auto_tagging_enabled = true
+        c.auto_tagging_enabled = enabled
       end
 
       client.service.customer.mutate_customer(

@@ -396,6 +396,102 @@ RSpec.describe GoogleAds::AdSchedule do
     end
   end
 
+  describe 'always_on schedules' do
+    let(:always_on_schedule) do
+      create(:ad_schedule, :always_on, campaign: campaign)
+    end
+    let(:always_on_syncer) { described_class.new(always_on_schedule) }
+
+    describe '#synced?' do
+      context 'when always_on and no remote criterion exists' do
+        it 'returns true because no schedules in Google = always on' do
+          # No criterion_id set, no remote lookup needed
+          expect(always_on_syncer.synced?).to be true
+        end
+      end
+
+      context 'when always_on but a stale criterion exists remotely' do
+        before do
+          always_on_schedule.platform_settings["google"] = { "criterion_id" => 999 }
+          always_on_schedule.save!
+        end
+
+        it 'returns false because the criterion should be deleted' do
+          criterion_response = mock_search_response_with_ad_schedule(
+            criterion_id: 999,
+            campaign_id: 789,
+            customer_id: 1234567890,
+            day_of_week: :MONDAY,
+            start_hour: 9,
+            start_minute: :ZERO,
+            end_hour: 17,
+            end_minute: :ZERO
+          )
+          allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+          expect(always_on_syncer.synced?).to be false
+        end
+      end
+    end
+
+    describe '#sync' do
+      context 'when always_on and no remote criterion exists' do
+        it 'returns success without making API calls (no-op)' do
+          expect(@mock_campaign_criterion_service).not_to receive(:mutate_campaign_criteria)
+
+          result = always_on_syncer.sync
+          expect(result).to be_a(GoogleAds::Sync::SyncResult)
+          expect(result.synced?).to be true
+          expect(result.action).to eq(:unchanged)
+        end
+      end
+
+      context 'when always_on but a stale criterion exists' do
+        before do
+          always_on_schedule.platform_settings["google"] = { "criterion_id" => 999 }
+          always_on_schedule.save!
+        end
+
+        it 'deletes the stale criterion to achieve always-on state' do
+          criterion_response = mock_search_response_with_ad_schedule(
+            criterion_id: 999,
+            campaign_id: 789,
+            customer_id: 1234567890,
+            day_of_week: :MONDAY,
+            start_hour: 9,
+            start_minute: :ZERO,
+            end_hour: 17,
+            end_minute: :ZERO
+          )
+          allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+          mock_remove_operation = double("RemoveOperation")
+          allow(@mock_remove_resource).to receive(:campaign_criterion)
+            .with("customers/1234567890/campaignCriteria/789~999")
+            .and_return(mock_remove_operation)
+
+          mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 999, campaign_id: 789, customer_id: 1234567890)
+          allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria)
+            .and_return(mutate_response)
+
+          result = always_on_syncer.sync
+          expect(result.deleted?).to be true
+          expect(always_on_schedule.google_criterion_id).to be_nil
+        end
+      end
+    end
+
+    describe '#sync_result' do
+      context 'when always_on and no remote criterion' do
+        it 'returns synced result' do
+          result = always_on_syncer.sync_result
+          expect(result.synced?).to be true
+          expect(result.action).to eq(:unchanged)
+        end
+      end
+    end
+  end
+
   describe 'AdSchedule model helper methods' do
     before do
       ad_schedule.platform_settings["google"] = { "criterion_id" => 222 }

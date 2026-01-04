@@ -254,17 +254,21 @@ class CampaignDeploy < ApplicationRecord
 
     Step.define(:create_ad_groups) do
       def run
-        campaign.ad_groups.each(&:google_sync)
+        campaign.ad_groups.map(&:google_sync)
       end
 
       def finished?
         campaign.ad_groups.all?(&:google_synced?)
       end
+
+      def sync_result
+        campaign.ad_groups.map(&:google_sync_result)
+      end
     end,
 
     Step.define(:create_keywords) do
       def run
-        campaign.ad_groups.each(&:sync_keywords)
+        campaign.ad_groups.map(&:sync_keywords)
       end
 
       def finished?
@@ -278,11 +282,15 @@ class CampaignDeploy < ApplicationRecord
 
     Step.define(:create_ads) do
       def run
-        campaign.ads.each(&:google_sync)
+        campaign.ads.map(&:google_sync)
       end
 
       def finished?
         campaign.ads.all?(&:google_synced?)
+      end
+
+      def sync_result
+        campaign.ads.map(&:google_sync_result)
       end
     end
   ])

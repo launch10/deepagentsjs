@@ -62,6 +62,8 @@ class AdLocationTarget < ApplicationRecord
 
   validate :geo_location_fields_required
   validate :radius_fields_required
+  validate :unique_criterion_id_per_campaign
+  validate :us_country_exclusivity
 
   scope :targeted, -> { where(targeted: true) }
   scope :excluded, -> { where(targeted: false) }
@@ -201,5 +203,35 @@ class AdLocationTarget < ApplicationRecord
     errors.add(:radius_units, "can't be blank") if radius_units.blank?
     errors.add(:city, "can't be blank") if city.blank?
     errors.add(:country_code, "can't be blank") if country_code.blank?
+  end
+
+  def unique_criterion_id_per_campaign
+    return if google_criterion_id.blank?
+
+    existing = campaign.location_targets.where.not(id: id).find do |target|
+      target.google_criterion_id == google_criterion_id
+    end
+
+    errors.add(:google_criterion_id, "has already been taken for this campaign") if existing
+  end
+
+  def us_country_exclusivity
+    return unless geo_location?
+    return if google_criterion_id.blank?
+
+    us_criterion = "geoTargetConstants/2840"
+    other_geo_targets = campaign.location_targets.geo_locations.where.not(id: id)
+
+    if google_criterion_id == us_criterion
+      # Adding US - check if other geo locations exist
+      if other_geo_targets.any?
+        errors.add(:google_criterion_id, "United States cannot be added when more specific locations are targeted")
+      end
+    else
+      # Adding non-US - check if US exists
+      if other_geo_targets.any? { |t| t.google_criterion_id == us_criterion }
+        errors.add(:google_criterion_id, "cannot add specific locations when United States is already targeted")
+      end
+    end
   end
 end

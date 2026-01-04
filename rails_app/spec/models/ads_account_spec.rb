@@ -151,11 +151,16 @@ RSpec.describe AdsAccount, type: :model do
         expect(ads_account.google_auto_tagging_enabled).to eq(true)
       end
 
-      it 'can be set to false' do
+      it 'cannot be set to false (required for conversion tracking)' do
         ads_account.google_auto_tagging_enabled = false
-        ads_account.save!
 
-        expect(ads_account.reload.google_auto_tagging_enabled).to eq(false)
+        expect(ads_account).not_to be_valid
+        expect(ads_account.errors[:google_auto_tagging_enabled]).to include("must be enabled for conversion tracking and analytics")
+      end
+
+      it 'can be explicitly set to true' do
+        ads_account.google_auto_tagging_enabled = true
+        expect(ads_account).to be_valid
       end
     end
   end

@@ -66,7 +66,7 @@ bundle exec rails console
 Then in the console:
 
 ```ruby
-Database::Snapshotter.restore_snapshot("campaign_complete")
+Database::Snapshotter.restore_snapshot("campaign_complete");1
 campaign = Campaign.last
 runner = CampaignDeploy::StepRunner.new(campaign)
 ```
@@ -133,6 +133,10 @@ runner.find(:create_campaign).run
 runner.find(:create_geo_targeting).run
 ```
 
+# Next tests:
+
+- Create more specific targets
+
 **Verify in UI:**
 
 - `/aw/locations?ocid={customer_id}`
@@ -143,6 +147,32 @@ runner.find(:create_geo_targeting).run
 ### Step 6: Create Ad Schedules
 
 ```ruby
+runner.find(:create_schedule).run
+```
+
+Try again with specific data:
+
+```ruby
+campaign.update_ad_schedules(
+    always_on: false,
+    day_of_week: ['Monday', 'Tuesday'],
+    start_time: '9:00am',
+    end_time: '5:00pm',
+    time_zone: 'America/New_York'
+)
+
+campaign = Campaign.last
+runner = CampaignDeploy::StepRunner.new(campaign)
+runner.find(:create_schedule).run
+```
+
+Then reset back to all the time:
+
+```ruby
+campaign.update_ad_schedules(
+    always_on: true,
+)
+runner = CampaignDeploy::StepRunner.new(campaign)
 runner.find(:create_schedule).run
 ```
 
@@ -159,6 +189,9 @@ runner.find(:create_schedule).run
 runner.find(:create_callouts).run
 ```
 
+- Next tests:
+- Updates / deletes
+
 **Verify in UI:**
 
 - `/aw/assetreport/associations?assetType=callout`
@@ -171,6 +204,9 @@ runner.find(:create_callouts).run
 ```ruby
 runner.find(:create_structured_snippets).run
 ```
+
+- Next tests:
+- Updates / deletes
 
 **Verify in UI:**
 
@@ -187,8 +223,8 @@ runner.find(:create_ad_groups).run
 
 **Verify in UI:**
 
-- `/aw/adgroups?ocid={customer_id}`
-- "Default Ad Group" should appear
+- `/aw/adgroups?campaignId={campaign.google_campaign_id}&ocid={customer_id}`
+- "Default Ad Group" should appear with status "Paused"
 
 ---
 
@@ -222,7 +258,7 @@ runner.find(:create_ads).run
 
 Run these after all CREATE tests complete.
 
-### Update Budget ($10 → $15)
+### Update Budget ($25 → $15)
 
 ```ruby
 budget = campaign.budget
@@ -232,6 +268,49 @@ GoogleAds::Budget.new(budget).sync
 ```
 
 **Verify:** Campaign settings shows $15/day
+
+- https://ads.google.com/aw/campaigns
+- Click on campaign → Settings → Budget
+
+---
+
+### Update Account Descriptive Name
+
+```ruby
+ads_account = campaign.google_ads_account
+ads_account.google_descriptive_name = "#{ads_account.google_descriptive_name} (Updated)"
+ads_account.save!
+GoogleAds::Account.new(ads_account).sync
+```
+
+**Verify:** MCC account list shows updated name
+
+- https://ads.google.com/aw/accounts?ocid=1248957009
+
+---
+
+### Verify Account Auto-Tagging (enforced true)
+
+Auto-tagging is enforced at the model layer and cannot be disabled (required for conversion tracking).
+
+```ruby
+ads_account = campaign.ads_account
+
+# This should already be true by default
+ads_account.google_auto_tagging_enabled
+# => true
+
+# Attempting to set false will fail validation
+ads_account.google_auto_tagging_enabled = false
+ads_account.valid?
+# => false
+ads_account.errors[:google_auto_tagging_enabled]
+# => ["must be enabled for conversion tracking and analytics"]
+```
+
+**Verify in UI:** Account settings → Auto-tagging should always be enabled
+
+- Navigate to account → Settings (gear icon) → Account settings → Auto-tagging
 
 ---
 
@@ -245,6 +324,34 @@ GoogleAds::Campaign.new(campaign).sync
 ```
 
 **Verify:** Campaign list shows updated name
+
+- https://ads.google.com/aw/campaigns
+
+---
+
+### Update Campaign Status (PAUSED → ENABLED → PAUSED)
+
+```ruby
+campaign.reload
+campaign.google_status = :ENABLED
+campaign.save!
+GoogleAds::Campaign.new(campaign).sync
+```
+
+**Verify:** Campaign status changes from "Paused" to "Enabled"
+
+- https://ads.google.com/aw/campaigns
+
+Then toggle back:
+
+```ruby
+campaign.reload
+campaign.google_status = :PAUSED
+campaign.save!
+GoogleAds::Campaign.new(campaign).sync
+```
+
+**Verify:** Campaign status back to "Paused"
 
 ---
 
@@ -260,6 +367,52 @@ GoogleAds::AdGroup.new(ad_group).sync
 
 **Verify:** Ad groups list shows updated name
 
+- https://ads.google.com/aw/adgroups
+
+---
+
+### Update Ad Group Status (PAUSED → ENABLED → PAUSED)
+
+```ruby
+campaign.reload
+ad_group = campaign.ad_groups.first
+ad_group.google_status = :PAUSED # or ENABLED
+ad_group.save!
+GoogleAds::AdGroup.new(ad_group).sync
+```
+
+**Verify:** Ad group status changes from "Paused" to "Enabled"
+
+- https://ads.google.com/aw/adgroups
+
+Then toggle back:
+
+```ruby
+ad_group.reload
+ad_group.google_status = :PAUSED
+ad_group.save!
+GoogleAds::AdGroup.new(ad_group).sync
+```
+
+**Verify:** Ad group status back to "Paused"
+
+---
+
+### Update Ad Group CPC Bid
+
+```ruby
+campaign.reload
+ad_group = campaign.ad_groups.first
+ad_group.google_cpc_bid_micros = 2_000_000  # $2.00
+ad_group.save!
+GoogleAds::AdGroup.new(ad_group).sync
+```
+
+**Verify:** Ad group shows max CPC bid of $2.00
+
+- https://ads.google.com/aw/adgroups
+- Click on the ad group → Settings → Default max CPC
+
 ---
 
 ### Update Ad Status
@@ -273,6 +426,39 @@ GoogleAds::Ad.new(ad).sync
 ```
 
 **Verify:** Ads list shows toggled status
+
+- https://ads.google.com/aw/ads
+- Always put it back to paused afterwards
+
+---
+
+### Update Ad Display Paths
+
+```ruby
+campaign.reload
+ad = campaign.ad_groups.first.ads.first
+ad.display_path_1 = "products"
+ad.display_path_2 = "sale"
+ad.save!
+GoogleAds::Ad.new(ad).sync
+```
+
+**Verify:** Ad preview shows display URL with paths
+
+- https://ads.google.com/aw/ads
+- Click on ad → Preview should show `yoursite.com/products/sale`
+
+Reset paths:
+
+```ruby
+ad.reload
+ad.display_path_1 = nil
+ad.display_path_2 = nil
+ad.save!
+GoogleAds::Ad.new(ad).sync
+```
+
+**Verify:** Display URL paths cleared
 
 ---
 
@@ -435,6 +621,28 @@ Replace `{customer_id}` with your actual customer ID (e.g., `1495088796`):
 
 3. **Location targets are immutable** - geo_target_constant and negative fields cannot be changed. Must delete and recreate.
 
-4. **UI caching** - Google Ads UI aggressively caches. Use hard refresh (Cmd+Shift+R) or wait a few seconds if changes don't appear immediately.
+4. **Ad Schedules are immutable** - All schedule fields cannot be changed. Must delete and recreate.
 
-5. **Test account limitations** - Assets may show "Pending Under review" status in test accounts. This is expected.
+5. **UI caching** - Google Ads UI aggressively caches. Use hard refresh (Cmd+Shift+R) or wait a few seconds if changes don't appear immediately.
+
+6. **Test account limitations** - Assets may show "Pending Under review" status in test accounts. This is expected.
+
+---
+
+## Field Coverage Reference
+
+All syncable fields from `GoogleAds::Sync::FieldMappings`:
+
+| Resource                 | Mutable Fields                               | Immutable Fields                                                |
+| ------------------------ | -------------------------------------------- | --------------------------------------------------------------- |
+| **AdsAccount**           | `descriptive_name`, `auto_tagging_enabled`   | `currency_code`, `time_zone`                                    |
+| **AdBudget**             | `daily_budget_cents`, `name`                 | -                                                               |
+| **Campaign**             | `name`, `status`                             | `advertising_channel_type`, `contains_eu_political_advertising` |
+| **AdGroup**              | `name`, `status`, `cpc_bid_micros`           | `type`                                                          |
+| **Ad**                   | `status`, `display_path_1`, `display_path_2` | -                                                               |
+| **AdKeyword**            | -                                            | `text`, `match_type` (delete/recreate)                          |
+| **AdLocationTarget**     | -                                            | `geo_target_constant`, `negative` (delete/recreate)             |
+| **AdSchedule**           | -                                            | all fields (delete/recreate)                                    |
+| **AdCallout**            | -                                            | `text` (unlink/recreate)                                        |
+| **AdStructuredSnippet**  | -                                            | `category`, `values` (unlink/recreate)                          |
+| **AdsAccountInvitation** | -                                            | `email_address`, `access_role` (create only)                    |
