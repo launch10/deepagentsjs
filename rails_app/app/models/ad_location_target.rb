@@ -53,7 +53,8 @@ class AdLocationTarget < ApplicationRecord
   belongs_to :campaign
 
   TARGET_TYPES = %w[geo_location radius location_group].freeze
-  LOCATION_TYPES = %w[COUNTRY REGION CITY POSTAL DMA AIRPORT UNIVERSITY].freeze
+  # Valid location types come from GeoTargetConstant (the source of truth)
+  LOCATION_TYPES = GeoTargetConstant::TARGET_TYPES.freeze
   RADIUS_UNITS = %w[MILES KILOMETERS].freeze
 
   validates :target_type, presence: true, inclusion: { in: TARGET_TYPES }
@@ -113,10 +114,6 @@ class AdLocationTarget < ApplicationRecord
     platform_settings["google"]["criterion_id"] = normalized
   end
 
-  # Auto-upcase location_type
-  def location_type=(value)
-    super(value&.upcase)
-  end
 
   # Auto-upcase radius_units
   def radius_units=(value)

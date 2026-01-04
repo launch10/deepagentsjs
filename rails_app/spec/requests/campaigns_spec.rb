@@ -8,6 +8,41 @@ RSpec.describe "Campaigns API", type: :request do
   let!(:user2_account) { user2.owned_account }
 
   let!(:template) { create(:template) }
+
+  # Common GeoTargetConstants used across tests
+  let!(:usa_geo_target) do
+    GeoTargetConstant.create!(
+      criteria_id: 2840,
+      name: "United States",
+      canonical_name: "United States",
+      target_type: "Country",
+      status: "Active",
+      country_code: "US"
+    )
+  end
+
+  let!(:canada_geo_target) do
+    GeoTargetConstant.create!(
+      criteria_id: 2124,
+      name: "Canada",
+      canonical_name: "Canada",
+      target_type: "Country",
+      status: "Active",
+      country_code: "CA"
+    )
+  end
+
+  let!(:mexico_geo_target) do
+    GeoTargetConstant.create!(
+      criteria_id: 2484,
+      name: "Mexico",
+      canonical_name: "Mexico",
+      target_type: "Country",
+      status: "Active",
+      country_code: "MX"
+    )
+  end
+
   let!(:project1) {
     data = Brainstorm.create_brainstorm!(user1_account, name: "Project 1", thread_id: "thread_id_1")
     data[:project]
@@ -1321,22 +1356,32 @@ RSpec.describe "Campaigns API", type: :request do
             let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
             let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
 
+            # Create GeoTargetConstants for the test
+            let!(:alaska_geo_target) do
+              GeoTargetConstant.create!(
+                criteria_id: 21132,
+                name: "Alaska",
+                canonical_name: "Alaska,United States",
+                target_type: "State",
+                status: "Active",
+                country_code: "US"
+              )
+            end
+            let!(:alabama_geo_target) do
+              GeoTargetConstant.create!(
+                criteria_id: 21133,
+                name: "Alabama",
+                canonical_name: "Alabama,United States",
+                target_type: "State",
+                status: "Active",
+                country_code: "US"
+              )
+            end
+
             let!(:initial_location_targets) do
               settings_campaign.update_location_targets([
-                {
-                  criteria_id: 2840,
-                  name: 'United States',
-                  target_type: 'Country',
-                  country_code: 'US',
-                  targeted: true
-                },
-                {
-                  criteria_id: 2124,
-                  name: 'Canada',
-                  target_type: 'Country',
-                  country_code: 'CA',
-                  targeted: true
-                }
+                { criteria_id: alaska_geo_target.criteria_id, targeted: true },
+                { criteria_id: alabama_geo_target.criteria_id, targeted: true }
               ])
               targets = settings_campaign.location_targets.order(:id).to_a
               AdLocationTarget.where(id: targets[1].id).update_all(deleted_at: Time.current)
@@ -1347,20 +1392,8 @@ RSpec.describe "Campaigns API", type: :request do
               {
                 campaign: {
                   location_targets: [
-                    {
-                      criteria_id: 2840,
-                      name: 'United States Updated',
-                      target_type: 'Country',
-                      country_code: 'US',
-                      targeted: true
-                    },
-                    {
-                      criteria_id: 2124,
-                      name: 'Canada Restored',
-                      target_type: 'Country',
-                      country_code: 'CA',
-                      targeted: true
-                    }
+                    { criteria_id: alaska_geo_target.criteria_id, targeted: true },
+                    { criteria_id: alabama_geo_target.criteria_id, targeted: true }
                   ]
                 }
               }
@@ -1370,12 +1403,18 @@ RSpec.describe "Campaigns API", type: :request do
               settings_campaign.reload
 
               expect(settings_campaign.location_targets.count).to eq(2)
-              expect(settings_campaign.location_targets.pluck(:location_name).sort).to eq(['Canada Restored', 'United States Updated'])
+              expect(settings_campaign.location_targets.pluck(:location_name).sort).to eq([
+                alabama_geo_target.canonical_name,
+                alaska_geo_target.canonical_name
+              ].sort)
 
+              # First target should remain unchanged
               expect(initial_location_targets[0].reload.deleted_at).to be_nil
-              expect(initial_location_targets[0].reload.location_name).to eq('United States Updated')
+              expect(initial_location_targets[0].reload.location_name).to eq(alaska_geo_target.canonical_name)
+
+              # Second target (was soft-deleted) should be restored
               expect(initial_location_targets[1].reload.deleted_at).to be_nil
-              expect(initial_location_targets[1].reload.location_name).to eq('Canada Restored')
+              expect(initial_location_targets[1].reload.location_name).to eq(alabama_geo_target.canonical_name)
             end
           end
 
@@ -2028,7 +2067,8 @@ RSpec.describe "Campaigns API", type: :request do
           run_test! do |response|
             data = JSON.parse(response.body)
             expect(data["errors"]).to be_present
-            expect(data["errors"]).to include("Google advertising channel type must be configured")
+            # advertising_channel_type now has a default, so check for other missing fields
+            expect(data["errors"]).to include("Google bidding strategy must be configured")
 
             launch_stage_campaign.reload
             expect(launch_stage_campaign.stage).to eq("launch")

@@ -531,7 +531,7 @@ RSpec.describe GoogleAds::AdSchedule do
         allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
 
         result = ad_schedule.google_sync_result
-        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+        expect(result).to be_a(GoogleAds::SyncResult)
         expect(result.synced?).to be true
       end
     end
@@ -551,7 +551,7 @@ RSpec.describe GoogleAds::AdSchedule do
         allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
 
         result = ad_schedule.google_sync
-        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+        expect(result).to be_a(GoogleAds::SyncResult)
         expect(result.synced?).to be true
       end
     end

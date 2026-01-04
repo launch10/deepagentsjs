@@ -89,14 +89,17 @@ module CampaignConcerns
     def normalize_location_target(data)
       data = data.with_indifferent_access
 
-      # If it has criteria_id, it's GeoTargetConstant format - transform it
+      # If it has criteria_id, look up canonical data from GeoTargetConstant
       if data[:criteria_id].present?
+        geo_target = GeoTargetConstant.find_by(criteria_id: data[:criteria_id])
+        raise ActiveRecord::RecordNotFound, "GeoTargetConstant not found for criteria_id: #{data[:criteria_id]}" unless geo_target
+
         {
           target_type: "geo_location",
-          geo_target_constant: "geoTargetConstants/#{data[:criteria_id]}",
-          location_name: data[:name],
-          location_type: data[:target_type]&.upcase,
-          country_code: data[:country_code],
+          geo_target_constant: geo_target.geo_target_constant,
+          location_name: geo_target.canonical_name,
+          location_type: geo_target.target_type,
+          country_code: geo_target.country_code,
           targeted: data.fetch(:targeted, true)
         }
       else
