@@ -123,46 +123,39 @@ class AdLocationTarget < ApplicationRecord
     super(value&.upcase)
   end
 
-  # @return [Hash] JSON representation for the frontend
+  # @return [Hash] JSON representation for the frontend (GeoTargetConstant format)
   # @example Geo location target
   #   {
-  #     target_type: 'geo_location',
-  #     location_identifier: 'geoTargetConstants/2840',
-  #     location_name: 'United States',
-  #     location_type: 'COUNTRY',
+  #     criteria_id: 2840,
+  #     name: 'United States',
+  #     target_type: 'Country',
   #     country_code: 'US',
-  #     negative: false,
-  #     radius: 10,
-  #     radius_units: 'MILES'
+  #     targeted: true
   #   }
   # @example Radius target
   #   {
-  #     target_type: 'radius',
+  #     ad_location_target_type: 'radius',
   #     address_line_1: '38 avenue de l\'Opéra',
   #     city: 'Paris',
   #     postal_code: '75002',
   #     country_code: 'FR',
   #     radius: 10,
   #     radius_units: 'MILES',
-  #     negative: false
+  #     targeted: true
   #   }
   def as_json(_options = {})
-    base = {
-      target_type: target_type,
-      targeted: targeted
-    }
-
     if geo_location?
-      base.merge(
-        geo_target_constant: google_criterion_id,
-        location_name: location_name,
-        location_type: location_type,
+      # Return GeoTargetConstant format for geo locations
+      {
+        criteria_id: google_criterion_id&.gsub("geoTargetConstants/", "")&.to_i,
+        name: location_name,
+        target_type: location_type&.titleize,
         country_code: country_code,
-        radius: radius&.to_f,
-        radius_units: radius_units&.downcase
-      )
+        targeted: targeted
+      }
     elsif radius?
-      base.merge(
+      {
+        ad_location_target_type: "radius",
         address_line_1: address_line_1,
         city: city,
         state: state,
@@ -171,10 +164,14 @@ class AdLocationTarget < ApplicationRecord
         radius: radius&.to_f,
         radius_units: radius_units&.downcase,
         latitude: latitude&.to_f,
-        longitude: longitude&.to_f
-      )
+        longitude: longitude&.to_f,
+        targeted: targeted
+      }
     else
-      base
+      {
+        ad_location_target_type: target_type,
+        targeted: targeted
+      }
     end
   end
 

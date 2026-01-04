@@ -31,12 +31,13 @@ const REVERSE_TIMEZONE_MAP = Object.fromEntries(
 );
 
 export function transformLocationsToApi(locations: LocationWithSettings[]) {
+  // Send GeoTargetConstant format directly - backend handles normalization
   return locations.map((loc) => ({
-    target_type: "geo_location",
-    location_name: loc.name,
+    criteria_id: loc.criteria_id,
+    name: loc.name,
+    target_type: loc.target_type,
     country_code: loc.country_code,
     targeted: loc.isTargeted,
-    google_criterion_id: String(loc.criteria_id),
   }));
 }
 
@@ -71,19 +72,17 @@ export function transformLocationsFromApi(
 ): LocationWithSettings[] {
   if (!locations || locations.length === 0) return [];
 
+  // Backend now returns GeoTargetConstant format directly
   return locations
-    .filter((loc) => loc.target_type === "geo_location" && loc.geo_target_constant)
-    .map((loc) => {
-      const criteriaId = loc.geo_target_constant?.replace("geoTargetConstants/", "");
-      return {
-        criteria_id: criteriaId ? parseInt(criteriaId, 10) : 0,
-        name: loc.location_name || "",
-        canonical_name: loc.location_name || "",
-        target_type: loc.location_type || "COUNTRY",
-        country_code: loc.country_code || "",
-        isTargeted: loc.targeted ?? false,
-      };
-    });
+    .filter((loc) => loc.criteria_id)
+    .map((loc) => ({
+      criteria_id: loc.criteria_id,
+      name: loc.name || "",
+      canonical_name: loc.name || "",
+      target_type: loc.target_type || "Country",
+      country_code: loc.country_code || "",
+      isTargeted: loc.targeted ?? true,
+    }));
 }
 
 function parseTimeToHHMM(timeStr: string | null): string {

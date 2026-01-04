@@ -304,7 +304,8 @@ module CampaignConcerns
       end
 
       def prepare_location_targets(location_targets_data)
-        location_attrs_array = Array(location_targets_data)
+        # Use campaign's normalize method (from LocationTargeting concern)
+        location_attrs_array = Array(location_targets_data).map { |data| campaign.send(:normalize_location_target, data) }
         existing_targets = AdLocationTarget.unscoped.where(campaign_id: campaign.id).order(:id).to_a
 
         targets_to_update = []

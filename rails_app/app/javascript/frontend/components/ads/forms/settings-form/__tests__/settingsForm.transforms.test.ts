@@ -12,7 +12,7 @@ import { settingsFormDefaults } from "../settingsForm.schema";
 
 describe("settingsForm.transforms", () => {
   describe("transformLocationsToApi", () => {
-    it("transforms locations to API format", () => {
+    it("transforms locations to API format (GeoTargetConstant format)", () => {
       const locations: LocationWithSettings[] = [
         {
           criteria_id: 1014221,
@@ -28,11 +28,11 @@ describe("settingsForm.transforms", () => {
 
       expect(result).toEqual([
         {
-          target_type: "geo_location",
-          location_name: "New York",
+          criteria_id: 1014221,
+          name: "New York",
+          target_type: "CITY",
           country_code: "US",
           targeted: true,
-          google_criterion_id: "1014221",
         },
       ]);
     });
@@ -60,9 +60,9 @@ describe("settingsForm.transforms", () => {
       const result = transformLocationsToApi(locations);
 
       expect(result).toHaveLength(2);
-      expect(result[0].location_name).toBe("New York");
+      expect(result[0].name).toBe("New York");
       expect(result[0].targeted).toBe(true);
-      expect(result[1].location_name).toBe("Los Angeles");
+      expect(result[1].name).toBe("Los Angeles");
       expect(result[1].targeted).toBe(false);
     });
 
@@ -72,15 +72,14 @@ describe("settingsForm.transforms", () => {
   });
 
   describe("transformLocationsFromApi", () => {
-    it("transforms API locations to form format", () => {
+    it("transforms API locations to form format (GeoTargetConstant format)", () => {
       const apiLocations = [
         {
-          target_type: "geo_location",
-          location_name: "New York",
+          criteria_id: 1014221,
+          name: "New York",
+          target_type: "City",
           country_code: "US",
           targeted: true,
-          geo_target_constant: "geoTargetConstants/1014221",
-          location_type: "CITY",
         },
       ];
 
@@ -91,7 +90,7 @@ describe("settingsForm.transforms", () => {
           criteria_id: 1014221,
           name: "New York",
           canonical_name: "New York",
-          target_type: "CITY",
+          target_type: "City",
           country_code: "US",
           isTargeted: true,
         },
@@ -110,22 +109,20 @@ describe("settingsForm.transforms", () => {
       expect(transformLocationsFromApi([])).toEqual([]);
     });
 
-    it("filters out non-geo_location targets", () => {
+    it("filters out radius targets (no criteria_id)", () => {
       const apiLocations = [
         {
-          target_type: "geo_location",
-          location_name: "New York",
+          criteria_id: 1014221,
+          name: "New York",
+          target_type: "City",
           country_code: "US",
           targeted: true,
-          geo_target_constant: "geoTargetConstants/1014221",
-          location_type: "CITY",
         },
         {
-          target_type: "proximity",
-          location_name: "Some Address",
+          ad_location_target_type: "radius",
+          city: "Some Address",
           country_code: "US",
           targeted: true,
-          geo_target_constant: null,
         },
       ];
 
@@ -296,11 +293,11 @@ describe("settingsForm.transforms", () => {
       expect(result).toEqual({
         location_targets: [
           {
-            target_type: "geo_location",
-            location_name: "New York",
+            criteria_id: 1014221,
+            name: "New York",
+            target_type: "CITY",
             country_code: "US",
             targeted: true,
-            google_criterion_id: "1014221",
           },
         ],
         ad_schedules: {
