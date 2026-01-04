@@ -16,11 +16,13 @@ module GoogleAds
       end
 
       def synced?
-        return true if db_schedule.always_on? && !db_schedule.google_criterion_id # we should check googles_schedule, not trust local db_schedule.google_criterion_id, before initial sync google_criterion_id would be null anyway for every db_schedule
-        return false unless db_schedule.google_criterion_id # if we have criterion_id, we still want to check fields_match? vs googles_schedule
+        return true if db_schedule.always_on? && !db_schedule.google_criterion_id
+        return false unless db_schedule.google_criterion_id
 
         googles_schedule = fetch
-        googles_schedule && fields_match?(googles_schedule)
+        return false unless googles_schedule
+
+        fields_match?(googles_schedule)
       end
 
       def sync
