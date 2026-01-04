@@ -16,7 +16,13 @@ module GoogleAds
       end
 
       def synced?
-        return true if db_schedule.always_on? && !db_schedule.google_criterion_id
+        if db_schedule.always_on?
+          # For always_on: Google should have ZERO ad_schedule criteria
+          # We MUST query Google - cannot trust local criterion_id
+          return !any_schedules_exist_in_google?
+        end
+
+        # For specific schedules: verify Google has our criterion with matching fields
         return false unless db_schedule.google_criterion_id
 
         googles_schedule = fetch
@@ -26,10 +32,17 @@ module GoogleAds
       end
 
       def sync
-        return delete if db_schedule.always_on? && db_schedule.google_criterion_id
+        if db_schedule.always_on?
+          # For always_on: delete ALL schedules in Google (not just ones we know about)
+          return delete_all_schedules_in_google if any_schedules_exist_in_google?
+          return GoogleAds::SyncResult.unchanged(:campaign_criterion, nil)
+        end
+
         return GoogleAds::SyncResult.unchanged(:campaign_criterion, db_schedule.google_criterion_id) if synced?
 
         db_schedule.google_criterion_id ? recreate : create
+      rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
+        GoogleAds::SyncResult.error(:campaign_criterion, e)
       end
 
       def delete
@@ -70,6 +83,51 @@ module GoogleAds
       # ═══════════════════════════════════════════════════════════════
 
       private
+
+      # ─────────────────────────────────────────────────────────────
+      # always_on helpers: Check and delete ALL schedules in Google
+      # ─────────────────────────────────────────────────────────────
+
+      def any_schedules_exist_in_google?
+        fetch_all_schedules_in_google.any?
+      end
+
+      def fetch_all_schedules_in_google
+        client.service.google_ads.search(
+          customer_id: customer_id,
+          query: all_schedules_query
+        ).to_a
+      end
+
+      def delete_all_schedules_in_google
+        schedules = fetch_all_schedules_in_google
+        return GoogleAds::SyncResult.unchanged(:campaign_criterion, nil) if schedules.empty?
+
+        operations = schedules.map do |row|
+          criterion_id = row.campaign_criterion.criterion_id
+          resource = "customers/#{customer_id}/campaignCriteria/#{db_schedule.campaign.google_campaign_id}~#{criterion_id}"
+          client.operation.remove_resource.campaign_criterion(resource)
+        end
+
+        mutate(operations)
+        db_schedule.update_column(:platform_settings, db_schedule.platform_settings.deep_merge("google" => { "criterion_id" => nil }))
+        GoogleAds::SyncResult.deleted(:campaign_criterion)
+      rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
+        GoogleAds::SyncResult.error(:campaign_criterion, e)
+      end
+
+      def all_schedules_query
+        <<~GAQL.squish
+          SELECT campaign_criterion.criterion_id
+          FROM campaign_criterion
+          WHERE campaign_criterion.campaign = '#{campaign_resource_name}'
+            AND campaign_criterion.type = 'AD_SCHEDULE'
+        GAQL
+      end
+
+      # ─────────────────────────────────────────────────────────────
+      # Standard CRUD operations
+      # ─────────────────────────────────────────────────────────────
 
       def create
         response = mutate([build_create_operation])

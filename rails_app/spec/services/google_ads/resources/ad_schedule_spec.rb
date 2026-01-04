@@ -421,11 +421,35 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
         expect(result).to be_a(GoogleAds::SyncResult)
         expect(result.error?).to be true
       end
+
+      it 'handles case when Google no longer has the criterion' do
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_criterion)
+          .with("customers/1234567890/campaignCriteria/789~222")
+          .and_return(mock_remove_operation)
+
+        # Google returns "criterion not found" error
+        allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria)
+          .and_raise(mock_google_ads_error(
+            message: "Resource was not found",
+            error_type: :criterion_error,
+            error_value: :CANNOT_REMOVE_IF_NOT_TARGETED
+          ))
+
+        result = resource.delete
+
+        # Could return error or handle gracefully - documenting current behavior
+        expect(result).to be_a(GoogleAds::SyncResult)
+        expect(result.error?).to be true
+      end
     end
   end
 
   # ═══════════════════════════════════════════════════════════════
   # always_on schedules
+  #
+  # CRITICAL: always_on means "we want ZERO schedules in Google"
+  # synced? must ALWAYS verify against Google - cannot trust local state!
   # ═══════════════════════════════════════════════════════════════
 
   describe 'always_on schedules' do
@@ -435,39 +459,153 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
     let(:always_on_resource) { described_class.new(always_on_schedule) }
 
     describe '#synced?' do
-      context 'when always_on and no criterion_id exists' do
-        it 'returns true (no schedules in Google = always on)' do
+      # ─────────────────────────────────────────────────────────────
+      # These tests verify that synced? ACTUALLY checks Google,
+      # not just trusts local db_schedule.google_criterion_id
+      # ─────────────────────────────────────────────────────────────
+
+      context 'when Google has NO schedules for this campaign (truly synced)' do
+        it 'returns true AFTER verifying against Google API' do
+          # Mock: Google returns empty when querying all ad schedules for campaign
+          allow(@mock_google_ads_service).to receive(:search)
+            .with(hash_including(
+              customer_id: "1234567890",
+              query: match(/AD_SCHEDULE/)
+            ))
+            .and_return(mock_empty_search_response)
+
           expect(always_on_resource.synced?).to be true
         end
       end
 
-      context 'when always_on but stale criterion_id exists' do
+      context 'when Google has schedules we do NOT know about (NOT synced!)' do
+        # CRITICAL TEST: This exposes the bug where we trust local state
+        # Local: always_on=true, criterion_id=nil (we think we're clean)
+        # Google: actually has schedules 888, 999 (reality differs!)
+
+        it 'returns false because Google has schedules that should not exist' do
+          # Mock: Google returns schedules even though our local criterion_id is nil
+          schedule_response = mock_search_response_with_ad_schedule_criteria(
+            [888, 999],
+            campaign_id: 789,
+            customer_id: 1234567890
+          )
+          allow(@mock_google_ads_service).to receive(:search)
+            .with(hash_including(
+              customer_id: "1234567890",
+              query: match(/AD_SCHEDULE/)
+            ))
+            .and_return(schedule_response)
+
+          # This MUST return false - Google has schedules!
+          expect(always_on_resource.synced?).to be false
+        end
+      end
+
+      context 'when Google has a schedule we know about (stale criterion)' do
         before do
           always_on_schedule.platform_settings["google"] = { "criterion_id" => 999 }
           always_on_schedule.save!
         end
 
-        it 'returns false (criterion should be deleted)' do
-          criterion_response = mock_search_response_with_ad_schedule(
-            criterion_id: 999,
+        it 'returns false because stale criterion needs deletion' do
+          # The CORRECT implementation queries all schedules for the campaign
+          # The BROKEN implementation uses fetch (specific criterion query)
+          # We mock both to ensure test works regardless of implementation path
+          schedule_response = mock_search_response_with_ad_schedule_criteria(
+            [999],
             campaign_id: 789,
-            customer_id: 1234567890,
-            day_of_week: :MONDAY,
-            start_hour: 9,
-            start_minute: :ZERO,
-            end_hour: 17,
-            end_minute: :ZERO
+            customer_id: 1234567890
           )
-          allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+          # Mock both the "all schedules" query and the "specific criterion" query
+          allow(@mock_google_ads_service).to receive(:search).and_return(schedule_response)
 
           expect(always_on_resource.synced?).to be false
+        end
+      end
+
+      context 'when API error occurs during any_schedules_exist_in_google? check' do
+        # NOTE: This test documents expected behavior - when Google check fails,
+        # we should NOT assume we're synced. Could raise or return false.
+        it 'raises or returns false (does NOT assume synced)' do
+          allow(@mock_google_ads_service).to receive(:search)
+            .with(hash_including(
+              customer_id: "1234567890",
+              query: match(/AD_SCHEDULE/)
+            ))
+            .and_raise(mock_google_ads_error(message: "Search failed"))
+
+          # Option A: raises (conservative - surface the error)
+          # Option B: returns false (fail-safe - assume not synced)
+          # Implementation should choose one - test documents behavior
+          expect {
+            always_on_resource.synced?
+          }.to raise_error(Google::Ads::GoogleAds::Errors::GoogleAdsError)
+        end
+      end
+    end
+
+    # ─────────────────────────────────────────────────────────────
+    # #delete for always_on schedules
+    #
+    # QUESTION: Should delete for always_on behave differently?
+    # Option A: delete only removes known criterion (current behavior)
+    # Option B: delete removes ALL schedules in Google (more correct?)
+    #
+    # Currently documenting Option A behavior. If you change to Option B,
+    # update these tests accordingly.
+    # ─────────────────────────────────────────────────────────────
+
+    describe '#delete' do
+      context 'when no criterion_id exists locally' do
+        it 'returns not_found even if Google has schedules' do
+          # This is arguably a bug - we're not checking Google!
+          # But delete is meant for explicit deletion, not sync
+          # The sync method should handle cleanup
+          result = always_on_resource.delete
+
+          expect(result).to be_a(GoogleAds::SyncResult)
+          expect(result.not_found?).to be true
+        end
+      end
+
+      context 'when criterion_id exists locally' do
+        before do
+          always_on_schedule.platform_settings["google"] = { "criterion_id" => 999 }
+          always_on_schedule.save!
+        end
+
+        it 'deletes only the known criterion (does NOT check for others)' do
+          # NOTE: This test documents current behavior
+          # For always_on, sync should handle finding ALL schedules
+          mock_remove_operation = double("RemoveOperation")
+          allow(@mock_remove_resource).to receive(:campaign_criterion)
+            .with("customers/1234567890/campaignCriteria/789~999")
+            .and_return(mock_remove_operation)
+
+          mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 999, campaign_id: 789, customer_id: 1234567890)
+          allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria).and_return(mutate_response)
+
+          result = always_on_resource.delete
+
+          expect(result).to be_a(GoogleAds::SyncResult)
+          expect(result.deleted?).to be true
+          expect(always_on_schedule.reload.google_criterion_id).to be_nil
         end
       end
     end
 
     describe '#sync' do
-      context 'when always_on and no criterion_id exists' do
-        it 'returns unchanged SyncResult without making API calls' do
+      context 'when Google has NO schedules (already synced)' do
+        it 'returns unchanged SyncResult without making mutate API calls' do
+          # Mock: Google confirms no schedules exist
+          allow(@mock_google_ads_service).to receive(:search)
+            .with(hash_including(
+              customer_id: "1234567890",
+              query: match(/AD_SCHEDULE/)
+            ))
+            .and_return(mock_empty_search_response)
+
           expect(@mock_campaign_criterion_service).not_to receive(:mutate_campaign_criteria)
 
           result = always_on_resource.sync
@@ -478,13 +616,62 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
         end
       end
 
-      context 'when always_on but stale criterion exists' do
+      context 'when Google has unknown schedules we need to delete' do
+        # CRITICAL: This tests that sync deletes schedules we didn't know about
+        it 'deletes ALL schedules in Google to achieve always-on state' do
+          # Mock: Google has schedules 888, 999 that we don't have locally
+          schedule_response = mock_search_response_with_ad_schedule_criteria(
+            [888, 999],
+            campaign_id: 789,
+            customer_id: 1234567890
+          )
+          allow(@mock_google_ads_service).to receive(:search)
+            .with(hash_including(
+              customer_id: "1234567890",
+              query: match(/AD_SCHEDULE/)
+            ))
+            .and_return(schedule_response)
+
+          # Expect deletion operations for BOTH unknown criteria
+          mock_remove_op_888 = double("RemoveOperation888")
+          mock_remove_op_999 = double("RemoveOperation999")
+          allow(@mock_remove_resource).to receive(:campaign_criterion)
+            .with("customers/1234567890/campaignCriteria/789~888")
+            .and_return(mock_remove_op_888)
+          allow(@mock_remove_resource).to receive(:campaign_criterion)
+            .with("customers/1234567890/campaignCriteria/789~999")
+            .and_return(mock_remove_op_999)
+
+          mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 888, campaign_id: 789, customer_id: 1234567890)
+          allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria).and_return(mutate_response)
+
+          result = always_on_resource.sync
+
+          expect(result).to be_a(GoogleAds::SyncResult)
+          expect(result.deleted?).to be true
+        end
+      end
+
+      context 'when Google has known stale criterion (we have criterion_id locally)' do
         before do
           always_on_schedule.platform_settings["google"] = { "criterion_id" => 999 }
           always_on_schedule.save!
         end
 
         it 'deletes the stale criterion to achieve always-on state' do
+          # Mock: Google confirms the criterion exists
+          schedule_response = mock_search_response_with_ad_schedule_criteria(
+            [999],
+            campaign_id: 789,
+            customer_id: 1234567890
+          )
+          allow(@mock_google_ads_service).to receive(:search)
+            .with(hash_including(
+              customer_id: "1234567890",
+              query: match(/AD_SCHEDULE/)
+            ))
+            .and_return(schedule_response)
+
           mock_remove_operation = double("RemoveOperation")
           allow(@mock_remove_resource).to receive(:campaign_criterion)
             .with("customers/1234567890/campaignCriteria/789~999")
@@ -498,6 +685,57 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           expect(result).to be_a(GoogleAds::SyncResult)
           expect(result.deleted?).to be true
           expect(always_on_schedule.reload.google_criterion_id).to be_nil
+        end
+      end
+
+      context 'when API error occurs during any_schedules_exist_in_google? check' do
+        it 'returns error SyncResult' do
+          allow(@mock_google_ads_service).to receive(:search)
+            .with(hash_including(
+              customer_id: "1234567890",
+              query: match(/AD_SCHEDULE/)
+            ))
+            .and_raise(mock_google_ads_error(message: "Search failed"))
+
+          result = always_on_resource.sync
+
+          expect(result).to be_a(GoogleAds::SyncResult)
+          expect(result.error?).to be true
+        end
+      end
+
+      context 'when batch deletion partially fails' do
+        it 'returns error SyncResult when mutate fails' do
+          # Mock: Google has schedules 888, 999
+          schedule_response = mock_search_response_with_ad_schedule_criteria(
+            [888, 999],
+            campaign_id: 789,
+            customer_id: 1234567890
+          )
+          allow(@mock_google_ads_service).to receive(:search)
+            .with(hash_including(
+              customer_id: "1234567890",
+              query: match(/AD_SCHEDULE/)
+            ))
+            .and_return(schedule_response)
+
+          mock_remove_op_888 = double("RemoveOperation888")
+          mock_remove_op_999 = double("RemoveOperation999")
+          allow(@mock_remove_resource).to receive(:campaign_criterion)
+            .with("customers/1234567890/campaignCriteria/789~888")
+            .and_return(mock_remove_op_888)
+          allow(@mock_remove_resource).to receive(:campaign_criterion)
+            .with("customers/1234567890/campaignCriteria/789~999")
+            .and_return(mock_remove_op_999)
+
+          # Mutate call fails
+          allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria)
+            .and_raise(mock_google_ads_error(message: "Partial operation failed"))
+
+          result = always_on_resource.sync
+
+          expect(result).to be_a(GoogleAds::SyncResult)
+          expect(result.error?).to be true
         end
       end
     end
