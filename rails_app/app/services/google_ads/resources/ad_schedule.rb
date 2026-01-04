@@ -79,10 +79,139 @@ module GoogleAds
       end
 
       # ═══════════════════════════════════════════════════════════════
+      # SYNC PLAN - dry run planning
+      #
+      # Returns a Plan showing what sync() WOULD do without executing
+      # ═══════════════════════════════════════════════════════════════
+
+      def sync_plan
+        if db_schedule.always_on?
+          return plan_always_on_sync
+        end
+
+        plan_specific_schedule_sync
+      end
+
+      # ═══════════════════════════════════════════════════════════════
+      # CLASS METHODS - Collection Operations
+      #
+      # These operate on all ad_schedules for a campaign
+      # ═══════════════════════════════════════════════════════════════
+
+      class << self
+        # Check if all ad_schedules for a campaign are synced to Google
+        #
+        # Returns true if:
+        # 1. No soft-deleted records have google_criterion_id
+        # 2. All active records are synced
+        def synced?(campaign)
+          # Any soft-deleted records with criterion_id means NOT synced
+          return false if campaign.ad_schedules.only_deleted.any? { |s| s.google_criterion_id.present? }
+
+          # All active records must be synced
+          campaign.ad_schedules.all? { |schedule| new(schedule).synced? }
+        end
+
+        # Sync all ad_schedules for a campaign to Google
+        #
+        # Performs:
+        # 1. Delete soft-deleted records that have google_criterion_id
+        # 2. Sync all active records
+        def sync_all(campaign)
+          results = []
+
+          # Delete soft-deleted records from Google
+          campaign.ad_schedules.only_deleted.each do |schedule|
+            next unless schedule.google_criterion_id
+
+            results << new(schedule).delete
+          end
+
+          # Sync all active records
+          campaign.ad_schedules.each do |schedule|
+            results << new(schedule).sync
+          end
+
+          Sync::CollectionSyncResult.new(results: results)
+        end
+
+        # Dry-run planning for all ad_schedules in a campaign
+        #
+        # Returns a Plan showing what sync_all() WOULD do:
+        # 1. Deleted records with google_criterion_id → :delete operations
+        # 2. Active records → delegated to their individual sync_plan
+        def sync_plan(campaign)
+          operations = []
+
+          # Plan deletions for soft-deleted records that have google_criterion_id
+          campaign.ad_schedules.only_deleted.each do |schedule|
+            next unless schedule.google_criterion_id
+
+            operations << {
+              action: :delete,
+              record: schedule,
+              criterion_id: schedule.google_criterion_id
+            }
+          end
+
+          # Plan syncs for active records
+          campaign.ad_schedules.each do |schedule|
+            record_plan = new(schedule).sync_plan
+            operations.concat(record_plan.operations)
+          end
+
+          Sync::Plan.new(operations)
+        end
+      end
+
+      # ═══════════════════════════════════════════════════════════════
       # GOOGLE API OPERATIONS
       # ═══════════════════════════════════════════════════════════════
 
       private
+
+      def plan_always_on_sync
+        schedules = fetch_all_schedules_in_google
+
+        if schedules.empty?
+          GoogleAds::Sync::Plan.new([{ action: :unchanged, record: db_schedule }])
+        else
+          operations = schedules.map do |row|
+            { action: :delete, criterion_id: row.campaign_criterion.criterion_id }
+          end
+          GoogleAds::Sync::Plan.new(operations)
+        end
+      end
+
+      def plan_specific_schedule_sync
+        # No criterion_id → needs create
+        unless db_schedule.google_criterion_id
+          return GoogleAds::Sync::Plan.new([{ action: :create, record: db_schedule }])
+        end
+
+        # Has criterion_id → fetch from Google and check
+        googles_schedule = fetch
+
+        # Google doesn't have it → needs recreate (update)
+        unless googles_schedule
+          return GoogleAds::Sync::Plan.new([{
+            action: :update,
+            record: db_schedule,
+            reason: :missing_in_google
+          }])
+        end
+
+        # Google has it → check if fields match
+        if fields_match?(googles_schedule)
+          GoogleAds::Sync::Plan.new([{ action: :unchanged, record: db_schedule }])
+        else
+          GoogleAds::Sync::Plan.new([{
+            action: :update,
+            record: db_schedule,
+            reason: :fields_mismatch
+          }])
+        end
+      end
 
       # ─────────────────────────────────────────────────────────────
       # always_on helpers: Check and delete ALL schedules in Google

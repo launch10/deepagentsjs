@@ -449,8 +449,7 @@ class GoogleAdsE2ETest
       day = schedule.day_of_week
       schedule.destroy
 
-      syncer = GoogleAds::AdSchedules.new(@campaign)
-      syncer.sync
+      GoogleAds::Resources::AdSchedule.sync_all(@campaign)
 
       schedule.reload
       if schedule.google_criterion_id.nil?

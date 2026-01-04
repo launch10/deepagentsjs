@@ -156,8 +156,23 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
 
   describe '#synced?' do
     context 'when no criterion_id exists' do
-      it 'returns false' do
-        expect(resource.synced?).to be false
+      context "when schedule is always_on" do
+        it 'returns true' do
+          allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+
+          campaign.update_ad_schedules(always_on: true)
+          resource = described_class.new(campaign.ad_schedules.first)
+          expect(resource.synced?).to be true
+        end
+      end
+
+      context "when schedule isnt always_on" do
+        it 'returns false when always_on is false but no schedules exist in Google' do
+          schedule.update(always_on: false)
+          allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+
+          expect(resource.synced?).to be false
+        end
       end
     end
 
@@ -393,6 +408,8 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
       end
 
       it 'persists nil criterion_id to the database' do
+        schedule.destroy
+
         mock_remove_operation = double("RemoveOperation")
         allow(@mock_remove_resource).to receive(:campaign_criterion)
           .with("customers/1234567890/campaignCriteria/789~222")
@@ -403,7 +420,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
 
         resource.delete
 
-        fresh_schedule = ::AdSchedule.find(schedule.id)
+        fresh_schedule = ::AdSchedule.with_deleted.find(schedule.id)
         expect(fresh_schedule.google_criterion_id).to be_nil
       end
 
@@ -827,6 +844,505 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
 
         expect(result).not_to be_nil
         expect(result.ad_schedule.day_of_week).to eq(:MONDAY)
+      end
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # #sync_plan - dry run planning
+  #
+  # Returns a Plan showing what sync() WOULD do without executing
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '#sync_plan' do
+    describe 'specific schedules (not always_on)' do
+      context 'when already synced' do
+        before do
+          schedule.platform_settings["google"] = { "criterion_id" => 222 }
+          schedule.save!
+        end
+
+        it 'returns plan with unchanged operation' do
+          criterion_response = mock_search_response_with_ad_schedule(
+            criterion_id: 222,
+            campaign_id: 789,
+            customer_id: 1234567890,
+            day_of_week: :MONDAY,
+            start_hour: 9,
+            start_minute: :ZERO,
+            end_hour: 17,
+            end_minute: :ZERO,
+            bid_modifier: 1.5
+          )
+          allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+          plan = resource.sync_plan
+
+          expect(plan).to be_a(GoogleAds::Sync::Plan)
+          expect(plan.any_changes?).to be false
+          expect(plan.unchanged.size).to eq(1)
+          expect(plan.unchanged.first[:record]).to eq(schedule)
+        end
+      end
+
+      context 'when no criterion_id exists (needs create)' do
+        before do
+          schedule.platform_settings["google"] = {}
+          schedule.save!
+        end
+
+        it 'returns plan with create operation' do
+          allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+
+          plan = resource.sync_plan
+
+          expect(plan).to be_a(GoogleAds::Sync::Plan)
+          expect(plan.any_changes?).to be true
+          expect(plan.creates.size).to eq(1)
+          expect(plan.creates.first[:action]).to eq(:create)
+          expect(plan.creates.first[:record]).to eq(schedule)
+        end
+      end
+
+      context 'when criterion_id exists but fields mismatch (needs update/recreate)' do
+        before do
+          schedule.platform_settings["google"] = { "criterion_id" => 222 }
+          schedule.start_hour = 10  # Changed from 9 to 10
+          schedule.save!
+        end
+
+        it 'returns plan with update operation' do
+          # Mock Google returning the old values (mismatch)
+          criterion_response = mock_search_response_with_ad_schedule(
+            criterion_id: 222,
+            campaign_id: 789,
+            customer_id: 1234567890,
+            day_of_week: :MONDAY,
+            start_hour: 9,  # Google has 9, local has 10
+            start_minute: :ZERO,
+            end_hour: 17,
+            end_minute: :ZERO
+          )
+          allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+          plan = resource.sync_plan
+
+          expect(plan).to be_a(GoogleAds::Sync::Plan)
+          expect(plan.any_changes?).to be true
+          expect(plan.updates.size).to eq(1)
+          expect(plan.updates.first[:action]).to eq(:update)
+          expect(plan.updates.first[:record]).to eq(schedule)
+          expect(plan.updates.first[:reason]).to eq(:fields_mismatch)
+        end
+      end
+
+      context 'when criterion_id exists but Google does not have it' do
+        before do
+          schedule.platform_settings["google"] = { "criterion_id" => 222 }
+          schedule.save!
+        end
+
+        it 'returns plan with update operation (recreate needed)' do
+          allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+
+          plan = resource.sync_plan
+
+          expect(plan).to be_a(GoogleAds::Sync::Plan)
+          expect(plan.any_changes?).to be true
+          expect(plan.updates.size).to eq(1)
+          expect(plan.updates.first[:reason]).to eq(:missing_in_google)
+        end
+      end
+    end
+
+    describe 'always_on schedules' do
+      let(:always_on_schedule) { create(:ad_schedule, :always_on, campaign: campaign) }
+      let(:always_on_resource) { described_class.new(always_on_schedule) }
+
+      context 'when Google has NO schedules (already synced)' do
+        it 'returns plan with unchanged operation' do
+          allow(@mock_google_ads_service).to receive(:search)
+            .with(hash_including(query: match(/AD_SCHEDULE/)))
+            .and_return(mock_empty_search_response)
+
+          plan = always_on_resource.sync_plan
+
+          expect(plan).to be_a(GoogleAds::Sync::Plan)
+          expect(plan.any_changes?).to be false
+          expect(plan.unchanged.size).to eq(1)
+          expect(plan.unchanged.first[:record]).to eq(always_on_schedule)
+        end
+      end
+
+      context 'when Google has schedules that need deletion' do
+        it 'returns plan with delete operations for ALL Google schedules' do
+          schedule_response = mock_search_response_with_ad_schedule_criteria(
+            [888, 999],
+            campaign_id: 789,
+            customer_id: 1234567890
+          )
+          allow(@mock_google_ads_service).to receive(:search)
+            .with(hash_including(query: match(/AD_SCHEDULE/)))
+            .and_return(schedule_response)
+
+          plan = always_on_resource.sync_plan
+
+          expect(plan).to be_a(GoogleAds::Sync::Plan)
+          expect(plan.any_changes?).to be true
+          expect(plan.deletes.size).to eq(2)
+          expect(plan.deletes.map { |d| d[:criterion_id] }).to match_array([888, 999])
+        end
+      end
+
+      context 'when API error occurs during check' do
+        it 'raises the error (cannot plan without knowing Google state)' do
+          allow(@mock_google_ads_service).to receive(:search)
+            .with(hash_including(query: match(/AD_SCHEDULE/)))
+            .and_raise(mock_google_ads_error(message: "Search failed"))
+
+          expect {
+            always_on_resource.sync_plan
+          }.to raise_error(Google::Ads::GoogleAds::Errors::GoogleAdsError)
+        end
+      end
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # CLASS METHODS - Collection Operations
+  #
+  # These operate on all ad_schedules for a campaign
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '.sync_plan' do
+    # ═══════════════════════════════════════════════════════════════
+    # Complex scenario: User changes schedule configuration
+    #
+    # BEFORE: Tuesday 9-5, Wednesday 9-5 (both synced to Google)
+    # AFTER:  Monday 8-6, Wednesday 8-6
+    #
+    # Expected operations:
+    # - DELETE Tuesday (soft-deleted, has google_criterion_id)
+    # - UPDATE Wednesday (fields changed: 9-5 → 8-6)
+    # - CREATE Monday (new record, no google_criterion_id)
+    # ═══════════════════════════════════════════════════════════════
+
+    context 'when switching from Tue/Wed 9-5 to Mon/Wed 8-6' do
+      let!(:tuesday_schedule) do
+        create(:ad_schedule,
+          campaign: campaign,
+          day_of_week: "Tuesday",
+          start_hour: 9, start_minute: 0,
+          end_hour: 17, end_minute: 0
+        ).tap do |s|
+          s.update_column(:platform_settings, { "google" => { "criterion_id" => 111 } })
+        end
+      end
+
+      let!(:wednesday_schedule) do
+        create(:ad_schedule,
+          campaign: campaign,
+          day_of_week: "Wednesday",
+          start_hour: 9, start_minute: 0,
+          end_hour: 17, end_minute: 0
+        ).tap do |s|
+          s.update_column(:platform_settings, { "google" => { "criterion_id" => 222 } })
+        end
+      end
+
+      before do
+        # Simulate user changing the schedule:
+        # 1. Soft-delete Tuesday
+        tuesday_schedule.destroy
+
+        # 2. Update Wednesday times (9-5 → 8-6)
+        wednesday_schedule.update!(start_hour: 8, end_hour: 18)
+
+        # 3. Create Monday (new)
+        @monday_schedule = create(:ad_schedule,
+          campaign: campaign,
+          day_of_week: "Monday",
+          start_hour: 8, start_minute: 0,
+          end_hour: 18, end_minute: 0
+        )
+
+        # Mock Google responses for the schedules that exist
+        # Wednesday: Google still has old times (9-5), so it's a mismatch
+        wednesday_response = mock_search_response_with_ad_schedule(
+          criterion_id: 222,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          day_of_week: :WEDNESDAY,
+          start_hour: 9,  # Google has 9, local has 8 → mismatch
+          start_minute: :ZERO,
+          end_hour: 17,   # Google has 17, local has 18 → mismatch
+          end_minute: :ZERO
+        )
+
+        # Monday: no criterion_id, so fetch won't be called
+        # Tuesday: soft-deleted, won't be fetched
+
+        allow(@mock_google_ads_service).to receive(:search)
+          .with(hash_including(query: match(/criterion_id = 222/)))
+          .and_return(wednesday_response)
+      end
+
+      it 'returns a plan with 1 delete, 1 update, 1 create' do
+        plan = described_class.sync_plan(campaign)
+
+        expect(plan).to be_a(GoogleAds::Sync::Plan)
+        expect(plan.any_changes?).to be true
+
+        # Verify counts
+        expect(plan.deletes.size).to eq(1)
+        expect(plan.updates.size).to eq(1)
+        expect(plan.creates.size).to eq(1)
+      end
+
+      it 'plans deletion of Tuesday (soft-deleted with google_criterion_id)' do
+        plan = described_class.sync_plan(campaign)
+
+        delete_op = plan.deletes.first
+        expect(delete_op[:action]).to eq(:delete)
+        expect(delete_op[:record].day_of_week).to eq("Tuesday")
+        expect(delete_op[:criterion_id]).to eq(111)
+      end
+
+      it 'plans update of Wednesday (fields mismatch)' do
+        plan = described_class.sync_plan(campaign)
+
+        update_op = plan.updates.first
+        expect(update_op[:action]).to eq(:update)
+        expect(update_op[:record].day_of_week).to eq("Wednesday")
+        expect(update_op[:reason]).to eq(:fields_mismatch)
+      end
+
+      it 'plans creation of Monday (new record)' do
+        plan = described_class.sync_plan(campaign)
+
+        create_op = plan.creates.first
+        expect(create_op[:action]).to eq(:create)
+        expect(create_op[:record].day_of_week).to eq("Monday")
+      end
+    end
+
+    context 'when all schedules are already synced' do
+      let!(:monday_schedule) do
+        create(:ad_schedule,
+          campaign: campaign,
+          day_of_week: "Monday",
+          start_hour: 9, start_minute: 0,
+          end_hour: 17, end_minute: 0
+        ).tap do |s|
+          s.update_column(:platform_settings, { "google" => { "criterion_id" => 333 } })
+        end
+      end
+
+      before do
+        # Mock Google returning matching values
+        monday_response = mock_search_response_with_ad_schedule(
+          criterion_id: 333,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          day_of_week: :MONDAY,
+          start_hour: 9,
+          start_minute: :ZERO,
+          end_hour: 17,
+          end_minute: :ZERO
+        )
+
+        allow(@mock_google_ads_service).to receive(:search)
+          .with(hash_including(query: match(/criterion_id = 333/)))
+          .and_return(monday_response)
+      end
+
+      it 'returns a plan with no changes' do
+        plan = described_class.sync_plan(campaign)
+
+        expect(plan).to be_a(GoogleAds::Sync::Plan)
+        expect(plan.any_changes?).to be false
+        expect(plan.unchanged.size).to eq(1)
+      end
+    end
+
+    context 'when soft-deleted record has no google_criterion_id' do
+      let!(:schedule) do
+        create(:ad_schedule,
+          campaign: campaign,
+          day_of_week: "Monday",
+          start_hour: 9, start_minute: 0,
+          end_hour: 17, end_minute: 0
+        )
+        # No google_criterion_id set
+      end
+
+      before do
+        schedule.destroy  # Soft delete
+      end
+
+      it 'does not include delete operation (nothing to delete in Google)' do
+        plan = described_class.sync_plan(campaign)
+
+        expect(plan.deletes).to be_empty
+        expect(plan.empty?).to be true
+      end
+    end
+
+    context 'when switching to always_on' do
+      let!(:monday_schedule) do
+        create(:ad_schedule,
+          campaign: campaign,
+          day_of_week: "Monday",
+          start_hour: 9, start_minute: 0,
+          end_hour: 17, end_minute: 0
+        ).tap do |s|
+          s.update_column(:platform_settings, { "google" => { "criterion_id" => 444 } })
+        end
+      end
+
+      before do
+        # Soft-delete specific schedule
+        monday_schedule.destroy
+
+        # Create always_on schedule
+        @always_on = create(:ad_schedule, :always_on, campaign: campaign)
+
+        # Mock: Google has the Monday schedule (444) and maybe others
+        schedule_response = mock_search_response_with_ad_schedule_criteria(
+          [444, 555],  # Google has criterion 444 (our Monday) plus an unknown 555
+          campaign_id: 789,
+          customer_id: 1234567890
+        )
+        allow(@mock_google_ads_service).to receive(:search)
+          .with(hash_including(query: match(/AD_SCHEDULE/)))
+          .and_return(schedule_response)
+      end
+
+      it 'plans deletion of soft-deleted record AND all Google schedules for always_on' do
+        plan = described_class.sync_plan(campaign)
+
+        expect(plan.any_changes?).to be true
+
+        # Soft-deleted Monday needs deletion
+        soft_delete_op = plan.deletes.find { |d| d[:record]&.day_of_week == "Monday" }
+        expect(soft_delete_op).to be_present
+        expect(soft_delete_op[:criterion_id]).to eq(444)
+
+        # always_on also plans deletion of all Google schedules (444, 555)
+        always_on_deletes = plan.deletes.select { |d| d[:criterion_id].present? && d[:record].nil? }
+        expect(always_on_deletes.map { |d| d[:criterion_id] }).to include(444, 555)
+      end
+    end
+  end
+
+  describe '.sync_all' do
+    let(:mock_create_resource) { double("CreateResource") }
+
+    before do
+      allow(@mock_operation).to receive(:create_resource).and_return(mock_create_resource)
+    end
+
+    context 'when soft-deleted record has google_criterion_id' do
+      let!(:deleted_schedule) do
+        create(:ad_schedule,
+          campaign: campaign,
+          day_of_week: "Tuesday",
+          start_hour: 9, start_minute: 0,
+          end_hour: 17, end_minute: 0
+        ).tap do |s|
+          s.update_column(:platform_settings, { "google" => { "criterion_id" => 111 } })
+          s.destroy  # Soft delete
+        end
+      end
+
+      it 'deletes the soft-deleted record from Google' do
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_criterion)
+          .with("customers/1234567890/campaignCriteria/789~111")
+          .and_return(mock_remove_operation)
+
+        mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 111, campaign_id: 789, customer_id: 1234567890)
+        allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria).and_return(mutate_response)
+
+        result = described_class.sync_all(campaign)
+
+        expect(result).to be_a(GoogleAds::Sync::CollectionSyncResult)
+        expect(result.results.any?(&:deleted?)).to be true
+      end
+    end
+
+    context 'when active records need syncing' do
+      let!(:new_schedule) do
+        create(:ad_schedule,
+          campaign: campaign,
+          day_of_week: "Monday",
+          start_hour: 9, start_minute: 0,
+          end_hour: 17, end_minute: 0
+        )
+        # No google_criterion_id - needs creation
+      end
+
+      it 'syncs active records and returns CollectionSyncResult' do
+        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+
+        mock_criterion = mock_campaign_criterion_with_ad_schedule_resource
+        mock_ad_schedule_info = mock_ad_schedule_info_resource
+        allow(@mock_resource).to receive(:ad_schedule_info).and_yield(mock_ad_schedule_info).and_return(mock_ad_schedule_info)
+        allow(mock_create_resource).to receive(:campaign_criterion).and_yield(mock_criterion)
+
+        mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 333, campaign_id: 789, customer_id: 1234567890)
+        allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria).and_return(mutate_response)
+
+        result = described_class.sync_all(campaign)
+
+        expect(result).to be_a(GoogleAds::Sync::CollectionSyncResult)
+        expect(result.results.any?(&:created?)).to be true
+      end
+    end
+
+    context 'when combining delete and sync operations' do
+      let!(:deleted_schedule) do
+        create(:ad_schedule,
+          campaign: campaign,
+          day_of_week: "Tuesday",
+          start_hour: 9, start_minute: 0,
+          end_hour: 17, end_minute: 0
+        ).tap do |s|
+          s.update_column(:platform_settings, { "google" => { "criterion_id" => 111 } })
+          s.destroy
+        end
+      end
+
+      let!(:new_schedule) do
+        create(:ad_schedule,
+          campaign: campaign,
+          day_of_week: "Monday",
+          start_hour: 9, start_minute: 0,
+          end_hour: 17, end_minute: 0
+        )
+      end
+
+      it 'handles both deletions and creates in correct order' do
+        # Mock delete operation
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_criterion)
+          .with("customers/1234567890/campaignCriteria/789~111")
+          .and_return(mock_remove_operation)
+
+        # Mock create operation
+        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+        mock_criterion = mock_campaign_criterion_with_ad_schedule_resource
+        mock_ad_schedule_info = mock_ad_schedule_info_resource
+        allow(@mock_resource).to receive(:ad_schedule_info).and_yield(mock_ad_schedule_info).and_return(mock_ad_schedule_info)
+        allow(mock_create_resource).to receive(:campaign_criterion).and_yield(mock_criterion)
+
+        mutate_response = mock_mutate_campaign_criterion_response(criterion_id: 333, campaign_id: 789, customer_id: 1234567890)
+        allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria).and_return(mutate_response)
+
+        result = described_class.sync_all(campaign)
+
+        expect(result).to be_a(GoogleAds::Sync::CollectionSyncResult)
+        expect(result.results.size).to eq(2)
       end
     end
   end

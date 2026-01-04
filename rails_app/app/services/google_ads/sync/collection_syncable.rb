@@ -39,6 +39,37 @@ module GoogleAds
       end
       memoize :sync_result
 
+      # ─────────────────────────────────────────────────────────────
+      # sync_plan - dry run planning for the entire collection
+      #
+      # Returns a Plan showing what sync() WOULD do:
+      # 1. Deleted records with remote IDs → :delete operations
+      # 2. Active records → delegated to their individual sync_plan
+      # ─────────────────────────────────────────────────────────────
+
+      def sync_plan
+        operations = []
+
+        # Plan deletions for soft-deleted records that have remote IDs
+        deleted_records.each do |record|
+          if remote_id_for(record).present?
+            operations << {
+              action: :delete,
+              record: record,
+              criterion_id: remote_id_for(record)
+            }
+          end
+        end
+
+        # Plan syncs for active records
+        active_records.each do |record|
+          record_plan = record.google_sync_plan
+          operations.concat(record_plan.operations)
+        end
+
+        Plan.new(operations)
+      end
+
       private
 
       def active_records

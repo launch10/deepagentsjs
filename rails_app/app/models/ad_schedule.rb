@@ -29,8 +29,6 @@
 #
 class AdSchedule < ApplicationRecord
   include PlatformSettings
-  include GoogleMappable
-  include GoogleSyncable
 
   belongs_to :campaign
   has_one :ads_account, through: :campaign
@@ -38,15 +36,6 @@ class AdSchedule < ApplicationRecord
   acts_as_paranoid
 
   platform_setting :google, :criterion_id
-
-  use_google_sync GoogleAds::AdSchedule
-
-  after_google_sync do |result|
-    if result.resource_name.present?
-      criterion_id = result.resource_name.split("~").last
-      update_column(:platform_settings, platform_settings.deep_merge("google" => { "criterion_id" => criterion_id }))
-    end
-  end
 
   DAYS_OF_WEEK = %w[Monday Tuesday Wednesday Thursday Friday Saturday Sunday].freeze
 
@@ -62,6 +51,41 @@ class AdSchedule < ApplicationRecord
 
   scope :always_on, -> { where(always_on: true) }
   scope :scheduled, -> { where(always_on: false) }
+
+  def google_sync
+    google_syncer.sync
+  end
+
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
+
+  def google_sync_plan
+    google_syncer.sync_plan
+  end
+
+  def google_syncer
+    GoogleAds::Resources::AdSchedule.new(self)
+  end
+
+  # Returns current sync status without making changes
+  def google_sync_result
+    if google_synced?
+      GoogleAds::SyncResult.unchanged(:campaign_criterion, google_criterion_id)
+    elsif google_criterion_id.nil?
+      GoogleAds::SyncResult.not_found(:campaign_criterion)
+    else
+      GoogleAds::SyncResult.unchanged(:campaign_criterion, google_criterion_id)
+    end
+  end
 
   def on_now?(time = Time.current)
     return true if always_on?

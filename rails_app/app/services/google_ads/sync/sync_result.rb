@@ -3,14 +3,15 @@ module GoogleAds
     class SyncResult
       attr_reader :resource_type, :resource_name, :action, :comparisons, :error
 
-      ACTIONS = [:created, :updated, :unchanged, :deleted, :not_found, :error].freeze
+      ACTIONS = [:created, :updated, :unchanged, :deleted, :not_found, :error, :no_remote_needed].freeze
 
-      def initialize(resource_type:, action:, resource_name: nil, comparisons: [], error: nil)
+      def initialize(resource_type:, action:, resource_name: nil, comparisons: [], error: nil, no_remote_needed: false)
         @resource_type = resource_type
         @resource_name = resource_name
         @action = action
         @comparisons = comparisons
         @error = error
+        @no_remote_needed = no_remote_needed
       end
 
       def created?
@@ -43,7 +44,12 @@ module GoogleAds
 
       def synced?
         return true if deleted?
+        return true if @no_remote_needed && comparisons.empty?
         comparisons.any? && values_match?
+      end
+
+      def no_remote_needed?
+        @no_remote_needed
       end
 
       def values_match?

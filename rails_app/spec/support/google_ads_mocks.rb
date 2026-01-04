@@ -796,6 +796,26 @@ module GoogleAdsMocks
       customer_user_access_invitation: nil)
     [row]
   end
+
+  # Helper to mock a search response with multiple ad schedule criteria
+  # Used when checking if ANY schedules exist for a campaign (always_on verification)
+  def mock_search_response_with_ad_schedule_criteria(criterion_ids, campaign_id: 789, customer_id: 456)
+    criterion_ids.map do |criterion_id|
+      ad_schedule = double("AdScheduleInfo",
+        day_of_week: :MONDAY,
+        start_hour: 9,
+        start_minute: :ZERO,
+        end_hour: 17,
+        end_minute: :ZERO)
+      criterion = double("CampaignCriterion",
+        resource_name: "customers/#{customer_id}/campaignCriteria/#{campaign_id}~#{criterion_id}",
+        criterion_id: criterion_id,
+        campaign: "customers/#{customer_id}/campaigns/#{campaign_id}",
+        ad_schedule: ad_schedule,
+        bid_modifier: nil)
+      double("GoogleAdsRow", campaign_criterion: criterion)
+    end
+  end
 end
 
 RSpec.configure do |config|
