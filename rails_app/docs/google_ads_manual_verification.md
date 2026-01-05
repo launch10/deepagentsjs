@@ -17,9 +17,9 @@ Before running verification, clean up any old test accounts from previous runs.
 
 ```bash
 cd rails_app
-bundle exec ruby bin/cleanup_test_accounts.rb --list
-bundle exec ruby bin/cleanup_test_accounts.rb --hide # use this
-bundle exec ruby bin/cleanup_test_accounts.rb --unlink # this might be preferable for production, but we can't unlink test accounts, so we hide instead
+bundle exec ruby bin/google_ads/cleanup_test_accounts.rb --list
+bundle exec ruby bin/google_ads/cleanup_test_accounts.rb --hide # use this
+bundle exec ruby bin/google_ads/cleanup_test_accounts.rb --unlink # this might be preferable for production, but we can't unlink test accounts, so we hide instead
 ```
 
 This shows all accounts under the MCC with their status (🟢 ENABLED, 🔴 CANCELED/CLOSED).
@@ -27,13 +27,13 @@ This shows all accounts under the MCC with their status (🟢 ENABLED, 🔴 CANC
 ### Option A: Hide old accounts (best for local development)
 
 ```bash
-bundle exec ruby bin/cleanup_test_accounts.rb --hide
+bundle exec ruby bin/google_ads/cleanup_test_accounts.rb --hide
 ```
 
 ### Option B: Unlink accounts from MCC (recommended)
 
 ```bash
-bundle exec ruby bin/cleanup_test_accounts.rb --unlink
+bundle exec ruby bin/google_ads/cleanup_test_accounts.rb --unlink
 ```
 
 - Completely removes accounts from MCC
@@ -43,7 +43,7 @@ bundle exec ruby bin/cleanup_test_accounts.rb --unlink
 ### Interactive mode
 
 ```bash
-bundle exec ruby bin/cleanup_test_accounts.rb
+bundle exec ruby bin/google_ads/cleanup_test_accounts.rb
 ```
 
 Prompts you to choose between cancel or unlink.
@@ -172,6 +172,7 @@ Then reset back to all the time:
 campaign.update_ad_schedules(
     always_on: true,
 )
+campaign.reload
 runner = CampaignDeploy::StepRunner.new(campaign)
 runner.find(:create_schedule).run
 ```
@@ -264,7 +265,7 @@ Run these after all CREATE tests complete.
 budget = campaign.budget
 budget.daily_budget_cents = 1500
 budget.save!
-GoogleAds::Budget.new(budget).sync
+budget.google_sync
 ```
 
 **Verify:** Campaign settings shows $15/day
@@ -280,7 +281,7 @@ GoogleAds::Budget.new(budget).sync
 ads_account = campaign.google_ads_account
 ads_account.google_descriptive_name = "#{ads_account.google_descriptive_name} (Updated)"
 ads_account.save!
-GoogleAds::Account.new(ads_account).sync
+ads_account.google_sync
 ```
 
 **Verify:** MCC account list shows updated name
@@ -320,7 +321,7 @@ ads_account.errors[:google_auto_tagging_enabled]
 campaign.reload
 campaign.name = "#{campaign.name} (Updated)"
 campaign.save!
-GoogleAds::Campaign.new(campaign).sync
+campaign.google_sync
 ```
 
 **Verify:** Campaign list shows updated name
@@ -335,7 +336,7 @@ GoogleAds::Campaign.new(campaign).sync
 campaign.reload
 campaign.google_status = :ENABLED
 campaign.save!
-GoogleAds::Campaign.new(campaign).sync
+campaign.google_sync
 ```
 
 **Verify:** Campaign status changes from "Paused" to "Enabled"
@@ -348,7 +349,7 @@ Then toggle back:
 campaign.reload
 campaign.google_status = :PAUSED
 campaign.save!
-GoogleAds::Campaign.new(campaign).sync
+campaign.google_sync
 ```
 
 **Verify:** Campaign status back to "Paused"
@@ -362,7 +363,7 @@ campaign.reload
 ad_group = campaign.ad_groups.first
 ad_group.name = "#{ad_group.name} (Updated)"
 ad_group.save!
-GoogleAds::AdGroup.new(ad_group).sync
+ad_group.google_sync
 ```
 
 **Verify:** Ad groups list shows updated name
@@ -376,9 +377,9 @@ GoogleAds::AdGroup.new(ad_group).sync
 ```ruby
 campaign.reload
 ad_group = campaign.ad_groups.first
-ad_group.google_status = :PAUSED # or ENABLED
+ad_group.google_status = :ENABLED
 ad_group.save!
-GoogleAds::AdGroup.new(ad_group).sync
+ad_group.google_sync
 ```
 
 **Verify:** Ad group status changes from "Paused" to "Enabled"
@@ -391,7 +392,7 @@ Then toggle back:
 ad_group.reload
 ad_group.google_status = :PAUSED
 ad_group.save!
-GoogleAds::AdGroup.new(ad_group).sync
+ad_group.google_sync
 ```
 
 **Verify:** Ad group status back to "Paused"
@@ -400,13 +401,14 @@ GoogleAds::AdGroup.new(ad_group).sync
 
 ### Update Ad Group CPC Bid
 
-```ruby
+We don't support this today
+
+<!-- ```ruby
 campaign.reload
-ad_group = campaign.ad_groups.first
-ad_group.google_cpc_bid_micros = 2_000_000  # $2.00
-ad_group.save!
-GoogleAds::AdGroup.new(ad_group).sync
-```
+campaign.budget.daily_budget_cents = 200
+campaign.budget.save!
+campaign.budget.google_sync
+``` -->
 
 **Verify:** Ad group shows max CPC bid of $2.00
 
@@ -422,7 +424,7 @@ campaign.reload
 ad = campaign.ad_groups.first.ads.first
 ad.status = ad.status == "active" ? "paused" : "active"
 ad.save!
-GoogleAds::Ad.new(ad).sync
+ad.google_sync
 ```
 
 **Verify:** Ads list shows toggled status
@@ -434,16 +436,18 @@ GoogleAds::Ad.new(ad).sync
 
 ### Update Ad Display Paths
 
-```ruby
+We don't implement this today.
+
+<!-- ```ruby
 campaign.reload
 ad = campaign.ad_groups.first.ads.first
 ad.display_path_1 = "products"
 ad.display_path_2 = "sale"
 ad.save!
 GoogleAds::Ad.new(ad).sync
-```
+``` -->
 
-**Verify:** Ad preview shows display URL with paths
+<!-- **Verify:** Ad preview shows display URL with paths
 
 - https://ads.google.com/aw/ads
 - Click on ad → Preview should show `yoursite.com/products/sale`
@@ -456,15 +460,23 @@ ad.display_path_1 = nil
 ad.display_path_2 = nil
 ad.save!
 GoogleAds::Ad.new(ad).sync
-```
+``` -->
 
-**Verify:** Display URL paths cleared
+<!-- **Verify:** Display URL paths cleared -->
 
 ---
 
 ## DELETE Tests
 
 ### Delete Location Target (Los Angeles)
+
+First add new location targets:
+
+```ruby
+campaign.reload
+geo_target = GeoTargetConstant.find_by(criteria_id: 1023191) # New york
+campaign.update_location_targets([geo_target.as_json])
+```
 
 ```ruby
 campaign.reload
