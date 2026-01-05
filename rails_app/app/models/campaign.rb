@@ -75,6 +75,14 @@ class Campaign < ApplicationRecord
     GoogleAds::Resources::AdSchedule.sync_plan(self)
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # Ad Groups Sync - Class Method Pattern
+  # ═══════════════════════════════════════════════════════════════
+
+  def sync_ad_groups = GoogleAds::Resources::AdGroup.sync_all(self)
+  def ad_groups_synced? = GoogleAds::Resources::AdGroup.synced?(self)
+  def ad_groups_sync_plan = GoogleAds::Resources::AdGroup.sync_plan(self)
+
   after_google_sync do |result|
     if result.resource_name.present?
       campaign_id = result.resource_name.split("/").last

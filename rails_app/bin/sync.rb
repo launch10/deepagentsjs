@@ -230,11 +230,11 @@ class GoogleAdsE2ETest
       ad_group.name = new_name
       ad_group.save!
 
-      syncer = GoogleAds::AdGroup.new(ad_group)
+      syncer = GoogleAds::Resources::AdGroup.new(ad_group)
       result = syncer.sync
 
       # Verify via API
-      remote = syncer.send(:fetch_remote)
+      remote = syncer.fetch
       if remote && remote.name == new_name
         record_result("Ad Group Update", :passed)
         puts "✅ PASSED (remote: #{remote.name})"
@@ -516,7 +516,7 @@ class GoogleAdsE2ETest
       ad_group_name = ad_group.name
       ad_group.destroy
 
-      syncer = GoogleAds::AdGroup.new(ad_group)
+      syncer = GoogleAds::Resources::AdGroup.new(ad_group)
       syncer.delete
 
       ad_group.reload

@@ -23,17 +23,6 @@
 class AdGroup < ApplicationRecord
   include PlatformSettings
   include GoogleMappable
-  include GoogleSyncable
-
-  use_google_sync GoogleAds::AdGroup
-  use_google_collection_sync :keywords, GoogleAds::Keywords
-
-  after_google_sync do |result|
-    if result.resource_name.present?
-      ad_group_id = result.resource_name.split("/").last.to_i
-      update!(google_ad_group_id: ad_group_id)
-    end
-  end
 
   acts_as_paranoid
 
@@ -60,10 +49,28 @@ class AdGroup < ApplicationRecord
   platform_setting :google, :cpc_bid_micros, default: 1_000_000
 
   # ═══════════════════════════════════════════════════════════════
+  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
+  # Callback logic (save_ad_group_id) is INSIDE the resource
+  # ═══════════════════════════════════════════════════════════════
+
+  def google_sync = GoogleAds::Resources::AdGroup.new(self).sync
+  def google_synced? = GoogleAds::Resources::AdGroup.new(self).synced?
+  def google_delete = GoogleAds::Resources::AdGroup.new(self).delete
+  def google_fetch = GoogleAds::Resources::AdGroup.new(self).fetch
+  def google_syncer = GoogleAds::Resources::AdGroup.new(self)
+
+  # ═══════════════════════════════════════════════════════════════
   # COLLECTION SYNC - Ads (explicit one-liner delegations)
   # ═══════════════════════════════════════════════════════════════
 
   def sync_ads = GoogleAds::Resources::Ad.sync_all(self)
   def ads_sync_plan = GoogleAds::Resources::Ad.sync_plan(self)
   def ads_synced? = GoogleAds::Resources::Ad.synced?(self)
+
+  # ═══════════════════════════════════════════════════════════════
+  # COLLECTION SYNC - Keywords (uses old Syncable pattern until refactored)
+  # ═══════════════════════════════════════════════════════════════
+
+  def sync_keywords = GoogleAds::Keywords.new(self).sync
+  def keywords_synced? = GoogleAds::Keywords.new(self).synced?
 end
