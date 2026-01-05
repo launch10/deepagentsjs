@@ -277,7 +277,7 @@ RSpec.describe GoogleAds::Resources::Ad do
         result = ad_syncer.sync_result
         expect(result.unchanged?).to be true
         expect(result.success?).to be true
-        expect(result.resource_name).to eq(12345)
+        expect(result.resource_name).to eq("12345")
       end
     end
 
