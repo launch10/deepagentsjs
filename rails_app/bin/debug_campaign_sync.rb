@@ -10,22 +10,20 @@ ads_account.google_customer_id = "7067028496"
 ads_account.save!
 
 # First sync budget
-budget_sync = GoogleAds::Budget.new(campaign.budget)
+budget_sync = GoogleAds::Resources::Budget.new(campaign.budget)
 budget_sync.sync unless budget_sync.synced?
 campaign.reload
 
 puts "Budget synced: #{campaign.budget.google_budget_id}"
 
 # Now debug the campaign sync
-campaign_sync = GoogleAds::Campaign.new(campaign)
+campaign_sync = GoogleAds::Resources::Campaign.new(campaign)
 
 puts ""
 puts "=== Campaign Sync Debug ==="
-puts "local_resource: #{campaign_sync.local_resource.name}"
-puts "remote_resource: #{campaign_sync.remote_resource.inspect}"
+puts "record: #{campaign_sync.record.name}"
+puts "fetch (remote): #{campaign_sync.fetch.inspect}"
 puts "synced?: #{campaign_sync.synced?}"
-puts "sync_result: #{campaign_sync.sync_result.inspect}"
-puts "sync_result.action: #{campaign_sync.sync_result.action}"
 
 puts ""
 puts "=== Calling sync() ==="

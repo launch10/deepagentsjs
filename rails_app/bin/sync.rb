@@ -194,11 +194,11 @@ class GoogleAdsE2ETest
       @campaign.name = new_name
       @campaign.save!
 
-      syncer = GoogleAds::Campaign.new(@campaign)
+      syncer = GoogleAds::Resources::Campaign.new(@campaign)
       result = syncer.sync
 
       # Verify via API
-      remote = syncer.send(:fetch_remote)
+      remote = syncer.fetch
       if remote && remote.name == new_name
         record_result("Campaign Update", :passed)
         puts "✅ PASSED (remote: #{remote.name})"
@@ -547,7 +547,7 @@ class GoogleAdsE2ETest
       campaign_name = @campaign.name
       @campaign.destroy
 
-      syncer = GoogleAds::Campaign.new(@campaign)
+      syncer = GoogleAds::Resources::Campaign.new(@campaign)
       syncer.delete
 
       @campaign.reload

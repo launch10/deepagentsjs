@@ -50,11 +50,20 @@ class Campaign < ApplicationRecord
   include GoogleMappable
   include GoogleSyncable
 
-  use_google_sync GoogleAds::Campaign
+  # These will be refactored to explicit class method pattern later
   use_google_collection_sync :location_targets, GoogleAds::LocationTargets
-  # ad_schedules uses class methods on GoogleAds::Resources::AdSchedule (single-file colocation)
-  # callouts uses class methods on GoogleAds::Resources::Callout (single-file colocation)
   use_google_collection_sync :structured_snippets, GoogleAds::StructuredSnippets
+
+  # ═══════════════════════════════════════════════════════════════
+  # Campaign Sync - Explicit One-Liner Delegations
+  # Callback logic (save_campaign_id) is INSIDE the resource
+  # ═══════════════════════════════════════════════════════════════
+
+  def google_sync = GoogleAds::Resources::Campaign.new(self).sync
+  def google_synced? = GoogleAds::Resources::Campaign.new(self).synced?
+  def google_delete = GoogleAds::Resources::Campaign.new(self).delete
+  def google_fetch = GoogleAds::Resources::Campaign.new(self).fetch
+  def google_syncer = GoogleAds::Resources::Campaign.new(self)
 
   # ═══════════════════════════════════════════════════════════════
   # Ad Schedule Sync - Class Method Pattern
@@ -98,13 +107,6 @@ class Campaign < ApplicationRecord
   def sync_callouts = GoogleAds::Resources::Callout.sync_all(self)
   def callouts_synced? = GoogleAds::Resources::Callout.synced?(self)
   def callouts_sync_plan = GoogleAds::Resources::Callout.sync_plan(self)
-
-  after_google_sync do |result|
-    if result.resource_name.present?
-      campaign_id = result.resource_name.split("/").last
-      update_column(:platform_settings, platform_settings.deep_merge("google" => { "campaign_id" => campaign_id }))
-    end
-  end
 
   acts_as_paranoid
 

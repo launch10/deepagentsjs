@@ -25,6 +25,7 @@ class AdsAccount < ApplicationRecord
 
   belongs_to :account
   has_many :invitations, class_name: "AdsAccountInvitation", dependent: :destroy
+  has_many :campaigns
 
   PLATFORMS = %w[google meta]
   # https://developers.google.com/google-ads/api/data/codes-formats
@@ -46,6 +47,14 @@ class AdsAccount < ApplicationRecord
   def google_delete = GoogleAds::Resources::Account.new(self).delete
   def google_fetch = GoogleAds::Resources::Account.new(self).fetch
   def google_syncer = GoogleAds::Resources::Account.new(self)
+
+  # ═══════════════════════════════════════════════════════════════
+  # Campaigns Collection Sync - Class Method Pattern
+  # ═══════════════════════════════════════════════════════════════
+
+  def sync_campaigns = GoogleAds::Resources::Campaign.sync_all(self)
+  def campaigns_synced? = GoogleAds::Resources::Campaign.synced?(self)
+  def campaigns_sync_plan = GoogleAds::Resources::Campaign.sync_plan(self)
 
   def google_account_invitation
     invitations.where(platform: "google").order(id: :desc).first
