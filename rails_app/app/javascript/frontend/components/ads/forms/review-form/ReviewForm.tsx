@@ -6,10 +6,10 @@ import {
   selectSetSubstep,
   selectReturnToSection,
   selectClearReturnToSection,
-  useWorkflowSteps,
-} from "@context/WorkflowStepsProvider";
+  useWorkflow,
+} from "@context/WorkflowProvider";
 import { Cog8ToothIcon, CursorArrowRippleIcon } from "@heroicons/react/24/solid";
-import { useAdsChatState } from "@hooks/useAdsChat";
+import { useAdsChatState } from "@components/ads/hooks";
 import { useStageInit } from "@hooks/useStageInit";
 import { useScrollToSection } from "@hooks/useScrollToSection";
 import { useSettingsFormStore } from "@stores/settingsFormStore";
@@ -54,9 +54,9 @@ export default function ReviewForm() {
   const { campaignName, googleAdvertisingChannelType, googleBiddingStrategy, startDate, endDate } =
     launchValues;
 
-  const setSubstep = useWorkflowSteps(selectSetSubstep);
-  const returnToSection = useWorkflowSteps(selectReturnToSection);
-  const clearReturnToSection = useWorkflowSteps(selectClearReturnToSection);
+  const setSubstep = useWorkflow(selectSetSubstep);
+  const returnToSection = useWorkflow(selectReturnToSection);
+  const clearReturnToSection = useWorkflow(selectClearReturnToSection);
 
   useScrollToSection(returnToSection, clearReturnToSection);
 
@@ -96,7 +96,7 @@ export default function ReviewForm() {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" data-testid="review-form">
       <ReviewFormSection id={SECTION_IDS.content} title="Ad Content & Highlights">
         <FieldSet className="gap-6">
           {/* Ad Group Name */}

@@ -135,7 +135,9 @@ class PollyManager {
   private static configureRails() {
     const { server } = PollyManager.polly!;
 
-    server.any("http://localhost:3000/*").passthrough();
+    // Passthrough to Rails on whatever port it's running (from config/services.sh)
+    const railsPort = process.env.RAILS_PORT || '3000';
+    server.any(`http://localhost:${railsPort}/*`).passthrough();
   }
 
   private static configureLlms() {

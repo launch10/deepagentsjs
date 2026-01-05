@@ -10,8 +10,8 @@ class BasicAccount < BaseBuilder
   def build
     user = User.find_or_initialize_by(email: "test_user@launch10.ai")
     user.assign_attributes(
-      password: "password",
-      password_confirmation: "password",
+      password: "Launch10TestPass!",
+      password_confirmation: "Launch10TestPass!",
       first_name: "Basic",
       last_name: "Account",
       terms_of_service: true,

@@ -72,7 +72,7 @@ export default function AdSchedule() {
         <FieldLabel className="text-sm font-semibold leading-[18px] text-base-500">
           Ad Schedule
         </FieldLabel>
-        <div className="flex gap-2">
+        <div className="flex gap-2" data-testid="schedule-days">
           {DAYS.map((day) => (
             <Button
               key={day}
@@ -85,6 +85,8 @@ export default function AdSchedule() {
                   ? "border-base-500 hover:border-base-600"
                   : "border-neutral-300 hover:border-neutral-500"
               )}
+              data-testid={`schedule-day-${day.toLowerCase().replace(" ", "-")}`}
+              data-selected={selectedDays.includes(day)}
             >
               {day}
             </Button>

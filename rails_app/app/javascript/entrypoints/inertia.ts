@@ -10,8 +10,12 @@ import "@xterm/xterm/css/xterm.css";
 import "react-toastify/dist/ReactToastify.css";
 
 // Temporary type definition, until @inertiajs/react provides one
+type PageComponent = React.ComponentType & {
+  layout?: (page: ReactNode) => ReactNode;
+};
+
 type ResolvedComponent = {
-  default: ReactNode;
+  default: PageComponent;
   layout?: (page: ReactNode) => ReactNode;
 };
 
@@ -28,7 +32,9 @@ createInertiaApp({
       console.error(`Missing Inertia page component: '${name}.tsx'`);
     }
 
-    page.default.layout ||= (page) => createElement(SiteLayout, null, page);
+    if (page?.default) {
+      page.default.layout ||= (p: ReactNode) => createElement(SiteLayout, null, p);
+    }
 
     return page;
   },

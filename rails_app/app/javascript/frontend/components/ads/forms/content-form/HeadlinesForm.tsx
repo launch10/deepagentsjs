@@ -4,12 +4,10 @@ import { useEffect, useRef } from "react";
 import { FieldGroup } from "@components/ui/field";
 import AdCampaignHeadlineInput from "./AdCampaignHeadlineInput";
 import AdCampaignFieldList from "../shared/AdCampaignFieldList";
-import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
+import { useAdsChatState, useAdsChatActions, useAutosaveCampaign, defaultAssetTransform } from "@components/ads/hooks";
 import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
-import { useAutosaveCampaign } from "@api/campaigns.hooks";
-import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
-import type { UpdateCampaignRequestBody } from "@api/campaigns";
+import type { UpdateCampaignRequestBody } from "@rails_api_base";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
 
@@ -74,8 +72,9 @@ export default function HeadlinesForm() {
     });
   };
 
-  const { saveNow } = useAutosaveCampaign<Ads.HeadlinesOutput>({
+  const { getData } = useAutosaveCampaign<Ads.HeadlinesOutput>({
     methods,
+    formId: "headlines",
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const transformed = defaultAssetTransform(data.headlines);
       if (transformed.length === 0) return null;
@@ -85,7 +84,7 @@ export default function HeadlinesForm() {
 
   const fields = filteredHeadlines.map((h) => ({ ...h, id: h.id }));
 
-  useFormRegistration("content", methods, saveNow);
+  useFormRegistration("content", methods, getData);
 
   return (
     <FieldGroup className="gap-3">

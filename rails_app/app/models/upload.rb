@@ -7,6 +7,7 @@
 #  is_logo           :boolean          default(FALSE), not null
 #  media_type        :string           not null
 #  original_filename :string
+#  platform_settings :jsonb
 #  uuid              :uuid             not null
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null
@@ -24,12 +25,13 @@ class Upload < ApplicationRecord
   include UploadConcerns::Serialization
   include UploadConcerns::Creation
 
-  MEDIA_TYPES = %w[image video]
+  MEDIA_TYPES = %w[image video document]
 
   mount_uploader :file, MediaUploader
 
   has_many :website_uploads, dependent: :destroy
   has_many :websites, through: :website_uploads
+  has_many :projects, through: :websites
   belongs_to :account
 
   validates :file, presence: true
@@ -45,6 +47,10 @@ class Upload < ApplicationRecord
     media_type == "image"
   end
 
+  def document?
+    media_type == "document"
+  end
+
   private
 
   def set_media_type_from_file
@@ -55,13 +61,16 @@ class Upload < ApplicationRecord
       "image"
     elsif content_type.start_with?("video/")
       "video"
+    elsif content_type == "application/pdf"
+      "document"
     end
   end
 
   def set_original_filename
-    return unless file.present? && file.file.present?
+    return unless file.present?
     return if original_filename.present?
 
-    self.original_filename = file.file.original_filename
+    # Access uploader's private original_filename method (works with both file and AWS storage)
+    self.original_filename = file.send(:original_filename)
   end
 end

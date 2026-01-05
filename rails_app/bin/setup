@@ -17,6 +17,10 @@ FileUtils.chdir APP_ROOT do
   # This script is idempotent, so that you can run it at any time and get an expectable outcome.
   # Add necessary setup steps to this file.
 
+  puts "== Configuring git =="
+  # Prevent case-sensitivity issues (macOS is case-insensitive, Linux CI is case-sensitive)
+  system! "git config core.ignorecase false"
+
   # Install system dependencies if Homebrew is installed
   if command_available?("brew")
     system('brew bundle check --file=./Brewfile --no-upgrade') || system!('brew bundle --file=./Brewfile --no-upgrade')

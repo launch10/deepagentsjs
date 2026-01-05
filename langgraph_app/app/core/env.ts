@@ -9,6 +9,7 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().min(1).url(),
   REDIS_URL: z.string().min(1).url(),
   RAILS_API_URL: z.string().min(1).url(),
+  RAILS_PORT: z.string().optional(), // Set by config/services.sh, used for CORS
   ANTHROPIC_API_KEY: z.string().min(1),
   COHERE_API_KEY: z.string().optional(),
   GROQ_API_KEY: z.string().min(1),
@@ -21,13 +22,19 @@ export const envSchema = z.object({
   LLM_PAID: z.enum(["free", "paid"]).default("paid"),
   LLM_SPEED: z.enum(["fast", "slow"]).default("slow"),
   JWT_SECRET: z.string().min(1),
-  USE_CACHE: z.coerce.boolean().default(false),
+  USE_CACHE: z
+    .string()
+    .transform((val) => val === "true" || val === "1")
+    .default("false"),
   NODE_ENV: z.enum(Environments).default("development"),
+  ALLOWED_ORIGINS: z.string().optional(),
 });
 
 export const testEnvSchema = envSchema.extend({
-  REBUILD_SNAPSHOTS: z.coerce.boolean().default(false),
-  VITEST: z.coerce.boolean().default(true),
+  VITEST: z
+    .string()
+    .transform((val) => val === "true" || val === "1")
+    .default("true"),
 });
 
 const environmentConfigSchema = z.discriminatedUnion("NODE_ENV", [

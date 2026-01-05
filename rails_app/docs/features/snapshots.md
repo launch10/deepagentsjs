@@ -26,10 +26,10 @@ Builders are Ruby classes that set up database state. Each builder:
 Builders form a dependency chain. When you build a snapshot, all missing dependencies are built first:
 
 ```
-core_data -> basic_account -> website_created -> campaign_created
+core_data -> basic_account -> website_step -> campaign_content_step
 ```
 
-Running `rake db:snapshot:build[campaign_created]` will automatically build `core_data`, `basic_account`, and `website_created` if they don't exist.
+Running `rake db:snapshot:build[campaign_content_step]` will automatically build `core_data`, `basic_account`, and `website_step` if they don't exist.
 
 ### Builder Configuration
 
@@ -44,11 +44,11 @@ basic_account:
   class: BasicAccount
   description: "Creates a subscribed test user account"
 
-website_created:
+website_step:
   class: WebsiteCreated
   description: "Creates a website with brainstorm data"
 
-campaign_created:
+campaign_content_step:
   class: CampaignCreated
   description: "Creates a campaign with ad groups and ads"
 ```
@@ -111,14 +111,14 @@ RAILS_ENV=test rake db:snapshot:list
 RAILS_ENV=test rake db:snapshot:deps
 
 # Show deps for specific builder
-RAILS_ENV=test rake "db:snapshot:deps[campaign_created]"
+RAILS_ENV=test rake "db:snapshot:deps[campaign_content_step]"
 ```
 
 ### Build a Snapshot
 
 ```bash
 # Build a specific snapshot (and all its dependencies)
-RAILS_ENV=test rake "db:snapshot:build[campaign_created]"
+RAILS_ENV=test rake "db:snapshot:build[campaign_content_step]"
 
 # Build just core_data
 RAILS_ENV=test rake "db:snapshot:build[core_data]"
@@ -180,7 +180,7 @@ The langgraph test suite restores snapshots before running integration tests:
 
 ```typescript
 // In langgraph test setup
-await restoreSnapshot("campaign_created");
+await restoreSnapshot("campaign_content_step");
 // Now the Rails database has a campaign ready for testing
 ```
 
@@ -188,6 +188,6 @@ await restoreSnapshot("campaign_created");
 
 1. **Keep snapshots small**: Only include data needed for tests
 2. **Use the dependency chain**: Don't duplicate setup across builders
-3. **Name descriptively**: `campaign_created` not `test_data_1`
+3. **Name descriptively**: `campaign_content_step` not `test_data_1`
 4. **Rebuild after schema changes**: Snapshots are data-only, so they break if columns change
 5. **Don't commit large snapshots**: Add to `.gitignore` if they grow large

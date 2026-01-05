@@ -48,7 +48,7 @@ export default function ReviewFormFieldGroup({
             <Info size={12} className="text-base-300" />
           </div>
           {onEditSection && (
-            <Button variant="ghost" size="sm" onClick={onEditSection}>
+            <Button variant="ghost" size="sm" onClick={onEditSection} data-testid="edit-field-group-button">
               <Pencil size={20} />
               <span>Edit Section</span>
             </Button>

@@ -6,7 +6,7 @@ import { FieldSet } from "@components/ui/field";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { useSettingsFormStore } from "@stores/settingsFormStore";
 import { useAutosaveCampaign } from "@api/campaigns.hooks";
-import type { CampaignProps } from "@components/ads/sidebar/workflow-buddy/ad-campaign.types";
+import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
 import LocationTargeting from "./LocationTargeting";
 import AdSchedule from "./AdSchedule";
 import DailyBudget from "./DailyBudget";
@@ -51,16 +51,17 @@ export default function SettingsForm() {
     return () => subscription.unsubscribe();
   }, [methods, setValues]);
 
-  const { saveNow } = useAutosaveCampaign<SettingsFormData>({
+  const { getData } = useAutosaveCampaign<SettingsFormData>({
     methods,
+    formId: "settings",
     transformFn: transformSettingsFormToApi,
   });
 
-  useFormRegistration("settings", methods, saveNow);
+  useFormRegistration("settings", methods, getData);
 
   return (
     <FormProvider {...methods}>
-      <div className="border border-neutral-300 border-t-0 rounded-b-2xl bg-white">
+      <div className="border border-neutral-300 border-t-0 rounded-b-2xl bg-white" data-testid="settings-form">
         <div className="py-8 pl-9 pr-[97px] flex flex-col gap-6">
           <div className="flex flex-col gap-0.5">
             <h2 className="text-lg font-semibold leading-[22px]">Settings</h2>

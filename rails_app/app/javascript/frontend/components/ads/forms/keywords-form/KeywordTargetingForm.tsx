@@ -4,13 +4,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { FieldGroup } from "@components/ui/field";
 import AdCampaignKeywordInput from "./AdCampaignKeywordInput";
-import { useAdsChatState, useAdsChatActions } from "@hooks/useAdsChat";
+import { useAdsChatState, useAdsChatActions, useAutosaveCampaign } from "@components/ads/hooks";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID } from "@shared";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
-import { useAutosaveCampaign } from "@api/campaigns.hooks";
-import type { UpdateCampaignRequestBody } from "@api/campaigns";
+import type { UpdateCampaignRequestBody } from "@rails_api_base";
 import AdCampaignFieldList from "../shared/AdCampaignFieldList";
 
 const keywordsFormSchema = z.object({
@@ -103,8 +102,9 @@ export default function KeywordTargetingForm() {
 
   const resolveIndex = (id: string) => fields.findIndex((f) => f.id === id);
 
-  const { saveNow } = useAutosaveCampaign<KeywordsFormData>({
+  const { getData } = useAutosaveCampaign<KeywordsFormData>({
     methods,
+    formId: "keywords",
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const transformed = data.keywords
         ?.filter((k) => k.text?.trim())
@@ -114,7 +114,7 @@ export default function KeywordTargetingForm() {
     },
   });
 
-  useFormRegistration("keywords", methods, saveNow);
+  useFormRegistration("keywords", methods, getData);
 
   return (
     <FieldGroup className="gap-4">

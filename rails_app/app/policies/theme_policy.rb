@@ -6,14 +6,14 @@ class ThemePolicy < ApplicationPolicy
   end
 
   def show?
-    record.official? || record.account_id == account_user.account_id
+    record.official? || record.author_id == account_user.account_id
   end
 
   def update?
-    record.account_id == account_user.account_id
+    record.author_id == account_user.account_id
   end
 
   def destroy?
-    record.account_id == account_user.account_id
+    record.author_id == account_user.account_id
   end
 end

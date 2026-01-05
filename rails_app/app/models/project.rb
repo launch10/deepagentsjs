@@ -37,6 +37,8 @@ class Project < ApplicationRecord
   has_many :workflows, class_name: "ProjectWorkflow", dependent: :destroy
   has_one :launch_workflow, -> { where(workflow_type: "launch") }, class_name: "ProjectWorkflow"
   has_many :chats
+  has_many :social_links, dependent: :destroy
+  has_many :uploads, dependent: :nullify
 
   # Ads relations
   has_many :campaigns

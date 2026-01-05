@@ -1,8 +1,12 @@
 import { HumanMessage, type BaseMessage, AIMessage } from "@langchain/core/messages";
 import { type AdsGraphState } from "@state";
 import { Ads } from "@types";
-
-const PSEUDO_MESSAGE_PREFIX = "__SYSTEM__";
+import {
+  isPseudoMessage,
+  createPseudoMessage,
+  filterPseudoMessages,
+  injectPseudoMessage,
+} from "@utils";
 
 const PAGE_NAMES: Record<Ads.StageName, string> = {
   "content": "the headlines and descriptions page",
@@ -15,15 +19,13 @@ const PAGE_NAMES: Record<Ads.StageName, string> = {
 };
 
 export const PseudoMessages = {
-  BEGIN: `${PSEUDO_MESSAGE_PREFIX} Generate the assets now.`,
-  REFRESH: (asset: string) => `${PSEUDO_MESSAGE_PREFIX} Generate new ${asset} now.`,
-  PAGE_SWITCH: (stage: Ads.StageName) => `${PSEUDO_MESSAGE_PREFIX} User switched to ${PAGE_NAMES[stage]}. Focus on these assets now.`,
+  BEGIN: "Generate the assets now.",
+  REFRESH: (asset: string) => `Generate new ${asset} now.`,
+  PAGE_SWITCH: (stage: Ads.StageName) => `User switched to ${PAGE_NAMES[stage]}. Focus on these assets now.`,
 } as const;
 
-export const isPseudoMessage = (msg: BaseMessage): boolean => {
-  const content = typeof msg.content === "string" ? msg.content : "";
-  return content.startsWith(PSEUDO_MESSAGE_PREFIX);
-};
+// Re-export the shared utility for backwards compatibility
+export { isPseudoMessage, filterPseudoMessages };
 
 export const lastMessageIsAIMessage = (state: AdsGraphState): boolean => {
   const lastMessage = state.messages?.at(-1);
@@ -31,8 +33,8 @@ export const lastMessageIsAIMessage = (state: AdsGraphState): boolean => {
 };
 
 export const didSwitchPage = (state: AdsGraphState): boolean => {
-  return !!state.previousStage && 
-         !!state.stage && 
+  return !!state.previousStage &&
+         !!state.stage &&
          state.previousStage !== state.stage;
 };
 
@@ -46,24 +48,27 @@ export const needsPseudoMessage = (state: AdsGraphState): boolean => {
 export const getPseudoMessage = (state: AdsGraphState): HumanMessage | null => {
   if (state.refresh?.length) {
     const assetNames = state.refresh.map((r) => r.asset).join(" and ");
-    return new HumanMessage(PseudoMessages.REFRESH(assetNames));
+    return createPseudoMessage(PseudoMessages.REFRESH(assetNames));
   }
   if (didSwitchPage(state) && state.stage) {
-    return new HumanMessage(PseudoMessages.PAGE_SWITCH(state.stage));
+    return createPseudoMessage(PseudoMessages.PAGE_SWITCH(state.stage));
   }
   if (state.messages?.length === 0 || lastMessageIsAIMessage(state)) {
-    return new HumanMessage(PseudoMessages.BEGIN);
+    return createPseudoMessage(PseudoMessages.BEGIN);
   }
   // This should only fall through in the case where the user sent THEIR OWN message
   return null;
 };
 
-export const injectPseudoMessage = (state: AdsGraphState): BaseMessage[] => {
+/**
+ * Ads-specific helper that gets the appropriate pseudo message for the current state
+ * and injects it into the messages array.
+ */
+export const injectAdsPseudoMessage = (state: AdsGraphState): BaseMessage[] => {
   const messages = state.messages ?? [];
   const pseudo = getPseudoMessage(state);
-  return pseudo ? [...messages, pseudo] : messages;
+  return injectPseudoMessage(messages, pseudo);
 };
 
-export const filterPseudoMessages = (messages: BaseMessage[]): BaseMessage[] => {
-  return messages.filter((msg) => !isPseudoMessage(msg));
-};
+// Backwards compatibility alias
+export { injectAdsPseudoMessage as injectPseudoMessage };

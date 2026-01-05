@@ -5,9 +5,19 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { optimizeCssModules } from "vite-plugin-optimize-css-modules";
 import tsconfigPaths from "vite-tsconfig-paths";
 import RubyPlugin from "vite-plugin-ruby";
+import path from "path";
 
 export default defineConfig((config) => {
   return {
+    cacheDir: "node_modules/.vite",
+    server: {
+      hmr: {
+        overlay: true,
+      },
+      watch: {
+        usePolling: false,
+      },
+    },
     build: {
       target: "esnext",
     },
@@ -21,11 +31,12 @@ export default defineConfig((config) => {
         "throttleit",
         "use-sync-external-store",
       ],
-      exclude: ["langgraph-ai-sdk-react"],
+      exclude: ["langgraph-ai-sdk-react", "type-fest"],
     },
     resolve: {
       conditions: ["browser", "module", "import", "default"],
       alias: {
+        "~": path.resolve(__dirname, "app/javascript/frontend"),
         "@vercel/oidc": new URL("./app/javascript/stubs/vercel-oidc.ts", import.meta.url).pathname,
         "use-sync-external-store/shim/index.js": "react",
         "use-sync-external-store/shim": "react",

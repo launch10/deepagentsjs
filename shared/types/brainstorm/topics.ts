@@ -88,3 +88,48 @@ export const MemoriesSchema = z.object({
 })
 
 export type MemoriesType = z.infer<typeof MemoriesSchema>;
+
+/**
+ * Memory fields in order, corresponding to conversational topics.
+ * Used to calculate current question number.
+ */
+const MemoryFields: (keyof MemoriesType)[] = ["idea", "audience", "solution", "socialProof"];
+
+/**
+ * Get the current question number based on completed memories.
+ * - Question 1: idea is undefined
+ * - Question 2: audience is undefined
+ * - Question 3: solution is undefined
+ * - Question 4: socialProof is undefined
+ * - Question 5: all memories complete (lookAndFeel topic)
+ */
+export function getCurrentQuestionNumber(memories: MemoriesType | undefined | null): number {
+    if (!memories) return 1;
+
+    for (let i = 0; i < MemoryFields.length; i++) {
+        const field = MemoryFields[i];
+        if (!field) continue; // TypeScript guard for array access
+        const value = memories[field];
+        if (value === undefined || value === null) {
+            return i + 1;
+        }
+    }
+
+    // All memories complete - we're on the 5th question (lookAndFeel)
+    return BrainstormTopics.length;
+}
+
+/**
+ * Get the question number for a specific topic.
+ * Maps topic names to their corresponding question numbers (1-indexed).
+ */
+export function getQuestionNumberForTopic(topic: TopicName | undefined | null): number {
+    if (!topic) return 1;
+    const index = BrainstormTopics.indexOf(topic);
+    return index === -1 ? 1 : index + 1;
+}
+
+/**
+ * Total number of brainstorm questions.
+ */
+export const TotalQuestions = BrainstormTopics.length;

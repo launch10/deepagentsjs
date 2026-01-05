@@ -32,6 +32,8 @@ class ProjectsController < SubscribedController
   end
 
   def website
+    # Advance workflow step when navigating to website
+    @project.current_workflow.update!(step: "website") if @project.current_workflow.step != "website"
     render inertia: "Website", props: @project.to_website_json, layout: "layouts/webcontainer"
   end
 

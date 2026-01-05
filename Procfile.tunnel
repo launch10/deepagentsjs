@@ -1,0 +1,14 @@
+# Launch10 Tunnel - runs all services + cloudflare tunnels
+# Usage: bin/tunnel (which runs overmind with this Procfile)
+#
+# Ports are configured via config/services.sh (development mode):
+#   RAILS_PORT=3000, LANGGRAPH_PORT=4000, VITE_PORT=3036
+#
+# Tunnels start immediately, services wait for tunnel URLs to be detected
+# and written to .env files (handled by bin/tunnel script)
+
+tunnel_rails: cloudflared tunnel --url http://localhost:${RAILS_PORT:-3000}
+tunnel_api: cloudflared tunnel --url http://localhost:${LANGGRAPH_PORT:-4000}
+rails: while [ ! -f /tmp/tunnel_urls_ready ]; do sleep 1; done && cd ${RAILS_APP_DIR:-rails_app} && bundle exec rails server -p ${RAILS_PORT:-3000}
+vite: while [ ! -f /tmp/tunnel_urls_ready ]; do sleep 1; done && cd ${RAILS_APP_DIR:-rails_app} && bin/vite dev
+langgraph: while [ ! -f /tmp/tunnel_urls_ready ]; do sleep 1; done && cd ${LANGGRAPH_APP_DIR:-langgraph_app} && PORT=${LANGGRAPH_PORT:-4000} pnpm run dev

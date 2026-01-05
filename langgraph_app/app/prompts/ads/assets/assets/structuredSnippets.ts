@@ -2,7 +2,7 @@ import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
 import { userPreferencesPrompt } from "../userPreferences";
 
-const categoryList = Ads.StructuredSnippetCategoryNames;
+const categoryList = Ads.StructuredSnippetCategoryKeys;
 
 const categoryExamples = Ads.StructuredSnippetCategoryKeys.slice(0, 3)
   .map((key) => `- ${Ads.StructuredSnippetCategories[key].examples}`)
@@ -49,7 +49,7 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
         Ads.DefaultNumAssets.structuredSnippets;
       return {
         structuredSnippets: {
-          category: "Types",
+          category: "types", // Use keys like "types", "services", "brands" - not display names
           details: Array.from({ length: numberOfDetails }, (_, i) => `Detail ${i + 1}`),
         },
       };

@@ -25,7 +25,7 @@ export const StreamingTransforms = {
       return undefined;
     }
     return {
-      category: streamed.category as Ads.StructuredSnippetCategoryName,
+      category: streamed.category as Ads.StructuredSnippetCategoryKey,
       details: toAssets(streamed.details)
     }
   },

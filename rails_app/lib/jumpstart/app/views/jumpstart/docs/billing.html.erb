@@ -27,7 +27,7 @@
 <pre><code>stripe login</code><code>stripe listen --forward-to localhost:3000/webhooks/stripe</code></pre>
 
 <p>Once stripe CLI is running it should display your signing secret. Add it to your credentials to make sure your server can receive stripe events.</p>
-<p>Alternatively, you can use ngrok or localtunnel to expose your Rails server to the internet so it can receive webhooks.</p>
+<p>Alternatively, you can use cloudflared or localtunnel to expose your Rails server to the internet so it can receive webhooks.</p>
 
 <%= h4_with_anchor "Paddle" %>
 

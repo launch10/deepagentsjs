@@ -3,18 +3,19 @@
 ## When to Use
 
 Use snapshots when you need to:
+
 - Debug an issue at a specific point in the user journey
 - Run tests that require existing data state
 - Skip slow setup steps during development
 
 ## Available Snapshots
 
-| Snapshot | Description | Use Case |
-|----------|-------------|----------|
-| `core_data` | Plans, templates, themes (no accounts) | Base data testing |
-| `basic_account` | Subscribed test user account | Most common starting point |
-| `website_created` | Website with brainstorm data | Testing website features |
-| `campaign_created` | Campaign with ad groups and ads | Testing ads features |
+| Snapshot                | Description                            | Use Case                   |
+| ----------------------- | -------------------------------------- | -------------------------- |
+| `core_data`             | Plans, templates, themes (no accounts) | Base data testing          |
+| `basic_account`         | Subscribed test user account           | Most common starting point |
+| `website_step`          | Website with brainstorm data           | Testing website features   |
+| `campaign_content_step` | Campaign with ad groups and ads        | Testing ads features       |
 
 ## Commands
 
@@ -29,14 +30,14 @@ RAILS_ENV=test rake db:snapshot:list
 
 ```bash
 RAILS_ENV=test rake db:snapshot:deps
-RAILS_ENV=test rake "db:snapshot:deps[campaign_created]"
+RAILS_ENV=test rake "db:snapshot:deps[campaign_content_step]"
 ```
 
 ### Build a snapshot
 
 ```bash
 # Builds the snapshot and all its dependencies
-RAILS_ENV=test rake "db:snapshot:build[campaign_created]"
+RAILS_ENV=test rake "db:snapshot:build[campaign_content_step]"
 ```
 
 ### Restore a snapshot
@@ -95,7 +96,7 @@ RAILS_ENV=test rake "db:snapshot:build[my_feature_created]"
 
 ```typescript
 // Restore snapshot before running test
-await restoreSnapshot("campaign_created");
+await restoreSnapshot("campaign_content_step");
 ```
 
 ## Important Notes

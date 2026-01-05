@@ -7,7 +7,8 @@ let crypto: typeof import('crypto') | null = null;
 
 async function loadBackendModules() {
   if (isBackend() && !jwt) {
-    jwt = (await import('jsonwebtoken')).default;
+    const jwtModule = await import('jsonwebtoken');
+    jwt = jwtModule.default || jwtModule;
     crypto = await import('crypto');
   }
 }
@@ -46,7 +47,6 @@ const testHeaders = (baseHeaders: Record<string, string>) => {
 
 const sharedHeaders = (): Record<string, string> => {
   return {
-    "Content-Type": "application/json",
     "Accept": "application/json",
   };
 }
@@ -71,8 +71,6 @@ const headers = (jwtToken?: string) => {
   
   if (jwtToken && isBackend()) {
     headers = addBackendHeaders(headers, jwtToken);
-  } else {
-    console.log('[Rails API Client] NOT adding backend headers - jwtToken:', !!jwtToken, 'isBackend:', isBackend());
   }
   return headers;
 }
@@ -84,7 +82,7 @@ const headers = (jwtToken?: string) => {
  */
 export async function createRailsApiClient(options: RailsApiClientOptions) {
   const { jwt: jwtToken, baseUrl = env.RAILS_API_URL || env.VITE_RAILS_API_URL || "http://localhost:3000" } = options;
-  
+
   if (isBackend()) {
     await loadBackendModules();
   }

@@ -1,0 +1,8 @@
+#!/bin/bash
+# rails_app/bin/services - Wrapper that calls root bin/services
+#
+# This just delegates to the root bin/services for consistency.
+# All service management is centralized at the monorepo root.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec "$SCRIPT_DIR/../../bin/services" "$@"

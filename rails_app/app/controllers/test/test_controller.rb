@@ -1,4 +1,5 @@
 class Test::TestController < ApplicationController
+  skip_forgery_protection
   before_action :redirect_unless_local_env
 
   private

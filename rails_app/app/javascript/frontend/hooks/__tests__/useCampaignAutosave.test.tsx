@@ -3,9 +3,9 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import type { ReactNode } from "react";
-import { useAutosaveCampaign } from "../useAutosaveCampaign";
+import { useAutosaveCampaign } from "@components/ads/hooks/useAutosaveCampaign";
 
-vi.mock("../useAdsChat", () => ({
+vi.mock("@components/ads/hooks/useAdsChat", () => ({
   useAdsChatState: vi.fn(() => "campaign-123"),
 }));
 
@@ -71,6 +71,7 @@ describe("useAutosaveCampaign", () => {
           });
           const autosave = useAutosaveCampaign({
             methods,
+            formId: "test-form",
             transformFn: transformTestForm,
             debounceMs: 500,
           });
@@ -124,6 +125,7 @@ describe("useAutosaveCampaign", () => {
           });
           const autosave = useAutosaveCampaign({
             methods,
+            formId: "test-form",
             transformFn: transformTestForm,
             debounceMs: 500,
           });
@@ -175,6 +177,7 @@ describe("useAutosaveCampaign", () => {
           });
           return useAutosaveCampaign({
             methods,
+            formId: "test-form",
             transformFn: transformTestForm,
             debounceMs: 500,
           });
@@ -202,6 +205,7 @@ describe("useAutosaveCampaign", () => {
           });
           const autosave = useAutosaveCampaign({
             methods,
+            formId: "test-form",
             transformFn: transformTestForm,
             debounceMs: 500,
           });
@@ -243,6 +247,7 @@ describe("useAutosaveCampaign", () => {
           });
           const autosave = useAutosaveCampaign({
             methods,
+            formId: "test-form",
             transformFn: transformTestForm,
             debounceMs: 500,
           });
@@ -305,6 +310,7 @@ describe("useAutosaveCampaign", () => {
           });
           const autosave = useAutosaveCampaign({
             methods,
+            formId: "test-form",
             transformFn: transformTestForm,
             debounceMs: 500,
           });
@@ -355,6 +361,7 @@ describe("useAutosaveCampaign", () => {
           });
           const autosave = useAutosaveCampaign({
             methods,
+            formId: "test-form",
             transformFn: customTransform,
             debounceMs: 100,
           });
@@ -401,6 +408,7 @@ describe("useAutosaveCampaign", () => {
           });
           const autosave = useAutosaveCampaign({
             methods,
+            formId: "test-form",
             transformFn: nullTransform,
             debounceMs: 100,
           });
@@ -436,6 +444,7 @@ describe("useAutosaveCampaign", () => {
           });
           const autosave = useAutosaveCampaign({
             methods,
+            formId: "test-form",
             transformFn: transformTestForm,
             debounceMs: 100,
             enabled: false,
@@ -478,6 +487,7 @@ describe("useAutosaveCampaign (real timers)", () => {
         });
         const autosave = useAutosaveCampaign({
           methods,
+          formId: "test-form",
           transformFn: transformTestForm,
           onSuccess,
           debounceMs: 50,
@@ -520,6 +530,7 @@ describe("useAutosaveCampaign (real timers)", () => {
         });
         const autosave = useAutosaveCampaign({
           methods,
+          formId: "test-form",
           transformFn: transformTestForm,
           debounceMs: 50,
         });
@@ -565,6 +576,7 @@ describe("useAutosaveCampaign (real timers)", () => {
         });
         const autosave = useAutosaveCampaign({
           methods,
+          formId: "test-form",
           transformFn: transformTestForm,
           debounceMs: 50,
         });

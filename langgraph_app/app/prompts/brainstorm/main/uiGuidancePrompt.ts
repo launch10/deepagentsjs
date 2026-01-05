@@ -1,6 +1,6 @@
 import { type BrainstormGraphState } from "@state";
 import { type LangGraphRunnableConfig, Brainstorm } from "@types";
-import { finishedTool } from "@tools";
+ import { finishedTool} from "@tools";
 import { toolsPrompt } from "@prompts";
 import { structuredOutputPrompt } from "@prompts";
 import { collectedAnswersPrompt, backgroundPrompt } from "../shared";
@@ -33,15 +33,16 @@ export const uiGuidancePrompt = async (
             You are the helpful UI navigator. You will help the user navigate the UI
             to either option 1 or option 2.
 
-            If the user has indicated they are finished brainstorming or ready to move on, 
-            just call the finishedTool.
+            CRITICAL: If the user says "I'm finished", "let's build", "build my site", or
+            indicates they are ready to move on, you MUST call the finishedTool immediately.
+            Do NOT respond with text - just call the tool to redirect them.
         </role>
 
         <task>
             Complete 1 of 3 tasks:
 
             1. Explain the user's options to them
-                - Use when: The user has just finished brainstorming
+                - Use when: The user has just finished brainstorming AND hasn't told you what they want to do yet
 
             2. Answer any questions they may have about the process
                 - Use when: The user has questions about the process
@@ -49,7 +50,8 @@ export const uiGuidancePrompt = async (
                 - Read the room.
 
             3. Call the finishedTool to automatically redirect to the website builder
-                - Use when: The user has indicated they are ready to move on.
+                - Use when: The user says "I'm finished", "let's build", "build my site", etc.
+                - IMPORTANT: Do NOT respond with text when calling this tool. Just call it.
         </task>
 
         <available_options>
@@ -158,16 +160,21 @@ export const uiGuidancePrompt = async (
         </communication_approach>
 
         <task>
-            Complete 1 of 3 tasks:
+            Complete 1 of 4 tasks:
 
             1. Explain the user's options to them
-                - Use when: The user has just finished brainstorming
+                - Use when: The user has just finished brainstorming AND hasn't indicated what they want to do
 
             2. Answer any questions they may have about the process
                 - Use when: The user has questions about the process
 
             3. Call the finishedTool to automatically redirect to the website builder
-                - Use when: The user has indicated they are ready to move on.
+                - TRIGGER: User says "I'm finished", "let's build", "build my site", etc.
+                - CRITICAL: Just call the tool. Do NOT respond with text.
+
+            4. Query the user's uploaded images
+                - Use when: The user mentions images they've uploaded previously
+                - Call the query_uploads tool to fetch their images
         </task>
 
         ${availableTools}

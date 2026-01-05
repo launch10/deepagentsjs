@@ -1396,6 +1396,488 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/projects/{project_uuid}/social_links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                project_uuid: string;
+            };
+            cookie?: never;
+        };
+        /** Cannot access other account project social links */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns social links for the project */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * @description Social platform type
+                             * @enum {string}
+                             */
+                            platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
+                            /** @description URL to the social profile. For twitter, instagram, and youtube, URLs are automatically normalized (e.g., @username -> https://twitter.com/username) */
+                            url: string;
+                            /** @description Social handle/username */
+                            handle?: string | null;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        }[];
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description project not found for other account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Creates a social link */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        social_link: {
+                            /**
+                             * @description Social platform type
+                             * @enum {string}
+                             */
+                            platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
+                            /** @description URL to the social profile. For twitter, instagram, and youtube: accepts full URLs (http/https, with/without www), usernames, or @usernames. Automatically normalized to canonical format (e.g., @johndoe -> https://twitter.com/johndoe) */
+                            url: string;
+                            /** @description Social handle/username */
+                            handle?: string;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description normalizes x.com URL to twitter.com */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * @description Social platform type
+                             * @enum {string}
+                             */
+                            platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
+                            /** @description URL to the social profile. For twitter, instagram, and youtube, URLs are automatically normalized (e.g., @username -> https://twitter.com/username) */
+                            url: string;
+                            /** @description Social handle/username */
+                            handle?: string | null;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description duplicate platform for project */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_uuid}/social_links/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                project_uuid: string;
+                /** @description Social Link ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** Retrieves a social link */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                    /** @description Social Link ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description social link found */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * @description Social platform type
+                             * @enum {string}
+                             */
+                            platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
+                            /** @description URL to the social profile. For twitter, instagram, and youtube, URLs are automatically normalized (e.g., @username -> https://twitter.com/username) */
+                            url: string;
+                            /** @description Social handle/username */
+                            handle?: string | null;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description social link not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Deletes a social link */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                    /** @description Social Link ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description social link deleted successfully */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description social link not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Updates a social link */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                    /** @description Social Link ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        social_link: {
+                            /**
+                             * @description Social platform type
+                             * @enum {string}
+                             */
+                            platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
+                            /** @description URL to the social profile. For twitter, instagram, and youtube: accepts full URLs (http/https, with/without www), usernames, or @usernames. Automatically normalized to canonical format (e.g., @johndoe -> https://twitter.com/johndoe) */
+                            url: string;
+                            /** @description Social handle/username */
+                            handle?: string;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description normalizes username on update */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * @description Social platform type
+                             * @enum {string}
+                             */
+                            platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
+                            /** @description URL to the social profile. For twitter, instagram, and youtube, URLs are automatically normalized (e.g., @username -> https://twitter.com/username) */
+                            url: string;
+                            /** @description Social handle/username */
+                            handle?: string | null;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description social link not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid URL format for non-normalizable platform */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/projects/{project_uuid}/social_links/bulk_upsert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                project_uuid: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk upsert social links */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        social_links: {
+                            /**
+                             * @description Social platform type
+                             * @enum {string}
+                             */
+                            platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
+                            /** @description URL to the social profile. For twitter, instagram, and youtube: accepts full URLs (http/https, with/without www), usernames, or @usernames. Automatically normalized to canonical format (e.g., @johndoe -> https://twitter.com/johndoe) */
+                            url: string;
+                            /** @description Social handle/username */
+                            handle?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description updates existing social links */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * @description Social platform type
+                             * @enum {string}
+                             */
+                            platform: "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
+                            /** @description URL to the social profile. For twitter, instagram, and youtube, URLs are automatically normalized (e.g., @username -> https://twitter.com/username) */
+                            url: string;
+                            /** @description Social handle/username */
+                            handle?: string | null;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        }[];
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description validation failure rolls back all changes (atomic) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Validation error messages (transaction rolls back all changes) */
+                            errors: string[];
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/test/database/truncate": {
         parameters: {
             query?: never;
@@ -1759,6 +2241,8 @@ export interface paths {
                 query?: {
                     /** @description Filter by website */
                     website_id?: number;
+                    /** @description Filter by logo status (true for logos, false for product images) */
+                    is_logo?: boolean;
                 };
                 header?: {
                     Authorization?: string;
@@ -1791,7 +2275,7 @@ export interface paths {
                              * @description Media type
                              * @enum {string}
                              */
-                            media_type: "image" | "video";
+                            media_type: "image" | "video" | "document";
                             /** @description Whether this upload is a logo */
                             is_logo: boolean;
                             /** @description Original filename */
@@ -1837,7 +2321,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description creating upload without website */
+                /** @description PDF upload associated with website */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -1858,7 +2342,7 @@ export interface paths {
                              * @description Media type
                              * @enum {string}
                              */
-                            media_type: "image" | "video";
+                            media_type: "image" | "video" | "document";
                             /** @description Whether this upload is a logo */
                             is_logo: boolean;
                             /** @description Original filename */
@@ -1883,7 +2367,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description rejects PDF upload */
+                /** @description website not exist */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -1893,6 +2377,54 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deletes an upload */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Upload ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description upload deleted successfully */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot delete upload owned by another account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -2200,6 +2732,130 @@ export interface paths {
                 };
                 /** @description duplicate domain and path on update */
                 422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/projects/{project_uuid}/website": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project UUID */
+                project_uuid: string;
+            };
+            cookie?: never;
+        };
+        /** Retrieves a website */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description website found */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Website name */
+                            name?: string | null;
+                            /** @description Theme ID */
+                            theme_id?: number | null;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description project not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cannot update other account website */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    project_uuid: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        website: {
+                            /** @description Theme ID to set for the website */
+                            theme_id?: number | null;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description website updated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Website name */
+                            name?: string | null;
+                            /** @description Theme ID */
+                            theme_id?: number | null;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description project not found for other account */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };

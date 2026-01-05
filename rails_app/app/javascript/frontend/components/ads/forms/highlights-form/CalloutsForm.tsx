@@ -1,26 +1,17 @@
 import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
 import { Badge } from "@components/ui/badge";
 import { Field, FieldGroup } from "@components/ui/field";
-import { useAdsChatActions, useAdsChatState } from "@hooks/useAdsChat";
+import { useAdsChatActions, useAdsChatState, useAutosaveCampaign, defaultAssetTransform } from "@components/ads/hooks";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads } from "@shared";
 import { Info } from "lucide-react";
 import { createRefreshHandler } from "../../utils/refreshAssets";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
 import { createLockToggleHandler } from "@helpers/handleLockToggle";
-import { useAutosaveCampaign } from "@api/campaigns.hooks";
-import { defaultAssetTransform } from "@hooks/campaignAutosave.transforms";
-import type { UpdateCampaignRequestBody } from "@api/campaigns";
-
-const calloutsFormSchema = z.object({
-  callouts: z.array(Ads.AssetSchema),
-});
-
-type CalloutsFormData = z.infer<typeof calloutsFormSchema>;
+import type { UpdateCampaignRequestBody } from "@rails_api_base";
 
 export default function CalloutsForm() {
   const callouts = useAdsChatState("callouts");
@@ -29,8 +20,8 @@ export default function CalloutsForm() {
   const filteredCallouts = (callouts || []).filter((c) => !c.rejected);
   const prevIdsRef = useRef<string[]>([]);
 
-  const methods = useForm<CalloutsFormData>({
-    resolver: zodResolver(calloutsFormSchema) as any,
+  const methods = useForm<Ads.CalloutsOutput>({
+    resolver: zodResolver(Ads.CalloutsOutputSchema) as any,
     mode: "onChange",
     defaultValues: {
       callouts: filteredCallouts,
@@ -73,8 +64,9 @@ export default function CalloutsForm() {
     });
   };
 
-  const { saveNow } = useAutosaveCampaign<CalloutsFormData>({
+  const { getData } = useAutosaveCampaign<Ads.CalloutsOutput>({
     methods,
+    formId: "callouts",
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
       const transformed = defaultAssetTransform(data.callouts);
       if (transformed.length === 0) return null;
@@ -82,7 +74,7 @@ export default function CalloutsForm() {
     },
   });
 
-  useFormRegistration("highlights", methods, saveNow);
+  useFormRegistration("highlights", methods, getData);
 
   const fields = filteredCallouts.map((c) => ({ ...c, id: c.id }));
 

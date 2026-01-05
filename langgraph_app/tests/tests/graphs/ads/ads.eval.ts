@@ -96,7 +96,7 @@ const testQuestionAnswering = async (input: {
 
 evalite("Ads", {
   data: async () => {
-    await DatabaseSnapshotter.restoreSnapshot("website_deployed");
+    await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
     const projectUUID = await db
       .select()
       .from(projectsTable)

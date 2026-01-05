@@ -11,17 +11,42 @@ basic_account:
   base_snapshot: core_data
   description: "Creates a subscribed test user account"
 
-website_created:
+website_step:
   class: WebsiteCreated
   base_snapshot: basic_account
   description: "Creates a website with brainstorm data"
 
-website_deployed:
-  class: WebsiteDeployed
-  base_snapshot: website_created
-  description: "Sets workflow to ad_campaign:content"
+website_step_finished:
+  class: WebsiteStepFinished
+  base_snapshot: website_step
+  description: "Deploys website and sets workflow to ad_campaign:content"
 
-campaign_created:
-  class: CampaignCreated
-  base_snapshot: website_created
-  description: "Creates a campaign with ad groups and ads"
+campaign_content_step:
+  class: CampaignContentStep
+  base_snapshot: website_step_finished
+  description: "Creates a campaign with ad groups and ads - ON content step"
+
+campaign_highlights_step:
+  class: CampaignHighlightsStep
+  base_snapshot: campaign_content_step
+  description: "Fills headlines and descriptions - ON highlights step"
+
+campaign_keywords_step:
+  class: CampaignKeywordsStep
+  base_snapshot: campaign_highlights_step
+  description: "Fills callouts and snippets - ON keywords step"
+
+campaign_settings_step:
+  class: CampaignSettingsStep
+  base_snapshot: campaign_keywords_step
+  description: "Fills keywords for ad groups - ON settings step"
+
+campaign_launch_step:
+  class: CampaignLaunchStep
+  base_snapshot: campaign_settings_step
+  description: "Sets location, schedule, budget - ON launch step"
+
+campaign_review_step:
+  class: CampaignReviewStep
+  base_snapshot: campaign_launch_step
+  description: "Sets channel type, bidding, start date - ON review step"

@@ -1,8 +1,15 @@
 import { create } from "zustand";
 
+type FormData = Record<string, unknown>;
+
 type FormHandle = {
   validate: () => Promise<boolean>;
-  save?: () => Promise<void>;
+  getData?: () => FormData | null;
+};
+
+type ValidateAndSaveResult = {
+  valid: boolean;
+  error?: Error;
 };
 
 type FormRegistryState = {
@@ -12,7 +19,10 @@ type FormRegistryState = {
 type FormRegistryActions = {
   register: (formName: string, handle: FormHandle) => () => void;
   validate: (formName: string) => Promise<boolean>;
-  save: (formName: string) => Promise<void>;
+  validateAndSave: (
+    formName: string,
+    saveFn: (data: FormData) => Promise<void>
+  ) => Promise<ValidateAndSaveResult>;
 };
 
 type FormRegistryStore = FormRegistryState & FormRegistryActions;
@@ -44,13 +54,44 @@ export const useFormRegistry = create<FormRegistryStore>((set, get) => ({
     return results.every(Boolean);
   },
 
-  save: async (formName) => {
+  validateAndSave: async (formName, saveFn) => {
     const subforms = get().formNames[formName] || [];
-    const savePromises = subforms.map((h) => h.save?.() ?? Promise.resolve());
-    await Promise.all(savePromises);
+
+    // Validate all subforms
+    const results = await Promise.all(subforms.map((h) => h.validate()));
+    const allValid = results.every(Boolean);
+
+    if (!allValid) {
+      return { valid: false };
+    }
+
+    // Collect data from all subforms
+    const allData: FormData[] = [];
+    for (const form of subforms) {
+      const data = form.getData?.();
+      if (data) {
+        allData.push(data);
+      }
+    }
+
+    // Nothing to save but validation passed
+    if (allData.length === 0) {
+      return { valid: true };
+    }
+
+    // Merge all form data
+    const mergedData = allData.reduce((merged, data) => ({ ...merged, ...data }), {});
+
+    // Save
+    try {
+      await saveFn(mergedData);
+      return { valid: true };
+    } catch (error) {
+      return { valid: false, error: error as Error };
+    }
   },
 }));
 
-export const selectValidate = (s: FormRegistryStore) => s.validate;
 export const selectRegister = (s: FormRegistryStore) => s.register;
-export const selectSave = (s: FormRegistryStore) => s.save;
+export const selectValidate = (s: FormRegistryStore) => s.validate;
+export const selectValidateAndSave = (s: FormRegistryStore) => s.validateAndSave;

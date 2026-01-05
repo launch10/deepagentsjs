@@ -132,6 +132,12 @@
   --color-alpha-error-20: #d14f3433;
 
   /* ========================================
+   * Shadows
+   * ======================================== */
+  --shadow-chat-default: 0px 0px 8px 4px rgba(167, 165, 161, 0.08);
+  --shadow-chat-delight: 0px 0px 24px 8px rgba(55, 72, 184, 0.13);
+
+  /* ========================================
    * Semantic colors (shadcn/ui compatible)
    * ======================================== */
   --color-primary: var(--color-primary-500);
@@ -172,6 +178,7 @@
   --color-accent-500: var(--color-primary-500);
   --color-accent-600: var(--color-primary-600);
   --color-accent-700: var(--color-primary-700);
+
 }
 
 @import "./themes/dark.css" layer(theme);
@@ -179,6 +186,26 @@
 @import "./themes/light.css" layer(theme);
 @import "./themes/jumpstart-dark.css" layer(theme);
 @import "./themes/jumpstart.css" layer(theme);
+
+/* Base styles */
+@layer base {
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  ul {
+    list-style-type: disc;
+    list-style-position: inside;
+  }
+
+  ol {
+    list-style-type: decimal;
+    list-style-position: inside;
+  }
+}
 
 @import "./components/base.css" layer(components);
 @import "./components/actiontext.css" layer(components);
@@ -205,3 +232,21 @@
 @import "./components/typography.css" layer(components);
 @import "./components/wells.css" layer(components);
 @import "./components/braintree.css" layer(components);
+
+/* Additional component styles */
+@layer components {
+  .table {
+    width: 100%;
+
+    th,
+    td {
+      vertical-align: top;
+    }
+  }
+
+  .table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+  }
+}

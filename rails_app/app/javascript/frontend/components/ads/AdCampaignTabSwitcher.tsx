@@ -1,20 +1,20 @@
 import { twMerge } from "tailwind-merge";
 import {
-  useWorkflowSteps,
+  useWorkflow,
   selectStep,
   selectSubstep,
   selectSetSubstep,
   selectCanGoBack,
-} from "@context/WorkflowStepsProvider";
+} from "@context/WorkflowProvider";
 import { useFormRegistry, selectValidate } from "@stores/formRegistry";
 import { Workflow } from "@shared";
 
 export default function AdCampaignTabSwitcher({ disabled }: { disabled?: boolean }) {
   const validateForm = useFormRegistry(selectValidate);
-  const step = useWorkflowSteps(selectStep);
-  const activeTab = useWorkflowSteps(selectSubstep) || "content";
-  const setSubstep = useWorkflowSteps(selectSetSubstep)!;
-  const canGoBack = useWorkflowSteps(selectCanGoBack)!;
+  const step = useWorkflow(selectStep);
+  const activeTab = useWorkflow(selectSubstep) || "content";
+  const setSubstep = useWorkflow(selectSetSubstep);
+  const canGoBack = useWorkflow(selectCanGoBack);
 
   if (!step || !Workflow.isTabGroupName(step)) return null;
 
@@ -35,7 +35,7 @@ export default function AdCampaignTabSwitcher({ disabled }: { disabled?: boolean
   };
 
   return (
-    <div className="flex rounded-t-2xl border-neutral-300 border border-b-0 overflow-hidden">
+    <div className="flex rounded-t-2xl border-neutral-300 border border-b-0 overflow-hidden" data-testid="tab-switcher">
       {availableSubsteps.map((substep) => (
         <button
           key={substep.order}
@@ -47,6 +47,8 @@ export default function AdCampaignTabSwitcher({ disabled }: { disabled?: boolean
               "border-b-accent-yellow-700 text-accent-yellow-800 bg-accent-yellow-100"
           )}
           disabled={!canGoBack || disabled}
+          data-testid={`tab-${substep.name}`}
+          data-active={activeTab === substep.name}
         >
           {substep.label}
         </button>
