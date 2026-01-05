@@ -61,6 +61,10 @@ class AdsAccount < ApplicationRecord
     google_syncer.to_google_json
   end
 
+  def google_sync_result
+    google_syncer.sync_result
+  end
+
   def google_syncer
     GoogleAds::Resources::Account.new(self)
   end

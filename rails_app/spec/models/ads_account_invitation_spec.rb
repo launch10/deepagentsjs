@@ -69,8 +69,10 @@ RSpec.describe AdsAccountInvitation, type: :model do
         expect(invitation.reload.google_access_role).to eq("ADMIN")
       end
 
-      it 'raises error for invalid role' do
-        expect { invitation.google_access_role = "INVALID" }.to raise_error(ArgumentError)
+      it 'is invalid with an invalid role' do
+        invitation.google_access_role = "INVALID"
+        expect(invitation).not_to be_valid
+        expect(invitation.errors[:google_access_role]).to include("is not a valid option")
       end
     end
 
@@ -85,8 +87,10 @@ RSpec.describe AdsAccountInvitation, type: :model do
         expect(invitation.reload.google_status).to eq("sent")
       end
 
-      it 'raises error for invalid status' do
-        expect { invitation.google_status = "invalid" }.to raise_error(ArgumentError)
+      it 'is invalid with an invalid status' do
+        invitation.google_status = "invalid_status"
+        expect(invitation).not_to be_valid
+        expect(invitation.errors[:google_status]).to include("is not a valid option")
       end
     end
 

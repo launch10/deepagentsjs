@@ -187,20 +187,6 @@ RSpec.describe AdsAccount, type: :model do
     end
   end
 
-  describe 'GoogleMappable' do
-    it 'includes GoogleMappable' do
-      expect(AdsAccount.ancestors).to include(GoogleMappable)
-    end
-
-    it 'responds to to_google_json' do
-      expect(ads_account).to respond_to(:to_google_json)
-    end
-
-    it 'responds to from_google_json' do
-      expect(AdsAccount).to respond_to(:from_google_json)
-    end
-  end
-
   describe 'to_google_json' do
     before do
       ads_account.google_descriptive_name = "My Account"

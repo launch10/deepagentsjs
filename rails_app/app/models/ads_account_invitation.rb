@@ -40,17 +40,33 @@ class AdsAccountInvitation < ApplicationRecord
   platform_setting :google, :sent_at
   platform_setting :google, :accepted_at
 
-  # ═══════════════════════════════════════════════════════════════
-  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
-  # Callback logic (update_record_from_sync_result) is INSIDE the resource
-  # ═══════════════════════════════════════════════════════════════
+  def google_syncer
+    GoogleAds::Resources::AccountInvitation.new(self)
+  end
 
-  def google_sync = GoogleAds::Resources::AccountInvitation.new(self).sync
-  def google_synced? = GoogleAds::Resources::AccountInvitation.new(self).synced?
-  def google_delete = GoogleAds::Resources::AccountInvitation.new(self).delete
-  def google_fetch = GoogleAds::Resources::AccountInvitation.new(self).fetch
-  def google_syncer = GoogleAds::Resources::AccountInvitation.new(self)
-  def google_refresh_status = GoogleAds::Resources::AccountInvitation.new(self).refresh_status
+  def google_sync
+    google_syncer.sync
+  end
+
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
+
+  def google_sync_result
+    google_syncer.sync_result
+  end
+
+  def google_refresh_status
+    google_syncer.refresh_status
+  end
 
   scope :pending, -> { where("platform_settings->>'google'->>'status' = ?", "pending") }
   scope :sent, -> { where("platform_settings->'google'->>'status' = ?", "sent") }
