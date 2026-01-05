@@ -37,16 +37,25 @@ class AdLocationTarget < ApplicationRecord
   platform_setting :google, :criterion_id
   platform_setting :google, :remote_criterion_id
 
-  # ═══════════════════════════════════════════════════════════════
-  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
-  # Callback logic (save_remote_criterion_id) is INSIDE the resource
-  # ═══════════════════════════════════════════════════════════════
+  def google_sync
+    google_syncer.sync
+  end
 
-  def google_sync = GoogleAds::Resources::LocationTarget.new(self).sync
-  def google_synced? = GoogleAds::Resources::LocationTarget.new(self).synced?
-  def google_delete = GoogleAds::Resources::LocationTarget.new(self).delete
-  def google_fetch = GoogleAds::Resources::LocationTarget.new(self).fetch
-  def google_syncer = GoogleAds::Resources::LocationTarget.new(self)
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
+
+  def google_syncer
+    @google_syncer ||= GoogleAds::Resources::LocationTarget.new(self)
+  end
 
   acts_as_paranoid
 

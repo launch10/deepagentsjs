@@ -27,14 +27,23 @@ class AdBudget < ApplicationRecord
 
   acts_as_paranoid
 
-  # ═══════════════════════════════════════════════════════════════
-  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
-  # Callback logic (save_budget_id) is INSIDE the resource
-  # ═══════════════════════════════════════════════════════════════
+  def google_syncer
+    GoogleAds::Resources::Budget.new(self)
+  end
 
-  def google_sync = GoogleAds::Resources::Budget.new(self).sync
-  def google_synced? = GoogleAds::Resources::Budget.new(self).synced?
-  def google_delete = GoogleAds::Resources::Budget.new(self).delete
-  def google_fetch = GoogleAds::Resources::Budget.new(self).fetch
-  def google_syncer = GoogleAds::Resources::Budget.new(self)
+  def google_sync
+    google_syncer.sync
+  end
+
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
 end

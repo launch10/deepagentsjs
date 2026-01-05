@@ -27,16 +27,25 @@ class AdStructuredSnippet < ApplicationRecord
 
   include AdStructuredSnippetConcerns::Categories
 
-  # ═══════════════════════════════════════════════════════════════
-  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
-  # Callback logic (save_asset_id) is INSIDE the resource
-  # ═══════════════════════════════════════════════════════════════
+  def google_sync
+    google_syncer.sync
+  end
 
-  def google_sync = GoogleAds::Resources::StructuredSnippet.new(self).sync
-  def google_synced? = GoogleAds::Resources::StructuredSnippet.new(self).synced?
-  def google_delete = GoogleAds::Resources::StructuredSnippet.new(self).delete
-  def google_fetch = GoogleAds::Resources::StructuredSnippet.new(self).fetch
-  def google_syncer = GoogleAds::Resources::StructuredSnippet.new(self)
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
+
+  def google_syncer
+    @google_syncer ||= GoogleAds::Resources::StructuredSnippet.new(self)
+  end
 
   acts_as_paranoid
 

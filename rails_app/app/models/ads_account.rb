@@ -69,13 +69,17 @@ class AdsAccount < ApplicationRecord
     GoogleAds::Resources::Account.new(self)
   end
 
-  # ═══════════════════════════════════════════════════════════════
-  # Campaigns Collection Sync - Class Method Pattern
-  # ═══════════════════════════════════════════════════════════════
+  def sync_campaigns
+    GoogleAds::Resources::Campaign.sync_all(self)
+  end
 
-  def sync_campaigns = GoogleAds::Resources::Campaign.sync_all(self)
-  def campaigns_synced? = GoogleAds::Resources::Campaign.synced?(self)
-  def campaigns_sync_plan = GoogleAds::Resources::Campaign.sync_plan(self)
+  def campaigns_synced?
+    GoogleAds::Resources::Campaign.synced?(self)
+  end
+
+  def campaigns_sync_plan
+    GoogleAds::Resources::Campaign.sync_plan(self)
+  end
 
   def google_account_invitation
     invitations.where(platform: "google").order(id: :desc).first

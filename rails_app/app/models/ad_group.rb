@@ -47,30 +47,49 @@ class AdGroup < ApplicationRecord
   platform_setting :google, :type, default: "SEARCH_STANDARD"
   platform_setting :google, :cpc_bid_micros, default: 1_000_000
 
-  # ═══════════════════════════════════════════════════════════════
-  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
-  # Callback logic (save_ad_group_id) is INSIDE the resource
-  # ═══════════════════════════════════════════════════════════════
+  def google_syncer
+    GoogleAds::Resources::AdGroup.new(self)
+  end
 
-  def google_sync = GoogleAds::Resources::AdGroup.new(self).sync
-  def google_synced? = GoogleAds::Resources::AdGroup.new(self).synced?
-  def google_delete = GoogleAds::Resources::AdGroup.new(self).delete
-  def google_fetch = GoogleAds::Resources::AdGroup.new(self).fetch
-  def google_syncer = GoogleAds::Resources::AdGroup.new(self)
+  def google_sync
+    google_syncer.sync
+  end
 
-  # ═══════════════════════════════════════════════════════════════
-  # COLLECTION SYNC - Ads (explicit one-liner delegations)
-  # ═══════════════════════════════════════════════════════════════
+  def google_synced?
+    google_syncer.synced?
+  end
 
-  def sync_ads = GoogleAds::Resources::Ad.sync_all(self)
-  def ads_sync_plan = GoogleAds::Resources::Ad.sync_plan(self)
-  def ads_synced? = GoogleAds::Resources::Ad.synced?(self)
+  def google_delete
+    google_syncer.delete
+  end
 
-  # ═══════════════════════════════════════════════════════════════
-  # COLLECTION SYNC - Keywords (explicit one-liner delegations)
-  # ═══════════════════════════════════════════════════════════════
+  def google_fetch
+    google_syncer.fetch
+  end
 
-  def sync_keywords = GoogleAds::Resources::Keyword.sync_all(self)
-  def keywords_sync_plan = GoogleAds::Resources::Keyword.sync_plan(self)
-  def keywords_synced? = GoogleAds::Resources::Keyword.synced?(self)
+  # Ads syncing
+  def sync_ads
+    GoogleAds::Resources::Ad.sync_all(self)
+  end
+
+  def ads_sync_plan
+    GoogleAds::Resources::Ad.sync_plan(self)
+  end
+
+  def ads_synced?
+    GoogleAds::Resources::Ad.synced?(self)
+  end
+
+  # Keywords syncing
+  def sync_keywords
+    GoogleAds::Resources::Keyword.sync_all(self)
+  end
+
+  def keywords_sync_plan
+    GoogleAds::Resources::Keyword.sync_plan(self)
+  end
+
+  def keywords_synced?
+    GoogleAds::Resources::Keyword.synced?(self)
+  end
 end
