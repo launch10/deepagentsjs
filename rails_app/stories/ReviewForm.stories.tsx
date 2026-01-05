@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mocked } from "storybook/test";
 import ReviewForm from "@components/ads/forms/review-form/ReviewForm";
-import { useAdsChatState } from "@hooks/useAdsChat";
+import { useAdsChatState } from "@components/ads/hooks";
 import { useStageInit } from "@hooks/useStageInit";
 
 // Mock data for useAdsChatState
