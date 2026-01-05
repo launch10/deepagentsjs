@@ -27,7 +27,7 @@ module GoogleAds
         def synced?(campaign)
           # Check if any soft-deleted location targets need Google cleanup
           campaign.location_targets.only_deleted.each do |target|
-            return false if target.google_remote_criterion_id.present?
+            return false if target.google_criterion_id.present?
           end
 
           # Check if all active location targets are synced
@@ -43,7 +43,7 @@ module GoogleAds
 
           # Delete soft-deleted location targets with Google IDs
           campaign.location_targets.only_deleted.each do |target|
-            next unless target.google_remote_criterion_id.present?
+            next unless target.google_criterion_id.present?
             results << new(target).delete
           end
 
@@ -60,11 +60,11 @@ module GoogleAds
 
           # Plan deletions
           campaign.location_targets.only_deleted.each do |target|
-            next unless target.google_remote_criterion_id.present?
+            next unless target.google_criterion_id.present?
             operations << {
               action: :delete,
               record: target,
-              remote_criterion_id: target.google_remote_criterion_id
+              criterion_id: target.google_criterion_id
             }
           end
 
@@ -82,14 +82,14 @@ module GoogleAds
       # ═══════════════════════════════════════════════════════════════
 
       def synced?
-        return false unless record.google_remote_criterion_id.present?
+        return false unless record.google_criterion_id.present?
         remote = fetch
         return false unless remote
         fields_match?(remote)
       end
 
       def sync
-        return GoogleAds::SyncResult.unchanged(:campaign_criterion, record.google_remote_criterion_id) if synced?
+        return GoogleAds::SyncResult.unchanged(:campaign_criterion, record.google_criterion_id) if synced?
 
         remote = fetch
         if remote
@@ -109,7 +109,7 @@ module GoogleAds
           operations << {
             action: :create,
             record: record,
-            geo_target_constant: record.google_criterion_id,
+            geo_target_constant: record.google_geo_target_constant,
             negative: attrs[:negative]
           }
         elsif !fields_match?(remote)
@@ -121,14 +121,14 @@ module GoogleAds
       end
 
       def delete
-        return GoogleAds::SyncResult.not_found(:campaign_criterion) unless record.google_remote_criterion_id.present?
+        return GoogleAds::SyncResult.not_found(:campaign_criterion) unless record.google_criterion_id.present?
 
         remove_from_google
-        record.update_column(:platform_settings, record.platform_settings.deep_merge("google" => { "remote_criterion_id" => nil }))
+        record.update_column(:platform_settings, record.platform_settings.deep_merge("google" => { "criterion_id" => nil }))
         GoogleAds::SyncResult.deleted(:campaign_criterion)
       rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
         if resource_not_found_error?(e)
-          record.update_column(:platform_settings, record.platform_settings.deep_merge("google" => { "remote_criterion_id" => nil }))
+          record.update_column(:platform_settings, record.platform_settings.deep_merge("google" => { "criterion_id" => nil }))
           GoogleAds::SyncResult.deleted(:campaign_criterion)
         else
           GoogleAds::SyncResult.error(:campaign_criterion, e)
@@ -152,7 +152,7 @@ module GoogleAds
           # Non-mapped fields
           cc.campaign = campaign_resource_name
           cc.location = client.resource.location_info do |li|
-            li.geo_target_constant = record.google_criterion_id
+            li.geo_target_constant = record.google_geo_target_constant
           end
 
           # Mapped fields (transforms applied via to_google_json)
@@ -165,17 +165,17 @@ module GoogleAds
         )
 
         resource_name = response.results.first.resource_name
-        remote_criterion_id = resource_name.split("~").last.to_i
-        save_remote_criterion_id(remote_criterion_id)
+        criterion_id = resource_name.split("~").last.to_i
+        save_criterion_id(criterion_id)
 
-        GoogleAds::SyncResult.created(:campaign_criterion, remote_criterion_id)
+        GoogleAds::SyncResult.created(:campaign_criterion, criterion_id)
       rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
         GoogleAds::SyncResult.error(:campaign_criterion, e)
       end
 
       def update_criterion(remote)
         comparison = compare_fields(remote)
-        return GoogleAds::SyncResult.unchanged(:campaign_criterion, record.google_remote_criterion_id) if comparison.match?
+        return GoogleAds::SyncResult.unchanged(:campaign_criterion, record.google_criterion_id) if comparison.match?
 
         resource_name = remote.resource_name
 
@@ -189,13 +189,13 @@ module GoogleAds
           operations: [operation]
         )
 
-        GoogleAds::SyncResult.updated(:campaign_criterion, record.google_remote_criterion_id)
+        GoogleAds::SyncResult.updated(:campaign_criterion, record.google_criterion_id)
       rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
         GoogleAds::SyncResult.error(:campaign_criterion, e)
       end
 
       def remove_from_google
-        resource_name = "customers/#{customer_id}/campaignCriteria/#{google_campaign_id}~#{record.google_remote_criterion_id}"
+        resource_name = "customers/#{customer_id}/campaignCriteria/#{google_campaign_id}~#{record.google_criterion_id}"
         operation = client.operation.remove_resource.campaign_criterion(resource_name)
         client.service.campaign_criterion.mutate_campaign_criteria(
           customer_id: customer_id,
@@ -208,7 +208,7 @@ module GoogleAds
       # ═══════════════════════════════════════════════════════════════
 
       def fetch_by_id
-        return nil unless record.google_remote_criterion_id.present?
+        return nil unless record.google_criterion_id.present?
 
         results = client.service.google_ads.search(
           customer_id: customer_id,
@@ -239,8 +239,8 @@ module GoogleAds
         @attrs ||= to_google_json
       end
 
-      def save_remote_criterion_id(remote_criterion_id)
-        record.update_column(:platform_settings, record.platform_settings.deep_merge("google" => { "remote_criterion_id" => remote_criterion_id }))
+      def save_criterion_id(criterion_id)
+        record.update_column(:platform_settings, record.platform_settings.deep_merge("google" => { "criterion_id" => criterion_id.to_s }))
       end
 
       def client
@@ -267,7 +267,7 @@ module GoogleAds
         <<~GAQL.squish
           SELECT campaign_criterion.resource_name, campaign_criterion.criterion_id, campaign_criterion.campaign, campaign_criterion.location.geo_target_constant, campaign_criterion.negative
           FROM campaign_criterion
-          WHERE campaign_criterion.criterion_id = #{record.google_remote_criterion_id}
+          WHERE campaign_criterion.criterion_id = #{record.google_criterion_id}
           AND campaign_criterion.campaign = 'customers/#{customer_id}/campaigns/#{google_campaign_id}'
         GAQL
       end

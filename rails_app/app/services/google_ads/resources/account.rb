@@ -23,7 +23,8 @@ module GoogleAds
 
       field_mapping :status,
         local: :google_status,
-        remote: ->(r) { r.status.to_s }
+        remote: ->(r) { r.status.to_s },
+        skip_comparison: -> { GoogleAds.is_test_mode? }
 
       field_mapping :auto_tagging_enabled,
         local: :google_auto_tagging_enabled,
@@ -90,23 +91,6 @@ module GoogleAds
       def fetch
         return fetch_by_id if customer_id.present?
         fetch_by_name
-      end
-
-      # Custom compare_fields that skips status in test mode
-      # Uses all field_mappings (including status) for comparison
-      def compare_fields(remote)
-        FieldCompare.build do |c|
-          self.class.field_mappings.each do |name, _mapping|
-            local_val = local_value(name)
-            remote_val = remote_value(remote, name, apply_reverse_transform: false)
-            c.check(name, local: local_val, remote: remote_val) do
-              local_val == remote_val
-            end
-          end
-
-          # Skip status comparison in test mode since test accounts may have different status
-          c.skip(:status) if GoogleAds.is_test_mode?
-        end
       end
 
       # ═══════════════════════════════════════════════════════════════

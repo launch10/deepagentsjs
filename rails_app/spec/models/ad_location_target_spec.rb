@@ -40,53 +40,53 @@ RSpec.describe AdLocationTarget, type: :model do
   let(:campaign) { create(:campaign, account: account, project: project, website: website) }
 
   describe 'validations' do
-    describe 'unique google_criterion_id per campaign' do
-      it 'allows a single location target with a criterion_id' do
+    describe 'unique google_geo_target_constant per campaign' do
+      it 'allows a single location target with a geo_target_constant' do
         target = campaign.location_targets.build(
           target_type: 'geo_location',
           location_name: 'United States',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/2840' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/2840' } }
         )
         expect(target).to be_valid
       end
 
-      it 'prevents duplicate google_criterion_id within the same campaign' do
+      it 'prevents duplicate google_geo_target_constant within the same campaign' do
         campaign.location_targets.create!(
           target_type: 'geo_location',
           location_name: 'California',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/21137' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/21137' } }
         )
         duplicate = campaign.location_targets.build(
           target_type: 'geo_location',
           location_name: 'California',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/21137' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/21137' } }
         )
         expect(duplicate).not_to be_valid
-        expect(duplicate.errors[:google_criterion_id]).to include('has already been taken for this campaign')
+        expect(duplicate.errors[:google_geo_target_constant]).to include('has already been taken for this campaign')
       end
 
-      it 'allows same google_criterion_id across different campaigns' do
+      it 'allows same google_geo_target_constant across different campaigns' do
         other_campaign = create(:campaign, account: account, project: project, website: website)
 
         campaign.location_targets.create!(
           target_type: 'geo_location',
           location_name: 'California',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/21137' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/21137' } }
         )
         target = other_campaign.location_targets.build(
           target_type: 'geo_location',
           location_name: 'California',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/21137' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/21137' } }
         )
         expect(target).to be_valid
       end
 
-      it 'allows multiple targets with nil criterion_id (e.g., radius targets)' do
+      it 'allows multiple targets with nil geo_target_constant (e.g., radius targets)' do
         campaign.location_targets.create!(
           target_type: 'radius',
           city: 'San Francisco',
@@ -111,7 +111,7 @@ RSpec.describe AdLocationTarget, type: :model do
           target_type: 'geo_location',
           location_name: 'United States',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/2840' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/2840' } }
         )
         expect(target).to be_valid
       end
@@ -121,16 +121,16 @@ RSpec.describe AdLocationTarget, type: :model do
           target_type: 'geo_location',
           location_name: 'California',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/21137' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/21137' } }
         )
         us_target = campaign.location_targets.build(
           target_type: 'geo_location',
           location_name: 'United States',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/2840' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/2840' } }
         )
         expect(us_target).not_to be_valid
-        expect(us_target.errors[:google_criterion_id]).to include('United States cannot be added when more specific locations are targeted')
+        expect(us_target.errors[:google_geo_target_constant]).to include('United States cannot be added when more specific locations are targeted')
       end
 
       it 'prevents adding other locations when United States (2840) exists' do
@@ -138,16 +138,16 @@ RSpec.describe AdLocationTarget, type: :model do
           target_type: 'geo_location',
           location_name: 'United States',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/2840' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/2840' } }
         )
         ca_target = campaign.location_targets.build(
           target_type: 'geo_location',
           location_name: 'California',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/21137' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/21137' } }
         )
         expect(ca_target).not_to be_valid
-        expect(ca_target.errors[:google_criterion_id]).to include('cannot add specific locations when United States is already targeted')
+        expect(ca_target.errors[:google_geo_target_constant]).to include('cannot add specific locations when United States is already targeted')
       end
 
       it 'allows radius targets alongside United States (2840)' do
@@ -155,7 +155,7 @@ RSpec.describe AdLocationTarget, type: :model do
           target_type: 'geo_location',
           location_name: 'United States',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/2840' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/2840' } }
         )
         radius_target = campaign.location_targets.build(
           target_type: 'radius',
@@ -179,7 +179,7 @@ RSpec.describe AdLocationTarget, type: :model do
           target_type: 'geo_location',
           location_name: 'United States',
           country_code: 'US',
-          platform_settings: { 'google' => { 'criterion_id' => 'geoTargetConstants/2840' } }
+          platform_settings: { 'google' => { 'geo_target_constant' => 'geoTargetConstants/2840' } }
         )
         expect(us_target).to be_valid
       end

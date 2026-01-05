@@ -4,13 +4,14 @@ module GoogleAds
       extend ActiveSupport::Concern
 
       class_methods do
-        def field_mapping(name, local:, remote:, transform: nil, reverse_transform: nil, immutable: false)
+        def field_mapping(name, local:, remote:, transform: nil, reverse_transform: nil, immutable: false, skip_comparison: false)
           field_mappings[name] = {
             local: local,
             remote: remote,
             transform: transform,
             reverse_transform: reverse_transform,
-            immutable: immutable
+            immutable: immutable,
+            skip_comparison: skip_comparison
           }
         end
 
@@ -96,7 +97,13 @@ module GoogleAds
         local_json = to_google_json
 
         FieldCompare.build do |c|
-          self.class.field_mappings.each do |name, _mapping|
+          self.class.field_mappings.each do |name, mapping|
+            # Check if this field should be skipped
+            if should_skip_comparison?(mapping[:skip_comparison])
+              c.skip(name)
+              next
+            end
+
             remote_val = remote_value(remote, name, apply_reverse_transform: false)
             c.check(name, local: local_json[name], remote: remote_val) do
               local_json[name] == remote_val
@@ -120,6 +127,18 @@ module GoogleAds
       end
 
       private
+
+      # Evaluate skip_comparison option
+      # Accepts: true, false, Proc, or Symbol (method name)
+      def should_skip_comparison?(skip_option)
+        case skip_option
+        when true then true
+        when false, nil then false
+        when Proc then instance_exec(&skip_option)
+        when Symbol then send(skip_option)
+        else false
+        end
+      end
 
       def apply_transform(transform, value)
         if transform.is_a?(Proc)

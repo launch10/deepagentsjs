@@ -28,17 +28,21 @@ class Upload < ApplicationRecord
 
   platform_setting :google, :asset_id
 
-  # ═══════════════════════════════════════════════════════════════
-  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
-  # Callback logic (save_asset_id) is INSIDE the resource
-  # Note: All methods require campaign: keyword argument
-  # ═══════════════════════════════════════════════════════════════
+  def google_sync(campaign:)
+    GoogleAds::Resources::Favicon.new(self, campaign: campaign).sync
+  end
 
-  def google_sync(campaign:) = GoogleAds::Resources::Favicon.new(self, campaign: campaign).sync
-  def google_synced?(campaign:) = GoogleAds::Resources::Favicon.new(self, campaign: campaign).synced?
-  def google_delete(campaign:) = GoogleAds::Resources::Favicon.new(self, campaign: campaign).delete
-  def google_fetch(campaign:) = GoogleAds::Resources::Favicon.new(self, campaign: campaign).fetch
-  def google_syncer(campaign:) = GoogleAds::Resources::Favicon.new(self, campaign: campaign)
+  def google_synced?(campaign:)
+    GoogleAds::Resources::Favicon.new(self, campaign: campaign).synced?
+  end
+
+  def google_delete(campaign:)
+    GoogleAds::Resources::Favicon.new(self, campaign: campaign).delete
+  end
+
+  def google_fetch(campaign:)
+    GoogleAds::Resources::Favicon.new(self, campaign: campaign).fetch
+  end
 
   MEDIA_TYPES = %w[image video document]
 

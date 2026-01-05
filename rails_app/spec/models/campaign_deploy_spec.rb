@@ -45,7 +45,7 @@ RSpec.describe CampaignDeploy, type: :model do
 
   describe 'statuses' do
     it 'has the same statuses as Deploy' do
-      expect(CampaignDeploy::STATUS).to eq(Deploy::STATUS)
+      expect(CampaignDeploy::STATUS).to eq(WebsiteDeploy::STATUS)
     end
   end
 
@@ -388,7 +388,7 @@ RSpec.describe CampaignDeploy, type: :model do
           location_name: "Los Angeles",
           country_code: "US",
           location_type: "City",
-          platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/1013962" } })
+          platform_settings: { "google" => { "geo_target_constant" => "geoTargetConstants/1013962" } })
       end
 
       before do
@@ -421,7 +421,7 @@ RSpec.describe CampaignDeploy, type: :model do
       context 'when location targets are already synced' do
         before do
           location_target.update!(platform_settings: location_target.platform_settings.deep_merge(
-            "google" => { "remote_criterion_id" => "111" }
+            "google" => { "criterion_id" => "111" }
           ))
           allow(@mock_google_ads_service).to receive(:search).and_return(
             mock_search_response_with_campaign_criterion(
@@ -442,13 +442,13 @@ RSpec.describe CampaignDeploy, type: :model do
       context 'when location targets have been deleted' do
         let!(:deleted_target) do
           target = create(:ad_location_target, campaign: campaign,
-            location_name: "United States",
+            location_name: "San Francisco",
             country_code: "US",
-            location_type: "Country",
+            location_type: "City",
             platform_settings: {
               "google" => {
-                "criterion_id" => "geoTargetConstants/2840",
-                "remote_criterion_id" => "222"
+                "geo_target_constant" => "geoTargetConstants/1014221",
+                "criterion_id" => "222"
               }
             })
           target.destroy
@@ -461,7 +461,7 @@ RSpec.describe CampaignDeploy, type: :model do
               criterion_id: 222,
               campaign_id: 789,
               customer_id: 456,
-              location_id: 2840,
+              location_id: 1014221,
               negative: false
             ),
             mock_empty_search_response
@@ -479,23 +479,23 @@ RSpec.describe CampaignDeploy, type: :model do
           step.run
         end
 
-        it 'clears the remote_criterion_id after deletion' do
+        it 'clears the criterion_id after deletion' do
           step.run
           deleted_target.reload
-          expect(deleted_target.google_remote_criterion_id).to be_nil
+          expect(deleted_target.google_criterion_id).to be_nil
         end
       end
 
       context 'when deleted target does not exist in Google' do
         let!(:deleted_target) do
           target = create(:ad_location_target, campaign: campaign,
-            location_name: "United States",
+            location_name: "San Diego",
             country_code: "US",
-            location_type: "Country",
+            location_type: "City",
             platform_settings: {
               "google" => {
-                "criterion_id" => "geoTargetConstants/2840",
-                "remote_criterion_id" => "222"
+                "geo_target_constant" => "geoTargetConstants/1014218",
+                "criterion_id" => "222"
               }
             })
           target.destroy
@@ -504,6 +504,9 @@ RSpec.describe CampaignDeploy, type: :model do
 
         before do
           allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+          mock_remove_resource = double("RemoveResource")
+          allow(mock_remove_resource).to receive(:campaign_criterion).and_return("remove_operation")
+          allow(@mock_operation).to receive(:remove_resource).and_return(mock_remove_resource)
           allow(@mock_campaign_criterion_service).to receive(:mutate_campaign_criteria).and_return(
             mock_mutate_campaign_criterion_response(criterion_id: 111, campaign_id: 789, customer_id: 456)
           )
@@ -526,8 +529,8 @@ RSpec.describe CampaignDeploy, type: :model do
             location_type: "City",
             platform_settings: {
               "google" => {
-                "criterion_id" => "geoTargetConstants/1023191",
-                "remote_criterion_id" => "333"
+                "geo_target_constant" => "geoTargetConstants/1023191",
+                "criterion_id" => "333"
               }
             })
         end
@@ -537,7 +540,7 @@ RSpec.describe CampaignDeploy, type: :model do
             location_name: "Chicago",
             country_code: "US",
             location_type: "City",
-            platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/1014895" } })
+            platform_settings: { "google" => { "geo_target_constant" => "geoTargetConstants/1014895" } })
         end
 
         let!(:deleted_target) do
@@ -547,8 +550,8 @@ RSpec.describe CampaignDeploy, type: :model do
             location_type: "City",
             platform_settings: {
               "google" => {
-                "criterion_id" => "geoTargetConstants/1018127",
-                "remote_criterion_id" => "444"
+                "geo_target_constant" => "geoTargetConstants/1018127",
+                "criterion_id" => "444"
               }
             })
           target.destroy
@@ -575,14 +578,14 @@ RSpec.describe CampaignDeploy, type: :model do
           step.run
         end
 
-        it 'clears remote_criterion_id on deleted target' do
+        it 'clears criterion_id on deleted target' do
           step.run
-          expect(deleted_target.reload.google_remote_criterion_id).to be_nil
+          expect(deleted_target.reload.google_criterion_id).to be_nil
         end
 
-        it 'sets remote_criterion_id on new target' do
+        it 'sets criterion_id on new target' do
           step.run
-          expect(new_target.reload.google_remote_criterion_id).to eq("555")
+          expect(new_target.reload.google_criterion_id).to eq("555")
         end
       end
     end

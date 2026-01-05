@@ -1,7 +1,11 @@
 module GoogleAds
   module Resources
     class Favicon
+      include FieldMappable
+
       attr_reader :record, :campaign
+
+      # No field_mappings - images are binary and can't be field-compared
 
       def initialize(record, campaign:)
         @record = record
@@ -51,10 +55,8 @@ module GoogleAds
         fetch_by_id
       end
 
-      def compare_fields(_remote)
-        # No field comparison for binary images - return empty FieldCompare
-        FieldCompare.build { |_c| }
-      end
+      # compare_fields inherited from FieldMappable - returns empty FieldCompare
+      # since no field_mappings are defined (images are binary)
 
       private
 

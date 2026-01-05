@@ -297,4 +297,124 @@ RSpec.describe GoogleAds::Resources::FieldMappable do
       expect(resource.local_value(:status)).to be_nil
     end
   end
+
+  describe "skip_comparison option" do
+    context "with skip_comparison: true" do
+      before(:all) do
+        skip_klass = Class.new do
+          include GoogleAds::Resources::FieldMappable
+
+          attr_reader :record
+
+          def initialize(record)
+            @record = record
+          end
+
+          field_mapping :name,
+            local: :name,
+            remote: :name
+
+          field_mapping :status,
+            local: :status,
+            remote: :status,
+            skip_comparison: true
+
+          def fetch
+            nil
+          end
+        end
+
+        GoogleAds::Resources.const_set(:TestSkipFieldsResource, skip_klass)
+      end
+
+      after(:all) do
+        GoogleAds::Resources.send(:remove_const, :TestSkipFieldsResource)
+      end
+
+      let(:skip_class) { GoogleAds::Resources::TestSkipFieldsResource }
+
+      it "skips specified fields in comparison" do
+        rec = double("Record", name: "Same", status: "active")
+        remote = double("Remote", name: "Same", status: "inactive")
+        resource = skip_class.new(rec)
+
+        comparison = resource.compare_fields(remote)
+
+        # Status should be skipped even though values differ
+        expect(comparison.match?).to be true
+        expect(comparison.skipped).to include(:status)
+        expect(comparison.to_h.keys).not_to include(:status)
+      end
+
+      it "still checks non-skipped fields" do
+        rec = double("Record", name: "Different", status: "active")
+        remote = double("Remote", name: "Same", status: "inactive")
+        resource = skip_class.new(rec)
+
+        comparison = resource.compare_fields(remote)
+
+        expect(comparison.match?).to be false
+        expect(comparison.failures).to include(:name)
+        expect(comparison.failures).not_to include(:status)
+      end
+    end
+
+    context "with skip_comparison: lambda" do
+      before(:all) do
+        # Use a class variable to control the skip behavior
+        skip_lambda_klass = Class.new do
+          include GoogleAds::Resources::FieldMappable
+
+          attr_reader :record
+
+          class << self
+            attr_accessor :skip_status
+          end
+
+          def initialize(record)
+            @record = record
+          end
+
+          field_mapping :name,
+            local: :name,
+            remote: :name
+
+          field_mapping :status,
+            local: :status,
+            remote: :status,
+            skip_comparison: -> { self.class.skip_status }
+
+          def fetch
+            nil
+          end
+        end
+
+        GoogleAds::Resources.const_set(:TestSkipLambdaResource, skip_lambda_klass)
+      end
+
+      after(:all) do
+        GoogleAds::Resources.send(:remove_const, :TestSkipLambdaResource)
+      end
+
+      let(:skip_lambda_class) { GoogleAds::Resources::TestSkipLambdaResource }
+
+      it "evaluates lambda at comparison time" do
+        rec = double("Record", name: "Same", status: "active")
+        remote = double("Remote", name: "Same", status: "inactive")
+        resource = skip_lambda_class.new(rec)
+
+        # When skip_status is true, status should be skipped
+        skip_lambda_class.skip_status = true
+        comparison = resource.compare_fields(remote)
+        expect(comparison.match?).to be true
+        expect(comparison.skipped).to include(:status)
+
+        # When skip_status is false, status should be compared
+        skip_lambda_class.skip_status = false
+        comparison = resource.compare_fields(remote)
+        expect(comparison.match?).to be false
+        expect(comparison.failures).to include(:status)
+      end
+    end
+  end
 end

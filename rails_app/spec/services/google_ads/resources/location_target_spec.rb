@@ -12,7 +12,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
       location_name: "Chicago",
       country_code: "US",
       targeted: true,
-      platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/21167" } })
+      platform_settings: { "google" => { "geo_target_constant" => "geoTargetConstants/21167" } })
   end
   let(:location_target_syncer) { described_class.new(ad_location_target) }
 
@@ -84,7 +84,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
   describe '#fetch' do
     context 'when criterion exists by ID' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
       end
 
@@ -104,9 +104,9 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
       end
     end
 
-    context 'when remote_criterion_id is not set' do
+    context 'when criterion_id is not set' do
       before do
-        ad_location_target.platform_settings["google"].delete("remote_criterion_id")
+        ad_location_target.platform_settings["google"].delete("criterion_id")
         ad_location_target.save!
       end
 
@@ -117,7 +117,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when criterion does not exist remotely' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
       end
 
@@ -131,9 +131,9 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
   end
 
   describe '#synced?' do
-    context 'when no remote_criterion_id' do
+    context 'when no criterion_id' do
       before do
-        ad_location_target.platform_settings["google"].delete("remote_criterion_id")
+        ad_location_target.platform_settings["google"].delete("criterion_id")
         ad_location_target.save!
       end
 
@@ -144,7 +144,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when values match' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
       end
 
@@ -164,7 +164,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when values do not match (negative mismatch)' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
       end
 
@@ -184,7 +184,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when local has ID but Google does not have criterion (stale ID)' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
       end
 
@@ -206,7 +206,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when already synced' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
       end
 
@@ -229,7 +229,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when remote criterion does not exist' do
       before do
-        ad_location_target.platform_settings["google"].delete("remote_criterion_id")
+        ad_location_target.platform_settings["google"].delete("criterion_id")
         ad_location_target.save!
       end
 
@@ -251,7 +251,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
         expect(result).to be_a(GoogleAds::SyncResult)
         expect(result.created?).to be true
         expect(result.resource_name).to eq(222)
-        expect(location_target_syncer.record.google_remote_criterion_id).to eq(222)
+        expect(location_target_syncer.record.google_criterion_id).to eq("222")
       end
 
       it 'returns error result when API call fails' do
@@ -274,7 +274,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when remote criterion exists but needs update (negative changed)' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.targeted = false # negative should be true
         ad_location_target.save!
       end
@@ -334,7 +334,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
   describe '#sync_plan' do
     context 'when already synced' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
       end
 
@@ -355,7 +355,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when remote does not exist' do
       before do
-        ad_location_target.platform_settings["google"].delete("remote_criterion_id")
+        ad_location_target.platform_settings["google"].delete("criterion_id")
         ad_location_target.save!
       end
 
@@ -373,7 +373,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when remote exists but negative mismatches' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.targeted = false # negative should be true
         ad_location_target.save!
       end
@@ -405,9 +405,9 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
       allow(@mock_operation).to receive(:remove_resource).and_return(mock_remove_resource)
     end
 
-    context 'when no remote_criterion_id' do
+    context 'when no criterion_id' do
       before do
-        ad_location_target.platform_settings["google"].delete("remote_criterion_id")
+        ad_location_target.platform_settings["google"].delete("criterion_id")
         ad_location_target.save!
       end
 
@@ -418,9 +418,9 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
       end
     end
 
-    context 'when remote_criterion_id exists' do
+    context 'when criterion_id exists' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
       end
 
@@ -437,10 +437,10 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
         result = location_target_syncer.delete
         expect(result.deleted?).to be true
         expect(result.resource_type).to eq(:campaign_criterion)
-        expect(location_target_syncer.record.google_remote_criterion_id).to be_nil
+        expect(location_target_syncer.record.google_criterion_id).to be_nil
       end
 
-      it 'persists the nil google_remote_criterion_id to the database' do
+      it 'persists the nil google_criterion_id to the database' do
         mock_remove_operation = double("RemoveOperation")
         allow(mock_remove_resource).to receive(:campaign_criterion)
           .with("customers/1234567890/campaignCriteria/789~111")
@@ -453,7 +453,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
         location_target_syncer.delete
 
         fresh_target = AdLocationTarget.find(ad_location_target.id)
-        expect(fresh_target.google_remote_criterion_id).to be_nil
+        expect(fresh_target.google_criterion_id).to be_nil
       end
 
       it 'returns error result when API call fails' do
@@ -484,14 +484,14 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
         result = location_target_syncer.delete
         expect(result.deleted?).to be true
-        expect(location_target_syncer.record.reload.google_remote_criterion_id).to be_nil
+        expect(location_target_syncer.record.reload.google_criterion_id).to be_nil
       end
     end
   end
 
   describe '#compare_fields' do
     before do
-      ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+      ad_location_target.platform_settings["google"]["criterion_id"] = 111
       ad_location_target.save!
     end
 
@@ -530,7 +530,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
   describe 'AdLocationTarget model helper methods' do
     before do
-      ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+      ad_location_target.platform_settings["google"]["criterion_id"] = 111
       ad_location_target.save!
     end
 
@@ -567,16 +567,16 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
     end
   end
 
-  describe 'save_remote_criterion_id after create' do
+  describe 'save_criterion_id after create' do
     let(:mock_create_resource) { double("CreateResource") }
 
     before do
-      ad_location_target.platform_settings["google"].delete("remote_criterion_id")
+      ad_location_target.platform_settings["google"].delete("criterion_id")
       ad_location_target.save!
       allow(@mock_operation).to receive(:create_resource).and_return(mock_create_resource)
     end
 
-    it 'sets google_remote_criterion_id from response after sync' do
+    it 'sets google_criterion_id from response after sync' do
       allow(@mock_google_ads_service).to receive(:search)
         .and_return(mock_empty_search_response)
 
@@ -591,7 +591,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
         .and_return(mutate_response)
 
       location_target_syncer.sync
-      expect(ad_location_target.reload.google_remote_criterion_id).to eq(444)
+      expect(ad_location_target.reload.google_criterion_id).to eq("444")
     end
   end
 
@@ -602,7 +602,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
   describe '.synced?' do
     context 'when all targets are synced' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
       end
 
@@ -622,7 +622,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when any target is not synced' do
       before do
-        ad_location_target.platform_settings["google"].delete("remote_criterion_id")
+        ad_location_target.platform_settings["google"].delete("criterion_id")
         ad_location_target.save!
       end
 
@@ -633,7 +633,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when soft-deleted targets have Google IDs' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
         ad_location_target.destroy # soft-delete
       end
@@ -655,7 +655,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when syncing active targets' do
       before do
-        ad_location_target.platform_settings["google"].delete("remote_criterion_id")
+        ad_location_target.platform_settings["google"].delete("criterion_id")
         ad_location_target.save!
       end
 
@@ -681,7 +681,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when deleting soft-deleted targets with Google IDs' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
         ad_location_target.destroy # soft-delete
       end
@@ -706,7 +706,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
   describe '.sync_plan' do
     context 'when targets need sync' do
       before do
-        ad_location_target.platform_settings["google"].delete("remote_criterion_id")
+        ad_location_target.platform_settings["google"].delete("criterion_id")
         ad_location_target.save!
       end
 
@@ -722,7 +722,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
 
     context 'when soft-deleted targets have Google IDs' do
       before do
-        ad_location_target.platform_settings["google"]["remote_criterion_id"] = 111
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
         ad_location_target.save!
         ad_location_target.destroy # soft-delete
       end
@@ -731,7 +731,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
         plan = described_class.sync_plan(campaign)
         expect(plan).to be_a(GoogleAds::Sync::Plan)
         expect(plan.operations.first[:action]).to eq(:delete)
-        expect(plan.operations.first[:remote_criterion_id]).to eq(111)
+        expect(plan.operations.first[:criterion_id]).to eq(111)
       end
     end
   end

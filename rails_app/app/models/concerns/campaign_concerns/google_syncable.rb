@@ -62,6 +62,10 @@ module CampaignConcerns::GoogleSyncable
     google_syncer.fetch
   end
 
+  def google_sync_result
+    google_syncer.sync_result
+  end
+
   def sync_ad_schedules
     GoogleAds::Resources::AdSchedule.sync_all(self)
   end

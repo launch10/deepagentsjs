@@ -317,19 +317,19 @@ class GoogleAdsE2ETest
         return
       end
 
-      original_criterion_id = location.google_remote_criterion_id
+      original_criterion_id = location.google_criterion_id
       location.destroy
 
       syncer = GoogleAds::LocationTargets.new(@campaign)
       syncer.sync
 
       location.reload
-      if location.google_remote_criterion_id.nil?
+      if location.google_criterion_id.nil?
         record_result("Location Target Delete", :passed)
-        puts "✅ PASSED (remote_criterion_id cleared)"
+        puts "✅ PASSED (criterion_id cleared)"
       else
-        record_result("Location Target Delete", :failed, "remote_criterion_id not cleared")
-        puts "❌ FAILED (remote_criterion_id: #{location.google_remote_criterion_id})"
+        record_result("Location Target Delete", :failed, "criterion_id not cleared")
+        puts "❌ FAILED (criterion_id: #{location.google_criterion_id})"
       end
     rescue => e
       record_result("Location Target Delete", :failed, e.message)

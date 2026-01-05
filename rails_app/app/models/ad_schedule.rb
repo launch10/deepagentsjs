@@ -80,15 +80,8 @@ class AdSchedule < ApplicationRecord
     GoogleAds::Resources::AdSchedule.new(self)
   end
 
-  # Returns current sync status without making changes
   def google_sync_result
-    if google_synced?
-      GoogleAds::SyncResult.unchanged(:campaign_criterion, google_criterion_id)
-    elsif google_criterion_id.nil?
-      GoogleAds::SyncResult.not_found(:campaign_criterion)
-    else
-      GoogleAds::SyncResult.unchanged(:campaign_criterion, google_criterion_id)
-    end
+    google_syncer.sync_result
   end
 
   def on_now?(time = Time.current)

@@ -127,7 +127,9 @@ class CampaignDeploy < ApplicationRecord
     end
   end
 
+  # TODO:
   # Can create a parallelizable step process here...
+  #
   # | Step | Entity         | Service                | Depends On | Parallel?    |
   # |------|----------------|------------------------|------------|--------------|
   # | 1    | Budget         | campaign_budget        | -          | -            |
@@ -140,55 +142,48 @@ class CampaignDeploy < ApplicationRecord
   # | 5b   | RSA            | ad_group_ad            | Ad Group   | ✓            |
   #
   # Moreover, anything inside a group (e.g. all schedules, all criterions) can be synced in parallel
-  # Needs a sharper definition of parallelizable group
+  #
+  # This could be done by using enqueuing sync_plans
   #
   STEPS = Steps.new([
-    Step.define(:connect_google_account) do
-      def ready?
-        true
-      end
+    # We're actually going to separate these - they're one time verifications and the frontend/Langgraph will be in charge of orchestrating them
+    #
+    # Step.define(:create_ads_account) do
+    #   def ready?
+    #     campaign.account.has_google_connected_account?
+    #   end
 
-      def run
-        # Placeholder for connecting Google account
-      end
+    #   def run
+    #     campaign.account.create_google_ads_account
+    #   end
 
-      def finished?
-        true
-      end
-    end,
+    #   def finished?
+    #     sync_result&.success? || false
+    #   end
 
-    Step.define(:create_ads_account) do
-      def ready?
-        campaign.account.has_google_connected_account?
-      end
+    #   def sync_result
+    #     campaign.account.verify_google_ads_account
+    #   end
+    # end,
 
-      def run
-        campaign.account.create_google_ads_account
-      end
+    # Step.define(:send_account_invitation) do
+    #   def ready?
+    #     campaign.google_ads_account.present? && campaign.account.google_account_invitation.nil?
+    #   end
 
-      def finished?
-        sync_result&.success? || false
-      end
+    #   def run
+    #     campaign.google_ads_account.send_google_ads_invitation_email
+    #   end
 
-      def sync_result
-        campaign.account.verify_google_ads_account
-      end
-    end,
+    #   # Will be false if user declines invitation, for example, allowing us to send another invitation
+    #   def finished?
+    #     campaign&.account&.google_account_invitation&.okay? || false
+    #   end
 
-    Step.define(:send_account_invitation) do
-      def run
-        campaign.google_ads_account.send_google_ads_invitation_email
-      end
-
-      # Will be false if user declines invitation, for example, allowing us to send another invitation
-      def finished?
-        campaign&.account&.google_account_invitation&.okay? || false
-      end
-
-      def sync_result
-        campaign&.account&.google_account_invitation&.google_sync_result
-      end
-    end,
+    #   def sync_result
+    #     campaign&.account&.google_account_invitation&.google_sync_result
+    #   end
+    # end,
 
     Step.define(:sync_budget) do
       def run
