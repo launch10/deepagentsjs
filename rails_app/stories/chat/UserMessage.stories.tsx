@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { UserMessage } from "@components/chat/UserMessage";
+import { UserMessage } from "@components/shared/chat/UserMessage";
 
 const meta = {
   title: "Chat/UserMessage",

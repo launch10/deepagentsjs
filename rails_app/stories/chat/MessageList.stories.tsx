@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Messages } from "~/components/chat/messages";
-import { UserMessage } from "~/components/chat/UserMessage";
-import { AIMessage } from "~/components/chat/AIMessage";
-import { ThinkingIndicator } from "~/components/chat/ThinkingIndicator";
+import { Messages } from "@components/shared/chat/messages";
+import { UserMessage } from "@components/shared/chat/UserMessage";
+import { AIMessage } from "@components/shared/chat/AIMessage";
+import { ThinkingIndicator } from "@components/shared/chat/ThinkingIndicator";
 
 const meta: Meta = {
   title: "Chat/MessageList",
