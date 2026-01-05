@@ -42,19 +42,19 @@ class AdsAccount < ApplicationRecord
   platform_setting :google, :auto_tagging_enabled, default: true
 
   def google_sync
-    GoogleAds::Resources::Account.new(self).sync
+    google_syncer.sync
   end
 
   def google_synced?
-    GoogleAds::Resources::Account.new(self).synced?
+    google_syncer.synced?
   end
 
   def google_delete
-    GoogleAds::Resources::Account.new(self).delete
+    google_syncer.delete
   end
 
   def google_fetch
-    GoogleAds::Resources::Account.new(self).fetch
+    google_syncer.fetch
   end
 
   def to_google_json

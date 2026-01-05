@@ -96,7 +96,6 @@ class Campaign < ApplicationRecord
   accepts_nested_attributes_for :callouts, allow_destroy: true
   accepts_nested_attributes_for :structured_snippet, allow_destroy: true
 
-  # TODO: Migrate these to use campaign_deploy when that's officially ready
   def enable!(async: true)
     # Update local statuses
     self.google_status = "ENABLED"

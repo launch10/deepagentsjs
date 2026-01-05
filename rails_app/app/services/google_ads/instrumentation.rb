@@ -33,7 +33,9 @@ module GoogleAds
         if tags.empty?
           yield
         else
-          Rails.logger.tagged(tags, &block)
+          # Format as "key=value" strings for log aggregator compatibility (Datadog, etc.)
+          formatted_tags = tags.map { |k, v| "#{k}=#{v}" }
+          Rails.logger.tagged(*formatted_tags, &block)
         end
       end
 
