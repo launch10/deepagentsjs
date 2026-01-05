@@ -26,18 +26,19 @@
 class AdKeyword < ApplicationRecord
   include PlatformSettings
   include GoogleMappable
-  include GoogleSyncable
 
   platform_setting :google, :criterion_id
 
-  use_google_sync GoogleAds::Keyword
+  # ═══════════════════════════════════════════════════════════════
+  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
+  # Callback logic (save_criterion_id) is INSIDE the resource
+  # ═══════════════════════════════════════════════════════════════
 
-  after_google_sync do |result|
-    if result.resource_name.present?
-      criterion_id = result.resource_name.split("~").last
-      update_column(:platform_settings, platform_settings.deep_merge("google" => { "criterion_id" => criterion_id }))
-    end
-  end
+  def google_sync = GoogleAds::Resources::Keyword.new(self).sync
+  def google_synced? = GoogleAds::Resources::Keyword.new(self).synced?
+  def google_delete = GoogleAds::Resources::Keyword.new(self).delete
+  def google_fetch = GoogleAds::Resources::Keyword.new(self).fetch
+  def google_syncer = GoogleAds::Resources::Keyword.new(self)
 
   acts_as_paranoid
 

@@ -68,9 +68,10 @@ class AdGroup < ApplicationRecord
   def ads_synced? = GoogleAds::Resources::Ad.synced?(self)
 
   # ═══════════════════════════════════════════════════════════════
-  # COLLECTION SYNC - Keywords (uses old Syncable pattern until refactored)
+  # COLLECTION SYNC - Keywords (explicit one-liner delegations)
   # ═══════════════════════════════════════════════════════════════
 
-  def sync_keywords = GoogleAds::Keywords.new(self).sync
-  def keywords_synced? = GoogleAds::Keywords.new(self).synced?
+  def sync_keywords = GoogleAds::Resources::Keyword.sync_all(self)
+  def keywords_sync_plan = GoogleAds::Resources::Keyword.sync_plan(self)
+  def keywords_synced? = GoogleAds::Resources::Keyword.synced?(self)
 end
