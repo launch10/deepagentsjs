@@ -22,7 +22,6 @@
 class AdsAccount < ApplicationRecord
   include PlatformSettings
   include GoogleMappable
-  include GoogleSyncable
 
   belongs_to :account
   has_many :invitations, class_name: "AdsAccountInvitation", dependent: :destroy
@@ -42,14 +41,11 @@ class AdsAccount < ApplicationRecord
   platform_setting :google, :status, default: "ENABLED"
   platform_setting :google, :auto_tagging_enabled, default: true
 
-  use_google_sync GoogleAds::Account
-  after_google_sync :set_google_customer_id
-
-  def set_google_customer_id(result)
-    return unless result.resource_name.present?
-    customer_id = result.resource_name.split("/").last
-    self.google_customer_id = customer_id if customer_id.present?
-  end
+  def google_sync = GoogleAds::Resources::Account.new(self).sync
+  def google_synced? = GoogleAds::Resources::Account.new(self).synced?
+  def google_delete = GoogleAds::Resources::Account.new(self).delete
+  def google_fetch = GoogleAds::Resources::Account.new(self).fetch
+  def google_syncer = GoogleAds::Resources::Account.new(self)
 
   def google_account_invitation
     invitations.where(platform: "google").order(id: :desc).first

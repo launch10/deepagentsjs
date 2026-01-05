@@ -95,8 +95,8 @@ RSpec.describe AdsAccount, type: :model do
     end
 
     describe 'google_descriptive_name' do
-      it 'defaults to account name' do
-        expect(ads_account.google_descriptive_name).to eq("Test Account")
+      it 'defaults to account owner email' do
+        expect(ads_account.google_descriptive_name).to eq(account.owner.email)
       end
 
       it 'can be overridden' do
@@ -165,13 +165,9 @@ RSpec.describe AdsAccount, type: :model do
     end
   end
 
-  describe 'GoogleSyncable' do
-    it 'includes GoogleSyncable' do
-      expect(AdsAccount.ancestors).to include(GoogleSyncable)
-    end
-
-    it 'uses GoogleAds::Account syncer' do
-      expect(ads_account.google_syncer).to be_a(GoogleAds::Account)
+  describe 'Google Ads sync delegation' do
+    it 'uses GoogleAds::Resources::Account syncer' do
+      expect(ads_account.google_syncer).to be_a(GoogleAds::Resources::Account)
     end
 
     it 'responds to google_sync' do
@@ -182,8 +178,8 @@ RSpec.describe AdsAccount, type: :model do
       expect(ads_account).to respond_to(:google_synced?)
     end
 
-    it 'responds to google_sync_result' do
-      expect(ads_account).to respond_to(:google_sync_result)
+    it 'responds to google_fetch' do
+      expect(ads_account).to respond_to(:google_fetch)
     end
 
     it 'responds to google_delete' do
@@ -205,33 +201,8 @@ RSpec.describe AdsAccount, type: :model do
     end
   end
 
-  describe '#set_google_customer_id' do
-    it 'extracts customer_id from resource_name' do
-      result = double("SyncResult", resource_name: "customers/9876543210")
-
-      ads_account.set_google_customer_id(result)
-
-      expect(ads_account.google_customer_id).to eq("9876543210")
-    end
-
-    it 'does nothing when resource_name is nil' do
-      result = double("SyncResult", resource_name: nil)
-      ads_account.google_customer_id = "existing_id"
-
-      ads_account.set_google_customer_id(result)
-
-      expect(ads_account.google_customer_id).to eq("existing_id")
-    end
-
-    it 'does nothing when resource_name is blank' do
-      result = double("SyncResult", resource_name: "")
-      ads_account.google_customer_id = "existing_id"
-
-      ads_account.set_google_customer_id(result)
-
-      expect(ads_account.google_customer_id).to eq("existing_id")
-    end
-  end
+  # NOTE: set_google_customer_id was part of the old GoogleSyncable DSL callback pattern.
+  # This logic is now handled internally by GoogleAds::Resources::Account#sync
 
   describe 'to_google_json' do
     before do
