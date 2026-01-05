@@ -166,11 +166,11 @@ class GoogleAdsE2ETest
       budget.daily_budget_cents = 1500
       budget.save!
 
-      syncer = GoogleAds::Budget.new(budget)
+      syncer = GoogleAds::Resources::Budget.new(budget)
       syncer.sync
 
       # Verify via API
-      remote = syncer.send(:fetch_remote)
+      remote = syncer.fetch
       if remote && remote.amount_micros == 15_000_000
         record_result("Budget Update", :passed)
         puts "✅ PASSED (remote: $#{remote.amount_micros / 1_000_000.0}/day)"
@@ -578,7 +578,7 @@ class GoogleAdsE2ETest
       budget_name = budget.google_budget_name
       budget.destroy
 
-      syncer = GoogleAds::Budget.new(budget)
+      syncer = GoogleAds::Resources::Budget.new(budget)
       syncer.delete
 
       budget.reload

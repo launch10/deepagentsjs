@@ -83,6 +83,14 @@ class Campaign < ApplicationRecord
   def ad_groups_synced? = GoogleAds::Resources::AdGroup.synced?(self)
   def ad_groups_sync_plan = GoogleAds::Resources::AdGroup.sync_plan(self)
 
+  # ═══════════════════════════════════════════════════════════════
+  # Budget Sync - Class Method Pattern (singleton)
+  # ═══════════════════════════════════════════════════════════════
+
+  def sync_budget = GoogleAds::Resources::Budget.sync_all(self)
+  def budget_synced? = GoogleAds::Resources::Budget.synced?(self)
+  def budget_sync_plan = GoogleAds::Resources::Budget.sync_plan(self)
+
   after_google_sync do |result|
     if result.resource_name.present?
       campaign_id = result.resource_name.split("/").last

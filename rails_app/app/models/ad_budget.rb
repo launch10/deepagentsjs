@@ -20,7 +20,6 @@
 class AdBudget < ApplicationRecord
   include PlatformSettings
   include GoogleMappable
-  include GoogleSyncable
 
   belongs_to :campaign
 
@@ -29,13 +28,14 @@ class AdBudget < ApplicationRecord
 
   acts_as_paranoid
 
-  use_google_sync GoogleAds::Budget
-  after_google_sync :set_google_budget_id
+  # ═══════════════════════════════════════════════════════════════
+  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
+  # Callback logic (save_budget_id) is INSIDE the resource
+  # ═══════════════════════════════════════════════════════════════
 
-  def set_google_budget_id(result)
-    return unless result.resource_name.present?
-    budget_id = result.resource_name.split("/").last
-    self.google_budget_id = budget_id if budget_id.present?
-    save! if changed?
-  end
+  def google_sync = GoogleAds::Resources::Budget.new(self).sync
+  def google_synced? = GoogleAds::Resources::Budget.new(self).synced?
+  def google_delete = GoogleAds::Resources::Budget.new(self).delete
+  def google_fetch = GoogleAds::Resources::Budget.new(self).fetch
+  def google_syncer = GoogleAds::Resources::Budget.new(self)
 end

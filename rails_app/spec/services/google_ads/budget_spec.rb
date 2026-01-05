@@ -1,6 +1,6 @@
 require 'rails_helper'
 
-RSpec.describe GoogleAds::Budget do
+RSpec.describe GoogleAds::Resources::Budget do
   include GoogleAdsMocks
 
   let(:account) { create(:account) }
@@ -13,19 +13,13 @@ RSpec.describe GoogleAds::Budget do
     allow(campaign).to receive(:google_customer_id).and_return("1234567890")
   end
 
-  describe '#local_resource' do
+  describe '#record' do
     it 'returns the ad_budget passed to the syncer' do
-      expect(budget_syncer.local_resource).to eq(ad_budget)
+      expect(budget_syncer.record).to eq(ad_budget)
     end
   end
 
-  describe '#campaign' do
-    it 'returns the campaign from the ad_budget' do
-      expect(budget_syncer.campaign).to eq(campaign)
-    end
-  end
-
-  describe '#fetch_remote' do
+  describe '#fetch' do
     let(:mock_budget_service) { double("CampaignBudgetService") }
 
     before do
@@ -48,7 +42,7 @@ RSpec.describe GoogleAds::Budget do
         )
         allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
 
-        remote = budget_syncer.fetch_remote
+        remote = budget_syncer.fetch
         expect(remote.id).to eq(123)
         expect(remote.amount_micros).to eq(5_000_000)
       end
@@ -70,9 +64,9 @@ RSpec.describe GoogleAds::Budget do
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(budget_response)
 
-        remote = budget_syncer.fetch_remote
+        remote = budget_syncer.fetch
         expect(remote.id).to eq(456)
-        expect(budget_syncer.local_resource.google_budget_id).to eq(456)
+        expect(budget_syncer.record.google_budget_id).to eq(456)
       end
     end
 
@@ -86,70 +80,7 @@ RSpec.describe GoogleAds::Budget do
         allow(@mock_google_ads_service).to receive(:search)
           .and_return(mock_empty_search_response)
 
-        expect(budget_syncer.fetch_remote).to be_nil
-      end
-    end
-  end
-
-  describe '#sync_result' do
-    let(:mock_budget_service) { double("CampaignBudgetService") }
-
-    before do
-      ad_budget.google_budget_id = 123
-      ad_budget.save!
-      allow(@mock_client).to receive(:service).and_return(
-        double("Services",
-          customer: @mock_customer_service,
-          google_ads: @mock_google_ads_service,
-          campaign_budget: mock_budget_service)
-      )
-    end
-
-    context 'when remote budget exists and matches local' do
-      it 'returns synced result' do
-        budget_response = mock_search_response_with_budget(
-          budget_id: 123,
-          name: ad_budget.google_budget_name,
-          amount_micros: 5_000_000
-        )
-        allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
-
-        result = budget_syncer.sync_result
-        expect(result.synced?).to be true
-        expect(result.action).to eq(:unchanged)
-        expect(result.resource_type).to eq(:campaign_budget)
-      end
-    end
-
-    context 'when remote budget exists but does not match local' do
-      it 'returns unsynced result with mismatched fields' do
-        budget_response = mock_search_response_with_budget(
-          budget_id: 123,
-          name: ad_budget.google_budget_name,
-          amount_micros: 10_000_000
-        )
-        allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
-
-        result = budget_syncer.sync_result
-        expect(result.synced?).to be false
-        expect(result.values_match?).to be false
-        expect(result.mismatched_fields.map(&:our_field)).to include(:daily_budget_cents)
-      end
-    end
-
-    context 'when remote budget does not exist' do
-      before do
-        ad_budget.google_budget_id = nil
-        ad_budget.save!
-      end
-
-      it 'returns not_found result' do
-        allow(@mock_google_ads_service).to receive(:search)
-          .and_return(mock_empty_search_response)
-
-        result = budget_syncer.sync_result
-        expect(result.not_found?).to be true
-        expect(result.synced?).to be false
+        expect(budget_syncer.fetch).to be_nil
       end
     end
   end
@@ -211,7 +142,7 @@ RSpec.describe GoogleAds::Budget do
         ad_budget.save!
       end
 
-      it 'returns sync_result without making API calls' do
+      it 'returns unchanged result without making API calls' do
         budget_response = mock_search_response_with_budget(
           budget_id: 123,
           name: ad_budget.google_budget_name,
@@ -221,8 +152,8 @@ RSpec.describe GoogleAds::Budget do
 
         expect(mock_budget_service).not_to receive(:mutate_campaign_budgets)
         result = budget_syncer.sync
-        expect(result).to be_a(GoogleAds::Sync::SyncResult)
-        expect(result.synced?).to be true
+        expect(result).to be_a(GoogleAds::SyncResult)
+        expect(result.unchanged?).to be true
       end
     end
 
@@ -251,11 +182,10 @@ RSpec.describe GoogleAds::Budget do
           .and_return(mutate_response)
 
         result = budget_syncer.sync
-        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+        expect(result).to be_a(GoogleAds::SyncResult)
         expect(result.created?).to be true
-        expect(result.resource_name).to eq("customers/456/campaignBudgets/789")
-        expect(result.synced?).to be true
-        expect(budget_syncer.local_resource.google_budget_id).to eq(789)
+        expect(result.resource_name).to eq(789)
+        expect(budget_syncer.record.google_budget_id).to eq(789)
       end
 
       it 'returns error result when API call fails' do
@@ -306,9 +236,8 @@ RSpec.describe GoogleAds::Budget do
           .and_return(mutate_response)
 
         result = budget_syncer.sync
-        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+        expect(result).to be_a(GoogleAds::SyncResult)
         expect(result.updated?).to be true
-        expect(result.synced?).to be true
       end
     end
   end
@@ -367,7 +296,7 @@ RSpec.describe GoogleAds::Budget do
         result = budget_syncer.delete
         expect(result.deleted?).to be true
         expect(result.resource_type).to eq(:campaign_budget)
-        expect(budget_syncer.local_resource.google_budget_id).to be_nil
+        expect(budget_syncer.record.google_budget_id).to be_nil
       end
 
       it 'persists the nil google_budget_id to the database' do
@@ -442,23 +371,8 @@ RSpec.describe GoogleAds::Budget do
       end
     end
 
-    describe '#google_sync_result' do
-      it 'returns the sync result' do
-        budget_response = mock_search_response_with_budget(
-          budget_id: 123,
-          name: ad_budget.google_budget_name,
-          amount_micros: 5_000_000
-        )
-        allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
-
-        result = ad_budget.google_sync_result
-        expect(result).to be_a(GoogleAds::Sync::SyncResult)
-        expect(result.synced?).to be true
-      end
-    end
-
     describe '#google_sync' do
-      it 'syncs the budget' do
+      it 'returns unchanged when already synced' do
         budget_response = mock_search_response_with_budget(
           budget_id: 123,
           name: ad_budget.google_budget_name,
@@ -467,13 +381,13 @@ RSpec.describe GoogleAds::Budget do
         allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
 
         result = ad_budget.google_sync
-        expect(result).to be_a(GoogleAds::Sync::SyncResult)
-        expect(result.synced?).to be true
+        expect(result).to be_a(GoogleAds::SyncResult)
+        expect(result.unchanged?).to be true
       end
     end
   end
 
-  describe 'after_google_sync callback' do
+  describe 'save_budget_id after create' do
     let(:mock_budget_service) { double("CampaignBudgetService") }
     let(:mock_create_resource) { double("CreateResource") }
 
@@ -489,7 +403,7 @@ RSpec.describe GoogleAds::Budget do
       allow(@mock_operation).to receive(:create_resource).and_return(mock_create_resource)
     end
 
-    it 'sets google_budget_id from resource_name after sync' do
+    it 'sets google_budget_id from resource_name after create' do
       created_budget_response = mock_search_response_with_budget(
         budget_id: 789,
         name: ad_budget.google_budget_name,
@@ -508,7 +422,7 @@ RSpec.describe GoogleAds::Budget do
         .and_return(mutate_response)
 
       ad_budget.google_sync
-      expect(ad_budget.reload.google_budget_id).to eq("789")
+      expect(ad_budget.reload.google_budget_id).to eq(789)
     end
 
     it 'persists the google_budget_id to the database' do
@@ -532,7 +446,7 @@ RSpec.describe GoogleAds::Budget do
       ad_budget.google_sync
 
       fresh_budget = AdBudget.find(ad_budget.id)
-      expect(fresh_budget.google_budget_id).to eq("999")
+      expect(fresh_budget.google_budget_id).to eq(999)
     end
   end
 end
