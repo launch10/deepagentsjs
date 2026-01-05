@@ -139,11 +139,11 @@ class GoogleAdsE2ETest
       ads_account.google_descriptive_name = new_name
       ads_account.save!
 
-      syncer = GoogleAds::Account.new(ads_account)
+      syncer = GoogleAds::Resources::Account.new(ads_account)
       result = syncer.sync
 
       # Verify via API
-      remote = syncer.send(:fetch_remote)
+      remote = syncer.fetch
       if remote && remote.descriptive_name == new_name
         record_result("Account Update", :passed)
         puts "✅ PASSED (remote: #{remote.descriptive_name})"
@@ -285,11 +285,11 @@ class GoogleAdsE2ETest
       ad.status = new_status
       ad.save!
 
-      syncer = GoogleAds::Ad.new(ad)
+      syncer = GoogleAds::Resources::Ad.new(ad)
       result = syncer.sync
 
       # Verify via API
-      remote = syncer.send(:fetch_remote)
+      remote = syncer.fetch
       expected_google_status = new_status == "active" ? :ENABLED : :PAUSED
 
       if remote && remote.status == expected_google_status
@@ -481,7 +481,7 @@ class GoogleAdsE2ETest
       ad_name = ad.headlines.first&.text || "Ad"
 
       # Delete from Google first (this clears google_ad_id and saves the record)
-      syncer = GoogleAds::Ad.new(ad)
+      syncer = GoogleAds::Resources::Ad.new(ad)
       syncer.delete
 
       # Then soft-delete locally
@@ -606,7 +606,7 @@ class GoogleAdsE2ETest
         return
       end
 
-      syncer = GoogleAds::Account.new(ads_account)
+      syncer = GoogleAds::Resources::Account.new(ads_account)
       result = syncer.delete  # Use delete method, not sync
 
       # Verify local state was updated

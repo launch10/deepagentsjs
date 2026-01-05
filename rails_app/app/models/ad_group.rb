@@ -58,4 +58,12 @@ class AdGroup < ApplicationRecord
   platform_setting :google, :status, default: "PAUSED"
   platform_setting :google, :type, default: "SEARCH_STANDARD"
   platform_setting :google, :cpc_bid_micros, default: 1_000_000
+
+  # ═══════════════════════════════════════════════════════════════
+  # COLLECTION SYNC - Ads (explicit one-liner delegations)
+  # ═══════════════════════════════════════════════════════════════
+
+  def sync_ads = GoogleAds::Resources::Ad.sync_all(self)
+  def ads_sync_plan = GoogleAds::Resources::Ad.sync_plan(self)
+  def ads_synced? = GoogleAds::Resources::Ad.synced?(self)
 end

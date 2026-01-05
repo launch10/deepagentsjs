@@ -24,7 +24,6 @@
 class Ad < ApplicationRecord
   include PlatformSettings
   include GoogleMappable
-  include GoogleSyncable
 
   belongs_to :ad_group
   has_one :campaign, through: :ad_group
@@ -39,14 +38,16 @@ class Ad < ApplicationRecord
 
   platform_setting :google, :ad_id
 
-  use_google_sync GoogleAds::Ad
+  # ═══════════════════════════════════════════════════════════════
+  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
+  # Callback logic (set_google_ad_id) is INSIDE the resource
+  # ═══════════════════════════════════════════════════════════════
 
-  after_google_sync do |result|
-    if result.resource_name.present?
-      ad_id = result.resource_name.split("~").last
-      update_column(:platform_settings, platform_settings.deep_merge("google" => { "ad_id" => ad_id }))
-    end
-  end
+  def google_sync = GoogleAds::Resources::Ad.new(self).sync
+  def google_synced? = GoogleAds::Resources::Ad.new(self).synced?
+  def google_delete = GoogleAds::Resources::Ad.new(self).delete
+  def google_fetch = GoogleAds::Resources::Ad.new(self).fetch
+  def google_syncer = GoogleAds::Resources::Ad.new(self)
 
   def google_customer_id
     ads_account.google_customer_id
