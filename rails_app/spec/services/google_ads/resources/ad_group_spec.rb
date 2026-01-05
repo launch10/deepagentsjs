@@ -220,6 +220,86 @@ RSpec.describe GoogleAds::Resources::AdGroup do
     end
   end
 
+  describe '#sync_result' do
+    context 'when remote ad_group does not exist' do
+      it 'returns not_found result with success? false' do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_empty_search_response)
+
+        result = ad_group_syncer.sync_result
+        expect(result.not_found?).to be true
+        expect(result.success?).to be false
+        expect(result.resource_type).to eq(:ad_group)
+      end
+    end
+
+    context 'when remote ad_group has REMOVED status' do
+      before do
+        ad_group.google_ad_group_id = 999
+        ad_group.save!
+      end
+
+      it 'returns not_found result with success? false' do
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
+          ad_group_id: 999,
+          name: "Test Ad Group",
+          status: :REMOVED,
+          type: :SEARCH_STANDARD,
+          cpc_bid_micros: 1_000_000)
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
+
+        result = ad_group_syncer.sync_result
+        expect(result.not_found?).to be true
+        expect(result.success?).to be false
+      end
+    end
+
+    context 'when fields match' do
+      before do
+        ad_group.google_ad_group_id = 999
+        ad_group.save!
+      end
+
+      it 'returns unchanged result with success? true' do
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
+          ad_group_id: 999,
+          name: "Test Ad Group",
+          status: :PAUSED,
+          type: :SEARCH_STANDARD,
+          cpc_bid_micros: 1_000_000)
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
+
+        result = ad_group_syncer.sync_result
+        expect(result.unchanged?).to be true
+        expect(result.success?).to be true
+        expect(result.resource_name).to eq(999)
+      end
+    end
+
+    context 'when fields do not match' do
+      before do
+        ad_group.google_ad_group_id = 999
+        ad_group.save!
+      end
+
+      it 'returns error result with SyncVerificationError' do
+        ad_group_response = mock_search_response_with_ad_group(customer_id: 1234567890,
+          ad_group_id: 999,
+          name: "Different Name",
+          status: :PAUSED,
+          type: :SEARCH_STANDARD,
+          cpc_bid_micros: 1_000_000)
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
+
+        result = ad_group_syncer.sync_result
+        expect(result.error?).to be true
+        expect(result.success?).to be false
+        expect(result.error).to be_a(GoogleAds::SyncVerificationError)
+        expect(result.error.message).to include("name")
+      end
+    end
+  end
+
   describe '#sync' do
     let(:mock_create_resource) { double("CreateResource") }
 

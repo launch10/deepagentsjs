@@ -206,6 +206,109 @@ RSpec.describe GoogleAds::Resources::Ad do
     end
   end
 
+  describe '#sync_result' do
+    context 'when ad has no google_ad_id' do
+      it 'returns not_found result with success? false' do
+        result = ad_syncer.sync_result
+        expect(result.not_found?).to be true
+        expect(result.success?).to be false
+        expect(result.resource_type).to eq(:ad_group_ad)
+      end
+    end
+
+    context 'when remote ad does not exist' do
+      before do
+        ad.platform_settings["google"] = { "ad_id" => "12345" }
+        ad.save!
+      end
+
+      it 'returns not_found result with success? false' do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_empty_search_response)
+
+        result = ad_syncer.sync_result
+        expect(result.not_found?).to be true
+        expect(result.success?).to be false
+      end
+    end
+
+    context 'when remote ad has REMOVED status' do
+      before do
+        ad.platform_settings["google"] = { "ad_id" => "12345" }
+        ad.save!
+      end
+
+      it 'returns not_found result with success? false' do
+        ad_response = mock_search_response_with_ad_group_ad(
+          ad_id: 12345,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          status: :REMOVED,
+          final_urls: ["https://test-site.launch10.ai"],
+          path1: "Shop",
+          path2: "Now"
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_response)
+
+        result = ad_syncer.sync_result
+        expect(result.not_found?).to be true
+        expect(result.success?).to be false
+      end
+    end
+
+    context 'when fields match' do
+      before do
+        ad.platform_settings["google"] = { "ad_id" => "12345" }
+        ad.save!
+      end
+
+      it 'returns unchanged result with success? true' do
+        ad_response = mock_search_response_with_ad_group_ad(
+          ad_id: 12345,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          status: :PAUSED,
+          final_urls: ["https://test-site.launch10.ai"],
+          path1: "Shop",
+          path2: "Now"
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_response)
+
+        result = ad_syncer.sync_result
+        expect(result.unchanged?).to be true
+        expect(result.success?).to be true
+        expect(result.resource_name).to eq(12345)
+      end
+    end
+
+    context 'when fields do not match' do
+      before do
+        ad.platform_settings["google"] = { "ad_id" => "12345" }
+        ad.status = "active"
+        ad.save!
+      end
+
+      it 'returns error result with SyncVerificationError' do
+        ad_response = mock_search_response_with_ad_group_ad(
+          ad_id: 12345,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          status: :PAUSED,
+          final_urls: ["https://test-site.launch10.ai"],
+          path1: "Shop",
+          path2: "Now"
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_response)
+
+        result = ad_syncer.sync_result
+        expect(result.error?).to be true
+        expect(result.success?).to be false
+        expect(result.error).to be_a(GoogleAds::SyncVerificationError)
+        expect(result.error.message).to include("status")
+      end
+    end
+  end
+
   describe '#sync' do
     let(:mock_create_resource) { double("CreateResource") }
 

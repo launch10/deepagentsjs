@@ -238,6 +238,84 @@ RSpec.describe GoogleAds::Resources::Campaign do
     end
   end
 
+  describe '#sync_result' do
+    let(:mock_campaign_service) { double("CampaignService") }
+
+    before do
+      campaign.google_campaign_id = 789
+      campaign.save!
+      allow(@mock_client).to receive(:service).and_return(
+        double("Services",
+          customer: @mock_customer_service,
+          google_ads: @mock_google_ads_service,
+          campaign: mock_campaign_service)
+      )
+    end
+
+    context 'when remote campaign does not exist' do
+      it 'returns not_found result' do
+        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+
+        result = campaign_syncer.sync_result
+        expect(result).to be_a(GoogleAds::SyncResult)
+        expect(result.not_found?).to be true
+        expect(result.resource_type).to eq(:campaign)
+      end
+    end
+
+    context 'when remote campaign is REMOVED' do
+      it 'returns not_found result' do
+        campaign_response = mock_search_response_with_campaign(
+          campaign_id: 789,
+          name: campaign.name,
+          status: :REMOVED,
+          advertising_channel_type: :SEARCH
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(campaign_response)
+
+        result = campaign_syncer.sync_result
+        expect(result.not_found?).to be true
+      end
+    end
+
+    context 'when fields match' do
+      it 'returns unchanged result' do
+        campaign_response = mock_search_response_with_campaign(
+          campaign_id: 789,
+          name: campaign.name,
+          status: :PAUSED,
+          advertising_channel_type: :SEARCH
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(campaign_response)
+
+        result = campaign_syncer.sync_result
+        expect(result).to be_a(GoogleAds::SyncResult)
+        expect(result.unchanged?).to be true
+        expect(result.success?).to be true
+        expect(result.resource_name).to eq(789)
+      end
+    end
+
+    context 'when fields do not match' do
+      it 'returns error result with SyncVerificationError' do
+        campaign_response = mock_search_response_with_campaign(
+          campaign_id: 789,
+          name: "Different Name",
+          status: :PAUSED,
+          advertising_channel_type: :SEARCH
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(campaign_response)
+
+        result = campaign_syncer.sync_result
+        expect(result).to be_a(GoogleAds::SyncResult)
+        expect(result.error?).to be true
+        expect(result.success?).to be false
+        expect(result.error).to be_a(GoogleAds::SyncVerificationError)
+        expect(result.error.message).to include("name")
+      end
+    end
+  end
+
   describe '#sync' do
     let(:mock_campaign_service) { double("CampaignService") }
     let(:mock_create_resource) { double("CreateResource") }

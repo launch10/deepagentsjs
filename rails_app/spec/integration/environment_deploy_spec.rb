@@ -13,6 +13,7 @@ RSpec.describe 'Environment-aware deploys', type: :integration do
 
   before do
     allow(Aws::S3::Client).to receive(:new).and_return(s3_client)
+    allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
     website_with_files.snapshot
 
     # Set config default to development

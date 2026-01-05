@@ -5,6 +5,7 @@ FactoryBot.define do
     location_name { "United States" }
     country_code { "US" }
     targeted { true }
+    google_geo_target_constant { "geoTargetConstants/2840" }
     platform_settings { { "google" => { "geo_target_constant" => "geoTargetConstants/2840" } } }
 
     trait :radius do

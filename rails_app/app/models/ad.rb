@@ -71,6 +71,10 @@ class Ad < ApplicationRecord
     @google_syncer ||= GoogleAds::Resources::Ad.new(self)
   end
 
+  def google_sync_result
+    google_syncer.sync_result
+  end
+
   def google_customer_id
     ads_account.google_customer_id
   end

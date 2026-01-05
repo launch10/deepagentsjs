@@ -212,6 +212,68 @@ RSpec.describe GoogleAds::Resources::Budget do
     end
   end
 
+  describe '#sync_result' do
+    let(:mock_budget_service) { double("CampaignBudgetService") }
+
+    before do
+      ad_budget.google_budget_id = 123
+      ad_budget.save!
+      allow(@mock_client).to receive(:service).and_return(
+        double("Services",
+          customer: @mock_customer_service,
+          google_ads: @mock_google_ads_service,
+          campaign_budget: mock_budget_service)
+      )
+    end
+
+    context 'when remote budget does not exist' do
+      it 'returns not_found result' do
+        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+
+        result = budget_syncer.sync_result
+        expect(result).to be_a(GoogleAds::SyncResult)
+        expect(result.not_found?).to be true
+        expect(result.success?).to be false
+        expect(result.resource_type).to eq(:campaign_budget)
+      end
+    end
+
+    context 'when fields match' do
+      it 'returns unchanged result' do
+        budget_response = mock_search_response_with_budget(
+          budget_id: 123,
+          name: ad_budget.google_budget_name,
+          amount_micros: 5_000_000
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
+
+        result = budget_syncer.sync_result
+        expect(result).to be_a(GoogleAds::SyncResult)
+        expect(result.unchanged?).to be true
+        expect(result.success?).to be true
+        expect(result.resource_name).to eq(123)
+      end
+    end
+
+    context 'when fields do not match' do
+      it 'returns error result with SyncVerificationError' do
+        budget_response = mock_search_response_with_budget(
+          budget_id: 123,
+          name: "Different Budget Name",
+          amount_micros: 5_000_000
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
+
+        result = budget_syncer.sync_result
+        expect(result).to be_a(GoogleAds::SyncResult)
+        expect(result.error?).to be true
+        expect(result.success?).to be false
+        expect(result.error).to be_a(GoogleAds::SyncVerificationError)
+        expect(result.error.message).to include("name")
+      end
+    end
+  end
+
   describe '#sync' do
     let(:mock_budget_service) { double("CampaignBudgetService") }
     let(:mock_create_resource) { double("CreateResource") }

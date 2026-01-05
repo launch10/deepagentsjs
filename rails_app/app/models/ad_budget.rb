@@ -46,4 +46,8 @@ class AdBudget < ApplicationRecord
   def google_fetch
     google_syncer.fetch
   end
+
+  def google_sync_result
+    google_syncer.sync_result
+  end
 end

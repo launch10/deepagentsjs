@@ -79,6 +79,12 @@ module GoogleAds
 
           Sync::Plan.new(operations)
         end
+
+        # Returns a CollectionSyncResult representing the current sync state of all keywords.
+        def sync_result(ad_group)
+          results = ad_group.keywords.without_deleted.map { |keyword| new(keyword).sync_result }
+          Sync::CollectionSyncResult.new(results: results)
+        end
       end
 
       # ═══════════════════════════════════════════════════════════════
@@ -103,6 +109,28 @@ module GoogleAds
         end
       rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
         GoogleAds::SyncResult.error(:ad_group_criterion, e)
+      end
+
+      # Returns a SyncResult representing the current sync state without performing any sync.
+      # Used by CampaignDeploy steps to check if the sync is complete.
+      def sync_result
+        return GoogleAds::SyncResult.not_found(:ad_group_criterion) unless record.google_criterion_id
+
+        remote = fetch
+        return GoogleAds::SyncResult.not_found(:ad_group_criterion) unless remote
+        return GoogleAds::SyncResult.not_found(:ad_group_criterion) if remote.status == :REMOVED
+
+        if fields_match?(remote)
+          GoogleAds::SyncResult.unchanged(:ad_group_criterion, record.google_criterion_id)
+        else
+          comparison = compare_fields(remote)
+          GoogleAds::SyncResult.error(
+            :ad_group_criterion,
+            GoogleAds::SyncVerificationError.new(
+              "Keyword sync verification failed. Mismatched fields: #{comparison.failures.join(', ')}"
+            )
+          )
+        end
       end
 
       def sync_plan

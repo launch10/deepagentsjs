@@ -2,6 +2,9 @@ module GoogleAds
   class SyncResult
     attr_reader :resource_type, :resource_name, :action, :error
 
+    # Actions that indicate local and remote are in sync
+    SUCCESS_ACTIONS = [:created, :updated, :unchanged, :deleted].freeze
+
     def initialize(resource_type:, action:, resource_name: nil, error: nil)
       @resource_type = resource_type
       @action = action
@@ -9,13 +12,13 @@ module GoogleAds
       @error = error
     end
 
+    # Returns true when local and remote are confirmed to be in sync
+    # Used by CampaignDeploy steps to verify sync completion
     def success?
-      action != :error
+      SUCCESS_ACTIONS.include?(action)
     end
 
-    def synced?
-      %i[unchanged created updated deleted].include?(action)
-    end
+    alias_method :synced?, :success?
 
     def error?
       action == :error

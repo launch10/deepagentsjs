@@ -209,8 +209,8 @@ RSpec.describe CampaignDeploy, type: :model do
       expect(step_instance).to respond_to(:finished?)
     end
 
-    it 'has :connect_google_account as the first step' do
-      expect(CampaignDeploy::STEPS.first.name).to eq(:connect_google_account)
+    it 'has :sync_budget as the first step' do
+      expect(CampaignDeploy::STEPS.first.name).to eq(:sync_budget)
     end
   end
 
@@ -220,7 +220,7 @@ RSpec.describe CampaignDeploy, type: :model do
         campaign_deploy.current_step = nil
         step = campaign_deploy.next_step
         expect(step).to be_a(CampaignDeploy::Step)
-        expect(step.class.step_name).to eq(:connect_google_account)
+        expect(step.class.step_name).to eq(:sync_budget)
       end
     end
 
@@ -323,10 +323,10 @@ RSpec.describe CampaignDeploy, type: :model do
     end
 
     describe '#find' do
-      it 'returns a step instance for :create_ads_account' do
-        step = runner.find(:create_ads_account)
+      it 'returns a step instance for :sync_budget' do
+        step = runner.find(:sync_budget)
         expect(step).to be_a(CampaignDeploy::Step)
-        expect(step.class.step_name).to eq(:create_ads_account)
+        expect(step.class.step_name).to eq(:sync_budget)
       end
 
       it 'returns a step instance for :create_geo_targeting' do
@@ -336,50 +336,9 @@ RSpec.describe CampaignDeploy, type: :model do
       end
     end
 
-    describe ':create_ads_account step' do
-      let(:step) { runner.find(:create_ads_account) }
-
-      context 'when account does not have google ads account' do
-        before do
-          allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
-          allow(@mock_customer_service).to receive(:create_customer_client).and_return(
-            mock_create_customer_client_response(customer_id: "9876543210")
-          )
-          allow(@mock_customer_service).to receive(:mutate_customer).and_return(
-            mock_mutate_customer_response(customer_id: "9876543210")
-          )
-          allow(@mock_resource).to receive(:customer).and_yield(mock_customer_resource).and_return(mock_customer_resource)
-          allow(@mock_operation).to receive(:create_resource).and_return(
-            double("CreateResource", campaign_criterion: nil)
-          )
-          allow(@mock_update_resource).to receive(:customer).and_yield(mock_customer_resource).and_return(mock_auto_tagging_operation)
-        end
-
-        it 'creates a new Google Ads account' do
-          expect(@mock_customer_service).to receive(:create_customer_client)
-          step.run
-        end
-      end
-
-      context 'when account already has google ads account' do
-        before do
-          account.create_ads_account!(platform: "google", google_customer_id: "123456")
-          customer_client_response, auto_tagging_response = mock_verify_customer_responses(
-            customer_id: 123456,
-            descriptive_name: account.name,
-            auto_tagging_enabled: true
-          )
-          allow(@mock_google_ads_service).to receive(:search).and_return(
-            customer_client_response,
-            auto_tagging_response
-          )
-        end
-
-        it 'reports finished' do
-          expect(step.finished?).to be true
-        end
-      end
-    end
+    # NOTE: :create_ads_account and :send_account_invitation steps have been
+    # extracted from the deploy flow and are now handled by frontend/Langgraph.
+    # Tests for those steps have been removed.
 
     describe ':create_geo_targeting step' do
       let(:step) { runner.find(:create_geo_targeting) }
@@ -586,62 +545,6 @@ RSpec.describe CampaignDeploy, type: :model do
         it 'sets criterion_id on new target' do
           step.run
           expect(new_target.reload.google_criterion_id).to eq("555")
-        end
-      end
-    end
-
-    describe ':send_account_invitation step' do
-      let(:step) { runner.find(:send_account_invitation) }
-      let!(:ads_account) { account.create_ads_account!(platform: "google", google_customer_id: "456") }
-
-      before do
-        mock_customer_user_access_invitation_service
-        allow(@mock_resource).to receive(:customer_user_access_invitation)
-          .and_yield(mock_customer_user_access_invitation_resource)
-          .and_return(mock_customer_user_access_invitation_resource)
-        allow(@mock_operation).to receive(:create_resource).and_return(
-          double("CreateResource", customer_user_access_invitation: mock_customer_user_access_invitation_resource)
-        )
-      end
-
-      context 'when invitation has not been sent' do
-        before do
-          allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
-          allow(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation).and_return(
-            mock_mutate_customer_user_access_invitation_response(invitation_id: 12345, customer_id: 456)
-          )
-        end
-
-        it 'sends the invitation' do
-          expect(@mock_customer_user_access_invitation_service).to receive(:mutate_customer_user_access_invitation)
-          step.run
-        end
-
-        it 'reports not finished before sending' do
-          expect(step.finished?).to be false
-        end
-      end
-
-      context 'when invitation has already been sent' do
-        let!(:invitation) do
-          create(:ads_account_invitation, :sent,
-            ads_account: ads_account,
-            email_address: account.google_email_address)
-        end
-
-        before do
-          allow(@mock_google_ads_service).to receive(:search).and_return(
-            mock_search_response_with_invitation(
-              invitation_id: invitation.google_invitation_id,
-              customer_id: 456,
-              email_address: account.google_email_address,
-              access_role: :STANDARD
-            )
-          )
-        end
-
-        it 'reports finished' do
-          expect(step.finished?).to be true
         end
       end
     end
@@ -1107,7 +1010,8 @@ RSpec.describe CampaignDeploy, type: :model do
 
         it 'sets criterion_id on new keyword' do
           step.run
-          expect(new_keyword.reload.google_criterion_id).to eq("555")
+          # NOTE: Keyword stores criterion_id as integer, unlike LocationTarget which stores as string
+          expect(new_keyword.reload.google_criterion_id).to eq(555)
         end
       end
     end

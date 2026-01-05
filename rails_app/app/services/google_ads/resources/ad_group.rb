@@ -113,6 +113,26 @@ module GoogleAds
         GoogleAds::SyncResult.error(:ad_group, e)
       end
 
+      # Returns a SyncResult representing the current sync state without performing any sync.
+      # Used by CampaignDeploy steps to check if the sync is complete.
+      def sync_result
+        remote = fetch
+        return GoogleAds::SyncResult.not_found(:ad_group) unless remote
+        return GoogleAds::SyncResult.not_found(:ad_group) if remote.status == :REMOVED
+
+        if fields_match?(remote)
+          GoogleAds::SyncResult.unchanged(:ad_group, record.google_ad_group_id)
+        else
+          comparison = compare_fields(remote)
+          GoogleAds::SyncResult.error(
+            :ad_group,
+            GoogleAds::SyncVerificationError.new(
+              "AdGroup sync verification failed. Mismatched fields: #{comparison.failures.join(', ')}"
+            )
+          )
+        end
+      end
+
       def sync_plan
         operations = []
 

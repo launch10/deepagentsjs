@@ -99,6 +99,25 @@ module GoogleAds
         GoogleAds::SyncResult.error(:campaign_budget, e)
       end
 
+      # Returns a SyncResult representing the current sync state without performing any sync.
+      # Used by CampaignDeploy steps to check if the sync is complete.
+      def sync_result
+        remote = fetch
+        return GoogleAds::SyncResult.not_found(:campaign_budget) unless remote
+
+        if fields_match?(remote)
+          GoogleAds::SyncResult.unchanged(:campaign_budget, record.google_budget_id)
+        else
+          comparison = compare_fields(remote)
+          GoogleAds::SyncResult.error(
+            :campaign_budget,
+            GoogleAds::SyncVerificationError.new(
+              "Budget sync verification failed. Mismatched fields: #{comparison.failures.join(', ')}"
+            )
+          )
+        end
+      end
+
       def sync_plan
         operations = []
 

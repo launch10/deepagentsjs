@@ -106,4 +106,12 @@ class AdGroup < ApplicationRecord
   def keywords_synced?
     GoogleAds::Resources::Keyword.synced?(self)
   end
+
+  def google_sync_result
+    google_syncer.sync_result
+  end
+
+  def keywords_sync_result
+    GoogleAds::Resources::Keyword.sync_result(self)
+  end
 end
