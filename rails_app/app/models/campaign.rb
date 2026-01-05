@@ -50,9 +50,16 @@ class Campaign < ApplicationRecord
   include GoogleMappable
   include GoogleSyncable
 
-  # These will be refactored to explicit class method pattern later
-  use_google_collection_sync :location_targets, GoogleAds::LocationTargets
+  # Structured snippets still using old DSL (to be refactored)
   use_google_collection_sync :structured_snippets, GoogleAds::StructuredSnippets
+
+  # ═══════════════════════════════════════════════════════════════
+  # Location Targets Sync - Class Method Pattern
+  # ═══════════════════════════════════════════════════════════════
+
+  def sync_location_targets = GoogleAds::Resources::LocationTarget.sync_all(self)
+  def location_targets_synced? = GoogleAds::Resources::LocationTarget.synced?(self)
+  def location_targets_sync_plan = GoogleAds::Resources::LocationTarget.sync_plan(self)
 
   # ═══════════════════════════════════════════════════════════════
   # Campaign Sync - Explicit One-Liner Delegations
