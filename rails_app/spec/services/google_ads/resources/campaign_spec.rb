@@ -12,6 +12,86 @@ RSpec.describe GoogleAds::Resources::Campaign do
     allow(campaign).to receive(:google_customer_id).and_return("1234567890")
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # INSTRUMENTATION
+  # ═══════════════════════════════════════════════════════════════
+
+  describe 'instrumentation' do
+    it 'includes Instrumentable' do
+      expect(described_class.ancestors).to include(GoogleAds::Resources::Instrumentable)
+    end
+
+    it 'provides instrumentation context with campaign' do
+      expect(campaign_syncer.instrumentation_context).to eq({ campaign: campaign })
+    end
+
+    it 'tags logs with campaign_id, customer_id, and account_id' do
+      campaign.google_campaign_id = 789
+      campaign.save!
+
+      campaign_response = mock_search_response_with_campaign(
+        campaign_id: 789,
+        name: campaign.name,
+        status: :PAUSED,
+        advertising_channel_type: :SEARCH
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(campaign_response)
+
+      expect(Rails.logger).to receive(:tagged).with(
+        hash_including(
+          campaign_id: campaign.id,
+          google_customer_id: "1234567890",
+          account_id: account.id
+        )
+      ).at_least(:once).and_yield
+
+      campaign_syncer.fetch
+    end
+
+    describe 'instrumented methods' do
+      %i[sync sync_result sync_plan delete fetch].each do |method|
+        it "wraps #{method} with instrumentation" do
+          expect(GoogleAds::Instrumentation).to receive(:with_context)
+            .with(campaign: campaign)
+            .at_least(:once)
+            .and_call_original
+
+          # Stub the actual API calls
+          campaign.google_campaign_id = 789
+          campaign.save!
+
+          campaign_response = mock_search_response_with_campaign(
+            campaign_id: 789,
+            name: campaign.name,
+            status: :PAUSED,
+            advertising_channel_type: :SEARCH
+          )
+          allow(@mock_google_ads_service).to receive(:search).and_return(campaign_response)
+
+          # Mock delete operation for the delete test
+          if method == :delete
+            mock_remove_operation = double("RemoveOperation")
+            allow(@mock_remove_resource).to receive(:campaign)
+              .with("customers/1234567890/campaigns/789")
+              .and_return(mock_remove_operation)
+
+            mock_campaign_service = double("CampaignService")
+            allow(@mock_client).to receive(:service).and_return(
+              double("Services",
+                customer: @mock_customer_service,
+                google_ads: @mock_google_ads_service,
+                campaign: mock_campaign_service)
+            )
+            mutate_response = mock_mutate_campaign_response(campaign_id: 789, customer_id: 1234567890)
+            allow(mock_campaign_service).to receive(:mutate_campaigns).and_return(mutate_response)
+          end
+
+          campaign_syncer.public_send(method)
+        end
+      end
+    end
+  end
+
   describe '#record' do
     it 'returns the campaign passed to the syncer' do
       expect(campaign_syncer.record).to eq(campaign)

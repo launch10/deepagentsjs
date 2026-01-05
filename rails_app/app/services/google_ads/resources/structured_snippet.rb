@@ -2,6 +2,7 @@ module GoogleAds
   module Resources
     class StructuredSnippet
       include FieldMappable
+      include Instrumentable
 
       attr_reader :record
 
@@ -20,6 +21,12 @@ module GoogleAds
       def initialize(record)
         @record = record
       end
+
+      def instrumentation_context
+        { campaign: record.campaign }
+      end
+
+      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # CLASS METHODS: Collection Operations (Campaign has_one structured_snippet)

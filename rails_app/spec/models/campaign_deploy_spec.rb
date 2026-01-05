@@ -56,11 +56,6 @@ RSpec.describe CampaignDeploy, type: :model do
         expect(CampaignDeploy.in_progress).to include(pending_deploy)
       end
 
-      it 'returns deploys with building status' do
-        building_deploy = create(:campaign_deploy, campaign: campaign, status: 'building')
-        expect(CampaignDeploy.in_progress).to include(building_deploy)
-      end
-
       it 'does not return completed deploys' do
         completed_deploy = create(:campaign_deploy, campaign: campaign, status: 'completed')
         expect(CampaignDeploy.in_progress).not_to include(completed_deploy)
@@ -1070,6 +1065,433 @@ RSpec.describe CampaignDeploy, type: :model do
         it 'reports finished' do
           expect(step.finished?).to be true
         end
+      end
+    end
+
+    describe '#plan' do
+      let!(:ads_account) { account.create_ads_account!(platform: "google", google_customer_id: "456") }
+
+      before do
+        # Default: allow all Google Ads searches to return empty (nothing synced)
+        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+      end
+
+      it 'returns a GoogleAds::Sync::Plan object' do
+        plan = runner.plan
+        expect(plan).to be_a(GoogleAds::Sync::Plan)
+      end
+
+      it 'includes all operations across all steps' do
+        plan = runner.plan
+        expect(plan).to respond_to(:operations)
+        expect(plan.operations).to be_an(Array)
+      end
+
+      context 'with a fresh campaign (nothing synced)' do
+        let!(:budget) { create(:ad_budget, campaign: campaign, daily_budget_cents: 500) }
+        let!(:ad_group) { create(:ad_group, campaign: campaign, name: "Test Ad Group") }
+        let!(:ad) { create(:ad, ad_group: ad_group, status: "draft") }
+        let!(:keyword) { create(:ad_keyword, ad_group: ad_group, text: "test keyword", match_type: "broad") }
+        let!(:location_target) do
+          create(:ad_location_target, campaign: campaign,
+            location_name: "Los Angeles",
+            country_code: "US",
+            location_type: "City",
+            platform_settings: { "google" => { "geo_target_constant" => "geoTargetConstants/1013962" } })
+        end
+
+        it 'returns operations for all resources that need creation' do
+          plan = runner.plan
+
+          expect(plan.creates).not_to be_empty
+          expect(plan.any_changes?).to be true
+        end
+
+        it 'includes budget creation' do
+          plan = runner.plan
+          budget_ops = plan.creates.select { |op| op[:record].is_a?(AdBudget) }
+          expect(budget_ops.size).to eq(1)
+        end
+
+        it 'includes campaign creation' do
+          plan = runner.plan
+          campaign_ops = plan.creates.select { |op| op[:record].is_a?(Campaign) }
+          expect(campaign_ops.size).to eq(1)
+        end
+
+        it 'includes ad_group creation' do
+          plan = runner.plan
+          ad_group_ops = plan.creates.select { |op| op[:record].is_a?(AdGroup) }
+          expect(ad_group_ops.size).to eq(1)
+        end
+
+        it 'includes keyword creation' do
+          plan = runner.plan
+          keyword_ops = plan.creates.select { |op| op[:record].is_a?(AdKeyword) }
+          expect(keyword_ops.size).to eq(1)
+        end
+
+        it 'includes ad creation' do
+          plan = runner.plan
+          ad_ops = plan.creates.select { |op| op[:record].is_a?(Ad) }
+          expect(ad_ops.size).to eq(1)
+        end
+
+        it 'includes location target creation' do
+          plan = runner.plan
+          location_ops = plan.creates.select { |op| op[:record].is_a?(AdLocationTarget) }
+          expect(location_ops.size).to eq(1)
+        end
+      end
+
+      context 'with a fully synced campaign' do
+        let!(:budget) do
+          create(:ad_budget, campaign: campaign,
+            daily_budget_cents: 500,
+            platform_settings: { "google" => { "budget_id" => "123" } })
+        end
+        let!(:ad_group) do
+          create(:ad_group, campaign: campaign, name: "Test Ad Group",
+            platform_settings: { "google" => { "ad_group_id" => "999" } })
+        end
+        let!(:ad) do
+          create(:ad, ad_group: ad_group, status: "active",
+            platform_settings: { "google" => { "ad_id" => "12345" } })
+        end
+        let!(:keyword) do
+          create(:ad_keyword, ad_group: ad_group, text: "test keyword", match_type: "broad",
+            platform_settings: { "google" => { "criterion_id" => "333" } })
+        end
+        let!(:location_target) do
+          create(:ad_location_target, campaign: campaign,
+            location_name: "Los Angeles",
+            platform_settings: { "google" => { "geo_target_constant" => "geoTargetConstants/1013962", "criterion_id" => "111" } })
+        end
+
+        before do
+          campaign.update!(platform_settings: { "google" => { "campaign_id" => "789" } })
+
+          allow(@mock_google_ads_service).to receive(:search).and_return(
+            # Budget query
+            mock_search_response_with_budget(
+              budget_id: 123,
+              name: budget.google_budget_name,
+              amount_micros: budget.daily_budget_cents * 10_000
+            ),
+            # Campaign query
+            mock_search_response_with_campaign(
+              campaign_id: 789,
+              customer_id: 456,
+              name: campaign.name,
+              status: :PAUSED,
+              advertising_channel_type: :SEARCH
+            ),
+            # Location target query
+            mock_search_response_with_campaign_criterion(
+              criterion_id: 111,
+              campaign_id: 789,
+              customer_id: 456,
+              location_id: 1013962,
+              negative: false
+            ),
+            # Ad group query
+            mock_search_response_with_ad_group(
+              ad_group_id: 999,
+              customer_id: 456,
+              name: "Test Ad Group",
+              status: :PAUSED
+            ),
+            # Keyword query
+            mock_search_response_with_keyword(
+              criterion_id: 333,
+              ad_group_id: 999,
+              customer_id: 456,
+              keyword_text: "test keyword"
+            ),
+            # Ad query
+            mock_search_response_with_ad_group_ad(
+              ad_id: 12345,
+              ad_group_id: 999,
+              customer_id: 456,
+              status: :ENABLED
+            )
+          )
+        end
+
+        it 'returns no changes when everything is synced' do
+          plan = runner.plan
+
+          expect(plan.creates).to be_empty
+          expect(plan.updates).to be_empty
+          expect(plan.deletes).to be_empty
+          expect(plan.any_changes?).to be false
+        end
+
+        it 'returns unchanged operations for synced resources' do
+          plan = runner.plan
+
+          expect(plan.unchanged).not_to be_empty
+        end
+
+        it "does add changes once things are unsynced again" do
+          campaign.update!(name: "New Name")
+          campaign.budget.update!(daily_budget_cents: 1000)
+          campaign.ad_groups.first.update!(name: "New Ad Group Name")
+          campaign.keywords.first.update!(text: "New Keyword")
+          campaign.ads.first.update!(status: "paused")
+          campaign.location_targets.first.update!(targeted: false)
+          plan = runner.plan
+
+          campaign_plan = plan.campaigns
+          expect(campaign_plan.updates.first[:fields]).to eq([:name])
+
+          budget_plan = plan.budgets
+          expect(budget_plan.updates.first[:fields]).to eq([:amount_micros])
+
+          ad_group_plan = plan.ad_groups
+          expect(ad_group_plan.updates.first[:fields]).to eq([:name])
+
+          keyword_plan = plan.keywords
+          expect(keyword_plan.updates.first[:fields]).to eq([:text])
+
+          location_plan = plan.location_targets
+          expect(location_plan.updates.first[:fields]).to eq([:negative])
+        end
+      end
+
+      context 'with mixed operations (create, update, delete)' do
+        let!(:budget) do
+          create(:ad_budget, campaign: campaign,
+            daily_budget_cents: 500,
+            platform_settings: { "google" => { "budget_id" => "123" } })
+        end
+        let!(:ad_group) do
+          create(:ad_group, campaign: campaign, name: "Test Ad Group",
+            platform_settings: { "google" => { "ad_group_id" => "999" } })
+        end
+        # New keyword (needs create)
+        let!(:new_keyword) do
+          create(:ad_keyword, ad_group: ad_group, text: "new keyword", match_type: "exact")
+        end
+        # Existing keyword (unchanged)
+        let!(:existing_keyword) do
+          create(:ad_keyword, ad_group: ad_group, text: "existing keyword", match_type: "broad",
+            platform_settings: { "google" => { "criterion_id" => "333" } })
+        end
+        # Deleted keyword (needs delete)
+        let!(:deleted_keyword) do
+          keyword = create(:ad_keyword, ad_group: ad_group, text: "deleted keyword", match_type: "phrase",
+            platform_settings: { "google" => { "criterion_id" => "444" } })
+          keyword.destroy
+          keyword
+        end
+
+        before do
+          campaign.update!(platform_settings: { "google" => { "campaign_id" => "789" } })
+
+          # Mock order must match actual API call order:
+          # 1. Budget fetch_by_id
+          # 2. Campaign fetch
+          # 3. AdGroup fetch
+          # 4. existing_keyword fetch (deleted keywords don't trigger fetch - just add delete op)
+          # Note: new_keyword has no criterion_id, so no fetch call
+          allow(@mock_google_ads_service).to receive(:search).and_return(
+            mock_search_response_with_budget(
+              budget_id: 123,
+              name: budget.google_budget_name,
+              amount_micros: budget.daily_budget_cents * 10_000
+            ),
+            mock_search_response_with_campaign(
+              campaign_id: 789,
+              customer_id: 456,
+              name: campaign.name,
+              status: :PAUSED,
+              advertising_channel_type: :SEARCH
+            ),
+            mock_search_response_with_ad_group(
+              ad_group_id: 999,
+              customer_id: 456,
+              name: "Test Ad Group",
+              status: :PAUSED
+            ),
+            # Existing keyword is synced
+            mock_search_response_with_keyword(
+              criterion_id: 333,
+              ad_group_id: 999,
+              customer_id: 456,
+              keyword_text: "existing keyword",
+              match_type: :BROAD
+            )
+          )
+        end
+
+        it 'includes creates for new resources' do
+          plan = runner.plan
+          creates = plan.creates.select { |op| op[:record].is_a?(AdKeyword) }
+          expect(creates.size).to be >= 1
+        end
+
+        it 'includes deletes for soft-deleted resources' do
+          plan = runner.plan
+          deletes = plan.deletes.select { |op| op[:record].is_a?(AdKeyword) }
+          expect(deletes.size).to be >= 1
+        end
+
+        it 'includes unchanged for synced resources' do
+          plan = runner.plan
+          unchanged_keywords = plan.unchanged.select { |op| op[:record].is_a?(AdKeyword) }
+          expect(unchanged_keywords.size).to be >= 1
+        end
+      end
+
+      context 'with ad schedule updates' do
+        let!(:schedule) do
+          create(:ad_schedule, campaign: campaign,
+            day_of_week: "Monday", start_hour: 9, end_hour: 17,
+            platform_settings: { "google" => { "criterion_id" => "222" } })
+        end
+
+        before do
+          campaign.update!(platform_settings: { "google" => { "campaign_id" => "789" } })
+
+          allow(@mock_google_ads_service).to receive(:search).and_return(
+            mock_empty_search_response, # budget
+            mock_search_response_with_campaign(
+              campaign_id: 789,
+              customer_id: 456,
+              name: campaign.name,
+              status: :PAUSED,
+              advertising_channel_type: :SEARCH
+            ),
+            mock_search_response_with_ad_schedule(
+              criterion_id: 222,
+              campaign_id: 789,
+              customer_id: 456,
+              day_of_week: :MONDAY
+            )
+          )
+        end
+
+        it 'includes ad schedule operations' do
+          plan = runner.plan
+          schedule_ops = plan.operations.select { |op| op[:record].is_a?(AdSchedule) }
+          expect(schedule_ops).not_to be_empty
+        end
+      end
+
+      context 'with structured snippet recreate' do
+        let!(:snippet) do
+          create(:ad_structured_snippet, campaign: campaign,
+            category: "brands",
+            values: ["Nike", "Adidas", "Puma"],
+            platform_settings: { "google" => { "asset_id" => "99999" } })
+        end
+
+        before do
+          campaign.update!(platform_settings: { "google" => { "campaign_id" => "789" } })
+
+          # Simulate that the snippet values have changed (requires recreate)
+          allow(@mock_google_ads_service).to receive(:search).and_return(
+            mock_empty_search_response, # budget
+            mock_search_response_with_campaign(
+              campaign_id: 789,
+              customer_id: 456,
+              name: campaign.name,
+              status: :PAUSED,
+              advertising_channel_type: :SEARCH
+            ),
+            mock_search_response_with_structured_snippet_asset(
+              asset_id: 99999,
+              customer_id: 456,
+              header: "Brands",
+              values: ["Nike", "Puma"] # Different values - will trigger recreate
+            )
+          )
+        end
+
+        it 'includes recreate operations for immutable field changes' do
+          plan = runner.plan
+          recreates = plan.operations.select { |op| op[:action] == :recreate }
+          expect(recreates.size).to be >= 1
+        end
+      end
+
+      context 'as dry run' do
+        let!(:budget) { create(:ad_budget, campaign: campaign, daily_budget_cents: 500) }
+
+        # Note: PlatformSettings concern auto-saves defaults when accessed.
+        # This is acceptable for a dry run - the key requirement is no Google Ads API mutations.
+
+        it 'does not call any mutate APIs' do
+          expect(@mock_campaign_budget_service).not_to receive(:mutate_campaign_budgets)
+          expect(@mock_campaign_service).not_to receive(:mutate_campaigns)
+          expect(@mock_ad_group_service).not_to receive(:mutate_ad_groups)
+          expect(@mock_ad_group_ad_service).not_to receive(:mutate_ad_group_ads)
+          expect(@mock_ad_group_criterion_service).not_to receive(:mutate_ad_group_criteria)
+          expect(@mock_campaign_criterion_service).not_to receive(:mutate_campaign_criteria)
+
+          runner.plan
+        end
+      end
+
+      context 'serialization' do
+        let!(:budget) { create(:ad_budget, campaign: campaign, daily_budget_cents: 500) }
+        let!(:ad_group) { create(:ad_group, campaign: campaign, name: "Test Ad Group") }
+
+        it 'can be serialized to a hash' do
+          plan = runner.plan
+          hash = plan.to_h
+
+          expect(hash).to include(:creates, :updates, :deletes, :unchanged, :any_changes, :operations)
+          expect(hash[:creates]).to be_a(Integer)
+          expect(hash[:any_changes]).to be true
+        end
+
+        it 'provides operation counts' do
+          plan = runner.plan
+          hash = plan.to_h
+
+          expect(hash[:creates]).to be > 0
+          expect(hash[:operations].size).to be > 0
+        end
+      end
+    end
+
+    describe 'step-level plans' do
+      let!(:ads_account) { account.create_ads_account!(platform: "google", google_customer_id: "456") }
+      let!(:budget) { create(:ad_budget, campaign: campaign, daily_budget_cents: 500) }
+      let!(:ad_group) { create(:ad_group, campaign: campaign, name: "Test Ad Group") }
+      let!(:keyword) { create(:ad_keyword, ad_group: ad_group, text: "test keyword", match_type: "broad") }
+
+      before do
+        campaign.update!(platform_settings: { "google" => { "campaign_id" => "789" } })
+        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+      end
+
+      it 'each step can report its own plan via sync_plan' do
+        step = runner.find(:sync_budget)
+        expect(step).to respond_to(:sync_plan)
+
+        step_plan = step.sync_plan
+        expect(step_plan).to be_a(GoogleAds::Sync::Plan)
+      end
+
+      it 'step plans only include operations for that step' do
+        budget_step = runner.find(:sync_budget)
+        budget_plan = budget_step.sync_plan
+
+        budget_ops = budget_plan.operations.select { |op| op[:record].is_a?(AdBudget) }
+        expect(budget_ops.size).to eq(budget_plan.operations.size)
+      end
+
+      it 'keywords step plan only includes keyword operations' do
+        campaign.ad_groups.first.update!(platform_settings: { "google" => { "ad_group_id" => "999" } })
+
+        keywords_step = runner.find(:create_keywords)
+        keywords_plan = keywords_step.sync_plan
+
+        keyword_ops = keywords_plan.operations.select { |op| op[:record].is_a?(AdKeyword) }
+        expect(keyword_ops.size).to eq(keywords_plan.operations.size)
       end
     end
   end

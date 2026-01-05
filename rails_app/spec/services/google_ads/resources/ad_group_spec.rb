@@ -19,6 +19,89 @@ RSpec.describe GoogleAds::Resources::AdGroup do
     allow(campaign).to receive(:google_campaign_id).and_return(789)
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # INSTRUMENTATION
+  # ═══════════════════════════════════════════════════════════════
+
+  describe 'instrumentation' do
+    it 'includes Instrumentable' do
+      expect(described_class.ancestors).to include(GoogleAds::Resources::Instrumentable)
+    end
+
+    it 'provides instrumentation context with ad_group' do
+      expect(ad_group_syncer.instrumentation_context).to eq({ ad_group: ad_group })
+    end
+
+    it 'tags logs with ad_group_id and campaign_id' do
+      ad_group.google_ad_group_id = 456
+      ad_group.google_status = "PAUSED"
+      ad_group.google_type = "SEARCH_STANDARD"
+      ad_group.google_cpc_bid_micros = 1_000_000
+      ad_group.save!
+
+      ad_group_response = mock_search_response_with_ad_group(
+        ad_group_id: 456,
+        name: ad_group.name,
+        status: :PAUSED,
+        type: :SEARCH_STANDARD,
+        cpc_bid_micros: 1_000_000
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
+
+      expect(Rails.logger).to receive(:tagged).with(
+        hash_including(
+          ad_group_id: ad_group.id,
+          campaign_id: campaign.id
+        )
+      ).at_least(:once).and_yield
+
+      ad_group_syncer.fetch
+    end
+
+    describe 'instrumented methods' do
+      %i[sync sync_result sync_plan delete fetch].each do |method|
+        it "wraps #{method} with instrumentation" do
+          expect(GoogleAds::Instrumentation).to receive(:with_context)
+            .with(ad_group: ad_group)
+            .at_least(:once)
+            .and_call_original
+
+          # Setup ad_group with Google ID
+          ad_group.google_ad_group_id = 456
+          ad_group.google_status = "PAUSED"
+          ad_group.google_type = "SEARCH_STANDARD"
+          ad_group.google_cpc_bid_micros = 1_000_000
+          ad_group.save!
+
+          # Mock the API response
+          ad_group_response = mock_search_response_with_ad_group(
+            ad_group_id: 456,
+            name: ad_group.name,
+            status: :PAUSED,
+            type: :SEARCH_STANDARD,
+            cpc_bid_micros: 1_000_000
+          )
+          allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
+
+          # Mock delete operation for the delete test
+          if method == :delete
+            mock_ad_group_service = double("AdGroupService")
+            allow(@mock_client).to receive(:service).and_return(
+              double("Services",
+                customer: @mock_customer_service,
+                google_ads: @mock_google_ads_service,
+                ad_group: mock_ad_group_service)
+            )
+            allow(@mock_remove_resource).to receive(:ad_group).and_return(double("RemoveOperation"))
+            allow(mock_ad_group_service).to receive(:mutate_ad_groups).and_return(double("Response"))
+          end
+
+          ad_group_syncer.public_send(method)
+        end
+      end
+    end
+  end
+
   describe '#record' do
     it 'returns the ad_group passed to the syncer' do
       expect(ad_group_syncer.record).to eq(ad_group)

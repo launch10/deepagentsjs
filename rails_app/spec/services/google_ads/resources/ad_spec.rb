@@ -26,6 +26,83 @@ RSpec.describe GoogleAds::Resources::Ad do
     allow_any_instance_of(AdGroup).to receive(:google_ad_group_id).and_return(999)
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # INSTRUMENTATION
+  # ═══════════════════════════════════════════════════════════════
+
+  describe 'instrumentation' do
+    it 'includes Instrumentable' do
+      expect(described_class.ancestors).to include(GoogleAds::Resources::Instrumentable)
+    end
+
+    it 'provides instrumentation context with ad' do
+      expect(ad_syncer.instrumentation_context).to eq({ ad: ad })
+    end
+
+    it 'tags logs with ad_id and ad_group_id' do
+      ad.google_ad_id = 12345
+      ad.status = "paused"
+      ad.save!
+
+      ad_response = mock_search_response_with_ad_group_ad(
+        ad_id: 12345,
+        status: :PAUSED,
+        path1: "Shop",
+        path2: "Now"
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(ad_response)
+
+      expect(Rails.logger).to receive(:tagged).with(
+        hash_including(
+          ad_id: ad.id,
+          ad_group_id: ad_group.id
+        )
+      ).at_least(:once).and_yield
+
+      ad_syncer.fetch
+    end
+
+    describe 'instrumented methods' do
+      %i[sync sync_result sync_plan delete fetch].each do |method|
+        it "wraps #{method} with instrumentation" do
+          expect(GoogleAds::Instrumentation).to receive(:with_context)
+            .with(ad: ad)
+            .at_least(:once)
+            .and_call_original
+
+          # Setup ad with Google ID
+          ad.google_ad_id = 12345
+          ad.status = "paused"
+          ad.save!
+
+          # Mock API responses
+          ad_response = mock_search_response_with_ad_group_ad(
+            ad_id: 12345,
+            status: :PAUSED,
+            path1: "Shop",
+            path2: "Now"
+          )
+          allow(@mock_google_ads_service).to receive(:search).and_return(ad_response)
+
+          # Mock delete operation for the delete test
+          if method == :delete
+            mock_ad_service = double("AdGroupAdService")
+            allow(@mock_client).to receive(:service).and_return(
+              double("Services",
+                customer: @mock_customer_service,
+                google_ads: @mock_google_ads_service,
+                ad_group_ad: mock_ad_service)
+            )
+            allow(@mock_remove_resource).to receive(:ad_group_ad).and_return(double("RemoveOperation"))
+            allow(mock_ad_service).to receive(:mutate_ad_group_ads).and_return(double("Response"))
+          end
+
+          ad_syncer.public_send(method)
+        end
+      end
+    end
+  end
+
   describe '#record' do
     it 'returns the ad passed to the syncer' do
       expect(ad_syncer.record).to eq(ad)

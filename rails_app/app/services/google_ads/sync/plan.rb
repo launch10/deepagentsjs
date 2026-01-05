@@ -27,6 +27,34 @@ module GoogleAds
         operations.any? { |op| op[:action] != :unchanged }
       end
 
+      def budgets
+        Plan.new(operations.select { |op| op[:record].is_a?(AdBudget) })
+      end
+
+      def campaigns
+        Plan.new(operations.select { |op| op[:record].is_a?(Campaign) })
+      end
+
+      def location_targets
+        Plan.new(operations.select { |op| op[:record].is_a?(AdLocationTarget) })
+      end
+
+      def ad_groups
+        Plan.new(operations.select { |op| op[:record].is_a?(AdGroup) })
+      end
+
+      def keywords
+        Plan.new(operations.select { |op| op[:record].is_a?(AdKeyword) })
+      end
+
+      def ads
+        Plan.new(operations.select { |op| op[:record].is_a?(Ad) })
+      end
+
+      def only_changes
+        self.class.new(operations.reject { |op| op[:action] == :unchanged })
+      end
+
       def empty?
         operations.empty?
       end

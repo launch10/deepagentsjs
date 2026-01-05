@@ -2589,15 +2589,16 @@ RSpec.describe "Campaigns API", type: :request do
             end
           end
 
-          response '422', 'rejects invalid location_type' do
+          response '422', 'rejects invalid target_type without criteria_id' do
             schema APISchemas::Campaign.error_response
             let(:campaign_params) do
               {
                 campaign: {
+                  # Without criteria_id, target_type is validated against ['geo_location', 'radius', 'location_group']
+                  # Passing an invalid target_type should fail validation
+                  # Note: Not passing 'name' because it's a GeoTargetConstant field not recognized by AdLocationTarget
                   location_targets: [
                     {
-                      criteria_id: 2840,
-                      name: 'United States',
                       target_type: 'INVALID_TYPE',
                       country_code: 'US',
                       targeted: true
@@ -2610,7 +2611,6 @@ RSpec.describe "Campaigns API", type: :request do
             run_test! do |response|
               data = JSON.parse(response.body)
               expect(data["errors"]).to be_present
-              # Internal validation uses location_type
               expect(data["errors"].to_s).to include("is not included in the list")
             end
           end
@@ -2646,11 +2646,14 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
+                  # Use AdLocationTarget format (without criteria_id) to test validation
                   location_targets: [
                     {
-                      criteria_id: 2840,
-                      target_type: 'Country',
+                      target_type: 'geo_location',
+                      location_type: 'COUNTRY',
+                      # location_name intentionally omitted
                       country_code: 'US',
+                      geo_target_constant: 'geoTargetConstants/2840',
                       targeted: true
                     }
                   ]
@@ -2670,11 +2673,14 @@ RSpec.describe "Campaigns API", type: :request do
             let(:campaign_params) do
               {
                 campaign: {
+                  # Use AdLocationTarget format (without criteria_id) to test validation
                   location_targets: [
                     {
-                      criteria_id: 2840,
-                      name: 'United States',
-                      target_type: 'Country',
+                      target_type: 'geo_location',
+                      location_type: 'Country',
+                      location_name: 'United States',
+                      # country_code intentionally omitted
+                      geo_target_constant: 'geoTargetConstants/2840',
                       targeted: true
                     }
                   ]

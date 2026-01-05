@@ -2,6 +2,7 @@ module GoogleAds
   module Resources
     class Account
       include FieldMappable
+      include Instrumentable
 
       attr_reader :record # AdsAccount instance
 
@@ -33,6 +34,12 @@ module GoogleAds
       def initialize(record)
         @record = record
       end
+
+      def instrumentation_context
+        { account_id: record.id, google_customer_id: record.google_customer_id }
+      end
+
+      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # INSTANCE METHODS (5 core methods + sync_plan)

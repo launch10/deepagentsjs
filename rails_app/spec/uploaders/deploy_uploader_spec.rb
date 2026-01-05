@@ -19,8 +19,8 @@ RSpec.describe DeployUploader do
       DeployUploader.new(environment: 'staging')
     end
 
-    it 'uses Rails.env as default environment' do
-      allow(Rails).to receive(:env).and_return('production')
+    it 'uses Cloudflare.deploy_env as default environment' do
+      allow(Cloudflare).to receive(:deploy_env).and_return('production')
 
       expect(Cloudflare::R2).to receive(:new).with(
         bucket_name: anything,

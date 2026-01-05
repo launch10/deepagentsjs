@@ -85,6 +85,41 @@ RSpec.describe GoogleAds::Sync::Plan do
     end
   end
 
+  describe '#only_changes' do
+    it 'returns a new Plan with only non-unchanged operations' do
+      create_op = { action: :create, record: double("Record1") }
+      update_op = { action: :update, record: double("Record2") }
+      delete_op = { action: :delete, criterion_id: 888 }
+      unchanged_op = { action: :unchanged, record: double("Record3") }
+
+      plan = described_class.new([create_op, update_op, delete_op, unchanged_op])
+      filtered = plan.only_changes
+
+      expect(filtered).to be_a(described_class)
+      expect(filtered.operations).to eq([create_op, update_op, delete_op])
+      expect(filtered.unchanged).to be_empty
+    end
+
+    it 'returns empty Plan when all operations are unchanged' do
+      unchanged_op = { action: :unchanged, record: double("Record") }
+      plan = described_class.new([unchanged_op, unchanged_op])
+
+      filtered = plan.only_changes
+
+      expect(filtered.operations).to be_empty
+    end
+
+    it 'returns all operations when none are unchanged' do
+      create_op = { action: :create, record: double("Record1") }
+      delete_op = { action: :delete, criterion_id: 888 }
+      plan = described_class.new([create_op, delete_op])
+
+      filtered = plan.only_changes
+
+      expect(filtered.operations).to eq([create_op, delete_op])
+    end
+  end
+
   describe '#empty?' do
     it 'returns true when no operations' do
       plan = described_class.new([])

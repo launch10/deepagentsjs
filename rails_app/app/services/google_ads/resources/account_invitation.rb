@@ -2,6 +2,7 @@ module GoogleAds
   module Resources
     class AccountInvitation
       include FieldMappable
+      include Instrumentable
       extend Memoist
 
       attr_reader :record
@@ -22,6 +23,12 @@ module GoogleAds
       def initialize(record)
         @record = record
       end
+
+      def instrumentation_context
+        { google_customer_id: record.customer_id }
+      end
+
+      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # PUBLIC API

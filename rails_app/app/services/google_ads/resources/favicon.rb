@@ -2,6 +2,7 @@ module GoogleAds
   module Resources
     class Favicon
       include FieldMappable
+      include Instrumentable
 
       attr_reader :record, :campaign
 
@@ -11,6 +12,12 @@ module GoogleAds
         @record = record
         @campaign = campaign || infer_campaign
       end
+
+      def instrumentation_context
+        { campaign: campaign }
+      end
+
+      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # INSTANCE METHODS (5 methods)

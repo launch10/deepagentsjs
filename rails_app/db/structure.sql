@@ -9690,6 +9690,7 @@ ALTER TABLE ONLY public.website_urls
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260105211553'),
 ('20260105183720'),
 ('20260105171150'),
 ('20251230152039'),

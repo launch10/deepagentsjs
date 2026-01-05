@@ -2,6 +2,7 @@ module GoogleAds
   module Resources
     class Keyword
       include FieldMappable
+      include Instrumentable
 
       attr_reader :record
 
@@ -22,6 +23,12 @@ module GoogleAds
       def initialize(record)
         @record = record
       end
+
+      def instrumentation_context
+        { keyword: record }
+      end
+
+      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # CLASS METHODS: Collection Operations (AdGroup has many keywords)
@@ -144,6 +151,8 @@ module GoogleAds
         elsif !fields_match?(remote)
           comparison = compare_fields(remote)
           operations << { action: :update, record: record, fields: comparison.failures }
+        else
+          operations << { action: :unchanged, record: record }
         end
 
         Sync::Plan.new(operations)

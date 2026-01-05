@@ -24,6 +24,8 @@
 class Ad < ApplicationRecord
   include PlatformSettings
 
+  acts_as_paranoid
+
   belongs_to :ad_group
   has_one :campaign, through: :ad_group
   has_one :ads_account, through: :campaign

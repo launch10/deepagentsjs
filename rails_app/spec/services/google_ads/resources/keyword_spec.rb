@@ -636,4 +636,125 @@ RSpec.describe GoogleAds::Resources::Keyword do
       expect(ad_keyword.reload.google_criterion_id).to eq(555)
     end
   end
+
+  # ═══════════════════════════════════════════════════════════════
+  # Instrumentation
+  # ═══════════════════════════════════════════════════════════════
+
+  describe 'instrumentation' do
+    before do
+      ad_keyword.google_criterion_id = 123
+      ad_keyword.save!
+    end
+
+    it 'includes Instrumentable' do
+      expect(described_class.ancestors).to include(GoogleAds::Resources::Instrumentable)
+    end
+
+    it 'wraps fetch with instrumentation context' do
+      keyword_response = mock_search_response_with_keyword(
+        criterion_id: 123,
+        keyword_text: "test keyword",
+        match_type: :BROAD
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(keyword_response)
+
+      expect(GoogleAds::Instrumentation).to receive(:with_context)
+        .with(keyword: ad_keyword)
+        .at_least(:once)
+        .and_call_original
+
+      keyword_syncer.fetch
+    end
+
+    it 'tags logs with keyword_id and ad_group_id' do
+      keyword_response = mock_search_response_with_keyword(
+        criterion_id: 123,
+        keyword_text: "test keyword",
+        match_type: :BROAD
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(keyword_response)
+
+      expect(Rails.logger).to receive(:tagged).with(
+        hash_including(
+          keyword_id: ad_keyword.id,
+          ad_group_id: ad_keyword.ad_group_id
+        )
+      ).at_least(:once).and_yield
+
+      keyword_syncer.fetch
+    end
+
+    it 'wraps sync with instrumentation context' do
+      keyword_response = mock_search_response_with_keyword(
+        criterion_id: 123,
+        keyword_text: "test keyword",
+        match_type: :BROAD
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(keyword_response)
+
+      expect(GoogleAds::Instrumentation).to receive(:with_context)
+        .with(keyword: ad_keyword)
+        .at_least(:once)
+        .and_call_original
+
+      keyword_syncer.sync
+    end
+
+    it 'wraps sync_result with instrumentation context' do
+      keyword_response = mock_search_response_with_keyword(
+        criterion_id: 123,
+        keyword_text: "test keyword",
+        match_type: :BROAD
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(keyword_response)
+
+      expect(GoogleAds::Instrumentation).to receive(:with_context)
+        .with(keyword: ad_keyword)
+        .at_least(:once)
+        .and_call_original
+
+      keyword_syncer.sync_result
+    end
+
+    it 'wraps sync_plan with instrumentation context' do
+      keyword_response = mock_search_response_with_keyword(
+        criterion_id: 123,
+        keyword_text: "test keyword",
+        match_type: :BROAD
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(keyword_response)
+
+      expect(GoogleAds::Instrumentation).to receive(:with_context)
+        .with(keyword: ad_keyword)
+        .at_least(:once)
+        .and_call_original
+
+      keyword_syncer.sync_plan
+    end
+
+    it 'wraps delete with instrumentation context' do
+      keyword_response = mock_search_response_with_keyword(
+        criterion_id: 123,
+        keyword_text: "test keyword",
+        match_type: :BROAD
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(keyword_response)
+
+      mock_remove_operation = double("RemoveOperation")
+      allow(@mock_remove_resource).to receive(:ad_group_criterion)
+        .and_return(mock_remove_operation)
+
+      mutate_response = mock_mutate_ad_group_criterion_response(criterion_id: 123, ad_group_id: 999, customer_id: 1234567890)
+      allow(@mock_ad_group_criterion_service).to receive(:mutate_ad_group_criteria)
+        .and_return(mutate_response)
+
+      expect(GoogleAds::Instrumentation).to receive(:with_context)
+        .with(keyword: ad_keyword)
+        .at_least(:once)
+        .and_call_original
+
+      keyword_syncer.delete
+    end
+  end
 end

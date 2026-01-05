@@ -30,7 +30,7 @@ class CampaignDeploy < ApplicationRecord
   belongs_to :campaign
   validates :status, presence: true, inclusion: { in: STATUS }
 
-  scope :in_progress, -> { where(status: %w[pending building]) }
+  scope :in_progress, -> { where(status: %w[pending]) }
 
   def self.deploy(campaign, async: true)
     lock_key = "campaign_deploy:#{campaign.id}"
@@ -125,6 +125,16 @@ class CampaignDeploy < ApplicationRecord
       @campaign.reload
       self
     end
+
+    # Returns a merged plan of all operations across all steps
+    # This is a "dry run" capability - showing what would happen without executing
+    def plan
+      step_plans = @steps.instance_variable_get(:@steps).map do |step_class|
+        step_class.new(@campaign).sync_plan
+      end
+
+      GoogleAds::Sync::Plan.merge(*step_plans)
+    end
   end
 
   # TODO:
@@ -197,6 +207,10 @@ class CampaignDeploy < ApplicationRecord
       def sync_result
         campaign.budget.google_sync_result
       end
+
+      def sync_plan
+        GoogleAds::Resources::Budget.sync_plan(campaign)
+      end
     end,
 
     Step.define(:create_campaign) do
@@ -210,6 +224,10 @@ class CampaignDeploy < ApplicationRecord
 
       def sync_result
         campaign.google_sync_result
+      end
+
+      def sync_plan
+        GoogleAds::Resources::Campaign.new(campaign).sync_plan
       end
     end,
 
@@ -225,6 +243,10 @@ class CampaignDeploy < ApplicationRecord
       def sync_result
         campaign.location_targets_sync_result
       end
+
+      def sync_plan
+        GoogleAds::Resources::LocationTarget.sync_plan(campaign)
+      end
     end,
 
     Step.define(:create_schedule) do
@@ -238,6 +260,10 @@ class CampaignDeploy < ApplicationRecord
 
       def sync_result
         campaign.ad_schedules_sync_result
+      end
+
+      def sync_plan
+        GoogleAds::Resources::AdSchedule.sync_plan(campaign)
       end
     end,
 
@@ -253,6 +279,10 @@ class CampaignDeploy < ApplicationRecord
       def sync_result
         campaign.callouts_sync_result
       end
+
+      def sync_plan
+        GoogleAds::Resources::Callout.sync_plan(campaign)
+      end
     end,
 
     Step.define(:create_structured_snippets) do
@@ -266,6 +296,10 @@ class CampaignDeploy < ApplicationRecord
 
       def sync_result
         campaign.structured_snippets_sync_result
+      end
+
+      def sync_plan
+        GoogleAds::Resources::StructuredSnippet.sync_plan(campaign)
       end
     end,
 
@@ -281,6 +315,10 @@ class CampaignDeploy < ApplicationRecord
       def sync_result
         campaign.ad_groups.map(&:google_sync_result)
       end
+
+      def sync_plan
+        GoogleAds::Resources::AdGroup.sync_plan(campaign)
+      end
     end,
 
     Step.define(:create_keywords) do
@@ -295,6 +333,11 @@ class CampaignDeploy < ApplicationRecord
       def sync_result
         campaign.ad_groups.map(&:keywords_sync_result)
       end
+
+      def sync_plan
+        plans = campaign.ad_groups.map { |ad_group| GoogleAds::Resources::Keyword.sync_plan(ad_group) }
+        GoogleAds::Sync::Plan.merge(*plans)
+      end
     end,
 
     Step.define(:create_ads) do
@@ -308,6 +351,11 @@ class CampaignDeploy < ApplicationRecord
 
       def sync_result
         campaign.ads.map(&:google_sync_result)
+      end
+
+      def sync_plan
+        plans = campaign.ad_groups.map { |ad_group| GoogleAds::Resources::Ad.sync_plan(ad_group) }
+        GoogleAds::Sync::Plan.merge(*plans)
       end
     end
   ])

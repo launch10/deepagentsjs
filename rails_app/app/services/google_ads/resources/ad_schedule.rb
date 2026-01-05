@@ -2,6 +2,7 @@ module GoogleAds
   module Resources
     class AdSchedule
       include FieldMappable
+      include Instrumentable
 
       attr_reader :record
 
@@ -38,6 +39,12 @@ module GoogleAds
       def initialize(db_schedule)
         @record = db_schedule
       end
+
+      def instrumentation_context
+        { campaign: record.campaign }
+      end
+
+      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
 
       # Backwards-compatible alias
       def db_schedule

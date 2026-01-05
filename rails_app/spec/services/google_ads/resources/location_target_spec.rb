@@ -338,7 +338,7 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
         ad_location_target.save!
       end
 
-      it 'returns empty plan' do
+      it 'returns unchanged operation' do
         criterion_response = mock_search_response_with_campaign_criterion(
           criterion_id: 111,
           campaign_id: 789,
@@ -349,7 +349,9 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
         allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
 
         plan = location_target_syncer.sync_plan
-        expect(plan.operations).to be_empty
+        expect(plan.operations.size).to eq(1)
+        expect(plan.operations.first[:action]).to eq(:unchanged)
+        expect(plan.operations.first[:record]).to eq(ad_location_target)
       end
     end
 

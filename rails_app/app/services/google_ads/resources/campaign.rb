@@ -2,6 +2,7 @@ module GoogleAds
   module Resources
     class Campaign
       include FieldMappable
+      include Instrumentable
 
       attr_reader :record
 
@@ -37,6 +38,10 @@ module GoogleAds
 
       def initialize(record)
         @record = record
+      end
+
+      def instrumentation_context
+        { campaign: record }
       end
 
       # ═══════════════════════════════════════════════════════════════
@@ -155,7 +160,13 @@ module GoogleAds
           comparison = compare_fields(remote)
           # Only mutable fields can be updated (name, status - NOT advertising_channel_type)
           mutable_mismatches = comparison.failures - [:advertising_channel_type, :contains_eu_political_advertising]
-          operations << { action: :update, record: record, fields: mutable_mismatches } if mutable_mismatches.any?
+          if mutable_mismatches.any?
+            operations << { action: :update, record: record, fields: mutable_mismatches }
+          else
+            operations << { action: :unchanged, record: record }
+          end
+        else
+          operations << { action: :unchanged, record: record }
         end
 
         Sync::Plan.new(operations)
@@ -181,6 +192,13 @@ module GoogleAds
       end
 
       # compare_fields provided by FieldMappable
+
+      # ═══════════════════════════════════════════════════════════════
+      # INSTRUMENTATION
+      # Wrap public methods with logging context
+      # ═══════════════════════════════════════════════════════════════
+
+      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
 
       private
 

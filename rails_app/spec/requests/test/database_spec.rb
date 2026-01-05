@@ -29,7 +29,8 @@ RSpec.describe "Test Database API", type: :request do
         schema APISchemas::Database.error_response
 
         before do
-          allow(Database::Snapshotter).to receive(:truncate).and_raise(StandardError.new("Something went wrong"))
+          # Mock instance method since controller calls Database::Snapshotter.new.truncate
+          allow_any_instance_of(Database::Snapshotter).to receive(:truncate).and_raise(StandardError.new("Something went wrong"))
         end
 
         run_test! do |response|

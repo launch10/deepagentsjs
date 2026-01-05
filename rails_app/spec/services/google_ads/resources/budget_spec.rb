@@ -601,4 +601,134 @@ RSpec.describe GoogleAds::Resources::Budget do
       expect(fresh_budget.google_budget_id).to eq(999)
     end
   end
+
+  # ═══════════════════════════════════════════════════════════════
+  # Instrumentation
+  # ═══════════════════════════════════════════════════════════════
+
+  describe 'instrumentation' do
+    let(:mock_budget_service) { double("CampaignBudgetService") }
+
+    before do
+      ad_budget.google_budget_id = 123
+      ad_budget.save!
+      allow(@mock_client).to receive(:service).and_return(
+        double("Services",
+          customer: @mock_customer_service,
+          google_ads: @mock_google_ads_service,
+          campaign_budget: mock_budget_service)
+      )
+    end
+
+    it 'includes Instrumentable' do
+      expect(described_class.ancestors).to include(GoogleAds::Resources::Instrumentable)
+    end
+
+    it 'wraps fetch with instrumentation context' do
+      budget_response = mock_search_response_with_budget(
+        budget_id: 123,
+        name: ad_budget.google_budget_name,
+        amount_micros: 5_000_000
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
+
+      expect(GoogleAds::Instrumentation).to receive(:with_context)
+        .with(budget: ad_budget)
+        .at_least(:once)
+        .and_call_original
+
+      budget_syncer.fetch
+    end
+
+    it 'tags logs with budget_id and campaign_id' do
+      budget_response = mock_search_response_with_budget(
+        budget_id: 123,
+        name: ad_budget.google_budget_name,
+        amount_micros: 5_000_000
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
+
+      expect(Rails.logger).to receive(:tagged).with(
+        hash_including(
+          budget_id: ad_budget.id,
+          campaign_id: ad_budget.campaign_id
+        )
+      ).at_least(:once).and_yield
+
+      budget_syncer.fetch
+    end
+
+    it 'wraps sync with instrumentation context' do
+      budget_response = mock_search_response_with_budget(
+        budget_id: 123,
+        name: ad_budget.google_budget_name,
+        amount_micros: 5_000_000
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
+
+      expect(GoogleAds::Instrumentation).to receive(:with_context)
+        .with(budget: ad_budget)
+        .at_least(:once)
+        .and_call_original
+
+      budget_syncer.sync
+    end
+
+    it 'wraps sync_result with instrumentation context' do
+      budget_response = mock_search_response_with_budget(
+        budget_id: 123,
+        name: ad_budget.google_budget_name,
+        amount_micros: 5_000_000
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
+
+      expect(GoogleAds::Instrumentation).to receive(:with_context)
+        .with(budget: ad_budget)
+        .at_least(:once)
+        .and_call_original
+
+      budget_syncer.sync_result
+    end
+
+    it 'wraps sync_plan with instrumentation context' do
+      budget_response = mock_search_response_with_budget(
+        budget_id: 123,
+        name: ad_budget.google_budget_name,
+        amount_micros: 5_000_000
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
+
+      expect(GoogleAds::Instrumentation).to receive(:with_context)
+        .with(budget: ad_budget)
+        .at_least(:once)
+        .and_call_original
+
+      budget_syncer.sync_plan
+    end
+
+    it 'wraps delete with instrumentation context' do
+      budget_response = mock_search_response_with_budget(
+        budget_id: 123,
+        name: ad_budget.google_budget_name,
+        amount_micros: 5_000_000
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
+
+      mock_remove_operation = double("RemoveOperation")
+      allow(@mock_remove_resource).to receive(:campaign_budget)
+        .with("customers/456/campaignBudgets/123")
+        .and_return(mock_remove_operation)
+
+      mutate_response = mock_mutate_budget_response(budget_id: 123)
+      allow(mock_budget_service).to receive(:mutate_campaign_budgets)
+        .and_return(mutate_response)
+
+      expect(GoogleAds::Instrumentation).to receive(:with_context)
+        .with(budget: ad_budget)
+        .at_least(:once)
+        .and_call_original
+
+      budget_syncer.delete
+    end
+  end
 end

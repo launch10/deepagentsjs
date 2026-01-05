@@ -2,6 +2,7 @@ module GoogleAds
   module Resources
     class Budget
       include FieldMappable
+      include Instrumentable
 
       attr_reader :record
 
@@ -22,6 +23,12 @@ module GoogleAds
       def initialize(record)
         @record = record
       end
+
+      def instrumentation_context
+        { budget: record }
+      end
+
+      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # CLASS METHODS: Collection Operations

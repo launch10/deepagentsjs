@@ -2,6 +2,7 @@ module GoogleAds
   module Resources
     class Ad
       include FieldMappable
+      include Instrumentable
 
       attr_reader :record
 
@@ -29,6 +30,10 @@ module GoogleAds
 
       def initialize(record)
         @record = record
+      end
+
+      def instrumentation_context
+        { ad: record }
       end
 
       # ═══════════════════════════════════════════════════════════════
@@ -174,6 +179,13 @@ module GoogleAds
       end
 
       # compare_fields provided by FieldMappable
+
+      # ═══════════════════════════════════════════════════════════════
+      # INSTRUMENTATION
+      # Wrap public methods with logging context
+      # ═══════════════════════════════════════════════════════════════
+
+      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
 
       private
 

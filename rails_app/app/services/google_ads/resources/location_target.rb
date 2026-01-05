@@ -2,6 +2,7 @@ module GoogleAds
   module Resources
     class LocationTarget
       include FieldMappable
+      include Instrumentable
 
       attr_reader :record
 
@@ -18,6 +19,12 @@ module GoogleAds
       def initialize(record)
         @record = record
       end
+
+      def instrumentation_context
+        { campaign: record.campaign }
+      end
+
+      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # CLASS METHODS: Collection Operations (Campaign has many location_targets)
@@ -115,6 +122,8 @@ module GoogleAds
         elsif !fields_match?(remote)
           comparison = compare_fields(remote)
           operations << { action: :update, record: record, fields: comparison.failures }
+        else
+          operations << { action: :unchanged, record: record }
         end
 
         Sync::Plan.new(operations)

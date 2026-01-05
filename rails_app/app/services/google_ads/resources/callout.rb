@@ -2,6 +2,7 @@ module GoogleAds
   module Resources
     class Callout
       include FieldMappable
+      include Instrumentable
 
       attr_reader :record
 
@@ -16,6 +17,12 @@ module GoogleAds
       def initialize(record)
         @record = record
       end
+
+      def instrumentation_context
+        { campaign: record.campaign }
+      end
+
+      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # CLASS METHODS: Collection Operations
