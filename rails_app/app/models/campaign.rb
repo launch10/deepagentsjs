@@ -104,7 +104,7 @@ class Campaign < ApplicationRecord
     ad_groups.each(&:enable!)
     ads.each(&:enable!)
 
-
+    CampaignDeploy.deploy(self, async: async)
   end
 
   def pause!
@@ -114,10 +114,7 @@ class Campaign < ApplicationRecord
     ad_groups.each(&:pause!)
     ads.each(&:pause!)
 
-    # Sync to Google
-    google_sync
-    ad_groups.each(&:google_sync)
-    ads.each(&:google_sync)
+    CampaignDeploy.deploy(self, async: async)
   end
 
   def daily_budget_cents

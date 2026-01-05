@@ -31,19 +31,6 @@ module PlatformSettings
       end
 
       define_method(setter_name) do |value|
-        # Immediate validation if :in option is specified
-        if options[:in] && value.present?
-          allowed = options[:in].map(&:to_s)
-          if options[:array]
-            invalid = Array(value).map(&:to_s) - allowed
-            if invalid.any?
-              raise ArgumentError, "Invalid #{attribute}: #{invalid.join(', ')}. Allowed values: #{allowed.join(', ')}"
-            end
-          elsif !allowed.include?(value.to_s)
-            raise ArgumentError, "Invalid #{attribute}: #{value}. Allowed values: #{allowed.join(', ')}"
-          end
-        end
-
         platform_settings[platform.to_s] ||= {}
         platform_settings[platform.to_s][attribute.to_s] = value
       end

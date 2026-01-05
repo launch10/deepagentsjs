@@ -132,12 +132,12 @@ RSpec.describe Campaign, type: :model do
           expect(campaign.reload.google_advertising_channel_type).to eq("DISPLAY")
         end
 
-        it "validates advertising_channel_type" do
+        it "is invalid with an invalid advertising_channel_type" do
           campaign, _, _ = create_campaign(account)
+          campaign.google_advertising_channel_type = "INVALID"
 
-          expect {
-            campaign.google_advertising_channel_type = "INVALID"
-          }.to raise_error(ArgumentError, /Invalid advertising_channel_type/)
+          expect(campaign).to_not be_valid
+          expect(campaign.errors[:google_advertising_channel_type]).to include("is not a valid option")
         end
 
         it "accepts all valid channel types" do
@@ -161,12 +161,12 @@ RSpec.describe Campaign, type: :model do
           expect(campaign.reload.google_advertising_channel_sub_type).to eq("TRAVEL_ACTIVITIES")
         end
 
-        it "validates advertising_channel_sub_type" do
+        it "is invalid with an invalid advertising_channel_sub_type" do
           campaign, _, _ = create_campaign(account)
+          campaign.google_advertising_channel_sub_type = "INVALID"
 
-          expect {
-            campaign.google_advertising_channel_sub_type = "INVALID"
-          }.to raise_error(ArgumentError, /Invalid advertising_channel_sub_type/)
+          expect(campaign).to_not be_valid
+          expect(campaign.errors[:google_advertising_channel_sub_type]).to include("is not a valid option")
         end
       end
 
@@ -369,7 +369,8 @@ RSpec.describe Campaign, type: :model do
 
         expect(campaign).to_not be_done_settings_stage
 
-        campaign.update(daily_budget_cents: 1000)
+        campaign.stage = "settings" # Reset stage before completing settings requirements
+        campaign.update!(daily_budget_cents: 1000)
         campaign.update_ad_schedules(
           time_zone: "America/New_York",
           always_on: true
@@ -381,9 +382,7 @@ RSpec.describe Campaign, type: :model do
             location_type: "Country",
             country_code: "US",
             geo_target_constant: "geoTargetConstants/2840",
-            targeted: true,
-            radius: 10,
-            radius_units: "miles"
+            targeted: true
           }
         ])
 

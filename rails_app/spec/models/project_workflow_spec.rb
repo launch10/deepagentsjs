@@ -230,7 +230,7 @@ RSpec.describe ProjectWorkflow, type: :model do
 
       expect(json).to be_a(Hash)
       expect(json[:workflow_type]).to eq("launch")
-      expect(json[:step]).to eq("ad_campaign")
+      expect(json[:page]).to eq("ad_campaign")
       expect(json[:substep]).to eq("content")
     end
 
