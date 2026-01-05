@@ -50,8 +50,13 @@ class Campaign < ApplicationRecord
   include GoogleMappable
   include GoogleSyncable
 
-  # Structured snippets still using old DSL (to be refactored)
-  use_google_collection_sync :structured_snippets, GoogleAds::StructuredSnippets
+  # ═══════════════════════════════════════════════════════════════
+  # Structured Snippets Sync - Class Method Pattern (singleton)
+  # ═══════════════════════════════════════════════════════════════
+
+  def sync_structured_snippets = GoogleAds::Resources::StructuredSnippet.sync_all(self)
+  def structured_snippets_synced? = GoogleAds::Resources::StructuredSnippet.synced?(self)
+  def structured_snippets_sync_plan = GoogleAds::Resources::StructuredSnippet.sync_plan(self)
 
   # ═══════════════════════════════════════════════════════════════
   # Location Targets Sync - Class Method Pattern
