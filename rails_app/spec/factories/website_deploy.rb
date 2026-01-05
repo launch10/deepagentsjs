@@ -1,5 +1,5 @@
 FactoryBot.define do
-  factory :deploy do
+  factory :website_deploy do
     association :website
     status { 'pending' }
     trigger { 'manual' }

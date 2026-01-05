@@ -170,14 +170,17 @@ module GoogleAds
 
       def create_campaign
         operation = client.operation.create_resource.campaign do |c|
-          c.name = record.name
-          c.advertising_channel_type = record.google_advertising_channel_type.to_s.upcase.to_sym
-          c.status = record.google_status.to_s.upcase.to_sym
+          # Mapped fields (transforms applied via to_google_json)
+          c.name = attrs[:name]
+          c.status = attrs[:status]
+          c.advertising_channel_type = attrs[:advertising_channel_type]
+          c.contains_eu_political_advertising = attrs[:contains_eu_political_advertising]
+
+          # Non-mapped fields
           c.campaign_budget = budget_resource_name if budget_resource_name
           c.start_date = record.start_date.strftime("%Y%m%d") if record.start_date
           c.end_date = record.end_date.strftime("%Y%m%d") if record.end_date
           c.network_settings = record.google_network_settings_for_api(client)
-          c.contains_eu_political_advertising = record.google_contains_eu_political_advertising
           set_bidding_strategy(c)
         end
 
@@ -203,12 +206,9 @@ module GoogleAds
         resource_name = remote.resource_name
 
         operation = client.operation.update_resource.campaign(resource_name) do |c|
-          if mutable_mismatches.include?(:name)
-            c.name = record.name
-          end
-          if mutable_mismatches.include?(:status)
-            c.status = record.google_status.to_s.upcase.to_sym
-          end
+          # Only update changed mutable fields, using pre-transformed attrs
+          c.name = attrs[:name] if mutable_mismatches.include?(:name)
+          c.status = attrs[:status] if mutable_mismatches.include?(:status)
         end
 
         client.service.campaign.mutate_campaigns(
@@ -284,6 +284,11 @@ module GoogleAds
       # ═══════════════════════════════════════════════════════════════
       # HELPERS
       # ═══════════════════════════════════════════════════════════════
+
+      # All field values with transforms applied (via to_google_json)
+      def attrs
+        @attrs ||= to_google_json
+      end
 
       def save_campaign_id(campaign_id)
         record.update_column(:platform_settings, record.platform_settings.deep_merge("google" => { "campaign_id" => campaign_id }))

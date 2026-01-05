@@ -37,6 +37,10 @@ class AdLocationTarget < ApplicationRecord
   platform_setting :google, :criterion_id
   platform_setting :google, :remote_criterion_id
 
+  def to_google_json
+    GoogleAds::Resources::LocationTarget.new(self).to_google_json
+  end
+
   def google_sync
     google_syncer.sync
   end

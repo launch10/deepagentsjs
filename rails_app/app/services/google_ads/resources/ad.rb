@@ -1,7 +1,31 @@
 module GoogleAds
   module Resources
     class Ad
+      include FieldMappable
+
       attr_reader :record
+
+      # ═══════════════════════════════════════════════════════════════
+      # FIELD MAPPINGS
+      # ═══════════════════════════════════════════════════════════════
+
+      field_mapping :status,
+        local: :status,
+        remote: :status,
+        transform: Transforms::STATUS_TO_GOOGLE,
+        reverse_transform: Transforms::GOOGLE_TO_STATUS
+
+      field_mapping :display_path_1,
+        local: :display_path_1,
+        remote: ->(aga) { aga.ad&.responsive_search_ad&.path1 },
+        transform: Transforms::EMPTY_STRING_TO_NIL,
+        reverse_transform: Transforms::EMPTY_STRING_TO_NIL
+
+      field_mapping :display_path_2,
+        local: :display_path_2,
+        remote: ->(aga) { aga.ad&.responsive_search_ad&.path2 },
+        transform: Transforms::EMPTY_STRING_TO_NIL,
+        reverse_transform: Transforms::EMPTY_STRING_TO_NIL
 
       def initialize(record)
         @record = record
@@ -127,13 +151,7 @@ module GoogleAds
         row.ad_group_ad
       end
 
-      def compare_fields(remote)
-        FieldCompare.build do |c|
-          c.check(:status, local: google_status, remote: remote.status) { google_status == remote.status }
-          c.check(:display_path_1, local: record.display_path_1, remote: remote_path1(remote)) { normalize_path(record.display_path_1) == normalize_path(remote_path1(remote)) }
-          c.check(:display_path_2, local: record.display_path_2, remote: remote_path2(remote)) { normalize_path(record.display_path_2) == normalize_path(remote_path2(remote)) }
-        end
-      end
+      # compare_fields provided by FieldMappable
 
       private
 
@@ -144,7 +162,7 @@ module GoogleAds
       def create
         operation = client.operation.create_resource.ad_group_ad do |aga|
           aga.ad_group = ad_group_resource_name
-          aga.status = google_status
+          aga.status = attrs[:status]
           aga.ad = client.resource.ad do |ad|
             ad.final_urls += record.final_urls
             ad.responsive_search_ad = client.resource.responsive_search_ad_info do |rsa|
@@ -154,8 +172,8 @@ module GoogleAds
               record.descriptions.order(:position).each do |description|
                 rsa.descriptions << build_description_asset(description)
               end
-              rsa.path1 = record.display_path_1 if record.display_path_1.present?
-              rsa.path2 = record.display_path_2 if record.display_path_2.present?
+              rsa.path1 = attrs[:display_path_1] if attrs[:display_path_1].present?
+              rsa.path2 = attrs[:display_path_2] if attrs[:display_path_2].present?
             end
           end
         end
@@ -174,7 +192,7 @@ module GoogleAds
         resource_name = remote.resource_name
 
         operation = client.operation.update_resource.ad_group_ad(resource_name) do |aga|
-          aga.status = google_status
+          aga.status = attrs[:status]
         end
 
         client.service.ad_group_ad.mutate_ad_group_ads(
@@ -237,28 +255,12 @@ module GoogleAds
       # FIELD TRANSFORMS
       # ═══════════════════════════════════════════════════════════════
 
-      def google_status
-        case record.status
-        when "active" then :ENABLED
-        else :PAUSED
-        end
+      # All field values with transforms applied (via to_google_json)
+      def attrs
+        @attrs ||= to_google_json
       end
 
-      def fields_match?(remote)
-        compare_fields(remote).match?
-      end
-
-      def normalize_path(value)
-        value.presence
-      end
-
-      def remote_path1(remote)
-        remote.ad&.responsive_search_ad&.path1
-      end
-
-      def remote_path2(remote)
-        remote.ad&.responsive_search_ad&.path2
-      end
+      # fields_match? provided by FieldMappable
 
       # ═══════════════════════════════════════════════════════════════
       # HELPERS

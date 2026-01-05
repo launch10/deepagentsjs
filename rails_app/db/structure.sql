@@ -1764,48 +1764,6 @@ ALTER SEQUENCE public.deploy_files_id_seq OWNED BY public.deploy_files.id;
 
 
 --
--- Name: deploys; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.deploys (
-    id bigint NOT NULL,
-    website_id bigint,
-    website_history_id bigint,
-    status character varying NOT NULL,
-    trigger character varying DEFAULT 'manual'::character varying,
-    stacktrace text,
-    snapshot_id character varying,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    is_live boolean DEFAULT false,
-    revertible boolean DEFAULT false,
-    version_path character varying,
-    environment character varying DEFAULT 'production'::character varying NOT NULL,
-    is_preview boolean DEFAULT false NOT NULL,
-    shasum character varying
-);
-
-
---
--- Name: deploys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.deploys_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: deploys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.deploys_id_seq OWNED BY public.deploys.id;
-
-
---
 -- Name: document_chunks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3296,6 +3254,48 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
+-- Name: website_deploys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.website_deploys (
+    id bigint NOT NULL,
+    website_id bigint,
+    website_history_id bigint,
+    status character varying NOT NULL,
+    trigger character varying DEFAULT 'manual'::character varying,
+    stacktrace text,
+    snapshot_id character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    is_live boolean DEFAULT false,
+    revertible boolean DEFAULT false,
+    version_path character varying,
+    environment character varying DEFAULT 'production'::character varying NOT NULL,
+    is_preview boolean DEFAULT false NOT NULL,
+    shasum character varying
+);
+
+
+--
+-- Name: website_deploys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.website_deploys_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: website_deploys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.website_deploys_id_seq OWNED BY public.website_deploys.id;
+
+
+--
 -- Name: website_file_histories_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -3779,13 +3779,6 @@ ALTER TABLE ONLY public.deploy_files ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
--- Name: deploys id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.deploys ALTER COLUMN id SET DEFAULT nextval('public.deploys_id_seq'::regclass);
-
-
---
 -- Name: document_chunks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4035,6 +4028,13 @@ ALTER TABLE ONLY public.user_request_counts ALTER COLUMN id SET DEFAULT nextval(
 --
 
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+
+--
+-- Name: website_deploys id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_deploys ALTER COLUMN id SET DEFAULT nextval('public.website_deploys_id_seq'::regclass);
 
 
 --
@@ -4464,14 +4464,6 @@ ALTER TABLE ONLY public.deploy_files
 
 
 --
--- Name: deploys deploys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.deploys
-    ADD CONSTRAINT deploys_pkey PRIMARY KEY (id);
-
-
---
 -- Name: document_chunks document_chunks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4864,6 +4856,14 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: website_deploys website_deploys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_deploys
+    ADD CONSTRAINT website_deploys_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: website_file_histories website_file_histories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5168,6 +5168,13 @@ CREATE INDEX idx_icon_embeddings_text ON public.icon_embeddings USING ivfflat (e
 --
 
 CREATE INDEX idx_on_project_id_workflow_type_status_a7aa4433b7 ON public.project_workflows USING btree (project_id, workflow_type, status);
+
+
+--
+-- Name: idx_on_website_id_environment_is_preview_bab671a888; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_website_id_environment_is_preview_bab671a888 ON public.website_deploys USING btree (website_id, environment, is_preview);
 
 
 --
@@ -6431,97 +6438,6 @@ CREATE INDEX index_deploy_files_on_website_file_id ON public.deploy_files USING 
 
 
 --
--- Name: index_deploys_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_created_at ON public.deploys USING btree (created_at);
-
-
---
--- Name: index_deploys_on_environment; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_environment ON public.deploys USING btree (environment);
-
-
---
--- Name: index_deploys_on_is_live; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_is_live ON public.deploys USING btree (is_live);
-
-
---
--- Name: index_deploys_on_is_preview; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_is_preview ON public.deploys USING btree (is_preview);
-
-
---
--- Name: index_deploys_on_revertible; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_revertible ON public.deploys USING btree (revertible);
-
-
---
--- Name: index_deploys_on_shasum; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_shasum ON public.deploys USING btree (shasum);
-
-
---
--- Name: index_deploys_on_snapshot_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_snapshot_id ON public.deploys USING btree (snapshot_id);
-
-
---
--- Name: index_deploys_on_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_status ON public.deploys USING btree (status);
-
-
---
--- Name: index_deploys_on_trigger; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_trigger ON public.deploys USING btree (trigger);
-
-
---
--- Name: index_deploys_on_website_history_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_website_history_id ON public.deploys USING btree (website_history_id);
-
-
---
--- Name: index_deploys_on_website_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_website_id ON public.deploys USING btree (website_id);
-
-
---
--- Name: index_deploys_on_website_id_and_environment_and_is_preview; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_website_id_and_environment_and_is_preview ON public.deploys USING btree (website_id, environment, is_preview);
-
-
---
--- Name: index_deploys_on_website_id_and_is_live; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_website_id_and_is_live ON public.deploys USING btree (website_id, is_live);
-
-
---
 -- Name: index_document_chunks_on_document_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7369,6 +7285,90 @@ CREATE UNIQUE INDEX index_users_on_reset_password_token ON public.users USING bt
 
 
 --
+-- Name: index_website_deploys_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_created_at ON public.website_deploys USING btree (created_at);
+
+
+--
+-- Name: index_website_deploys_on_environment; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_environment ON public.website_deploys USING btree (environment);
+
+
+--
+-- Name: index_website_deploys_on_is_live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_is_live ON public.website_deploys USING btree (is_live);
+
+
+--
+-- Name: index_website_deploys_on_is_preview; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_is_preview ON public.website_deploys USING btree (is_preview);
+
+
+--
+-- Name: index_website_deploys_on_revertible; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_revertible ON public.website_deploys USING btree (revertible);
+
+
+--
+-- Name: index_website_deploys_on_shasum; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_shasum ON public.website_deploys USING btree (shasum);
+
+
+--
+-- Name: index_website_deploys_on_snapshot_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_snapshot_id ON public.website_deploys USING btree (snapshot_id);
+
+
+--
+-- Name: index_website_deploys_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_status ON public.website_deploys USING btree (status);
+
+
+--
+-- Name: index_website_deploys_on_trigger; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_trigger ON public.website_deploys USING btree (trigger);
+
+
+--
+-- Name: index_website_deploys_on_website_history_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_website_history_id ON public.website_deploys USING btree (website_history_id);
+
+
+--
+-- Name: index_website_deploys_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_website_id ON public.website_deploys USING btree (website_id);
+
+
+--
+-- Name: index_website_deploys_on_website_id_and_is_live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_website_id_and_is_live ON public.website_deploys USING btree (website_id, is_live);
+
+
+--
 -- Name: index_website_file_histories_on_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8203,6 +8203,7 @@ ALTER TABLE ONLY public.website_urls
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260105171150'),
 ('20251230152039'),
 ('20251229001513'),
 ('20251223152858'),

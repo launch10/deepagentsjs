@@ -27,6 +27,10 @@ class AdStructuredSnippet < ApplicationRecord
 
   include AdStructuredSnippetConcerns::Categories
 
+  def to_google_json
+    GoogleAds::Resources::StructuredSnippet.new(self).to_google_json
+  end
+
   def google_sync
     google_syncer.sync
   end

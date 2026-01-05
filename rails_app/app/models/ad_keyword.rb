@@ -28,6 +28,10 @@ class AdKeyword < ApplicationRecord
 
   platform_setting :google, :criterion_id
 
+  def to_google_json
+    GoogleAds::Resources::Keyword.new(self).to_google_json
+  end
+
   def google_sync
     google_syncer.sync
   end

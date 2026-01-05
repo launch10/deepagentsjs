@@ -42,6 +42,16 @@ class AdGroup < ApplicationRecord
     campaign.google_customer_id
   end
 
+  def enable!
+    self.google_status = "ENABLED"
+    save!
+  end
+
+  def pause!
+    self.google_status = "PAUSED"
+    save!
+  end
+
   platform_setting :google, :ad_group_id
   platform_setting :google, :status, default: "PAUSED"
   platform_setting :google, :type, default: "SEARCH_STANDARD"
@@ -49,6 +59,10 @@ class AdGroup < ApplicationRecord
 
   def google_syncer
     GoogleAds::Resources::AdGroup.new(self)
+  end
+
+  def to_google_json
+    google_syncer.to_google_json
   end
 
   def google_sync

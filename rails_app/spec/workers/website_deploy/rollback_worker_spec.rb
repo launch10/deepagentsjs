@@ -2,7 +2,7 @@ require 'rails_helper'
 require 'sidekiq/testing'
 require 'support/website_file_helpers'
 
-RSpec.describe Deploy::RollbackWorker, type: :worker do
+RSpec.describe WebsiteWebsiteDeploy::RollbackWorker, type: :worker do
   include WebsiteFileHelpers
 
   let(:website) do
@@ -12,7 +12,7 @@ RSpec.describe Deploy::RollbackWorker, type: :worker do
     site
   end
   let(:deploy) do
-    d = FactoryBot.create(:deploy, :completed, website: website)
+    d = FactoryBot.create(:website_deploy, :completed, website: website)
     d.update!(
       version_path: "#{website.id}/20240101120000",
       revertible: true,
@@ -20,7 +20,7 @@ RSpec.describe Deploy::RollbackWorker, type: :worker do
     )
     d
   end
-  let(:worker) { Deploy::RollbackWorker.new }
+  let(:worker) { WebsiteDeploy::RollbackWorker.new }
 
   before do
     Sidekiq::Testing.fake!
@@ -47,7 +47,7 @@ RSpec.describe Deploy::RollbackWorker, type: :worker do
   describe '#perform' do
     context 'with a valid deploy' do
       before do
-        allow(Deploy).to receive(:find).with(deploy.id).and_return(deploy)
+        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
         allow(deploy).to receive(:actually_rollback).and_return(true)
       end
 
@@ -70,7 +70,7 @@ RSpec.describe Deploy::RollbackWorker, type: :worker do
 
     context 'when rollback fails' do
       before do
-        allow(Deploy).to receive(:find).with(deploy.id).and_return(deploy)
+        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
         allow(deploy).to receive(:actually_rollback).and_return(false)
       end
 
@@ -102,7 +102,7 @@ RSpec.describe Deploy::RollbackWorker, type: :worker do
 
     context 'when an unexpected error occurs' do
       before do
-        allow(Deploy).to receive(:find).with(deploy.id).and_return(deploy)
+        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
         allow(deploy).to receive(:actually_rollback).and_raise(StandardError, "Unexpected error")
       end
 
@@ -140,7 +140,7 @@ RSpec.describe Deploy::RollbackWorker, type: :worker do
     let(:exception) { StandardError.new("Test error") }
 
     before do
-      allow(Deploy).to receive(:find_by).with(id: deploy.id).and_return(deploy)
+      allow(WebsiteDeploy).to receive(:find_by).with(id: deploy.id).and_return(deploy)
     end
 
     it 'logs the exhausted retries' do
@@ -169,14 +169,14 @@ RSpec.describe Deploy::RollbackWorker, type: :worker do
   describe 'async enqueueing' do
     it 'can be enqueued' do
       expect {
-        Deploy::RollbackWorker.perform_async(deploy.id)
-      }.to change(Deploy::RollbackWorker.jobs, :size).by(1)
+        WebsiteDeploy::RollbackWorker.perform_async(deploy.id)
+      }.to change(WebsiteDeploy::RollbackWorker.jobs, :size).by(1)
     end
 
     it 'enqueues with correct arguments' do
-      Deploy::RollbackWorker.perform_async(deploy.id)
+      WebsiteDeploy::RollbackWorker.perform_async(deploy.id)
 
-      job = Deploy::RollbackWorker.jobs.last
+      job = WebsiteDeploy::RollbackWorker.jobs.last
       expect(job['args']).to eq([deploy.id])
       expect(job['queue']).to eq('critical')
     end

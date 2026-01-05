@@ -109,8 +109,8 @@ module GoogleAds
           operations << {
             action: :create,
             record: record,
-            header: header_for_category,
-            values: record.values
+            header: attrs[:header],
+            values: attrs[:values]
           }
         elsif !fields_match?(remote)
           comparison = compare_fields(remote)
@@ -156,8 +156,9 @@ module GoogleAds
         # Step 1: Create the asset
         asset_operation = client.operation.create_resource.asset do |asset|
           asset.structured_snippet_asset = client.resource.structured_snippet_asset do |snippet|
-            snippet.header = header_for_category
-            record.values.each { |v| snippet.values << v }
+            # Mapped fields (transforms applied via to_google_json)
+            snippet.header = attrs[:header]
+            attrs[:values].each { |v| snippet.values << v }
           end
         end
 
@@ -251,15 +252,7 @@ module GoogleAds
         )
       end
 
-      # ═══════════════════════════════════════════════════════════════
-      # FIELD TRANSFORMS
-      # ═══════════════════════════════════════════════════════════════
-
       # fields_match? provided by FieldMappable
-
-      def header_for_category
-        StructuredSnippetCategoriesConfig.definitions.dig(record.category, :key) || record.category.titleize
-      end
 
       # ═══════════════════════════════════════════════════════════════
       # ERROR HANDLING
@@ -274,6 +267,11 @@ module GoogleAds
       # ═══════════════════════════════════════════════════════════════
       # HELPERS
       # ═══════════════════════════════════════════════════════════════
+
+      # All field values with transforms applied (via to_google_json)
+      def attrs
+        @attrs ||= to_google_json
+      end
 
       def save_asset_id(asset_id)
         record.update_column(:platform_settings, record.platform_settings.deep_merge("google" => { "asset_id" => asset_id.to_s }))
@@ -316,7 +314,7 @@ module GoogleAds
           SELECT asset.id, asset.resource_name, asset.structured_snippet_asset.header, asset.structured_snippet_asset.values
           FROM asset
           WHERE asset.type = 'STRUCTURED_SNIPPET'
-            AND asset.structured_snippet_asset.header = '#{header_for_category}'
+            AND asset.structured_snippet_asset.header = '#{attrs[:header]}'
         GAQL
       end
 

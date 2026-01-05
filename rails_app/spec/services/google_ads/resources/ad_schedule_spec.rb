@@ -101,6 +101,97 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
   end
 
   # ═══════════════════════════════════════════════════════════════
+  # #to_google_json (FieldMappable)
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '#to_google_json' do
+    it 'transforms day_of_week to Google symbol' do
+      schedule.day_of_week = "Tuesday"
+      result = resource.to_google_json
+      expect(result[:day_of_week]).to eq(:TUESDAY)
+    end
+
+    it 'transforms all days of the week' do
+      days = {
+        "Monday" => :MONDAY,
+        "Tuesday" => :TUESDAY,
+        "Wednesday" => :WEDNESDAY,
+        "Thursday" => :THURSDAY,
+        "Friday" => :FRIDAY,
+        "Saturday" => :SATURDAY,
+        "Sunday" => :SUNDAY
+      }
+
+      days.each do |local, remote|
+        schedule.day_of_week = local
+        # Clear memoized attrs
+        resource.instance_variable_set(:@attrs, nil)
+        expect(resource.to_google_json[:day_of_week]).to eq(remote)
+      end
+    end
+
+    it 'keeps start_hour and end_hour as integers' do
+      result = resource.to_google_json
+      expect(result[:start_hour]).to eq(9)
+      expect(result[:end_hour]).to eq(17)
+    end
+
+    it 'transforms start_minute to Google symbol' do
+      schedule.start_minute = 15
+      resource.instance_variable_set(:@attrs, nil)
+      expect(resource.to_google_json[:start_minute]).to eq(:FIFTEEN)
+    end
+
+    it 'transforms end_minute to Google symbol' do
+      schedule.end_minute = 30
+      resource.instance_variable_set(:@attrs, nil)
+      expect(resource.to_google_json[:end_minute]).to eq(:THIRTY)
+    end
+
+    it 'transforms all minute values' do
+      minutes = { 0 => :ZERO, 15 => :FIFTEEN, 30 => :THIRTY, 45 => :FORTY_FIVE }
+
+      minutes.each do |local, remote|
+        schedule.start_minute = local
+        schedule.end_minute = local
+        resource.instance_variable_set(:@attrs, nil)
+        result = resource.to_google_json
+        expect(result[:start_minute]).to eq(remote)
+        expect(result[:end_minute]).to eq(remote)
+      end
+    end
+
+    it 'returns complete hash with all schedule fields' do
+      result = resource.to_google_json
+      expect(result.keys).to contain_exactly(:day_of_week, :start_hour, :start_minute, :end_hour, :end_minute)
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # #from_google_json (FieldMappable)
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '#from_google_json' do
+    it 'reverse transforms remote values to local format' do
+      remote = mock_remote_criterion(
+        day_of_week: :WEDNESDAY,
+        start_hour: 10,
+        start_minute: :THIRTY,
+        end_hour: 18,
+        end_minute: :FORTY_FIVE
+      )
+
+      result = resource.from_google_json(remote)
+
+      expect(result[:day_of_week]).to eq("Wednesday")
+      expect(result[:start_hour]).to eq(10)
+      expect(result[:start_minute]).to eq(30)
+      expect(result[:end_hour]).to eq(18)
+      expect(result[:end_minute]).to eq(45)
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
   # #fetch
   # ═══════════════════════════════════════════════════════════════
 

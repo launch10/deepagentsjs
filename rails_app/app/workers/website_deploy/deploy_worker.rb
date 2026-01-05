@@ -1,4 +1,4 @@
-class Deploy
+class WebsiteDeploy
   class DeployWorker
     include Sidekiq::Worker
 
@@ -9,7 +9,7 @@ class Deploy
       Rails.logger.error "Failed to deploy #{deploy_id} after #{msg["retry_count"]} retries: #{ex.message}"
 
       # Mark the deploy as failed
-      deploy = Deploy.find_by(id: deploy_id)
+      deploy = WebsiteDeploy.find_by(id: deploy_id)
       if deploy && deploy.status != "failed"
         deploy.update!(
           status: "failed",
@@ -19,7 +19,7 @@ class Deploy
     end
 
     def perform(deploy_id)
-      deploy = Deploy.find(deploy_id)
+      deploy = WebsiteDeploy.find(deploy_id)
 
       Rails.logger.info "Starting async deploy #{deploy_id} for website #{deploy.website_id}"
 

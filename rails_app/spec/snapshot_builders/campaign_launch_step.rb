@@ -25,7 +25,7 @@ class CampaignLaunchStep < BaseBuilder
       {
         target_type: "geo_location",
         location_name: "United States",
-        location_type: "COUNTRY",
+        location_type: "Country",
         country_code: "US",
         geo_target_constant: "geoTargetConstants/2840",
         targeted: true

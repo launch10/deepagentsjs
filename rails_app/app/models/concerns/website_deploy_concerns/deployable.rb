@@ -1,4 +1,4 @@
-module DeployConcerns
+module WebsiteDeployConcerns
   module Deployable
     extend ActiveSupport::Concern
     KEEP_DEPLOY_LIMIT = 5
@@ -11,7 +11,7 @@ module DeployConcerns
 
     def deploy(async: true)
       if async
-        Deploy::DeployWorker.perform_async(id)
+        WebsiteDeploy::DeployWorker.perform_async(id)
       else
         actually_deploy
       end
@@ -22,7 +22,7 @@ module DeployConcerns
     end
 
     def actually_deploy
-      later_deploy_exists = Deploy.live.where(website_id: website_id).where("id > ?", id).exists?
+      later_deploy_exists = WebsiteDeploy.live.where(website_id: website_id).where("id > ?", id).exists?
       if later_deploy_exists
         update!(status: "skipped")
         return
@@ -88,7 +88,7 @@ module DeployConcerns
 
     def rollback(async: true)
       if async
-        Deploy::RollbackWorker.perform_async(id)
+        WebsiteDeploy::RollbackWorker.perform_async(id)
       else
         actually_rollback
       end

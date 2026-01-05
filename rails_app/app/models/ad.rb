@@ -37,6 +37,20 @@ class Ad < ApplicationRecord
 
   platform_setting :google, :ad_id
 
+  def enable!
+    self.status = "active"
+    save!
+  end
+
+  def pause!
+    self.status = "paused"
+    save!
+  end
+
+  def to_google_json
+    GoogleAds::Resources::Ad.new(self).to_google_json
+  end
+
   def google_sync
     google_syncer.sync
   end

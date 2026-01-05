@@ -54,4 +54,8 @@ class AdCallout < ApplicationRecord
   def google_fetch
     google_syncer.fetch
   end
+
+  def to_google_json
+    google_syncer.to_google_json
+  end
 end

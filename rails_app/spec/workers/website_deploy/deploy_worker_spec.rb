@@ -2,7 +2,7 @@ require 'rails_helper'
 require 'sidekiq/testing'
 require 'support/website_file_helpers'
 
-RSpec.describe Deploy::DeployWorker, type: :worker do
+RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
   include WebsiteFileHelpers
 
   let(:website) do
@@ -11,8 +11,8 @@ RSpec.describe Deploy::DeployWorker, type: :worker do
     site.snapshot
     site
   end
-  let(:deploy) { FactoryBot.create(:deploy, website: website) }
-  let(:worker) { Deploy::DeployWorker.new }
+  let(:deploy) { FactoryBot.create(:website_deploy, website: website) }
+  let(:worker) { WebsiteDeploy::DeployWorker.new }
 
   before do
     Sidekiq::Testing.fake!
@@ -39,7 +39,7 @@ RSpec.describe Deploy::DeployWorker, type: :worker do
   describe '#perform' do
     context 'with a valid deploy' do
       before do
-        allow(Deploy).to receive(:find).with(deploy.id).and_return(deploy)
+        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
         allow(deploy).to receive(:actually_deploy).and_return(true)
       end
 
@@ -62,7 +62,7 @@ RSpec.describe Deploy::DeployWorker, type: :worker do
 
     context 'when deploy fails' do
       before do
-        allow(Deploy).to receive(:find).with(deploy.id).and_return(deploy)
+        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
         allow(deploy).to receive(:actually_deploy).and_return(false)
       end
 
@@ -94,7 +94,7 @@ RSpec.describe Deploy::DeployWorker, type: :worker do
 
     context 'when an unexpected error occurs' do
       before do
-        allow(Deploy).to receive(:find).with(deploy.id).and_return(deploy)
+        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
         allow(deploy).to receive(:actually_deploy).and_raise(StandardError, "Unexpected error")
       end
 
@@ -129,7 +129,7 @@ RSpec.describe Deploy::DeployWorker, type: :worker do
     let(:exception) { StandardError.new("Test error") }
 
     before do
-      allow(Deploy).to receive(:find_by).with(id: deploy.id).and_return(deploy)
+      allow(WebsiteDeploy).to receive(:find_by).with(id: deploy.id).and_return(deploy)
     end
 
     it 'logs the exhausted retries' do
@@ -162,14 +162,14 @@ RSpec.describe Deploy::DeployWorker, type: :worker do
   describe 'async enqueueing' do
     it 'can be enqueued' do
       expect {
-        Deploy::DeployWorker.perform_async(deploy.id)
-      }.to change(Deploy::DeployWorker.jobs, :size).by(1)
+        WebsiteDeploy::DeployWorker.perform_async(deploy.id)
+      }.to change(WebsiteDeploy::DeployWorker.jobs, :size).by(1)
     end
 
     it 'enqueues with correct arguments' do
-      Deploy::DeployWorker.perform_async(deploy.id)
+      WebsiteDeploy::DeployWorker.perform_async(deploy.id)
 
-      job = Deploy::DeployWorker.jobs.last
+      job = WebsiteDeploy::DeployWorker.jobs.last
       expect(job['args']).to eq([deploy.id])
       expect(job['queue']).to eq('critical')
     end

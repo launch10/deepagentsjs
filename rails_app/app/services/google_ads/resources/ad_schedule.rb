@@ -1,18 +1,47 @@
 module GoogleAds
   module Resources
     class AdSchedule
-      DAY_MAP = {
-        "Monday" => :MONDAY, "Tuesday" => :TUESDAY, "Wednesday" => :WEDNESDAY,
-        "Thursday" => :THURSDAY, "Friday" => :FRIDAY,
-        "Saturday" => :SATURDAY, "Sunday" => :SUNDAY
-      }.freeze
+      include FieldMappable
 
-      MINUTE_MAP = { 0 => :ZERO, 15 => :FIFTEEN, 30 => :THIRTY, 45 => :FORTY_FIVE }.freeze
+      attr_reader :record
 
-      attr_reader :db_schedule
+      # ═══════════════════════════════════════════════════════════════
+      # FIELD MAPPINGS
+      # ═══════════════════════════════════════════════════════════════
+
+      field_mapping :day_of_week,
+        local: :day_of_week,
+        remote: ->(cc) { cc.ad_schedule.day_of_week },
+        transform: Transforms::DAY_OF_WEEK_TO_SYMBOL,
+        reverse_transform: Transforms::SYMBOL_TO_DAY_OF_WEEK
+
+      field_mapping :start_hour,
+        local: :start_hour,
+        remote: ->(cc) { cc.ad_schedule.start_hour }
+
+      field_mapping :start_minute,
+        local: :start_minute,
+        remote: ->(cc) { cc.ad_schedule.start_minute },
+        transform: Transforms::MINUTE_TO_SYMBOL,
+        reverse_transform: Transforms::SYMBOL_TO_MINUTE
+
+      field_mapping :end_hour,
+        local: :end_hour,
+        remote: ->(cc) { cc.ad_schedule.end_hour }
+
+      field_mapping :end_minute,
+        local: :end_minute,
+        remote: ->(cc) { cc.ad_schedule.end_minute },
+        transform: Transforms::MINUTE_TO_SYMBOL,
+        reverse_transform: Transforms::SYMBOL_TO_MINUTE
 
       def initialize(db_schedule)
-        @db_schedule = db_schedule
+        @record = db_schedule
+      end
+
+      # Backwards-compatible alias
+      def db_schedule
+        @record
       end
 
       def synced?
@@ -65,17 +94,7 @@ module GoogleAds
         results.first&.campaign_criterion
       end
 
-      def compare_fields(remote)
-        s = remote.ad_schedule
-
-        FieldCompare.build do |c|
-          c.check(:day_of_week, local: google_day_of_week, remote: s.day_of_week) { google_day_of_week == s.day_of_week }
-          c.check(:start_hour, local: db_schedule.start_hour, remote: s.start_hour) { db_schedule.start_hour == s.start_hour }
-          c.check(:start_minute, local: google_start_minute, remote: s.start_minute) { google_start_minute == s.start_minute }
-          c.check(:end_hour, local: db_schedule.end_hour, remote: s.end_hour) { db_schedule.end_hour == s.end_hour }
-          c.check(:end_minute, local: google_end_minute, remote: s.end_minute) { google_end_minute == s.end_minute }
-        end
-      end
+      # compare_fields provided by FieldMappable
 
       # ═══════════════════════════════════════════════════════════════
       # SYNC PLAN - dry run planning
@@ -284,11 +303,11 @@ module GoogleAds
         client.operation.create_resource.campaign_criterion do |cc|
           cc.campaign = campaign_resource_name
           cc.ad_schedule = client.resource.ad_schedule_info do |s|
-            s.day_of_week = google_day_of_week
-            s.start_hour = db_schedule.start_hour
-            s.start_minute = google_start_minute
-            s.end_hour = db_schedule.end_hour
-            s.end_minute = google_end_minute
+            s.day_of_week = attrs[:day_of_week]
+            s.start_hour = attrs[:start_hour]
+            s.start_minute = attrs[:start_minute]
+            s.end_hour = attrs[:end_hour]
+            s.end_minute = attrs[:end_minute]
           end
         end
       end
@@ -297,21 +316,12 @@ module GoogleAds
       # FIELD TRANSFORMS
       # ═══════════════════════════════════════════════════════════════
 
-      def google_day_of_week
-        DAY_MAP[db_schedule.day_of_week]
+      # All field values with transforms applied (via to_google_json)
+      def attrs
+        @attrs ||= to_google_json
       end
 
-      def google_start_minute
-        MINUTE_MAP[db_schedule.start_minute] || :ZERO
-      end
-
-      def google_end_minute
-        MINUTE_MAP[db_schedule.end_minute] || :ZERO
-      end
-
-      def fields_match?(remote)
-        compare_fields(remote).match?
-      end
+      # fields_match? provided by FieldMappable
 
       # ═══════════════════════════════════════════════════════════════
       # HELPERS

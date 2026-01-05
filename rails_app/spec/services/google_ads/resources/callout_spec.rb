@@ -30,6 +30,73 @@ RSpec.describe GoogleAds::Resources::Callout do
     end
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # FIELD MAPPABLE
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '.field_mappings' do
+    it 'registers text field' do
+      expect(described_class.field_mappings.keys).to contain_exactly(:text)
+    end
+
+    it 'has no immutable fields' do
+      expect(described_class.immutable_fields).to be_empty
+    end
+
+    it 'returns text as mutable' do
+      expect(described_class.mutable_fields).to contain_exactly(:text)
+    end
+  end
+
+  describe '#to_google_json' do
+    it 'returns text unchanged' do
+      result = callout_syncer.to_google_json
+      expect(result[:text]).to eq("Free Shipping")
+    end
+
+    it 'returns complete hash with text field' do
+      result = callout_syncer.to_google_json
+      expect(result.keys).to contain_exactly(:text)
+    end
+  end
+
+  describe '#from_google_json' do
+    def build_callout_mock(text:)
+      callout_asset = double("CalloutAsset", callout_text: text)
+      double("Asset", callout_asset: callout_asset)
+    end
+
+    it 'extracts text from remote callout asset' do
+      remote = build_callout_mock(text: "24/7 Support")
+
+      result = callout_syncer.from_google_json(remote)
+
+      expect(result[:text]).to eq("24/7 Support")
+    end
+  end
+
+  describe '#compare_fields' do
+    def build_callout_mock(text:)
+      callout_asset = double("CalloutAsset", callout_text: text)
+      double("Asset", callout_asset: callout_asset)
+    end
+
+    it 'returns match when text matches' do
+      remote = build_callout_mock(text: "Free Shipping")
+
+      comparison = callout_syncer.compare_fields(remote)
+      expect(comparison.match?).to be true
+    end
+
+    it 'detects text mismatch' do
+      remote = build_callout_mock(text: "Different Text")
+
+      comparison = callout_syncer.compare_fields(remote)
+      expect(comparison.match?).to be false
+      expect(comparison.failures).to include(:text)
+    end
+  end
+
   describe '#fetch' do
     context 'when asset exists by ID' do
       before do

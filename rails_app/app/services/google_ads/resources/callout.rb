@@ -1,7 +1,17 @@
 module GoogleAds
   module Resources
     class Callout
+      include FieldMappable
+
       attr_reader :record
+
+      # ═══════════════════════════════════════════════════════════════
+      # FIELD MAPPINGS
+      # ═══════════════════════════════════════════════════════════════
+
+      field_mapping :text,
+        local: :text,
+        remote: ->(asset) { asset.callout_asset.callout_text }
 
       def initialize(record)
         @record = record
@@ -94,7 +104,7 @@ module GoogleAds
 
         remote = fetch
         if remote.nil?
-          operations << { action: :create_asset, record: record, text: record.text }
+          operations << { action: :create_asset, record: record, text: attrs[:text] }
           operations << { action: :link_to_campaign, record: record, campaign_id: campaign.google_campaign_id }
         else
           operations << { action: :unchanged, record: record }
@@ -122,14 +132,6 @@ module GoogleAds
         fetch_by_id || fetch_by_content
       end
 
-      def compare_fields(remote)
-        FieldCompare.build do |c|
-          c.check(:text, local: record.text, remote: remote.callout_asset.callout_text) do
-            record.text == remote.callout_asset.callout_text
-          end
-        end
-      end
-
       private
 
       # ═══════════════════════════════════════════════════════════════
@@ -140,7 +142,7 @@ module GoogleAds
         # Step 1: Create the asset
         asset_operation = client.operation.create_resource.asset do |asset|
           asset.callout_asset = client.resource.callout_asset do |ca|
-            ca.callout_text = record.text
+            ca.callout_text = attrs[:text]
           end
         end
 
@@ -211,8 +213,9 @@ module GoogleAds
       # FIELD TRANSFORMS
       # ═══════════════════════════════════════════════════════════════
 
-      def fields_match?(remote)
-        compare_fields(remote).match?
+      # All field values with transforms applied (via to_google_json)
+      def attrs
+        @attrs ||= to_google_json
       end
 
       def escape_text(text)

@@ -1,4 +1,4 @@
-class Deploy
+class WebsiteDeploy
   class RollbackWorker
     include Sidekiq::Worker
 
@@ -22,7 +22,7 @@ class Deploy
       Rails.logger.error "Failed to rollback deploy #{deploy_id} after #{msg["retry_count"]} retries: #{ex.message}"
 
       # Alert on rollback failures since they're critical
-      deploy = Deploy.find_by(id: deploy_id)
+      deploy = WebsiteDeploy.find_by(id: deploy_id)
       if deploy
         Rails.logger.error "CRITICAL: Rollback failed for website #{deploy.website_id}, deploy #{deploy_id}"
         # FUTURE: trigger alerts/notifications here
@@ -30,7 +30,7 @@ class Deploy
     end
 
     def perform(deploy_id)
-      deploy = Deploy.find(deploy_id)
+      deploy = WebsiteDeploy.find(deploy_id)
 
       Rails.logger.info "Starting async rollback for deploy #{deploy_id}, website #{deploy.website_id}"
 

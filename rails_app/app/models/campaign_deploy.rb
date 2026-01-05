@@ -20,12 +20,34 @@
 #  index_campaign_deploys_on_status               (status)
 #
 class CampaignDeploy < ApplicationRecord
-  class StepNotFinishedError < StandardError; end
+  include Lockable
 
-  STATUS = Deploy::STATUS
+  class StepNotFinishedError < StandardError; end
+  class DeployInProgressError < StandardError; end
+
+  STATUS = WebsiteDeploy::STATUS
 
   belongs_to :campaign
   validates :status, presence: true, inclusion: { in: STATUS }
+
+  scope :in_progress, -> { where(status: %w[pending building]) }
+
+  def self.deploy(campaign, async: true)
+    lock_key = "campaign_deploy:#{campaign.id}"
+
+    with_lock(lock_key, wait_timeout: 0.5, stale_timeout: 30.minutes.to_i) do
+      # Check for existing in-progress deploy
+      if campaign.campaign_deploys.in_progress.exists?
+        raise DeployInProgressError, "A deploy is already in progress for campaign #{campaign.id}"
+      end
+
+      # Create and run the deploy
+      campaign_deploy = create!(campaign: campaign, status: "pending")
+      campaign_deploy.deploy(async: async)
+      campaign_deploy
+    end
+  end
+
   class Step
     class << self
       attr_accessor :step_name

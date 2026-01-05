@@ -1,4 +1,4 @@
-module DeployConcerns
+module WebsiteDeployConcerns
   module Buildable
     extend ActiveSupport::Concern
 

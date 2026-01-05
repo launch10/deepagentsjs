@@ -64,6 +64,10 @@ class AdSchedule < ApplicationRecord
     google_syncer.delete
   end
 
+  def to_google_json
+    GoogleAds::Resources::AdSchedule.new(self).to_google_json
+  end
+
   def google_fetch
     google_syncer.fetch
   end

@@ -1,6 +1,6 @@
 # == Schema Information
 #
-# Table name: deploys
+# Table name: website_deploys
 #
 #  id                 :bigint           not null, primary key
 #  environment        :string           default("production"), not null
@@ -20,24 +20,24 @@
 #
 # Indexes
 #
-#  index_deploys_on_created_at                                 (created_at)
-#  index_deploys_on_environment                                (environment)
-#  index_deploys_on_is_live                                    (is_live)
-#  index_deploys_on_is_preview                                 (is_preview)
-#  index_deploys_on_revertible                                 (revertible)
-#  index_deploys_on_shasum                                     (shasum)
-#  index_deploys_on_snapshot_id                                (snapshot_id)
-#  index_deploys_on_status                                     (status)
-#  index_deploys_on_trigger                                    (trigger)
-#  index_deploys_on_website_history_id                         (website_history_id)
-#  index_deploys_on_website_id                                 (website_id)
-#  index_deploys_on_website_id_and_environment_and_is_preview  (website_id,environment,is_preview)
-#  index_deploys_on_website_id_and_is_live                     (website_id,is_live)
+#  idx_on_website_id_environment_is_preview_bab671a888  (website_id,environment,is_preview)
+#  index_website_deploys_on_created_at                  (created_at)
+#  index_website_deploys_on_environment                 (environment)
+#  index_website_deploys_on_is_live                     (is_live)
+#  index_website_deploys_on_is_preview                  (is_preview)
+#  index_website_deploys_on_revertible                  (revertible)
+#  index_website_deploys_on_shasum                      (shasum)
+#  index_website_deploys_on_snapshot_id                 (snapshot_id)
+#  index_website_deploys_on_status                      (status)
+#  index_website_deploys_on_trigger                     (trigger)
+#  index_website_deploys_on_website_history_id          (website_history_id)
+#  index_website_deploys_on_website_id                  (website_id)
+#  index_website_deploys_on_website_id_and_is_live      (website_id,is_live)
 #
 
-class Deploy < ApplicationRecord
-  include DeployConcerns::Buildable
-  include DeployConcerns::Deployable
+class WebsiteDeploy < ApplicationRecord
+  include WebsiteDeployConcerns::Buildable
+  include WebsiteDeployConcerns::Deployable
 
   STATUS = %w[pending building uploading completed failed skipped]
   ENVIRONMENTS = %w[development staging production]

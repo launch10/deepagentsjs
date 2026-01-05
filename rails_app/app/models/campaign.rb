@@ -96,6 +96,30 @@ class Campaign < ApplicationRecord
   accepts_nested_attributes_for :callouts, allow_destroy: true
   accepts_nested_attributes_for :structured_snippet, allow_destroy: true
 
+  # TODO: Migrate these to use campaign_deploy when that's officially ready
+  def enable!(async: true)
+    # Update local statuses
+    self.google_status = "ENABLED"
+    save!
+    ad_groups.each(&:enable!)
+    ads.each(&:enable!)
+
+
+  end
+
+  def pause!
+    # Update local statuses
+    self.google_status = "PAUSED"
+    save!
+    ad_groups.each(&:pause!)
+    ads.each(&:pause!)
+
+    # Sync to Google
+    google_sync
+    ad_groups.each(&:google_sync)
+    ads.each(&:google_sync)
+  end
+
   def daily_budget_cents
     budget&.daily_budget_cents
   end

@@ -49,6 +49,135 @@ RSpec.describe CampaignDeploy, type: :model do
     end
   end
 
+  describe 'scopes' do
+    describe '.in_progress' do
+      it 'returns deploys with pending status' do
+        pending_deploy = create(:campaign_deploy, campaign: campaign, status: 'pending')
+        expect(CampaignDeploy.in_progress).to include(pending_deploy)
+      end
+
+      it 'returns deploys with building status' do
+        building_deploy = create(:campaign_deploy, campaign: campaign, status: 'building')
+        expect(CampaignDeploy.in_progress).to include(building_deploy)
+      end
+
+      it 'does not return completed deploys' do
+        completed_deploy = create(:campaign_deploy, campaign: campaign, status: 'completed')
+        expect(CampaignDeploy.in_progress).not_to include(completed_deploy)
+      end
+
+      it 'does not return failed deploys' do
+        failed_deploy = create(:campaign_deploy, campaign: campaign, status: 'failed')
+        expect(CampaignDeploy.in_progress).not_to include(failed_deploy)
+      end
+    end
+  end
+
+  describe '.deploy' do
+    let(:mock_redis) { instance_double(Redis) }
+    let(:mock_suo_client) { instance_double(Suo::Client::Redis) }
+    let(:lock_token) { "lock_token_123" }
+
+    before do
+      allow(Redis).to receive(:new).and_return(mock_redis)
+      allow(Suo::Client::Redis).to receive(:new).and_return(mock_suo_client)
+      allow(mock_suo_client).to receive(:lock).and_return(lock_token)
+      allow(mock_suo_client).to receive(:unlock).with(lock_token)
+      mock_google_ads_client
+    end
+
+    context 'when no deploy is in progress' do
+      before do
+        # Mock the instance deploy method so we don't run actual steps
+        allow_any_instance_of(CampaignDeploy).to receive(:deploy)
+      end
+
+      it 'creates a new campaign deploy' do
+        expect {
+          CampaignDeploy.deploy(campaign, async: false)
+        }.to change { CampaignDeploy.count }.by(1)
+      end
+
+      it 'returns the created campaign deploy' do
+        result = CampaignDeploy.deploy(campaign, async: false)
+        expect(result).to be_a(CampaignDeploy)
+        expect(result.campaign).to eq(campaign)
+      end
+
+      it 'acquires a distributed lock with the campaign id' do
+        expect(Suo::Client::Redis).to receive(:new).with(
+          "campaign_deploy:#{campaign.id}",
+          hash_including(acquisition_lock: 0.5, stale_lock_expiration: 30.minutes.to_i)
+        ).and_return(mock_suo_client)
+
+        CampaignDeploy.deploy(campaign, async: false)
+      end
+
+      it 'releases the lock after completion' do
+        expect(mock_suo_client).to receive(:unlock)
+        CampaignDeploy.deploy(campaign, async: false)
+      end
+
+      context 'with async: true' do
+        it 'enqueues a DeployWorker' do
+          allow_any_instance_of(CampaignDeploy).to receive(:deploy).and_call_original
+          expect(CampaignDeploy::DeployWorker).to receive(:perform_async)
+          CampaignDeploy.deploy(campaign, async: true)
+        end
+      end
+
+      context 'with async: false' do
+        it 'calls the instance deploy method with async: false' do
+          expect_any_instance_of(CampaignDeploy).to receive(:deploy).with(async: false)
+          CampaignDeploy.deploy(campaign, async: false)
+        end
+      end
+    end
+
+    context 'when a deploy is already in progress' do
+      before do
+        create(:campaign_deploy, campaign: campaign, status: 'pending')
+      end
+
+      it 'raises DeployInProgressError' do
+        expect {
+          CampaignDeploy.deploy(campaign, async: false)
+        }.to raise_error(CampaignDeploy::DeployInProgressError, /already in progress/)
+      end
+
+      it 'does not create another deploy' do
+        expect {
+          CampaignDeploy.deploy(campaign, async: false) rescue nil
+        }.not_to change { CampaignDeploy.count }
+      end
+    end
+
+    context 'when lock cannot be acquired' do
+      before do
+        allow(mock_suo_client).to receive(:lock).and_return(false)
+      end
+
+      it 'raises LockNotAcquiredError' do
+        expect {
+          CampaignDeploy.deploy(campaign, async: false)
+        }.to raise_error(Lockable::LockNotAcquiredError)
+      end
+    end
+
+    context 'when an error occurs during deploy' do
+      before do
+        allow_any_instance_of(CampaignDeploy).to receive(:deploy).and_raise(StandardError, 'Deploy failed')
+      end
+
+      it 'releases the lock even on error' do
+        expect(mock_suo_client).to receive(:unlock)
+        expect {
+          CampaignDeploy.deploy(campaign, async: false)
+        }.to raise_error(StandardError, 'Deploy failed')
+      end
+    end
+  end
+
   describe 'campaign deploy readiness' do
     context 'when account has connected Google account' do
       it 'can proceed with create_ads_account step' do

@@ -1,6 +1,23 @@
 module CampaignConcerns::GoogleSyncable
   extend ActiveSupport::Concern
 
+  def to_google_json
+    GoogleAds::Resources::Campaign.new(self).to_google_json
+  end
+
+  def to_complete_google_json
+    {
+      campaign: to_google_json,
+      schedules: ad_schedules.map(&:to_google_json),
+      location_targets: location_targets.map(&:to_google_json),
+      ad_groups: ad_groups.map(&:to_google_json),
+      ads: ads.map(&:to_google_json),
+      keywords: keywords.map(&:to_google_json),
+      callouts: callouts.map(&:to_google_json),
+      structured_snippets: structured_snippet&.to_google_json
+    }
+  end
+
   def sync_structured_snippets
     GoogleAds::Resources::StructuredSnippet.sync_all(self)
   end

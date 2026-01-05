@@ -110,7 +110,7 @@ module GoogleAds
             action: :create,
             record: record,
             geo_target_constant: record.google_criterion_id,
-            negative: !record.targeted
+            negative: attrs[:negative]
           }
         elsif !fields_match?(remote)
           comparison = compare_fields(remote)
@@ -149,11 +149,14 @@ module GoogleAds
 
       def create_criterion
         operation = client.operation.create_resource.campaign_criterion do |cc|
+          # Non-mapped fields
           cc.campaign = campaign_resource_name
           cc.location = client.resource.location_info do |li|
             li.geo_target_constant = record.google_criterion_id
           end
-          cc.negative = !record.targeted
+
+          # Mapped fields (transforms applied via to_google_json)
+          cc.negative = attrs[:negative]
         end
 
         response = client.service.campaign_criterion.mutate_campaign_criteria(
@@ -177,9 +180,8 @@ module GoogleAds
         resource_name = remote.resource_name
 
         operation = client.operation.update_resource.campaign_criterion(resource_name) do |cc|
-          if comparison.failures.include?(:negative)
-            cc.negative = !record.targeted
-          end
+          # Only update changed fields, using pre-transformed attrs
+          cc.negative = attrs[:negative] if comparison.failures.include?(:negative)
         end
 
         client.service.campaign_criterion.mutate_campaign_criteria(
@@ -231,6 +233,11 @@ module GoogleAds
       # ═══════════════════════════════════════════════════════════════
       # HELPERS
       # ═══════════════════════════════════════════════════════════════
+
+      # All field values with transforms applied (via to_google_json)
+      def attrs
+        @attrs ||= to_google_json
+      end
 
       def save_remote_criterion_id(remote_criterion_id)
         record.update_column(:platform_settings, record.platform_settings.deep_merge("google" => { "remote_criterion_id" => remote_criterion_id }))

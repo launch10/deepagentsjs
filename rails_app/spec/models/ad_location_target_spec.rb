@@ -23,6 +23,14 @@
 #  updated_at          :datetime         not null
 #  campaign_id         :bigint
 #
+# Indexes
+#
+#  index_ad_location_targets_on_campaign_id          (campaign_id)
+#  index_ad_location_targets_on_criterion_id         ((((platform_settings -> 'google'::text) ->> 'criterion_id'::text)))
+#  index_ad_location_targets_on_deleted_at           (deleted_at)
+#  index_ad_location_targets_on_location_identifier  (location_identifier)
+#  index_ad_location_targets_on_platform_settings    (platform_settings) USING gin
+#
 require 'rails_helper'
 
 RSpec.describe AdLocationTarget, type: :model do

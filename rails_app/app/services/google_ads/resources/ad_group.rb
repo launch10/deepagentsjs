@@ -155,11 +155,14 @@ module GoogleAds
 
       def create
         operation = client.operation.create_resource.ad_group do |ag|
-          ag.name = record.name
+          # Mapped fields (transforms applied via to_google_json)
+          ag.name = attrs[:name]
+          ag.type = attrs[:type]
+          ag.status = attrs[:status]
+          ag.cpc_bid_micros = attrs[:cpc_bid_micros]
+
+          # Non-mapped fields
           ag.campaign = campaign_resource_name
-          ag.type = google_type
-          ag.status = google_status
-          ag.cpc_bid_micros = google_cpc_bid_micros
         end
 
         response = client.service.ad_group.mutate_ad_groups(
@@ -174,22 +177,14 @@ module GoogleAds
       def update
         remote = fetch
         resource_name = remote.resource_name
+        comparison = compare_fields(remote)
+        mutable_mismatches = comparison.failures - [:type]
 
         operation = client.operation.update_resource.ad_group(resource_name) do |ag|
-          comparison = compare_fields(remote)
-          comparison.to_h.each do |field, result|
-            next if result[:match]
-            next if field == :type # Type is immutable
-
-            case field
-            when :name
-              ag.name = record.name
-            when :status
-              ag.status = google_status
-            when :cpc_bid_micros
-              ag.cpc_bid_micros = google_cpc_bid_micros
-            end
-          end
+          # Only update changed mutable fields, using pre-transformed attrs
+          ag.name = attrs[:name] if mutable_mismatches.include?(:name)
+          ag.status = attrs[:status] if mutable_mismatches.include?(:status)
+          ag.cpc_bid_micros = attrs[:cpc_bid_micros] if mutable_mismatches.include?(:cpc_bid_micros)
         end
 
         client.service.ad_group.mutate_ad_groups(
@@ -241,26 +236,13 @@ module GoogleAds
       end
 
       # ═══════════════════════════════════════════════════════════════
-      # FIELD TRANSFORMS
-      # ═══════════════════════════════════════════════════════════════
-
-      def google_status
-        record.google_status.to_sym
-      end
-
-      def google_type
-        record.google_type.to_sym
-      end
-
-      def google_cpc_bid_micros
-        record.google_cpc_bid_micros
-      end
-
-      # fields_match? provided by FieldMappable
-
-      # ═══════════════════════════════════════════════════════════════
       # HELPERS
       # ═══════════════════════════════════════════════════════════════
+
+      # All field values with transforms applied (via to_google_json)
+      def attrs
+        @attrs ||= to_google_json
+      end
 
       def save_ad_group_id(response)
         resource_name = response.results.first.resource_name

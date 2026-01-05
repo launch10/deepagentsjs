@@ -154,6 +154,7 @@ module GoogleAds
         GoogleAds::Sync::Plan.new(operations)
       end
 
+      # Custom to_google_json that excludes status (read-only from Google)
       def to_google_json
         {
           descriptive_name: record.google_descriptive_name,
@@ -164,6 +165,11 @@ module GoogleAds
       end
 
       private
+
+      # All field values with transforms applied (via to_google_json)
+      def attrs
+        @attrs ||= to_google_json
+      end
 
       # ═══════════════════════════════════════════════════════════════
       # FETCH OPERATIONS
@@ -243,9 +249,12 @@ module GoogleAds
         end
 
         customer = client.resource.customer do |c|
-          c.descriptive_name = record.google_descriptive_name
-          c.currency_code = record.google_currency_code
-          c.time_zone = record.google_time_zone
+          # Mapped fields (transforms applied via to_google_json)
+          c.descriptive_name = attrs[:descriptive_name]
+          c.currency_code = attrs[:currency_code]
+          c.time_zone = attrs[:time_zone]
+
+          # Non-mapped fields
           c.test_account = GoogleAds.is_test_mode?
         end
 
@@ -259,8 +268,8 @@ module GoogleAds
         record.google_customer_id = new_customer_id
         record.save!
 
-        # Update auto_tagging via separate API call
-        update_auto_tagging(new_customer_id, record.google_auto_tagging_enabled)
+        # Update auto_tagging via separate API call (using attrs for transform consistency)
+        update_auto_tagging(new_customer_id, attrs[:auto_tagging_enabled])
 
         GoogleAds::SyncResult.created(:customer, response.resource_name)
       end
@@ -270,8 +279,8 @@ module GoogleAds
         resource_name = "customers/#{remote.id}"
 
         # Update auto_tagging if needed (separate API call)
-        if remote.auto_tagging_enabled != record.google_auto_tagging_enabled
-          update_auto_tagging(remote.id.to_s, record.google_auto_tagging_enabled)
+        if remote.auto_tagging_enabled != attrs[:auto_tagging_enabled]
+          update_auto_tagging(remote.id.to_s, attrs[:auto_tagging_enabled])
         end
 
         # Check if descriptive_name needs update
@@ -279,7 +288,8 @@ module GoogleAds
 
         if name_needs_update
           operation = client.operation.update_resource.customer(resource_name) do |c|
-            c.descriptive_name = record.google_descriptive_name
+            # Only update changed fields, using pre-transformed attrs
+            c.descriptive_name = attrs[:descriptive_name]
           end
 
           client.service.customer.mutate_customer(

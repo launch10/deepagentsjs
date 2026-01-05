@@ -86,6 +86,11 @@ module GoogleAds
 
       private
 
+      # All field values with transforms applied (via to_google_json)
+      def attrs
+        @attrs ||= to_google_json
+      end
+
       def client
         GoogleAds.client
       end
@@ -166,8 +171,9 @@ module GoogleAds
         raise ArgumentError, "Email address is required" unless record.email_address.present?
 
         invitation = client.resource.customer_user_access_invitation do |i|
-          i.email_address = record.email_address
-          i.access_role = record.google_access_role.to_sym
+          # Mapped fields (transforms applied via to_google_json)
+          i.email_address = attrs[:email_address]
+          i.access_role = attrs[:access_role]
         end
 
         operation = client.operation.create_resource.customer_user_access_invitation(invitation)

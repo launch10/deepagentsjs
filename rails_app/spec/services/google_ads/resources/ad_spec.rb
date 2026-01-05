@@ -32,6 +32,96 @@ RSpec.describe GoogleAds::Resources::Ad do
     end
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # #to_google_json (FieldMappable)
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '#to_google_json' do
+    it 'transforms status "active" to :ENABLED' do
+      ad.status = "active"
+      result = ad_syncer.to_google_json
+      expect(result[:status]).to eq(:ENABLED)
+    end
+
+    it 'transforms status "paused" to :PAUSED' do
+      ad.status = "paused"
+      ad_syncer.instance_variable_set(:@attrs, nil)
+      result = ad_syncer.to_google_json
+      expect(result[:status]).to eq(:PAUSED)
+    end
+
+    it 'transforms status "draft" to :PAUSED' do
+      ad.status = "draft"
+      ad_syncer.instance_variable_set(:@attrs, nil)
+      result = ad_syncer.to_google_json
+      expect(result[:status]).to eq(:PAUSED)
+    end
+
+    it 'normalizes display_path_1 (empty string to nil)' do
+      ad.display_path_1 = ""
+      ad_syncer.instance_variable_set(:@attrs, nil)
+      result = ad_syncer.to_google_json
+      expect(result[:display_path_1]).to be_nil
+    end
+
+    it 'keeps non-empty display_path_1' do
+      ad.display_path_1 = "Shop"
+      ad_syncer.instance_variable_set(:@attrs, nil)
+      result = ad_syncer.to_google_json
+      expect(result[:display_path_1]).to eq("Shop")
+    end
+
+    it 'normalizes display_path_2 (empty string to nil)' do
+      ad.display_path_2 = ""
+      ad_syncer.instance_variable_set(:@attrs, nil)
+      result = ad_syncer.to_google_json
+      expect(result[:display_path_2]).to be_nil
+    end
+
+    it 'returns complete hash with all ad fields' do
+      result = ad_syncer.to_google_json
+      expect(result.keys).to contain_exactly(:status, :display_path_1, :display_path_2)
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # #from_google_json (FieldMappable)
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '#from_google_json' do
+    def build_ad_group_ad_mock(status:, path1:, path2:)
+      rsa = double("ResponsiveSearchAdInfo", path1: path1, path2: path2)
+      ad_obj = double("Ad", responsive_search_ad: rsa)
+      double("AdGroupAd", status: status, ad: ad_obj)
+    end
+
+    it 'reverse transforms remote values to local format' do
+      remote = build_ad_group_ad_mock(
+        status: :ENABLED,
+        path1: "Shop",
+        path2: "Now"
+      )
+
+      result = ad_syncer.from_google_json(remote)
+
+      expect(result[:status]).to eq("active")
+      expect(result[:display_path_1]).to eq("Shop")
+      expect(result[:display_path_2]).to eq("Now")
+    end
+
+    it 'reverse transforms :PAUSED to "paused"' do
+      remote = build_ad_group_ad_mock(
+        status: :PAUSED,
+        path1: nil,
+        path2: nil
+      )
+
+      result = ad_syncer.from_google_json(remote)
+
+      expect(result[:status]).to eq("paused")
+    end
+  end
+
   describe '#fetch' do
     context 'when ad exists by ID' do
       before do

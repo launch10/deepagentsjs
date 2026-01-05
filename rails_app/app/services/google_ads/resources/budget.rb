@@ -139,8 +139,11 @@ module GoogleAds
 
       def create
         operation = client.operation.create_resource.campaign_budget do |budget|
-          budget.name = record.google_budget_name
-          budget.amount_micros = cents_to_micros
+          # Mapped fields (transforms applied via to_google_json)
+          budget.name = attrs[:name]
+          budget.amount_micros = attrs[:amount_micros]
+
+          # Non-mapped fields
           budget.delivery_method = :STANDARD
           budget.period = :DAILY
         end
@@ -157,19 +160,13 @@ module GoogleAds
       def update
         remote = fetch
         resource_name = remote.resource_name
+        comparison = compare_fields(remote)
+        mismatches = comparison.failures
 
         operation = client.operation.update_resource.campaign_budget(resource_name) do |budget|
-          comparison = compare_fields(remote)
-          comparison.to_h.each do |field, result|
-            next if result[:match]
-
-            case field
-            when :amount_micros
-              budget.amount_micros = cents_to_micros
-            when :name
-              budget.name = record.google_budget_name
-            end
-          end
+          # Only update changed fields, using pre-transformed attrs
+          budget.name = attrs[:name] if mismatches.include?(:name)
+          budget.amount_micros = attrs[:amount_micros] if mismatches.include?(:amount_micros)
         end
 
         client.service.campaign_budget.mutate_campaign_budgets(
@@ -221,18 +218,13 @@ module GoogleAds
       end
 
       # ═══════════════════════════════════════════════════════════════
-      # FIELD TRANSFORMS
-      # ═══════════════════════════════════════════════════════════════
-
-      def cents_to_micros
-        (record.daily_budget_cents || 0) * 10_000
-      end
-
-      # fields_match? provided by FieldMappable
-
-      # ═══════════════════════════════════════════════════════════════
       # HELPERS
       # ═══════════════════════════════════════════════════════════════
+
+      # All field values with transforms applied (via to_google_json)
+      def attrs
+        @attrs ||= to_google_json
+      end
 
       def save_budget_id(response)
         resource_name = response.results.first.resource_name

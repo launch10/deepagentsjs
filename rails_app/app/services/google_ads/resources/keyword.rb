@@ -1,7 +1,23 @@
 module GoogleAds
   module Resources
     class Keyword
+      include FieldMappable
+
       attr_reader :record
+
+      # ═══════════════════════════════════════════════════════════════
+      # FIELD MAPPINGS
+      # ═══════════════════════════════════════════════════════════════
+
+      field_mapping :text,
+        local: :text,
+        remote: ->(agc) { agc.keyword.text }
+
+      field_mapping :match_type,
+        local: :match_type,
+        remote: ->(agc) { agc.keyword.match_type },
+        transform: Transforms::MATCH_TYPE_TO_SYMBOL,
+        reverse_transform: Transforms::SYMBOL_TO_MATCH_TYPE
 
       def initialize(record)
         @record = record
@@ -124,17 +140,7 @@ module GoogleAds
         fetch_by_id
       end
 
-      def compare_fields(remote)
-        FieldCompare.build do |c|
-          c.check(:text, local: record.text, remote: remote.keyword.text) do
-            record.text == remote.keyword.text
-          end
-
-          c.check(:match_type, local: record.match_type, remote: remote.keyword.match_type) do
-            record.match_type.upcase.to_sym == remote.keyword.match_type
-          end
-        end
-      end
+      # compare_fields provided by FieldMappable
 
       private
 
@@ -146,8 +152,8 @@ module GoogleAds
         operation = client.operation.create_resource.ad_group_criterion do |agc|
           agc.ad_group = ad_group_resource_name
           agc.keyword = client.resource.keyword_info do |k|
-            k.text = record.text
-            k.match_type = record.match_type.upcase.to_sym
+            k.text = attrs[:text]
+            k.match_type = attrs[:match_type]
           end
           agc.status = :ENABLED
         end
@@ -175,12 +181,12 @@ module GoogleAds
         operation = client.operation.update_resource.ad_group_criterion(resource_name) do |agc|
           if comparison.failures.include?(:match_type)
             agc.keyword = client.resource.keyword_info do |k|
-              k.match_type = record.match_type.upcase.to_sym
+              k.match_type = attrs[:match_type]
             end
           end
           if comparison.failures.include?(:text)
             agc.keyword = client.resource.keyword_info do |k|
-              k.text = record.text
+              k.text = attrs[:text]
             end
           end
         end
@@ -222,9 +228,12 @@ module GoogleAds
       # FIELD TRANSFORMS
       # ═══════════════════════════════════════════════════════════════
 
-      def fields_match?(remote)
-        compare_fields(remote).match?
+      # All field values with transforms applied (via to_google_json)
+      def attrs
+        @attrs ||= to_google_json
       end
+
+      # fields_match? provided by FieldMappable
 
       # ═══════════════════════════════════════════════════════════════
       # ERROR HANDLING

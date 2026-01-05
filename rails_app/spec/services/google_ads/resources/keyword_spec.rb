@@ -27,6 +27,71 @@ RSpec.describe GoogleAds::Resources::Keyword do
     end
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # #to_google_json (FieldMappable)
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '#to_google_json' do
+    it 'keeps text as-is' do
+      ad_keyword.text = "test keyword"
+      result = keyword_syncer.to_google_json
+      expect(result[:text]).to eq("test keyword")
+    end
+
+    it 'transforms match_type "broad" to :BROAD' do
+      ad_keyword.match_type = "broad"
+      result = keyword_syncer.to_google_json
+      expect(result[:match_type]).to eq(:BROAD)
+    end
+
+    it 'transforms match_type "phrase" to :PHRASE' do
+      ad_keyword.match_type = "phrase"
+      keyword_syncer.instance_variable_set(:@attrs, nil)
+      result = keyword_syncer.to_google_json
+      expect(result[:match_type]).to eq(:PHRASE)
+    end
+
+    it 'transforms match_type "exact" to :EXACT' do
+      ad_keyword.match_type = "exact"
+      keyword_syncer.instance_variable_set(:@attrs, nil)
+      result = keyword_syncer.to_google_json
+      expect(result[:match_type]).to eq(:EXACT)
+    end
+
+    it 'returns complete hash with all keyword fields' do
+      result = keyword_syncer.to_google_json
+      expect(result.keys).to contain_exactly(:text, :match_type)
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # #from_google_json (FieldMappable)
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '#from_google_json' do
+    def build_keyword_mock(text:, match_type:)
+      keyword_info = double("KeywordInfo", text: text, match_type: match_type)
+      double("AdGroupCriterion", keyword: keyword_info)
+    end
+
+    it 'reverse transforms remote values to local format' do
+      remote = build_keyword_mock(text: "my keyword", match_type: :EXACT)
+
+      result = keyword_syncer.from_google_json(remote)
+
+      expect(result[:text]).to eq("my keyword")
+      expect(result[:match_type]).to eq("exact")
+    end
+
+    it 'reverse transforms all match types' do
+      { BROAD: "broad", PHRASE: "phrase", EXACT: "exact" }.each do |remote_type, local_type|
+        remote = build_keyword_mock(text: "test", match_type: remote_type)
+        result = keyword_syncer.from_google_json(remote)
+        expect(result[:match_type]).to eq(local_type)
+      end
+    end
+  end
+
   describe '#fetch' do
     before do
       allow(@mock_client).to receive(:service).and_return(
