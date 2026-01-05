@@ -1,7 +1,39 @@
 module GoogleAds
   module Resources
     class Campaign
+      include FieldMappable
+
       attr_reader :record
+
+      # ═══════════════════════════════════════════════════════════════
+      # FIELD MAPPINGS
+      # ═══════════════════════════════════════════════════════════════
+
+      field_mapping :name,
+        local: :name,
+        remote: :name
+
+      field_mapping :status,
+        local: :google_status,
+        remote: :status,
+        transform: Transforms::UPCASE_SYMBOL,
+        reverse_transform: Transforms::DOWNCASE_STRING
+
+      field_mapping :advertising_channel_type,
+        local: :google_advertising_channel_type,
+        remote: :advertising_channel_type,
+        transform: Transforms::UPCASE_SYMBOL,
+        reverse_transform: Transforms::DOWNCASE_STRING,
+        immutable: true
+
+      field_mapping :contains_eu_political_advertising,
+        local: :google_contains_eu_political_advertising,
+        remote: :contains_eu_political_advertising,
+        transform: -> (value) { value ? :CONTAINS_EU_POLITICAL_ADVERTISING : :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING },
+        reverse_transform: ->(value) {
+          return false if value === :UNSPECIFIED
+          return value === :CONTAINS_EU_POLITICAL_ADVERTISING
+      }
 
       def initialize(record)
         @record = record
@@ -128,21 +160,7 @@ module GoogleAds
         fetch_by_id || fetch_by_name
       end
 
-      def compare_fields(remote)
-        FieldCompare.build do |c|
-          c.check(:name, local: record.name, remote: remote.name) do
-            record.name == remote.name
-          end
-
-          c.check(:status, local: record.google_status, remote: remote.status) do
-            record.google_status.to_s.upcase.to_sym == remote.status
-          end
-
-          c.check(:advertising_channel_type, local: record.google_advertising_channel_type, remote: remote.advertising_channel_type) do
-            record.google_advertising_channel_type.to_s.upcase.to_sym == remote.advertising_channel_type
-          end
-        end
-      end
+      # compare_fields provided by FieldMappable
 
       private
 

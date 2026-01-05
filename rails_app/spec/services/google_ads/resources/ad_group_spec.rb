@@ -25,6 +25,122 @@ RSpec.describe GoogleAds::Resources::AdGroup do
     end
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # FieldMappable DSL
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '.field_mappings' do
+    it 'registers all expected fields' do
+      expect(described_class.field_mappings.keys).to contain_exactly(
+        :name, :status, :type, :cpc_bid_micros
+      )
+    end
+
+    it 'marks type as immutable' do
+      expect(described_class.immutable_fields).to eq([:type])
+    end
+
+    it 'returns mutable fields' do
+      expect(described_class.mutable_fields).to eq([:name, :status, :cpc_bid_micros])
+    end
+  end
+
+  describe '#to_google_json' do
+    before do
+      ad_group.google_status = "PAUSED"
+      ad_group.google_type = "SEARCH_STANDARD"
+      ad_group.google_cpc_bid_micros = 1_000_000
+      ad_group.save!
+    end
+
+    it 'returns hash of local field values in Google format' do
+      result = ad_group_syncer.to_google_json
+
+      expect(result).to eq(
+        name: "Test Ad Group",
+        status: :PAUSED,
+        type: :SEARCH_STANDARD,
+        cpc_bid_micros: 1_000_000
+      )
+    end
+  end
+
+  describe '#from_google_json' do
+    let(:remote) do
+      double("RemoteAdGroup",
+        name: "Remote Ad Group",
+        status: :ENABLED,
+        type: :DISPLAY_STANDARD,
+        cpc_bid_micros: 2_000_000
+      )
+    end
+
+    it 'returns hash of remote field values in local format' do
+      result = ad_group_syncer.from_google_json(remote)
+
+      expect(result).to eq(
+        name: "Remote Ad Group",
+        status: "ENABLED",
+        type: "DISPLAY_STANDARD",
+        cpc_bid_micros: 2_000_000
+      )
+    end
+  end
+
+  describe '#compare_fields' do
+    before do
+      ad_group.google_status = "PAUSED"
+      ad_group.google_type = "SEARCH_STANDARD"
+      ad_group.google_cpc_bid_micros = 1_000_000
+      ad_group.save!
+    end
+
+    let(:remote) do
+      double("RemoteAdGroup",
+        name: "Test Ad Group",
+        status: :PAUSED,
+        type: :SEARCH_STANDARD,
+        cpc_bid_micros: 1_000_000
+      )
+    end
+
+    it 'returns FieldCompare instance' do
+      result = ad_group_syncer.compare_fields(remote)
+      expect(result).to be_a(GoogleAds::FieldCompare)
+    end
+
+    it 'matches when all fields are equal' do
+      result = ad_group_syncer.compare_fields(remote)
+      expect(result.match?).to be true
+    end
+
+    it 'detects name mismatch' do
+      mismatched_remote = double("RemoteAdGroup",
+        name: "Different Name",
+        status: :PAUSED,
+        type: :SEARCH_STANDARD,
+        cpc_bid_micros: 1_000_000
+      )
+
+      result = ad_group_syncer.compare_fields(mismatched_remote)
+      expect(result.match?).to be false
+      expect(result.failures).to include(:name)
+    end
+
+    it 'detects status mismatch' do
+      mismatched_remote = double("RemoteAdGroup",
+        name: "Test Ad Group",
+        status: :ENABLED,
+        type: :SEARCH_STANDARD,
+        cpc_bid_micros: 1_000_000
+      )
+
+      result = ad_group_syncer.compare_fields(mismatched_remote)
+      expect(result.match?).to be false
+      expect(result.failures).to include(:status)
+    end
+  end
+
   describe '#fetch' do
     context 'when ad_group exists by ID' do
       before do

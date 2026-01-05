@@ -18,6 +18,118 @@ RSpec.describe GoogleAds::Resources::Campaign do
     end
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # FieldMappable DSL
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '.field_mappings' do
+    it 'registers all expected fields' do
+      expect(described_class.field_mappings.keys).to contain_exactly(
+        :name, :status, :advertising_channel_type, :contains_eu_political_advertising
+      )
+    end
+
+    it 'marks advertising_channel_type as immutable' do
+      expect(described_class.immutable_fields).to eq([:advertising_channel_type])
+    end
+
+    it 'returns mutable fields' do
+      expect(described_class.mutable_fields).to eq([:name, :status, :contains_eu_political_advertising])
+    end
+  end
+
+  describe '#to_google_json' do
+    before do
+      campaign.google_status = "PAUSED"
+      campaign.google_advertising_channel_type = "SEARCH"
+      campaign.save!
+    end
+
+    it 'returns hash of local field values in Google format' do
+      result = campaign_syncer.to_google_json
+
+      expect(result).to eq(
+        name: "Test Campaign",
+        status: :PAUSED,
+        advertising_channel_type: :SEARCH,
+        contains_eu_political_advertising: :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
+      )
+    end
+  end
+
+  describe '#from_google_json' do
+    let(:remote) do
+      double("RemoteCampaign",
+        name: "Remote Campaign",
+        status: :ENABLED,
+        advertising_channel_type: :DISPLAY,
+        contains_eu_political_advertising: :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
+      )
+    end
+
+    it 'returns hash of remote field values in local format' do
+      result = campaign_syncer.from_google_json(remote)
+
+      expect(result).to eq(
+        name: "Remote Campaign",
+        status: "enabled",
+        advertising_channel_type: "display",
+        contains_eu_political_advertising: false
+      )
+    end
+  end
+
+  describe '#compare_fields' do
+    before do
+      campaign.google_status = "PAUSED"
+      campaign.google_advertising_channel_type = "SEARCH"
+      campaign.save!
+    end
+
+    let(:remote) do
+      double("RemoteCampaign",
+        name: "Test Campaign",
+        status: :PAUSED,
+        advertising_channel_type: :SEARCH,
+        contains_eu_political_advertising: :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
+      )
+    end
+
+    it 'returns FieldCompare instance' do
+      result = campaign_syncer.compare_fields(remote)
+      expect(result).to be_a(GoogleAds::FieldCompare)
+    end
+
+    it 'matches when all fields are equal'do
+      result = campaign_syncer.compare_fields(remote)
+      expect(result.match?).to be true
+    end
+
+    it 'detects name mismatch' do
+      mismatched_remote = double("RemoteCampaign",
+        name: "Different Name",
+        status: :PAUSED,
+        advertising_channel_type: :SEARCH
+      )
+
+      result = campaign_syncer.compare_fields(mismatched_remote)
+      expect(result.match?).to be false
+      expect(result.failures).to include(:name)
+    end
+
+    it 'detects status mismatch' do
+      mismatched_remote = double("RemoteCampaign",
+        name: "Test Campaign",
+        status: :ENABLED,
+        advertising_channel_type: :SEARCH
+      )
+
+      result = campaign_syncer.compare_fields(mismatched_remote)
+      expect(result.match?).to be false
+      expect(result.failures).to include(:status)
+    end
+  end
+
   describe '#fetch' do
     let(:mock_campaign_service) { double("CampaignService") }
 

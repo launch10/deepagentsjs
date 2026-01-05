@@ -21,6 +21,113 @@ RSpec.describe GoogleAds::Resources::Account do
   end
 
   # ═══════════════════════════════════════════════════════════════
+  # FieldMappable DSL
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '.field_mappings' do
+    it 'registers all expected fields' do
+      expect(described_class.field_mappings.keys).to contain_exactly(
+        :descriptive_name, :currency_code, :time_zone, :status, :auto_tagging_enabled
+      )
+    end
+
+    it 'stores correct local extractors' do
+      expect(described_class.field_mappings[:descriptive_name][:local]).to eq(:google_descriptive_name)
+      expect(described_class.field_mappings[:currency_code][:local]).to eq(:google_currency_code)
+      expect(described_class.field_mappings[:time_zone][:local]).to eq(:google_time_zone)
+      expect(described_class.field_mappings[:status][:local]).to eq(:google_status)
+      expect(described_class.field_mappings[:auto_tagging_enabled][:local]).to eq(:google_auto_tagging_enabled)
+    end
+
+    it 'stores correct remote extractors' do
+      expect(described_class.field_mappings[:descriptive_name][:remote]).to eq(:descriptive_name)
+      expect(described_class.field_mappings[:currency_code][:remote]).to eq(:currency_code)
+      expect(described_class.field_mappings[:time_zone][:remote]).to eq(:time_zone)
+      expect(described_class.field_mappings[:status][:remote]).to be_a(Proc)
+      expect(described_class.field_mappings[:auto_tagging_enabled][:remote]).to eq(:auto_tagging_enabled)
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # #to_google_json
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '#to_google_json' do
+    it 'returns hash of local field values (excluding read-only status)' do
+      result = resource.to_google_json
+
+      # Status is intentionally excluded - it's read-only from Google
+      expect(result).to eq(
+        descriptive_name: "Test Ads Account",
+        currency_code: "USD",
+        time_zone: "America/New_York",
+        auto_tagging_enabled: true
+      )
+    end
+
+    it 'excludes status (read-only from Google)' do
+      result = resource.to_google_json
+
+      expect(result.keys).not_to include(:status)
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # #from_google_json
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '#from_google_json' do
+    let(:remote) do
+      described_class::RemoteAccount.new(
+        id: 123456,
+        descriptive_name: "Test Ads Account",
+        status: :ENABLED,
+        auto_tagging_enabled: true,
+        currency_code: "USD",
+        time_zone: "America/New_York"
+      )
+    end
+
+    it 'returns hash of all remote field values in local format' do
+      result = resource.from_google_json(remote)
+
+      expect(result).to eq(
+        descriptive_name: "Test Ads Account",
+        currency_code: "USD",
+        time_zone: "America/New_York",
+        status: "ENABLED",  # Lambda converts symbol to string (no reverse transform defined)
+        auto_tagging_enabled: true
+      )
+    end
+
+    it 'handles mismatched values' do
+      mismatched_remote = described_class::RemoteAccount.new(
+        id: 123456,
+        descriptive_name: "Different Name",
+        status: :PAUSED,
+        auto_tagging_enabled: false,
+        currency_code: "EUR",
+        time_zone: "Europe/London"
+      )
+
+      result = resource.from_google_json(mismatched_remote)
+
+      expect(result[:descriptive_name]).to eq("Different Name")
+      expect(result[:status]).to eq("PAUSED")
+      expect(result[:auto_tagging_enabled]).to eq(false)
+      expect(result[:currency_code]).to eq("EUR")
+      expect(result[:time_zone]).to eq("Europe/London")
+    end
+
+    it 'uses fetch when no remote provided' do
+      allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+
+      # When fetch returns nil, from_google_json returns nil
+      expect(resource.from_google_json).to be_nil
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
   # #compare_fields
   # ═══════════════════════════════════════════════════════════════
 

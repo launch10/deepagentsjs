@@ -1,7 +1,23 @@
 module GoogleAds
   module Resources
     class Budget
+      include FieldMappable
+
       attr_reader :record
+
+      # ═══════════════════════════════════════════════════════════════
+      # FIELD MAPPINGS
+      # ═══════════════════════════════════════════════════════════════
+
+      field_mapping :name,
+        local: :google_budget_name,
+        remote: :name
+
+      field_mapping :amount_micros,
+        local: :daily_budget_cents,
+        remote: :amount_micros,
+        transform: Transforms::CENTS_TO_MICROS,
+        reverse_transform: Transforms::MICROS_TO_CENTS
 
       def initialize(record)
         @record = record
@@ -113,12 +129,7 @@ module GoogleAds
         fetch_by_id || fetch_by_name
       end
 
-      def compare_fields(remote)
-        FieldCompare.build do |c|
-          c.check(:amount_micros, local: cents_to_micros, remote: remote.amount_micros) { cents_to_micros == remote.amount_micros }
-          c.check(:name, local: record.google_budget_name, remote: remote.name) { record.google_budget_name == remote.name }
-        end
-      end
+      # compare_fields provided by FieldMappable
 
       private
 
@@ -217,9 +228,7 @@ module GoogleAds
         (record.daily_budget_cents || 0) * 10_000
       end
 
-      def fields_match?(remote)
-        compare_fields(remote).match?
-      end
+      # fields_match? provided by FieldMappable
 
       # ═══════════════════════════════════════════════════════════════
       # HELPERS

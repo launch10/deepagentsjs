@@ -1,9 +1,23 @@
 module GoogleAds
   module Resources
     class AccountInvitation
+      include FieldMappable
       extend Memoist
 
       attr_reader :record
+
+      # ═══════════════════════════════════════════════════════════════
+      # FIELD MAPPINGS
+      # ═══════════════════════════════════════════════════════════════
+
+      field_mapping :email_address,
+        local: :email_address,
+        remote: :email_address
+
+      field_mapping :access_role,
+        local: :google_access_role,
+        remote: :access_role,
+        transform: Transforms::TO_SYMBOL
 
       def initialize(record)
         @record = record

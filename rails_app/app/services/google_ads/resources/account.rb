@@ -1,7 +1,33 @@
 module GoogleAds
   module Resources
     class Account
+      include FieldMappable
+
       attr_reader :record # AdsAccount instance
+
+      # ═══════════════════════════════════════════════════════════════
+      # FIELD MAPPINGS
+      # ═══════════════════════════════════════════════════════════════
+
+      field_mapping :descriptive_name,
+        local: :google_descriptive_name,
+        remote: :descriptive_name
+
+      field_mapping :currency_code,
+        local: :google_currency_code,
+        remote: :currency_code
+
+      field_mapping :time_zone,
+        local: :google_time_zone,
+        remote: :time_zone
+
+      field_mapping :status,
+        local: :google_status,
+        remote: ->(r) { r.status.to_s }
+
+      field_mapping :auto_tagging_enabled,
+        local: :google_auto_tagging_enabled,
+        remote: :auto_tagging_enabled
 
       def initialize(record)
         @record = record
@@ -66,30 +92,20 @@ module GoogleAds
         fetch_by_name
       end
 
+      # Custom compare_fields that skips status in test mode
+      # Uses all field_mappings (including status) for comparison
       def compare_fields(remote)
         FieldCompare.build do |c|
-          c.check(:descriptive_name, local: record.google_descriptive_name, remote: remote.descriptive_name) do
-            record.google_descriptive_name == remote.descriptive_name
-          end
-
-          c.check(:currency_code, local: record.google_currency_code, remote: remote.currency_code) do
-            record.google_currency_code == remote.currency_code
-          end
-
-          c.check(:time_zone, local: record.google_time_zone, remote: remote.time_zone) do
-            record.google_time_zone == remote.time_zone
-          end
-
-          # Status comparison - skip in test mode since test accounts may have different status
-          unless GoogleAds.is_test_mode?
-            c.check(:status, local: record.google_status, remote: remote.status.to_s) do
-              record.google_status == remote.status.to_s
+          self.class.field_mappings.each do |name, _mapping|
+            local_val = local_value(name)
+            remote_val = remote_value(remote, name, apply_reverse_transform: false)
+            c.check(name, local: local_val, remote: remote_val) do
+              local_val == remote_val
             end
           end
 
-          c.check(:auto_tagging_enabled, local: record.google_auto_tagging_enabled, remote: remote.auto_tagging_enabled) do
-            record.google_auto_tagging_enabled == remote.auto_tagging_enabled
-          end
+          # Skip status comparison in test mode since test accounts may have different status
+          c.skip(:status) if GoogleAds.is_test_mode?
         end
       end
 

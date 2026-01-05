@@ -598,6 +598,58 @@ RSpec.describe GoogleAds::Resources::StructuredSnippet do
   end
 
   # ═══════════════════════════════════════════════════════════════
+  # FIELD MAPPABLE
+  # ═══════════════════════════════════════════════════════════════
+
+  describe ".field_mappings" do
+    it "registers all expected fields" do
+      expect(described_class.field_mappings.keys).to contain_exactly(:header, :values)
+    end
+
+    it "has no immutable fields" do
+      immutable_fields = described_class.field_mappings.select { |_, m| m[:immutable] }.keys
+      expect(immutable_fields).to be_empty
+    end
+
+    it "returns all fields as mutable" do
+      expect(described_class.mutable_fields).to contain_exactly(:header, :values)
+    end
+  end
+
+  describe "#to_google_json" do
+    it "transforms category to header using StructuredSnippetCategoriesConfig" do
+      result = resource.to_google_json
+      expect(result[:header]).to eq("Service catalog")
+    end
+
+    it "passes through values unchanged" do
+      result = resource.to_google_json
+      expect(result[:values]).to eq(["Web Design", "SEO", "Marketing"])
+    end
+
+    it "transforms different categories correctly" do
+      structured_snippet.update!(category: "amenities")
+      result = resource.to_google_json
+      expect(result[:header]).to eq("Amenities")
+    end
+  end
+
+  describe "#from_google_json" do
+    it "returns header and values from remote" do
+      remote = described_class::RemoteStructuredSnippet.new(
+        resource_name: "customers/123/assets/456",
+        id: 456,
+        header: "Service catalog",
+        values: ["Web Design", "SEO", "Marketing"]
+      )
+
+      result = resource.from_google_json(remote)
+      expect(result[:header]).to eq("Service catalog")
+      expect(result[:values]).to eq(["Web Design", "SEO", "Marketing"])
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
   # MODEL INTEGRATION
   # ═══════════════════════════════════════════════════════════════
 
@@ -658,7 +710,7 @@ RSpec.describe GoogleAds::Resources::StructuredSnippet do
     end
 
     describe "#google_sync" do
-      it "syncs the structured snippet" do
+      it "returns unchanged when asset found via content search with matching values" do
         asset_response = mock_search_response_with_structured_snippet_asset(
           asset_id: 88888,
           customer_id: 1234567890,
@@ -669,9 +721,11 @@ RSpec.describe GoogleAds::Resources::StructuredSnippet do
 
         expect(structured_snippet.google_asset_id).to be_nil
         result = structured_snippet.google_sync
-        expect(result.created?).to be true
+        # Asset found via content search with matching values = unchanged
+        expect(result.unchanged?).to be true
 
-        expect(structured_snippet.google_asset_id).to eq("88888") # sets asset_id on save
+        # asset_id is backfilled during fetch_by_content
+        expect(structured_snippet.google_asset_id).to eq("88888")
       end
     end
 

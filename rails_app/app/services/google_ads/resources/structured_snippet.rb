@@ -1,7 +1,21 @@
 module GoogleAds
   module Resources
     class StructuredSnippet
+      include FieldMappable
+
       attr_reader :record
+
+      # ═══════════════════════════════════════════════════════════════
+      # FIELD MAPPINGS
+      # ═══════════════════════════════════════════════════════════════
+
+      field_mapping :header,
+        local: ->(r) { StructuredSnippetCategoriesConfig.definitions.dig(r.category, :key) || r.category.titleize },
+        remote: :header
+
+      field_mapping :values,
+        local: :values,
+        remote: :values
 
       def initialize(record)
         @record = record
@@ -130,16 +144,7 @@ module GoogleAds
         fetch_by_id || fetch_by_content
       end
 
-      def compare_fields(remote)
-        FieldCompare.build do |c|
-          c.check(:header, local: header_for_category, remote: remote.header) do
-            header_for_category == remote.header
-          end
-          c.check(:values, local: record.values, remote: remote.values) do
-            record.values == remote.values
-          end
-        end
-      end
+      # compare_fields provided by FieldMappable
 
       private
 
@@ -250,9 +255,7 @@ module GoogleAds
       # FIELD TRANSFORMS
       # ═══════════════════════════════════════════════════════════════
 
-      def fields_match?(remote)
-        compare_fields(remote).match?
-      end
+      # fields_match? provided by FieldMappable
 
       def header_for_category
         StructuredSnippetCategoriesConfig.definitions.dig(record.category, :key) || record.category.titleize

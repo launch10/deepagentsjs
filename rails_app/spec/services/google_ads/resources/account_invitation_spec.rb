@@ -303,4 +303,87 @@ RSpec.describe GoogleAds::Resources::AccountInvitation do
       end
     end
   end
+
+  # ═══════════════════════════════════════════════════════════════
+  # FIELD MAPPABLE
+  # ═══════════════════════════════════════════════════════════════
+
+  describe ".field_mappings" do
+    it "registers all expected fields" do
+      expect(described_class.field_mappings.keys).to contain_exactly(:email_address, :access_role)
+    end
+
+    it "has no immutable fields" do
+      immutable_fields = described_class.field_mappings.select { |_, m| m[:immutable] }.keys
+      expect(immutable_fields).to be_empty
+    end
+
+    it "returns all fields as mutable" do
+      expect(described_class.mutable_fields).to contain_exactly(:email_address, :access_role)
+    end
+  end
+
+  describe "#to_google_json" do
+    it "returns email_address unchanged" do
+      result = syncer.to_google_json
+      expect(result[:email_address]).to eq("user@example.com")
+    end
+
+    it "transforms access_role to symbol" do
+      invitation.google_access_role = "ADMIN"
+      result = syncer.to_google_json
+      expect(result[:access_role]).to eq(:ADMIN)
+    end
+  end
+
+  describe "#from_google_json" do
+    it "returns email_address and access_role from remote" do
+      remote = GoogleAds::Resources::AccountInvitation::RemoteInvitation.new(
+        resource_name: "customers/123/customerUserAccess/456",
+        email_address: "test@example.com",
+        access_role: :ADMIN,
+        status: :ACCEPTED,
+        created_at: "2024-01-01"
+      )
+
+      result = syncer.from_google_json(remote)
+      expect(result[:email_address]).to eq("test@example.com")
+      expect(result[:access_role]).to eq(:ADMIN)
+    end
+  end
+
+  describe "#compare_fields" do
+    it "compares email_address and access_role" do
+      invitation.google_access_role = "ADMIN"
+      invitation.save!
+
+      remote = GoogleAds::Resources::AccountInvitation::RemoteInvitation.new(
+        resource_name: "customers/123/customerUserAccess/456",
+        email_address: "user@example.com",
+        access_role: :ADMIN,
+        status: :ACCEPTED,
+        created_at: "2024-01-01"
+      )
+
+      comparison = syncer.compare_fields(remote)
+      expect(comparison.match?).to be true
+    end
+
+    it "detects access_role mismatch" do
+      invitation.google_access_role = "STANDARD"
+      invitation.save!
+
+      remote = GoogleAds::Resources::AccountInvitation::RemoteInvitation.new(
+        resource_name: "customers/123/customerUserAccess/456",
+        email_address: "user@example.com",
+        access_role: :ADMIN,
+        status: :ACCEPTED,
+        created_at: "2024-01-01"
+      )
+
+      comparison = syncer.compare_fields(remote)
+      expect(comparison.match?).to be false
+      expect(comparison.failures).to include(:access_role)
+    end
+  end
 end

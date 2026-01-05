@@ -1,7 +1,34 @@
 module GoogleAds
   module Resources
     class AdGroup
+      include FieldMappable
+
       attr_reader :record
+
+      # ═══════════════════════════════════════════════════════════════
+      # FIELD MAPPINGS
+      # ═══════════════════════════════════════════════════════════════
+
+      field_mapping :name,
+        local: :name,
+        remote: :name
+
+      field_mapping :status,
+        local: :google_status,
+        remote: :status,
+        transform: Transforms::TO_SYMBOL,
+        reverse_transform: Transforms::TO_STRING
+
+      field_mapping :type,
+        local: :google_type,
+        remote: :type,
+        transform: Transforms::TO_SYMBOL,
+        reverse_transform: Transforms::TO_STRING,
+        immutable: true
+
+      field_mapping :cpc_bid_micros,
+        local: :google_cpc_bid_micros,
+        remote: :cpc_bid_micros
 
       def initialize(record)
         @record = record
@@ -95,7 +122,7 @@ module GoogleAds
         elsif !fields_match?(remote)
           comparison = compare_fields(remote)
           # Only include mutable fields (not type)
-          mutable_mismatches = comparison.mismatched_fields - [:type]
+          mutable_mismatches = comparison.failures - [:type]
           operations << { action: :update, record: record, fields: mutable_mismatches } if mutable_mismatches.any?
         else
           operations << { action: :unchanged, record: record }
@@ -118,14 +145,7 @@ module GoogleAds
         fetch_by_id || fetch_by_name
       end
 
-      def compare_fields(remote)
-        FieldCompare.build do |c|
-          c.check(:name, local: record.name, remote: remote.name) { record.name == remote.name }
-          c.check(:status, local: google_status, remote: remote.status) { google_status == remote.status }
-          c.check(:type, local: google_type, remote: remote.type) { google_type == remote.type }
-          c.check(:cpc_bid_micros, local: google_cpc_bid_micros, remote: remote.cpc_bid_micros) { google_cpc_bid_micros == remote.cpc_bid_micros }
-        end
-      end
+      # compare_fields provided by FieldMappable
 
       private
 
@@ -236,9 +256,7 @@ module GoogleAds
         record.google_cpc_bid_micros
       end
 
-      def fields_match?(remote)
-        compare_fields(remote).match?
-      end
+      # fields_match? provided by FieldMappable
 
       # ═══════════════════════════════════════════════════════════════
       # HELPERS

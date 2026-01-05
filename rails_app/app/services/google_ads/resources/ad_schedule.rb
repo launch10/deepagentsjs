@@ -74,7 +74,6 @@ module GoogleAds
           c.check(:start_minute, local: google_start_minute, remote: s.start_minute) { google_start_minute == s.start_minute }
           c.check(:end_hour, local: db_schedule.end_hour, remote: s.end_hour) { db_schedule.end_hour == s.end_hour }
           c.check(:end_minute, local: google_end_minute, remote: s.end_minute) { google_end_minute == s.end_minute }
-          c.check(:bid_modifier, local: db_schedule.bid_modifier, remote: remote.bid_modifier) { FieldCompare.float_match?(db_schedule.bid_modifier || 1.0, remote.bid_modifier || 1.0) }
         end
       end
 
@@ -291,7 +290,6 @@ module GoogleAds
             s.end_hour = db_schedule.end_hour
             s.end_minute = google_end_minute
           end
-          cc.bid_modifier = db_schedule.bid_modifier if db_schedule.bid_modifier.present?
         end
       end
 
@@ -355,8 +353,7 @@ module GoogleAds
             campaign_criterion.ad_schedule.start_hour,
             campaign_criterion.ad_schedule.start_minute,
             campaign_criterion.ad_schedule.end_hour,
-            campaign_criterion.ad_schedule.end_minute,
-            campaign_criterion.bid_modifier
+            campaign_criterion.ad_schedule.end_minute
           FROM campaign_criterion
           WHERE campaign_criterion.criterion_id = #{db_schedule.google_criterion_id}
             AND campaign_criterion.campaign = '#{campaign_resource_name}'

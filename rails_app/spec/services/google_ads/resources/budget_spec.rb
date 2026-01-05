@@ -19,6 +19,96 @@ RSpec.describe GoogleAds::Resources::Budget do
     end
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # FieldMappable DSL
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '.field_mappings' do
+    it 'registers all expected fields' do
+      expect(described_class.field_mappings.keys).to contain_exactly(
+        :name, :amount_micros
+      )
+    end
+
+    it 'has no immutable fields' do
+      expect(described_class.immutable_fields).to be_empty
+    end
+
+    it 'returns all fields as mutable' do
+      expect(described_class.mutable_fields).to eq([:name, :amount_micros])
+    end
+  end
+
+  describe '#to_google_json' do
+    it 'returns hash of local field values in Google format' do
+      result = budget_syncer.to_google_json
+
+      expect(result).to eq(
+        name: ad_budget.google_budget_name,
+        amount_micros: 5_000_000  # 500 cents * 10_000
+      )
+    end
+  end
+
+  describe '#from_google_json' do
+    let(:remote) do
+      double("RemoteBudget",
+        name: "Remote Budget",
+        amount_micros: 10_000_000
+      )
+    end
+
+    it 'returns hash of remote field values in local format' do
+      result = budget_syncer.from_google_json(remote)
+
+      expect(result).to eq(
+        name: "Remote Budget",
+        amount_micros: 1000  # 10_000_000 / 10_000 = 1000 cents
+      )
+    end
+  end
+
+  describe '#compare_fields' do
+    let(:remote) do
+      double("RemoteBudget",
+        name: ad_budget.google_budget_name,
+        amount_micros: 5_000_000
+      )
+    end
+
+    it 'returns FieldCompare instance' do
+      result = budget_syncer.compare_fields(remote)
+      expect(result).to be_a(GoogleAds::FieldCompare)
+    end
+
+    it 'matches when all fields are equal' do
+      result = budget_syncer.compare_fields(remote)
+      expect(result.match?).to be true
+    end
+
+    it 'detects name mismatch' do
+      mismatched_remote = double("RemoteBudget",
+        name: "Different Name",
+        amount_micros: 5_000_000
+      )
+
+      result = budget_syncer.compare_fields(mismatched_remote)
+      expect(result.match?).to be false
+      expect(result.failures).to include(:name)
+    end
+
+    it 'detects amount_micros mismatch' do
+      mismatched_remote = double("RemoteBudget",
+        name: ad_budget.google_budget_name,
+        amount_micros: 999_000_000
+      )
+
+      result = budget_syncer.compare_fields(mismatched_remote)
+      expect(result.match?).to be false
+      expect(result.failures).to include(:amount_micros)
+    end
+  end
+
   describe '#fetch' do
     let(:mock_budget_service) { double("CampaignBudgetService") }
 

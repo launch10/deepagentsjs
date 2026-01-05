@@ -12,8 +12,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
       start_hour: 9,
       start_minute: 0,
       end_hour: 17,
-      end_minute: 0,
-      bid_modifier: 1.5)
+      end_minute: 0)
   end
   let(:resource) { described_class.new(schedule) }
 
@@ -34,8 +33,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
         start_hour: 9,
         start_minute: :ZERO,
         end_hour: 17,
-        end_minute: :ZERO,
-        bid_modifier: 1.5
+        end_minute: :ZERO
       )
 
       result = resource.compare_fields(remote)
@@ -48,8 +46,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
         start_hour: 9,
         start_minute: :ZERO,
         end_hour: 17,
-        end_minute: :ZERO,
-        bid_modifier: 1.5
+        end_minute: :ZERO
       )
 
       result = resource.compare_fields(remote)
@@ -63,8 +60,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
         start_hour: 8,
         start_minute: :ZERO,
         end_hour: 17,
-        end_minute: :ZERO,
-        bid_modifier: 1.5
+        end_minute: :ZERO
       )
 
       result = resource.compare_fields(remote)
@@ -78,8 +74,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
         start_hour: 9,
         start_minute: :ZERO,
         end_hour: 17,
-        end_minute: :ZERO,
-        bid_modifier: 1.5
+        end_minute: :ZERO
       )
 
       result = resource.compare_fields(remote)
@@ -93,8 +88,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
         start_hour: 8,
         start_minute: :ZERO,
         end_hour: 17,
-        end_minute: :ZERO,
-        bid_modifier: 1.5
+        end_minute: :ZERO
       )
 
       result = resource.compare_fields(remote)
@@ -191,8 +185,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           start_hour: 9,
           start_minute: :ZERO,
           end_hour: 17,
-          end_minute: :ZERO,
-          bid_modifier: 1.5
+          end_minute: :ZERO
         )
         allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
 
@@ -249,8 +242,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           start_hour: 9,
           start_minute: :ZERO,
           end_hour: 17,
-          end_minute: :ZERO,
-          bid_modifier: 1.5
+          end_minute: :ZERO
         )
         allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
 
@@ -279,7 +271,6 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
 
         expect(mock_criterion).to receive(:campaign=).with("customers/1234567890/campaigns/789")
         expect(mock_criterion).to receive(:ad_schedule=).with(mock_ad_schedule_info)
-        expect(mock_criterion).to receive(:bid_modifier=).with(1.5)
 
         expect(mock_ad_schedule_info).to receive(:day_of_week=).with(:MONDAY)
         expect(mock_ad_schedule_info).to receive(:start_hour=).with(9)
@@ -778,8 +769,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           start_hour: 9,
           start_minute: :ZERO,
           end_hour: 17,
-          end_minute: :ZERO,
-          bid_modifier: 1.5
+          end_minute: :ZERO
         )
         allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
 
@@ -797,8 +787,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           start_hour: 9,
           start_minute: :ZERO,
           end_hour: 17,
-          end_minute: :ZERO,
-          bid_modifier: 1.5
+          end_minute: :ZERO
         )
         allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
 
@@ -871,8 +860,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
             start_hour: 9,
             start_minute: :ZERO,
             end_hour: 17,
-            end_minute: :ZERO,
-            bid_modifier: 1.5
+            end_minute: :ZERO
           )
           allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
 
@@ -1349,7 +1337,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
 
   private
 
-  def mock_remote_criterion(day_of_week:, start_hour:, start_minute:, end_hour:, end_minute:, bid_modifier:)
+  def mock_remote_criterion(day_of_week:, start_hour:, start_minute:, end_hour:, end_minute:)
     ad_schedule = double("AdScheduleInfo",
       day_of_week: day_of_week,
       start_hour: start_hour,
@@ -1358,7 +1346,6 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
       end_minute: end_minute)
 
     double("CampaignCriterion",
-      ad_schedule: ad_schedule,
-      bid_modifier: bid_modifier)
+      ad_schedule: ad_schedule)
   end
 end

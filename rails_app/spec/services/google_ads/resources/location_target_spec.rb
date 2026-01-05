@@ -28,6 +28,59 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
     end
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # FIELD MAPPABLE TESTS
+  # ═══════════════════════════════════════════════════════════════
+
+  describe '.field_mappings' do
+    it 'registers all expected fields' do
+      expect(described_class.field_mappings.keys).to contain_exactly(:negative)
+    end
+
+    it 'has no immutable fields' do
+      immutable_fields = described_class.field_mappings.select { |_, m| m[:immutable] }.keys
+      expect(immutable_fields).to be_empty
+    end
+
+    it 'returns all fields as mutable' do
+      expect(described_class.mutable_fields).to contain_exactly(:negative)
+    end
+  end
+
+  describe '#to_google_json' do
+    context 'when targeted is true' do
+      before { ad_location_target.targeted = true }
+
+      it 'returns negative as false (targeted locations are not negative)' do
+        result = location_target_syncer.to_google_json
+        expect(result).to eq(negative: false)
+      end
+    end
+
+    context 'when targeted is false' do
+      before { ad_location_target.targeted = false }
+
+      it 'returns negative as true (excluded locations are negative)' do
+        result = location_target_syncer.to_google_json
+        expect(result).to eq(negative: true)
+      end
+    end
+  end
+
+  describe '#from_google_json' do
+    it 'returns targeted-style values from remote negative field (negative: false -> true)' do
+      remote = double("Remote", negative: false)
+      result = location_target_syncer.from_google_json(remote)
+      expect(result).to eq(negative: true)
+    end
+
+    it 'returns targeted-style values from remote negative field (negative: true -> false)' do
+      remote = double("Remote", negative: true)
+      result = location_target_syncer.from_google_json(remote)
+      expect(result).to eq(negative: false)
+    end
+  end
+
   describe '#fetch' do
     context 'when criterion exists by ID' do
       before do

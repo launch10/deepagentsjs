@@ -1,7 +1,19 @@
 module GoogleAds
   module Resources
     class LocationTarget
+      include FieldMappable
+
       attr_reader :record
+
+      # ═══════════════════════════════════════════════════════════════
+      # FIELD MAPPINGS
+      # ═══════════════════════════════════════════════════════════════
+
+      # negative = !targeted (excluded locations are negative=true in Google)
+      field_mapping :negative,
+        local: ->(r) { !r.targeted },
+        remote: :negative,
+        reverse_transform: ->(val) { !val }
 
       def initialize(record)
         @record = record
@@ -127,13 +139,7 @@ module GoogleAds
         fetch_by_id
       end
 
-      def compare_fields(remote)
-        FieldCompare.build do |c|
-          c.check(:negative, local: !record.targeted, remote: remote.negative) do
-            !record.targeted == remote.negative
-          end
-        end
-      end
+      # compare_fields provided by FieldMappable
 
       private
 
@@ -209,13 +215,7 @@ module GoogleAds
         results.first&.campaign_criterion
       end
 
-      # ═══════════════════════════════════════════════════════════════
-      # FIELD TRANSFORMS
-      # ═══════════════════════════════════════════════════════════════
-
-      def fields_match?(remote)
-        compare_fields(remote).match?
-      end
+      # fields_match? provided by FieldMappable
 
       # ═══════════════════════════════════════════════════════════════
       # ERROR HANDLING
