@@ -25,3 +25,15 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const CustomPlaceholder: Story = {
+  args: {
+    placeholder: "What would you like to change?",
+  },
+};
+
+export const Disabled: Story = {
+  args: {
+    disabled: true,
+  },
+};
