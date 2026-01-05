@@ -47,76 +47,7 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::LocationTargeting
   include CampaignConcerns::GooglePlatformSettings
   include CampaignConcerns::MetaPlatformSettings
-
-  # ═══════════════════════════════════════════════════════════════
-  # Structured Snippets Sync - Class Method Pattern (singleton)
-  # ═══════════════════════════════════════════════════════════════
-
-  def sync_structured_snippets = GoogleAds::Resources::StructuredSnippet.sync_all(self)
-  def structured_snippets_synced? = GoogleAds::Resources::StructuredSnippet.synced?(self)
-  def structured_snippets_sync_plan = GoogleAds::Resources::StructuredSnippet.sync_plan(self)
-
-  # ═══════════════════════════════════════════════════════════════
-  # Location Targets Sync - Class Method Pattern
-  # ═══════════════════════════════════════════════════════════════
-
-  def sync_location_targets = GoogleAds::Resources::LocationTarget.sync_all(self)
-  def location_targets_synced? = GoogleAds::Resources::LocationTarget.synced?(self)
-  def location_targets_sync_plan = GoogleAds::Resources::LocationTarget.sync_plan(self)
-
-  # ═══════════════════════════════════════════════════════════════
-  # Campaign Sync - Explicit One-Liner Delegations
-  # Callback logic (save_campaign_id) is INSIDE the resource
-  # ═══════════════════════════════════════════════════════════════
-
-  def google_sync = GoogleAds::Resources::Campaign.new(self).sync
-  def google_synced? = GoogleAds::Resources::Campaign.new(self).synced?
-  def google_delete = GoogleAds::Resources::Campaign.new(self).delete
-  def google_fetch = GoogleAds::Resources::Campaign.new(self).fetch
-  def google_syncer = GoogleAds::Resources::Campaign.new(self)
-
-  # ═══════════════════════════════════════════════════════════════
-  # Ad Schedule Sync - Class Method Pattern
-  #
-  # Uses class methods on GoogleAds::Resources::AdSchedule instead
-  # of a separate syncer class (single-file colocation principle)
-  # ═══════════════════════════════════════════════════════════════
-
-  def sync_ad_schedules
-    GoogleAds::Resources::AdSchedule.sync_all(self)
-  end
-
-  def ad_schedules_synced?
-    GoogleAds::Resources::AdSchedule.synced?(self)
-  end
-
-  def ad_schedules_sync_plan
-    GoogleAds::Resources::AdSchedule.sync_plan(self)
-  end
-
-  # ═══════════════════════════════════════════════════════════════
-  # Ad Groups Sync - Class Method Pattern
-  # ═══════════════════════════════════════════════════════════════
-
-  def sync_ad_groups = GoogleAds::Resources::AdGroup.sync_all(self)
-  def ad_groups_synced? = GoogleAds::Resources::AdGroup.synced?(self)
-  def ad_groups_sync_plan = GoogleAds::Resources::AdGroup.sync_plan(self)
-
-  # ═══════════════════════════════════════════════════════════════
-  # Budget Sync - Class Method Pattern (singleton)
-  # ═══════════════════════════════════════════════════════════════
-
-  def sync_budget = GoogleAds::Resources::Budget.sync_all(self)
-  def budget_synced? = GoogleAds::Resources::Budget.synced?(self)
-  def budget_sync_plan = GoogleAds::Resources::Budget.sync_plan(self)
-
-  # ═══════════════════════════════════════════════════════════════
-  # Callouts Sync - Class Method Pattern (collection)
-  # ═══════════════════════════════════════════════════════════════
-
-  def sync_callouts = GoogleAds::Resources::Callout.sync_all(self)
-  def callouts_synced? = GoogleAds::Resources::Callout.synced?(self)
-  def callouts_sync_plan = GoogleAds::Resources::Callout.sync_plan(self)
+  include CampaignConcerns::GoogleSyncable
 
   acts_as_paranoid
 
