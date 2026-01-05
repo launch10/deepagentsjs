@@ -23,7 +23,6 @@
 #
 class Ad < ApplicationRecord
   include PlatformSettings
-  include GoogleMappable
 
   belongs_to :ad_group
   has_one :campaign, through: :ad_group

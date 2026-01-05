@@ -25,7 +25,6 @@
 #
 class AdKeyword < ApplicationRecord
   include PlatformSettings
-  include GoogleMappable
 
   platform_setting :google, :criterion_id
 

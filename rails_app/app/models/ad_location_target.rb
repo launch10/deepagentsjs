@@ -33,7 +33,6 @@
 #
 class AdLocationTarget < ApplicationRecord
   include PlatformSettings
-  include GoogleMappable
 
   platform_setting :google, :criterion_id
   platform_setting :google, :remote_criterion_id

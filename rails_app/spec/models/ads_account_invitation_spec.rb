@@ -151,68 +151,11 @@ RSpec.describe AdsAccountInvitation, type: :model do
     end
   end
 
-  describe '#update_from_sync_result' do
+  describe 'Google Sync delegation' do
     let(:invitation) { create(:ads_account_invitation, ads_account: ads_account) }
 
-    context 'when result is for invitation creation' do
-      it 'updates status to sent and sets invitation_id' do
-        result = GoogleAds::Sync::SyncResult.new(
-          resource_type: :customer_user_access_invitation,
-          resource_name: "customers/123/customerUserAccessInvitations/456",
-          action: :created,
-          comparisons: []
-        )
-
-        invitation.update_from_sync_result(result)
-
-        expect(invitation.google_status).to eq("sent")
-        expect(invitation.google_invitation_id).to eq("456")
-        expect(invitation.google_sent_at).to be_present
-      end
-    end
-
-    context 'when result is for user access (accepted)' do
-      it 'updates status to accepted and sets user_access_id' do
-        result = GoogleAds::Sync::SyncResult.new(
-          resource_type: :customer_user_access,
-          resource_name: "customers/123/customerUserAccess/789",
-          action: :updated,
-          comparisons: []
-        )
-
-        invitation.update_from_sync_result(result)
-
-        expect(invitation.google_status).to eq("accepted")
-        expect(invitation.google_user_access_id).to eq("789")
-        expect(invitation.google_accepted_at).to be_present
-      end
-    end
-
-    context 'when result has no resource_name' do
-      it 'does nothing' do
-        result = GoogleAds::Sync::SyncResult.new(
-          resource_type: :customer_user_access_invitation,
-          resource_name: nil,
-          action: :not_found,
-          comparisons: []
-        )
-
-        invitation.update_from_sync_result(result)
-
-        expect(invitation.google_status).to eq("pending")
-      end
-    end
-  end
-
-  describe 'GoogleSyncable' do
-    let(:invitation) { create(:ads_account_invitation, ads_account: ads_account) }
-
-    it 'includes GoogleSyncable' do
-      expect(AdsAccountInvitation.ancestors).to include(GoogleSyncable)
-    end
-
-    it 'uses GoogleAds::AccountInvitation syncer' do
-      expect(invitation.google_syncer).to be_a(GoogleAds::AccountInvitation)
+    it 'uses GoogleAds::Resources::AccountInvitation syncer' do
+      expect(invitation.google_syncer).to be_a(GoogleAds::Resources::AccountInvitation)
     end
 
     it 'responds to google_sync' do
@@ -222,17 +165,17 @@ RSpec.describe AdsAccountInvitation, type: :model do
     it 'responds to google_synced?' do
       expect(invitation).to respond_to(:google_synced?)
     end
-  end
 
-  describe 'GoogleMappable' do
-    let(:invitation) { create(:ads_account_invitation, ads_account: ads_account, email_address: "test@example.com") }
+    it 'responds to google_delete' do
+      expect(invitation).to respond_to(:google_delete)
+    end
 
-    it 'converts to Google API format' do
-      invitation.google_access_role = "ADMIN"
-      json = invitation.to_google_json
+    it 'responds to google_fetch' do
+      expect(invitation).to respond_to(:google_fetch)
+    end
 
-      expect(json[:email_address]).to eq("test@example.com")
-      expect(json[:access_role]).to eq(:ADMIN)
+    it 'responds to google_refresh_status' do
+      expect(invitation).to respond_to(:google_refresh_status)
     end
   end
 end

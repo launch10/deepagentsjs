@@ -22,7 +22,6 @@
 #
 class AdStructuredSnippet < ApplicationRecord
   include PlatformSettings
-  include GoogleMappable
 
   platform_setting :google, :asset_id
 

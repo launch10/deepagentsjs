@@ -1,105 +1,6 @@
 require 'rails_helper'
+
 RSpec.describe GoogleAds::Sync::SyncResult do
-  let(:matching_comparison) do
-    GoogleAds::Sync::FieldComparison.new(
-      field: :amount_cents,
-      our_field: :amount_cents,
-      our_value: 500,
-      their_field: :amount_micros,
-      their_value: 5_000_000,
-      transform: ->(v) { v * 10_000 }
-    )
-  end
-
-  let(:mismatched_comparison) do
-    GoogleAds::Sync::FieldComparison.new(
-      field: :status,
-      our_field: :status,
-      our_value: :ENABLED,
-      their_field: :status,
-      their_value: :PAUSED,
-      transform: nil
-    )
-  end
-
-  describe '#values_match?' do
-    it 'returns true when all comparisons match' do
-      result = described_class.new(
-        resource_type: :campaign_budget,
-        resource_name: "customers/123/campaignBudgets/456",
-        action: :unchanged,
-        comparisons: [matching_comparison]
-      )
-
-      expect(result.values_match?).to be true
-    end
-
-    it 'returns false when any comparison does not match' do
-      result = described_class.new(
-        resource_type: :campaign,
-        resource_name: "customers/123/campaigns/789",
-        action: :unchanged,
-        comparisons: [matching_comparison, mismatched_comparison]
-      )
-
-      expect(result.values_match?).to be false
-    end
-  end
-
-  describe '#mismatched_fields' do
-    it 'returns only non-matching comparisons' do
-      result = described_class.new(
-        resource_type: :campaign,
-        resource_name: "customers/123/campaigns/789",
-        action: :unchanged,
-        comparisons: [matching_comparison, mismatched_comparison]
-      )
-
-      expect(result.mismatched_fields.length).to eq(1)
-      expect(result.mismatched_fields.first.field).to eq(:status)
-    end
-  end
-
-  describe '#matched_fields' do
-    it 'returns only matching comparisons' do
-      result = described_class.new(
-        resource_type: :campaign,
-        resource_name: "customers/123/campaigns/789",
-        action: :unchanged,
-        comparisons: [matching_comparison, mismatched_comparison]
-      )
-
-      expect(result.matched_fields.length).to eq(1)
-      expect(result.matched_fields.first.field).to eq(:amount_cents)
-    end
-  end
-
-  describe '#comparison_for' do
-    it 'returns the comparison for a specific field' do
-      result = described_class.new(
-        resource_type: :campaign,
-        resource_name: "customers/123/campaigns/789",
-        action: :unchanged,
-        comparisons: [matching_comparison, mismatched_comparison]
-      )
-
-      comparison = result.comparison_for(:amount_cents)
-      expect(comparison.our_value).to eq(500)
-      expect(comparison.their_value).to eq(5_000_000)
-    end
-
-    it 'returns nil for unknown field' do
-      result = described_class.new(
-        resource_type: :campaign,
-        resource_name: "customers/123/campaigns/789",
-        action: :unchanged,
-        comparisons: [matching_comparison]
-      )
-
-      expect(result.comparison_for(:unknown_field)).to be_nil
-    end
-  end
-
   describe 'action predicates' do
     it '#created? returns true for created action' do
       result = described_class.new(resource_type: :campaign_budget, action: :created)
@@ -123,6 +24,11 @@ RSpec.describe GoogleAds::Sync::SyncResult do
       expect(result.not_found?).to be true
     end
 
+    it '#deleted? returns true for deleted action' do
+      result = described_class.new(resource_type: :campaign_budget, action: :deleted)
+      expect(result.deleted?).to be true
+    end
+
     it '#error? returns true for error action' do
       result = described_class.new(resource_type: :campaign_budget, action: :error, error: StandardError.new("Test"))
       expect(result.error?).to be true
@@ -130,39 +36,31 @@ RSpec.describe GoogleAds::Sync::SyncResult do
   end
 
   describe '#success? and #synced?' do
-    it 'returns true when comparisons match' do
-      result = described_class.new(
-        resource_type: :campaign_budget,
-        action: :unchanged,
-        comparisons: [matching_comparison]
-      )
+    it 'returns true for created action' do
+      result = described_class.new(resource_type: :campaign_budget, action: :created)
       expect(result.success?).to be true
       expect(result.synced?).to be true
     end
 
-    it 'returns false when comparisons do not match' do
-      result = described_class.new(
-        resource_type: :campaign_budget,
-        action: :unchanged,
-        comparisons: [mismatched_comparison]
-      )
-      expect(result.success?).to be false
-      expect(result.synced?).to be false
+    it 'returns true for updated action' do
+      result = described_class.new(resource_type: :campaign_budget, action: :updated)
+      expect(result.success?).to be true
+      expect(result.synced?).to be true
     end
 
-    it 'returns false when no comparisons exist' do
-      result = described_class.new(resource_type: :campaign_budget, action: :created)
-      expect(result.success?).to be false
-      expect(result.synced?).to be false
+    it 'returns true for unchanged action' do
+      result = described_class.new(resource_type: :campaign_budget, action: :unchanged)
+      expect(result.success?).to be true
+      expect(result.synced?).to be true
     end
 
-    it 'returns true for deleted action regardless of comparisons' do
+    it 'returns true for deleted action' do
       result = described_class.new(resource_type: :campaign_budget, action: :deleted)
       expect(result.success?).to be true
       expect(result.synced?).to be true
     end
 
-    it 'returns false for not_found action (resource needs to be created)' do
+    it 'returns false for not_found action' do
       result = described_class.new(resource_type: :campaign_budget, action: :not_found)
       expect(result.success?).to be false
       expect(result.synced?).to be false
@@ -180,13 +78,12 @@ RSpec.describe GoogleAds::Sync::SyncResult do
 
     it 'success? is always equivalent to synced?' do
       results = [
-        described_class.new(resource_type: :campaign_budget, action: :created, comparisons: [matching_comparison]),
-        described_class.new(resource_type: :campaign_budget, action: :updated, comparisons: [matching_comparison]),
-        described_class.new(resource_type: :campaign_budget, action: :unchanged, comparisons: [matching_comparison]),
+        described_class.new(resource_type: :campaign_budget, action: :created),
+        described_class.new(resource_type: :campaign_budget, action: :updated),
+        described_class.new(resource_type: :campaign_budget, action: :unchanged),
         described_class.new(resource_type: :campaign_budget, action: :deleted),
         described_class.new(resource_type: :campaign_budget, action: :not_found),
-        described_class.new(resource_type: :campaign_budget, action: :error),
-        described_class.new(resource_type: :campaign_budget, action: :unchanged, comparisons: [mismatched_comparison])
+        described_class.new(resource_type: :campaign_budget, action: :error)
       ]
 
       results.each do |result|
@@ -200,8 +97,7 @@ RSpec.describe GoogleAds::Sync::SyncResult do
       result = described_class.new(
         resource_type: :campaign_budget,
         resource_name: "customers/123/campaignBudgets/456",
-        action: :updated,
-        comparisons: [matching_comparison, mismatched_comparison]
+        action: :updated
       )
 
       hash = result.to_h
@@ -209,10 +105,7 @@ RSpec.describe GoogleAds::Sync::SyncResult do
       expect(hash[:resource_type]).to eq(:campaign_budget)
       expect(hash[:resource_name]).to eq("customers/123/campaignBudgets/456")
       expect(hash[:action]).to eq(:updated)
-      expect(hash[:success]).to be false
-      expect(hash[:synced]).to be false
-      expect(hash[:mismatched_fields]).to eq([:status])
-      expect(hash[:comparisons].length).to eq(2)
+      expect(hash[:success]).to be true
     end
 
     it 'includes error message when present' do

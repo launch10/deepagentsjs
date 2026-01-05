@@ -1,17 +1,16 @@
 module GoogleAds
   module Sync
     class SyncResult
-      attr_reader :resource_type, :resource_name, :action, :comparisons, :error
+      attr_reader :resource_type, :resource_name, :action, :error
 
-      ACTIONS = [:created, :updated, :unchanged, :deleted, :not_found, :error, :no_remote_needed].freeze
+      ACTIONS = [:created, :updated, :unchanged, :deleted, :not_found, :error].freeze
+      SUCCESS_ACTIONS = [:created, :updated, :unchanged, :deleted].freeze
 
-      def initialize(resource_type:, action:, resource_name: nil, comparisons: [], error: nil, no_remote_needed: false)
+      def initialize(resource_type:, action:, resource_name: nil, comparisons: nil, error: nil, no_remote_needed: nil)
         @resource_type = resource_type
         @resource_name = resource_name
         @action = action
-        @comparisons = comparisons
         @error = error
-        @no_remote_needed = no_remote_needed
       end
 
       def created?
@@ -39,34 +38,10 @@ module GoogleAds
       end
 
       def success?
-        synced?
+        SUCCESS_ACTIONS.include?(action)
       end
 
-      def synced?
-        return true if deleted?
-        return true if @no_remote_needed && comparisons.empty?
-        comparisons.any? && values_match?
-      end
-
-      def no_remote_needed?
-        @no_remote_needed
-      end
-
-      def values_match?
-        comparisons.all?(&:values_match?)
-      end
-
-      def mismatched_fields
-        comparisons.reject(&:values_match?)
-      end
-
-      def matched_fields
-        comparisons.select(&:values_match?)
-      end
-
-      def comparison_for(field)
-        comparisons.find { |c| c.field == field }
-      end
+      alias_method :synced?, :success?
 
       def to_h
         {
@@ -74,9 +49,6 @@ module GoogleAds
           resource_name: resource_name,
           action: action,
           success: success?,
-          synced: synced?,
-          comparisons: comparisons.map(&:to_h),
-          mismatched_fields: mismatched_fields.map(&:field),
           error: error&.message
         }
       end

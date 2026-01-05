@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe GoogleAds::AccountInvitation do
+RSpec.describe GoogleAds::Resources::AccountInvitation do
   include GoogleAdsMocks
 
   let(:account) { create(:account, :with_google_account, name: "Test Account") }
@@ -19,7 +19,7 @@ RSpec.describe GoogleAds::AccountInvitation do
     ads_account.save!
   end
 
-  describe "#fetch_remote" do
+  describe "#fetch" do
     context "when user has accepted the invitation" do
       before do
         allow(@mock_google_ads_service).to receive(:search)
@@ -30,7 +30,7 @@ RSpec.describe GoogleAds::AccountInvitation do
       end
 
       it "returns a RemoteInvitation with accepted status" do
-        remote = syncer.fetch_remote
+        remote = syncer.fetch
         expect(remote).to be_present
         expect(remote.accepted?).to be true
         expect(remote.email_address).to eq("user@example.com")
@@ -49,7 +49,7 @@ RSpec.describe GoogleAds::AccountInvitation do
       end
 
       it "returns a RemoteInvitation with pending status" do
-        remote = syncer.fetch_remote
+        remote = syncer.fetch
         expect(remote).to be_present
         expect(remote.pending?).to be true
       end
@@ -62,7 +62,7 @@ RSpec.describe GoogleAds::AccountInvitation do
       end
 
       it "returns nil" do
-        expect(syncer.fetch_remote).to be_nil
+        expect(syncer.fetch).to be_nil
       end
     end
   end
@@ -270,7 +270,7 @@ RSpec.describe GoogleAds::AccountInvitation do
           access_role: :ADMIN,
           access_creation_date_time: "2024-01-01")
 
-        remote = GoogleAds::AccountInvitation::RemoteInvitation.from_user_access(user_access)
+        remote = GoogleAds::Resources::AccountInvitation::RemoteInvitation.from_user_access(user_access)
 
         expect(remote.accepted?).to be true
         expect(remote.email_address).to eq("test@example.com")
@@ -278,7 +278,7 @@ RSpec.describe GoogleAds::AccountInvitation do
       end
 
       it "returns nil when user_access is nil" do
-        expect(GoogleAds::AccountInvitation::RemoteInvitation.from_user_access(nil)).to be_nil
+        expect(GoogleAds::Resources::AccountInvitation::RemoteInvitation.from_user_access(nil)).to be_nil
       end
     end
 
@@ -291,7 +291,7 @@ RSpec.describe GoogleAds::AccountInvitation do
           invitation_status: :PENDING,
           creation_date_time: "2024-01-01")
 
-        remote = GoogleAds::AccountInvitation::RemoteInvitation.from_invitation(invitation)
+        remote = GoogleAds::Resources::AccountInvitation::RemoteInvitation.from_invitation(invitation)
 
         expect(remote.pending?).to be true
         expect(remote.accepted?).to be false
@@ -299,7 +299,7 @@ RSpec.describe GoogleAds::AccountInvitation do
       end
 
       it "returns nil when invitation is nil" do
-        expect(GoogleAds::AccountInvitation::RemoteInvitation.from_invitation(nil)).to be_nil
+        expect(GoogleAds::Resources::AccountInvitation::RemoteInvitation.from_invitation(nil)).to be_nil
       end
     end
   end

@@ -91,6 +91,7 @@ module GoogleAdsMocks
       allow(customer).to receive(:time_zone=)
       allow(customer).to receive(:test_account=)
       allow(customer).to receive(:auto_tagging_enabled=)
+      allow(customer).to receive(:status=)
     end
   end
 

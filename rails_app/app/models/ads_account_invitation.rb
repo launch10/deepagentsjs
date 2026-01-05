@@ -23,8 +23,6 @@
 #
 class AdsAccountInvitation < ApplicationRecord
   include PlatformSettings
-  include GoogleMappable
-  include GoogleSyncable
 
   belongs_to :ads_account
 
@@ -42,28 +40,21 @@ class AdsAccountInvitation < ApplicationRecord
   platform_setting :google, :sent_at
   platform_setting :google, :accepted_at
 
-  use_google_sync GoogleAds::AccountInvitation
-  after_google_sync :update_from_sync_result
+  # ═══════════════════════════════════════════════════════════════
+  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
+  # Callback logic (update_record_from_sync_result) is INSIDE the resource
+  # ═══════════════════════════════════════════════════════════════
+
+  def google_sync = GoogleAds::Resources::AccountInvitation.new(self).sync
+  def google_synced? = GoogleAds::Resources::AccountInvitation.new(self).synced?
+  def google_delete = GoogleAds::Resources::AccountInvitation.new(self).delete
+  def google_fetch = GoogleAds::Resources::AccountInvitation.new(self).fetch
+  def google_syncer = GoogleAds::Resources::AccountInvitation.new(self)
+  def google_refresh_status = GoogleAds::Resources::AccountInvitation.new(self).refresh_status
 
   scope :pending, -> { where("platform_settings->>'google'->>'status' = ?", "pending") }
   scope :sent, -> { where("platform_settings->'google'->>'status' = ?", "sent") }
   scope :accepted, -> { where("platform_settings->'google'->>'status' = ?", "accepted") }
-
-  def update_from_sync_result(result)
-    return unless result.resource_name.present?
-
-    if result.resource_type == :customer_user_access_invitation
-      self.google_invitation_id = result.resource_name.split("/").last
-      self.google_status = "sent"
-      self.google_sent_at = Time.current.iso8601
-    elsif result.resource_type == :customer_user_access
-      self.google_user_access_id = result.resource_name.split("/").last
-      self.google_status = "accepted"
-      self.google_accepted_at = Time.current.iso8601
-    end
-
-    save!
-  end
 
   def okay?
     !declined? && !expired?

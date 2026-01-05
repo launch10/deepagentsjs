@@ -19,7 +19,6 @@
 #
 class AdBudget < ApplicationRecord
   include PlatformSettings
-  include GoogleMappable
 
   belongs_to :campaign
 

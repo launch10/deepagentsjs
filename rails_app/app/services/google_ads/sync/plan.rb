@@ -24,7 +24,7 @@ module GoogleAds
       end
 
       def any_changes?
-        creates.any? || updates.any? || deletes.any?
+        operations.any? { |op| op[:action] != :unchanged }
       end
 
       def empty?

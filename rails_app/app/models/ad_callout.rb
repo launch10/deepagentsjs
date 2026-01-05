@@ -24,7 +24,6 @@
 #
 class AdCallout < ApplicationRecord
   include PlatformSettings
-  include GoogleMappable
 
   belongs_to :campaign, class_name: "Campaign", inverse_of: :callouts
   belongs_to :ad_group, class_name: "AdGroup", inverse_of: :callouts

@@ -201,9 +201,6 @@ RSpec.describe AdsAccount, type: :model do
     end
   end
 
-  # NOTE: set_google_customer_id was part of the old GoogleSyncable DSL callback pattern.
-  # This logic is now handled internally by GoogleAds::Resources::Account#sync
-
   describe 'to_google_json' do
     before do
       ads_account.google_descriptive_name = "My Account"
@@ -220,7 +217,6 @@ RSpec.describe AdsAccount, type: :model do
       expect(json[:descriptive_name]).to eq("My Account")
       expect(json[:currency_code]).to eq("USD")
       expect(json[:time_zone]).to eq("America/New_York")
-      expect(json[:status]).to eq("ENABLED")
       expect(json[:auto_tagging_enabled]).to eq(true)
     end
   end

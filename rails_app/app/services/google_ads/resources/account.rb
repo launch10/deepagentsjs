@@ -138,6 +138,15 @@ module GoogleAds
         GoogleAds::Sync::Plan.new(operations)
       end
 
+      def to_google_json
+        {
+          descriptive_name: record.google_descriptive_name,
+          currency_code: record.google_currency_code,
+          time_zone: record.google_time_zone,
+          auto_tagging_enabled: record.google_auto_tagging_enabled
+        }
+      end
+
       private
 
       # ═══════════════════════════════════════════════════════════════
