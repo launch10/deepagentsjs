@@ -89,6 +89,8 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
       describe "GET /projects/:uuid/campaigns/#{substep}" do
         before do
           workflow.update!(step: 'ad_campaign', substep: substep)
+          # Set the campaign stage directly to avoid validation that requires previous stages to be complete
+          campaign.update_column(:stage, substep)
         end
 
         it "renders the Campaign component" do
