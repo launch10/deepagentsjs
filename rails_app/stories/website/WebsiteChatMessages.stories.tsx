@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import WebsiteChatMessages from "@components/website/sidebar/chat/WebsiteChatMessages";
+import { WebsiteChatView } from "@components/website/sidebar/WebsiteChat";
 
 const meta = {
   title: "Landing Page Builder/Sidebar/Chat/Messages",
-  component: WebsiteChatMessages,
+  component: WebsiteChatView,
   tags: ["autodocs"],
   parameters: {
     layout: "centered",
@@ -15,7 +15,7 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof WebsiteChatMessages>;
+} satisfies Meta<typeof WebsiteChatView>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
