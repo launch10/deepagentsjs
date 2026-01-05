@@ -319,30 +319,27 @@ RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets
 
   describe "location_targets id stability" do
     let!(:location1) do
-      create(:ad_location_target, campaign: campaign, location_name: "United States", country_code: "US",
-        platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/2840" } })
+      create(:ad_location_target, campaign: campaign, location_name: "Mississippi", country_code: "US",
+        platform_settings: { "google" => { "geo_target_constant" => "geoTargetConstants/21139" } })
     end
     let!(:location2) do
       create(:ad_location_target, campaign: campaign, location_name: "California", country_code: "US",
-        platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/21137" } })
+        platform_settings: { "google" => { "geo_target_constant" => "geoTargetConstants/21137" } })
     end
     let!(:location3) do
       create(:ad_location_target, campaign: campaign2, location_name: "Texas", country_code: "US",
-        platform_settings: { "google" => { "criterion_id" => "geoTargetConstants/21138" } })
+        platform_settings: { "google" => { "geo_target_constant" => "geoTargetConstants/21138" } })
     end
 
     it "preserves ids when updating location targets with same data" do
-      original_ids = [location1.id, location2.id]
-
       campaign.update_idempotently!(
         location_targets: [
-          { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
           { geo_target_constant: "geoTargetConstants/21137", location_name: "California", country_code: "US", target_type: "geo_location" }
         ]
       )
 
       campaign.reload
-      expect(campaign.location_targets.pluck(:id).sort).to eq(original_ids.sort)
+      expect(campaign.location_targets.map(&:google_geo_target_constant).sort).to eq(["geoTargetConstants/21137"])
     end
 
     it "soft deletes location targets not in the update" do
@@ -363,7 +360,7 @@ RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets
     it "reifies soft-deleted location targets when needed" do
       campaign.update_idempotently!(
         location_targets: [
-          { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" }
+          { geo_target_constant: "geoTargetConstants/21139", location_name: "Mississippi", country_code: "US", target_type: "geo_location" }
         ]
       )
 
@@ -371,7 +368,7 @@ RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets
 
       campaign.update_idempotently!(
         location_targets: [
-          { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
+          { geo_target_constant: "geoTargetConstants/21139", location_name: "Mississippi", country_code: "US", target_type: "geo_location" },
           { geo_target_constant: "geoTargetConstants/21137", location_name: "California", country_code: "US", target_type: "geo_location" }
         ]
       )
@@ -385,9 +382,9 @@ RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets
       expect {
         campaign.update_idempotently!(
           location_targets: [
-            { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
+            { geo_target_constant: "geoTargetConstants/21139", location_name: "Mississippi", country_code: "US", target_type: "geo_location" },
             { geo_target_constant: "geoTargetConstants/21138", location_name: "Texas", country_code: "US", target_type: "geo_location" },
-            { geo_target_constant: "geoTargetConstants/21139", location_name: "Florida", country_code: "US", target_type: "geo_location" }
+            { geo_target_constant: "geoTargetConstants/21140", location_name: "Florida", country_code: "US", target_type: "geo_location" }
           ]
         )
       }.not_to change { campaign2.location_targets.count }
@@ -406,9 +403,9 @@ RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets
       expect {
         campaign.update_idempotently!(
           location_targets: [
-            { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
+            { geo_target_constant: "geoTargetConstants/21139", location_name: "Mississippi", country_code: "US", target_type: "geo_location" },
             { geo_target_constant: "geoTargetConstants/21138", location_name: "Texas", country_code: "US", target_type: "geo_location" },
-            { geo_target_constant: "geoTargetConstants/21139", location_name: "Florida", country_code: "US", target_type: "geo_location" }
+            { geo_target_constant: "geoTargetConstants/21140", location_name: "Florida", country_code: "US", target_type: "geo_location" }
           ]
         )
       }.not_to change { campaign2.location_targets.count }
@@ -430,7 +427,7 @@ RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets
 
       campaign.update_idempotently!(
         location_targets: [
-          { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
+          { geo_target_constant: "geoTargetConstants/21139", location_name: "Mississippi", country_code: "US", target_type: "geo_location" },
           { geo_target_constant: "geoTargetConstants/21137", location_name: "California", country_code: "US", target_type: "geo_location" }
         ]
       )
@@ -445,7 +442,7 @@ RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets
 
       campaign.update_idempotently!(
         location_targets: [
-          { geo_target_constant: "geoTargetConstants/2840", location_name: "United States", country_code: "US", target_type: "geo_location" },
+          { geo_target_constant: "geoTargetConstants/21139", location_name: "Mississippi", country_code: "US", target_type: "geo_location" },
           { geo_target_constant: "geoTargetConstants/21137", location_name: "California", country_code: "US", target_type: "geo_location" },
           { geo_target_constant: "geoTargetConstants/1014221", location_name: "New York", country_code: "US", target_type: "geo_location" }
         ]

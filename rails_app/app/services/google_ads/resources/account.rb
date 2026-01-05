@@ -64,6 +64,26 @@ module GoogleAds
         GoogleAds::SyncResult.error(:customer, e)
       end
 
+      # Returns a SyncResult representing the current sync state without performing any sync.
+      # Used by account verification to check if remote customer exists and matches local.
+      def sync_result
+        remote = fetch
+        return GoogleAds::SyncResult.not_found(:customer) unless remote
+        return GoogleAds::SyncResult.not_found(:customer) if remote.status == :CANCELED
+
+        if fields_match?(remote)
+          GoogleAds::SyncResult.unchanged(:customer, customer_id)
+        else
+          comparison = compare_fields(remote)
+          GoogleAds::SyncResult.error(
+            :customer,
+            GoogleAds::SyncVerificationError.new(
+              "Account sync verification failed. Mismatched fields: #{comparison.failures.join(', ')}"
+            )
+          )
+        end
+      end
+
       def delete
         return GoogleAds::SyncResult.not_found(:customer) unless customer_id.present?
 

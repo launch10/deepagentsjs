@@ -51,7 +51,7 @@ RSpec.describe "Domains API", type: :request do
         let(:domain_params) do
           {
             domain: {
-              domain: 'mysite.launch10.ai',
+              domain: 'mysite.launch10.site',
               website_id: website1_owned.id,
               is_platform_subdomain: true
             }
@@ -60,7 +60,7 @@ RSpec.describe "Domains API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['domain']).to eq('mysite.launch10.ai')
+          expect(data['domain']).to eq('mysite.launch10.site')
           expect(data['account_id']).to eq(user1_owned_account.id)
           expect(data['website_id']).to eq(website1_owned.id)
           expect(data['is_platform_subdomain']).to eq(true)
@@ -75,7 +75,7 @@ RSpec.describe "Domains API", type: :request do
         let(:domain_params) do
           {
             domain: {
-              domain: 'team-site.launch10.ai',
+              domain: 'team-site.launch10.site',
               website_id: website1_team.id,
               is_platform_subdomain: true
             }
@@ -88,7 +88,7 @@ RSpec.describe "Domains API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['domain']).to eq('team-site.launch10.ai')
+          expect(data['domain']).to eq('team-site.launch10.site')
           expect(data['account_id']).to eq(user1_team_account.id)
         end
       end
@@ -98,7 +98,7 @@ RSpec.describe "Domains API", type: :request do
         let(:domain_params) do
           {
             domain: {
-              domain: 'test.launch10.ai'
+              domain: 'test.launch10.site'
             }
           }
         end
@@ -115,7 +115,7 @@ RSpec.describe "Domains API", type: :request do
         let(:domain_params) do
           {
             domain: {
-              domain: 'site4.launch10.ai',
+              domain: 'site4.launch10.site',
               is_platform_subdomain: true
             }
           }
@@ -123,7 +123,7 @@ RSpec.describe "Domains API", type: :request do
 
         before do
           3.times do |i|
-            create(:domain, :platform_subdomain, account: user1_owned_account, domain: "existing#{i}.launch10.ai")
+            create(:domain, :platform_subdomain, account: user1_owned_account, domain: "existing#{i}.launch10.site")
           end
         end
 
@@ -143,10 +143,10 @@ RSpec.describe "Domains API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
       parameter name: :website_id, in: :query, type: :integer, required: false, description: 'Filter by website ID'
 
-      let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.ai', account: user1_owned_account, website: website1_owned) }
-      let!(:domain2_owned) { create(:domain, domain: 'site2.launch10.ai', account: user1_owned_account, website: website1_owned) }
-      let!(:domain1_team) { create(:domain, domain: 'team1.launch10.ai', account: user1_team_account, website: website1_team) }
-      let!(:domain2_other) { create(:domain, domain: 'other.launch10.ai', account: user2_owned_account, website: website2_owned) }
+      let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.site', account: user1_owned_account, website: website1_owned) }
+      let!(:domain2_owned) { create(:domain, domain: 'site2.launch10.site', account: user1_owned_account, website: website1_owned) }
+      let!(:domain1_team) { create(:domain, domain: 'team1.launch10.site', account: user1_team_account, website: website1_team) }
+      let!(:domain2_other) { create(:domain, domain: 'other.launch10.site', account: user2_owned_account, website: website2_owned) }
 
       before do
         switch_account_to(user1_owned_account)
@@ -162,8 +162,8 @@ RSpec.describe "Domains API", type: :request do
           data = JSON.parse(response.body)
           expect(data['domains'].length).to eq(2)
           domain_names = data['domains'].map { |d| d['domain'] }
-          expect(domain_names).to include('site1.launch10.ai', 'site2.launch10.ai')
-          expect(domain_names).not_to include('team1.launch10.ai', 'other.launch10.ai')
+          expect(domain_names).to include('site1.launch10.site', 'site2.launch10.site')
+          expect(domain_names).not_to include('team1.launch10.site', 'other.launch10.site')
         end
       end
 
@@ -180,7 +180,7 @@ RSpec.describe "Domains API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['domains'].length).to eq(1)
-          expect(data['domains'].first['domain']).to eq('team1.launch10.ai')
+          expect(data['domains'].first['domain']).to eq('team1.launch10.site')
         end
       end
 
@@ -221,9 +221,9 @@ RSpec.describe "Domains API", type: :request do
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
-      let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.ai', account: user1_owned_account, website: website1_owned) }
-      let!(:domain1_team) { create(:domain, domain: 'team1.launch10.ai', account: user1_team_account, website: website1_team) }
-      let!(:domain2_other) { create(:domain, domain: 'other.launch10.ai', account: user2_owned_account, website: website2_owned) }
+      let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.site', account: user1_owned_account, website: website1_owned) }
+      let!(:domain1_team) { create(:domain, domain: 'team1.launch10.site', account: user1_team_account, website: website1_team) }
+      let!(:domain2_other) { create(:domain, domain: 'other.launch10.site', account: user2_owned_account, website: website2_owned) }
 
       before do
         switch_account_to(user1_owned_account)
@@ -239,7 +239,7 @@ RSpec.describe "Domains API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['id']).to eq(domain1_owned.id)
-          expect(data['domain']).to eq('site1.launch10.ai')
+          expect(data['domain']).to eq('site1.launch10.site')
         end
       end
 
@@ -281,7 +281,7 @@ RSpec.describe "Domains API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['id']).to eq(domain1_team.id)
-          expect(data['domain']).to eq('team1.launch10.ai')
+          expect(data['domain']).to eq('team1.launch10.site')
         end
       end
     end

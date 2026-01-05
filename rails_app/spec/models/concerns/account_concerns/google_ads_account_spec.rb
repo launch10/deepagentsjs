@@ -83,7 +83,7 @@ RSpec.describe AccountConcerns::GoogleAdsAccount do
 
       it 'returns a SyncResult' do
         result = account.verify_google_ads_account
-        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+        expect(result).to be_a(GoogleAds::SyncResult)
       end
     end
 
@@ -140,7 +140,7 @@ RSpec.describe AccountConcerns::GoogleAdsAccount do
 
       it 'returns a SyncResult' do
         result = account.create_google_ads_account
-        expect(result).to be_a(GoogleAds::Sync::SyncResult)
+        expect(result).to be_a(GoogleAds::SyncResult)
       end
 
       it 'enables auto-tagging after creation' do
@@ -157,6 +157,12 @@ RSpec.describe AccountConcerns::GoogleAdsAccount do
             mock_search_response_with_customer(customer_id: 123, descriptive_name: "Test Account", auto_tagging_enabled: true),
             mock_search_response_with_customer(customer_id: 123, descriptive_name: "Test Account", auto_tagging_enabled: true)
           )
+        # Mock update_resource.customer for when sync needs to update
+        allow(@mock_update_resource).to receive(:customer)
+          .and_yield(double.as_null_object)
+          .and_return(mock_auto_tagging_operation)
+        allow(@mock_customer_service).to receive(:mutate_customer)
+          .and_return(mock_mutate_customer_response_auto_tagging)
       end
 
       it 'does not create a new customer client' do
@@ -178,6 +184,12 @@ RSpec.describe AccountConcerns::GoogleAdsAccount do
             mock_search_response_with_customer(customer_id: 123, descriptive_name: "Test Account", auto_tagging_enabled: true),
             mock_search_response_with_customer(customer_id: 123, descriptive_name: "Test Account", auto_tagging_enabled: true)
           )
+        # Mock update_resource.customer for when sync needs to update
+        allow(@mock_update_resource).to receive(:customer)
+          .and_yield(double.as_null_object)
+          .and_return(mock_auto_tagging_operation)
+        allow(@mock_customer_service).to receive(:mutate_customer)
+          .and_return(mock_mutate_customer_response_auto_tagging)
       end
 
       it 'skips creation' do
