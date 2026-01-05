@@ -385,8 +385,8 @@ class GoogleAdsE2ETest
       callout_text = callout.text
       callout.destroy
 
-      syncer = GoogleAds::Callouts.new(@campaign)
-      syncer.sync
+      # Use collection sync which handles soft-deleted callouts
+      @campaign.sync_callouts
 
       callout.reload
       if callout.google_asset_id.nil?

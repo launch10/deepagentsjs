@@ -53,7 +53,7 @@ class Campaign < ApplicationRecord
   use_google_sync GoogleAds::Campaign
   use_google_collection_sync :location_targets, GoogleAds::LocationTargets
   # ad_schedules uses class methods on GoogleAds::Resources::AdSchedule (single-file colocation)
-  use_google_collection_sync :callouts, GoogleAds::Callouts
+  # callouts uses class methods on GoogleAds::Resources::Callout (single-file colocation)
   use_google_collection_sync :structured_snippets, GoogleAds::StructuredSnippets
 
   # ═══════════════════════════════════════════════════════════════
@@ -90,6 +90,14 @@ class Campaign < ApplicationRecord
   def sync_budget = GoogleAds::Resources::Budget.sync_all(self)
   def budget_synced? = GoogleAds::Resources::Budget.synced?(self)
   def budget_sync_plan = GoogleAds::Resources::Budget.sync_plan(self)
+
+  # ═══════════════════════════════════════════════════════════════
+  # Callouts Sync - Class Method Pattern (collection)
+  # ═══════════════════════════════════════════════════════════════
+
+  def sync_callouts = GoogleAds::Resources::Callout.sync_all(self)
+  def callouts_synced? = GoogleAds::Resources::Callout.synced?(self)
+  def callouts_sync_plan = GoogleAds::Resources::Callout.sync_plan(self)
 
   after_google_sync do |result|
     if result.resource_name.present?

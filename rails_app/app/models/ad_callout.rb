@@ -25,23 +25,25 @@
 class AdCallout < ApplicationRecord
   include PlatformSettings
   include GoogleMappable
-  include GoogleSyncable
 
   belongs_to :campaign, class_name: "Campaign", inverse_of: :callouts
   belongs_to :ad_group, class_name: "AdGroup", inverse_of: :callouts
 
   platform_setting :google, :asset_id
 
-  use_google_sync GoogleAds::Callout
-  after_google_sync do |result|
-    if result.resource_name.present?
-      asset_id = result.resource_name.split("/").last
-      update_column(:platform_settings, platform_settings.deep_merge("google" => { "asset_id" => asset_id }))
-    end
-  end
-
   validates :text, presence: true, length: { maximum: 25 }
   validates :position, presence: true
 
   acts_as_paranoid
+
+  # ═══════════════════════════════════════════════════════════════
+  # GOOGLE SYNC (explicit one-liner delegations, no DSL magic)
+  # Callback logic (save_asset_id) is INSIDE the resource
+  # ═══════════════════════════════════════════════════════════════
+
+  def google_sync = GoogleAds::Resources::Callout.new(self).sync
+  def google_synced? = GoogleAds::Resources::Callout.new(self).synced?
+  def google_delete = GoogleAds::Resources::Callout.new(self).delete
+  def google_fetch = GoogleAds::Resources::Callout.new(self).fetch
+  def google_syncer = GoogleAds::Resources::Callout.new(self)
 end
