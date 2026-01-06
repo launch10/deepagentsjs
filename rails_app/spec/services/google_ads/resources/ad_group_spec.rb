@@ -153,8 +153,7 @@ RSpec.describe GoogleAds::Resources::AdGroup do
         name: "Remote Ad Group",
         status: :ENABLED,
         type: :DISPLAY_STANDARD,
-        cpc_bid_micros: 2_000_000
-      )
+        cpc_bid_micros: 2_000_000)
     end
 
     it 'returns hash of remote field values in local format' do
@@ -182,8 +181,7 @@ RSpec.describe GoogleAds::Resources::AdGroup do
         name: "Test Ad Group",
         status: :PAUSED,
         type: :SEARCH_STANDARD,
-        cpc_bid_micros: 1_000_000
-      )
+        cpc_bid_micros: 1_000_000)
     end
 
     it 'returns FieldCompare instance' do
@@ -201,8 +199,7 @@ RSpec.describe GoogleAds::Resources::AdGroup do
         name: "Different Name",
         status: :PAUSED,
         type: :SEARCH_STANDARD,
-        cpc_bid_micros: 1_000_000
-      )
+        cpc_bid_micros: 1_000_000)
 
       result = ad_group_syncer.compare_fields(mismatched_remote)
       expect(result.match?).to be false
@@ -214,8 +211,7 @@ RSpec.describe GoogleAds::Resources::AdGroup do
         name: "Test Ad Group",
         status: :ENABLED,
         type: :SEARCH_STANDARD,
-        cpc_bid_micros: 1_000_000
-      )
+        cpc_bid_micros: 1_000_000)
 
       result = ad_group_syncer.compare_fields(mismatched_remote)
       expect(result.match?).to be false

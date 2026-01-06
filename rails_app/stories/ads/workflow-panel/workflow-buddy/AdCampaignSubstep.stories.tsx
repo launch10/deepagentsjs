@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import AdCampaignSubstep from "@components/ads/sidebar/workflow-buddy/AdCampaignSubstep";
+import AdCampaignSubstep from "@components/ads/workflow-panel/workflow-buddy/AdCampaignSubstep";
 
 const meta = {
   title: "Ad Campaign/Components/Step/Substep",

@@ -111,10 +111,10 @@ class TestAccountCleanup
 
     accounts.each do |account|
       status_icon = case account[:status]
-                    when :ENABLED then "🟢"
-                    when :CANCELED, :CLOSED then "🔴"
-                    else "⚪"
-                    end
+      when :ENABLED then "🟢"
+      when :CANCELED, :CLOSED then "🔴"
+      else "⚪"
+      end
 
       test_badge = account[:test_account] ? " [TEST]" : ""
       puts "  #{status_icon} #{account[:id]}: #{account[:name]} (#{account[:status]})#{test_badge}"

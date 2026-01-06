@@ -659,14 +659,20 @@ export interface components {
                 text?: string;
             }[] | null;
             location_targets?: {
-                target_type?: string;
-                targeted?: boolean;
-                geo_target_constant?: string | null;
-                location_name?: string | null;
-                location_type?: string | null;
+                criteria_id?: number | null;
+                name?: string | null;
+                target_type?: string | null;
                 country_code?: string | null;
+                targeted?: boolean;
+                ad_location_target_type?: string | null;
+                address_line_1?: string | null;
+                city?: string | null;
+                state?: string | null;
+                postal_code?: string | null;
                 radius?: number | null;
                 radius_units?: string | null;
+                latitude?: number | null;
+                longitude?: number | null;
             }[] | null;
             callouts?: {
                 id?: number;
@@ -756,14 +762,20 @@ export interface components {
                 text?: string;
             }[] | null;
             location_targets?: {
-                target_type?: string;
-                targeted?: boolean;
-                geo_target_constant?: string | null;
-                location_name?: string | null;
-                location_type?: string | null;
+                criteria_id?: number | null;
+                name?: string | null;
+                target_type?: string | null;
                 country_code?: string | null;
+                targeted?: boolean;
+                ad_location_target_type?: string | null;
+                address_line_1?: string | null;
+                city?: string | null;
+                state?: string | null;
+                postal_code?: string | null;
                 radius?: number | null;
                 radius_units?: string | null;
+                latitude?: number | null;
+                longitude?: number | null;
             }[] | null;
             callouts?: {
                 id?: number;

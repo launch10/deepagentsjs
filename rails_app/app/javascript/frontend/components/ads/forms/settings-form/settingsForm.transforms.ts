@@ -72,11 +72,11 @@ export function transformLocationsFromApi(
 ): LocationWithSettings[] {
   if (!locations || locations.length === 0) return [];
 
-  // Backend now returns GeoTargetConstant format directly
+  // Filter out radius targets (they don't have criteria_id) and map geo locations
   return locations
-    .filter((loc) => loc.criteria_id)
+    .filter((loc) => loc.criteria_id != null)
     .map((loc) => ({
-      criteria_id: loc.criteria_id,
+      criteria_id: loc.criteria_id!,
       name: loc.name || "",
       canonical_name: loc.name || "",
       target_type: loc.target_type || "Country",
@@ -114,7 +114,9 @@ export function transformScheduleFromApi(
       selectedDays: ["Mon", "Tues", "Wed", "Thu", "Fri", "Sat", "Sun", "Always On"],
       startTime: "00:00",
       endTime: "23:59",
-      timezone: (schedule.time_zone && REVERSE_TIMEZONE_MAP[schedule.time_zone]) || settingsFormDefaults.timezone,
+      timezone:
+        (schedule.time_zone && REVERSE_TIMEZONE_MAP[schedule.time_zone]) ||
+        settingsFormDefaults.timezone,
     };
   }
 
@@ -125,7 +127,9 @@ export function transformScheduleFromApi(
     selectedDays: selectedDays.length > 0 ? selectedDays : settingsFormDefaults.selectedDays,
     startTime: parseTimeToHHMM(schedule.start_time ?? null),
     endTime: parseTimeToHHMM(schedule.end_time ?? null),
-    timezone: (schedule.time_zone && REVERSE_TIMEZONE_MAP[schedule.time_zone]) || settingsFormDefaults.timezone,
+    timezone:
+      (schedule.time_zone && REVERSE_TIMEZONE_MAP[schedule.time_zone]) ||
+      settingsFormDefaults.timezone,
   };
 }
 

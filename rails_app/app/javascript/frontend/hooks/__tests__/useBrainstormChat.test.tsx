@@ -60,16 +60,18 @@ const createMockComposer = (overrides: Partial<MockComposer> = {}): MockComposer
 const mockSendMessage = vi.fn();
 
 // Create a mock snapshot factory
-const createMockSnapshot = (overrides: Partial<{
-  messages: any[];
-  state: Partial<BrainstormGraphState>;
-  status: string;
-  isLoading: boolean;
-  isLoadingHistory: boolean;
-  threadId: string | null;
-  composer: ReturnType<typeof createMockComposer>;
-  actions: { sendMessage: typeof mockSendMessage; [key: string]: any };
-}> = {}) => ({
+const createMockSnapshot = (
+  overrides: Partial<{
+    messages: any[];
+    state: Partial<BrainstormGraphState>;
+    status: string;
+    isLoading: boolean;
+    isLoadingHistory: boolean;
+    threadId: string | null;
+    composer: ReturnType<typeof createMockComposer>;
+    actions: { sendMessage: typeof mockSendMessage; [key: string]: any };
+  }> = {}
+) => ({
   messages: [],
   state: {
     currentTopic: "idea",
@@ -187,7 +189,7 @@ describe("useBrainstormChat", () => {
       // Override usePage to return no thread_id (new conversation)
       mockUsePage.mockReturnValue({
         props: {
-          thread_id: undefined,
+          thread_id: null as any,
           jwt: "test-jwt-token",
           langgraph_path: "http://localhost:3001",
         },

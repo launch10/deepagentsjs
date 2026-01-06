@@ -1,4 +1,6 @@
 import { Button } from "@components/ui/button";
+import { TextShimmer } from "@components/ui/text-shimmer";
+import { useAdsChatIsStreaming } from "@components/ads/hooks";
 import { Sparkles } from "lucide-react";
 import { cn } from "@lib/utils";
 
@@ -10,6 +12,8 @@ export default function RefreshSuggestionsButton({
   className,
   onClick,
 }: RefreshSuggestionsButtonProps) {
+  const isStreaming = useAdsChatIsStreaming();
+
   return (
     <Button
       type="button"
@@ -18,7 +22,8 @@ export default function RefreshSuggestionsButton({
       onClick={onClick}
       data-testid="refresh-suggestions-button"
     >
-      <Sparkles /> Refresh Suggestions
+      <Sparkles />{" "}
+      {isStreaming ? <TextShimmer>Refresh Suggestions</TextShimmer> : "Refresh Suggestions"}
     </Button>
   );
 }

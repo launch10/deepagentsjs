@@ -325,7 +325,7 @@ RSpec.describe GoogleAds::Resources::StructuredSnippet do
         mock_campaign_asset = mock_campaign_asset_resource
         allow(mock_create_resource).to receive(:campaign_asset).and_yield(mock_campaign_asset)
 
-        mutate_campaign_asset_response = mock_mutate_campaign_asset_response(
+        mock_mutate_campaign_asset_response(
           asset_id: 99999,
           campaign_id: 789,
           customer_id: 1234567890

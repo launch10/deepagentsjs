@@ -69,10 +69,10 @@ module GoogleAds
 
     # Pretty print for console debugging
     def inspect_diff
-      lines = ["FieldCompare (#{match? ? 'MATCH' : 'MISMATCH'})"]
+      lines = ["FieldCompare (#{match? ? "MATCH" : "MISMATCH"})"]
 
       if @skipped.any?
-        lines << "  Skipped: #{@skipped.join(', ')}"
+        lines << "  Skipped: #{@skipped.join(", ")}"
       end
 
       @comparisons.each do |field, data|

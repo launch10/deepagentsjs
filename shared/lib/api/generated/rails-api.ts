@@ -602,15 +602,18 @@ export interface paths {
                             values?: string[];
                             _destroy?: boolean;
                         };
+                        /** @description Location targets in GeoTargetConstant format */
                         location_targets?: {
+                            /** @description Google's geo target constant ID */
+                            criteria_id?: number;
+                            /** @description Location name */
+                            name?: string;
+                            /** @description Location type (Country, City, etc.) */
                             target_type?: string;
-                            location_name?: string;
-                            location_type?: string;
+                            /** @description Two-letter country code */
                             country_code?: string;
+                            /** @description Whether to target or exclude */
                             targeted?: boolean;
-                            google_criterion_id?: string;
-                            radius?: number;
-                            radius_units?: string;
                         }[];
                         ad_schedules?: {
                             /** @description Whether the campaign runs 24/7 */
@@ -1292,8 +1295,8 @@ export interface paths {
                         "application/json": {
                             /** @description Type of workflow */
                             workflow_type: string;
-                            /** @description Current step in the workflow */
-                            step: string;
+                            /** @description Current page in the workflow */
+                            page: string;
                             /** @description Current substep in the workflow */
                             substep?: string | null;
                             /** @description Progress percentage (0-100) */
@@ -1367,8 +1370,8 @@ export interface paths {
                         "application/json": {
                             /** @description Type of workflow */
                             workflow_type: string;
-                            /** @description Current step in the workflow */
-                            step: string;
+                            /** @description Current page in the workflow */
+                            page: string;
                             /** @description Current substep in the workflow */
                             substep?: string | null;
                             /** @description Progress percentage (0-100) */
@@ -2243,6 +2246,10 @@ export interface paths {
                     website_id?: number;
                     /** @description Filter by logo status (true for logos, false for product images) */
                     is_logo?: boolean;
+                    /** @description Sort order (recent for created_at desc) */
+                    order?: string;
+                    /** @description Limit number of results */
+                    limit?: number;
                 };
                 header?: {
                     Authorization?: string;
@@ -2254,7 +2261,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description returns team account uploads after switching */
+                /** @description returns uploads with order=recent and limit combined */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2791,7 +2798,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description project not found */
+                /** @description website not found for project */
                 404: {
                     headers: {
                         [name: string]: unknown;

@@ -133,7 +133,7 @@ module GoogleAds
           GoogleAds::SyncResult.error(
             :ad_group_ad,
             GoogleAds::SyncVerificationError.new(
-              "Ad sync verification failed. Mismatched fields: #{comparison.failures.join(', ')}"
+              "Ad sync verification failed. Mismatched fields: #{comparison.failures.join(", ")}"
             )
           )
         end
@@ -143,13 +143,13 @@ module GoogleAds
         operations = []
 
         remote = fetch
-        if remote.nil?
-          operations << { action: :create, record: record }
+        operations << if remote.nil?
+          { action: :create, record: record }
         elsif !fields_match?(remote)
           # Only status can be updated in-place
-          operations << { action: :update, record: record, fields: [:status] }
+          { action: :update, record: record, fields: [:status] }
         else
-          operations << { action: :unchanged, record: record }
+          { action: :unchanged, record: record }
         end
 
         Sync::Plan.new(operations)

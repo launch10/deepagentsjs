@@ -50,7 +50,7 @@ module GoogleAds
           results = []
 
           # Delete soft-deleted budget with Google ID
-          if campaign.budget&.deleted? && campaign.budget&.google_budget_id
+          if campaign.budget&.deleted? && campaign.budget.google_budget_id
             results << new(campaign.budget).delete
           end
 
@@ -65,7 +65,7 @@ module GoogleAds
           operations = []
 
           # Plan deletion for soft-deleted budget
-          if campaign.budget&.deleted? && campaign.budget&.google_budget_id
+          if campaign.budget&.deleted? && campaign.budget.google_budget_id
             operations << {
               action: :delete,
               record: campaign.budget,
@@ -119,7 +119,7 @@ module GoogleAds
           GoogleAds::SyncResult.error(
             :campaign_budget,
             GoogleAds::SyncVerificationError.new(
-              "Budget sync verification failed. Mismatched fields: #{comparison.failures.join(', ')}"
+              "Budget sync verification failed. Mismatched fields: #{comparison.failures.join(", ")}"
             )
           )
         end

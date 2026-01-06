@@ -54,7 +54,7 @@ RSpec.describe 'Campaign AdSchedule Google Integration' do
           end_time: '5:00pm'
         )
 
-        result = campaign.sync_ad_schedules
+        campaign.sync_ad_schedules
 
         # Verify local state changed
         expect(campaign.ad_schedules.reload.count).to eq(2)
@@ -90,7 +90,7 @@ RSpec.describe 'Campaign AdSchedule Google Integration' do
           end_time: '5:00pm'
         )
 
-        result = campaign.sync_ad_schedules
+        campaign.sync_ad_schedules
 
         expect(campaign.ad_schedules.reload.count).to eq(1)
         expect(campaign.ad_schedules.first.day_of_week).to eq('Monday')
@@ -143,7 +143,7 @@ RSpec.describe 'Campaign AdSchedule Google Integration' do
           .and_return(mock_mutate_campaign_criterion_response)
 
         campaign.update_ad_schedules(always_on: true)
-        result = campaign.sync_ad_schedules
+        campaign.sync_ad_schedules
 
         # Verify local state is always_on
         expect(campaign.ad_schedules.reload.count).to eq(1)
@@ -175,7 +175,7 @@ RSpec.describe 'Campaign AdSchedule Google Integration' do
           .and_return(mock_mutate_campaign_criterion_response)
 
         campaign.update_ad_schedules(always_on: true)
-        result = campaign.sync_ad_schedules
+        campaign.sync_ad_schedules
 
         expect(campaign.always_on?).to be true
       end
@@ -223,7 +223,7 @@ RSpec.describe 'Campaign AdSchedule Google Integration' do
         end_time: '6:00pm'      # Changed!
       )
 
-      result = campaign.sync_ad_schedules
+      campaign.sync_ad_schedules
 
       # Local schedule should have new times
       schedule = campaign.ad_schedules.reload.first
@@ -274,7 +274,7 @@ RSpec.describe 'Campaign AdSchedule Google Integration' do
         end_time: '5:00pm'
       )
 
-      result = campaign.sync_ad_schedules
+      campaign.sync_ad_schedules
 
       expect(campaign.ad_schedules.reload.count).to eq(2)
     end
@@ -322,7 +322,7 @@ RSpec.describe 'Campaign AdSchedule Google Integration' do
         end_time: '5:00pm'
       )
 
-      result = campaign.sync_ad_schedules
+      campaign.sync_ad_schedules
 
       # Local: only Monday remains (Tuesday soft-deleted)
       expect(campaign.ad_schedules.reload.count).to eq(1)

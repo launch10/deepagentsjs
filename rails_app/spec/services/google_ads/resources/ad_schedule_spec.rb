@@ -1112,8 +1112,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           campaign: campaign,
           day_of_week: "Tuesday",
           start_hour: 9, start_minute: 0,
-          end_hour: 17, end_minute: 0
-        ).tap do |s|
+          end_hour: 17, end_minute: 0).tap do |s|
           s.update_column(:platform_settings, { "google" => { "criterion_id" => 111 } })
         end
       end
@@ -1123,8 +1122,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           campaign: campaign,
           day_of_week: "Wednesday",
           start_hour: 9, start_minute: 0,
-          end_hour: 17, end_minute: 0
-        ).tap do |s|
+          end_hour: 17, end_minute: 0).tap do |s|
           s.update_column(:platform_settings, { "google" => { "criterion_id" => 222 } })
         end
       end
@@ -1142,8 +1140,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           campaign: campaign,
           day_of_week: "Monday",
           start_hour: 8, start_minute: 0,
-          end_hour: 18, end_minute: 0
-        )
+          end_hour: 18, end_minute: 0)
 
         # Mock Google responses for the schedules that exist
         # Wednesday: Google still has old times (9-5), so it's a mismatch
@@ -1211,8 +1208,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           campaign: campaign,
           day_of_week: "Monday",
           start_hour: 9, start_minute: 0,
-          end_hour: 17, end_minute: 0
-        ).tap do |s|
+          end_hour: 17, end_minute: 0).tap do |s|
           s.update_column(:platform_settings, { "google" => { "criterion_id" => 333 } })
         end
       end
@@ -1250,8 +1246,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           campaign: campaign,
           day_of_week: "Monday",
           start_hour: 9, start_minute: 0,
-          end_hour: 17, end_minute: 0
-        )
+          end_hour: 17, end_minute: 0)
         # No google_criterion_id set
       end
 
@@ -1273,8 +1268,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           campaign: campaign,
           day_of_week: "Monday",
           start_hour: 9, start_minute: 0,
-          end_hour: 17, end_minute: 0
-        ).tap do |s|
+          end_hour: 17, end_minute: 0).tap do |s|
           s.update_column(:platform_settings, { "google" => { "criterion_id" => 444 } })
         end
       end
@@ -1327,8 +1321,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           campaign: campaign,
           day_of_week: "Tuesday",
           start_hour: 9, start_minute: 0,
-          end_hour: 17, end_minute: 0
-        ).tap do |s|
+          end_hour: 17, end_minute: 0).tap do |s|
           s.update_column(:platform_settings, { "google" => { "criterion_id" => 111 } })
           s.destroy  # Soft delete
         end
@@ -1356,8 +1349,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           campaign: campaign,
           day_of_week: "Monday",
           start_hour: 9, start_minute: 0,
-          end_hour: 17, end_minute: 0
-        )
+          end_hour: 17, end_minute: 0)
         # No google_criterion_id - needs creation
       end
 
@@ -1385,8 +1377,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           campaign: campaign,
           day_of_week: "Tuesday",
           start_hour: 9, start_minute: 0,
-          end_hour: 17, end_minute: 0
-        ).tap do |s|
+          end_hour: 17, end_minute: 0).tap do |s|
           s.update_column(:platform_settings, { "google" => { "criterion_id" => 111 } })
           s.destroy
         end
@@ -1397,8 +1388,7 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
           campaign: campaign,
           day_of_week: "Monday",
           start_hour: 9, start_minute: 0,
-          end_hour: 17, end_minute: 0
-        )
+          end_hour: 17, end_minute: 0)
       end
 
       it 'handles both deletions and creates in correct order' do

@@ -131,7 +131,6 @@ class AdLocationTarget < ApplicationRecord
     platform_settings["google"]["geo_target_constant"] = normalized
   end
 
-
   # Auto-upcase radius_units
   def radius_units=(value)
     super(value&.upcase)
@@ -238,11 +237,9 @@ class AdLocationTarget < ApplicationRecord
       if other_geo_targets.any?
         errors.add(:google_geo_target_constant, "United States cannot be added when more specific locations are targeted")
       end
-    else
+    elsif other_geo_targets.any? { |t| t.google_geo_target_constant == us_geo_target }
       # Adding non-US - check if US exists
-      if other_geo_targets.any? { |t| t.google_geo_target_constant == us_geo_target }
-        errors.add(:google_geo_target_constant, "cannot add specific locations when United States is already targeted")
-      end
+      errors.add(:google_geo_target_constant, "cannot add specific locations when United States is already targeted")
     end
   end
 end

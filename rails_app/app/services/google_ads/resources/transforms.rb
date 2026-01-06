@@ -49,7 +49,7 @@ module GoogleAds
       # Local: "active", "paused", etc.
       # Google: :ENABLED, :PAUSED, etc.
       STATUS_TO_GOOGLE = ->(status) { (status == "active") ? :ENABLED : :PAUSED }
-      GOOGLE_TO_STATUS = ->(sym) { sym == :ENABLED ? "active" : "paused" }
+      GOOGLE_TO_STATUS = ->(sym) { (sym == :ENABLED) ? "active" : "paused" }
 
       # Match type transforms (for keywords)
       MATCH_TYPE_TO_SYMBOL = ->(match_type) { match_type.upcase.to_sym }
