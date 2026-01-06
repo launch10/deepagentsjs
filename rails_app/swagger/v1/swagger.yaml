@@ -981,25 +981,25 @@ paths:
                       type: boolean
                 location_targets:
                   type: array
+                  description: Location targets in GeoTargetConstant format
                   items:
                     type: object
                     properties:
+                      criteria_id:
+                        type: integer
+                        description: Google's geo target constant ID
+                      name:
+                        type: string
+                        description: Location name
                       target_type:
                         type: string
-                      location_name:
-                        type: string
-                      location_type:
-                        type: string
+                        description: Location type (Country, City, etc.)
                       country_code:
                         type: string
+                        description: Two-letter country code
                       targeted:
                         type: boolean
-                      google_criterion_id:
-                        type: string
-                      radius:
-                        type: number
-                      radius_units:
-                        type: string
+                        description: Whether to target or exclude
                 ad_schedules:
                   type: object
                   properties:
@@ -1594,9 +1594,9 @@ paths:
                   workflow_type:
                     type: string
                     description: Type of workflow
-                  step:
+                  page:
                     type: string
-                    description: Current step in the workflow
+                    description: Current page in the workflow
                   substep:
                     type: string
                     nullable: true
@@ -1611,7 +1611,7 @@ paths:
                     description: List of available steps in this workflow
                 required:
                 - workflow_type
-                - step
+                - page
                 - progress
                 - available_steps
         '404':
@@ -1684,9 +1684,9 @@ paths:
                   workflow_type:
                     type: string
                     description: Type of workflow
-                  step:
+                  page:
                     type: string
-                    description: Current step in the workflow
+                    description: Current page in the workflow
                   substep:
                     type: string
                     nullable: true
@@ -1701,7 +1701,7 @@ paths:
                     description: List of available steps in this workflow
                 required:
                 - workflow_type
-                - step
+                - page
                 - progress
                 - available_steps
         '422':
@@ -2754,9 +2754,21 @@ paths:
         description: Filter by logo status (true for logos, false for product images)
         schema:
           type: boolean
+      - name: order
+        in: query
+        required: false
+        description: Sort order (recent for created_at desc)
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        description: Limit number of results
+        schema:
+          type: integer
       responses:
         '200':
-          description: returns team account uploads after switching
+          description: returns uploads with order=recent and limit combined
           content:
             application/json:
               schema:
@@ -3251,7 +3263,7 @@ paths:
         '401':
           description: unauthorized - missing token
         '404':
-          description: project not found
+          description: website not found for project
     patch:
       summary: Cannot update other account website
       tags:

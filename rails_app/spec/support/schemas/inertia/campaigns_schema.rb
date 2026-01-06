@@ -120,14 +120,22 @@ module InertiaSchemas
             type: :object,
             additionalProperties: false,
             properties: {
-              target_type: { type: :string },
-              targeted: { type: :boolean },
-              geo_target_constant: { type: :string, nullable: true },
-              location_name: { type: :string, nullable: true },
-              location_type: { type: :string, nullable: true },
+              # Geo location fields (from GeoTargetConstant format)
+              criteria_id: { type: :integer, nullable: true },
+              name: { type: :string, nullable: true },
+              target_type: { type: :string, nullable: true },
               country_code: { type: :string, nullable: true },
+              targeted: { type: :boolean },
+              # Radius target fields
+              ad_location_target_type: { type: :string, nullable: true },
+              address_line_1: { type: :string, nullable: true },
+              city: { type: :string, nullable: true },
+              state: { type: :string, nullable: true },
+              postal_code: { type: :string, nullable: true },
               radius: { type: :number, nullable: true },
-              radius_units: { type: :string, nullable: true }
+              radius_units: { type: :string, nullable: true },
+              latitude: { type: :number, nullable: true },
+              longitude: { type: :number, nullable: true }
             }
           }
         ),

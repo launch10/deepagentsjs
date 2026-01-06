@@ -49,12 +49,12 @@ module Lockable
 
   # Instance methods available when included as concern
   class_methods do
-    def with_lock(key, wait_timeout: 0.1, stale_timeout: 60 * 10, resources: 1, &block)
-      Lockable.with_lock(key, wait_timeout: wait_timeout, stale_timeout: stale_timeout, resources: resources, &block)
+    def with_lock(key, wait_timeout: 0.1, stale_timeout: 60 * 10, resources: 1, &)
+      Lockable.with_lock(key, wait_timeout: wait_timeout, stale_timeout: stale_timeout, resources: resources, &)
     end
 
-    def lock_client(key, **options)
-      Lockable.lock_client(key, **options)
+    def lock_client(key, **)
+      Lockable.lock_client(key, **)
     end
 
     def locked?(key)

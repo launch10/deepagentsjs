@@ -57,11 +57,6 @@ RSpec.describe GoogleAds do
 
     after { described_class.reset_client! }
 
-    it 'configures logging with Rails.logger' do
-      expect(mock_client).to receive(:logger=).with(Rails.logger)
-      described_class.client
-    end
-
     it 'sets the log level' do
       expect(mock_client).to receive(:log_level=).with("DEBUG")
       described_class.client

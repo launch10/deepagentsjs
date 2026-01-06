@@ -23,6 +23,7 @@ class CampaignDeploy < ApplicationRecord
   include Lockable
 
   class StepNotFinishedError < StandardError; end
+
   class DeployInProgressError < StandardError; end
 
   STATUS = WebsiteDeploy::STATUS

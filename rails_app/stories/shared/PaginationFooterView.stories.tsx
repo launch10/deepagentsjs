@@ -1,20 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mocked } from "storybook/test";
 
-import { AdCampaignPaginationView } from "@components/ads/pagination";
+import { PaginationFooterView } from "@components/shared/pagination-footer";
 import { useAdsChatState } from "@components/ads/hooks";
 
 const meta = {
-  title: "Ad Campaign/Components/Pagination",
-  component: AdCampaignPaginationView,
+  title: "Shared/PaginationFooter",
+  component: PaginationFooterView,
   tags: ["autodocs"],
   parameters: {
     layout: "fullscreen",
   },
   args: {
-    onBack: () => console.log("Back clicked"),
-    onPrimary: () => console.log("Primary clicked"),
-    onSecondary: () => console.log("Secondary clicked"),
+    onBack: () => {},
+    onPrimary: () => {},
+    onSecondary: () => {},
     canGoBack: true,
     canGoForward: true,
     isPending: false,
@@ -40,7 +40,7 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof AdCampaignPaginationView>;
+} satisfies Meta<typeof PaginationFooterView>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

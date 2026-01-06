@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import InputLockable from "@components/forms/input-lockable";
+import InputLockable from "@components/shared/forms/input-lockable";
 
 const meta = {
   title: "Forms/Lockable Input",

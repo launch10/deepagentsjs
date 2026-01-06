@@ -30,11 +30,11 @@ module GoogleAds
       field_mapping :contains_eu_political_advertising,
         local: :google_contains_eu_political_advertising,
         remote: :contains_eu_political_advertising,
-        transform: -> (value) { value ? :CONTAINS_EU_POLITICAL_ADVERTISING : :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING },
+        transform: ->(value) { value ? :CONTAINS_EU_POLITICAL_ADVERTISING : :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING },
         reverse_transform: ->(value) {
           return false if value === :UNSPECIFIED
-          return value === :CONTAINS_EU_POLITICAL_ADVERTISING
-      }
+          value === :CONTAINS_EU_POLITICAL_ADVERTISING
+        }
 
       def initialize(record)
         @record = record
@@ -141,7 +141,7 @@ module GoogleAds
           GoogleAds::SyncResult.error(
             :campaign,
             GoogleAds::SyncVerificationError.new(
-              "Campaign sync verification failed. Mismatched fields: #{comparison.failures.join(', ')}"
+              "Campaign sync verification failed. Mismatched fields: #{comparison.failures.join(", ")}"
             )
           )
         end
@@ -160,10 +160,10 @@ module GoogleAds
           comparison = compare_fields(remote)
           # Only mutable fields can be updated (name, status - NOT advertising_channel_type)
           mutable_mismatches = comparison.failures - [:advertising_channel_type, :contains_eu_political_advertising]
-          if mutable_mismatches.any?
-            operations << { action: :update, record: record, fields: mutable_mismatches }
+          operations << if mutable_mismatches.any?
+            { action: :update, record: record, fields: mutable_mismatches }
           else
-            operations << { action: :unchanged, record: record }
+            { action: :unchanged, record: record }
           end
         else
           operations << { action: :unchanged, record: record }

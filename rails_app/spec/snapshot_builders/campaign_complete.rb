@@ -31,5 +31,4 @@ class CampaignComplete < BaseBuilder
       }
     })
   end
-
 end

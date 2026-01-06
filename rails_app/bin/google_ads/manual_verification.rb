@@ -140,7 +140,7 @@ class GoogleAdsE2ETest
       ads_account.save!
 
       syncer = GoogleAds::Resources::Account.new(ads_account)
-      result = syncer.sync
+      syncer.sync
 
       # Verify via API
       remote = syncer.fetch
@@ -195,7 +195,7 @@ class GoogleAdsE2ETest
       @campaign.save!
 
       syncer = GoogleAds::Resources::Campaign.new(@campaign)
-      result = syncer.sync
+      syncer.sync
 
       # Verify via API
       remote = syncer.fetch
@@ -231,7 +231,7 @@ class GoogleAdsE2ETest
       ad_group.save!
 
       syncer = GoogleAds::Resources::AdGroup.new(ad_group)
-      result = syncer.sync
+      syncer.sync
 
       # Verify via API
       remote = syncer.fetch
@@ -280,17 +280,17 @@ class GoogleAdsE2ETest
       end
 
       original_status = ad.status
-      new_status = original_status == "active" ? "paused" : "active"
+      new_status = (original_status == "active") ? "paused" : "active"
 
       ad.status = new_status
       ad.save!
 
       syncer = GoogleAds::Resources::Ad.new(ad)
-      result = syncer.sync
+      syncer.sync
 
       # Verify via API
       remote = syncer.fetch
-      expected_google_status = new_status == "active" ? :ENABLED : :PAUSED
+      expected_google_status = (new_status == "active") ? :ENABLED : :PAUSED
 
       if remote && remote.status == expected_google_status
         record_result("Ad Update", :passed)
@@ -317,7 +317,7 @@ class GoogleAdsE2ETest
         return
       end
 
-      original_criterion_id = location.google_criterion_id
+      location.google_criterion_id
       location.destroy
 
       syncer = GoogleAds::LocationTargets.new(@campaign)
@@ -607,7 +607,7 @@ class GoogleAdsE2ETest
       end
 
       syncer = GoogleAds::Resources::Account.new(ads_account)
-      result = syncer.delete  # Use delete method, not sync
+      syncer.delete  # Use delete method, not sync
 
       # Verify local state was updated
       ads_account.reload
