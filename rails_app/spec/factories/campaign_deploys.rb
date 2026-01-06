@@ -1,0 +1,29 @@
+# == Schema Information
+#
+# Table name: campaign_deploys
+#
+#  id                  :bigint           not null, primary key
+#  current_step        :string
+#  stacktrace          :text
+#  status              :string           default("pending"), not null
+#  created_at          :datetime         not null
+#  updated_at          :datetime         not null
+#  campaign_history_id :bigint
+#  campaign_id         :bigint           not null
+#
+# Indexes
+#
+#  index_campaign_deploys_on_campaign_history_id  (campaign_history_id)
+#  index_campaign_deploys_on_campaign_id          (campaign_id)
+#  index_campaign_deploys_on_created_at           (created_at)
+#  index_campaign_deploys_on_current_step         (current_step)
+#  index_campaign_deploys_on_status               (status)
+#
+FactoryBot.define do
+  factory :campaign_deploy do
+    association :campaign
+
+    status { "pending" }
+    current_step { nil }
+  end
+end

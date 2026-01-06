@@ -103,7 +103,8 @@ class API::V1::CampaignsController < API::BaseController
       keywords: [:id, :text, :match_type, :position],
       callouts: [:id, :text, :position],
       structured_snippet: [:category, :_destroy, { values: [] }],
-      location_targets: [:target_type, :location_name, :location_type, :country_code, :targeted, :google_criterion_id],
+      # GeoTargetConstant format: criteria_id, name, target_type (location type), country_code, targeted
+      location_targets: [:criteria_id, :name, :target_type, :country_code, :targeted],
       ad_group: [:name]
     }
   end

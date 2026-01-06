@@ -38,6 +38,7 @@ describe Website do
     allow(deploy_uploader).to receive(:client).and_return(s3_client)
     allow(deploy_uploader).to receive(:bucket_name).and_return('deploys')
     allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
+    allow(Cloudflare).to receive(:deploy_env).and_return('development')
     Sidekiq::Testing.fake!
   end
 
@@ -72,11 +73,11 @@ describe Website do
 
   describe "#deploy!" do
     let(:website_with_files) { create_website_with_files(account: website.account, project: website.project, files: minimal_website_files) }
-    let(:dist_path) { Rails.root.join("tmp/deploy_#{Deploy.last&.id || "test"}/dist") }
+    let(:dist_path) { Rails.root.join("tmp/deploy_#{WebsiteDeploy.last&.id || "test"}/dist") }
 
     before do
-      allow_any_instance_of(Deploy).to receive(:build!).and_return(dist_path.to_s)
-      allow_any_instance_of(Deploy).to receive(:upload!).and_call_original
+      allow_any_instance_of(WebsiteDeploy).to receive(:build!).and_return(dist_path.to_s)
+      allow_any_instance_of(WebsiteDeploy).to receive(:upload!).and_call_original
     end
 
     context "when website has files" do
@@ -93,8 +94,8 @@ describe Website do
       end
 
       it "runs the deploy process through build and upload stages" do
-        expect_any_instance_of(Deploy).to receive(:build!).and_return(dist_path.to_s)
-        expect_any_instance_of(Deploy).to receive(:upload!).with(dist_path.to_s)
+        expect_any_instance_of(WebsiteDeploy).to receive(:build!).and_return(dist_path.to_s)
+        expect_any_instance_of(WebsiteDeploy).to receive(:upload!).with(dist_path.to_s)
 
         website_with_files.deploy!(async: false)
       end
@@ -174,7 +175,7 @@ describe Website do
         expect(deploy_uploader).to receive(:cleanup_old_deploys) do |project_id, keep_timestamps|
           expect(project_id).to eq(website_with_files.id.to_s)
           # With environment filtering, we should have fewer timestamps to keep
-          expect(keep_timestamps.size).to be <= Deploy::KEEP_DEPLOY_LIMIT + 2
+          expect(keep_timestamps.size).to be <= WebsiteDeploy::KEEP_DEPLOY_LIMIT + 2
         end
 
         website_with_files.deploy!(async: false)
@@ -192,7 +193,7 @@ describe Website do
     context "when deploy fails" do
       before do
         website_with_files.snapshot
-        allow_any_instance_of(Deploy).to receive(:build!).and_raise(StandardError, "Build failed")
+        allow_any_instance_of(WebsiteDeploy).to receive(:build!).and_raise(StandardError, "Build failed")
       end
 
       it "returns false" do
@@ -227,7 +228,7 @@ describe Website do
 
     before do
       website_with_files.snapshot
-      allow_any_instance_of(Deploy).to receive(:build!).and_return(dist_path.to_s)
+      allow_any_instance_of(WebsiteDeploy).to receive(:build!).and_return(dist_path.to_s)
       mock_r2_responses_for_successful_deploy
     end
 
@@ -298,7 +299,7 @@ describe Website do
 
         website_with_files.rollback!
 
-        expect(website_with_files.deploys.revertible.count).to be <= Deploy::KEEP_DEPLOY_LIMIT
+        expect(website_with_files.deploys.revertible.count).to be <= WebsiteDeploy::KEEP_DEPLOY_LIMIT
       end
 
       it "preserves the current live version before rollback" do
@@ -371,7 +372,7 @@ describe Website do
         )
 
         # After the callback, forcefully set them back to non-revertible
-        Deploy.where(id: [old_deploy.id, live_deploy.id]).update_all(revertible: false)
+        WebsiteDeploy.where(id: [old_deploy.id, live_deploy.id]).update_all(revertible: false)
 
         # Both deploys are non-revertible, so default_deploy_to_rollback should return nil
         result = website_with_files.default_deploy_to_rollback
@@ -419,9 +420,9 @@ describe Website do
         deploy1.reload
         deploy2.reload
 
-        # Deploy1 should not be marked as live due to the error
+        # WebsiteDeploy1 should not be marked as live due to the error
         expect(deploy1.is_live).to be false
-        # Deploy2 gets marked as not live before the error occurs
+        # WebsiteDeploy2 gets marked as not live before the error occurs
         expect(deploy2.is_live).to be false
       end
     end
@@ -454,18 +455,18 @@ describe Website do
     end
 
     context "when async is true (default)" do
-      it "enqueues a DeployWorker job" do
+      it "enqueues a WebsiteDeploy::DeployWorker job" do
         expect {
           website_with_files.deploy
-        }.to change(Deploy::DeployWorker.jobs, :size).by(1)
+        }.to change(WebsiteDeploy::DeployWorker.jobs, :size).by(1)
       end
 
       it "passes the deploy ID to the worker" do
         website_with_files.deploy
 
-        job = Deploy::DeployWorker.jobs.last
+        job = WebsiteDeploy::DeployWorker.jobs.last
         deploy_id = job['args'].first
-        deploy = Deploy.find(deploy_id)
+        deploy = WebsiteDeploy.find(deploy_id)
 
         expect(deploy.website_id).to eq(website_with_files.id)
         expect(deploy.status).to eq('pending')
@@ -485,14 +486,14 @@ describe Website do
       context "when worker processes the job" do
         before do
           mock_r2_responses_for_successful_deploy
-          allow_any_instance_of(Deploy).to receive(:build!).and_return('/tmp/test/dist')
+          allow_any_instance_of(WebsiteDeploy).to receive(:build!).and_return('/tmp/test/dist')
         end
 
         it "executes the deploy successfully" do
           website_with_files.deploy
 
           expect {
-            Deploy::DeployWorker.drain
+            WebsiteDeploy::DeployWorker.drain
           }.to change { website_with_files.deploys.reload.completed.count }.by(1)
 
           deploy = website_with_files.deploys.last.reload
@@ -501,12 +502,12 @@ describe Website do
         end
 
         it "handles deploy failures gracefully" do
-          allow_any_instance_of(Deploy).to receive(:build!).and_raise(StandardError, "Test error")
+          allow_any_instance_of(WebsiteDeploy).to receive(:build!).and_raise(StandardError, "Test error")
 
           website_with_files.deploy
 
           expect {
-            Deploy::DeployWorker.drain
+            WebsiteDeploy::DeployWorker.drain
           }.to raise_error(StandardError)
 
           deploy = website_with_files.reload.deploys.last
@@ -518,13 +519,13 @@ describe Website do
     context "when async is false" do
       before do
         mock_r2_responses_for_successful_deploy
-        allow_any_instance_of(Deploy).to receive(:build!).and_return('/tmp/test/dist')
+        allow_any_instance_of(WebsiteDeploy).to receive(:build!).and_return('/tmp/test/dist')
       end
 
       it "does not enqueue a worker job" do
         expect {
           website_with_files.deploy(async: false)
-        }.not_to change(Deploy::DeployWorker.jobs, :size)
+        }.not_to change(WebsiteDeploy::DeployWorker.jobs, :size)
       end
 
       it "executes deploy synchronously" do
@@ -571,13 +572,13 @@ describe Website do
       it "enqueues a RollbackWorker job" do
         expect {
           website_with_files.rollback
-        }.to change(Deploy::RollbackWorker.jobs, :size).by(1)
+        }.to change(WebsiteDeploy::RollbackWorker.jobs, :size).by(1)
       end
 
       it "passes the correct deploy ID to the worker" do
         website_with_files.rollback
 
-        job = Deploy::RollbackWorker.jobs.last
+        job = WebsiteDeploy::RollbackWorker.jobs.last
         deploy_id = job['args'].first
 
         expect(deploy_id).to eq(deploy1.id)
@@ -586,7 +587,7 @@ describe Website do
       it "can rollback to a specific deploy asynchronously" do
         website_with_files.rollback(deploy1.id)
 
-        job = Deploy::RollbackWorker.jobs.last
+        job = WebsiteDeploy::RollbackWorker.jobs.last
         deploy_id = job['args'].first
 
         expect(deploy_id).to eq(deploy1.id)
@@ -595,7 +596,7 @@ describe Website do
       it "uses the critical queue" do
         website_with_files.rollback
 
-        job = Deploy::RollbackWorker.jobs.last
+        job = WebsiteDeploy::RollbackWorker.jobs.last
         expect(job['queue']).to eq('critical')
       end
 
@@ -604,7 +605,7 @@ describe Website do
           website_with_files.rollback
 
           expect {
-            Deploy::RollbackWorker.drain
+            WebsiteDeploy::RollbackWorker.drain
           }.not_to raise_error
 
           deploy1.reload
@@ -615,12 +616,12 @@ describe Website do
         end
 
         it "handles rollback failures gracefully" do
-          allow_any_instance_of(Deploy).to receive(:actually_rollback).and_raise(StandardError, "Rollback error")
+          allow_any_instance_of(WebsiteDeploy).to receive(:actually_rollback).and_raise(StandardError, "Rollback error")
 
           website_with_files.rollback
 
           expect {
-            Deploy::RollbackWorker.drain
+            WebsiteDeploy::RollbackWorker.drain
           }.to raise_error(StandardError, /Rollback error/)
         end
       end
@@ -630,7 +631,7 @@ describe Website do
       it "does not enqueue a worker job" do
         expect {
           website_with_files.rollback(nil, async: false)
-        }.not_to change(Deploy::RollbackWorker.jobs, :size)
+        }.not_to change(WebsiteDeploy::RollbackWorker.jobs, :size)
       end
 
       it "executes rollback synchronously" do
@@ -647,22 +648,22 @@ describe Website do
   end
 
   describe "worker queue configuration" do
-    it "DeployWorker uses the critical queue" do
-      expect(Deploy::DeployWorker.sidekiq_options['queue']).to eq(:critical)
+    it "WebsiteDeploy::DeployWorker uses the critical queue" do
+      expect(WebsiteDeploy::DeployWorker.sidekiq_options['queue']).to eq(:critical)
     end
 
     it "RollbackWorker uses the critical queue" do
-      expect(Deploy::RollbackWorker.sidekiq_options['queue']).to eq(:critical)
+      expect(WebsiteDeploy::RollbackWorker.sidekiq_options['queue']).to eq(:critical)
     end
 
-    it "DeployWorker has retry configuration" do
-      expect(Deploy::DeployWorker.sidekiq_options['retry']).to eq(5)
-      expect(Deploy::DeployWorker.sidekiq_options['backtrace']).to be true
+    it "WebsiteDeploy::DeployWorker has retry configuration" do
+      expect(WebsiteDeploy::DeployWorker.sidekiq_options['retry']).to eq(5)
+      expect(WebsiteDeploy::DeployWorker.sidekiq_options['backtrace']).to be true
     end
 
     it "RollbackWorker has retry configuration" do
-      expect(Deploy::RollbackWorker.sidekiq_options['retry']).to eq(3)
-      expect(Deploy::RollbackWorker.sidekiq_options['backtrace']).to be true
+      expect(WebsiteDeploy::RollbackWorker.sidekiq_options['retry']).to eq(3)
+      expect(WebsiteDeploy::RollbackWorker.sidekiq_options['backtrace']).to be true
     end
   end
 
@@ -672,7 +673,7 @@ describe Website do
     before do
       website_with_files.snapshot
       mock_r2_responses_for_successful_deploy
-      allow_any_instance_of(Deploy).to receive(:build!).and_return('/tmp/test/dist')
+      allow_any_instance_of(WebsiteDeploy).to receive(:build!).and_return('/tmp/test/dist')
     end
 
     it "creates a deploy with the specified environment" do
@@ -703,7 +704,7 @@ describe Website do
     before do
       website_with_files.snapshot
       mock_r2_responses_for_successful_deploy
-      allow_any_instance_of(Deploy).to receive(:build!).and_return('/tmp/test/dist')
+      allow_any_instance_of(WebsiteDeploy).to receive(:build!).and_return('/tmp/test/dist')
     end
 
     it "creates a preview deploy" do
@@ -741,7 +742,7 @@ describe Website do
     it "supports async preview deploys" do
       expect {
         website_with_files.preview(async: true)
-      }.to change(Deploy::DeployWorker.jobs, :size).by(1)
+      }.to change(WebsiteDeploy::DeployWorker.jobs, :size).by(1)
     end
 
     it "supports different environments for preview" do
@@ -759,7 +760,7 @@ describe Website do
     before do
       website_with_files.snapshot
       mock_r2_responses_for_successful_deploy
-      allow_any_instance_of(Deploy).to receive(:build!).and_return('/tmp/test/dist')
+      allow_any_instance_of(WebsiteDeploy).to receive(:build!).and_return('/tmp/test/dist')
     end
 
     it "only rolls back within the same environment" do
@@ -775,7 +776,7 @@ describe Website do
       staging_deploy = website_with_files.reload.deploys.last
 
       # Rollback should only affect production
-      expect_any_instance_of(Deploy).to receive(:actually_rollback).and_call_original
+      expect_any_instance_of(WebsiteDeploy).to receive(:actually_rollback).and_call_original
       website_with_files.rollback!
 
       prod_deploy1.reload

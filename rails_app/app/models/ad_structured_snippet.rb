@@ -22,9 +22,34 @@
 #
 class AdStructuredSnippet < ApplicationRecord
   include PlatformSettings
+
   platform_setting :google, :asset_id
 
   include AdStructuredSnippetConcerns::Categories
+
+  def to_google_json
+    GoogleAds::Resources::StructuredSnippet.new(self).to_google_json
+  end
+
+  def google_sync
+    google_syncer.sync
+  end
+
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
+
+  def google_syncer
+    @google_syncer ||= GoogleAds::Resources::StructuredSnippet.new(self)
+  end
 
   acts_as_paranoid
 

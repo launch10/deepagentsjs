@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mocked } from "storybook/test";
 
 import { AdCampaignPaginationView } from "@components/ads/pagination";
-import { useAdsChatState } from "@hooks/useAdsChat";
+import { useAdsChatState } from "@components/ads/hooks";
 
 const meta = {
   title: "Ad Campaign/Components/Pagination",

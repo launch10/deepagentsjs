@@ -47,12 +47,8 @@ class Test::DatabaseController < Test::TestController
       params = snapshot_params
       truncate_first = params[:truncate_first] == "true" || params[:truncate_first] == true
       snapshot_name = params[:name]
-      input_path = SNAPSHOT_DIR.join("#{snapshot_name}.sql")
 
-      if truncate_first
-        actually_truncate
-      end
-      result = Database::Snapshotter.new.restore(input_path)
+      result = Database::Snapshotter.new.restore_snapshot(snapshot_name, truncate: truncate_first)
     rescue => e
       Rails.logger.error "[Test::DatabaseController] Error restoring snapshot: #{e.message}"
       render json: {

@@ -150,10 +150,11 @@ module CampaignConcerns
 
     included do
       platform_setting :google, :campaign_id # foreign key
-      platform_setting :google, :advertising_channel_type, in: ADVERTISING_CHANNEL_TYPES
+      platform_setting :google, :advertising_channel_type, in: ADVERTISING_CHANNEL_TYPES, default: "SEARCH"
       platform_setting :google, :advertising_channel_sub_type, in: ADVERTISING_CHANNEL_SUB_TYPES
       platform_setting :google, :bidding_strategy, in: BIDDING_STRATEGIES.keys
-      platform_setting :google, :status, in: CAMPAIGN_STATUSES
+      platform_setting :google, :status, in: CAMPAIGN_STATUSES, default: "PAUSED"
+      platform_setting :google, :contains_eu_political_advertising, default: false
 
       NETWORK_SETTINGS_FIELDS.each do |field|
         # e.g. google_target_google_search, google_target_search_network, etc.
@@ -184,10 +185,11 @@ module CampaignConcerns
 
     # TODO: Move to an API module...
     def google_ready_to_enable?
-      # Add your business logic here
       google_advertising_channel_type.present? &&
         google_bidding_strategy.present? &&
-        google_language_codes.present?
+        google_language_codes.present? &&
+        google_customer_id.present? &&
+        billing_enabled?
     end
 
     # TODO: Move to an API module...

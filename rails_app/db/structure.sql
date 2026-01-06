@@ -186,10 +186,10 @@ CREATE TABLE public.account_request_counts_2025_09 (
 
 
 --
--- Name: account_request_counts_2025_10; Type: TABLE; Schema: public; Owner: -
+-- Name: account_request_counts_2026_01; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.account_request_counts_2025_10 (
+CREATE TABLE public.account_request_counts_2026_01 (
     id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
     account_id bigint NOT NULL,
     request_count bigint NOT NULL,
@@ -199,10 +199,10 @@ CREATE TABLE public.account_request_counts_2025_10 (
 
 
 --
--- Name: account_request_counts_2025_11; Type: TABLE; Schema: public; Owner: -
+-- Name: account_request_counts_2026_02; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.account_request_counts_2025_11 (
+CREATE TABLE public.account_request_counts_2026_02 (
     id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
     account_id bigint NOT NULL,
     request_count bigint NOT NULL,
@@ -212,10 +212,127 @@ CREATE TABLE public.account_request_counts_2025_11 (
 
 
 --
--- Name: account_request_counts_2025_12; Type: TABLE; Schema: public; Owner: -
+-- Name: account_request_counts_2026_03; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.account_request_counts_2025_12 (
+CREATE TABLE public.account_request_counts_2026_03 (
+    id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    month timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: account_request_counts_2026_04; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_request_counts_2026_04 (
+    id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    month timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: account_request_counts_2026_05; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_request_counts_2026_05 (
+    id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    month timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: account_request_counts_2026_06; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_request_counts_2026_06 (
+    id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    month timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: account_request_counts_2026_07; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_request_counts_2026_07 (
+    id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    month timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: account_request_counts_2026_08; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_request_counts_2026_08 (
+    id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    month timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: account_request_counts_2026_09; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_request_counts_2026_09 (
+    id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    month timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: account_request_counts_2026_10; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_request_counts_2026_10 (
+    id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    month timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: account_request_counts_2026_11; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_request_counts_2026_11 (
+    id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    month timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: account_request_counts_2026_12; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_request_counts_2026_12 (
     id bigint DEFAULT nextval('public.account_request_counts_id_seq'::regclass) NOT NULL,
     account_id bigint NOT NULL,
     request_count bigint NOT NULL,
@@ -1764,48 +1881,6 @@ ALTER SEQUENCE public.deploy_files_id_seq OWNED BY public.deploy_files.id;
 
 
 --
--- Name: deploys; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.deploys (
-    id bigint NOT NULL,
-    website_id bigint,
-    website_history_id bigint,
-    status character varying NOT NULL,
-    trigger character varying DEFAULT 'manual'::character varying,
-    stacktrace text,
-    snapshot_id character varying,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    is_live boolean DEFAULT false,
-    revertible boolean DEFAULT false,
-    version_path character varying,
-    environment character varying DEFAULT 'production'::character varying NOT NULL,
-    is_preview boolean DEFAULT false NOT NULL,
-    shasum character varying
-);
-
-
---
--- Name: deploys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.deploys_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: deploys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.deploys_id_seq OWNED BY public.deploys.id;
-
-
---
 -- Name: document_chunks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1920,6 +1995,20 @@ ALTER SEQUENCE public.domain_request_counts_id_seq OWNED BY public.domain_reques
 
 
 --
+-- Name: domain_request_counts_2025_08; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.domain_request_counts_2025_08 (
+    id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
+    domain_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    hour timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
 -- Name: domain_request_counts_2025_09; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1934,10 +2023,10 @@ CREATE TABLE public.domain_request_counts_2025_09 (
 
 
 --
--- Name: domain_request_counts_2025_10; Type: TABLE; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.domain_request_counts_2025_10 (
+CREATE TABLE public.domain_request_counts_2026_01 (
     id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
     domain_id bigint NOT NULL,
     account_id bigint NOT NULL,
@@ -1948,10 +2037,10 @@ CREATE TABLE public.domain_request_counts_2025_10 (
 
 
 --
--- Name: domain_request_counts_2025_11; Type: TABLE; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_02; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.domain_request_counts_2025_11 (
+CREATE TABLE public.domain_request_counts_2026_02 (
     id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
     domain_id bigint NOT NULL,
     account_id bigint NOT NULL,
@@ -1962,10 +2051,136 @@ CREATE TABLE public.domain_request_counts_2025_11 (
 
 
 --
--- Name: domain_request_counts_2025_12; Type: TABLE; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_03; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.domain_request_counts_2025_12 (
+CREATE TABLE public.domain_request_counts_2026_03 (
+    id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
+    domain_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    hour timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: domain_request_counts_2026_04; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.domain_request_counts_2026_04 (
+    id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
+    domain_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    hour timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: domain_request_counts_2026_05; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.domain_request_counts_2026_05 (
+    id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
+    domain_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    hour timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: domain_request_counts_2026_06; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.domain_request_counts_2026_06 (
+    id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
+    domain_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    hour timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: domain_request_counts_2026_07; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.domain_request_counts_2026_07 (
+    id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
+    domain_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    hour timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: domain_request_counts_2026_08; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.domain_request_counts_2026_08 (
+    id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
+    domain_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    hour timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: domain_request_counts_2026_09; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.domain_request_counts_2026_09 (
+    id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
+    domain_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    hour timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: domain_request_counts_2026_10; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.domain_request_counts_2026_10 (
+    id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
+    domain_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    hour timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: domain_request_counts_2026_11; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.domain_request_counts_2026_11 (
+    id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
+    domain_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    request_count bigint NOT NULL,
+    hour timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: domain_request_counts_2026_12; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.domain_request_counts_2026_12 (
     id bigint DEFAULT nextval('public.domain_request_counts_id_seq'::regclass) NOT NULL,
     domain_id bigint NOT NULL,
     account_id bigint NOT NULL,
@@ -3296,6 +3511,48 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
+-- Name: website_deploys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.website_deploys (
+    id bigint NOT NULL,
+    website_id bigint,
+    website_history_id bigint,
+    status character varying NOT NULL,
+    trigger character varying DEFAULT 'manual'::character varying,
+    stacktrace text,
+    snapshot_id character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    is_live boolean DEFAULT false,
+    revertible boolean DEFAULT false,
+    version_path character varying,
+    environment character varying DEFAULT 'production'::character varying NOT NULL,
+    is_preview boolean DEFAULT false NOT NULL,
+    shasum character varying
+);
+
+
+--
+-- Name: website_deploys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.website_deploys_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: website_deploys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.website_deploys_id_seq OWNED BY public.website_deploys.id;
+
+
+--
 -- Name: website_file_histories_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -3450,24 +3707,94 @@ ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_r
 
 
 --
--- Name: account_request_counts_2025_10; Type: TABLE ATTACH; Schema: public; Owner: -
+-- Name: account_request_counts_2026_01; Type: TABLE ATTACH; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2025_10 FOR VALUES FROM ('2025-09-30 20:00:00-04') TO ('2025-10-31 20:00:00-04');
-
-
---
--- Name: account_request_counts_2025_11; Type: TABLE ATTACH; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2025_11 FOR VALUES FROM ('2025-10-31 20:00:00-04') TO ('2025-11-30 19:00:00-05');
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_01 FOR VALUES FROM ('2025-12-31 19:00:00-05') TO ('2026-01-31 19:00:00-05');
 
 
 --
--- Name: account_request_counts_2025_12; Type: TABLE ATTACH; Schema: public; Owner: -
+-- Name: account_request_counts_2026_02; Type: TABLE ATTACH; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2025_12 FOR VALUES FROM ('2025-11-30 19:00:00-05') TO ('2025-12-31 19:00:00-05');
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_02 FOR VALUES FROM ('2026-01-31 19:00:00-05') TO ('2026-02-28 19:00:00-05');
+
+
+--
+-- Name: account_request_counts_2026_03; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_03 FOR VALUES FROM ('2026-02-28 19:00:00-05') TO ('2026-03-31 20:00:00-04');
+
+
+--
+-- Name: account_request_counts_2026_04; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_04 FOR VALUES FROM ('2026-03-31 20:00:00-04') TO ('2026-04-30 20:00:00-04');
+
+
+--
+-- Name: account_request_counts_2026_05; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_05 FOR VALUES FROM ('2026-04-30 20:00:00-04') TO ('2026-05-31 20:00:00-04');
+
+
+--
+-- Name: account_request_counts_2026_06; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_06 FOR VALUES FROM ('2026-05-31 20:00:00-04') TO ('2026-06-30 20:00:00-04');
+
+
+--
+-- Name: account_request_counts_2026_07; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_07 FOR VALUES FROM ('2026-06-30 20:00:00-04') TO ('2026-07-31 20:00:00-04');
+
+
+--
+-- Name: account_request_counts_2026_08; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_08 FOR VALUES FROM ('2026-07-31 20:00:00-04') TO ('2026-08-31 20:00:00-04');
+
+
+--
+-- Name: account_request_counts_2026_09; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_09 FOR VALUES FROM ('2026-08-31 20:00:00-04') TO ('2026-09-30 20:00:00-04');
+
+
+--
+-- Name: account_request_counts_2026_10; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_10 FOR VALUES FROM ('2026-09-30 20:00:00-04') TO ('2026-10-31 20:00:00-04');
+
+
+--
+-- Name: account_request_counts_2026_11; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_11 FOR VALUES FROM ('2026-10-31 20:00:00-04') TO ('2026-11-30 19:00:00-05');
+
+
+--
+-- Name: account_request_counts_2026_12; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts ATTACH PARTITION public.account_request_counts_2026_12 FOR VALUES FROM ('2026-11-30 19:00:00-05') TO ('2026-12-31 19:00:00-05');
+
+
+--
+-- Name: domain_request_counts_2025_08; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2025_08 FOR VALUES FROM ('2025-07-31 20:00:00-04') TO ('2025-08-31 20:00:00-04');
 
 
 --
@@ -3478,24 +3805,87 @@ ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_req
 
 
 --
--- Name: domain_request_counts_2025_10; Type: TABLE ATTACH; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01; Type: TABLE ATTACH; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2025_10 FOR VALUES FROM ('2025-09-30 20:00:00-04') TO ('2025-10-31 20:00:00-04');
-
-
---
--- Name: domain_request_counts_2025_11; Type: TABLE ATTACH; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2025_11 FOR VALUES FROM ('2025-10-31 20:00:00-04') TO ('2025-11-30 19:00:00-05');
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_01 FOR VALUES FROM ('2025-12-31 19:00:00-05') TO ('2026-01-31 19:00:00-05');
 
 
 --
--- Name: domain_request_counts_2025_12; Type: TABLE ATTACH; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_02; Type: TABLE ATTACH; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2025_12 FOR VALUES FROM ('2025-11-30 19:00:00-05') TO ('2025-12-31 19:00:00-05');
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_02 FOR VALUES FROM ('2026-01-31 19:00:00-05') TO ('2026-02-28 19:00:00-05');
+
+
+--
+-- Name: domain_request_counts_2026_03; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_03 FOR VALUES FROM ('2026-02-28 19:00:00-05') TO ('2026-03-31 20:00:00-04');
+
+
+--
+-- Name: domain_request_counts_2026_04; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_04 FOR VALUES FROM ('2026-03-31 20:00:00-04') TO ('2026-04-30 20:00:00-04');
+
+
+--
+-- Name: domain_request_counts_2026_05; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_05 FOR VALUES FROM ('2026-04-30 20:00:00-04') TO ('2026-05-31 20:00:00-04');
+
+
+--
+-- Name: domain_request_counts_2026_06; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_06 FOR VALUES FROM ('2026-05-31 20:00:00-04') TO ('2026-06-30 20:00:00-04');
+
+
+--
+-- Name: domain_request_counts_2026_07; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_07 FOR VALUES FROM ('2026-06-30 20:00:00-04') TO ('2026-07-31 20:00:00-04');
+
+
+--
+-- Name: domain_request_counts_2026_08; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_08 FOR VALUES FROM ('2026-07-31 20:00:00-04') TO ('2026-08-31 20:00:00-04');
+
+
+--
+-- Name: domain_request_counts_2026_09; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_09 FOR VALUES FROM ('2026-08-31 20:00:00-04') TO ('2026-09-30 20:00:00-04');
+
+
+--
+-- Name: domain_request_counts_2026_10; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_10 FOR VALUES FROM ('2026-09-30 20:00:00-04') TO ('2026-10-31 20:00:00-04');
+
+
+--
+-- Name: domain_request_counts_2026_11; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_11 FOR VALUES FROM ('2026-10-31 20:00:00-04') TO ('2026-11-30 19:00:00-05');
+
+
+--
+-- Name: domain_request_counts_2026_12; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_request_counts_2026_12 FOR VALUES FROM ('2026-11-30 19:00:00-05') TO ('2026-12-31 19:00:00-05');
 
 
 --
@@ -3779,13 +4169,6 @@ ALTER TABLE ONLY public.deploy_files ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
--- Name: deploys id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.deploys ALTER COLUMN id SET DEFAULT nextval('public.deploys_id_seq'::regclass);
-
-
---
 -- Name: document_chunks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4038,6 +4421,13 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 
 
 --
+-- Name: website_deploys id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_deploys ALTER COLUMN id SET DEFAULT nextval('public.website_deploys_id_seq'::regclass);
+
+
+--
 -- Name: website_file_histories id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4112,27 +4502,99 @@ ALTER TABLE ONLY public.account_request_counts_2025_09
 
 
 --
--- Name: account_request_counts_2025_10 account_request_counts_2025_10_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: account_request_counts_2026_01 account_request_counts_2026_01_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.account_request_counts_2025_10
-    ADD CONSTRAINT account_request_counts_2025_10_pkey PRIMARY KEY (id, month);
-
-
---
--- Name: account_request_counts_2025_11 account_request_counts_2025_11_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.account_request_counts_2025_11
-    ADD CONSTRAINT account_request_counts_2025_11_pkey PRIMARY KEY (id, month);
+ALTER TABLE ONLY public.account_request_counts_2026_01
+    ADD CONSTRAINT account_request_counts_2026_01_pkey PRIMARY KEY (id, month);
 
 
 --
--- Name: account_request_counts_2025_12 account_request_counts_2025_12_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: account_request_counts_2026_02 account_request_counts_2026_02_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.account_request_counts_2025_12
-    ADD CONSTRAINT account_request_counts_2025_12_pkey PRIMARY KEY (id, month);
+ALTER TABLE ONLY public.account_request_counts_2026_02
+    ADD CONSTRAINT account_request_counts_2026_02_pkey PRIMARY KEY (id, month);
+
+
+--
+-- Name: account_request_counts_2026_03 account_request_counts_2026_03_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts_2026_03
+    ADD CONSTRAINT account_request_counts_2026_03_pkey PRIMARY KEY (id, month);
+
+
+--
+-- Name: account_request_counts_2026_04 account_request_counts_2026_04_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts_2026_04
+    ADD CONSTRAINT account_request_counts_2026_04_pkey PRIMARY KEY (id, month);
+
+
+--
+-- Name: account_request_counts_2026_05 account_request_counts_2026_05_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts_2026_05
+    ADD CONSTRAINT account_request_counts_2026_05_pkey PRIMARY KEY (id, month);
+
+
+--
+-- Name: account_request_counts_2026_06 account_request_counts_2026_06_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts_2026_06
+    ADD CONSTRAINT account_request_counts_2026_06_pkey PRIMARY KEY (id, month);
+
+
+--
+-- Name: account_request_counts_2026_07 account_request_counts_2026_07_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts_2026_07
+    ADD CONSTRAINT account_request_counts_2026_07_pkey PRIMARY KEY (id, month);
+
+
+--
+-- Name: account_request_counts_2026_08 account_request_counts_2026_08_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts_2026_08
+    ADD CONSTRAINT account_request_counts_2026_08_pkey PRIMARY KEY (id, month);
+
+
+--
+-- Name: account_request_counts_2026_09 account_request_counts_2026_09_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts_2026_09
+    ADD CONSTRAINT account_request_counts_2026_09_pkey PRIMARY KEY (id, month);
+
+
+--
+-- Name: account_request_counts_2026_10 account_request_counts_2026_10_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts_2026_10
+    ADD CONSTRAINT account_request_counts_2026_10_pkey PRIMARY KEY (id, month);
+
+
+--
+-- Name: account_request_counts_2026_11 account_request_counts_2026_11_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts_2026_11
+    ADD CONSTRAINT account_request_counts_2026_11_pkey PRIMARY KEY (id, month);
+
+
+--
+-- Name: account_request_counts_2026_12 account_request_counts_2026_12_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_request_counts_2026_12
+    ADD CONSTRAINT account_request_counts_2026_12_pkey PRIMARY KEY (id, month);
 
 
 --
@@ -4464,14 +4926,6 @@ ALTER TABLE ONLY public.deploy_files
 
 
 --
--- Name: deploys deploys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.deploys
-    ADD CONSTRAINT deploys_pkey PRIMARY KEY (id);
-
-
---
 -- Name: document_chunks document_chunks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4496,6 +4950,14 @@ ALTER TABLE ONLY public.domain_request_counts
 
 
 --
+-- Name: domain_request_counts_2025_08 domain_request_counts_2025_08_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts_2025_08
+    ADD CONSTRAINT domain_request_counts_2025_08_pkey PRIMARY KEY (id, hour);
+
+
+--
 -- Name: domain_request_counts_2025_09 domain_request_counts_2025_09_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4504,27 +4966,99 @@ ALTER TABLE ONLY public.domain_request_counts_2025_09
 
 
 --
--- Name: domain_request_counts_2025_10 domain_request_counts_2025_10_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01 domain_request_counts_2026_01_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.domain_request_counts_2025_10
-    ADD CONSTRAINT domain_request_counts_2025_10_pkey PRIMARY KEY (id, hour);
-
-
---
--- Name: domain_request_counts_2025_11 domain_request_counts_2025_11_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.domain_request_counts_2025_11
-    ADD CONSTRAINT domain_request_counts_2025_11_pkey PRIMARY KEY (id, hour);
+ALTER TABLE ONLY public.domain_request_counts_2026_01
+    ADD CONSTRAINT domain_request_counts_2026_01_pkey PRIMARY KEY (id, hour);
 
 
 --
--- Name: domain_request_counts_2025_12 domain_request_counts_2025_12_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_02 domain_request_counts_2026_02_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.domain_request_counts_2025_12
-    ADD CONSTRAINT domain_request_counts_2025_12_pkey PRIMARY KEY (id, hour);
+ALTER TABLE ONLY public.domain_request_counts_2026_02
+    ADD CONSTRAINT domain_request_counts_2026_02_pkey PRIMARY KEY (id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_03 domain_request_counts_2026_03_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts_2026_03
+    ADD CONSTRAINT domain_request_counts_2026_03_pkey PRIMARY KEY (id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_04 domain_request_counts_2026_04_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts_2026_04
+    ADD CONSTRAINT domain_request_counts_2026_04_pkey PRIMARY KEY (id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_05 domain_request_counts_2026_05_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts_2026_05
+    ADD CONSTRAINT domain_request_counts_2026_05_pkey PRIMARY KEY (id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_06 domain_request_counts_2026_06_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts_2026_06
+    ADD CONSTRAINT domain_request_counts_2026_06_pkey PRIMARY KEY (id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_07 domain_request_counts_2026_07_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts_2026_07
+    ADD CONSTRAINT domain_request_counts_2026_07_pkey PRIMARY KEY (id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_08 domain_request_counts_2026_08_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts_2026_08
+    ADD CONSTRAINT domain_request_counts_2026_08_pkey PRIMARY KEY (id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_09 domain_request_counts_2026_09_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts_2026_09
+    ADD CONSTRAINT domain_request_counts_2026_09_pkey PRIMARY KEY (id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_10 domain_request_counts_2026_10_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts_2026_10
+    ADD CONSTRAINT domain_request_counts_2026_10_pkey PRIMARY KEY (id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_11 domain_request_counts_2026_11_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts_2026_11
+    ADD CONSTRAINT domain_request_counts_2026_11_pkey PRIMARY KEY (id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_12 domain_request_counts_2026_12_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_request_counts_2026_12
+    ADD CONSTRAINT domain_request_counts_2026_12_pkey PRIMARY KEY (id, hour);
 
 
 --
@@ -4864,6 +5398,14 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: website_deploys website_deploys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_deploys
+    ADD CONSTRAINT website_deploys_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: website_file_histories website_file_histories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4954,45 +5496,171 @@ CREATE UNIQUE INDEX account_request_counts_2025_0_account_id_month_request_coun_
 
 
 --
--- Name: account_request_counts_2025_10_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: account_request_counts_2026_01_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX account_request_counts_2025_10_account_id_month_idx ON public.account_request_counts_2025_10 USING btree (account_id, month);
-
-
---
--- Name: account_request_counts_2025_11_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX account_request_counts_2025_11_account_id_month_idx ON public.account_request_counts_2025_11 USING btree (account_id, month);
+CREATE INDEX account_request_counts_2026_01_account_id_month_idx ON public.account_request_counts_2026_01 USING btree (account_id, month);
 
 
 --
--- Name: account_request_counts_2025_12_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: account_request_counts_2026_02_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX account_request_counts_2025_12_account_id_month_idx ON public.account_request_counts_2025_12 USING btree (account_id, month);
-
-
---
--- Name: account_request_counts_2025_1_account_id_month_request_cou_idx1; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX account_request_counts_2025_1_account_id_month_request_cou_idx1 ON public.account_request_counts_2025_11 USING btree (account_id, month, request_count);
+CREATE INDEX account_request_counts_2026_02_account_id_month_idx ON public.account_request_counts_2026_02 USING btree (account_id, month);
 
 
 --
--- Name: account_request_counts_2025_1_account_id_month_request_cou_idx2; Type: INDEX; Schema: public; Owner: -
+-- Name: account_request_counts_2026_03_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX account_request_counts_2025_1_account_id_month_request_cou_idx2 ON public.account_request_counts_2025_12 USING btree (account_id, month, request_count);
+CREATE INDEX account_request_counts_2026_03_account_id_month_idx ON public.account_request_counts_2026_03 USING btree (account_id, month);
 
 
 --
--- Name: account_request_counts_2025_1_account_id_month_request_coun_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: account_request_counts_2026_04_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX account_request_counts_2025_1_account_id_month_request_coun_idx ON public.account_request_counts_2025_10 USING btree (account_id, month, request_count);
+CREATE INDEX account_request_counts_2026_04_account_id_month_idx ON public.account_request_counts_2026_04 USING btree (account_id, month);
+
+
+--
+-- Name: account_request_counts_2026_05_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX account_request_counts_2026_05_account_id_month_idx ON public.account_request_counts_2026_05 USING btree (account_id, month);
+
+
+--
+-- Name: account_request_counts_2026_06_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX account_request_counts_2026_06_account_id_month_idx ON public.account_request_counts_2026_06 USING btree (account_id, month);
+
+
+--
+-- Name: account_request_counts_2026_07_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX account_request_counts_2026_07_account_id_month_idx ON public.account_request_counts_2026_07 USING btree (account_id, month);
+
+
+--
+-- Name: account_request_counts_2026_08_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX account_request_counts_2026_08_account_id_month_idx ON public.account_request_counts_2026_08 USING btree (account_id, month);
+
+
+--
+-- Name: account_request_counts_2026_09_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX account_request_counts_2026_09_account_id_month_idx ON public.account_request_counts_2026_09 USING btree (account_id, month);
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_0_account_id_month_request_cou_idx1 ON public.account_request_counts_2026_02 USING btree (account_id, month, request_count);
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx2; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_0_account_id_month_request_cou_idx2 ON public.account_request_counts_2026_03 USING btree (account_id, month, request_count);
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx3; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_0_account_id_month_request_cou_idx3 ON public.account_request_counts_2026_04 USING btree (account_id, month, request_count);
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx4; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_0_account_id_month_request_cou_idx4 ON public.account_request_counts_2026_05 USING btree (account_id, month, request_count);
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx5; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_0_account_id_month_request_cou_idx5 ON public.account_request_counts_2026_06 USING btree (account_id, month, request_count);
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx6; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_0_account_id_month_request_cou_idx6 ON public.account_request_counts_2026_07 USING btree (account_id, month, request_count);
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx7; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_0_account_id_month_request_cou_idx7 ON public.account_request_counts_2026_08 USING btree (account_id, month, request_count);
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx8; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_0_account_id_month_request_cou_idx8 ON public.account_request_counts_2026_09 USING btree (account_id, month, request_count);
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_coun_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_0_account_id_month_request_coun_idx ON public.account_request_counts_2026_01 USING btree (account_id, month, request_count);
+
+
+--
+-- Name: account_request_counts_2026_10_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX account_request_counts_2026_10_account_id_month_idx ON public.account_request_counts_2026_10 USING btree (account_id, month);
+
+
+--
+-- Name: account_request_counts_2026_11_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX account_request_counts_2026_11_account_id_month_idx ON public.account_request_counts_2026_11 USING btree (account_id, month);
+
+
+--
+-- Name: account_request_counts_2026_12_account_id_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX account_request_counts_2026_12_account_id_month_idx ON public.account_request_counts_2026_12 USING btree (account_id, month);
+
+
+--
+-- Name: account_request_counts_2026_1_account_id_month_request_cou_idx1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_1_account_id_month_request_cou_idx1 ON public.account_request_counts_2026_11 USING btree (account_id, month, request_count);
+
+
+--
+-- Name: account_request_counts_2026_1_account_id_month_request_cou_idx2; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_1_account_id_month_request_cou_idx2 ON public.account_request_counts_2026_12 USING btree (account_id, month, request_count);
+
+
+--
+-- Name: account_request_counts_2026_1_account_id_month_request_coun_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX account_request_counts_2026_1_account_id_month_request_coun_idx ON public.account_request_counts_2026_10 USING btree (account_id, month, request_count);
 
 
 --
@@ -5010,10 +5678,10 @@ CREATE UNIQUE INDEX index_domain_request_counts_on_account_domain_and_hour ON ON
 
 
 --
--- Name: domain_request_counts_2025_09_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: domain_request_counts_2025_08_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX domain_request_counts_2025_09_account_id_domain_id_hour_idx ON public.domain_request_counts_2025_09 USING btree (account_id, domain_id, hour);
+CREATE UNIQUE INDEX domain_request_counts_2025_08_account_id_domain_id_hour_idx ON public.domain_request_counts_2025_08 USING btree (account_id, domain_id, hour);
 
 
 --
@@ -5024,10 +5692,10 @@ CREATE INDEX index_domain_request_counts_on_account_id_and_hour ON ONLY public.d
 
 
 --
--- Name: domain_request_counts_2025_09_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: domain_request_counts_2025_08_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX domain_request_counts_2025_09_account_id_hour_idx ON public.domain_request_counts_2025_09 USING btree (account_id, hour);
+CREATE INDEX domain_request_counts_2025_08_account_id_hour_idx ON public.domain_request_counts_2025_08 USING btree (account_id, hour);
 
 
 --
@@ -5038,10 +5706,10 @@ CREATE INDEX index_domain_request_counts_on_domain_id_and_hour ON ONLY public.do
 
 
 --
--- Name: domain_request_counts_2025_09_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: domain_request_counts_2025_08_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX domain_request_counts_2025_09_domain_id_hour_idx ON public.domain_request_counts_2025_09 USING btree (domain_id, hour);
+CREATE INDEX domain_request_counts_2025_08_domain_id_hour_idx ON public.domain_request_counts_2025_08 USING btree (domain_id, hour);
 
 
 --
@@ -5052,6 +5720,34 @@ CREATE INDEX index_domain_request_counts_on_domain_hour_count ON ONLY public.dom
 
 
 --
+-- Name: domain_request_counts_2025_08_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2025_08_domain_id_hour_request_count_idx ON public.domain_request_counts_2025_08 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: domain_request_counts_2025_09_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX domain_request_counts_2025_09_account_id_domain_id_hour_idx ON public.domain_request_counts_2025_09 USING btree (account_id, domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2025_09_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2025_09_account_id_hour_idx ON public.domain_request_counts_2025_09 USING btree (account_id, hour);
+
+
+--
+-- Name: domain_request_counts_2025_09_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2025_09_domain_id_hour_idx ON public.domain_request_counts_2025_09 USING btree (domain_id, hour);
+
+
+--
 -- Name: domain_request_counts_2025_09_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5059,87 +5755,339 @@ CREATE INDEX domain_request_counts_2025_09_domain_id_hour_request_count_idx ON p
 
 
 --
--- Name: domain_request_counts_2025_10_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX domain_request_counts_2025_10_account_id_domain_id_hour_idx ON public.domain_request_counts_2025_10 USING btree (account_id, domain_id, hour);
-
-
---
--- Name: domain_request_counts_2025_10_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX domain_request_counts_2025_10_account_id_hour_idx ON public.domain_request_counts_2025_10 USING btree (account_id, hour);
+CREATE UNIQUE INDEX domain_request_counts_2026_01_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_01 USING btree (account_id, domain_id, hour);
 
 
 --
--- Name: domain_request_counts_2025_10_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX domain_request_counts_2025_10_domain_id_hour_idx ON public.domain_request_counts_2025_10 USING btree (domain_id, hour);
-
-
---
--- Name: domain_request_counts_2025_10_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX domain_request_counts_2025_10_domain_id_hour_request_count_idx ON public.domain_request_counts_2025_10 USING btree (domain_id, hour, request_count);
+CREATE INDEX domain_request_counts_2026_01_account_id_hour_idx ON public.domain_request_counts_2026_01 USING btree (account_id, hour);
 
 
 --
--- Name: domain_request_counts_2025_11_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX domain_request_counts_2025_11_account_id_domain_id_hour_idx ON public.domain_request_counts_2025_11 USING btree (account_id, domain_id, hour);
-
-
---
--- Name: domain_request_counts_2025_11_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX domain_request_counts_2025_11_account_id_hour_idx ON public.domain_request_counts_2025_11 USING btree (account_id, hour);
+CREATE INDEX domain_request_counts_2026_01_domain_id_hour_idx ON public.domain_request_counts_2026_01 USING btree (domain_id, hour);
 
 
 --
--- Name: domain_request_counts_2025_11_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX domain_request_counts_2025_11_domain_id_hour_idx ON public.domain_request_counts_2025_11 USING btree (domain_id, hour);
-
-
---
--- Name: domain_request_counts_2025_11_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX domain_request_counts_2025_11_domain_id_hour_request_count_idx ON public.domain_request_counts_2025_11 USING btree (domain_id, hour, request_count);
+CREATE INDEX domain_request_counts_2026_01_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_01 USING btree (domain_id, hour, request_count);
 
 
 --
--- Name: domain_request_counts_2025_12_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_02_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX domain_request_counts_2025_12_account_id_domain_id_hour_idx ON public.domain_request_counts_2025_12 USING btree (account_id, domain_id, hour);
-
-
---
--- Name: domain_request_counts_2025_12_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX domain_request_counts_2025_12_account_id_hour_idx ON public.domain_request_counts_2025_12 USING btree (account_id, hour);
+CREATE UNIQUE INDEX domain_request_counts_2026_02_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_02 USING btree (account_id, domain_id, hour);
 
 
 --
--- Name: domain_request_counts_2025_12_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_02_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX domain_request_counts_2025_12_domain_id_hour_idx ON public.domain_request_counts_2025_12 USING btree (domain_id, hour);
+CREATE INDEX domain_request_counts_2026_02_account_id_hour_idx ON public.domain_request_counts_2026_02 USING btree (account_id, hour);
 
 
 --
--- Name: domain_request_counts_2025_12_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_02_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX domain_request_counts_2025_12_domain_id_hour_request_count_idx ON public.domain_request_counts_2025_12 USING btree (domain_id, hour, request_count);
+CREATE INDEX domain_request_counts_2026_02_domain_id_hour_idx ON public.domain_request_counts_2026_02 USING btree (domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_02_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_02_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_02 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: domain_request_counts_2026_03_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX domain_request_counts_2026_03_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_03 USING btree (account_id, domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_03_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_03_account_id_hour_idx ON public.domain_request_counts_2026_03 USING btree (account_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_03_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_03_domain_id_hour_idx ON public.domain_request_counts_2026_03 USING btree (domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_03_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_03_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_03 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: domain_request_counts_2026_04_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX domain_request_counts_2026_04_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_04 USING btree (account_id, domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_04_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_04_account_id_hour_idx ON public.domain_request_counts_2026_04 USING btree (account_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_04_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_04_domain_id_hour_idx ON public.domain_request_counts_2026_04 USING btree (domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_04_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_04_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_04 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: domain_request_counts_2026_05_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX domain_request_counts_2026_05_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_05 USING btree (account_id, domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_05_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_05_account_id_hour_idx ON public.domain_request_counts_2026_05 USING btree (account_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_05_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_05_domain_id_hour_idx ON public.domain_request_counts_2026_05 USING btree (domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_05_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_05_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_05 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: domain_request_counts_2026_06_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX domain_request_counts_2026_06_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_06 USING btree (account_id, domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_06_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_06_account_id_hour_idx ON public.domain_request_counts_2026_06 USING btree (account_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_06_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_06_domain_id_hour_idx ON public.domain_request_counts_2026_06 USING btree (domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_06_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_06_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_06 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: domain_request_counts_2026_07_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX domain_request_counts_2026_07_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_07 USING btree (account_id, domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_07_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_07_account_id_hour_idx ON public.domain_request_counts_2026_07 USING btree (account_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_07_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_07_domain_id_hour_idx ON public.domain_request_counts_2026_07 USING btree (domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_07_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_07_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_07 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: domain_request_counts_2026_08_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX domain_request_counts_2026_08_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_08 USING btree (account_id, domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_08_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_08_account_id_hour_idx ON public.domain_request_counts_2026_08 USING btree (account_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_08_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_08_domain_id_hour_idx ON public.domain_request_counts_2026_08 USING btree (domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_08_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_08_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_08 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: domain_request_counts_2026_09_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX domain_request_counts_2026_09_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_09 USING btree (account_id, domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_09_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_09_account_id_hour_idx ON public.domain_request_counts_2026_09 USING btree (account_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_09_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_09_domain_id_hour_idx ON public.domain_request_counts_2026_09 USING btree (domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_09_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_09_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_09 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: domain_request_counts_2026_10_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX domain_request_counts_2026_10_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_10 USING btree (account_id, domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_10_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_10_account_id_hour_idx ON public.domain_request_counts_2026_10 USING btree (account_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_10_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_10_domain_id_hour_idx ON public.domain_request_counts_2026_10 USING btree (domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_10_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_10_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_10 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: domain_request_counts_2026_11_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX domain_request_counts_2026_11_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_11 USING btree (account_id, domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_11_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_11_account_id_hour_idx ON public.domain_request_counts_2026_11 USING btree (account_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_11_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_11_domain_id_hour_idx ON public.domain_request_counts_2026_11 USING btree (domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_11_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_11_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_11 USING btree (domain_id, hour, request_count);
+
+
+--
+-- Name: domain_request_counts_2026_12_account_id_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX domain_request_counts_2026_12_account_id_domain_id_hour_idx ON public.domain_request_counts_2026_12 USING btree (account_id, domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_12_account_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_12_account_id_hour_idx ON public.domain_request_counts_2026_12 USING btree (account_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_12_domain_id_hour_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_12_domain_id_hour_idx ON public.domain_request_counts_2026_12 USING btree (domain_id, hour);
+
+
+--
+-- Name: domain_request_counts_2026_12_domain_id_hour_request_count_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX domain_request_counts_2026_12_domain_id_hour_request_count_idx ON public.domain_request_counts_2026_12 USING btree (domain_id, hour, request_count);
 
 
 --
@@ -5168,6 +6116,13 @@ CREATE INDEX idx_icon_embeddings_text ON public.icon_embeddings USING ivfflat (e
 --
 
 CREATE INDEX idx_on_project_id_workflow_type_status_a7aa4433b7 ON public.project_workflows USING btree (project_id, workflow_type, status);
+
+
+--
+-- Name: idx_on_website_id_environment_is_preview_bab671a888; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_website_id_environment_is_preview_bab671a888 ON public.website_deploys USING btree (website_id, environment, is_preview);
 
 
 --
@@ -6431,97 +7386,6 @@ CREATE INDEX index_deploy_files_on_website_file_id ON public.deploy_files USING 
 
 
 --
--- Name: index_deploys_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_created_at ON public.deploys USING btree (created_at);
-
-
---
--- Name: index_deploys_on_environment; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_environment ON public.deploys USING btree (environment);
-
-
---
--- Name: index_deploys_on_is_live; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_is_live ON public.deploys USING btree (is_live);
-
-
---
--- Name: index_deploys_on_is_preview; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_is_preview ON public.deploys USING btree (is_preview);
-
-
---
--- Name: index_deploys_on_revertible; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_revertible ON public.deploys USING btree (revertible);
-
-
---
--- Name: index_deploys_on_shasum; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_shasum ON public.deploys USING btree (shasum);
-
-
---
--- Name: index_deploys_on_snapshot_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_snapshot_id ON public.deploys USING btree (snapshot_id);
-
-
---
--- Name: index_deploys_on_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_status ON public.deploys USING btree (status);
-
-
---
--- Name: index_deploys_on_trigger; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_trigger ON public.deploys USING btree (trigger);
-
-
---
--- Name: index_deploys_on_website_history_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_website_history_id ON public.deploys USING btree (website_history_id);
-
-
---
--- Name: index_deploys_on_website_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_website_id ON public.deploys USING btree (website_id);
-
-
---
--- Name: index_deploys_on_website_id_and_environment_and_is_preview; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_website_id_and_environment_and_is_preview ON public.deploys USING btree (website_id, environment, is_preview);
-
-
---
--- Name: index_deploys_on_website_id_and_is_live; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_website_id_and_is_live ON public.deploys USING btree (website_id, is_live);
-
-
---
 -- Name: index_document_chunks_on_document_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7369,6 +8233,90 @@ CREATE UNIQUE INDEX index_users_on_reset_password_token ON public.users USING bt
 
 
 --
+-- Name: index_website_deploys_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_created_at ON public.website_deploys USING btree (created_at);
+
+
+--
+-- Name: index_website_deploys_on_environment; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_environment ON public.website_deploys USING btree (environment);
+
+
+--
+-- Name: index_website_deploys_on_is_live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_is_live ON public.website_deploys USING btree (is_live);
+
+
+--
+-- Name: index_website_deploys_on_is_preview; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_is_preview ON public.website_deploys USING btree (is_preview);
+
+
+--
+-- Name: index_website_deploys_on_revertible; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_revertible ON public.website_deploys USING btree (revertible);
+
+
+--
+-- Name: index_website_deploys_on_shasum; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_shasum ON public.website_deploys USING btree (shasum);
+
+
+--
+-- Name: index_website_deploys_on_snapshot_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_snapshot_id ON public.website_deploys USING btree (snapshot_id);
+
+
+--
+-- Name: index_website_deploys_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_status ON public.website_deploys USING btree (status);
+
+
+--
+-- Name: index_website_deploys_on_trigger; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_trigger ON public.website_deploys USING btree (trigger);
+
+
+--
+-- Name: index_website_deploys_on_website_history_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_website_history_id ON public.website_deploys USING btree (website_history_id);
+
+
+--
+-- Name: index_website_deploys_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_website_id ON public.website_deploys USING btree (website_id);
+
+
+--
+-- Name: index_website_deploys_on_website_id_and_is_live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_deploys_on_website_id_and_is_live ON public.website_deploys USING btree (website_id, is_live);
+
+
+--
 -- Name: index_website_file_histories_on_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7754,66 +8702,290 @@ ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITIO
 
 
 --
--- Name: account_request_counts_2025_10_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: account_request_counts_2026_01_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2025_10_account_id_month_idx;
-
-
---
--- Name: account_request_counts_2025_10_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
---
-
-ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2025_10_pkey;
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_01_account_id_month_idx;
 
 
 --
--- Name: account_request_counts_2025_11_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: account_request_counts_2026_01_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2025_11_account_id_month_idx;
-
-
---
--- Name: account_request_counts_2025_11_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
---
-
-ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2025_11_pkey;
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_01_pkey;
 
 
 --
--- Name: account_request_counts_2025_12_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: account_request_counts_2026_02_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2025_12_account_id_month_idx;
-
-
---
--- Name: account_request_counts_2025_12_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
---
-
-ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2025_12_pkey;
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_02_account_id_month_idx;
 
 
 --
--- Name: account_request_counts_2025_1_account_id_month_request_cou_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: account_request_counts_2026_02_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2025_1_account_id_month_request_cou_idx1;
-
-
---
--- Name: account_request_counts_2025_1_account_id_month_request_cou_idx2; Type: INDEX ATTACH; Schema: public; Owner: -
---
-
-ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2025_1_account_id_month_request_cou_idx2;
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_02_pkey;
 
 
 --
--- Name: account_request_counts_2025_1_account_id_month_request_coun_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: account_request_counts_2026_03_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2025_1_account_id_month_request_coun_idx;
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_03_account_id_month_idx;
+
+
+--
+-- Name: account_request_counts_2026_03_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_03_pkey;
+
+
+--
+-- Name: account_request_counts_2026_04_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_04_account_id_month_idx;
+
+
+--
+-- Name: account_request_counts_2026_04_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_04_pkey;
+
+
+--
+-- Name: account_request_counts_2026_05_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_05_account_id_month_idx;
+
+
+--
+-- Name: account_request_counts_2026_05_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_05_pkey;
+
+
+--
+-- Name: account_request_counts_2026_06_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_06_account_id_month_idx;
+
+
+--
+-- Name: account_request_counts_2026_06_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_06_pkey;
+
+
+--
+-- Name: account_request_counts_2026_07_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_07_account_id_month_idx;
+
+
+--
+-- Name: account_request_counts_2026_07_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_07_pkey;
+
+
+--
+-- Name: account_request_counts_2026_08_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_08_account_id_month_idx;
+
+
+--
+-- Name: account_request_counts_2026_08_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_08_pkey;
+
+
+--
+-- Name: account_request_counts_2026_09_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_09_account_id_month_idx;
+
+
+--
+-- Name: account_request_counts_2026_09_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_09_pkey;
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_0_account_id_month_request_cou_idx1;
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx2; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_0_account_id_month_request_cou_idx2;
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx3; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_0_account_id_month_request_cou_idx3;
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx4; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_0_account_id_month_request_cou_idx4;
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx5; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_0_account_id_month_request_cou_idx5;
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx6; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_0_account_id_month_request_cou_idx6;
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx7; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_0_account_id_month_request_cou_idx7;
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_cou_idx8; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_0_account_id_month_request_cou_idx8;
+
+
+--
+-- Name: account_request_counts_2026_0_account_id_month_request_coun_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_0_account_id_month_request_coun_idx;
+
+
+--
+-- Name: account_request_counts_2026_10_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_10_account_id_month_idx;
+
+
+--
+-- Name: account_request_counts_2026_10_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_10_pkey;
+
+
+--
+-- Name: account_request_counts_2026_11_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_11_account_id_month_idx;
+
+
+--
+-- Name: account_request_counts_2026_11_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_11_pkey;
+
+
+--
+-- Name: account_request_counts_2026_12_account_id_month_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_id_and_month ATTACH PARTITION public.account_request_counts_2026_12_account_id_month_idx;
+
+
+--
+-- Name: account_request_counts_2026_12_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.account_request_counts_pkey ATTACH PARTITION public.account_request_counts_2026_12_pkey;
+
+
+--
+-- Name: account_request_counts_2026_1_account_id_month_request_cou_idx1; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_1_account_id_month_request_cou_idx1;
+
+
+--
+-- Name: account_request_counts_2026_1_account_id_month_request_cou_idx2; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_1_account_id_month_request_cou_idx2;
+
+
+--
+-- Name: account_request_counts_2026_1_account_id_month_request_coun_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_account_request_counts_on_account_month ATTACH PARTITION public.account_request_counts_2026_1_account_id_month_request_coun_idx;
+
+
+--
+-- Name: domain_request_counts_2025_08_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2025_08_account_id_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2025_08_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2025_08_account_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2025_08_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2025_08_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2025_08_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2025_08_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2025_08_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2025_08_pkey;
 
 
 --
@@ -7852,108 +9024,423 @@ ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_req
 
 
 --
--- Name: domain_request_counts_2025_10_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2025_10_account_id_domain_id_hour_idx;
-
-
---
--- Name: domain_request_counts_2025_10_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
---
-
-ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2025_10_account_id_hour_idx;
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_01_account_id_domain_id_hour_idx;
 
 
 --
--- Name: domain_request_counts_2025_10_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2025_10_domain_id_hour_idx;
-
-
---
--- Name: domain_request_counts_2025_10_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
---
-
-ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2025_10_domain_id_hour_request_count_idx;
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_01_account_id_hour_idx;
 
 
 --
--- Name: domain_request_counts_2025_10_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2025_10_pkey;
-
-
---
--- Name: domain_request_counts_2025_11_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
---
-
-ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2025_11_account_id_domain_id_hour_idx;
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_01_domain_id_hour_idx;
 
 
 --
--- Name: domain_request_counts_2025_11_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2025_11_account_id_hour_idx;
-
-
---
--- Name: domain_request_counts_2025_11_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
---
-
-ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2025_11_domain_id_hour_idx;
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_01_domain_id_hour_request_count_idx;
 
 
 --
--- Name: domain_request_counts_2025_11_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_01_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2025_11_domain_id_hour_request_count_idx;
-
-
---
--- Name: domain_request_counts_2025_11_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
---
-
-ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2025_11_pkey;
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_01_pkey;
 
 
 --
--- Name: domain_request_counts_2025_12_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_02_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2025_12_account_id_domain_id_hour_idx;
-
-
---
--- Name: domain_request_counts_2025_12_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
---
-
-ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2025_12_account_id_hour_idx;
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_02_account_id_domain_id_hour_idx;
 
 
 --
--- Name: domain_request_counts_2025_12_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_02_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2025_12_domain_id_hour_idx;
-
-
---
--- Name: domain_request_counts_2025_12_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
---
-
-ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2025_12_domain_id_hour_request_count_idx;
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_02_account_id_hour_idx;
 
 
 --
--- Name: domain_request_counts_2025_12_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+-- Name: domain_request_counts_2026_02_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
-ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2025_12_pkey;
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_02_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_02_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_02_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2026_02_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_02_pkey;
+
+
+--
+-- Name: domain_request_counts_2026_03_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_03_account_id_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_03_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_03_account_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_03_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_03_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_03_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_03_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2026_03_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_03_pkey;
+
+
+--
+-- Name: domain_request_counts_2026_04_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_04_account_id_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_04_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_04_account_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_04_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_04_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_04_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_04_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2026_04_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_04_pkey;
+
+
+--
+-- Name: domain_request_counts_2026_05_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_05_account_id_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_05_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_05_account_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_05_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_05_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_05_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_05_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2026_05_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_05_pkey;
+
+
+--
+-- Name: domain_request_counts_2026_06_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_06_account_id_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_06_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_06_account_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_06_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_06_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_06_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_06_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2026_06_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_06_pkey;
+
+
+--
+-- Name: domain_request_counts_2026_07_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_07_account_id_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_07_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_07_account_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_07_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_07_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_07_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_07_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2026_07_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_07_pkey;
+
+
+--
+-- Name: domain_request_counts_2026_08_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_08_account_id_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_08_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_08_account_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_08_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_08_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_08_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_08_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2026_08_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_08_pkey;
+
+
+--
+-- Name: domain_request_counts_2026_09_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_09_account_id_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_09_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_09_account_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_09_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_09_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_09_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_09_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2026_09_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_09_pkey;
+
+
+--
+-- Name: domain_request_counts_2026_10_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_10_account_id_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_10_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_10_account_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_10_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_10_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_10_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_10_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2026_10_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_10_pkey;
+
+
+--
+-- Name: domain_request_counts_2026_11_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_11_account_id_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_11_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_11_account_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_11_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_11_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_11_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_11_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2026_11_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_11_pkey;
+
+
+--
+-- Name: domain_request_counts_2026_12_account_id_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_domain_and_hour ATTACH PARTITION public.domain_request_counts_2026_12_account_id_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_12_account_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_account_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_12_account_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_12_domain_id_hour_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_id_and_hour ATTACH PARTITION public.domain_request_counts_2026_12_domain_id_hour_idx;
+
+
+--
+-- Name: domain_request_counts_2026_12_domain_id_hour_request_count_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.index_domain_request_counts_on_domain_hour_count ATTACH PARTITION public.domain_request_counts_2026_12_domain_id_hour_request_count_idx;
+
+
+--
+-- Name: domain_request_counts_2026_12_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_request_counts_2026_12_pkey;
 
 
 --
@@ -8203,8 +9690,10 @@ ALTER TABLE ONLY public.website_urls
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260105211553'),
+('20260105183720'),
+('20260105171150'),
 ('20251230152039'),
-('20251230132615'),
 ('20251229001513'),
 ('20251223152858'),
 ('20251223010445'),

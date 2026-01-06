@@ -13,6 +13,7 @@ fcm: false
 integrations:
 - rollbar
 omniauth_providers:
+- google-oauth2
 payment_processors:
 - stripe
 multitenancy:

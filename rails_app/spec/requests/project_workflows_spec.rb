@@ -57,7 +57,7 @@ RSpec.describe "Project Workflows API", type: :request do
           workflow1_owned.reload
 
           expect(workflow1_owned.step).to eq("website")
-          expect(data["step"]).to eq("website")
+          expect(data["page"]).to eq("website")
           expect(data["progress"]).to eq(25)
         end
       end
@@ -77,7 +77,7 @@ RSpec.describe "Project Workflows API", type: :request do
 
           expect(workflow1_owned.step).to eq("ad_campaign")
           expect(workflow1_owned.substep).to eq("content")
-          expect(data["step"]).to eq("ad_campaign")
+          expect(data["page"]).to eq("ad_campaign")
           expect(data["substep"]).to eq("content")
         end
       end
@@ -100,7 +100,7 @@ RSpec.describe "Project Workflows API", type: :request do
           workflow1_team.reload
 
           expect(workflow1_team.step).to eq("website")
-          expect(data["step"]).to eq("website")
+          expect(data["page"]).to eq("website")
         end
       end
 
@@ -194,7 +194,7 @@ RSpec.describe "Project Workflows API", type: :request do
           workflow1_owned.reload
 
           expect(workflow1_owned.step).to eq("website")
-          expect(data["step"]).to eq("website")
+          expect(data["page"]).to eq("website")
           expect(data["progress"]).to eq(25)
         end
       end
@@ -217,7 +217,7 @@ RSpec.describe "Project Workflows API", type: :request do
 
           expect(workflow1_owned.step).to eq("ad_campaign")
           expect(workflow1_owned.substep).to eq("content")
-          expect(data["step"]).to eq("ad_campaign")
+          expect(data["page"]).to eq("ad_campaign")
           expect(data["substep"]).to eq("content")
         end
       end

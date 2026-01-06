@@ -52,6 +52,38 @@ class AdSchedule < ApplicationRecord
   scope :always_on, -> { where(always_on: true) }
   scope :scheduled, -> { where(always_on: false) }
 
+  def google_sync
+    google_syncer.sync
+  end
+
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def to_google_json
+    GoogleAds::Resources::AdSchedule.new(self).to_google_json
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
+
+  def google_sync_plan
+    google_syncer.sync_plan
+  end
+
+  def google_syncer
+    GoogleAds::Resources::AdSchedule.new(self)
+  end
+
+  def google_sync_result
+    google_syncer.sync_result
+  end
+
   def on_now?(time = Time.current)
     return true if always_on?
 

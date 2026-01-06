@@ -76,13 +76,10 @@ module CampaignStageHelpers
       {
         target_type: "geo_location",
         location_name: "United States",
-        location_type: "COUNTRY",
+        location_type: "Country",
         country_code: "US",
         geo_target_constant: "geoTargetConstants/2840",
-        google_criterion_id: "2840",
-        targeted: true,
-        radius: 10,
-        radius_units: "miles"
+        targeted: true
       }
     ])
 

@@ -1,4 +1,4 @@
-import Header from "@components/header/Header";
+import Header from "@components/shared/header/Header";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { WorkflowProvider } from "@context/WorkflowProvider";
 

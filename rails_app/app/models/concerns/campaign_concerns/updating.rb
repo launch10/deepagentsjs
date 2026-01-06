@@ -304,7 +304,21 @@ module CampaignConcerns
       end
 
       def prepare_location_targets(location_targets_data)
-        location_attrs_array = Array(location_targets_data)
+        # Use campaign's normalize method (from LocationTargeting concern)
+        location_attrs_array = Array(location_targets_data).map { |data| campaign.send(:normalize_location_target, data) }
+
+        # Deduplicate by geo_target_constant - keep first occurrence only
+        seen_constants = Set.new
+        location_attrs_array = location_attrs_array.select do |attrs|
+          geo_constant = attrs.with_indifferent_access[:geo_target_constant]
+          if geo_constant && seen_constants.include?(geo_constant)
+            false
+          else
+            seen_constants << geo_constant if geo_constant
+            true
+          end
+        end
+
         existing_targets = AdLocationTarget.unscoped.where(campaign_id: campaign.id).order(:id).to_a
 
         targets_to_update = []

@@ -206,6 +206,18 @@ module CampaignConcerns
       errors.empty?
     end
 
+    def deployable?
+      done_launch_stage? && google_customer_id.present?
+    end
+
+    def can_go_live?
+      deployable? && google_ready_to_enable?
+    end
+
+    def billing_enabled?
+      false # set this up somewhere else
+    end
+
     def done_review_stage?
       true
     end

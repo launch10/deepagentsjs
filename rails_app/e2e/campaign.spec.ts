@@ -323,6 +323,9 @@ test.describe("Ad Campaign Workflow", () => {
       await page.waitForTimeout(1000);
       await campaignPage.expectFormVisible("keywords");
 
+      // Complete keywords step (fills keywords with valid data)
+      await campaignPage.completeKeywordsStep();
+
       // Continue to settings
       await campaignPage.clickContinue();
       await page.waitForTimeout(1000);

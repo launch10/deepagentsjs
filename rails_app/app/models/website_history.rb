@@ -36,7 +36,7 @@
 class WebsiteHistory < ApplicationRecord
   include Historiographer::History
 
-  has_many :deploys
+  has_many :deploys, class_name: "WebsiteDeploy"
 
   def files
     CodeFileHistory.for_snapshot(snapshot_id)

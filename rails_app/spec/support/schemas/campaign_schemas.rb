@@ -193,17 +193,15 @@ module APISchemas
           },
           location_targets: {
             type: :array,
+            description: 'Location targets in GeoTargetConstant format',
             items: {
               type: :object,
               properties: {
-                target_type: {type: :string},
-                location_name: {type: :string},
-                location_type: {type: :string},
-                country_code: {type: :string},
-                targeted: {type: :boolean},
-                google_criterion_id: {type: :string},
-                radius: {type: :number},
-                radius_units: {type: :string}
+                criteria_id: {type: :integer, description: "Google's geo target constant ID"},
+                name: {type: :string, description: 'Location name'},
+                target_type: {type: :string, description: 'Location type (Country, City, etc.)'},
+                country_code: {type: :string, description: 'Two-letter country code'},
+                targeted: {type: :boolean, description: 'Whether to target or exclude'}
               }
             }
           },

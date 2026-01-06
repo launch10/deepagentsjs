@@ -93,24 +93,21 @@ namespace :db do
 
       require_snapshot_builder_support!
 
-      snapshot_dir = Rails.root.join("test/fixtures/database/snapshots")
       base_snapshot = args[:base_snapshot]
 
       puts "=== Interactive Snapshot Builder ==="
 
-      puts "Truncating database..."
-      Database::Snapshotter.truncate
-
       if base_snapshot.present? && base_snapshot != "empty"
-        input_path = snapshot_dir.join("#{base_snapshot}.sql")
-        unless File.exist?(input_path)
-          puts "ERROR: Base snapshot '#{base_snapshot}' not found"
+        puts "Restoring base snapshot '#{base_snapshot}'..."
+        begin
+          Database::Snapshotter.restore_snapshot(base_snapshot, truncate: true)
+        rescue => e
+          puts "ERROR: #{e.message}"
           exit 1
         end
-
-        puts "Restoring base snapshot '#{base_snapshot}'..."
-        Database::Snapshotter.restore(input_path)
       else
+        puts "Truncating database..."
+        Database::Snapshotter.truncate
         puts "Resetting all sequences to 1..."
         Database::Snapshotter.reset_all_sequences(start_value: 1)
       end
@@ -125,11 +122,10 @@ namespace :db do
       puts
 
       define_method(:save_snapshot) do |name|
-        output_path = snapshot_dir.join("#{name}.sql")
         puts "Creating snapshot '#{name}'..."
-        result = Database::Snapshotter.dump(output_path)
+        result = Database::Snapshotter.create_snapshot(name)
         if result.success?
-          puts "Snapshot saved to #{output_path}"
+          puts "Snapshot saved to #{Database::Snapshotter.snapshot_path(name)}"
         else
           puts "ERROR: #{result.stderr}"
         end
@@ -168,11 +164,9 @@ def require_snapshot_builder_support!
 end
 
 class SnapshotBuilder
-  SNAPSHOT_DIR = Rails.root.join("test/fixtures/database/snapshots")
-
   class << self
     def build(builder_name, force: false)
-      SNAPSHOT_DIR.mkpath unless SNAPSHOT_DIR.exist?
+      Database::Snapshotter.ensure_snapshot_dir
 
       builder_class = BuilderFinder.find_builder_class(builder_name)
       if builder_class.nil?
@@ -183,9 +177,8 @@ class SnapshotBuilder
 
       builder = builder_class.new
       output_name = builder.output_name
-      output_path = SNAPSHOT_DIR.join("#{output_name}.sql")
 
-      if !force && File.exist?(output_path)
+      if !force && Database::Snapshotter.snapshot_exists?(output_name)
         puts "Snapshot '#{output_name}' already exists, skipping (use force: true to rebuild)"
         return
       end
@@ -218,9 +211,7 @@ class SnapshotBuilder
       base_snapshot = builder.base_snapshot
       return if base_snapshot.blank?
 
-      base_path = SNAPSHOT_DIR.join("#{base_snapshot}.sql")
-
-      if File.exist?(base_path)
+      if Database::Snapshotter.snapshot_exists?(base_snapshot)
         puts "Base snapshot '#{base_snapshot}' exists"
         return
       end
@@ -265,19 +256,8 @@ class SnapshotBuilder
       end
 
       if base_snapshot.present?
-        input_path = SNAPSHOT_DIR.join("#{base_snapshot}.sql")
-        unless File.exist?(input_path)
-          puts "ERROR: Base snapshot '#{base_snapshot}' not found at #{input_path}"
-          exit 1
-        end
-
         puts "Restoring base snapshot '#{base_snapshot}'..."
-        result = Database::Snapshotter.restore(input_path)
-        unless result.success?
-          puts "ERROR: Failed to restore base snapshot"
-          puts result.stderr
-          exit 1
-        end
+        Database::Snapshotter.restore_snapshot(base_snapshot, truncate: false)
       else
         puts "Resetting all sequences to 1..."
         Database::Snapshotter.reset_all_sequences(start_value: 1)
@@ -287,11 +267,11 @@ class SnapshotBuilder
       builder.build
       puts "Builder completed."
 
-      output_path = SNAPSHOT_DIR.join("#{output_name}.sql")
       puts "Creating snapshot '#{output_name}'..."
-      result = Database::Snapshotter.dump(output_path)
+      result = Database::Snapshotter.create_snapshot(output_name)
 
       if result.success?
+        output_path = Database::Snapshotter.snapshot_path(output_name)
         size = File.size(output_path) / 1024.0 / 1024.0
         puts "Snapshot '#{output_name}' created successfully (#{size.round(2)} MB)"
       else

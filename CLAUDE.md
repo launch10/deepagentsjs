@@ -333,6 +333,16 @@ Now when your code hits a `binding.pry`, you can interact with it in Terminal 2.
 - Sensitive keys stored in Rails credentials or environment variables
 - Database connections use SSL in production
 
+## Google Ads Browser Automation
+
+When using browser automation to access Google Ads (ads.google.com):
+
+1. **Always use a launch10.ai account** - Ensure you are logged in with a @launch10.ai Google account
+2. **Only use the test account** - Always select "Launch10 MCC Test Account" (ID: 124-895-7009)
+3. **Never access other accounts** - Do not log into any other Google Ads accounts, even if they appear in the account selector
+
+This ensures all testing and development work is isolated to the designated test environment.
+
 ## Tips
 
 - Use `pnpm` for Langgraph, not `npm` or `yarn`
@@ -340,3 +350,13 @@ Now when your code hits a `binding.pry`, you can interact with it in Terminal 2.
 - Rails and Langgraph share the same PostgreSQL database
 - WebContainer files are stored as JSON in the database
 - Always check both Rails and Langgraph logs when debugging
+
+## MCP Servers
+
+### CircleCI:
+
+Engineers that need to enable this can run:
+
+```bash
+claude mcp add circleci-mcp-server -e CIRCLECI_TOKEN=<token in rails.credentials> -- npx -y @circleci/mcp-server-circleci@latest
+```

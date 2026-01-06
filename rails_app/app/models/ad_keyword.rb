@@ -26,6 +26,32 @@
 class AdKeyword < ApplicationRecord
   include PlatformSettings
 
+  platform_setting :google, :criterion_id
+
+  def to_google_json
+    GoogleAds::Resources::Keyword.new(self).to_google_json
+  end
+
+  def google_sync
+    google_syncer.sync
+  end
+
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
+
+  def google_syncer
+    GoogleAds::Resources::Keyword.new(self)
+  end
+
   acts_as_paranoid
 
   belongs_to :ad_group, class_name: "AdGroup", inverse_of: :keywords
@@ -37,6 +63,4 @@ class AdKeyword < ApplicationRecord
   validates :text, presence: true, length: { maximum: 80 }
   validates :match_type, presence: true, inclusion: { in: MATCH_TYPES }
   validates :position, presence: true
-
-  platform_setting :google, :criterion_id
 end

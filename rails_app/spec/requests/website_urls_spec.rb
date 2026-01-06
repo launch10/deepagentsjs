@@ -19,9 +19,9 @@ RSpec.describe "WebsiteUrls API", type: :request do
   let!(:website1_team) { create(:website, account: user1_team_account, project: project1_team, name: "Team Website") }
   let!(:website2_owned) { create(:website, account: user2_owned_account, project: project2_owned, name: "User 2 Website") }
 
-  let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.ai', account: user1_owned_account, website: website1_owned) }
-  let!(:domain1_team) { create(:domain, domain: 'team1.launch10.ai', account: user1_team_account, website: website1_team) }
-  let!(:domain2_owned) { create(:domain, domain: 'other.launch10.ai', account: user2_owned_account, website: website2_owned) }
+  let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.site', account: user1_owned_account, website: website1_owned) }
+  let!(:domain1_team) { create(:domain, domain: 'team1.launch10.site', account: user1_team_account, website: website1_team) }
+  let!(:domain2_owned) { create(:domain, domain: 'other.launch10.site', account: user2_owned_account, website: website2_owned) }
 
   before do
     ensure_plans_exist
