@@ -44,11 +44,21 @@ RSpec.describe Upload, type: :model do
     expect(upload.media_type).to eq("video")
   end
 
-  it "rejects non-image and non-video files" do
+  it "accepts PDF documents" do
     upload = Upload.create(
       file: fixture_file_upload(Rails.root.join('spec/fixtures/files/test_document.pdf'), 'application/pdf'),
       account: create(:account)
     )
+    expect(upload).to be_valid
+    expect(upload.media_type).to eq("document")
+  end
+
+  it "rejects non-image/video/pdf files" do
+    upload = Upload.create(
+      file: fixture_file_upload(Rails.root.join('spec/fixtures/files/test_file.txt'), 'text/plain'),
+      account: create(:account)
+    )
     expect(upload).to_not be_valid
+    expect(upload.errors[:media_type]).to include("is not included in the list")
   end
 end

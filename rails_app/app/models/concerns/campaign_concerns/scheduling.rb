@@ -26,6 +26,37 @@ module CampaignConcerns
       schedule.as_json
     end
 
+    # Updates the campaign's ad schedules from structured data.
+    #
+    # @param schedule_data [Hash] the schedule configuration
+    # @option schedule_data [Boolean] :always_on whether the campaign runs 24/7
+    # @option schedule_data [Array<String>] :day_of_week days when ads run (e.g., ['Monday', 'Tuesday'])
+    # @option schedule_data [String] :start_time time ads start (e.g., '9:00am')
+    # @option schedule_data [String] :end_time time ads end (e.g., '5:00pm')
+    # @option schedule_data [String] :time_zone IANA time zone (e.g., 'America/New_York')
+    #
+    # @example Always-on schedule
+    #   campaign.update_ad_schedules(always_on: true)
+    #
+    # @example Specific days and times
+    #   campaign.update_ad_schedules(
+    #     always_on: false,
+    #     day_of_week: ['Monday', 'Tuesday', 'Wednesday'],
+    #     start_time: '9:00am',
+    #     end_time: '5:00pm',
+    #     time_zone: 'America/Chicago'
+    #   )
+    # Always-on (runs 24/7)
+    # { always_on: true }
+    #
+    # Specific days and times
+    # {
+    #   always_on: false,
+    #   day_of_week: ['Monday', 'Tuesday', 'Wednesday'],
+    #   start_time: '9:00am',
+    #   end_time: '5:00pm',
+    #   time_zone: 'America/Chicago'  # optional
+    # }
     def update_ad_schedules(schedule_data)
       schedule.update(schedule_data)
     end

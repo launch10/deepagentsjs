@@ -88,7 +88,7 @@ RSpec.describe 'WebsiteConcerns::ShasumHashable' do
     end
 
     context 'with a completed deploy' do
-      let!(:deploy) { create(:deploy, website: website, status: 'completed', shasum: website.generate_shasum) }
+      let!(:deploy) { create(:website_deploy, website: website, status: 'completed', shasum: website.generate_shasum) }
 
       it 'returns false when files have not changed' do
         expect(website.files_changed?).to be false
@@ -117,9 +117,9 @@ RSpec.describe 'WebsiteConcerns::ShasumHashable' do
     end
 
     context 'with multiple deploys' do
-      let!(:old_deploy) { create(:deploy, website: website, status: 'completed', shasum: 'old', created_at: 2.days.ago) }
-      let!(:latest_deploy) { create(:deploy, website: website, status: 'completed', shasum: website.generate_shasum, created_at: 1.day.ago) }
-      let!(:failed_deploy) { create(:deploy, website: website, status: 'failed', shasum: 'failed', created_at: 1.hour.ago) }
+      let!(:old_deploy) { create(:website_deploy, website: website, status: 'completed', shasum: 'old', created_at: 2.days.ago) }
+      let!(:latest_deploy) { create(:website_deploy, website: website, status: 'completed', shasum: website.generate_shasum, created_at: 1.day.ago) }
+      let!(:failed_deploy) { create(:website_deploy, website: website, status: 'failed', shasum: 'failed', created_at: 1.hour.ago) }
 
       it 'compares against the latest completed deploy' do
         expect(website.files_changed?).to be false

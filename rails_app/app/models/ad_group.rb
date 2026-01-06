@@ -32,7 +32,6 @@ class AdGroup < ApplicationRecord
   has_many :headlines, through: :ads
   has_many :descriptions, through: :ads
   has_many :callouts, dependent: :destroy, class_name: "AdCallout"
-  has_one :structured_snippet, dependent: :destroy, class_name: "AdStructuredSnippet"
 
   validates :name, presence: true
 
@@ -40,8 +39,79 @@ class AdGroup < ApplicationRecord
   accepts_nested_attributes_for :keywords, allow_destroy: true
 
   def google_customer_id
-    ads_account.google_customer_id
+    campaign.google_customer_id
+  end
+
+  def enable!
+    self.google_status = "ENABLED"
+    save!
+  end
+
+  def pause!
+    self.google_status = "PAUSED"
+    save!
   end
 
   platform_setting :google, :ad_group_id
+  platform_setting :google, :status, default: "PAUSED"
+  platform_setting :google, :type, default: "SEARCH_STANDARD"
+  platform_setting :google, :cpc_bid_micros, default: 1_000_000
+
+  def google_syncer
+    GoogleAds::Resources::AdGroup.new(self)
+  end
+
+  def to_google_json
+    google_syncer.to_google_json
+  end
+
+  def google_sync
+    google_syncer.sync
+  end
+
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
+
+  # Ads syncing
+  def sync_ads
+    GoogleAds::Resources::Ad.sync_all(self)
+  end
+
+  def ads_sync_plan
+    GoogleAds::Resources::Ad.sync_plan(self)
+  end
+
+  def ads_synced?
+    GoogleAds::Resources::Ad.synced?(self)
+  end
+
+  # Keywords syncing
+  def sync_keywords
+    GoogleAds::Resources::Keyword.sync_all(self)
+  end
+
+  def keywords_sync_plan
+    GoogleAds::Resources::Keyword.sync_plan(self)
+  end
+
+  def keywords_synced?
+    GoogleAds::Resources::Keyword.synced?(self)
+  end
+
+  def google_sync_result
+    google_syncer.sync_result
+  end
+
+  def keywords_sync_result
+    GoogleAds::Resources::Keyword.sync_result(self)
+  end
 end

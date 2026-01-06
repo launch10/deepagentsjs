@@ -19,34 +19,39 @@ website_step:
 website_step_finished:
   class: WebsiteStepFinished
   base_snapshot: website_step
-  description: "Deploys website and sets workflow to ad_campaign:content"
+  description: "Finishes website step and advances workflow to ad_campaign:content"
 
 campaign_content_step:
   class: CampaignContentStep
   base_snapshot: website_step_finished
-  description: "Creates a campaign with ad groups and ads - ON content step"
+  description: "Campaign content step with headlines and descriptions"
 
 campaign_highlights_step:
   class: CampaignHighlightsStep
   base_snapshot: campaign_content_step
-  description: "Fills headlines and descriptions - ON highlights step"
+  description: "Campaign highlights step with callouts and snippets"
 
 campaign_keywords_step:
   class: CampaignKeywordsStep
   base_snapshot: campaign_highlights_step
-  description: "Fills callouts and snippets - ON keywords step"
+  description: "Campaign keywords step with ad groups and keywords"
 
 campaign_settings_step:
   class: CampaignSettingsStep
   base_snapshot: campaign_keywords_step
-  description: "Fills keywords for ad groups - ON settings step"
+  description: "Campaign settings step with budget, geo targets, and schedules"
 
 campaign_launch_step:
   class: CampaignLaunchStep
   base_snapshot: campaign_settings_step
-  description: "Sets location, schedule, budget - ON launch step"
+  description: "Campaign launch step ready for review"
 
 campaign_review_step:
   class: CampaignReviewStep
   base_snapshot: campaign_launch_step
-  description: "Sets channel type, bidding, start date - ON review step"
+  description: "Campaign review step ready for deployment"
+
+campaign_complete:
+  class: CampaignComplete
+  base_snapshot: campaign_review_step
+  description: "Creates a complete campaign with favicon, budget, geo targets, schedules, headlines, descriptions, callouts, snippets, ad groups, and keywords"

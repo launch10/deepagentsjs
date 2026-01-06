@@ -50,6 +50,7 @@ class PollyManager {
     /api\.anthropic\.com/, // Anthropic
     /api\.openai\.com/, // OpenAI
     /generativelanguage\.googleapis\.com/, // Google
+    /api\.groq\.com/, // Groq
   ];
 
   static RECORDINGS_DIR = path.join(process.cwd(), "tests", "recordings");

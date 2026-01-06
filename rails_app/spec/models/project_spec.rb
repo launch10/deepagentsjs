@@ -41,7 +41,7 @@ RSpec.describe Project, type: :model do
     project.current_workflow
   end
   describe "#current_chat" do
-    it "find the right chat for the current workflow", focus: true do
+    it "find the right chat for the current workflow" do
       project.current_workflow.advance_to(step: :brainstorm)
 
       expect(project.current_workflow.step).to eq "brainstorm"

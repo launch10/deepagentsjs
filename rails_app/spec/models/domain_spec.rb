@@ -97,11 +97,11 @@ RSpec.describe Domain, type: :model do
           expect(domain.domain).to eq('test-site.test-deploy.com')
         end
 
-        it 'falls back to launch10.ai when env var not set' do
+        it 'falls back to launch10.site when env var not set' do
           ENV.delete('DEPLOYMENT_BASE_URL')
           domain = Domain.new(website: website, account: account)
           domain.save
-          expect(domain.domain).to eq('test-site.launch10.ai')
+          expect(domain.domain).to eq('test-site.launch10.site')
         end
 
         context 'when the default domain is already taken' do
@@ -195,23 +195,23 @@ RSpec.describe Domain, type: :model do
     let(:project) { create(:project, account: account) }
     let(:website) { create(:website, project: project, account: account) }
 
-    it 'auto-sets to true for launch10.ai subdomains' do
-      domain = create(:domain, domain: 'mysite.launch10.ai', website: website, account: account)
+    it 'auto-sets to true for launch10.site subdomains' do
+      domain = create(:domain, domain: 'mysite.launch10.site', website: website, account: account)
       expect(domain.is_platform_subdomain).to eq(true)
     end
 
-    it 'auto-sets to false for non-launch10.ai domains' do
+    it 'auto-sets to false for non-launch10.site domains' do
       domain = create(:domain, domain: 'custom.com', website: website, account: account)
       expect(domain.is_platform_subdomain).to eq(false)
     end
 
-    it 'auto-sets to true for nested launch10.ai subdomains' do
-      domain = create(:domain, domain: 'sub.mysite.launch10.ai', website: website, account: account)
+    it 'auto-sets to true for nested launch10.site subdomains' do
+      domain = create(:domain, domain: 'sub.mysite.launch10.site', website: website, account: account)
       expect(domain.is_platform_subdomain).to eq(true)
     end
 
-    it 'does not auto-set for domains that only contain launch10.ai as a substring' do
-      domain = create(:domain, domain: 'launch10.ai.example.com', website: website, account: account)
+    it 'does not auto-set for domains that only contain launch10.site as a substring' do
+      domain = create(:domain, domain: 'launch10.site.example.com', website: website, account: account)
       expect(domain.is_platform_subdomain).to eq(false)
     end
 
@@ -241,14 +241,14 @@ RSpec.describe Domain, type: :model do
 
     context 'when under subdomain limit' do
       it 'allows creating launch10 subdomains' do
-        domain = build(:domain, domain: 'site1.launch10.ai', website: website, account: account, is_platform_subdomain: true)
+        domain = build(:domain, domain: 'site1.launch10.site', website: website, account: account, is_platform_subdomain: true)
         expect(domain).to be_valid
       end
 
       it 'allows creating multiple launch10 subdomains up to the limit' do
-        create(:domain, domain: 'site1.launch10.ai', website: website, account: account, is_platform_subdomain: true)
-        create(:domain, domain: 'site2.launch10.ai', website: website, account: account, is_platform_subdomain: true)
-        domain3 = build(:domain, domain: 'site3.launch10.ai', website: website, account: account, is_platform_subdomain: true)
+        create(:domain, domain: 'site1.launch10.site', website: website, account: account, is_platform_subdomain: true)
+        create(:domain, domain: 'site2.launch10.site', website: website, account: account, is_platform_subdomain: true)
+        domain3 = build(:domain, domain: 'site3.launch10.site', website: website, account: account, is_platform_subdomain: true)
         expect(domain3).to be_valid
       end
     end
@@ -256,12 +256,12 @@ RSpec.describe Domain, type: :model do
     context 'when at subdomain limit' do
       before do
         3.times do |i|
-          create(:domain, domain: "site#{i}.launch10.ai", account: account, is_platform_subdomain: true)
+          create(:domain, domain: "site#{i}.launch10.site", account: account, is_platform_subdomain: true)
         end
       end
 
       it 'prevents creating additional launch10 subdomains' do
-        domain = build(:domain, domain: 'site4.launch10.ai', website: website, account: account, is_platform_subdomain: true)
+        domain = build(:domain, domain: 'site4.launch10.site', website: website, account: account, is_platform_subdomain: true)
         expect(domain).not_to be_valid
         expect(domain.errors[:base]).to include('You have reached the maximum number of platform subdomains for your plan')
       end
@@ -274,9 +274,9 @@ RSpec.describe Domain, type: :model do
 
     context 'when updating existing subdomain' do
       it 'does not count the current record against the limit' do
-        create(:domain, domain: 'site1.launch10.ai', account: account, is_platform_subdomain: true)
-        create(:domain, domain: 'site2.launch10.ai', account: account, is_platform_subdomain: true)
-        domain3 = create(:domain, domain: 'site3.launch10.ai', account: account, is_platform_subdomain: true)
+        create(:domain, domain: 'site1.launch10.site', account: account, is_platform_subdomain: true)
+        create(:domain, domain: 'site2.launch10.site', account: account, is_platform_subdomain: true)
+        domain3 = create(:domain, domain: 'site3.launch10.site', account: account, is_platform_subdomain: true)
 
         domain3.cloudflare_zone_id = 'new_zone_id'
         expect(domain3).to be_valid
@@ -288,8 +288,8 @@ RSpec.describe Domain, type: :model do
     let(:account) { create(:account) }
 
     before do
-      create(:domain, domain: 'site1.launch10.ai', account: account, is_platform_subdomain: true)
-      create(:domain, domain: 'site2.launch10.ai', account: account, is_platform_subdomain: true)
+      create(:domain, domain: 'site1.launch10.site', account: account, is_platform_subdomain: true)
+      create(:domain, domain: 'site2.launch10.site', account: account, is_platform_subdomain: true)
       create(:domain, domain: 'custom.com', account: account, is_platform_subdomain: false)
     end
 

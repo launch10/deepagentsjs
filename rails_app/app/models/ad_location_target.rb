@@ -33,14 +33,43 @@
 #
 class AdLocationTarget < ApplicationRecord
   include PlatformSettings
+
+  # geo_target_constant: The well-known Google location ID (e.g., "geoTargetConstants/2840" for USA)
+  # criterion_id: The ID Google assigns when you create this CampaignCriterion
+  platform_setting :google, :geo_target_constant
   platform_setting :google, :criterion_id
+
+  def to_google_json
+    GoogleAds::Resources::LocationTarget.new(self).to_google_json
+  end
+
+  def google_sync
+    google_syncer.sync
+  end
+
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
+
+  def google_syncer
+    @google_syncer ||= GoogleAds::Resources::LocationTarget.new(self)
+  end
 
   acts_as_paranoid
 
   belongs_to :campaign
 
   TARGET_TYPES = %w[geo_location radius location_group].freeze
-  LOCATION_TYPES = %w[COUNTRY REGION CITY POSTAL DMA AIRPORT UNIVERSITY].freeze
+  # Valid location types come from GeoTargetConstant (the source of truth)
+  LOCATION_TYPES = GeoTargetConstant::TARGET_TYPES.freeze
   RADIUS_UNITS = %w[MILES KILOMETERS].freeze
 
   validates :target_type, presence: true, inclusion: { in: TARGET_TYPES }
@@ -49,6 +78,8 @@ class AdLocationTarget < ApplicationRecord
 
   validate :geo_location_fields_required
   validate :radius_fields_required
+  validate :unique_geo_target_constant_per_campaign
+  validate :us_country_exclusivity
 
   scope :targeted, -> { where(targeted: true) }
   scope :excluded, -> { where(targeted: false) }
@@ -74,15 +105,21 @@ class AdLocationTarget < ApplicationRecord
     !targeted
   end
 
+  def negative
+    !targeted
+  end
+
+  # Alias for google_geo_target_constant (matches Google API terminology)
   def geo_target_constant=(value)
-    self.google_criterion_id = value
+    self.google_geo_target_constant = value
   end
 
   def geo_target_constant
-    google_criterion_id
+    google_geo_target_constant
   end
 
-  def google_criterion_id=(value)
+  # Custom setter that normalizes the geo_target_constant format
+  def google_geo_target_constant=(value)
     return if value.blank?
 
     normalized = if value.to_s.start_with?("geoTargetConstants/")
@@ -91,59 +128,48 @@ class AdLocationTarget < ApplicationRecord
       "geoTargetConstants/#{value}"
     end
 
-    platform_settings["google"]["criterion_id"] = normalized
+    platform_settings["google"]["geo_target_constant"] = normalized
   end
 
-  # Auto-upcase location_type
-  def location_type=(value)
-    super(value&.upcase)
-  end
 
   # Auto-upcase radius_units
   def radius_units=(value)
     super(value&.upcase)
   end
 
-  # @return [Hash] JSON representation for the frontend
+  # @return [Hash] JSON representation for the frontend (GeoTargetConstant format)
   # @example Geo location target
   #   {
-  #     target_type: 'geo_location',
-  #     location_identifier: 'geoTargetConstants/2840',
-  #     location_name: 'United States',
-  #     location_type: 'COUNTRY',
+  #     criteria_id: 2840,
+  #     name: 'United States',
+  #     target_type: 'Country',
   #     country_code: 'US',
-  #     negative: false,
-  #     radius: 10,
-  #     radius_units: 'MILES'
+  #     targeted: true
   #   }
   # @example Radius target
   #   {
-  #     target_type: 'radius',
+  #     ad_location_target_type: 'radius',
   #     address_line_1: '38 avenue de l\'Opéra',
   #     city: 'Paris',
   #     postal_code: '75002',
   #     country_code: 'FR',
   #     radius: 10,
   #     radius_units: 'MILES',
-  #     negative: false
+  #     targeted: true
   #   }
   def as_json(_options = {})
-    base = {
-      target_type: target_type,
-      targeted: targeted
-    }
-
     if geo_location?
-      base.merge(
-        geo_target_constant: google_criterion_id,
-        location_name: location_name,
-        location_type: location_type,
+      # Return GeoTargetConstant format for geo locations
+      {
+        criteria_id: google_geo_target_constant&.gsub("geoTargetConstants/", "")&.to_i,
+        name: location_name,
+        target_type: location_type&.titleize,
         country_code: country_code,
-        radius: radius&.to_f,
-        radius_units: radius_units&.downcase
-      )
+        targeted: targeted
+      }
     elsif radius?
-      base.merge(
+      {
+        ad_location_target_type: "radius",
         address_line_1: address_line_1,
         city: city,
         state: state,
@@ -152,17 +178,21 @@ class AdLocationTarget < ApplicationRecord
         radius: radius&.to_f,
         radius_units: radius_units&.downcase,
         latitude: latitude&.to_f,
-        longitude: longitude&.to_f
-      )
+        longitude: longitude&.to_f,
+        targeted: targeted
+      }
     else
-      base
+      {
+        ad_location_target_type: target_type,
+        targeted: targeted
+      }
     end
   end
 
   private
 
   def infer_target_type
-    if google_criterion_id.present?
+    if google_geo_target_constant.present?
       self.target_type = "geo_location"
     elsif address_line_1.present? || latitude.present?
       self.target_type = "radius"
@@ -172,7 +202,7 @@ class AdLocationTarget < ApplicationRecord
   def geo_location_fields_required
     return unless geo_location?
 
-    errors.add(:google_criterion_id, "can't be blank") if google_criterion_id.blank?
+    errors.add(:google_geo_target_constant, "can't be blank") if google_geo_target_constant.blank?
     errors.add(:location_name, "can't be blank") if location_name.blank?
     errors.add(:country_code, "can't be blank") if country_code.blank?
   end
@@ -184,5 +214,35 @@ class AdLocationTarget < ApplicationRecord
     errors.add(:radius_units, "can't be blank") if radius_units.blank?
     errors.add(:city, "can't be blank") if city.blank?
     errors.add(:country_code, "can't be blank") if country_code.blank?
+  end
+
+  def unique_geo_target_constant_per_campaign
+    return if google_geo_target_constant.blank?
+
+    existing = campaign.location_targets.where.not(id: id).find do |target|
+      target.google_geo_target_constant == google_geo_target_constant
+    end
+
+    errors.add(:google_geo_target_constant, "has already been taken for this campaign") if existing
+  end
+
+  def us_country_exclusivity
+    return unless geo_location?
+    return if google_geo_target_constant.blank?
+
+    us_geo_target = "geoTargetConstants/2840"
+    other_geo_targets = campaign.location_targets.geo_locations.where.not(id: id)
+
+    if google_geo_target_constant == us_geo_target
+      # Adding US - check if other geo locations exist
+      if other_geo_targets.any?
+        errors.add(:google_geo_target_constant, "United States cannot be added when more specific locations are targeted")
+      end
+    else
+      # Adding non-US - check if US exists
+      if other_geo_targets.any? { |t| t.google_geo_target_constant == us_geo_target }
+        errors.add(:google_geo_target_constant, "cannot add specific locations when United States is already targeted")
+      end
+    end
   end
 end

@@ -33,10 +33,12 @@ class Account < ApplicationRecord
   include Transfer
   include Atlas::Account
   include AccountConcerns::TrafficLimits
+  include AccountConcerns::GoogleAdsAccount
 
   belongs_to :owner, class_name: "User"
   has_one :ads_account, dependent: :destroy
   has_many :account_invitations, dependent: :destroy
+  has_many :ads_account_invitations, through: :ads_account, class_name: "AdsAccountInvitation", dependent: :destroy, source: :invitations
   has_many :account_users, dependent: :destroy
   has_many :campaigns, dependent: :destroy
   has_many :notification_mentions, as: :record, dependent: :destroy, class_name: "Noticed::Event"
@@ -78,6 +80,22 @@ class Account < ApplicationRecord
 
   def plan
     subscriptions.active.order(id: :desc).limit(1).first&.plan
+  end
+
+  def google_connected_account
+    owner&.connected_accounts&.find_by(provider: "google_oauth2")
+  end
+
+  def google_email_address
+    google_connected_account&.email
+  end
+
+  def google_account_invitation
+    ads_account_invitations.where(platform: "google").first
+  end
+
+  def has_google_connected_account?
+    google_connected_account.present?
   end
 
   def current_plan_id

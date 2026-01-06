@@ -47,16 +47,19 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::LocationTargeting
   include CampaignConcerns::GooglePlatformSettings
   include CampaignConcerns::MetaPlatformSettings
+  include CampaignConcerns::GoogleSyncable
 
   acts_as_paranoid
 
   belongs_to :account
+  delegate :google_ads_account, to: :account
   belongs_to :project
   belongs_to :website
   belongs_to :ads_account, optional: true
 
   has_many :ad_groups, dependent: :destroy
   has_many :ads, through: :ad_groups
+  has_many :campaign_deploys, dependent: :destroy
   has_one :launch_workflow, -> { where(workflow_type: "launch") }, through: :project, source: :workflows
   has_many :ad_schedules, dependent: :destroy
   has_one :chat, as: :contextable, class_name: "Chat"
@@ -93,6 +96,26 @@ class Campaign < ApplicationRecord
   accepts_nested_attributes_for :callouts, allow_destroy: true
   accepts_nested_attributes_for :structured_snippet, allow_destroy: true
 
+  def enable!(async: true)
+    # Update local statuses
+    self.google_status = "ENABLED"
+    save!
+    ad_groups.each(&:enable!)
+    ads.each(&:enable!)
+
+    CampaignDeploy.deploy(self, async: async)
+  end
+
+  def pause!
+    # Update local statuses
+    self.google_status = "PAUSED"
+    save!
+    ad_groups.each(&:pause!)
+    ads.each(&:pause!)
+
+    CampaignDeploy.deploy(self, async: async)
+  end
+
   def daily_budget_cents
     budget&.daily_budget_cents
   end
@@ -109,5 +132,13 @@ class Campaign < ApplicationRecord
 
   def thread_id
     chat&.thread_id
+  end
+
+  def google_customer_id
+    account&.google_customer_id
+  end
+
+  def google_account_invitation
+    account&.google_account_invitation
   end
 end

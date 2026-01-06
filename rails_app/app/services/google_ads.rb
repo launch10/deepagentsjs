@@ -1,19 +1,41 @@
 module GoogleAds
-  include ActiveSupport::Configurable
-
-  config_accessor :client_id
-  config_accessor :client_secret
-  config_accessor :developer_token
-
   class << self
+    def config
+      Rails.application.config.google_ads
+    end
+
+    def is_test_mode?
+      !Rails.env.production?
+    end
+
+    # Log level for Google Ads API requests:
+    # - Production: INFO (summaries only - customer ID, method, request ID, fault status)
+    # - Development/Test: DEBUG (full request/response payloads as JSON)
+    #
+    # Logs are tagged with ActiveSupport::TaggedLogging and can be filtered
+    # using GoogleAds::Instrumentation.with_context for domain model correlation.
+    #
+    def log_level
+      Rails.env.production? ? "INFO" : "DEBUG"
+    end
+
     def client
       @client ||= Google::Ads::GoogleAds::GoogleAdsClient.new do |c|
-        c.client_id = Rails.application.credentials.dig(:google_ads, :client_id)
-        c.client_secret = Rails.application.credentials.dig(:google_ads, :client_secret)
-        c.refresh_token = Rails.application.credentials.dig(:google_ads, :refresh_token)
-        c.developer_token = Rails.application.credentials.dig(:google_ads, :developer_token)
-        c.login_customer_id = Rails.application.credentials.dig(:google_ads, :login_customer_id)
+        c.client_id = config[:client_id]
+        c.client_secret = config[:client_secret]
+        c.refresh_token = config[:refresh_token]
+        c.developer_token = config[:developer_token]
+        c.login_customer_id = config[:login_customer_id]
+
+        # Enable Google Ads API request logging
+        c.log_level = log_level
+        c.logger = Rails.application.config.google_ads_logger
       end
+    end
+
+    # Reset client (useful for testing or credential rotation)
+    def reset_client!
+      @client = nil
     end
   end
 end

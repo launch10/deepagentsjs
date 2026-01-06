@@ -24,12 +24,38 @@
 #
 class AdCallout < ApplicationRecord
   include PlatformSettings
+
   belongs_to :campaign, class_name: "Campaign", inverse_of: :callouts
   belongs_to :ad_group, class_name: "AdGroup", inverse_of: :callouts
+
   platform_setting :google, :asset_id
 
   validates :text, presence: true, length: { maximum: 25 }
   validates :position, presence: true
 
   acts_as_paranoid
+
+  def google_syncer
+    GoogleAds::Resources::Callout.new(self)
+  end
+
+  def google_sync
+    google_syncer.sync
+  end
+
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
+
+  def to_google_json
+    google_syncer.to_google_json
+  end
 end

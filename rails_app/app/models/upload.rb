@@ -24,6 +24,25 @@
 class Upload < ApplicationRecord
   include UploadConcerns::Serialization
   include UploadConcerns::Creation
+  include PlatformSettings
+
+  platform_setting :google, :asset_id
+
+  def google_sync(campaign:)
+    GoogleAds::Resources::Favicon.new(self, campaign: campaign).sync
+  end
+
+  def google_synced?(campaign:)
+    GoogleAds::Resources::Favicon.new(self, campaign: campaign).synced?
+  end
+
+  def google_delete(campaign:)
+    GoogleAds::Resources::Favicon.new(self, campaign: campaign).delete
+  end
+
+  def google_fetch(campaign:)
+    GoogleAds::Resources::Favicon.new(self, campaign: campaign).fetch
+  end
 
   MEDIA_TYPES = %w[image video document]
 

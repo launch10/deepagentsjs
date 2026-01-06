@@ -7,7 +7,7 @@ module APISchemas
         type: :object,
         properties: {
           workflow_type: {type: :string, description: 'Type of workflow'},
-          step: {type: :string, description: 'Current step in the workflow'},
+          page: {type: :string, description: 'Current page in the workflow'},
           substep: {type: :string, nullable: true, description: 'Current substep in the workflow'},
           progress: {type: :number, description: 'Progress percentage (0-100)'},
           available_steps: {
@@ -16,7 +16,7 @@ module APISchemas
             description: 'List of available steps in this workflow'
           }
         },
-        required: ['workflow_type', 'step', 'progress', 'available_steps']
+        required: ['workflow_type', 'page', 'progress', 'available_steps']
       }
     end
 

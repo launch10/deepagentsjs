@@ -19,8 +19,35 @@
 #
 class AdBudget < ApplicationRecord
   include PlatformSettings
+
   belongs_to :campaign
+
   platform_setting :google, :budget_id
+  platform_setting :google, :budget_name, default: -> { Time.now.utc.strftime("%Y-%m-%d %H:%M:%S") }
 
   acts_as_paranoid
+
+  def google_syncer
+    GoogleAds::Resources::Budget.new(self)
+  end
+
+  def google_sync
+    google_syncer.sync
+  end
+
+  def google_synced?
+    google_syncer.synced?
+  end
+
+  def google_delete
+    google_syncer.delete
+  end
+
+  def google_fetch
+    google_syncer.fetch
+  end
+
+  def google_sync_result
+    google_syncer.sync_result
+  end
 end

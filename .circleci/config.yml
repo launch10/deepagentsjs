@@ -219,6 +219,10 @@ jobs:
             wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
             sudo apt-get update
             sudo apt-get install -y postgresql-client-16
+      - run:
+          name: Install image processing dependencies
+          command: |
+            sudo apt-get install -y librsvg2-bin
       - ruby/install-deps:
           key: rails-gems-v1
       - setup-database

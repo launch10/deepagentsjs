@@ -25,7 +25,7 @@ class WebsiteStepFinished < BaseBuilder
     Core::TestSites.import_to_website(website, "hello-world")
 
     domain = website.domains.first || create(:domain, website: website, account: account, domain: "example.launch10.site")
-    website_url = website.website_urls.first || create(:website_url, website: website, domain: domain, account: account)
+    website_url = website.website_urls.first || create(:website_url, website: website, domain: domain, account: account, path: "/bingo?cloudEnv=staging")
 
     project.current_workflow.update!(step: "ad_campaign", substep: "content")
 
