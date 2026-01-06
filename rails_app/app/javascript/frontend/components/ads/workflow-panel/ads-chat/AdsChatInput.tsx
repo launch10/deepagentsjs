@@ -59,7 +59,7 @@ export default function AdsChatInput() {
 
       <Button
         variant="link"
-        className="text-base-400 font-normal text-xs px-0 py-1 h-auto justify-start gap-1"
+        className="text-base-400 font-normal text-xs px-0 py-1 h-auto justify-start gap-1 no-underline hover:no-underline"
         onClick={onRefreshSuggestions}
         data-testid="refresh-all-suggestions"
       >

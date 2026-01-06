@@ -72,21 +72,17 @@ export function transformLocationsFromApi(
 ): LocationWithSettings[] {
   if (!locations || locations.length === 0) return [];
 
-  // Backend returns geo_target_constant as "geoTargetConstants/2840" format
+  // Filter out radius targets (they don't have criteria_id) and map geo locations
   return locations
-    .filter((loc) => loc.geo_target_constant)
-    .map((loc) => {
-      // Parse criteria_id from geo_target_constant string (e.g., "geoTargetConstants/2840" -> 2840)
-      const criteriaId = parseInt(loc.geo_target_constant?.split("/").pop() || "0", 10);
-      return {
-        criteria_id: criteriaId,
-        name: loc.location_name || "",
-        canonical_name: loc.location_name || "",
-        target_type: loc.target_type || "Country",
-        country_code: loc.country_code || "",
-        isTargeted: loc.targeted ?? true,
-      };
-    });
+    .filter((loc) => loc.criteria_id != null)
+    .map((loc) => ({
+      criteria_id: loc.criteria_id!,
+      name: loc.name || "",
+      canonical_name: loc.name || "",
+      target_type: loc.target_type || "Country",
+      country_code: loc.country_code || "",
+      isTargeted: loc.targeted ?? true,
+    }));
 }
 
 function parseTimeToHHMM(timeStr: string | null): string {

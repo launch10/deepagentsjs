@@ -26,7 +26,6 @@
       "@models/*": ["./app/javascript/frontend/shared/models/*"],
       "@utils/*": ["./app/javascript/frontend/lib/utils/*"],
       "@runtime/*": ["./app/javascript/frontend/runtime/*"],
-      "types/*": ["./app/javascript/frontend/types/*"],
       "@rails_api_base": ["../shared/lib/api/index.ts"],
       "@styles/*": ["./app/javascript/frontend/styles/*"],
       "@webcontainer/*": ["./app/javascript/frontend/webcontainer/*"],
