@@ -68,4 +68,16 @@
 
 .animate-shake {
   animation: shake 0.5s ease-in-out;
+@keyframes shimmer {
+  0% {
+    background-position: -125px 0;
+  }
+  100% {
+    background-position: calc(100% + 125px) 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+  background-repeat: no-repeat;
 }
