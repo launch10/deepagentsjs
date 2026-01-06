@@ -52,11 +52,10 @@ RSpec.describe GoogleAds::Resources::Ad do
       )
       allow(@mock_google_ads_service).to receive(:search).and_return(ad_response)
 
+      # Instrumentation formats tags as "key=value" strings for log aggregator compatibility
       expect(Rails.logger).to receive(:tagged).with(
-        hash_including(
-          ad_id: ad.id,
-          ad_group_id: ad_group.id
-        )
+        "ad_id=#{ad.id}",
+        "ad_group_id=#{ad_group.id}"
       ).at_least(:once).and_yield
 
       ad_syncer.fetch

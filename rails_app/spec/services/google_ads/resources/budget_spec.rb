@@ -648,11 +648,10 @@ RSpec.describe GoogleAds::Resources::Budget do
       )
       allow(@mock_google_ads_service).to receive(:search).and_return(budget_response)
 
+      # Instrumentation formats tags as "key=value" strings for log aggregator compatibility
       expect(Rails.logger).to receive(:tagged).with(
-        hash_including(
-          budget_id: ad_budget.id,
-          campaign_id: ad_budget.campaign_id
-        )
+        "budget_id=#{ad_budget.id}",
+        "campaign_id=#{ad_budget.campaign_id}"
       ).at_least(:once).and_yield
 
       budget_syncer.fetch
