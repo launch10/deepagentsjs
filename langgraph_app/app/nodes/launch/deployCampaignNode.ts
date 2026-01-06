@@ -1,6 +1,6 @@
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { LaunchGraphState } from "@annotation";
-import { JobRunAPIService } from "@shared";
+import { JobRunAPIService } from "@services";
 import { NodeMiddleware } from "@middleware";
 import { env } from "@core";
 import { createChecklistTask, findChecklistTask, updateChecklistTask } from "@types";
