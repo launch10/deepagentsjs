@@ -29,7 +29,7 @@ module GoogleAds
 
         # Enable Google Ads API request logging
         c.log_level = log_level
-        c.logger = Rails.logger
+        c.logger = Rails.application.config.google_ads_logger
       end
     end
 

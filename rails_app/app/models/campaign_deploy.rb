@@ -35,17 +35,17 @@ class CampaignDeploy < ApplicationRecord
   def self.deploy(campaign, async: true)
     lock_key = "campaign_deploy:#{campaign.id}"
 
-    with_lock(lock_key, wait_timeout: 0.5, stale_timeout: 30.minutes.to_i) do
-      # Check for existing in-progress deploy
+    # Lock only for check + create; release before running deploy
+    campaign_deploy = with_lock(lock_key, wait_timeout: 0.5, stale_timeout: 30.seconds.to_i) do
       if campaign.campaign_deploys.in_progress.exists?
         raise DeployInProgressError, "A deploy is already in progress for campaign #{campaign.id}"
       end
 
-      # Create and run the deploy
-      campaign_deploy = create!(campaign: campaign, status: "pending")
-      campaign_deploy.deploy(async: async)
-      campaign_deploy
+      create!(campaign: campaign, status: "pending")
     end
+
+    campaign_deploy.deploy(async: async)
+    campaign_deploy
   end
 
   class Step
@@ -382,20 +382,25 @@ class CampaignDeploy < ApplicationRecord
   end
 
   def actually_deploy(async: true)
-    step = next_step
+    lock_key = "campaign_deploy:#{campaign_id}"
 
-    if step.nil?
-      update!(status: "completed")
-      return true
+    self.class.with_lock(lock_key, wait_timeout: 5, stale_timeout: 10.minutes.to_i) do
+      step = next_step
+
+      if step.nil?
+        update!(status: "completed")
+        return true
+      end
+
+      step.run unless step.finished?
+      update!(current_step: step.class.step_name.to_s)
+
+      unless step.finished?
+        raise StepNotFinishedError, "Step #{step.class.step_name} did not complete successfully"
+      end
     end
 
-    step.run unless step.finished?
-    update!(current_step: step.class.step_name.to_s)
-
-    unless step.finished?
-      raise StepNotFinishedError, "Step #{step.class.step_name} did not complete successfully"
-    end
-
+    # Enqueue next step outside the lock to avoid holding it during queue operations
     if async
       CampaignDeploy::DeployWorker.perform_async(id)
     else

@@ -102,7 +102,7 @@ RSpec.describe CampaignDeploy, type: :model do
       it 'acquires a distributed lock with the campaign id' do
         expect(Suo::Client::Redis).to receive(:new).with(
           "campaign_deploy:#{campaign.id}",
-          hash_including(acquisition_lock: 0.5, stale_lock_expiration: 30.minutes.to_i)
+          hash_including(acquisition_lock: 0.5, stale_lock_expiration: 30.seconds.to_i)
         ).and_return(mock_suo_client)
 
         CampaignDeploy.deploy(campaign, async: false)
@@ -251,8 +251,70 @@ RSpec.describe CampaignDeploy, type: :model do
   end
 
   describe '#actually_deploy' do
+    let(:mock_redis) { instance_double(Redis) }
+    let(:mock_suo_client) { instance_double(Suo::Client::Redis) }
+    let(:lock_token) { "lock_token_123" }
+
     before do
       mock_google_ads_client
+      allow(Redis).to receive(:new).and_return(mock_redis)
+      allow(Suo::Client::Redis).to receive(:new).and_return(mock_suo_client)
+      allow(mock_suo_client).to receive(:lock).and_return(lock_token)
+      allow(mock_suo_client).to receive(:unlock).with(lock_token)
+    end
+
+    context 'locking behavior' do
+      it 'acquires a distributed lock before executing steps' do
+        allow(campaign_deploy).to receive(:next_step).and_return(nil)
+
+        expect(Suo::Client::Redis).to receive(:new).with(
+          "campaign_deploy:#{campaign.id}",
+          hash_including(acquisition_lock: 5, stale_lock_expiration: 10.minutes.to_i)
+        ).and_return(mock_suo_client)
+
+        campaign_deploy.actually_deploy(async: false)
+      end
+
+      it 'releases the lock after step execution' do
+        allow(campaign_deploy).to receive(:next_step).and_return(nil)
+        expect(mock_suo_client).to receive(:unlock).with(lock_token)
+        campaign_deploy.actually_deploy(async: false)
+      end
+
+      it 'releases the lock even if step raises an error' do
+        allow(campaign_deploy).to receive(:next_step).and_raise(StandardError, 'Step failed')
+
+        expect(mock_suo_client).to receive(:unlock).with(lock_token)
+        expect {
+          campaign_deploy.actually_deploy(async: false)
+        }.to raise_error(StandardError, 'Step failed')
+      end
+
+      it 'raises LockNotAcquiredError when lock cannot be acquired' do
+        allow(mock_suo_client).to receive(:lock).and_return(false)
+
+        expect {
+          campaign_deploy.actually_deploy(async: false)
+        }.to raise_error(Lockable::LockNotAcquiredError)
+      end
+
+      it 'enqueues next step outside the lock (async mode)' do
+        mock_step = double("Step")
+        allow(campaign_deploy).to receive(:next_step).and_return(mock_step, nil)
+        allow(mock_step).to receive(:finished?).and_return(true)
+        allow(mock_step).to receive(:run)
+        allow(mock_step).to receive(:class).and_return(double(step_name: :test_step))
+
+        # Lock should be released before enqueue
+        unlock_called = false
+        allow(mock_suo_client).to receive(:unlock) { unlock_called = true }
+
+        expect(CampaignDeploy::DeployWorker).to receive(:perform_async) do
+          expect(unlock_called).to be true
+        end
+
+        campaign_deploy.actually_deploy(async: true)
+      end
     end
 
     context 'when deploy is finished (on last step)' do
