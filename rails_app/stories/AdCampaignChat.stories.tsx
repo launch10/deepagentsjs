@@ -1,12 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mocked } from "storybook/test";
-import AdsChat from "@components/ads/sidebar/AdsChat";
-import { useAdsChat } from "@hooks/useAdsChat";
+import AdsChat from "@components/ads/workflow-panel/AdsChat";
+import { useAdsChat } from "@components/ads/hooks";
 
 const sampleMessages = [
   {
     role: "assistant" as const,
-    blocks: [{ id: "1", type: "text", text: "Hello! How can I help you with your ad campaign today?" }],
+    blocks: [
+      { id: "1", type: "text", text: "Hello! How can I help you with your ad campaign today?" },
+    ],
   },
   {
     role: "user" as const,
@@ -14,7 +16,13 @@ const sampleMessages = [
   },
   {
     role: "assistant" as const,
-    blocks: [{ id: "3", type: "text", text: "I'd be happy to help! Let me suggest some headline improvements." }],
+    blocks: [
+      {
+        id: "3",
+        type: "text",
+        text: "I'd be happy to help! Let me suggest some headline improvements.",
+      },
+    ],
   },
 ];
 
@@ -89,7 +97,12 @@ export const LoadingHistory: Story = {
 export const Streaming: Story = {
   beforeEach: () => {
     mocked(useAdsChat).mockImplementation((selector) => {
-      const snapshot = { ...baseMockSnapshot, messages: sampleMessages, isLoading: true, status: "streaming" as const };
+      const snapshot = {
+        ...baseMockSnapshot,
+        messages: sampleMessages,
+        isLoading: true,
+        status: "streaming" as const,
+      };
       return selector ? selector(snapshot as any) : snapshot;
     });
   },
@@ -102,10 +115,24 @@ export const LongConversation: Story = {
         ...baseMockSnapshot,
         messages: [
           ...sampleMessages,
-          { role: "user" as const, blocks: [{ id: "4", type: "text", text: "Can you make them more punchy?" }] },
-          { role: "assistant" as const, blocks: [{ id: "5", type: "text", text: "Absolutely! Here are some punchier versions..." }] },
-          { role: "user" as const, blocks: [{ id: "6", type: "text", text: "Perfect, let's go with the second one" }] },
-          { role: "assistant" as const, blocks: [{ id: "7", type: "text", text: "Great choice! I've updated your headline." }] },
+          {
+            role: "user" as const,
+            blocks: [{ id: "4", type: "text", text: "Can you make them more punchy?" }],
+          },
+          {
+            role: "assistant" as const,
+            blocks: [
+              { id: "5", type: "text", text: "Absolutely! Here are some punchier versions..." },
+            ],
+          },
+          {
+            role: "user" as const,
+            blocks: [{ id: "6", type: "text", text: "Perfect, let's go with the second one" }],
+          },
+          {
+            role: "assistant" as const,
+            blocks: [{ id: "7", type: "text", text: "Great choice! I've updated your headline." }],
+          },
         ],
       };
       return selector ? selector(snapshot as any) : snapshot;

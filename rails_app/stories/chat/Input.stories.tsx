@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Textarea, FileButton } from "~/components/chat/input";
-import { BaseDropZone, BaseAttachmentList } from "~/components/chat/attachments";
+import { Textarea, FileButton } from "@components/shared/chat/input";
+import { BaseDropZone, BaseAttachmentList } from "@components/shared/chat/attachments";
+import { Chat } from "@components/shared/chat/Chat";
+import { useAdsChat } from "@components/ads/hooks";
 
 const meta: Meta = {
   title: "Chat/Input",
@@ -11,7 +13,9 @@ const meta: Meta = {
   decorators: [
     (Story) => (
       <div style={{ width: "500px" }}>
-        <Story />
+        <Chat.Root chat={useAdsChat()}>
+          <Story />
+        </Chat.Root>
       </div>
     ),
   ],

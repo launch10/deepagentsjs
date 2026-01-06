@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mocked } from "storybook/test";
 import AdPreview from "@components/ads/AdPreview";
-import { useAdsChatState } from "@hooks/useAdsChat";
+import { useAdsChatState } from "@components/ads/hooks";
 
 const meta = {
   title: "Ad Campaign/Components/Ad Preview",

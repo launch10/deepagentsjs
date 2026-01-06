@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { AIMessage } from "~/components/chat/AIMessage";
-import { ThinkingIndicator } from "~/components/chat/ThinkingIndicator";
+import { AIMessage } from "@components/shared/chat/AIMessage";
+import { ThinkingIndicator } from "@components/shared/chat/ThinkingIndicator";
+import { useAdsChat } from "@components/ads/hooks";
+import { Chat } from "@components/shared/chat/Chat";
 
 const meta: Meta<typeof AIMessage.Content> = {
   title: "Chat/AIMessage",
@@ -12,7 +14,9 @@ const meta: Meta<typeof AIMessage.Content> = {
   decorators: [
     (Story) => (
       <div style={{ maxWidth: "400px", width: "100%" }}>
-        <Story />
+        <Chat.Root chat={useAdsChat()}>
+          <Story />
+        </Chat.Root>
       </div>
     ),
   ],
