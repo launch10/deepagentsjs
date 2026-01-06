@@ -136,7 +136,7 @@ export default function LocationTargeting() {
         name: DefaultLocationTarget.name,
         canonical_name: DefaultLocationTarget.canonical_name,
         target_type: DefaultLocationTarget.target_type,
-        country_code: DefaultLocationTarget.country_code,
+        country_code: DefaultLocationTarget.country_code ?? "US",
         isTargeted: true,
       };
       append(usLocation);

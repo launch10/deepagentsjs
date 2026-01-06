@@ -72,17 +72,21 @@ export function transformLocationsFromApi(
 ): LocationWithSettings[] {
   if (!locations || locations.length === 0) return [];
 
-  // Backend now returns GeoTargetConstant format directly
+  // Backend returns geo_target_constant as "geoTargetConstants/2840" format
   return locations
-    .filter((loc) => loc.criteria_id)
-    .map((loc) => ({
-      criteria_id: loc.criteria_id,
-      name: loc.name || "",
-      canonical_name: loc.name || "",
-      target_type: loc.target_type || "Country",
-      country_code: loc.country_code || "",
-      isTargeted: loc.targeted ?? true,
-    }));
+    .filter((loc) => loc.geo_target_constant)
+    .map((loc) => {
+      // Parse criteria_id from geo_target_constant string (e.g., "geoTargetConstants/2840" -> 2840)
+      const criteriaId = parseInt(loc.geo_target_constant?.split("/").pop() || "0", 10);
+      return {
+        criteria_id: criteriaId,
+        name: loc.location_name || "",
+        canonical_name: loc.location_name || "",
+        target_type: loc.target_type || "Country",
+        country_code: loc.country_code || "",
+        isTargeted: loc.targeted ?? true,
+      };
+    });
 }
 
 function parseTimeToHHMM(timeStr: string | null): string {
@@ -114,7 +118,9 @@ export function transformScheduleFromApi(
       selectedDays: ["Mon", "Tues", "Wed", "Thu", "Fri", "Sat", "Sun", "Always On"],
       startTime: "00:00",
       endTime: "23:59",
-      timezone: (schedule.time_zone && REVERSE_TIMEZONE_MAP[schedule.time_zone]) || settingsFormDefaults.timezone,
+      timezone:
+        (schedule.time_zone && REVERSE_TIMEZONE_MAP[schedule.time_zone]) ||
+        settingsFormDefaults.timezone,
     };
   }
 
@@ -125,7 +131,9 @@ export function transformScheduleFromApi(
     selectedDays: selectedDays.length > 0 ? selectedDays : settingsFormDefaults.selectedDays,
     startTime: parseTimeToHHMM(schedule.start_time ?? null),
     endTime: parseTimeToHHMM(schedule.end_time ?? null),
-    timezone: (schedule.time_zone && REVERSE_TIMEZONE_MAP[schedule.time_zone]) || settingsFormDefaults.timezone,
+    timezone:
+      (schedule.time_zone && REVERSE_TIMEZONE_MAP[schedule.time_zone]) ||
+      settingsFormDefaults.timezone,
   };
 }
 

@@ -6,7 +6,7 @@ import { Ads } from "@shared";
 import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
 import { useChatRegistration } from "@hooks/useChatRegistration";
 import { UploadsAPIService } from "@rails_api_base";
-import { validateFile } from "@types/attachment";
+import { validateFile } from "types/attachment";
 
 export type AdsSnapshot = ChatSnapshot<AdsGraphState>;
 

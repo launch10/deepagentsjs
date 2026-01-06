@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import InputAddable from "@components/forms/input-addable";
+import InputAddable from "@components/shared/forms/input-addable";
 
 const meta = {
   title: "Forms/Addable Input",

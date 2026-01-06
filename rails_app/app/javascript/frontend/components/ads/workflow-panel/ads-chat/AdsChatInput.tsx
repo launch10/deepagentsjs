@@ -1,8 +1,10 @@
 import { useCallback } from "react";
 import { Button } from "@components/ui/button";
+import { TextShimmer } from "@components/ui/text-shimmer";
 import { ArrowUp, FilePlus, Sparkles, Square } from "lucide-react";
 import { useAdsChatActions } from "@components/ads/hooks";
 import { Chat } from "@components/shared/chat/Chat";
+import { useChatContext } from "@components/shared/chat/ChatContext";
 import { useWorkflow, selectSubstep } from "@context/WorkflowProvider";
 import { Ads } from "@shared";
 
@@ -18,6 +20,7 @@ import { Ads } from "@shared";
 export default function AdsChatInput() {
   // Ads-specific actions for refresh suggestions
   const { updateState } = useAdsChatActions();
+  const { isStreaming } = useChatContext();
   const substep = useWorkflow(selectSubstep);
 
   const onRefreshSuggestions = useCallback(() => {
@@ -27,7 +30,10 @@ export default function AdsChatInput() {
 
   return (
     <div className="flex flex-col gap-1 w-full">
-      <Chat.Input.DropZone className="relative bg-white border border-neutral-300 rounded-2xl p-3 flex flex-col min-h-[80px]" data-testid="ads-chat-dropzone">
+      <Chat.Input.DropZone
+        className="relative bg-white border border-neutral-300 rounded-2xl p-3 flex flex-col min-h-[80px]"
+        data-testid="ads-chat-dropzone"
+      >
         <Chat.Input.AttachmentList className="flex flex-wrap gap-2 mb-2" />
 
         <Chat.Input.Textarea
@@ -57,7 +63,12 @@ export default function AdsChatInput() {
         onClick={onRefreshSuggestions}
         data-testid="refresh-all-suggestions"
       >
-        <Sparkles className="size-3.5" /> Refresh All Suggestions
+        <Sparkles className="size-3.5" />{" "}
+        {isStreaming ? (
+          <TextShimmer>Refresh All Suggestions</TextShimmer>
+        ) : (
+          "Refresh All Suggestions"
+        )}
       </Button>
     </div>
   );
