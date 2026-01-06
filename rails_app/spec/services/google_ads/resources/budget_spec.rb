@@ -54,8 +54,7 @@ RSpec.describe GoogleAds::Resources::Budget do
     let(:remote) do
       double("RemoteBudget",
         name: "Remote Budget",
-        amount_micros: 10_000_000
-      )
+        amount_micros: 10_000_000)
     end
 
     it 'returns hash of remote field values in local format' do
@@ -72,8 +71,7 @@ RSpec.describe GoogleAds::Resources::Budget do
     let(:remote) do
       double("RemoteBudget",
         name: ad_budget.google_budget_name,
-        amount_micros: 5_000_000
-      )
+        amount_micros: 5_000_000)
     end
 
     it 'returns FieldCompare instance' do
@@ -89,8 +87,7 @@ RSpec.describe GoogleAds::Resources::Budget do
     it 'detects name mismatch' do
       mismatched_remote = double("RemoteBudget",
         name: "Different Name",
-        amount_micros: 5_000_000
-      )
+        amount_micros: 5_000_000)
 
       result = budget_syncer.compare_fields(mismatched_remote)
       expect(result.match?).to be false
@@ -100,8 +97,7 @@ RSpec.describe GoogleAds::Resources::Budget do
     it 'detects amount_micros mismatch' do
       mismatched_remote = double("RemoteBudget",
         name: ad_budget.google_budget_name,
-        amount_micros: 999_000_000
-      )
+        amount_micros: 999_000_000)
 
       result = budget_syncer.compare_fields(mismatched_remote)
       expect(result.match?).to be false

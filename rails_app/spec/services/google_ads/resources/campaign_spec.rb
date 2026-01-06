@@ -142,8 +142,7 @@ RSpec.describe GoogleAds::Resources::Campaign do
         name: "Remote Campaign",
         status: :ENABLED,
         advertising_channel_type: :DISPLAY,
-        contains_eu_political_advertising: :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
-      )
+        contains_eu_political_advertising: :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING)
     end
 
     it 'returns hash of remote field values in local format' do
@@ -170,8 +169,7 @@ RSpec.describe GoogleAds::Resources::Campaign do
         name: "Test Campaign",
         status: :PAUSED,
         advertising_channel_type: :SEARCH,
-        contains_eu_political_advertising: :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
-      )
+        contains_eu_political_advertising: :DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING)
     end
 
     it 'returns FieldCompare instance' do
@@ -179,7 +177,7 @@ RSpec.describe GoogleAds::Resources::Campaign do
       expect(result).to be_a(GoogleAds::FieldCompare)
     end
 
-    it 'matches when all fields are equal'do
+    it 'matches when all fields are equal' do
       result = campaign_syncer.compare_fields(remote)
       expect(result.match?).to be true
     end
@@ -188,8 +186,7 @@ RSpec.describe GoogleAds::Resources::Campaign do
       mismatched_remote = double("RemoteCampaign",
         name: "Different Name",
         status: :PAUSED,
-        advertising_channel_type: :SEARCH
-      )
+        advertising_channel_type: :SEARCH)
 
       result = campaign_syncer.compare_fields(mismatched_remote)
       expect(result.match?).to be false
@@ -200,8 +197,7 @@ RSpec.describe GoogleAds::Resources::Campaign do
       mismatched_remote = double("RemoteCampaign",
         name: "Test Campaign",
         status: :ENABLED,
-        advertising_channel_type: :SEARCH
-      )
+        advertising_channel_type: :SEARCH)
 
       result = campaign_syncer.compare_fields(mismatched_remote)
       expect(result.match?).to be false

@@ -30,8 +30,8 @@ module GoogleAds
       # @yield The block to execute with instrumentation
       # @return The result of the block
       #
-      def with_instrumentation(&block)
-        GoogleAds::Instrumentation.with_context(**instrumentation_context, &block)
+      def with_instrumentation(&)
+        GoogleAds::Instrumentation.with_context(**instrumentation_context, &)
       end
 
       # Override this method in including classes to provide context
@@ -48,8 +48,8 @@ module GoogleAds
         # @yield The block to execute
         # @return The result of the block
         #
-        def with_instrumentation(**context, &block)
-          GoogleAds::Instrumentation.with_context(**context, &block)
+        def with_instrumentation(**context, &)
+          GoogleAds::Instrumentation.with_context(**context, &)
         end
 
         # Wraps specified methods with instrumentation context.

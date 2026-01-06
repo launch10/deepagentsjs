@@ -165,7 +165,7 @@ module GoogleAds
           width: dimensions[:width],
           height: dimensions[:height]
         }
-      rescue StandardError => e
+      rescue => e
         Rails.logger.error("Failed to fetch image data: #{e.message}")
         nil
       end
@@ -174,7 +174,7 @@ module GoogleAds
         require "mini_magick"
         image = MiniMagick::Image.open(path)
         { width: image.width, height: image.height }
-      rescue StandardError
+      rescue
         { width: 128, height: 128 }
       end
 

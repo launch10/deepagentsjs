@@ -132,7 +132,7 @@ module GoogleAds
           GoogleAds::SyncResult.error(
             :ad_group,
             GoogleAds::SyncVerificationError.new(
-              "AdGroup sync verification failed. Mismatched fields: #{comparison.failures.join(', ')}"
+              "AdGroup sync verification failed. Mismatched fields: #{comparison.failures.join(", ")}"
             )
           )
         end

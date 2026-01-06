@@ -13,7 +13,7 @@ end
 
 # Allow GOOGLE_ADS_LOGIN_CUSTOMER_ID env var to override credentials for testing
 login_customer_id = ENV["GOOGLE_ADS_LOGIN_CUSTOMER_ID"] ||
-                    Rails.application.credentials.dig(:google_ads, :account_id)&.tr("-", "")
+  Rails.application.credentials.dig(:google_ads, :account_id)&.tr("-", "")
 
 Rails.application.config.google_ads = {
   client_id: Rails.application.credentials.dig(:google_ads, :client_id),

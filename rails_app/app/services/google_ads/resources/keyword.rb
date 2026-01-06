@@ -134,7 +134,7 @@ module GoogleAds
           GoogleAds::SyncResult.error(
             :ad_group_criterion,
             GoogleAds::SyncVerificationError.new(
-              "Keyword sync verification failed. Mismatched fields: #{comparison.failures.join(', ')}"
+              "Keyword sync verification failed. Mismatched fields: #{comparison.failures.join(", ")}"
             )
           )
         end

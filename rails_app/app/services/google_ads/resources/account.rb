@@ -85,7 +85,7 @@ module GoogleAds
           GoogleAds::SyncResult.error(
             :customer,
             GoogleAds::SyncVerificationError.new(
-              "Account sync verification failed. Mismatched fields: #{comparison.failures.join(', ')}"
+              "Account sync verification failed. Mismatched fields: #{comparison.failures.join(", ")}"
             )
           )
         end

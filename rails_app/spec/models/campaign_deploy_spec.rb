@@ -142,7 +142,11 @@ RSpec.describe CampaignDeploy, type: :model do
 
       it 'does not create another deploy' do
         expect {
-          CampaignDeploy.deploy(campaign, async: false) rescue nil
+          begin
+            CampaignDeploy.deploy(campaign, async: false)
+          rescue
+            nil
+          end
         }.not_to change { CampaignDeploy.count }
       end
     end

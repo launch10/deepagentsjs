@@ -20,7 +20,7 @@ module GoogleAds
       #     client.service.ad_group.mutate_ad_groups(...)
       #   end
       #
-      def with_context(campaign: nil, ad_group: nil, ad: nil, keyword: nil, budget: nil, **overrides, &block)
+      def with_context(campaign: nil, ad_group: nil, ad: nil, keyword: nil, budget: nil, **overrides, &)
         tags = build_tags(
           campaign: campaign,
           ad_group: ad_group,
@@ -35,7 +35,7 @@ module GoogleAds
         else
           # Format as "key=value" strings for log aggregator compatibility (Datadog, etc.)
           formatted_tags = tags.map { |k, v| "#{k}=#{v}" }
-          Rails.logger.tagged(*formatted_tags, &block)
+          Rails.logger.tagged(*formatted_tags, &)
         end
       end
 

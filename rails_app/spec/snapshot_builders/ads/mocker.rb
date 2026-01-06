@@ -27,7 +27,7 @@ class SnapshotBuilder::Ads::Mocker
 
   def create_campaign
     project.workflows.find_or_create_by!(
-      workflow_type: "launch",
+      workflow_type: "launch"
     )
     objects = Campaign.create_campaign!(account, {
       name: "Test Campaign",
@@ -118,7 +118,6 @@ class SnapshotBuilder::Ads::Mocker
 
     # Set daily budget (25 dollars = 2500 cents)
     campaign.daily_budget_cents = 2500
-
 
     campaign.save!
     campaign.advance_stage!
