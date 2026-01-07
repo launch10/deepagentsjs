@@ -8,7 +8,12 @@ import { Label } from "@components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
 import { copyToClipboard } from "@helpers/copyToClipboard";
 import { ArrowTopRightOnSquareIcon, LinkIcon } from "@heroicons/react/16/solid";
-import { DocumentDuplicateIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { DocumentDuplicateIcon, SparklesIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { TextShimmer } from "@components/ui/text-shimmer";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 interface DnsProvider {
   name: string;
@@ -40,6 +45,25 @@ const DNS_PROVIDERS: DnsProvider[] = [
 ];
 
 export default function SetupCustomDomain() {
+  const [isStreaming, setIsStreaming] = useState(false); // TODO: Add actual streaming state
+  const customDomainSchema = z.object({
+    domain: z
+      .string()
+      .min(1, "Domain is required")
+      .max(255, "Domain must be less than 255 characters")
+      .regex(/^[a-zA-Z0-9]+$/, "Domain can only contain letters and numbers"),
+  });
+  const {
+    register,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      domain: "",
+    },
+    mode: "onChange",
+    resolver: zodResolver(customDomainSchema),
+  });
+
   const handleCopyPointsTo = async () => {
     await copyToClipboard("cname.launch10.ai"); // TODO: Add text from field
   };
@@ -66,12 +90,23 @@ export default function SetupCustomDomain() {
           <button
             type="button"
             className="flex items-center gap-1 text-xs leading-4 text-base-400 hover:text-base-500"
+            onClick={() => setIsStreaming(!isStreaming)}
           >
             <SparklesIcon className="size-3.5" />
-            <span>Have questions?</span>
+            {isStreaming ? (
+              <TextShimmer color="var(--color-base-400)">Have questions?</TextShimmer>
+            ) : (
+              "Have questions?"
+            )}
           </button>
         </div>
-        <Input type="text" value={""} placeholder="examples.com" />
+        <Input type="text" {...register("domain")} placeholder="examples.com" />
+        {errors.domain && (
+          <div className="flex items-center gap-1 justify-start text-destructive text-xs">
+            <XCircleIcon className="size-4" />
+            <span>{errors.domain.message}</span>
+          </div>
+        )}
       </div>
 
       <Item variant="muted" className="max-w-[568px]">

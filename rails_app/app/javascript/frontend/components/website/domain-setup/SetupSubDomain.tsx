@@ -4,13 +4,37 @@ import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@compo
 import { Label } from "@components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
 import { copyToClipboard } from "@helpers/copyToClipboard";
-import { BoltIcon } from "@heroicons/react/16/solid";
-import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
-// import { CheckCircleIcon } from "@heroicons/react/24/solid";
+import { DocumentDuplicateIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { BoltIcon, CheckCircleIcon } from "@heroicons/react/24/solid";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 export default function SetupSubDomain() {
+  const isDomainAvailable = true; // TODO: Add actual availability check
+
+  const subdomainSchema = z.object({
+    subdomain: z
+      .string()
+      .min(1, "Subdomain is required")
+      .max(255, "Subdomain must be less than 255 characters")
+      .regex(/^[a-zA-Z0-9]+$/, "Subdomain can only contain letters and numbers"),
+  });
+
+  const {
+    register,
+    watch,
+    formState: { errors, isValid },
+  } = useForm({
+    defaultValues: {
+      subdomain: "",
+    },
+    mode: "onChange",
+    resolver: zodResolver(subdomainSchema),
+  });
+
   const handleCopySubdomain = async () => {
-    await copyToClipboard("mysite.launch10.ai"); // TODO: Add text from field
+    await copyToClipboard(`${watch("subdomain")}.launch10.ai`);
   };
 
   return (
@@ -34,13 +58,7 @@ export default function SetupSubDomain() {
         </Label>
         <div className="flex w-full items-center gap-2">
           <InputGroup>
-            <InputGroupInput
-              type="text"
-              value={""}
-              // onChange={(e) => handleDomainChange(e.target.value)}
-              placeholder="mysite"
-              className="h-10 flex-1 rounded-r-none border-r-0 border-neutral-300 px-4 py-3 text-xs leading-4 text-base-500"
-            />
+            <InputGroupInput {...register("subdomain")} placeholder="mysite" className="text-xs" />
             <InputGroupAddon align="inline-end">
               <span className="text-xs leading-4 text-base-400">.launch10.ai</span>
             </InputGroupAddon>
@@ -55,12 +73,19 @@ export default function SetupSubDomain() {
           </Tooltip>
         </div>
 
-        {/* 
-		// TODO: Add field validation
-		<div className="flex items-center gap-1 justify-start text-success-500 text-xs">
-          <CheckCircleIcon className="size-4" />
-          <span>Available: paw-protraits.launch10.ai</span>
-        </div> */}
+        {errors.subdomain && (
+          <div className="flex items-center gap-1 justify-start text-destructive text-xs">
+            <XCircleIcon className="size-4" />
+            <span>{errors.subdomain.message}</span>
+          </div>
+        )}
+
+        {isDomainAvailable && isValid && (
+          <div className="flex items-center gap-1 justify-start text-success-500 text-xs">
+            <CheckCircleIcon className="size-4" />
+            <span>Available: {`${watch("subdomain")}.launch10.ai`}</span>
+          </div>
+        )}
       </div>
     </div>
   );
