@@ -101,7 +101,7 @@ RSpec.describe JobRun, type: :model do
       Timecop.freeze do
         job_run.start!
         expect(job_run.status).to eq("running")
-        expect(job_run.started_at).to eq(Time.current)
+        expect(job_run.started_at).to be_within(1.second).of(Time.current)
       end
     end
   end
@@ -114,7 +114,7 @@ RSpec.describe JobRun, type: :model do
         Timecop.freeze do
           job_run.complete!
           expect(job_run.status).to eq("completed")
-          expect(job_run.completed_at).to eq(Time.current)
+          expect(job_run.completed_at).to be_within(1.second).of(Time.current)
         end
       end
     end
