@@ -23,6 +23,7 @@ namespace :api, defaults: {format: :json} do
     resources :geo_target_constants, only: [:index]
     resources :domains, only: [:index, :show, :create]
     resources :website_urls, only: [:index, :show, :create, :update]
+    resources :job_runs, only: [:create]
 
     scope "projects/:project_uuid" do
       resource :website, only: [:show, :update]

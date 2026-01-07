@@ -92,3 +92,4 @@ storybook-static
 /playwright-report/
 /test-results/
 /.playwright-mcp/
+*.tsbuildinfo

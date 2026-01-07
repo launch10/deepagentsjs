@@ -2,27 +2,41 @@
 #
 # Table name: job_runs
 #
-#  id            :bigint           not null, primary key
-#  completed_at  :datetime
-#  error_message :text
-#  job_args      :jsonb
-#  job_class     :string           not null
-#  started_at    :datetime
-#  status        :string           default("pending"), not null
-#  created_at    :datetime         not null
-#  updated_at    :datetime         not null
+#  id                     :bigint           not null, primary key
+#  completed_at           :datetime
+#  error_message          :text
+#  job_args               :jsonb
+#  job_class              :string           not null
+#  langgraph_callback_url :string
+#  result_data            :jsonb
+#  started_at             :datetime
+#  status                 :string           default("pending"), not null
+#  created_at             :datetime         not null
+#  updated_at             :datetime         not null
+#  account_id             :bigint
+#  langgraph_thread_id    :string
 #
 # Indexes
 #
+#  index_job_runs_on_account_id            (account_id)
 #  index_job_runs_on_job_class             (job_class)
 #  index_job_runs_on_job_class_and_status  (job_class,status)
+#  index_job_runs_on_langgraph_thread_id   (langgraph_thread_id)
 #  index_job_runs_on_status                (status)
 #
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id)
+#
 class JobRun < ApplicationRecord
-  STATUSES = %w[pending running completed failed].freeze
+  belongs_to :account
 
-  validates :job_class, presence: true
+  STATUSES = %w[pending running completed failed].freeze
+  ALLOWED_JOBS = %w[CampaignDeploy].freeze
+
+  validates :job_class, presence: true, inclusion: { in: ALLOWED_JOBS }
   validates :status, presence: true, inclusion: { in: STATUSES }
+  validates :account, presence: true
 
   scope :pending, -> { where(status: "pending") }
   scope :running, -> { where(status: "running") }
@@ -31,11 +45,14 @@ class JobRun < ApplicationRecord
   scope :for_job, ->(job_class) { where(job_class: job_class) }
   scope :recent, -> { order(created_at: :desc) }
 
+  # Create a job run for tracking purposes (non-Langgraph usage)
+  # For Langgraph-triggered jobs, use the API endpoint instead
   def self.create_for(job_class, args = {})
     create!(
       job_class: job_class.to_s,
       status: "pending",
-      job_args: args
+      job_args: args,
+      account: Current.account
     )
   end
 
@@ -43,8 +60,12 @@ class JobRun < ApplicationRecord
     update!(status: "running", started_at: Time.current)
   end
 
-  def complete!
-    update!(status: "completed", completed_at: Time.current)
+  def complete!(result = nil)
+    update!(
+      status: "completed",
+      result_data: result,
+      completed_at: Time.current
+    )
   end
 
   def fail!(error)
@@ -55,24 +76,37 @@ class JobRun < ApplicationRecord
     )
   end
 
-  def pending?
-    status == "pending"
+  # Enqueues async webhook delivery - no bang since it doesn't raise
+  def notify_langgraph(status:, result: nil, error: nil)
+    return unless langgraph_callback_url.present?
+
+    LanggraphCallbackWorker.perform_async(id, callback_payload(status, result, error))
   end
 
-  def running?
-    status == "running"
-  end
+  def pending? = status == "pending"
 
-  def completed?
-    status == "completed"
-  end
+  def running? = status == "running"
 
-  def failed?
-    status == "failed"
-  end
+  def completed? = status == "completed"
+
+  def failed? = status == "failed"
+
+  def finished? = completed? || failed?
 
   def duration
     return nil unless started_at && completed_at
     completed_at - started_at
+  end
+
+  private
+
+  def callback_payload(status, result, error)
+    {
+      job_run_id: id,
+      thread_id: langgraph_thread_id,
+      status: status,
+      result: result,
+      error: error
+    }
   end
 end
