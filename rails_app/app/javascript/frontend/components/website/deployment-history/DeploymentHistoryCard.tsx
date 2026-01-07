@@ -8,6 +8,7 @@ import {
 import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { cn } from "@lib/utils";
 import type { Deployment } from "./DeploymentHistory.types";
+import DeploymentHistoryBadge from "./DeploymentHistoryBadge";
 
 export default function DeploymentHistoryCard({ deployment }: { deployment: Deployment }) {
   const handleCopyUrl = async () => {
@@ -39,45 +40,6 @@ export default function DeploymentHistoryCard({ deployment }: { deployment: Depl
     }
   };
 
-  const renderBadges = () => {
-    const badges = [];
-
-    if (deployment.isNew) {
-      badges.push(
-        <Badge key="new" className="border-none bg-success-500 text-white">
-          New
-        </Badge>
-      );
-    }
-
-    if (deployment.isLive) {
-      badges.push(
-        <Badge key="live" className="border-none bg-success-100 text-success-700">
-          Live
-        </Badge>
-      );
-    }
-
-    // Show Success badge for successful deployments that aren't marked as new/live
-    if (deployment.status === "success" && !deployment.isNew && !deployment.isLive) {
-      badges.push(
-        <Badge key="success" className="border-none bg-success-100 text-success-700">
-          Success
-        </Badge>
-      );
-    }
-
-    if (deployment.status === "failed") {
-      badges.push(
-        <Badge key="failed" className="border-none bg-error-100 text-secondary-700">
-          Failed
-        </Badge>
-      );
-    }
-
-    return badges;
-  };
-
   return (
     <div
       className={cn(
@@ -94,7 +56,12 @@ export default function DeploymentHistoryCard({ deployment }: { deployment: Depl
               {renderStatusIcon()}
               <span className="text-sm font-semibold text-base-500">{renderStatusText()}</span>
             </div>
-            <div className="flex items-center gap-2">{renderBadges()}</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {deployment.isNew && <DeploymentHistoryBadge variant="new" />}
+              {deployment.isLive && <DeploymentHistoryBadge variant="live" />}
+              {deployment.status === "success" && <DeploymentHistoryBadge variant="success" />}
+              {deployment.status === "failed" && <DeploymentHistoryBadge variant="failed" />}
+            </div>
           </div>
           {/* Timestamp */}
           <span className="text-xs text-base-400">{deployment.timestamp}</span>
