@@ -13,7 +13,7 @@ describe("ChecklistTask type and helpers", () => {
     it("validates a valid async task", () => {
       const task: ChecklistTask = {
         id: "123e4567-e89b-12d3-a456-426614174000",
-        name: "deployCampaign",
+        name: "deployCampaign" as any,
         jobId: 123,
         status: "pending",
       };
@@ -25,7 +25,7 @@ describe("ChecklistTask type and helpers", () => {
     it("validates task with result", () => {
       const task: ChecklistTask = {
         id: "123e4567-e89b-12d3-a456-426614174000",
-        name: "deployCampaign",
+        name: "deployCampaign" as any,
         jobId: 123,
         status: "completed",
         result: { campaign_id: 456, deployed: true },
@@ -38,7 +38,7 @@ describe("ChecklistTask type and helpers", () => {
     it("validates task with error", () => {
       const task: ChecklistTask = {
         id: "123e4567-e89b-12d3-a456-426614174000",
-        name: "deployCampaign",
+        name: "deployCampaign" as any,
         jobId: 123,
         status: "failed",
         error: "API rate limit exceeded",
@@ -62,18 +62,16 @@ describe("ChecklistTask type and helpers", () => {
 
   describe("createChecklistTask", () => {
     it("creates a task with pending status", () => {
-      const task = createChecklistTask("deployCampaign");
+      const task = createChecklistTask("deployCampaign" as any);
 
       expect(task.name).toBe("deployCampaign");
       expect(task.status).toBe("pending");
-      expect(task.id).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-      );
+      expect(task.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
       expect(task.jobId).toBeUndefined();
     });
 
     it("creates a task with jobId", () => {
-      const task = createChecklistTask("deployCampaign", 123);
+      const task = createChecklistTask("deployCampaign" as any, 123);
 
       expect(task.name).toBe("deployCampaign");
       expect(task.jobId).toBe(123);
@@ -84,27 +82,25 @@ describe("ChecklistTask type and helpers", () => {
   describe("findChecklistTask", () => {
     it("finds a task by name", () => {
       const tasks: ChecklistTask[] = [
-        { id: "uuid-1", name: "taskA", status: "pending" },
-        { id: "uuid-2", name: "taskB", status: "running" },
-        { id: "uuid-3", name: "taskC", status: "completed" },
+        { id: "uuid-1", name: "taskA" as any, status: "pending" },
+        { id: "uuid-2", name: "taskB" as any, status: "running" },
+        { id: "uuid-3", name: "taskC" as any, status: "completed" },
       ];
 
-      const found = findChecklistTask(tasks, "taskB");
+      const found = findChecklistTask(tasks, "taskB" as any);
       expect(found).toBeDefined();
       expect(found?.name).toBe("taskB");
     });
 
     it("returns undefined when task not found", () => {
-      const tasks: ChecklistTask[] = [
-        { id: "uuid-1", name: "taskA", status: "pending" },
-      ];
+      const tasks: ChecklistTask[] = [{ id: "uuid-1", name: "taskA" as any, status: "pending" }];
 
-      const found = findChecklistTask(tasks, "nonexistent");
+      const found = findChecklistTask(tasks, "nonexistent" as any);
       expect(found).toBeUndefined();
     });
 
     it("returns undefined for empty array", () => {
-      const found = findChecklistTask([], "any");
+      const found = findChecklistTask([], "any" as any);
       expect(found).toBeUndefined();
     });
   });
@@ -112,22 +108,20 @@ describe("ChecklistTask type and helpers", () => {
   describe("updateChecklistTask", () => {
     it("updates a task by name", () => {
       const tasks: ChecklistTask[] = [
-        { id: "uuid-1", name: "taskA", status: "pending" },
-        { id: "uuid-2", name: "taskB", status: "pending" },
+        { id: "uuid-1", name: "taskA" as any, status: "pending" },
+        { id: "uuid-2", name: "taskB" as any, status: "pending" },
       ];
 
-      const updated = updateChecklistTask(tasks, "taskA", { status: "running" });
+      const updated = updateChecklistTask(tasks, "taskA" as any, { status: "running" });
 
       expect(updated[0]?.status).toBe("running");
       expect(updated[1]?.status).toBe("pending");
     });
 
     it("updates multiple fields", () => {
-      const tasks: ChecklistTask[] = [
-        { id: "uuid-1", name: "taskA", status: "pending" },
-      ];
+      const tasks: ChecklistTask[] = [{ id: "uuid-1", name: "taskA" as any, status: "pending" }];
 
-      const updated = updateChecklistTask(tasks, "taskA", {
+      const updated = updateChecklistTask(tasks, "taskA" as any, {
         status: "completed",
         result: { success: true },
       });
@@ -138,11 +132,11 @@ describe("ChecklistTask type and helpers", () => {
 
     it("preserves other tasks unchanged", () => {
       const tasks: ChecklistTask[] = [
-        { id: "uuid-1", name: "taskA", status: "pending" },
-        { id: "uuid-2", name: "taskB", status: "running", jobId: 123 },
+        { id: "uuid-1", name: "taskA" as any, status: "pending" },
+        { id: "uuid-2", name: "taskB" as any, status: "running", jobId: 123 },
       ];
 
-      const updated = updateChecklistTask(tasks, "taskA", { status: "completed" });
+      const updated = updateChecklistTask(tasks, "taskA" as any, { status: "completed" });
 
       expect(updated[1]).toEqual({
         id: "uuid-2",
@@ -153,11 +147,9 @@ describe("ChecklistTask type and helpers", () => {
     });
 
     it("returns original array if task not found", () => {
-      const tasks: ChecklistTask[] = [
-        { id: "uuid-1", name: "taskA", status: "pending" },
-      ];
+      const tasks: ChecklistTask[] = [{ id: "uuid-1", name: "taskA" as any, status: "pending" }];
 
-      const updated = updateChecklistTask(tasks, "nonexistent", {
+      const updated = updateChecklistTask(tasks, "nonexistent" as any, {
         status: "completed",
       });
 

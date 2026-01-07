@@ -35,7 +35,7 @@ describe("Launch Graph", () => {
 
       expect(result.state.deployStatus).toBe("pending");
       expect(result.state.tasks).toHaveLength(1);
-      expect(result.state.tasks[0]!.name).toBe("deployCampaign");
+      expect(result.state.tasks[0]!.name).toBe("CampaignDeploy");
       expect(result.state.tasks[0]!.status).toBe("pending");
       expect(result.state.tasks[0]!.jobId).toBe(123);
     });
@@ -45,7 +45,7 @@ describe("Launch Graph", () => {
     it("returns no-op when task is pending", async () => {
       const existingTask: ChecklistTask = {
         id: "uuid-123",
-        name: "deployCampaign",
+        name: "CampaignDeploy",
         jobId: 123,
         status: "pending",
       };
@@ -70,7 +70,7 @@ describe("Launch Graph", () => {
     it("returns no-op when task is running but no result yet", async () => {
       const existingTask: ChecklistTask = {
         id: "uuid-123",
-        name: "deployCampaign",
+        name: "CampaignDeploy",
         jobId: 123,
         status: "running",
       };
@@ -96,7 +96,7 @@ describe("Launch Graph", () => {
     it("processes completed result and marks task as completed", async () => {
       const taskWithResult: ChecklistTask = {
         id: "uuid-123",
-        name: "deployCampaign",
+        name: "CampaignDeploy",
         jobId: 123,
         status: "running",
         result: {
@@ -130,7 +130,7 @@ describe("Launch Graph", () => {
     it("processes failed result and marks task as failed", async () => {
       const taskWithError: ChecklistTask = {
         id: "uuid-123",
-        name: "deployCampaign",
+        name: "CampaignDeploy",
         jobId: 123,
         status: "running",
         error: "API rate limit exceeded",
@@ -161,7 +161,7 @@ describe("Launch Graph", () => {
     it("returns no-op when task is already completed", async () => {
       const completedTask: ChecklistTask = {
         id: "uuid-123",
-        name: "deployCampaign",
+        name: "CampaignDeploy",
         jobId: 123,
         status: "completed",
         result: { success: true },
@@ -187,7 +187,7 @@ describe("Launch Graph", () => {
     it("returns no-op when task is already failed", async () => {
       const failedTask: ChecklistTask = {
         id: "uuid-123",
-        name: "deployCampaign",
+        name: "CampaignDeploy",
         jobId: 123,
         status: "failed",
         error: "Some error",
@@ -277,7 +277,7 @@ describe("Launch Graph", () => {
 
       expect(firstResult.deployStatus).toBe("pending");
       expect(firstResult.tasks).toHaveLength(1);
-      expect(firstResult.tasks[0]!.name).toBe("deployCampaign");
+      expect(firstResult.tasks[0]!.name).toBe("CampaignDeploy");
       expect(firstResult.tasks[0]!.status).toBe("pending");
       expect(firstResult.tasks[0]!.jobId).toBe(123);
 
@@ -300,10 +300,7 @@ describe("Launch Graph", () => {
       );
 
       // Second invocation (e.g., from frontend poll or webhook graph run)
-      const secondResult = await graph.invoke(
-        {},
-        { configurable: { thread_id: threadId } }
-      );
+      const secondResult = await graph.invoke({}, { configurable: { thread_id: threadId } });
 
       expect(secondResult.deployStatus).toBe("completed");
       expect(secondResult.deployResult).toEqual({
@@ -347,10 +344,7 @@ describe("Launch Graph", () => {
       );
 
       // Next invocation processes the error
-      const secondResult = await graph.invoke(
-        {},
-        { configurable: { thread_id: threadId } }
-      );
+      const secondResult = await graph.invoke({}, { configurable: { thread_id: threadId } });
 
       expect(secondResult.deployStatus).toBe("failed");
       expect(secondResult.error).toEqual({

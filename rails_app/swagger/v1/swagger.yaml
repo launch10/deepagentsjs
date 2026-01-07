@@ -1630,7 +1630,9 @@ paths:
               properties:
                 job_class:
                   type: string
-                  description: Job type identifier (e.g., CampaignDeploy)
+                  enum:
+                    - CampaignDeploy
+                  description: Job type identifier
                 arguments:
                   type: object
                   additionalProperties: true

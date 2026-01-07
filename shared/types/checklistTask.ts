@@ -14,9 +14,12 @@ import { v7 as uuid } from "uuid";
 export const ChecklistTaskStatuses = ["pending", "running", "completed", "failed"] as const;
 export type ChecklistTaskStatus = typeof ChecklistTaskStatuses[number];
 
+export const TaskNames = ["CampaignDeploy"] as const;
+export type TaskName = typeof TaskNames[number];
+
 export const ChecklistTaskSchema = z.object({
   id: z.string().uuid(),
-  name: z.string(), // Node name that owns this task
+  name: z.enum(TaskNames), // Node name that owns this task
   jobId: z.number().optional(), // Rails JobRun ID
   status: z.enum(ChecklistTaskStatuses),
   result: z.record(z.unknown()).optional(),
@@ -28,7 +31,7 @@ export type ChecklistTask = z.infer<typeof ChecklistTaskSchema>;
 /**
  * Create a new async task with pending status
  */
-export function createChecklistTask(name: string, jobId?: number): ChecklistTask {
+export function createChecklistTask(name: TaskName, jobId?: number): ChecklistTask {
   return {
     id: uuid(),
     name,
@@ -42,7 +45,7 @@ export function createChecklistTask(name: string, jobId?: number): ChecklistTask
  */
 export function findChecklistTask(
   tasks: ChecklistTask[],
-  name: string
+  name: TaskName
 ): ChecklistTask | undefined {
   return tasks.find((t) => t.name === name);
 }
@@ -52,7 +55,7 @@ export function findChecklistTask(
  */
 export function updateChecklistTask(
   tasks: ChecklistTask[],
-  name: string,
+  name: TaskName,
   updates: Partial<ChecklistTask>
 ): ChecklistTask[] {
   return tasks.map((t) => (t.name === name ? { ...t, ...updates } : t));

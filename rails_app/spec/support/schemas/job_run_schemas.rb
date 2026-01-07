@@ -2,7 +2,8 @@
 
 module APISchemas
   module JobRun
-    STATUSES = %w[pending running completed failed].freeze
+    STATUSES = ::JobRun::STATUSES
+    ALLOWED_JOBS = ::JobRun::ALLOWED_JOBS
 
     def self.response
       {
@@ -25,7 +26,8 @@ module APISchemas
         properties: {
           job_class: {
             type: :string,
-            description: 'Job type identifier (e.g., CampaignDeploy)'
+            enum: ALLOWED_JOBS,
+            description: 'Job type identifier'
           },
           arguments: {
             type: :object,

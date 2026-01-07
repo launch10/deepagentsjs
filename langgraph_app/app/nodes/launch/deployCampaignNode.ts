@@ -5,7 +5,7 @@ import { NodeMiddleware } from "@middleware";
 import { env } from "@core";
 import { createChecklistTask, findChecklistTask, updateChecklistTask } from "@types";
 
-const TASK_NAME = "deployCampaign";
+const TASK_NAME = "CampaignDeploy";
 
 /**
  * Deploy Campaign Node (Idempotent Pattern)
@@ -66,9 +66,9 @@ export const deployCampaignNode = NodeMiddleware.use(
     }
 
     const callbackUrl = `${env.LANGGRAPH_API_URL}/webhooks/job_run_callback`;
-    const apiService = new JobRunAPIService({ jwt: state.jwt });
+    const jobRunApi = new JobRunAPIService({ jwt: state.jwt });
 
-    const jobRun = await apiService.create({
+    const jobRun = await jobRunApi.create({
       jobClass: "CampaignDeploy",
       arguments: { campaign_id: state.campaignId },
       threadId: state.threadId,

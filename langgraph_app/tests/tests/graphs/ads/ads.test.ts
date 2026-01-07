@@ -349,7 +349,6 @@ describe.sequential("Ads Flow", () => {
         const rejectedHeadlines = allHeadlines.filter((h) => h.rejected);
         const newHeadlines = allHeadlines.filter((h) => !h.rejected);
 
-        debugger;
         expect(originalHeadlines.length).toEqual(6);
         expect(allHeadlines.length).toEqual(6);
         expect(rejectedHeadlines.length).toEqual(0); // We just remove them

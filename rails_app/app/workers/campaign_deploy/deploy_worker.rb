@@ -35,7 +35,7 @@ class CampaignDeploy
         job_run.update!(status: "running", started_at: Time.current)
       end
 
-      Rails.logger.info "Running async campaign deploy #{deploy_id}, step: #{deploy.current_step || 'start'}"
+      Rails.logger.info "Running async campaign deploy #{deploy_id}, step: #{deploy.current_step || "start"}"
 
       # Run one step - actually_deploy handles locking and step execution
       completed = deploy.actually_deploy(async: true, job_run_id: job_run_id)
@@ -49,14 +49,6 @@ class CampaignDeploy
         job_run.complete!(result)
         job_run.notify_langgraph(status: "completed", result: result)
       end
-      # If not completed, actually_deploy already enqueued the next iteration
-    rescue => e
-      # Notify Langgraph immediately on failure (don't wait for retries to exhaust)
-      if job_run && !job_run.finished?
-        job_run.fail!(e.message)
-        job_run.notify_langgraph(status: "failed", error: e.message)
-      end
-      raise # Re-raise so Sidekiq can retry
     end
   end
 end

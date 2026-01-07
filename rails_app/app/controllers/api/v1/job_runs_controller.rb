@@ -1,9 +1,6 @@
 class API::V1::JobRunsController < API::BaseController
-  # Allowed job identifiers - logical operation names, not Ruby class names
-  ALLOWED_JOBS = %w[CampaignDeploy].freeze
-
   def create
-    unless ALLOWED_JOBS.include?(params[:job_class])
+    unless JobRun::ALLOWED_JOBS.include?(params[:job_class])
       return render json: { errors: ["Invalid job type"] }, status: :unprocessable_entity
     end
 

@@ -21,7 +21,7 @@ export type CreateJobRunResponse =
 
 /** Simple params for creating a job run (camelCase, service converts for API) */
 export interface SimpleCreateJobRunParams {
-  jobClass: string;
+  jobClass: CreateJobRunRequest["job_class"];
   arguments: Record<string, unknown>;
   threadId: string;
   callbackUrl: string;

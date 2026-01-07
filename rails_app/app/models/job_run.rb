@@ -32,8 +32,9 @@ class JobRun < ApplicationRecord
   belongs_to :account
 
   STATUSES = %w[pending running completed failed].freeze
+  ALLOWED_JOBS = %w[CampaignDeploy].freeze
 
-  validates :job_class, presence: true
+  validates :job_class, presence: true, inclusion: { in: ALLOWED_JOBS }
   validates :status, presence: true, inclusion: { in: STATUSES }
   validates :account, presence: true
 

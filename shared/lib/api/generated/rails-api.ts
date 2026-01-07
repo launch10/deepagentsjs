@@ -1262,8 +1262,11 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        /** @description Job type identifier (e.g., CampaignDeploy) */
-                        job_class: string;
+                        /**
+                         * @description Job type identifier
+                         * @enum {string}
+                         */
+                        job_class: "CampaignDeploy";
                         /** @description Arguments to pass to the worker */
                         arguments: {
                             [key: string]: unknown;
