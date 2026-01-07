@@ -114,20 +114,24 @@ RSpec.describe CampaignDeploy::DeployWorker, type: :worker do
       end
 
       context 'when deploy raises an error' do
-        it 'notifies Langgraph immediately' do
+        # Note: We intentionally do NOT notify Langgraph immediately on error.
+        # Sidekiq will retry, and we only notify when retries are exhausted.
+        # This prevents the race condition where Langgraph sees "failed" but
+        # a subsequent retry might succeed.
+
+        it 'does not notify Langgraph immediately (waits for retries to exhaust)' do
           job_run.update!(status: "running", started_at: Time.current)
           allow(CampaignDeploy).to receive(:find).with(deploy.id).and_return(deploy)
           allow(deploy).to receive(:actually_deploy).and_raise(StandardError, "Something went wrong")
 
-          expect(LanggraphCallbackWorker).to receive(:perform_async)
-            .with(job_run.id, hash_including(status: "failed", error: "Something went wrong"))
+          expect(LanggraphCallbackWorker).not_to receive(:perform_async)
 
           expect {
             described_class.new.perform(deploy.id, job_run.id)
           }.to raise_error(StandardError, "Something went wrong")
         end
 
-        it 'marks job_run as failed' do
+        it 'does not mark job_run as failed (allows retries)' do
           job_run.update!(status: "running", started_at: Time.current)
           allow(CampaignDeploy).to receive(:find).with(deploy.id).and_return(deploy)
           allow(deploy).to receive(:actually_deploy).and_raise(StandardError, "Something went wrong")
@@ -136,7 +140,8 @@ RSpec.describe CampaignDeploy::DeployWorker, type: :worker do
             described_class.new.perform(deploy.id, job_run.id)
           }.to raise_error(StandardError)
 
-          expect(job_run.reload.status).to eq("failed")
+          # Job run stays "running" - only fails when retries exhaust
+          expect(job_run.reload.status).to eq("running")
         end
 
         it 're-raises error for Sidekiq retry' do
@@ -147,18 +152,6 @@ RSpec.describe CampaignDeploy::DeployWorker, type: :worker do
           expect {
             described_class.new.perform(deploy.id, job_run.id)
           }.to raise_error(CampaignDeploy::StepNotFinishedError)
-        end
-
-        it 'does not notify if job_run already finished' do
-          job_run.update!(status: "completed", completed_at: Time.current)
-          allow(CampaignDeploy).to receive(:find).with(deploy.id).and_return(deploy)
-          allow(deploy).to receive(:actually_deploy).and_raise(StandardError, "Something went wrong")
-
-          expect(LanggraphCallbackWorker).not_to receive(:perform_async)
-
-          expect {
-            described_class.new.perform(deploy.id, job_run.id)
-          }.to raise_error(StandardError)
         end
       end
     end

@@ -154,7 +154,7 @@ import { NodeMiddleware } from "@middleware";
 import { env } from "@core";
 import { createTask, findTask, updateTask, type Task } from "@types";
 
-const TASK_NAME = "deployCampaign";
+const TASK_NAME = "CampaignDeploy";
 
 export const deployCampaignNode = NodeMiddleware.use(
   {},
@@ -488,7 +488,7 @@ For graphs with multiple async jobs running in parallel or sequence:
 
 ```typescript
 // Each node has its own TASK_NAME
-const DEPLOY_TASK = "deployCampaign";
+const DEPLOY_TASK = "CampaignDeploy";
 const SYNC_TASK = "syncGoogleAds";
 const NOTIFY_TASK = "sendNotifications";
 
@@ -502,7 +502,7 @@ const task = findTask(state.tasks, SYNC_TASK);
 
 // Tasks array might look like:
 [
-  { id: "uuid-1", name: "deployCampaign", jobId: 123, status: "completed", result: {...} },
+  { id: "uuid-1", name: "CampaignDeploy", jobId: 123, status: "completed", result: {...} },
   { id: "uuid-2", name: "syncGoogleAds", jobId: 124, status: "running" },
   { id: "uuid-3", name: "sendNotifications", status: "pending" },
 ]

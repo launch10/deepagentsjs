@@ -1640,14 +1640,10 @@ paths:
                 thread_id:
                   type: string
                   description: LangGraph thread ID for callback resumption
-                callback_url:
-                  type: string
-                  description: URL to receive webhook callback when job completes
               required:
                 - job_class
                 - arguments
                 - thread_id
-                - callback_url
   "/api/v1/projects/{project_uuid}/workflows/{id}":
     parameters:
       - name: project_uuid

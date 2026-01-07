@@ -7197,6 +7197,13 @@ CREATE INDEX index_campaign_deploys_on_campaign_id ON public.campaign_deploys US
 
 
 --
+-- Name: index_campaign_deploys_on_campaign_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaign_deploys_on_campaign_id_and_status ON public.campaign_deploys USING btree (campaign_id, status);
+
+
+--
 -- Name: index_campaign_deploys_on_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10181,6 +10188,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260107115249'),
 ('20260105183720'),
 ('20260105171150'),
 ('20260103000003'),

@@ -7,16 +7,15 @@ class API::V1::JobRunsController < API::BaseController
     # Validate resources exist before creating job_run
     resources = validate_resources(params[:job_class])
 
-    job_run = ActiveRecord::Base.transaction do
-      jr = current_account.job_runs.create!(
-        job_class: params[:job_class],
-        job_args: permitted_job_args,
-        langgraph_thread_id: params[:thread_id],
-        langgraph_callback_url: params[:callback_url]
-      )
-      dispatch_job(params[:job_class], jr, resources)
-      jr
-    end
+    job_run = current_account.job_runs.create!(
+      job_class: params[:job_class],
+      job_args: permitted_job_args,
+      langgraph_thread_id: params[:thread_id],
+      langgraph_callback_url: langgraph_callback_url
+    )
+
+    # Dispatch job after record is committed to avoid processing non-existent job_runs
+    dispatch_job(params[:job_class], job_run, resources)
 
     render json: { id: job_run.id, status: job_run.status }, status: :created
   rescue ActiveRecord::RecordInvalid => e
@@ -45,8 +44,19 @@ class API::V1::JobRunsController < API::BaseController
   end
 
   def permitted_job_args
-    # Convert to hash and merge account_id for downstream authorization
-    args = params[:arguments]&.to_unsafe_h || {}
+    args = case params[:job_class]
+    when "CampaignDeploy"
+      params.require(:arguments).permit(:campaign_id)
+    else
+      ActionController::Parameters.new({}).permit
+    end.to_h
+
     args.merge(account_id: current_account.id)
+  end
+
+  def langgraph_callback_url
+    # Auto-construct callback URL from server config to prevent SSRF
+    # Client-provided callback_url is intentionally ignored
+    "#{ENV.fetch('LANGGRAPH_API_URL')}/webhooks/job_run_callback"
   end
 end

@@ -37,13 +37,9 @@ module APISchemas
           thread_id: {
             type: :string,
             description: 'LangGraph thread ID for callback resumption'
-          },
-          callback_url: {
-            type: :string,
-            description: 'URL to receive webhook callback when job completes'
           }
         },
-        required: %w[job_class arguments thread_id callback_url]
+        required: %w[job_class arguments thread_id]
       }
     end
 

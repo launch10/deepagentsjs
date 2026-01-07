@@ -41,7 +41,7 @@ describe("jobRunCallback webhook route (tasks pattern)", () => {
 
   const existingTask: ChecklistTask = {
     id: "uuid-123",
-    name: "deployCampaign" as any,
+    name: "CampaignDeploy",
     jobId: 123,
     status: "pending",
   };

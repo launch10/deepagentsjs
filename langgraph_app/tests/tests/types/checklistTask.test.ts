@@ -13,7 +13,7 @@ describe("ChecklistTask type and helpers", () => {
     it("validates a valid async task", () => {
       const task: ChecklistTask = {
         id: "123e4567-e89b-12d3-a456-426614174000",
-        name: "deployCampaign" as any,
+        name: "CampaignDeploy",
         jobId: 123,
         status: "pending",
       };
@@ -25,7 +25,7 @@ describe("ChecklistTask type and helpers", () => {
     it("validates task with result", () => {
       const task: ChecklistTask = {
         id: "123e4567-e89b-12d3-a456-426614174000",
-        name: "deployCampaign" as any,
+        name: "CampaignDeploy",
         jobId: 123,
         status: "completed",
         result: { campaign_id: 456, deployed: true },
@@ -38,7 +38,7 @@ describe("ChecklistTask type and helpers", () => {
     it("validates task with error", () => {
       const task: ChecklistTask = {
         id: "123e4567-e89b-12d3-a456-426614174000",
-        name: "deployCampaign" as any,
+        name: "CampaignDeploy",
         jobId: 123,
         status: "failed",
         error: "API rate limit exceeded",
@@ -51,7 +51,7 @@ describe("ChecklistTask type and helpers", () => {
     it("rejects task with invalid status", () => {
       const task = {
         id: "123e4567-e89b-12d3-a456-426614174000",
-        name: "deployCampaign",
+        name: "CampaignDeploy",
         status: "invalid_status",
       };
 
@@ -62,18 +62,18 @@ describe("ChecklistTask type and helpers", () => {
 
   describe("createChecklistTask", () => {
     it("creates a task with pending status", () => {
-      const task = createChecklistTask("deployCampaign" as any);
+      const task = createChecklistTask("CampaignDeploy");
 
-      expect(task.name).toBe("deployCampaign");
+      expect(task.name).toBe("CampaignDeploy");
       expect(task.status).toBe("pending");
       expect(task.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
       expect(task.jobId).toBeUndefined();
     });
 
     it("creates a task with jobId", () => {
-      const task = createChecklistTask("deployCampaign" as any, 123);
+      const task = createChecklistTask("CampaignDeploy", 123);
 
-      expect(task.name).toBe("deployCampaign");
+      expect(task.name).toBe("CampaignDeploy");
       expect(task.jobId).toBe(123);
       expect(task.status).toBe("pending");
     });

@@ -13,11 +13,12 @@
 #
 # Indexes
 #
-#  index_campaign_deploys_on_campaign_history_id  (campaign_history_id)
-#  index_campaign_deploys_on_campaign_id          (campaign_id)
-#  index_campaign_deploys_on_created_at           (created_at)
-#  index_campaign_deploys_on_current_step         (current_step)
-#  index_campaign_deploys_on_status               (status)
+#  index_campaign_deploys_on_campaign_history_id     (campaign_history_id)
+#  index_campaign_deploys_on_campaign_id             (campaign_id)
+#  index_campaign_deploys_on_campaign_id_and_status  (campaign_id,status)
+#  index_campaign_deploys_on_created_at              (created_at)
+#  index_campaign_deploys_on_current_step            (current_step)
+#  index_campaign_deploys_on_status                  (status)
 #
 require 'rails_helper'
 

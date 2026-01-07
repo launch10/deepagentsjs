@@ -26,8 +26,7 @@ RSpec.describe "Job Runs API", type: :request do
           {
             job_class: "CampaignDeploy",
             arguments: {campaign_id: campaign.id},
-            thread_id: "thread_abc123",
-            callback_url: "http://localhost:4000/webhooks/job_run_callback"
+            thread_id: "thread_abc123"
           }
         end
 
@@ -44,12 +43,77 @@ RSpec.describe "Job Runs API", type: :request do
           expect(job_run.account_id).to eq(account.id)
           expect(job_run.job_class).to eq("CampaignDeploy")
           expect(job_run.langgraph_thread_id).to eq("thread_abc123")
-          expect(job_run.langgraph_callback_url).to eq("http://localhost:4000/webhooks/job_run_callback")
+          # Callback URL is auto-constructed from LANGGRAPH_API_URL env var, not from client
+          expect(job_run.langgraph_callback_url).to eq("#{ENV['LANGGRAPH_API_URL']}/webhooks/job_run_callback")
           expect(job_run.job_args["campaign_id"]).to eq(campaign.id)
           expect(job_run.job_args["account_id"]).to eq(account.id)
 
           expect(CampaignDeploy).to have_received(:deploy)
             .with(campaign, job_run_id: job_run.id)
+        end
+      end
+
+      response '201', 'ignores client-provided callback_url (SSRF prevention)' do
+        schema APISchemas::JobRun.response
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:job_run_params) do
+          {
+            job_class: "CampaignDeploy",
+            arguments: {campaign_id: campaign.id},
+            thread_id: "thread_abc123",
+            callback_url: "http://attacker.com/evil-callback"
+          }
+        end
+
+        before do
+          allow(CampaignDeploy).to receive(:deploy)
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          job_run = JobRun.find(data['id'])
+
+          # Client-provided callback_url is ignored; URL is constructed from server config
+          expect(job_run.langgraph_callback_url).to eq("#{ENV['LANGGRAPH_API_URL']}/webhooks/job_run_callback")
+          expect(job_run.langgraph_callback_url).not_to include("attacker.com")
+        end
+      end
+
+      response '201', 'filters unpermitted arguments' do
+        schema APISchemas::JobRun.response
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:job_run_params) do
+          {
+            job_class: "CampaignDeploy",
+            arguments: {
+              campaign_id: campaign.id,
+              malicious_param: "should_be_filtered",
+              nested: {evil: "data"}
+            },
+            thread_id: "thread_abc123"
+          }
+        end
+
+        before do
+          allow(CampaignDeploy).to receive(:deploy)
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          job_run = JobRun.find(data['id'])
+
+          # Only permitted params should be stored
+          expect(job_run.job_args.keys).to match_array(%w[campaign_id account_id])
+          expect(job_run.job_args["campaign_id"]).to eq(campaign.id)
+          expect(job_run.job_args["account_id"]).to eq(account.id)
+
+          # Unpermitted params should NOT be stored
+          expect(job_run.job_args).not_to have_key("malicious_param")
+          expect(job_run.job_args).not_to have_key("nested")
         end
       end
 
@@ -62,8 +126,7 @@ RSpec.describe "Job Runs API", type: :request do
           {
             job_class: "InvalidJob",
             arguments: {campaign_id: campaign.id},
-            thread_id: "thread_abc123",
-            callback_url: "http://localhost:4000/webhooks/job_run_callback"
+            thread_id: "thread_abc123"
           }
         end
 
@@ -82,8 +145,7 @@ RSpec.describe "Job Runs API", type: :request do
           {
             job_class: "CampaignDeploy",
             arguments: {campaign_id: 999999},
-            thread_id: "thread_abc123",
-            callback_url: "http://localhost:4000/webhooks/job_run_callback"
+            thread_id: "thread_abc123"
           }
         end
 
@@ -101,8 +163,7 @@ RSpec.describe "Job Runs API", type: :request do
         let(:job_run_params) do
           {
             arguments: {campaign_id: campaign.id},
-            thread_id: "thread_abc123",
-            callback_url: "http://localhost:4000/webhooks/job_run_callback"
+            thread_id: "thread_abc123"
           }
         end
 
@@ -112,14 +173,40 @@ RSpec.describe "Job Runs API", type: :request do
         end
       end
 
+      response '422', 'does not enqueue job when job_run creation fails' do
+        schema APISchemas::JobRun.error_response
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:job_run_params) do
+          {
+            job_class: "CampaignDeploy",
+            arguments: {campaign_id: campaign.id},
+            thread_id: "thread_abc123"
+          }
+        end
+
+        before do
+          # Force job_run creation to fail after validation
+          allow_any_instance_of(JobRun).to receive(:save!).and_raise(
+            ActiveRecord::RecordInvalid.new(JobRun.new)
+          )
+          allow(CampaignDeploy).to receive(:deploy)
+        end
+
+        run_test! do |response|
+          # Verify job was NOT dispatched when creation failed
+          expect(CampaignDeploy).not_to have_received(:deploy)
+        end
+      end
+
       response '401', 'unauthorized - missing token' do
         let(:Authorization) { nil }
         let(:job_run_params) do
           {
             job_class: "CampaignDeploy",
             arguments: {campaign_id: campaign.id},
-            thread_id: "thread_abc123",
-            callback_url: "http://localhost:4000/webhooks/job_run_callback"
+            thread_id: "thread_abc123"
           }
         end
 
@@ -136,8 +223,7 @@ RSpec.describe "Job Runs API", type: :request do
           {
             job_class: "CampaignDeploy",
             arguments: {campaign_id: campaign.id},
-            thread_id: "thread_abc123",
-            callback_url: "http://localhost:4000/webhooks/job_run_callback"
+            thread_id: "thread_abc123"
           }
         end
 
@@ -174,8 +260,7 @@ RSpec.describe "Job Runs API", type: :request do
             {
               job_class: "CampaignDeploy",
               arguments: {campaign_id: other_campaign.id},
-              thread_id: "thread_abc123",
-              callback_url: "http://localhost:4000/webhooks/job_run_callback"
+              thread_id: "thread_abc123"
             }
           end
 

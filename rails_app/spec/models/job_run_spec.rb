@@ -16,6 +16,18 @@
 #  account_id             :bigint
 #  langgraph_thread_id    :string
 #
+# Indexes
+#
+#  index_job_runs_on_account_id            (account_id)
+#  index_job_runs_on_job_class             (job_class)
+#  index_job_runs_on_job_class_and_status  (job_class,status)
+#  index_job_runs_on_langgraph_thread_id   (langgraph_thread_id)
+#  index_job_runs_on_status                (status)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id)
+#
 require 'rails_helper'
 
 RSpec.describe JobRun, type: :model do
@@ -63,10 +75,15 @@ RSpec.describe JobRun, type: :model do
     end
 
     describe ".for_job" do
-      let!(:specific_job) { create(:job_run, account: account, job_class: "SpecificJob") }
-
       it "returns job runs for the specified job class" do
-        expect(JobRun.for_job("SpecificJob")).to contain_exactly(specific_job)
+        # All jobs use CampaignDeploy (the only allowed job class)
+        expect(JobRun.for_job("CampaignDeploy")).to contain_exactly(
+          pending_job, running_job, completed_job, failed_job
+        )
+      end
+
+      it "returns empty when filtering by non-existent job class" do
+        expect(JobRun.for_job("NonExistentJob")).to be_empty
       end
     end
 

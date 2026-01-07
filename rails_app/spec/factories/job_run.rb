@@ -1,7 +1,7 @@
 FactoryBot.define do
   factory :job_run do
     association :account
-    job_class { "TestJob" }
+    job_class { "CampaignDeploy" }
     status { "pending" }
     job_args { {} }
 
