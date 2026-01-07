@@ -1,5 +1,6 @@
 import DeploymentHistoryCard from "./DeploymentHistoryCard";
 import type { Deployment } from "./DeploymentHistory.types";
+import launchedDeploymentImage from "@assets/launched-deployment.png";
 
 interface DeploymentHistoryFirstProps {
   deployment: Deployment;
@@ -19,8 +20,8 @@ export default function DeploymentHistoryFirst({ deployment }: DeploymentHistory
       </div>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col items-center justify-center px-10 pb-7">
-        {/* TODO: Add Image Here */}
+      <div className="flex flex-1 flex-col items-center justify-center px-10 py-7">
+        <img src={launchedDeploymentImage} alt="Launched Deployment" className="w-28" />
         <div className="flex flex-col items-center gap-5 py-6 text-center">
           <div className="flex flex-col gap-3">
             <h3 className="text-base font-semibold text-base-500">
