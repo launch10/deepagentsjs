@@ -2,61 +2,54 @@
 
 ## Problem
 
-Landing pages need PostHog + Google Ads conversion tracking. Currently:
-- Agent hardcodes `posthog.capture()` calls
+Landing pages need Google Ads conversion tracking for ROAS measurement. Currently:
+- Agent hardcodes `posthog.capture()` calls (unnecessary distraction)
 - No Google Ads conversion tracking
-- No standardized way to instrument interactions
-- No validation that tracking is properly implemented
+- Agent distracted by analytics instead of focusing on beautiful pages
+
+## Key Insight: Keep It Simple
+
+**PostHog is out of scope for now.** Reasons:
+- Would require giving users our API key (they'd see our data)
+- Or each user needs their own PostHog account (friction)
+- Or proxy through backend (complex)
+
+**Focus on Google Ads conversions only** - users bring their own Google Ads account, no API key sharing issues.
 
 ## Solution
 
-### 1. Unified Tracking API (Template)
+### 1. Google Ads Conversion Tracking (Template)
 
-Add `L10.track()` to the template - agent uses this, doesn't worry about implementation:
+Add `L10.conversion()` to the template - simple, focused on Google Ads only:
 
 **File:** `rails_app/templates/default/src/lib/tracking.ts`
 
 ```typescript
-interface TrackingConfig {
-  posthogKey?: string;
+interface ConversionConfig {
   googleAdsId?: string;
 }
 
-interface TrackProperties {
-  conversion_label?: string;
-  value?: number;
-  currency?: string;
-  [key: string]: any;
-}
-
-declare global {
-  interface Window {
-    L10: {
-      track: (event: string, properties?: TrackProperties) => void;
-      init: (config: TrackingConfig) => void;
-    };
-    posthog?: any;
-    gtag?: any;
-  }
+interface ConversionProperties {
+  label: string;        // Google Ads conversion label
+  value?: number;       // Conversion value for ROAS
+  currency?: string;    // Default: USD
 }
 
 export const L10 = {
-  _config: {} as TrackingConfig,
+  _config: {} as ConversionConfig,
 
-  init(config: TrackingConfig) {
+  init(config: ConversionConfig) {
     this._config = config;
   },
 
-  track(event: string, properties: TrackProperties = {}) {
-    // PostHog
-    if (window.posthog) {
-      window.posthog.capture(event, properties);
-    }
-
-    // Google Ads conversion
-    if (window.gtag && properties.conversion_label && this._config.googleAdsId) {
+  /**
+   * Track a Google Ads conversion (signup, purchase, etc.)
+   * Only use for conversions - not general clicks/pageviews.
+   */
+  conversion(properties: ConversionProperties) {
+    if (window.gtag && this._config.googleAdsId) {
       window.gtag('event', 'conversion', {
-        send_to: `AW-${this._config.googleAdsId}/${properties.conversion_label}`,
+        send_to: `AW-${this._config.googleAdsId}/${properties.label}`,
         value: properties.value,
         currency: properties.currency || 'USD',
       });
@@ -64,7 +57,7 @@ export const L10 = {
 
     // Debug logging in dev
     if (process.env.NODE_ENV === 'development') {
-      console.log('[L10.track]', event, properties);
+      console.log('[L10.conversion]', properties);
     }
   },
 };
@@ -77,89 +70,40 @@ if (typeof window !== 'undefined') {
 
 ### 2. Config Injection (Deploy Time)
 
-Config injected by Rails at deploy/render time, NOT hardcoded by agent:
+Google Ads ID injected by Rails at deploy time, NOT hardcoded by agent:
 
-**Option A:** Environment variables (build time)
-```typescript
-// vite.config.ts injects from env
-L10.init({
-  posthogKey: import.meta.env.VITE_POSTHOG_KEY,
-  googleAdsId: import.meta.env.VITE_GOOGLE_ADS_ID,
-});
-```
-
-**Option B:** Runtime injection (deploy time)
 ```html
 <!-- Rails injects into index.html at deploy -->
 <script>
   window.L10_CONFIG = {
-    posthogKey: "<%= website.posthog_key %>",
-    googleAdsId: "<%= website.google_ads_id %>",
+    googleAdsId: "<%= website.campaign&.google_ads_customer_id %>",
   };
 </script>
 ```
 
 ### 3. Agent Usage
 
-Agent just uses `L10.track()` - doesn't worry about PostHog/GTM:
+**Agent does NOT add tracking.** Agent focuses on beautiful pages.
 
-```tsx
-// Agent writes this
-<Button onClick={() => L10.track('cta_clicked', { section: 'hero' })}>
-  Get Started
-</Button>
+Conversion tracking is added **automatically at deploy time** or via pre-deploy instrumentation - agent never thinks about it.
 
-<form onSubmit={() => L10.track('signup', {
-  conversion_label: 'SIGNUP_LABEL',
-  value: 99
-})}>
+### 4. Deploy Agent Handles Instrumentation
+
+A **deploy agent** (separate from coding agent) handles pre-deploy concerns:
+- Analytics/conversion tracking
+- SEO meta tags
+- Accessibility checks
+
+The deploy agent understands semantic intent - it can look at a form and know "this is the signup conversion" vs "this is a contact form". No brittle heuristics needed.
+
+```
+Deploy Agent prompt (excerpt):
+"Review this landing page before deployment. Add L10.conversion()
+to the primary signup/conversion form. Ensure Google Ads tracking
+will fire on successful form submission."
 ```
 
-### 4. Pre-Deploy Validation (Checklist)
-
-Add tracking validation to pre-deploy checks:
-
-**File:** `langgraph_app/app/services/editor/validation/trackingValidator.ts`
-
-```typescript
-interface TrackingValidation {
-  passed: boolean;
-  warnings: string[];
-  suggestions: string[];
-}
-
-class TrackingValidator {
-  async validate(files: CodeFile[]): Promise<TrackingValidation> {
-    const warnings: string[] = [];
-    const suggestions: string[] = [];
-
-    // Check 1: L10.track exists somewhere
-    const hasTracking = files.some(f => f.content.includes('L10.track'));
-    if (!hasTracking) {
-      warnings.push('No L10.track calls found - page has no analytics');
-    }
-
-    // Check 2: Key interactions should be tracked
-    const hasButtons = files.some(f => /<Button|<button/.test(f.content));
-    const hasForms = files.some(f => /<form|onSubmit/.test(f.content));
-    const hasButtonTracking = files.some(f => /onClick.*L10\.track/.test(f.content));
-    const hasFormTracking = files.some(f => /onSubmit.*L10\.track/.test(f.content));
-
-    if (hasButtons && !hasButtonTracking) {
-      suggestions.push('CTAs found without tracking - consider adding L10.track to button clicks');
-    }
-    if (hasForms && !hasFormTracking) {
-      warnings.push('Forms found without tracking - signup conversions may not be recorded');
-    }
-
-    return {
-      passed: warnings.length === 0,
-      warnings,
-      suggestions,
-    };
-  }
-}
-```
+This keeps coding agent focused on beautiful pages, while deploy agent ensures production readiness.
 
 ---
 
@@ -169,8 +113,8 @@ class TrackingValidator {
 ┌─────────────────────────────────────────────────────────────┐
 │                      CODING AGENT                           │
 │                                                             │
-│  Uses L10.track() - doesn't know/care about implementation  │
-│  System prompt mentions: "Use L10.track for analytics"      │
+│  Focuses on beautiful landing pages                         │
+│  Does NOT think about analytics/tracking                    │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -178,27 +122,24 @@ class TrackingValidator {
 │                   IN-LOOP VALIDATION                        │
 │                                                             │
 │  Static checks: TypeScript, links, imports                  │
-│  Does NOT check tracking (semantic understanding needed)    │
+│  Does NOT touch analytics                                   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  PRE-DEPLOY VALIDATION                      │
+│                      DEPLOY AGENT                           │
 │                                                             │
-│  ✓ Runtime errors (browser)                                 │
-│  ✓ Tracking validation (grep + heuristics)                  │
+│  ✓ Add L10.conversion() to signup forms (semantic intent)   │
 │  ✓ SEO meta tags                                            │
 │  ✓ Accessibility checks                                     │
-│                                                             │
-│  Returns: warnings, suggestions (not hard failures)         │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                        DEPLOY                               │
 │                                                             │
-│  Rails injects config (posthog_key, google_ads_id)          │
-│  Config comes from Website model, not hardcoded             │
+│  Rails injects google_ads_id from Campaign model            │
+│  gtag.js loaded if campaign has Google Ads                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -208,25 +149,23 @@ class TrackingValidator {
 
 | File | Change |
 |------|--------|
-| `rails_app/templates/default/src/lib/tracking.ts` | Create L10 tracking module |
-| `rails_app/templates/default/src/main.tsx` | Import and init L10 |
-| `langgraph_app/app/services/editor/validation/trackingValidator.ts` | Pre-deploy tracking checks |
-| `langgraph_app/app/nodes/codingAgent/utils/agent.ts` | Update system prompt to mention L10.track |
+| `rails_app/templates/default/src/lib/tracking.ts` | Create L10.conversion() module |
+| `langgraph_app/app/nodes/codingAgent/utils/agent.ts` | REMOVE analytics from system prompt |
+| `langgraph_app/app/graphs/deployAgent.ts` | New graph for deploy agent (separate plan) |
 
 ---
 
 ## Key Decisions
 
-1. **L10.track() in template** - Agent doesn't implement tracking, just uses it
-2. **Config at deploy time** - Not hardcoded by agent, injected by Rails
-3. **Tracking validation is pre-deploy** - Needs semantic understanding, not in-loop
-4. **Warnings not failures** - Missing tracking is a warning, not a blocker
+1. **Coding agent ignores analytics** - Focuses purely on beautiful pages
+2. **Deploy agent handles instrumentation** - Understands semantic intent, no brittle heuristics
+3. **Google Ads only (for now)** - No PostHog (would require API key sharing or proxying)
+4. **Config from Campaign model** - User's Google Ads ID, not ours
 
 ---
 
 ## Future Considerations
 
+- PostHog via backend proxy (if we want our own analytics on user pages)
 - Conversion label mapping: Campaign → conversion_label lookup
-- A/B test tracking integration
-- Heatmap/session recording config
-- GDPR consent mode
+- Meta/Facebook pixel support
