@@ -95,12 +95,15 @@ export function useDeployStatus({
     // Send initial check immediately
     sendCheck();
 
-    // Set up polling interval
-    const intervalId = setInterval(() => {
+    // Use recursive setTimeout so interval is recalculated each time
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const poll = () => {
       sendCheck();
-    }, getInterval());
+      timeoutId = setTimeout(poll, getInterval());
+    };
+    timeoutId = setTimeout(poll, getInterval());
 
-    return () => clearInterval(intervalId);
+    return () => clearTimeout(timeoutId);
   }, [shouldPoll, sendCheck, initialInterval, backoffInterval, backoffThreshold]);
 
   return {
