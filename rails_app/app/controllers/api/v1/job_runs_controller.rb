@@ -57,6 +57,6 @@ class API::V1::JobRunsController < API::BaseController
   def langgraph_callback_url
     # Auto-construct callback URL from server config to prevent SSRF
     # Client-provided callback_url is intentionally ignored
-    "#{ENV.fetch('LANGGRAPH_API_URL')}/webhooks/job_run_callback"
+    "#{ENV.fetch("LANGGRAPH_API_URL")}/webhooks/job_run_callback"
   end
 end

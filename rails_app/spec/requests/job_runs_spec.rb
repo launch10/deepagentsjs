@@ -44,7 +44,7 @@ RSpec.describe "Job Runs API", type: :request do
           expect(job_run.job_class).to eq("CampaignDeploy")
           expect(job_run.langgraph_thread_id).to eq("thread_abc123")
           # Callback URL is auto-constructed from LANGGRAPH_API_URL env var, not from client
-          expect(job_run.langgraph_callback_url).to eq("#{ENV['LANGGRAPH_API_URL']}/webhooks/job_run_callback")
+          expect(job_run.langgraph_callback_url).to eq("#{ENV["LANGGRAPH_API_URL"]}/webhooks/job_run_callback")
           expect(job_run.job_args["campaign_id"]).to eq(campaign.id)
           expect(job_run.job_args["account_id"]).to eq(account.id)
 
@@ -76,7 +76,7 @@ RSpec.describe "Job Runs API", type: :request do
           job_run = JobRun.find(data['id'])
 
           # Client-provided callback_url is ignored; URL is constructed from server config
-          expect(job_run.langgraph_callback_url).to eq("#{ENV['LANGGRAPH_API_URL']}/webhooks/job_run_callback")
+          expect(job_run.langgraph_callback_url).to eq("#{ENV["LANGGRAPH_API_URL"]}/webhooks/job_run_callback")
           expect(job_run.langgraph_callback_url).not_to include("attacker.com")
         end
       end
