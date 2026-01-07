@@ -24,7 +24,7 @@ RSpec.describe "Job Runs API", type: :request do
         let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
         let(:job_run_params) do
           {
-            job_class: "CampaignDeployWorker",
+            job_class: "CampaignDeploy",
             arguments: {campaign_id: campaign.id},
             thread_id: "thread_abc123",
             callback_url: "http://localhost:4000/webhooks/job_run_callback"
@@ -32,7 +32,7 @@ RSpec.describe "Job Runs API", type: :request do
         end
 
         before do
-          allow(CampaignDeployWorker).to receive(:perform_async)
+          allow(CampaignDeploy).to receive(:deploy)
         end
 
         run_test! do |response|
@@ -42,11 +42,14 @@ RSpec.describe "Job Runs API", type: :request do
 
           job_run = JobRun.find(data['id'])
           expect(job_run.account_id).to eq(account.id)
-          expect(job_run.job_class).to eq("CampaignDeployWorker")
+          expect(job_run.job_class).to eq("CampaignDeploy")
           expect(job_run.langgraph_thread_id).to eq("thread_abc123")
           expect(job_run.langgraph_callback_url).to eq("http://localhost:4000/webhooks/job_run_callback")
           expect(job_run.job_args["campaign_id"]).to eq(campaign.id)
           expect(job_run.job_args["account_id"]).to eq(account.id)
+
+          expect(CampaignDeploy).to have_received(:deploy)
+            .with(campaign, job_run_id: job_run.id)
         end
       end
 
@@ -66,7 +69,27 @@ RSpec.describe "Job Runs API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['errors']).to include("Invalid job class")
+          expect(data['errors']).to include("Invalid job type")
+        end
+      end
+
+      response '404', 'campaign not found' do
+        schema APISchemas::JobRun.error_response
+        let(:Authorization) { auth_headers_for(user)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:job_run_params) do
+          {
+            job_class: "CampaignDeploy",
+            arguments: {campaign_id: 999999},
+            thread_id: "thread_abc123",
+            callback_url: "http://localhost:4000/webhooks/job_run_callback"
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to be_present
         end
       end
 
@@ -93,7 +116,7 @@ RSpec.describe "Job Runs API", type: :request do
         let(:Authorization) { nil }
         let(:job_run_params) do
           {
-            job_class: "CampaignDeployWorker",
+            job_class: "CampaignDeploy",
             arguments: {campaign_id: campaign.id},
             thread_id: "thread_abc123",
             callback_url: "http://localhost:4000/webhooks/job_run_callback"
@@ -111,7 +134,7 @@ RSpec.describe "Job Runs API", type: :request do
         let(:"X-Timestamp") { expired_auth_headers_for(user)['X-Timestamp'] }
         let(:job_run_params) do
           {
-            job_class: "CampaignDeployWorker",
+            job_class: "CampaignDeploy",
             arguments: {campaign_id: campaign.id},
             thread_id: "thread_abc123",
             callback_url: "http://localhost:4000/webhooks/job_run_callback"
@@ -143,30 +166,22 @@ RSpec.describe "Job Runs API", type: :request do
         parameter name: 'X-Timestamp', in: :header, type: :string, required: false
         parameter name: :job_run_params, in: :body, schema: APISchemas::JobRun.params_schema
 
-        response '201', 'job_run scoped to requesting account (job may fail later during execution)' do
-          schema APISchemas::JobRun.response
+        response '404', 'cannot access other accounts campaign' do
           let(:Authorization) { auth_headers_for(user)['Authorization'] }
           let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
           let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
           let(:job_run_params) do
             {
-              job_class: "CampaignDeployWorker",
+              job_class: "CampaignDeploy",
               arguments: {campaign_id: other_campaign.id},
               thread_id: "thread_abc123",
               callback_url: "http://localhost:4000/webhooks/job_run_callback"
             }
           end
 
-          before do
-            allow(CampaignDeployWorker).to receive(:perform_async)
-          end
-
           run_test! do |response|
-            job_run = JobRun.last
-            # The job_run is scoped to the requesting account
-            expect(job_run.account_id).to eq(account.id)
-            # The actual account_id injected for the job to use
-            expect(job_run.job_args["account_id"]).to eq(account.id)
+            # Controller now finds campaign directly, so it should 404
+            expect(response.code).to eq("404")
           end
         end
       end

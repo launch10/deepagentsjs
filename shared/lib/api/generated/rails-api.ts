@@ -1262,7 +1262,7 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        /** @description The worker class to execute (e.g., CampaignDeployWorker) */
+                        /** @description Job type identifier (e.g., CampaignDeploy) */
                         job_class: string;
                         /** @description Arguments to pass to the worker */
                         arguments: {
@@ -1276,7 +1276,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description job_run scoped to requesting account (job may fail later during execution) */
+                /** @description job run created successfully */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -1299,6 +1299,18 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description cannot access other accounts campaign */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Validation error messages */
+                            errors: string[];
+                        };
+                    };
                 };
                 /** @description missing job_class */
                 422: {

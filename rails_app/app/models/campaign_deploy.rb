@@ -33,7 +33,7 @@ class CampaignDeploy < ApplicationRecord
 
   scope :in_progress, -> { where(status: %w[pending]) }
 
-  def self.deploy(campaign, async: true)
+  def self.deploy(campaign, async: true, job_run_id: nil)
     lock_key = "campaign_deploy:#{campaign.id}"
 
     # Lock only for check + create; release before running deploy
@@ -45,7 +45,7 @@ class CampaignDeploy < ApplicationRecord
       create!(campaign: campaign, status: "pending")
     end
 
-    campaign_deploy.deploy(async: async)
+    campaign_deploy.deploy(async: async, job_run_id: job_run_id)
     campaign_deploy
   end
 
@@ -374,15 +374,17 @@ class CampaignDeploy < ApplicationRecord
     step_class.new(campaign)
   end
 
-  def deploy(async: true)
+  def deploy(async: true, job_run_id: nil)
     if async
-      CampaignDeploy::DeployWorker.perform_async(id)
+      CampaignDeploy::DeployWorker.perform_async(id, job_run_id)
     else
-      actually_deploy(async: false)
+      actually_deploy(async: false, job_run_id: job_run_id)
     end
   end
 
-  def actually_deploy(async: true)
+  # Runs a single step and either enqueues next iteration or returns completion status
+  # Returns true when ALL steps are complete, false otherwise
+  def actually_deploy(async: true, job_run_id: nil)
     lock_key = "campaign_deploy:#{campaign_id}"
 
     self.class.with_lock(lock_key, wait_timeout: 5, stale_timeout: 10.minutes.to_i) do
@@ -390,22 +392,24 @@ class CampaignDeploy < ApplicationRecord
 
       if step.nil?
         update!(status: "completed")
-        return true
+        return true  # All steps complete
       end
 
       step.run unless step.finished?
       update!(current_step: step.class.step_name.to_s)
 
-      unless step.finished?
+      unless step.finished? # There was some API error that prevented us from successfully completing the task, retry
         raise StepNotFinishedError, "Step #{step.class.step_name} did not complete successfully"
       end
     end
 
     # Enqueue next step outside the lock to avoid holding it during queue operations
     if async
-      CampaignDeploy::DeployWorker.perform_async(id)
+      CampaignDeploy::DeployWorker.perform_async(id, job_run_id)
     else
-      actually_deploy(async: false)
+      actually_deploy(async: false, job_run_id: job_run_id)
     end
+
+    false  # More steps remain (we just enqueued/recursed)
   end
 end

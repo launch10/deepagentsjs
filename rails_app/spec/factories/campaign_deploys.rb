@@ -25,5 +25,10 @@ FactoryBot.define do
 
     status { "pending" }
     current_step { nil }
+
+    trait :at_final_step do
+      current_step { "create_ads" }
+      status { "running" }
+    end
   end
 end

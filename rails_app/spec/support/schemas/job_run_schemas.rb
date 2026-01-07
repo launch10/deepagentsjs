@@ -25,7 +25,7 @@ module APISchemas
         properties: {
           job_class: {
             type: :string,
-            description: 'The worker class to execute (e.g., CampaignDeployWorker)'
+            description: 'Job type identifier (e.g., CampaignDeploy)'
           },
           arguments: {
             type: :object,

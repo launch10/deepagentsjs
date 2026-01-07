@@ -123,7 +123,7 @@ RSpec.describe CampaignDeploy, type: :model do
 
       context 'with async: false' do
         it 'calls the instance deploy method with async: false' do
-          expect_any_instance_of(CampaignDeploy).to receive(:deploy).with(async: false)
+          expect_any_instance_of(CampaignDeploy).to receive(:deploy).with(async: false, job_run_id: nil)
           CampaignDeploy.deploy(campaign, async: false)
         end
       end
@@ -243,14 +243,14 @@ RSpec.describe CampaignDeploy, type: :model do
 
   describe '#deploy' do
     it 'enqueues a DeployWorker when async: true' do
-      expect(CampaignDeploy::DeployWorker).to receive(:perform_async).with(campaign_deploy.id)
+      expect(CampaignDeploy::DeployWorker).to receive(:perform_async).with(campaign_deploy.id, nil)
       campaign_deploy.deploy(async: true)
     end
 
     it 'calls actually_deploy when async: false' do
       allow(campaign_deploy).to receive(:actually_deploy)
       campaign_deploy.deploy(async: false)
-      expect(campaign_deploy).to have_received(:actually_deploy).with(async: false)
+      expect(campaign_deploy).to have_received(:actually_deploy).with(async: false, job_run_id: nil)
     end
   end
 
@@ -301,7 +301,6 @@ RSpec.describe CampaignDeploy, type: :model do
           campaign_deploy.actually_deploy(async: false)
         }.to raise_error(Lockable::LockNotAcquiredError)
       end
-
       it 'enqueues next step outside the lock (async mode)' do
         mock_step = double("Step")
         allow(campaign_deploy).to receive(:next_step).and_return(mock_step, nil)
@@ -370,7 +369,7 @@ RSpec.describe CampaignDeploy, type: :model do
       end
 
       it 'enqueues another worker for the next iteration' do
-        expect(CampaignDeploy::DeployWorker).to receive(:perform_async).with(campaign_deploy.id)
+        expect(CampaignDeploy::DeployWorker).to receive(:perform_async).with(campaign_deploy.id, nil)
         campaign_deploy.actually_deploy(async: true)
       end
     end
@@ -396,11 +395,6 @@ RSpec.describe CampaignDeploy, type: :model do
         expect(step.class.step_name).to eq(:create_geo_targeting)
       end
     end
-
-    # NOTE: :create_ads_account and :send_account_invitation steps have been
-    # extracted from the deploy flow and are now handled by frontend/Langgraph.
-    # Tests for those steps have been removed.
-
     describe ':create_geo_targeting step' do
       let(:step) { runner.find(:create_geo_targeting) }
       let!(:location_target) do

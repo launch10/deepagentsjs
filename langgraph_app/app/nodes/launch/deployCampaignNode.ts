@@ -69,7 +69,7 @@ export const deployCampaignNode = NodeMiddleware.use(
     const apiService = new JobRunAPIService({ jwt: state.jwt });
 
     const jobRun = await apiService.create({
-      jobClass: "CampaignDeployWorker",
+      jobClass: "CampaignDeploy",
       arguments: { campaign_id: state.campaignId },
       threadId: state.threadId,
       callbackUrl,
