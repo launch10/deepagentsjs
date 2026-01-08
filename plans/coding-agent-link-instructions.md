@@ -12,64 +12,95 @@ The static validation catches broken links, but better to prevent them. These in
 
 ## Instructions to Add
 
-Add to the coding agent's system prompt:
+Add to `CODER_SYSTEM_PROMPT` in `coder.ts`:
 
 ```markdown
 ## Link Patterns
 
 ### Page Routes (React Router)
-
-To link to another page:
-
-1. Create the page component in `src/pages/`:
-   ```tsx
-   // src/pages/PricingPage.tsx
-   export function PricingPage() {
-     return <div>Pricing content</div>;
-   }
-   ```
-
-2. Add the route in `src/App.tsx`:
-   ```tsx
-   <Route path="/pricing" element={<PricingPage />} />
-   ```
-
-3. Link to it:
-   ```tsx
-   <a href="/pricing">Pricing</a>
-   ```
+When creating a new page:
+1. Create component in \`/src/pages/\` (e.g., \`PricingPage.tsx\`)
+2. Add route in \`/src/App.tsx\` ABOVE the catch-all route: \`<Route path="/pricing" element={<PricingPage />} />\`
+3. Link with \`<a href="/pricing">\` or use \`<Link to="/pricing">\` from react-router-dom
 
 ### Anchor Links (Same Page)
-
-To link to a section on the same page:
-
-1. Add an `id` to the target:
-   ```tsx
-   <section id="features">...</section>
-   ```
-
-2. Link to it:
-   ```tsx
-   <a href="#features">Features</a>
-   ```
+Use \`<a href="#features">\` to link to elements with \`id="features"\` on the same page.
 
 ### Common Mistakes to Avoid
 
 | Wrong | Right | Why |
 |-------|-------|-----|
-| `href="/pricing.html"` | `href="/pricing"` | No .html extensions in React Router |
-| `href="#Features"` | `href="#features"` | IDs are case-sensitive |
-| `href="/about"` without Route | Add `<Route path="/about">` first | Routes must be defined |
-| `href="pricing"` | `href="/pricing"` | Always use leading slash for routes |
+| \`href="/pricing.html"\` | \`href="/pricing"\` | No .html extensions in React Router |
+| \`href="#Features"\` | \`href="#features"\` | IDs are case-sensitive |
+| \`href="/about"\` without Route | Add \`<Route path="/about">\` first | Routes must be defined |
+| \`href="pricing"\` | \`href="/pricing"\` | Always use leading slash for routes |
 ```
 
 ---
 
 ## Implementation
 
-**File to modify:** The coding agent's system prompt (location TBD based on prompt architecture).
+**File to modify:** `langgraph_app/app/nodes/codingAgent/subagents/coder.ts`
 
-This is a documentation/prompt change only. No code changes required.
+**Location:** Add to `CODER_SYSTEM_PROMPT` constant, after "## File Locations" section.
+
+**Why coder subagent:** The coder subagent is the one that actually writes `<a href>` tags. The main agent orchestrates, but the coder implements.
+
+**Note:** React Router is already included in the template (`react-router-dom: ^6.26.2`). App.tsx already has the routing structure with a helpful comment: `{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}`.
+
+---
+
+## RED (Acceptance Criteria)
+
+- [ ] No tests verify link generation behavior
+- [ ] No tests verify coder prompt contains link instructions
+
+## GREEN (Implementation)
+
+### Prompt Change (Done)
+- [x] Add link instructions to `CODER_SYSTEM_PROMPT` in `coder.ts`
+
+### Tests to Add
+
+**File:** `tests/tests/nodes/codingAgent/subagents/coder.test.ts` (Create)
+
+```typescript
+describe("Coder Subagent System Prompt", () => {
+  it("includes link pattern instructions", () => {
+    expect(prompt).toContain("## Link Patterns");
+  });
+
+  it("explains page routes with React Router", () => {
+    expect(prompt).toContain("ABOVE the catch-all route");
+  });
+
+  it("includes common mistakes table", () => {
+    expect(prompt).toContain("Common Mistakes to Avoid");
+  });
+});
+```
+
+**File:** `tests/tests/graphs/codingAgent/codingAgent.test.ts` (Modify)
+
+```typescript
+describe("Link Generation", () => {
+  it("generates valid route when creating a new page", async () => {
+    // Verify route added ABOVE catch-all in App.tsx
+  });
+
+  it("uses correct href format (leading slash, no .html)", async () => {
+    // Verify /pricing not pricing.html
+  });
+
+  it("generates lowercase anchor IDs matching hrefs", async () => {
+    // Verify id="features" matches href="#features"
+  });
+});
+```
+
+## REFACTOR
+
+- [ ] N/A - prompt change only
 
 ---
 

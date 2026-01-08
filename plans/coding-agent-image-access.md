@@ -16,38 +16,36 @@ Inject user-uploaded images as multimodal content so the coding agent can visual
 
 **File:** `langgraph_app/app/nodes/codingAgent/agent.ts`
 
-Convert the text-based image list to multimodal content blocks:
+Combine context message with visual images into a single multimodal message:
 
 ```typescript
 import { createMultimodalPseudoMessage } from "@utils";
 
-// Build multimodal content for images
-const imageContent = state.images.length > 0
-  ? [
-      { type: "text", text: "## Images\nHere are the uploaded images:" },
-      ...state.images.map((img) => ({
-        type: "image_url",
-        image_url: { url: img.url },
-      })),
-      { type: "text", text: state.images.map((img) =>
-        `- ${img.url}${img.isLogo ? " (logo)" : ""}`
-      ).join("\n") },
-    ]
-  : [{ type: "text", text: "## Images\nNo images uploaded" }];
-
-// Create pseudo message with visual images
-const imageMessage = createMultimodalPseudoMessage(imageContent);
+// Build user message - combine context with visual images
+const userMessage =
+  state.images.length > 0
+    ? createMultimodalPseudoMessage([
+        { type: "text" as const, text: contextMessage },
+        ...state.images.map((img) => ({
+          type: "image_url" as const,
+          image_url: { url: img.url },
+        })),
+      ])
+    : { role: "user", content: contextMessage };
 
 const result = await agent.invoke({
-  messages: [
-    ...(state.messages || []),
-    { role: "user", content: contextMessage },
-    imageMessage,  // Inject images visually
-  ],
+  messages: [...(state.messages || []), userMessage],
   // ...
 });
 ```
 
+**Note:** The existing `contextMessage` already contains the `## Images` section with URLs and `(logo)` annotations. This change adds visual access to those images without duplicating the text metadata.
+
 ## Files to Modify
 
 1. `langgraph_app/app/nodes/codingAgent/agent.ts` - Add multimodal image injection
+
+## Tests To Add:
+
+1. Unit test: `codingAgent.test.ts` - verify can see images (see `ads.test.ts` for similar examples)
+2. Ensure pseudomessages are removed from final output (see `ads.test.ts` for similar examples)
