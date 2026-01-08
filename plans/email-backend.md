@@ -1,3 +1,15 @@
+---
+status: approved
+approved_date: 2025-01-08
+reviewers:
+  - dhh-rails-reviewer
+  - kieran-rails-reviewer
+  - code-simplicity-reviewer
+priority: phase-1c
+depends_on:
+  - environment-variables.md
+---
+
 # Email Lead Capture - Rails Backend Plan
 
 ## Overview

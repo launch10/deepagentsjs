@@ -1,3 +1,22 @@
+---
+status: approved
+approved_date: 2026-01-08
+reviewers:
+  - DHH Rails Reviewer
+  - Kieran Rails Reviewer
+  - Code Simplicity Reviewer
+review_rounds: 3
+phase: 2
+depends_on:
+  - atlas-spa-fallback.md
+  - coding-agent-link-instructions.md
+files_to_create:
+  - langgraph_app/app/nodes/codingAgent/staticValidation.ts
+files_to_modify:
+  - langgraph_app/app/nodes/codingAgent/index.ts
+  - langgraph_app/app/graphs/codingAgent.ts
+---
+
 # Plan: In-Loop Static Validation
 
 ## Summary
@@ -102,7 +121,9 @@ function validateLinks(files: { path: string; content: string }[]): ValidationEr
           });
         }
       } else if (linkType === "route") {
-        const normalized = href.replace(/\/$/, "") || "/";
+        // Strip query strings and trailing slashes before checking
+        const [pathPart] = href.split("?");
+        const normalized = (pathPart || "").replace(/\/$/, "") || "/";
         if (!routes.has(normalized)) {
           errors.push({
             file: file.path,
@@ -126,11 +147,16 @@ export const staticValidationNode = NodeMiddleware.use(
       return { status: "completed" };
     }
 
-    // Fetch files from database
-    const files = await db
+    // Fetch files from database (websiteId is number, matches bigint column)
+    const rawFiles = await db
       .select({ path: codeFiles.path, content: codeFiles.content })
       .from(codeFiles)
       .where(eq(codeFiles.websiteId, state.websiteId));
+
+    // Filter out files with null path or content
+    const files = rawFiles.filter(
+      (f): f is { path: string; content: string } => f.path !== null && f.content !== null
+    );
 
     const errors = validateLinks(files);
 
@@ -180,12 +206,9 @@ graph
   .addNode("cleanup", cleanupNode)
   .addEdge("buildContext", "codingAgent")
   .addEdge("codingAgent", "staticValidation")
-  .addConditionalEdges("staticValidation", (state) => {
-    if (state.status === "completed" || state.errorRetries >= 2) {
-      return "cleanup";
-    }
-    return "codingAgent";
-  })
+  .addConditionalEdges("staticValidation", (state) =>
+    state.status === "completed" ? "cleanup" : "codingAgent"
+  )
   .addEdge("cleanup", END);
 ```
 
@@ -193,12 +216,29 @@ graph
 
 ## Validation Rules
 
-| Link Pattern | Example              | Rule                                            |
-| ------------ | -------------------- | ----------------------------------------------- |
-| Anchor       | `href="#pricing"`    | Element with `id="pricing"` must exist          |
-| Route        | `href="/pricing"`    | `<Route path="/pricing">` must exist in App.tsx |
-| External     | `href="https://..."` | Skip                                            |
-| Email/Tel    | `href="mailto:..."`  | Skip                                            |
+| Link Pattern | Example                  | Rule                                            |
+| ------------ | ------------------------ | ----------------------------------------------- |
+| Anchor       | `href="#pricing"`        | Element with `id="pricing"` must exist          |
+| Route        | `href="/pricing"`        | `<Route path="/pricing">` must exist in App.tsx |
+| Route + QS   | `href="/pricing?ref=nav"`| Query string stripped, validates `/pricing`     |
+| External     | `href="https://..."`     | Skip                                            |
+| Email/Tel    | `href="mailto:..."`      | Skip                                            |
+
+### Regex Limitations
+
+The validation uses simple regex patterns that assume single-line JSX. This is intentional—the coding agent is instructed to use simple patterns.
+
+**Supported:**
+- `<Route path="/pricing" />` (single line)
+- `id="section-name"` (static IDs)
+- `href="/about"` (static hrefs)
+
+**Not Supported (by design):**
+- Multi-line JSX: `<Route\n  path="/pricing"\n/>`
+- Template literals: `` path={`/pricing`} ``
+- Dynamic values: `path={ROUTE_PATH}` or `id={sectionId}`
+
+The linked plan `coding-agent-link-instructions.md` instructs the agent to use only supported patterns.
 
 ---
 
@@ -223,6 +263,53 @@ graph
 ---
 
 ## History
+
+### 2026-01-08: Review Round 3 - Approved
+
+**Reviewers:** DHH Rails Reviewer, Kieran Rails Reviewer, Code Simplicity Reviewer
+
+**Verdict:** All three reviewers approved. Plan is ready to implement.
+
+- DHH: "Ship it. The plan follows Rails principles despite being TypeScript."
+- Kieran: "All critical issues resolved correctly. Ship it."
+- Code Simplicity: "No further simplification needed. Ship it."
+
+**Optional enhancement noted:** Route+anchor combinations (`/about#team`) could be handled by changing `split("?")` to `split(/[?#]/)`. Can be added during implementation if needed.
+
+---
+
+### 2026-01-08: Review Round 2 - Technical Fixes
+
+**Reviewers:** DHH Rails Reviewer, Kieran Rails Reviewer, Code Simplicity Reviewer
+
+#### Feedback Summary
+
+**DHH Review - "Ship it."**
+- Plan is appropriately simple now
+- One file, everything inline, no service class
+- YAGNI properly practiced
+- No blocking issues
+
+**Kieran Review - "Critical issues identified."**
+- `codeFiles.path` and `codeFiles.content` are nullable in schema
+- Query strings in routes (`/pricing?ref=nav`) would fail validation
+- Redundant retry check in conditional edges (node sets `status`, graph re-checks `errorRetries`)
+- Regex limitations should be documented
+
+**Code Simplicity Review - "Already minimal - proceed."**
+- Previous 41% reduction captured the real waste
+- Only minor item: redundant retry check in conditional edges
+
+#### Changes Made
+
+| Issue | Fix |
+|-------|-----|
+| Nullable fields from DB | Added null filtering with type guard after query |
+| Query strings in routes | Strip `?` params before validation |
+| Redundant retry check | Simplified conditional edge to check only `status` |
+| Regex limitations undocumented | Added "Regex Limitations" section |
+
+---
 
 ### 2025-01-08: Plan Simplified After Review
 
