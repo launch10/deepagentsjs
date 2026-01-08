@@ -4,11 +4,7 @@ class BrainstormCreated < BaseBuilder
   end
 
   def output_name
-<<<<<<<< HEAD:rails_app/spec/snapshot_builders/website_step.rb
     "website_step"
-========
-    "brainstorm_created"
->>>>>>>> 65de18c9 (Chyeah, nice lil updoot with the example repo bruh):rails_app/spec/snapshot_builders/brainstorm_created.rb
   end
 
   def build

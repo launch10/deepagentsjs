@@ -69,5 +69,14 @@
     ]
   },
   "include": ["app/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
-  "exclude": ["node_modules", "tests/TODO"]
+  "exclude": [
+    "node_modules",
+    "tests/TODO",
+    "app/nodes/codingAgent/**/*",
+    "app/graphs/codingAgent.ts",
+    "app/services/backends/websiteFilesBackend.ts",
+    "app/services/core/railsApi/websiteFilesAPIService.ts",
+    "tests/tests/backends/websiteFilesBackend.test.ts",
+    "tests/tests/graphs/codingAgent/**/*"
+  ]
 }

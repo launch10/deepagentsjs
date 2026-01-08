@@ -7,6 +7,7 @@ import { ChatGroq } from "@langchain/groq";
 import { ChatOpenAI } from "@langchain/openai";
 import {
   type LLMAppConfig,
+  type LLMFallbackAppConfig,
   type LLMConfig,
   type LLMSkill,
   type LLMSpeed,
@@ -20,11 +21,13 @@ import {
 export class LLMManagerFactory {
   mode: "test" | "regular" = "regular";
   private config: LLMAppConfig;
+  private fallbackConfig: LLMFallbackAppConfig;
   private llmCache: Partial<Record<string, BaseChatModel>>;
 
-  constructor(config: LLMAppConfig) {
+  constructor(config: LLMAppConfig, fallbackConfig: LLMFallbackAppConfig) {
     this.llmCache = {};
     this.config = config;
+    this.fallbackConfig = fallbackConfig;
   }
 
   reset() {
@@ -72,6 +75,51 @@ export class LLMManagerFactory {
     return Models[name].type === "local";
   }
 
+  /**
+   * Creates a model instance from a config object.
+   * Returns null if the model is not properly configured (missing API key, etc.)
+   */
+  createModelFromConfig(config: LLMConfig): BaseChatModel | null {
+    switch (config.provider) {
+      case "anthropic":
+        if (!this.apiConfigured(config)) {
+          return null;
+        }
+        return new ChatAnthropic({
+          apiKey: config.apiKey,
+          model: config.modelCard,
+          temperature: config.temperature,
+        });
+      case "openai":
+        if (!this.apiConfigured(config)) {
+          return null;
+        }
+        return new ChatOpenAI({
+          apiKey: config.apiKey,
+          model: config.modelCard,
+        });
+      case "ollama":
+        if (!this.localConfigured(config)) {
+          return null;
+        }
+        return new ChatOllama({
+          model: config.modelCard,
+          temperature: config.temperature,
+        });
+      case "groq":
+        if (!this.apiConfigured(config)) {
+          return null;
+        }
+        return new ChatGroq({
+          apiKey: config.apiKey,
+          model: config.modelCard,
+          temperature: config.temperature,
+        });
+      default:
+        return null;
+    }
+  }
+
   getModel(llmSkill: LLMSkill, llmSpeed: LLMSpeed, llmCost: LLMCost) {
     // Get the specific config for the requested skill, speed, and tier
     const speedConfig = this.config[llmCost]?.[llmSpeed];
@@ -86,53 +134,118 @@ export class LLMManagerFactory {
       );
     }
 
-    let modelInstance: BaseChatModel;
-
-    // Instantiate based on provider
-    switch (config.provider) {
-      case "anthropic":
-        if (!this.apiConfigured(config)) {
-          throw new Error("Anthropic API key (ANTHROPIC_API_KEY) is missing!");
-        }
-        modelInstance = new ChatAnthropic({
-          apiKey: config.apiKey,
-          model: config.modelCard,
-          temperature: config.temperature,
-        });
-        break;
-      case "openai":
-        if (!this.apiConfigured(config)) {
-          throw new Error("OpenAI API key (OPENAI_API_KEY) is missing!");
-        }
-        modelInstance = new ChatOpenAI({
-          apiKey: config.apiKey,
-          model: config.modelCard,
-        });
-        break;
-      case "ollama":
-        if (!this.localConfigured(config)) {
-          throw new Error("Ollama model not configured!");
-        }
-        modelInstance = new ChatOllama({
-          model: config.modelCard,
-          temperature: config.temperature,
-        });
-        break;
-      case "groq":
-        if (!this.apiConfigured(config)) {
-          throw new Error("Groq API key (GROQ_API_KEY) is missing!");
-        }
-        modelInstance = new ChatGroq({
-          apiKey: config.apiKey,
-          model: config.modelCard,
-          temperature: config.temperature,
-        });
-        break;
-      default:
-        throw new Error(`Unsupported LLM provider: ${config.provider}`);
+    const modelInstance = this.createModelFromConfig(config);
+    if (!modelInstance) {
+      throw new Error(
+        `Failed to create model for ${config.provider} - check API keys and configuration`
+      );
     }
 
     return modelInstance;
+  }
+
+  /**
+   * Get available fallback configs for a given skill/speed/cost combination.
+   * Returns configs that are within the usage threshold.
+   *
+   * @param usagePercent - Current user's usage percentage (0-100). Defaults to 0 (all models available).
+   */
+  private getAvailableFallbackConfigs(
+    llmSkill: LLMSkill,
+    llmSpeed: LLMSpeed,
+    llmCost: LLMCost,
+    usagePercent: number = 0
+  ): LLMConfig[] {
+    const speedConfig = this.fallbackConfig[llmCost]?.[llmSpeed];
+    if (!speedConfig) {
+      throw new Error(
+        `LLM fallback configuration not found for tier '${llmCost}' and speed '${llmSpeed}'.`
+      );
+    }
+
+    const configs: LLMConfig[] | undefined = speedConfig[llmSkill];
+    if (!configs || configs.length === 0) {
+      throw new Error(
+        `LLM fallback configuration not found for skill '${llmSkill}' within tier '${llmCost}' and speed '${llmSpeed}'.`
+      );
+    }
+
+    // Filter configs that are within usage threshold (maxUsagePercent defaults to 100)
+    return configs.filter((config) => {
+      const maxUsage = config.maxUsagePercent ?? 100;
+      return usagePercent < maxUsage;
+    });
+  }
+
+  /**
+   * Get fallback models for a given skill/speed/cost combination.
+   * Returns an array of configured models in priority order (best first).
+   * Only includes models that are:
+   * - Properly configured (have API keys, etc.)
+   * - Within the usage threshold
+   *
+   * @param usagePercent - Current user's usage percentage (0-100). Defaults to 0 (all models available).
+   */
+  getFallbackModels(
+    llmSkill: LLMSkill,
+    llmSpeed: LLMSpeed,
+    llmCost: LLMCost,
+    usagePercent: number = 0
+  ): BaseChatModel[] {
+    const availableConfigs = this.getAvailableFallbackConfigs(
+      llmSkill,
+      llmSpeed,
+      llmCost,
+      usagePercent
+    );
+
+    // Create model instances for each config, filtering out unconfigured ones
+    const models: BaseChatModel[] = [];
+    for (const config of availableConfigs) {
+      const model = this.createModelFromConfig(config);
+      if (model) {
+        models.push(model);
+      }
+    }
+
+    if (models.length === 0) {
+      throw new Error(
+        `No configured models available for skill '${llmSkill}', speed '${llmSpeed}', cost '${llmCost}' at ${usagePercent}% usage. Check API keys and usage thresholds.`
+      );
+    }
+
+    return models;
+  }
+
+  /**
+   * Get the first available model from the fallback chain.
+   * Respects both usage thresholds and configuration requirements.
+   *
+   * @param usagePercent - Current user's usage percentage (0-100). Defaults to 0 (all models available).
+   */
+  getFirstAvailableModel(
+    llmSkill: LLMSkill,
+    llmSpeed: LLMSpeed,
+    llmCost: LLMCost,
+    usagePercent: number = 0
+  ): BaseChatModel {
+    const availableConfigs = this.getAvailableFallbackConfigs(
+      llmSkill,
+      llmSpeed,
+      llmCost,
+      usagePercent
+    );
+
+    for (const config of availableConfigs) {
+      const model = this.createModelFromConfig(config);
+      if (model) {
+        return model;
+      }
+    }
+
+    throw new Error(
+      `No configured models available for skill '${llmSkill}', speed '${llmSpeed}', cost '${llmCost}' at ${usagePercent}% usage. Check API keys and usage thresholds.`
+    );
   }
 
   useTest() {
@@ -149,11 +262,22 @@ export class LLMManagerFactory {
     LLMTestResponder.reset();
   }
 
-  get(llmSkill: LLMSkill, llmSpeed: LLMSpeed, llmCost: LLMCost): BaseChatModel {
+  get(
+    llmSkill: LLMSkill,
+    llmSpeed: LLMSpeed,
+    llmCost: LLMCost,
+    usagePercent: number = 0
+  ): BaseChatModel {
     if (this.useTest()) {
       return LLMTestResponder.get();
     }
 
+    // When usage filtering is active, use fallback chain to get first available model
+    if (usagePercent > 0) {
+      return this.getFirstAvailableModel(llmSkill, llmSpeed, llmCost, usagePercent);
+    }
+
+    // At 0% usage, use cached models for performance
     const cacheKey = `${llmSkill}-${llmSpeed}-${llmCost}`;
     if (cacheKey in this.llmCache) {
       return this.llmCache[cacheKey]!;
@@ -161,5 +285,25 @@ export class LLMManagerFactory {
     const result = this.getModel(llmSkill, llmSpeed, llmCost);
     this.llmCache[cacheKey] = result;
     return result;
+  }
+
+  /**
+   * Get an array of LLM instances for fallback chains.
+   * First model is the primary, rest are fallbacks in priority order.
+   * Only returns models that are properly configured.
+   *
+   * @param usagePercent - Current user's usage percentage (0-100). Defaults to 0 (all models available).
+   */
+  getFallbacks(
+    llmSkill: LLMSkill,
+    llmSpeed: LLMSpeed,
+    llmCost: LLMCost,
+    usagePercent: number = 0
+  ): BaseChatModel[] {
+    if (this.useTest()) {
+      return [LLMTestResponder.get()];
+    }
+
+    return this.getFallbackModels(llmSkill, llmSpeed, llmCost, usagePercent);
   }
 }

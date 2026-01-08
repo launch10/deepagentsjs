@@ -2,4 +2,5 @@ export * from "./brainstorm";
 export * from "./core";
 export * from "./ads";
 export * from "./launch";
-export * from "./codingAgent";
+// TODO: Re-enable when deepagents package is built
+// export * from "./codingAgent";

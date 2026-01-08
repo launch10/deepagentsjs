@@ -3,4 +3,5 @@ export * from "@rails_api";
 
 // Re-export snapshotter specifically
 export * from "./snapshotter";
-export * from "./websiteFilesAPIService";
+// TODO: Re-enable when Rails API endpoints are created
+// export * from "./websiteFilesAPIService";

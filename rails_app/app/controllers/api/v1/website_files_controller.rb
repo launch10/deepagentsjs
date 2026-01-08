@@ -57,14 +57,15 @@ class API::V1::WebsiteFilesController < API::BaseController
       render json: {errors: ["files must be an array"]}, status: :unprocessable_entity and return
     end
 
+    # Validate all files have required fields before processing
+    invalid_file = files_params.find { |f| !f[:path].present? || !f[:content].present? }
+    if invalid_file
+      render json: {errors: ["Each file must have path and content"]}, status: :unprocessable_entity and return
+    end
+
     website_files_attributes = files_params.map do |file_param|
       path = file_param[:path]
       content = file_param[:content]
-
-      unless path.present? && content.present?
-        render json: {errors: ["Each file must have path and content"]}, status: :unprocessable_entity and return
-      end
-
       normalized_path = path.gsub(/^\//, "")
       existing_file = website.website_files.find_by(path: normalized_path)
 

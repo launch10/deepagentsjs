@@ -1,4 +1,3 @@
-<<<<<<<< HEAD:rails_app/spec/snapshot_builders/website_step_finished.rb
 class WebsiteStepFinished < BaseBuilder
   def base_snapshot
     "website_step"
@@ -6,15 +5,6 @@ class WebsiteStepFinished < BaseBuilder
 
   def output_name
     "website_step_finished"
-========
-class WebsiteFinished < BaseBuilder
-  def base_snapshot
-    "brainstorm_finished"
-  end
-
-  def output_name
-    "website_finished"
->>>>>>>> 65de18c9 (Chyeah, nice lil updoot with the example repo bruh):rails_app/spec/snapshot_builders/website_finished.rb
   end
 
   def build
@@ -31,20 +21,16 @@ class WebsiteFinished < BaseBuilder
 
     website = project.website
 
-<<<<<<<< HEAD:rails_app/spec/snapshot_builders/website_step_finished.rb
-    Core::TestSites.import_to_website(website, "hello-world")
-
-    domain = website.domains.first || create(:domain, website: website, account: account, domain: "example.launch10.site")
-    website_url = website.website_urls.first || create(:website_url, website: website, domain: domain, account: account, path: "/bingo?cloudEnv=staging")
-
-========
     ExampleWebsites.find("launch-proof").files.reject(&:binary?).each do |file|
       website.website_files.create!(
         path: file.relative_path,
         content: file.content
       )
     end
->>>>>>>> 65de18c9 (Chyeah, nice lil updoot with the example repo bruh):rails_app/spec/snapshot_builders/website_finished.rb
+
+    domain = website.domains.first || create(:domain, website: website, account: account, domain: "example.launch10.site")
+    website_url = website.website_urls.first || create(:website_url, website: website, domain: domain, account: account, path: "/bingo?cloudEnv=staging")
+
     project.current_workflow.update!(step: "ad_campaign", substep: "content")
 
     puts "Advanced workflow to ad_campaign:content"
