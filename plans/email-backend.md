@@ -1,14 +1,18 @@
-# Email Lead Capture Implementation Plan
+# Email Lead Capture - Rails Backend Plan
 
 ## Overview
 
 Public API endpoint for landing pages to submit email signups. Uses Rails `signed_id` for stateless, tamper-proof authentication.
 
+**Related plans:**
+- `plans/email-backend-coding-agent.md` - Agent guidance for using the API
+- `plans/environment-variables.md` - Stores VITE_SIGNUP_TOKEN for build-time injection
+
+**Dependency:** This plan depends on `environment-variables.md` being implemented first.
+
 ---
 
-## Part 1: Rails Backend
-
-### 1.1 Database Migration
+## Part 1: Database Migration
 
 **Migration: Create leads table**
 
@@ -26,7 +30,9 @@ add_index :leads, [:project_id, :email], unique: true
 
 No token storage needed - `signed_id` derives tokens from the project ID and Rails' `secret_key_base`.
 
-### 1.2 Models
+---
+
+## Part 2: Models
 
 **Lead model** (`app/models/lead.rb`)
 
@@ -61,7 +67,7 @@ class Project < ApplicationRecord
 end
 ```
 
-### 1.3 Why signed_id Instead of JWT
+### Why signed_id Instead of JWT
 
 | Aspect            | JWT (Original)          | signed_id (Updated)    |
 | ----------------- | ----------------------- | ---------------------- |
@@ -83,7 +89,32 @@ def revoke_signup_token!
 end
 ```
 
-### 1.4 Public API Endpoint
+### Integration with EnvironmentVariable
+
+The `signup_token` is stored as an `EnvironmentVariable` so it gets injected into deployed websites:
+
+```ruby
+# In Project after_create callback (from environment-variables.md)
+after_create :seed_system_environment_variables
+
+def seed_system_environment_variables
+  set_env_var("VITE_SIGNUP_TOKEN", signup_token, system: true,
+              description: "Authenticates lead capture API calls")
+  set_env_var("VITE_API_BASE_URL", Rails.configuration.api_base_url, system: true,
+              description: "Base URL for API calls from deployed sites")
+end
+```
+
+**Flow:**
+1. Project created → `after_create` stores `VITE_SIGNUP_TOKEN` in EnvironmentVariable
+2. Website deployed → `buildable.rb` writes `.env` file with token
+3. Vite embeds token in JS bundle
+4. Landing page calls `/api/v1/leads?token=<embedded_token>`
+5. Rails validates via `Project.find_signed!(token, purpose: :lead_signup)`
+
+---
+
+## Part 3: Public API Endpoint
 
 **Controller** (`app/controllers/api/v1/leads_controller.rb`)
 
@@ -112,7 +143,7 @@ class API::V1::LeadsController < ActionController::API
 end
 ```
 
-#### Why `ActionController::API` instead of `API::BaseController`?
+### Why `ActionController::API` instead of `API::BaseController`?
 
 | Aspect         | `API::BaseController`               | `ActionController::API` |
 | -------------- | ----------------------------------- | ----------------------- |
@@ -134,9 +165,11 @@ end
 resources :leads, only: [:create]  # POST /api/v1/leads
 ```
 
-### 1.5 CORS Configuration
+---
 
-#### Why CORS is needed for this endpoint (but not others)
+## Part 4: CORS Configuration
+
+### Why CORS is needed for this endpoint (but not others)
 
 **CORS (Cross-Origin Resource Sharing)** is a browser security feature that blocks JavaScript from making requests to a different domain than the page was loaded from.
 
@@ -149,7 +182,7 @@ resources :leads, only: [:create]  # POST /api/v1/leads
 
 Our existing APIs are called from the same origin (our React frontend) or server-to-server (Langgraph). The leads endpoint is unique - it's called from deployed landing pages on different domains.
 
-#### Implementation
+### Implementation
 
 Add `rack-cors` gem and create initializer:
 
@@ -175,7 +208,22 @@ end
 
 **Note:** This config is scoped to only `/api/v1/leads`. All other APIs remain same-origin only - no security change for authenticated endpoints.
 
-### 1.6 Files to Modify/Create
+---
+
+## Part 5: Token Regeneration Behavior
+
+**Important limitation:** If token revocation is implemented later (via `signup_token_version`), already-deployed pages will have the old token baked in.
+
+Options:
+1. **Accept limitation** - old deploys stop working (user must redeploy)
+2. **Auto-redeploy** when token regenerates
+3. **Store multiple valid token versions** (adds complexity)
+
+For MVP, option 1 is acceptable. Document for users that regenerating tokens requires redeployment.
+
+---
+
+## Files to Modify/Create
 
 | File                                         | Action                                                |
 | -------------------------------------------- | ----------------------------------------------------- |
@@ -188,3 +236,38 @@ end
 | `config/initializers/cors.rb`                | Create                                                |
 
 ---
+
+## Implementation Order
+
+1. Add `rack-cors` gem, bundle install
+2. Create migration, run it
+3. Create Lead model
+4. Update Project model
+5. Create leads controller
+6. Add route
+7. Create CORS initializer
+8. Test manually, then add specs
+
+---
+
+## Verification Plan
+
+1. Unit tests: Lead model validations, email normalization
+2. Request spec: POST /api/v1/leads with valid/invalid tokens
+3. Manual test:
+   - Create a project in console
+   - Get its `signup_token`
+   - POST to `/api/v1/leads` with token and email
+   - Verify lead created
+
+---
+
+## Security Considerations
+
+- Tokens are cryptographically signed using Rails' `secret_key_base`
+- Tokens are purpose-scoped (`:lead_signup`) - can't be used for other operations
+- Rate limiting handled at Cloudflare layer
+- Email validation and normalization prevents injection and duplicates
+- CORS allows all origins but only POST to /api/v1/leads
+- No PII beyond email/name stored
+- Tokens are long-lived but can be revoked via version increment (future)

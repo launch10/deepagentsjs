@@ -17,10 +17,12 @@ This document defines the implementation order for all coding agent enhancements
 ```
 Phase 1: Foundation (Independent - Can Parallelize)
 ├── 1a. Atlas SPA Fallback        [atlas-spa-fallback.md]
-├── 1b. Email Backend (Rails)     [email-backend.md]
-├── 1c. Image Access              [coding-agent-image-access.md]
-├── 1d. Icon Search               [icon-search.md]
-└── 1e. Theme Integration         [theme-integration.md]
+├── 1b. Environment Variables     [environment-variables.md]  ← NEW
+├── 1c. Email Backend (Rails)     [email-backend.md]
+│        └── depends on: 1b (Environment Variables)
+├── 1d. Image Access              [coding-agent-image-access.md]
+├── 1e. Icon Search               [icon-search.md]
+└── 1f. Theme Integration         [theme-integration.md]
 
 Phase 2: Layer 1 Validation
 └── 2. Static Validation          [coding-agent-static-validation.md]
@@ -28,7 +30,7 @@ Phase 2: Layer 1 Validation
 
 Phase 3: Deploy Infrastructure
 └── 3. Unified deployGraph        [website-deploy-graph.md, coding-agent-deploy-validation.md, analytics-tracking.md]
-       └── depends on: 2 (Static Validation)
+       └── depends on: 2 (Static Validation), 1b (Environment Variables)
        └── includes: instrumentation, website deploy, runtime validation, campaign deploy
 
 Phase 4: Integration Testing
@@ -60,18 +62,42 @@ Phase 4: Integration Testing
 
 ---
 
-### 1b. Email Backend (Rails)
-**Plan:** `email-backend.md`
+### 1b. Environment Variables
+**Plan:** `environment-variables.md`
 **Effort:** Medium
-**Why:** Independent, provides lead capture infrastructure.
+**Why:** Provides encrypted env var infrastructure for VITE_SIGNUP_TOKEN and VITE_API_BASE_URL. Required by Email Backend and deployGraph.
+
+#### RED (Acceptance Criteria)
+- [ ] No `EnvironmentVariable` model exists
+- [ ] No env vars injected during website build
+
+#### GREEN (Implementation)
+- [ ] Create migration for `environment_variables` table (encrypted values)
+- [ ] Create `EnvironmentVariable` model with `encrypts :value`
+- [ ] Add `has_many :environment_variables` to Project
+- [ ] Add `after_create` callback to seed system vars (VITE_SIGNUP_TOKEN, VITE_API_BASE_URL)
+- [ ] Create API endpoint `GET /api/v1/projects/:id/environment_variables` (metadata only, no values)
+- [ ] Modify `buildable.rb` to write `.env` file before `pnpm build`
+- [ ] Project creation auto-creates system env vars
+
+#### REFACTOR
+- [ ] Add LangGraph API service for env var metadata
+- [ ] Update `buildContext.ts` to fetch env var metadata
+
+---
+
+### 1c. Email Backend (Rails)
+**Plan:** `email-backend.md`
+**Depends On:** 1b (Environment Variables)
+**Effort:** Medium
+**Why:** Provides lead capture infrastructure. Uses VITE_SIGNUP_TOKEN from Environment Variables.
 
 #### RED (Acceptance Criteria)
 - [ ] `POST /api/v1/leads` returns 401 (no endpoint exists)
 - [ ] No `Lead` model exists
-- [ ] No `signup_token` on Project
 
 #### GREEN (Implementation)
-- [ ] Create migrations (`signup_token`, `leads` table)
+- [ ] Create `leads` table migration
 - [ ] Create `Lead` model with validations
 - [ ] Update `Project` model (token generation, `has_many :leads`)
 - [ ] Create `Api::V1::LeadsController`
@@ -85,7 +111,7 @@ Phase 4: Integration Testing
 
 ---
 
-### 1c. Image Access
+### 1d. Image Access
 **Plan:** `coding-agent-image-access.md`
 **Effort:** Small (single file)
 **Why:** Simple enhancement to agent capabilities.
@@ -103,7 +129,7 @@ Phase 4: Integration Testing
 
 ---
 
-### 1d. Icon Search
+### 1e. Icon Search
 **Plan:** `icon-search.md`
 **Effort:** Small (move from TODO)
 **Why:** Independent tool addition.
@@ -125,7 +151,7 @@ Phase 4: Integration Testing
 
 ---
 
-### 1e. Theme Integration
+### 1f. Theme Integration
 **Plan:** `theme-integration.md`
 **Effort:** Small (move from TODO + 15 lines)
 **Why:** Independent enhancement to context loading.
@@ -263,10 +289,21 @@ This phase implements the unified `deployGraph` with boolean flags:
 |------|--------|
 | `atlas/src/index-public.tsx` | Modify |
 
-### Phase 1b (Email Backend)
+### Phase 1b (Environment Variables)
 | File | Action |
 |------|--------|
-| `rails_app/db/migrate/xxx_add_signup_token_to_projects.rb` | Create |
+| `rails_app/db/migrate/xxx_create_environment_variables.rb` | Create |
+| `rails_app/app/models/environment_variable.rb` | Create |
+| `rails_app/app/models/project.rb` | Modify |
+| `rails_app/app/controllers/api/v1/environment_variables_controller.rb` | Create |
+| `rails_app/config/routes/api.rb` | Modify |
+| `rails_app/app/models/concerns/website_deploy_concerns/buildable.rb` | Modify |
+| `shared/lib/api/services/environmentVariablesAPIService.ts` | Create |
+| `langgraph_app/app/nodes/codingAgent/buildContext.ts` | Modify |
+
+### Phase 1c (Email Backend)
+| File | Action |
+|------|--------|
 | `rails_app/db/migrate/xxx_create_leads.rb` | Create |
 | `rails_app/app/models/lead.rb` | Create |
 | `rails_app/app/models/project.rb` | Modify |
@@ -274,19 +311,19 @@ This phase implements the unified `deployGraph` with boolean flags:
 | `rails_app/config/routes/api.rb` | Modify |
 | `rails_app/config/initializers/cors.rb` | Modify |
 
-### Phase 1c (Image Access)
+### Phase 1d (Image Access)
 | File | Action |
 |------|--------|
 | `langgraph_app/app/nodes/codingAgent/agent.ts` | Modify |
 
-### Phase 1d (Icon Search)
+### Phase 1e (Icon Search)
 | File | Action |
 |------|--------|
 | `langgraph_app/app/tools/searchIcons.ts` | Move from TODO |
 | `langgraph_app/app/services/searchIconsService.ts` | Move from TODO |
 | `langgraph_app/app/nodes/codingAgent/utils/agent.ts` | Modify |
 
-### Phase 1e (Theme Integration)
+### Phase 1f (Theme Integration)
 | File | Action |
 |------|--------|
 | `langgraph_app/app/services/themes/indexCssService.ts` | Move from TODO |
@@ -323,6 +360,7 @@ This phase implements the unified `deployGraph` with boolean flags:
 | Plan | Description |
 |------|-------------|
 | `architecture-overview.md` | System architecture overview |
+| `environment-variables.md` | Encrypted env var storage and build injection |
 | `website-deploy-graph.md` | deployGraph implementation details |
 | `atlas-spa-fallback.md` | SPA fallback for React Router |
 | `coding-agent-static-validation.md` | Layer 1 validation details |

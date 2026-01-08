@@ -2,363 +2,201 @@
 
 ## Summary
 
-Add fast, static validation that runs after the coding agent generates code. If validation fails, feed errors back to the agent for self-correction (up to 2 retries).
+Add fast, static validation after the coding agent generates code. If validation fails, feed errors back to the agent for self-correction (up to 2 retries).
 
 ## Dependencies
 
-- **`plans/atlas-spa-fallback.md`** - Atlas must support SPA fallback for route-based link validation to work.
+- **`plans/atlas-spa-fallback.md`** - Atlas must support SPA fallback for route validation to work.
+- **`plans/coding-agent-link-instructions.md`** - Agent instructions for proper link patterns.
 
 ## Current State
 
-**Current graph flow:**
 ```
 buildContext → codingAgent → cleanup
 ```
 
-**Target flow:**
+## Target State
+
 ```
 buildContext → codingAgent → staticValidation → [pass] → cleanup
                     ↑              ↓
                     └── [fail] ────┘
 ```
 
-## Validation Checks
-
-### 1. Link Validation
-
-| Link Pattern | Example | Validation Rule |
-|--------------|---------|-----------------|
-| Anchor | `href="#pricing"` | Must have element with `id="pricing"` |
-| Route | `href="/pricing"` | Must have `<Route path="/pricing">` in App.tsx |
-| Asset | `src="/images/hero.png"` | File must exist in project |
-| External | `href="https://example.com"` | Skip |
-| Email/Tel | `href="mailto:hi@example.com"` | Skip |
-
-### 2. Build Validation
-
-- Run `tsc --noEmit` to catch TypeScript errors
-- Parse output, format for agent
-
 ---
 
 ## Implementation
 
-### Files to Create
+### 1. Create Static Validation Node
 
-#### 1. Link Validator
+**File:** `langgraph_app/app/nodes/codingAgent/staticValidation.ts`
 
-**File:** `langgraph_app/app/services/editor/validation/linkValidator.ts`
+One file. Everything inline. No service class.
 
 ```typescript
-import { CodeFile } from '../types';
+import type { CodingAgentGraphState } from "@annotation";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { NodeMiddleware } from "@middleware";
+import { HumanMessage } from "@langchain/core/messages";
+import { db, codeFiles, eq } from "@db";
 
-export interface LinkValidationError {
-  type: 'anchor' | 'route' | 'asset';
-  message: string;
+const MAX_VALIDATION_RETRIES = 2;
+
+interface ValidationError {
   file: string;
+  message: string;
 }
 
-function getLinkType(href: string): 'anchor' | 'route' | 'asset' | 'external' | 'skip' {
+type LinkType = 'anchor' | 'route' | 'skip';
+
+function getLinkType(href: string): LinkType {
   if (href.startsWith('#')) return 'anchor';
-  if (href.startsWith('http://') || href.startsWith('https://')) return 'external';
-  if (href.startsWith('mailto:') || href.startsWith('tel:')) return 'skip';
-  if (hasFileExtension(href)) return 'asset';
+  if (href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:')) return 'skip';
   return 'route';
 }
 
-function hasFileExtension(path: string): boolean {
-  const filename = path.split('/').pop() || '';
-  return filename.includes('.') && !filename.startsWith('.');
-}
-
-function normalizeFilePath(path: string): string {
-  let normalized = path;
-  if (normalized.startsWith('./')) {
-    normalized = normalized.slice(1);
-  }
-  if (!normalized.startsWith('/')) {
-    normalized = '/' + normalized;
-  }
-  return normalized;
-}
-
-function parseRoutesFromAppTsx(files: CodeFile[]): Set<string> {
-  const appFile = files.find(f => f.path.endsWith('App.tsx'));
-  if (!appFile) return new Set(['/']);
-
-  const routes = new Set<string>();
-  const routeMatches = appFile.content.matchAll(/<Route\s+path=["']([^"']+)["']/g);
-
-  for (const match of routeMatches) {
-    const path = match[1];
-    if (path !== '*') {
-      routes.add(path.replace(/\/$/, '') || '/');
-    }
-  }
-
-  routes.add('/');
-  return routes;
-}
-
-export async function validateLinks(files: CodeFile[]): Promise<LinkValidationError[]> {
-  const errors: LinkValidationError[] = [];
-
-  // 1. Collect all anchor IDs
+function collectAnchors(files: { path: string; content: string }[]): Set<string> {
   const anchors = new Set<string>();
   for (const file of files) {
-    const idMatches = file.content.matchAll(/id=["']([^"']+)["']/g);
-    for (const match of idMatches) {
+    const matches = file.content.matchAll(/id=["']([^"']+)["']/g);
+    for (const match of matches) {
       anchors.add(match[1]);
     }
   }
+  return anchors;
+}
 
-  // 2. Parse routes from App.tsx
-  const routes = parseRoutesFromAppTsx(files);
+function parseRoutes(files: { path: string; content: string }[]): Set<string> {
+  const appFile = files.find(f => f.path.endsWith('App.tsx'));
+  if (!appFile) return new Set(['/']);
 
-  // 3. Collect static file paths
-  const staticFiles = new Set(
-    files
-      .filter(f => hasFileExtension(f.path))
-      .map(f => normalizeFilePath(f.path))
-  );
+  const routes = new Set<string>(['/']);
+  const matches = appFile.content.matchAll(/<Route\s+path=["']([^"']+)["']/g);
+  for (const match of matches) {
+    if (match[1] !== '*') {
+      routes.add(match[1].replace(/\/$/, '') || '/');
+    }
+  }
+  return routes;
+}
 
-  // 4. Validate each href
+function validateLinks(files: { path: string; content: string }[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const anchors = collectAnchors(files);
+  const routes = parseRoutes(files);
+
   for (const file of files) {
-    const hrefMatches = file.content.matchAll(/href=["']([^"']+)["']/g);
+    const matches = file.content.matchAll(/href=["']([^"']+)["']/g);
 
-    for (const match of hrefMatches) {
+    for (const match of matches) {
       const href = match[1];
       const linkType = getLinkType(href);
 
-      switch (linkType) {
-        case 'anchor':
-          const anchorId = href.slice(1);
-          if (!anchors.has(anchorId)) {
-            errors.push({
-              type: 'anchor',
-              message: `Broken anchor: ${href} (no element with id="${anchorId}")`,
-              file: file.path,
-            });
-          }
-          break;
-
-        case 'route':
-          const normalizedRoute = href.replace(/\/$/, '') || '/';
-          if (!routes.has(normalizedRoute)) {
-            errors.push({
-              type: 'route',
-              message: `No route defined for: ${href} (add <Route path="${normalizedRoute}"> to App.tsx)`,
-              file: file.path,
-            });
-          }
-          break;
-
-        case 'asset':
-          if (!staticFiles.has(normalizeFilePath(href))) {
-            errors.push({
-              type: 'asset',
-              message: `Missing file: ${href}`,
-              file: file.path,
-            });
-          }
-          break;
+      if (linkType === 'anchor') {
+        const id = href.slice(1);
+        if (!anchors.has(id)) {
+          errors.push({
+            file: file.path,
+            message: `Broken anchor: ${href} - no element with id="${id}"`,
+          });
+        }
+      } else if (linkType === 'route') {
+        const normalized = href.replace(/\/$/, '') || '/';
+        if (!routes.has(normalized)) {
+          errors.push({
+            file: file.path,
+            message: `No route for: ${href} - add <Route path="${normalized}"> to App.tsx`,
+          });
+        }
       }
     }
   }
 
   return errors;
 }
-```
 
-#### 2. Static Validation Service
-
-**File:** `langgraph_app/app/services/editor/validation/staticValidationService.ts`
-
-```typescript
-import { validateLinks, LinkValidationError } from './linkValidator';
-import { CodeFile } from '../types';
-
-export interface ValidationError {
-  type: 'link' | 'build';
-  message: string;
-  file?: string;
-  line?: number;
-}
-
-export interface ValidationResult {
-  passed: boolean;
-  errors: ValidationError[];
-}
-
-export class StaticValidationService {
-  async validate(files: CodeFile[]): Promise<ValidationResult> {
-    const errors: ValidationError[] = [];
-
-    // Link validation
-    const linkErrors = await validateLinks(files);
-    for (const err of linkErrors) {
-      errors.push({
-        type: 'link',
-        message: err.message,
-        file: err.file,
-      });
-    }
-
-    // Build validation (TypeScript) - optional, can be added later
-    // const buildErrors = await this.validateBuild(files);
-    // errors.push(...buildErrors);
-
-    return {
-      passed: errors.length === 0,
-      errors,
-    };
-  }
-}
-```
-
-#### 3. Validation Index
-
-**File:** `langgraph_app/app/services/editor/validation/index.ts`
-
-```typescript
-export { StaticValidationService, ValidationResult, ValidationError } from './staticValidationService';
-export { validateLinks, LinkValidationError } from './linkValidator';
-```
-
-#### 4. Static Validation Node
-
-**File:** `langgraph_app/app/nodes/codingAgent/staticValidation.ts`
-
-```typescript
-import { CodingAgentGraphState } from '../../annotation/codingAgentAnnotation';
-import { StaticValidationService, ValidationError } from '../../services/editor/validation';
-
-function formatValidationErrors(errors: ValidationError[]): string {
-  const lines = ['## Validation Failed\n'];
-  lines.push('The following issues were found in your generated code:\n');
-
-  const linkErrors = errors.filter(e => e.type === 'link');
-  const buildErrors = errors.filter(e => e.type === 'build');
-
-  if (linkErrors.length > 0) {
-    lines.push('### Link Errors');
-    for (const err of linkErrors) {
-      lines.push(`- ${err.file}: ${err.message}`);
-    }
-    lines.push('');
-  }
-
-  if (buildErrors.length > 0) {
-    lines.push('### Build Errors');
-    for (const err of buildErrors) {
-      const location = err.line ? `${err.file}:${err.line}` : err.file;
-      lines.push(`- ${location}: ${err.message}`);
-    }
-    lines.push('');
-  }
-
-  lines.push('Please fix these issues and regenerate the affected files.');
-
-  return lines.join('\n');
-}
-
-export const staticValidation = async (
+export const staticValidationNode = NodeMiddleware.use({}, async (
   state: CodingAgentGraphState,
+  config: LangGraphRunnableConfig,
 ): Promise<Partial<CodingAgentGraphState>> => {
-  const validationService = new StaticValidationService();
-  const result = await validationService.validate(state.files);
-
-  if (result.passed) {
-    return { validationPassed: true };
+  if (!state.websiteId) {
+    return { status: "completed" };
   }
 
-  const errorMessage = formatValidationErrors(result.errors);
+  // Fetch files from database
+  const files = await db
+    .select({ path: codeFiles.path, content: codeFiles.content })
+    .from(codeFiles)
+    .where(eq(codeFiles.websiteId, state.websiteId));
+
+  const errors = validateLinks(files);
+
+  if (errors.length === 0) {
+    return { status: "completed" };
+  }
+
+  // Check retry limit
+  if (state.errorRetries >= MAX_VALIDATION_RETRIES) {
+    return { status: "completed" };
+  }
+
+  // Format errors and retry
+  const errorList = errors.map(e => `- ${e.file}: ${e.message}`).join('\n');
 
   return {
-    validationPassed: false,
-    validationErrors: result.errors,
-    retryCount: state.retryCount + 1,
-    messages: [...state.messages, { role: 'user', content: errorMessage }],
+    errorRetries: state.errorRetries + 1,
+    messages: [
+      new HumanMessage(`Validation failed:\n${errorList}\n\nFix these issues.`),
+    ],
   };
-};
+});
 ```
 
-### Files to Modify
+### 2. Export from Index
 
-#### 5. Update State Annotation
+**File:** `langgraph_app/app/nodes/codingAgent/index.ts`
 
-**File:** `langgraph_app/app/annotation/codingAgentAnnotation.ts`
+Add export:
 
-Add fields:
 ```typescript
-validationPassed: Annotation<boolean>({ default: () => false }),
-validationErrors: Annotation<ValidationError[]>({ default: () => [] }),
-retryCount: Annotation<number>({ default: () => 0 }),
+export * from "./staticValidation";
 ```
 
-#### 6. Update Graph
+### 3. Update Graph
 
 **File:** `langgraph_app/app/graphs/codingAgent.ts`
 
 ```typescript
-import { staticValidation } from '../nodes/codingAgent/staticValidation';
+import { staticValidationNode } from "@nodes";
 
 // ... existing setup ...
 
 graph
   .addNode("buildContext", buildContext)
   .addNode("codingAgent", codingAgentNode)
-  .addNode("staticValidation", staticValidation)
-  .addNode("cleanup", cleanup)
+  .addNode("staticValidation", staticValidationNode)
+  .addNode("cleanup", cleanupNode)
   .addEdge("buildContext", "codingAgent")
   .addEdge("codingAgent", "staticValidation")
   .addConditionalEdges("staticValidation", (state) => {
-    if (state.validationPassed || state.retryCount >= 2) {
+    if (state.status === "completed" || state.errorRetries >= 2) {
       return "cleanup";
     }
-    return "codingAgent";  // Retry with validation feedback
+    return "codingAgent";
   })
   .addEdge("cleanup", END);
 ```
 
 ---
 
-## Agent Instructions
+## Validation Rules
 
-These rules should be included in the coding agent's system prompt:
-
-### Adding a New Page
-
-1. Create the page component: `src/pages/PricingPage.tsx`
-2. Add the route in `src/App.tsx`:
-   ```tsx
-   <Route path="/pricing" element={<PricingPage />} />
-   ```
-3. Link to it: `<a href="/pricing">Pricing</a>`
-
-### Adding Anchor Links (Same Page)
-
-1. Add an `id` to the target element:
-   ```tsx
-   <section id="features">...</section>
-   ```
-2. Link to it: `<a href="#features">Features</a>`
-
-### Adding Images/Assets
-
-1. Place the file in `public/` or `src/assets/`
-2. Reference it:
-   - From `public/`: `<img src="/images/hero.png" />`
-   - From `src/assets/`: `import hero from '@/assets/hero.png'`
-
-### Common Mistakes
-
-| Mistake | Correct |
-|---------|---------|
-| `href="/pricing.html"` | `href="/pricing"` |
-| `href="#Features"` (case mismatch) | `href="#features"` + `id="features"` |
-| Linking to `/about` without Route | Add `<Route path="/about">` first |
-| `src="images/logo.png"` (no leading /) | `src="/images/logo.png"` |
+| Link Pattern | Example | Rule |
+|--------------|---------|------|
+| Anchor | `href="#pricing"` | Element with `id="pricing"` must exist |
+| Route | `href="/pricing"` | `<Route path="/pricing">` must exist in App.tsx |
+| External | `href="https://..."` | Skip |
+| Email/Tel | `href="mailto:..."` | Skip |
 
 ---
 
@@ -366,10 +204,74 @@ These rules should be included in the coding agent's system prompt:
 
 | Action | File |
 |--------|------|
-| Create | `langgraph_app/app/services/editor/validation/linkValidator.ts` |
-| Create | `langgraph_app/app/services/editor/validation/staticValidationService.ts` |
-| Create | `langgraph_app/app/services/editor/validation/index.ts` |
 | Create | `langgraph_app/app/nodes/codingAgent/staticValidation.ts` |
-| Modify | `langgraph_app/app/nodes/codingAgent/index.ts` (add export) |
-| Modify | `langgraph_app/app/annotation/codingAgentAnnotation.ts` (add fields) |
-| Modify | `langgraph_app/app/graphs/codingAgent.ts` (add node + conditional edge) |
+| Modify | `langgraph_app/app/nodes/codingAgent/index.ts` |
+| Modify | `langgraph_app/app/graphs/codingAgent.ts` |
+
+---
+
+## Not Included (YAGNI)
+
+- **Asset validation** (`src="/images/..."`) - Images are external URLs, not local files
+- **TypeScript build validation** - Add when needed
+- **Separate service class** - One function is enough
+- **`validationPassed` state field** - Use `status` instead
+- **`validationErrors` state field** - Errors go in messages only
+
+---
+
+## History
+
+### 2025-01-08: Plan Simplified After Review
+
+**Reviewers:** DHH Rails Reviewer, Kieran Rails Reviewer, Code Simplicity Reviewer
+
+#### Feedback Received
+
+**DHH Review - "Over-engineered. Ship simpler."**
+- "Service Object Disease" - 3 files for link validation is too much
+- `StaticValidationService` is a pass-through wrapper adding zero value
+- Two nearly identical error types mapping between each other
+- Over-formatted Markdown error messages when AI can read JSON
+- State pollution with 3 new fields when retries should be internal
+
+**Kieran Review - "Critical issues must be fixed."**
+- `state.files` doesn't exist - must fetch from database using `websiteId`
+- Wrong type import path (`../types` doesn't exist)
+- Duplicate state field - `retryCount` when `errorRetries` already exists
+- Missing `NodeMiddleware.use()` wrapper
+- Message reducer misuse - can't spread `state.messages` directly
+- Missing `src` attribute validation (plan table vs code mismatch)
+
+**Code Simplicity Review - "35-40% of code is unnecessary."**
+- `StaticValidationService` class wraps single function call
+- Redundant type definitions (`LinkValidationError` + `ValidationError`)
+- Separate index file for re-exports adds file with no logic
+- Commented-out build validation is YAGNI violation
+- `validationErrors` state field never read after write
+- Asset validation may never trigger (images are external URLs)
+
+#### Decisions Made
+
+| Decision | Rationale |
+|----------|-----------|
+| Collapse 4 files → 1 file | No benefit to separation; service class was pass-through |
+| Remove `StaticValidationService` class | Plain function is sufficient; class added indirection without value |
+| Fetch files from database | `state.files` doesn't exist; must query using `websiteId` |
+| Reuse `errorRetries` field | Annotation already has this; don't duplicate |
+| Use `NodeMiddleware.use()` | Match existing node patterns in codebase |
+| Use `HumanMessage` class | Required for proper message reducer handling |
+| Remove asset validation | Images are external URLs per state definition |
+| Remove `validationErrors` from state | Only used to format message; store in messages only |
+| Remove `validationPassed` from state | Use existing `status` field instead |
+| Extract agent instructions to separate plan | Different concern; prevention vs detection |
+
+#### Result
+
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Lines | 376 | 220 | -41% |
+| Files to create | 4 | 1 | -75% |
+| Files to modify | 3 | 2 | -33% |
+| State fields added | 3 | 0 | -100% |
+| Interface types | 2 | 1 | -50% |
