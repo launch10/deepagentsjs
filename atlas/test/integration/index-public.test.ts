@@ -465,11 +465,118 @@ describe('Public Worker - index-public', () => {
       await setupWebsiteWithUrl({
         website: { id: 'ws-1' },
         websiteUrl: { domain: 'example.com', path: '/' },
+        r2Files: {
+          'production/ws-1/live/index.html': '<html>Home</html>',
+        },
       });
 
-      const res = await app.request('https://example.com/missing', {}, env);
+      const res = await app.request('https://example.com/missing.js', {}, env);
       expect(res.status).toBe(404);
-      expect(await res.text()).toBe('Website not found, error 505');
+      expect(await res.text()).toBe('File not found');
+    });
+  });
+
+  describe('SPA Fallback', () => {
+    it('serves index.html for root path', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-1' },
+        websiteUrl: { domain: 'example.com', path: '/' },
+        r2Files: {
+          'production/ws-1/live/index.html': '<html>SPA Root</html>',
+        },
+      });
+
+      const res = await app.request('https://example.com/', {}, env);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe('<html>SPA Root</html>');
+    });
+
+    it('serves existing files directly', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-1' },
+        websiteUrl: { domain: 'example.com', path: '/' },
+        r2Files: {
+          'production/ws-1/live/index.html': '<html>Home</html>',
+          'production/ws-1/live/assets/app.js': 'console.log("app")',
+        },
+      });
+
+      const res = await app.request('https://example.com/assets/app.js', {}, env);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe('console.log("app")');
+    });
+
+    it('serves index.html for route without extension (SPA fallback)', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-1' },
+        websiteUrl: { domain: 'example.com', path: '/' },
+        r2Files: {
+          'production/ws-1/live/index.html': '<html>SPA App</html>',
+        },
+      });
+
+      // /pricing doesn't exist in R2, should fallback to index.html
+      const res = await app.request('https://example.com/pricing', {}, env);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe('<html>SPA App</html>');
+    });
+
+    it('serves index.html for nested route (SPA fallback)', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-1' },
+        websiteUrl: { domain: 'example.com', path: '/' },
+        r2Files: {
+          'production/ws-1/live/index.html': '<html>SPA App</html>',
+        },
+      });
+
+      // /blog/posts/my-article doesn't exist in R2, should fallback to index.html
+      const res = await app.request('https://example.com/blog/posts/my-article', {}, env);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe('<html>SPA App</html>');
+    });
+
+    it('handles subpath deployments correctly (SPA fallback)', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-bingo' },
+        websiteUrl: { domain: 'example.com', path: '/bingo' },
+        r2Files: {
+          'production/ws-bingo/live/index.html': '<html>Bingo SPA</html>',
+        },
+      });
+
+      // /bingo/pricing doesn't exist in R2, should fallback to /bingo's index.html
+      const res = await app.request('https://example.com/bingo/pricing', {}, env);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe('<html>Bingo SPA</html>');
+    });
+
+    it('returns 404 for missing asset with extension (no fallback)', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-1' },
+        websiteUrl: { domain: 'example.com', path: '/' },
+        r2Files: {
+          'production/ws-1/live/index.html': '<html>Home</html>',
+        },
+      });
+
+      // /assets/missing.js should NOT fallback - it's an asset request
+      const res = await app.request('https://example.com/assets/missing.js', {}, env);
+      expect(res.status).toBe(404);
+    });
+
+    it('returns 404 for dotfiles (no fallback)', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-1' },
+        websiteUrl: { domain: 'example.com', path: '/' },
+        r2Files: {
+          'production/ws-1/live/index.html': '<html>Home</html>',
+        },
+      });
+
+      // /.well-known/acme-challenge/token should NOT fallback
+      const res = await app.request('https://example.com/.well-known/acme-challenge/token', {}, env);
+      expect(res.status).toBe(404);
     });
   });
 
