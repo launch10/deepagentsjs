@@ -17,12 +17,14 @@ This document defines the implementation order for all coding agent enhancements
 ```
 Phase 1: Foundation (Independent - Can Parallelize)
 ├── 1a. Atlas SPA Fallback        [atlas-spa-fallback.md]
-├── 1b. Environment Variables     [environment-variables.md]  ← NEW
+├── 1b. Environment Variables     [environment-variables.md]
 ├── 1c. Email Backend (Rails)     [email-backend.md]
 │        └── depends on: 1b (Environment Variables)
 ├── 1d. Image Access              [coding-agent-image-access.md]
 ├── 1e. Icon Search               [icon-search.md]
-└── 1f. Theme Integration         [theme-integration.md]
+├── 1f. Theme Integration         [theme-integration.md]
+└── 1g. Browser Pool              [browser-pool.md]
+         └── Port 0, lazy init, bounded concurrency for multi-tenant validation
 
 Phase 2: Layer 1 Validation
 └── 2. Static Validation          [coding-agent-static-validation.md]
@@ -30,7 +32,7 @@ Phase 2: Layer 1 Validation
 
 Phase 3: Deploy Infrastructure
 └── 3. Unified deployGraph        [website-deploy-graph.md, coding-agent-deploy-validation.md, analytics-tracking.md]
-       └── depends on: 2 (Static Validation), 1b (Environment Variables)
+       └── depends on: 2 (Static Validation), 1b (Environment Variables), 1g (Browser Pool)
        └── includes: instrumentation, website deploy, runtime validation, campaign deploy
 
 Phase 4: Integration Testing
@@ -64,25 +66,21 @@ Phase 4: Integration Testing
 
 ### 1b. Environment Variables
 **Plan:** `environment-variables.md`
-**Effort:** Medium
-**Why:** Provides encrypted env var infrastructure for VITE_SIGNUP_TOKEN and VITE_API_BASE_URL. Required by Email Backend and deployGraph.
+**Effort:** Small
+**Why:** Provides env vars (VITE_SIGNUP_TOKEN, VITE_API_BASE_URL) for deployed sites. Required by Email Backend.
 
 #### RED (Acceptance Criteria)
-- [ ] No `EnvironmentVariable` model exists
 - [ ] No env vars injected during website build
+- [ ] Agent doesn't know about available env vars
 
 #### GREEN (Implementation)
-- [ ] Create migration for `environment_variables` table (encrypted values)
-- [ ] Create `EnvironmentVariable` model with `encrypts :value`
-- [ ] Add `has_many :environment_variables` to Project
-- [ ] Add `after_create` callback to seed system vars (VITE_SIGNUP_TOKEN, VITE_API_BASE_URL)
-- [ ] Create API endpoint `GET /api/v1/projects/:id/environment_variables` (metadata only, no values)
+- [ ] Add `config.x.api_base_url` to Rails config
+- [ ] Add `signup_token` method to Project (uses `signed_id`)
 - [ ] Modify `buildable.rb` to write `.env` file before `pnpm build`
-- [ ] Project creation auto-creates system env vars
+- [ ] Update coding agent system prompt with env var documentation
 
 #### REFACTOR
-- [ ] Add LangGraph API service for env var metadata
-- [ ] Update `buildContext.ts` to fetch env var metadata
+- [ ] N/A (intentionally minimal)
 
 ---
 
@@ -169,6 +167,30 @@ Phase 4: Integration Testing
 
 #### REFACTOR
 - [ ] Add Rails `before_save` callback for community theme expansion (optional)
+
+---
+
+### 1g. Browser Pool
+**Plan:** `browser-pool.md`
+**Effort:** Medium
+**Why:** Required for concurrent multi-tenant runtime validation without OOM or queue delays.
+
+#### RED (Acceptance Criteria)
+- [ ] Each `BrowserErrorCapture` launches full Chromium instance (~200MB)
+- [ ] `WebsiteRunner` defaults to port 5173 (concurrent conflicts)
+- [ ] 10 concurrent deploys = 2GB RAM = potential OOM
+
+#### GREEN (Implementation)
+- [ ] Change `WebsiteRunner` default port from 5173 to 0 (OS assigns)
+- [ ] Create `browserPool.ts` singleton with lazy init
+- [ ] Add bounded concurrency (max 10 contexts)
+- [ ] Add race condition protection for concurrent first-launch
+- [ ] Modify `BrowserErrorCapture` to use pool contexts
+- [ ] Add proper cleanup with try/finally
+- [ ] 10 concurrent deploys = ~300MB RAM (one browser, 10 contexts)
+
+#### REFACTOR
+- [ ] Add metrics/logging for context usage (optional)
 
 ---
 
@@ -292,14 +314,11 @@ This phase implements the unified `deployGraph` with boolean flags:
 ### Phase 1b (Environment Variables)
 | File | Action |
 |------|--------|
-| `rails_app/db/migrate/xxx_create_environment_variables.rb` | Create |
-| `rails_app/app/models/environment_variable.rb` | Create |
+| `rails_app/config/application.rb` | Modify |
+| `rails_app/config/environments/production.rb` | Modify |
 | `rails_app/app/models/project.rb` | Modify |
-| `rails_app/app/controllers/api/v1/environment_variables_controller.rb` | Create |
-| `rails_app/config/routes/api.rb` | Modify |
 | `rails_app/app/models/concerns/website_deploy_concerns/buildable.rb` | Modify |
-| `shared/lib/api/services/environmentVariablesAPIService.ts` | Create |
-| `langgraph_app/app/nodes/codingAgent/buildContext.ts` | Modify |
+| `langgraph_app/app/nodes/codingAgent/prompts/system.ts` | Modify |
 
 ### Phase 1c (Email Backend)
 | File | Action |
@@ -328,6 +347,15 @@ This phase implements the unified `deployGraph` with boolean flags:
 |------|--------|
 | `langgraph_app/app/services/themes/indexCssService.ts` | Move from TODO |
 | `langgraph_app/app/nodes/codingAgent/buildContext.ts` | Modify |
+
+### Phase 1g (Browser Pool)
+| File | Action |
+|------|--------|
+| `langgraph_app/app/services/editor/errors/browserPool.ts` | Create |
+| `langgraph_app/app/services/editor/errors/browserErrorCapture.ts` | Modify |
+| `langgraph_app/app/services/editor/core/websiteRunner.ts` | Modify |
+| `langgraph_app/app/services/editor/errors/index.ts` | Modify |
+| `langgraph_app/tests/services/editor/errors/browserPool.test.ts` | Create |
 
 ### Phase 2 (Static Validation)
 | File | Action |
@@ -361,6 +389,7 @@ This phase implements the unified `deployGraph` with boolean flags:
 |------|-------------|
 | `architecture-overview.md` | System architecture overview |
 | `environment-variables.md` | Encrypted env var storage and build injection |
+| `browser-pool.md` | Lazy browser pool with bounded concurrency |
 | `website-deploy-graph.md` | deployGraph implementation details |
 | `atlas-spa-fallback.md` | SPA fallback for React Router |
 | `coding-agent-static-validation.md` | Layer 1 validation details |
