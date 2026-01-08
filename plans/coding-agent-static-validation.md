@@ -2,7 +2,7 @@
 
 ## Summary
 
-Add fast, static validation after the coding agent generates code. If validation fails, feed errors back to the agent for self-correction (up to 2 retries).
+Add fast, static validation after the coding agent generates code. If validation fails, feed errors back to the agent for self-correction (up to 2 retries). For today, this is just for link validation.
 
 ## Dependencies
 
@@ -47,12 +47,13 @@ interface ValidationError {
   message: string;
 }
 
-type LinkType = 'anchor' | 'route' | 'skip';
+type LinkType = "anchor" | "route" | "skip";
 
 function getLinkType(href: string): LinkType {
-  if (href.startsWith('#')) return 'anchor';
-  if (href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:')) return 'skip';
-  return 'route';
+  if (href.startsWith("#")) return "anchor";
+  if (href.startsWith("http") || href.startsWith("mailto:") || href.startsWith("tel:"))
+    return "skip";
+  return "route";
 }
 
 function collectAnchors(files: { path: string; content: string }[]): Set<string> {
@@ -67,14 +68,14 @@ function collectAnchors(files: { path: string; content: string }[]): Set<string>
 }
 
 function parseRoutes(files: { path: string; content: string }[]): Set<string> {
-  const appFile = files.find(f => f.path.endsWith('App.tsx'));
-  if (!appFile) return new Set(['/']);
+  const appFile = files.find((f) => f.path.endsWith("App.tsx"));
+  if (!appFile) return new Set(["/"]);
 
-  const routes = new Set<string>(['/']);
+  const routes = new Set<string>(["/"]);
   const matches = appFile.content.matchAll(/<Route\s+path=["']([^"']+)["']/g);
   for (const match of matches) {
-    if (match[1] !== '*') {
-      routes.add(match[1].replace(/\/$/, '') || '/');
+    if (match[1] !== "*") {
+      routes.add(match[1].replace(/\/$/, "") || "/");
     }
   }
   return routes;
@@ -92,7 +93,7 @@ function validateLinks(files: { path: string; content: string }[]): ValidationEr
       const href = match[1];
       const linkType = getLinkType(href);
 
-      if (linkType === 'anchor') {
+      if (linkType === "anchor") {
         const id = href.slice(1);
         if (!anchors.has(id)) {
           errors.push({
@@ -100,8 +101,8 @@ function validateLinks(files: { path: string; content: string }[]): ValidationEr
             message: `Broken anchor: ${href} - no element with id="${id}"`,
           });
         }
-      } else if (linkType === 'route') {
-        const normalized = href.replace(/\/$/, '') || '/';
+      } else if (linkType === "route") {
+        const normalized = href.replace(/\/$/, "") || "/";
         if (!routes.has(normalized)) {
           errors.push({
             file: file.path,
@@ -115,41 +116,42 @@ function validateLinks(files: { path: string; content: string }[]): ValidationEr
   return errors;
 }
 
-export const staticValidationNode = NodeMiddleware.use({}, async (
-  state: CodingAgentGraphState,
-  config: LangGraphRunnableConfig,
-): Promise<Partial<CodingAgentGraphState>> => {
-  if (!state.websiteId) {
-    return { status: "completed" };
+export const staticValidationNode = NodeMiddleware.use(
+  {},
+  async (
+    state: CodingAgentGraphState,
+    config: LangGraphRunnableConfig
+  ): Promise<Partial<CodingAgentGraphState>> => {
+    if (!state.websiteId) {
+      return { status: "completed" };
+    }
+
+    // Fetch files from database
+    const files = await db
+      .select({ path: codeFiles.path, content: codeFiles.content })
+      .from(codeFiles)
+      .where(eq(codeFiles.websiteId, state.websiteId));
+
+    const errors = validateLinks(files);
+
+    if (errors.length === 0) {
+      return { status: "completed" };
+    }
+
+    // Check retry limit
+    if (state.errorRetries >= MAX_VALIDATION_RETRIES) {
+      return { status: "completed" };
+    }
+
+    // Format errors and retry
+    const errorList = errors.map((e) => `- ${e.file}: ${e.message}`).join("\n");
+
+    return {
+      errorRetries: state.errorRetries + 1,
+      messages: [new HumanMessage(`Validation failed:\n${errorList}\n\nFix these issues.`)],
+    };
   }
-
-  // Fetch files from database
-  const files = await db
-    .select({ path: codeFiles.path, content: codeFiles.content })
-    .from(codeFiles)
-    .where(eq(codeFiles.websiteId, state.websiteId));
-
-  const errors = validateLinks(files);
-
-  if (errors.length === 0) {
-    return { status: "completed" };
-  }
-
-  // Check retry limit
-  if (state.errorRetries >= MAX_VALIDATION_RETRIES) {
-    return { status: "completed" };
-  }
-
-  // Format errors and retry
-  const errorList = errors.map(e => `- ${e.file}: ${e.message}`).join('\n');
-
-  return {
-    errorRetries: state.errorRetries + 1,
-    messages: [
-      new HumanMessage(`Validation failed:\n${errorList}\n\nFix these issues.`),
-    ],
-  };
-});
+);
 ```
 
 ### 2. Export from Index
@@ -191,22 +193,22 @@ graph
 
 ## Validation Rules
 
-| Link Pattern | Example | Rule |
-|--------------|---------|------|
-| Anchor | `href="#pricing"` | Element with `id="pricing"` must exist |
-| Route | `href="/pricing"` | `<Route path="/pricing">` must exist in App.tsx |
-| External | `href="https://..."` | Skip |
-| Email/Tel | `href="mailto:..."` | Skip |
+| Link Pattern | Example              | Rule                                            |
+| ------------ | -------------------- | ----------------------------------------------- |
+| Anchor       | `href="#pricing"`    | Element with `id="pricing"` must exist          |
+| Route        | `href="/pricing"`    | `<Route path="/pricing">` must exist in App.tsx |
+| External     | `href="https://..."` | Skip                                            |
+| Email/Tel    | `href="mailto:..."`  | Skip                                            |
 
 ---
 
 ## Files Summary
 
-| Action | File |
-|--------|------|
+| Action | File                                                      |
+| ------ | --------------------------------------------------------- |
 | Create | `langgraph_app/app/nodes/codingAgent/staticValidation.ts` |
-| Modify | `langgraph_app/app/nodes/codingAgent/index.ts` |
-| Modify | `langgraph_app/app/graphs/codingAgent.ts` |
+| Modify | `langgraph_app/app/nodes/codingAgent/index.ts`            |
+| Modify | `langgraph_app/app/graphs/codingAgent.ts`                 |
 
 ---
 
@@ -229,6 +231,7 @@ graph
 #### Feedback Received
 
 **DHH Review - "Over-engineered. Ship simpler."**
+
 - "Service Object Disease" - 3 files for link validation is too much
 - `StaticValidationService` is a pass-through wrapper adding zero value
 - Two nearly identical error types mapping between each other
@@ -236,6 +239,7 @@ graph
 - State pollution with 3 new fields when retries should be internal
 
 **Kieran Review - "Critical issues must be fixed."**
+
 - `state.files` doesn't exist - must fetch from database using `websiteId`
 - Wrong type import path (`../types` doesn't exist)
 - Duplicate state field - `retryCount` when `errorRetries` already exists
@@ -244,6 +248,7 @@ graph
 - Missing `src` attribute validation (plan table vs code mismatch)
 
 **Code Simplicity Review - "35-40% of code is unnecessary."**
+
 - `StaticValidationService` class wraps single function call
 - Redundant type definitions (`LinkValidationError` + `ValidationError`)
 - Separate index file for re-exports adds file with no logic
@@ -253,25 +258,25 @@ graph
 
 #### Decisions Made
 
-| Decision | Rationale |
-|----------|-----------|
-| Collapse 4 files → 1 file | No benefit to separation; service class was pass-through |
-| Remove `StaticValidationService` class | Plain function is sufficient; class added indirection without value |
-| Fetch files from database | `state.files` doesn't exist; must query using `websiteId` |
-| Reuse `errorRetries` field | Annotation already has this; don't duplicate |
-| Use `NodeMiddleware.use()` | Match existing node patterns in codebase |
-| Use `HumanMessage` class | Required for proper message reducer handling |
-| Remove asset validation | Images are external URLs per state definition |
-| Remove `validationErrors` from state | Only used to format message; store in messages only |
-| Remove `validationPassed` from state | Use existing `status` field instead |
-| Extract agent instructions to separate plan | Different concern; prevention vs detection |
+| Decision                                    | Rationale                                                           |
+| ------------------------------------------- | ------------------------------------------------------------------- |
+| Collapse 4 files → 1 file                   | No benefit to separation; service class was pass-through            |
+| Remove `StaticValidationService` class      | Plain function is sufficient; class added indirection without value |
+| Fetch files from database                   | `state.files` doesn't exist; must query using `websiteId`           |
+| Reuse `errorRetries` field                  | Annotation already has this; don't duplicate                        |
+| Use `NodeMiddleware.use()`                  | Match existing node patterns in codebase                            |
+| Use `HumanMessage` class                    | Required for proper message reducer handling                        |
+| Remove asset validation                     | Images are external URLs per state definition                       |
+| Remove `validationErrors` from state        | Only used to format message; store in messages only                 |
+| Remove `validationPassed` from state        | Use existing `status` field instead                                 |
+| Extract agent instructions to separate plan | Different concern; prevention vs detection                          |
 
 #### Result
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Lines | 376 | 220 | -41% |
-| Files to create | 4 | 1 | -75% |
-| Files to modify | 3 | 2 | -33% |
-| State fields added | 3 | 0 | -100% |
-| Interface types | 2 | 1 | -50% |
+| Metric             | Before | After | Change |
+| ------------------ | ------ | ----- | ------ |
+| Lines              | 376    | 220   | -41%   |
+| Files to create    | 4      | 1     | -75%   |
+| Files to modify    | 3      | 2     | -33%   |
+| State fields added | 3      | 0     | -100%  |
+| Interface types    | 2      | 1     | -50%   |

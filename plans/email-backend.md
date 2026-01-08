@@ -20,7 +20,7 @@ Public API endpoint for landing pages to submit email signups. Uses Rails `signe
 # db/migrate/xxx_create_leads.rb
 create_table :leads do |t|
   t.references :project, null: false, foreign_key: true
-  t.string :email, null: false
+  t.string :email, null: false, limit: 255
   t.string :name
   t.timestamps
 end
@@ -41,6 +41,7 @@ class Lead < ApplicationRecord
   belongs_to :project
 
   validates :email, presence: true,
+                    length: { maximum: 255 },
                     format: { with: URI::MailTo::EMAIL_REGEXP },
                     uniqueness: { scope: :project_id, case_sensitive: false }
   validates :name, length: { maximum: 255 }, allow_blank: true
@@ -51,6 +52,11 @@ class Lead < ApplicationRecord
 
   def normalize_email
     self.email = email&.downcase&.strip
+  end
+
+  # Class method for normalizing email before queries
+  def self.normalize_email(email)
+    email&.downcase&.strip
   end
 end
 ```
@@ -119,19 +125,27 @@ end
 **Controller** (`app/controllers/api/v1/leads_controller.rb`)
 
 ```ruby
+# Public endpoint - no authentication required
+# Token validation via signed_id, not session/JWT
 class API::V1::LeadsController < ActionController::API
   def create
     project = Project.find_signed!(params[:token], purpose: :lead_signup)
 
-    lead = project.leads.find_or_initialize_by(email: lead_params[:email])
+    # Normalize email before query to match existing records
+    normalized_email = Lead.normalize_email(lead_params[:email])
+    lead = project.leads.find_or_initialize_by(email: normalized_email)
+
+    was_new = lead.new_record?
     lead.assign_attributes(lead_params.except(:email))
 
     if lead.save
-      render json: { success: true }, status: :created
+      # Return 201 for new leads, 200 for existing (idempotent)
+      render json: { success: true }, status: was_new ? :created : :ok
     else
       render json: { errors: lead.errors }, status: :unprocessable_entity
     end
-  rescue ActiveSupport::MessageVerifier::InvalidSignature
+  rescue ActiveSupport::MessageVerifier::InvalidSignature, ActiveRecord::RecordNotFound
+    # Don't leak whether project exists - return same error for both
     render json: { error: "Invalid token" }, status: :unauthorized
   end
 
@@ -201,6 +215,7 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
     resource "/api/v1/leads",
       headers: ["Content-Type"],
       methods: [:post, :options],
+      credentials: false,  # Explicit: no cookies sent
       max_age: 600
   end
 end
@@ -270,4 +285,5 @@ For MVP, option 1 is acceptable. Document for users that regenerating tokens req
 - Email validation and normalization prevents injection and duplicates
 - CORS allows all origins but only POST to /api/v1/leads
 - No PII beyond email/name stored
-- Tokens are long-lived but can be revoked via version increment (future)
+- Tokens never expire by design (deployed pages need persistent access); revocation via version increment (future)
+- RecordNotFound errors return 401 (not 404) to avoid leaking project existence
