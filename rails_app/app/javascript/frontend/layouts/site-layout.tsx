@@ -4,6 +4,7 @@ import { AppSidebar } from "@components/navigation";
 import { usePage } from "@inertiajs/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WorkflowProvider } from "@context/WorkflowProvider";
+import { Toaster } from "@components/ui/sonner";
 
 const queryClient = new QueryClient();
 
@@ -23,9 +24,12 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
           <AppSidebar />
           <div className="flex-1 flex flex-col bg-background overflow-hidden">
             <Header />
-            <main ref={mainRef} className="flex-1 overflow-auto">{children}</main>
+            <main ref={mainRef} className="flex-1 overflow-auto">
+              {children}
+            </main>
           </div>
         </div>
+        <Toaster />
       </WorkflowProvider>
     </QueryClientProvider>
   );
