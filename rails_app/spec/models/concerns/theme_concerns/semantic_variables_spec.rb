@@ -46,8 +46,21 @@ RSpec.describe ThemeConcerns::SemanticVariables do
         expect(result["--primary-foreground"]).to match(/hsl\(0, 0%, (4|98)%\)/)
       end
 
-      it "generates muted foreground colors" do
-        expect(result["--background-foreground-muted"]).to match(/hsl\(0, 0%, (27|75)%\)/)
+      it "generates tinted muted foreground colors with theme's hue" do
+        # Muted foreground should carry a hint of the theme's primary hue, not be pure gray
+        primary_match = result["--primary"].match(/hsl\((\d+), (\d+)%, (\d+)%\)/)
+        primary_hue = primary_match[1].to_i
+
+        muted_match = result["--background-foreground-muted"].match(/hsl\((\d+), (\d+)%, (\d+)%\)/)
+        expect(muted_match).to be_present
+
+        muted_hue = muted_match[1].to_i
+        muted_sat = muted_match[2].to_i
+
+        # Should have some saturation (not pure gray) but low
+        expect(muted_sat).to be_between(3, 20)
+        # Hue should be related to primary
+        expect(muted_hue).to eq(primary_hue)
       end
 
       it "sets card and popover to match background" do
@@ -59,15 +72,34 @@ RSpec.describe ThemeConcerns::SemanticVariables do
         expect(result["--ring"]).to eq(result["--primary"])
       end
 
-      it "generates border color based on background luminance" do
-        expect(result["--border"]).to match(/hsl\(210, 9%, \d+%\)/)
+      it "generates tinted border color derived from background" do
+        # Border should carry a hint of the background's hue
+        background_match = result["--background"].match(/hsl\((\d+), (\d+)%, (\d+)%\)/)
+        background_hue = background_match[1].to_i
+
+        border_match = result["--border"].match(/hsl\((\d+), (\d+)%, (\d+)%\)/)
+        expect(border_match).to be_present
+
+        border_hue = border_match[1].to_i
+        border_sat = border_match[2].to_i
+
+        # Hue should match background's hue
+        expect(border_hue).to eq(background_hue)
+        # Should have subtle saturation (not pure gray)
+        expect(border_sat).to be_between(1, 15)
         expect(result["--input"]).to eq(result["--border"])
       end
 
-      it "generates static neutral colors" do
-        expect(result["--neutral-1"]).to eq("hsl(210, 6%, 94%)")
-        expect(result["--neutral-2"]).to eq("hsl(210, 4%, 89%)")
-        expect(result["--neutral-3"]).to eq("hsl(210, 3%, 85%)")
+      it "generates tinted neutral colors derived from background" do
+        # Neutrals should carry a hint of the background's hue
+        background_match = result["--background"].match(/hsl\((\d+), (\d+)%, (\d+)%\)/)
+        background_hue = background_match[1].to_i
+
+        neutral1_match = result["--neutral-1"].match(/hsl\((\d+), (\d+)%, (\d+)%\)/)
+        neutral1_hue = neutral1_match[1].to_i
+
+        # Neutrals should use background's hue
+        expect(neutral1_hue).to eq(background_hue)
       end
     end
 
@@ -174,19 +206,50 @@ RSpec.describe ThemeConcerns::SemanticVariables do
         let(:colors) { %w[1E3A5F 2E5077 3D6A8F 4A7FA8 5894C0] }
         let(:result) { described_class.create_semantic_variables(colors) }
 
-        it "falls back to default destructive (Bootstrap red)" do
-          # Default destructive is dc3545
-          expect(result["--destructive"]).to eq("hsl(354, 70%, 54%)")
+        it "derives status colors from theme rather than using Bootstrap defaults" do
+          # Should NOT be the hardcoded Bootstrap values
+          expect(result["--destructive"]).not_to eq("hsl(354, 70%, 54%)")
+          expect(result["--warning"]).not_to eq("hsl(45, 100%, 51%)")
+          expect(result["--success"]).not_to eq("hsl(152, 69%, 31%)")
         end
 
-        it "falls back to default warning (Bootstrap yellow)" do
-          # Default warning is ffc107
-          expect(result["--warning"]).to eq("hsl(45, 100%, 51%)")
+        it "derives destructive with red hue but theme's saturation/lightness characteristics" do
+          # Parse the HSL values
+          match = result["--destructive"].match(/hsl\((\d+), (\d+)%, (\d+)%\)/)
+          expect(match).to be_present
+
+          hue = match[1].to_i
+          # Hue should be in red range (around 0-15 or 345-360)
+          expect(hue).to satisfy { |h| h <= 15 || h >= 345 }
         end
 
-        it "falls back to default success (Bootstrap green)" do
-          # Default success is 198754 - HSL may vary slightly due to conversion
-          expect(result["--success"]).to match(/hsl\(1(45|52), \d+%, 3\d%\)/)
+        it "derives warning with yellow/orange hue but theme's characteristics" do
+          match = result["--warning"].match(/hsl\((\d+), (\d+)%, (\d+)%\)/)
+          expect(match).to be_present
+
+          hue = match[1].to_i
+          # Hue should be in yellow/orange range (around 30-60)
+          expect(hue).to be_between(30, 60)
+        end
+
+        it "derives success with green hue but theme's characteristics" do
+          match = result["--success"].match(/hsl\((\d+), (\d+)%, (\d+)%\)/)
+          expect(match).to be_present
+
+          hue = match[1].to_i
+          # Hue should be in green range (around 120-150)
+          expect(hue).to be_between(100, 160)
+        end
+
+        it "maintains similar saturation across derived status colors and primary" do
+          primary_match = result["--primary"].match(/hsl\(\d+, (\d+)%, \d+%\)/)
+          destructive_match = result["--destructive"].match(/hsl\(\d+, (\d+)%, \d+%\)/)
+
+          primary_sat = primary_match[1].to_i
+          destructive_sat = destructive_match[1].to_i
+
+          # Saturation should be within 20% of each other (they share the theme's feel)
+          expect((primary_sat - destructive_sat).abs).to be <= 20
         end
       end
     end

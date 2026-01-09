@@ -66,23 +66,23 @@ RSpec.describe "Leads API", type: :request do
 
       # Token parameter (query string)
       parameter name: :token,
-                in: :query,
-                schema: APISchemas::Lead.token_schema,
-                required: true,
-                description: 'Signed ID token authenticating the request'
+        in: :query,
+        schema: APISchemas::Lead.token_schema,
+        required: true,
+        description: 'Signed ID token authenticating the request'
 
       # Request body
       parameter name: :lead_params,
-                in: :body,
-                schema: APISchemas::Lead.params_schema,
-                description: 'Lead signup data'
+        in: :body,
+        schema: APISchemas::Lead.params_schema,
+        description: 'Lead signup data'
 
       # Optional Origin header for future validation
       parameter name: :Origin,
-                in: :header,
-                type: :string,
-                required: false,
-                description: 'Origin of the request (for future CSRF protection via origin validation)'
+        in: :header,
+        type: :string,
+        required: false,
+        description: 'Origin of the request (for future CSRF protection via origin validation)'
 
       # ========================================================================
       # SUCCESS CASES
@@ -296,7 +296,7 @@ RSpec.describe "Leads API", type: :request do
         schema APISchemas::Lead.validation_error_response
 
         let(:token) { valid_token }
-        let(:lead_params) { { email: "#{'a' * 250}@example.com" } }
+        let(:lead_params) { { email: "#{"a" * 250}@example.com" } }
 
         run_test! do |response|
           data = JSON.parse(response.body)

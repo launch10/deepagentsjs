@@ -5,7 +5,7 @@ class BackfillCommunityThemeCssVars < ActiveRecord::Migration[8.0]
 
       expanded = Themes::ColorExpander.expand(theme.colors)
       theme.update_columns(theme: expanded, updated_at: Time.current)
-    rescue StandardError => e
+    rescue => e
       Rails.logger.error("Failed to expand theme #{theme.id}: #{e.message}")
     end
   end

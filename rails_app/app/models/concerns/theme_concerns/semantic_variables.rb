@@ -11,12 +11,23 @@ module ThemeConcerns
     WCAG_AAA_NORMAL_TEXT = 7.0  # Enhanced contrast for normal text
     WCAG_AAA_LARGE_TEXT = 4.5   # Enhanced contrast for large text
 
-    # Default status colors (Bootstrap-inspired)
-    DEFAULTS = {
-      destructive: "dc3545",
-      warning: "ffc107",
-      success: "198754"
+    # Target hues for status colors
+    STATUS_HUES = {
+      destructive: 0,    # Red
+      warning: 45,       # Orange/yellow
+      success: 140       # Green
     }.freeze
+
+    # Guardrails for derived status colors to feel "colorful"
+    MIN_STATUS_SATURATION = 0.45
+    MIN_STATUS_LIGHTNESS = 0.35
+    MAX_STATUS_LIGHTNESS = 0.55
+
+    # Tinting configuration for on-theme muted and border colors
+    MUTED_FOREGROUND_SATURATION = 10  # Subtle but visible tint
+    MUTED_LIGHT_BG_LIGHTNESS = 27     # Dark text on light backgrounds
+    MUTED_DARK_BG_LIGHTNESS = 75      # Light text on dark backgrounds
+    BORDER_MAX_SATURATION = 12        # Keep borders subtle
 
     class << self
       # Compute accessible color pairings with WCAG contrast ratios.
@@ -65,7 +76,7 @@ module ThemeConcerns
         end
 
         pairings
-      rescue StandardError => e
+      rescue => e
         Rails.logger.error("ThemeConcerns::SemanticVariables.compute_pairings error: #{e.message}")
         {}
       end
@@ -78,8 +89,8 @@ module ThemeConcerns
 
         roles = assign_roles(normalized)
         generate_variables(roles)
-      rescue StandardError => e
-        Rails.logger.error("Themes::ColorExpander error: #{e.message}")
+      rescue => e
+        Rails.logger.error("ThemeConcerns::SemanticVariables.create_semantic_variables error: #{e.message}")
         {}
       end
 
@@ -120,10 +131,31 @@ module ThemeConcerns
           muted: muted[:hex],
           card: background[:hex],
           popover: background[:hex],
-          destructive: find_by_hue(analyzed, 345..15) || DEFAULTS[:destructive],
-          warning: find_by_hue(analyzed, 35..55) || DEFAULTS[:warning],
-          success: find_by_hue(analyzed, 100..160) || DEFAULTS[:success]
+          destructive: find_by_hue(analyzed, 345..15) || derive_status_color(primary, :destructive),
+          warning: find_by_hue(analyzed, 35..55) || derive_status_color(primary, :warning),
+          success: find_by_hue(analyzed, 100..160) || derive_status_color(primary, :success)
         }
+      end
+
+      # Derive a status color using the theme's primary color characteristics
+      # This creates status colors that "feel" like part of the theme
+      def derive_status_color(primary, status_type)
+        target_hue = STATUS_HUES[status_type]
+        primary_color = Chroma.paint("##{primary[:hex]}")
+
+        # Use primary's saturation and lightness as baseline, with guardrails
+        saturation = [primary_color.hsl.s, MIN_STATUS_SATURATION].max
+        lightness = primary_color.hsl.l.clamp(MIN_STATUS_LIGHTNESS, MAX_STATUS_LIGHTNESS)
+
+        derived = Chroma.paint("hsl(#{target_hue}, #{saturation * 100}%, #{lightness * 100}%)")
+        derived.to_hex.delete("#").upcase
+      rescue
+        # Fallback to a reasonable default if derivation fails
+        case status_type
+        when :destructive then "DC3545"
+        when :warning then "FFC107"
+        when :success then "198754"
+        end
       end
 
       def analyze_color(hex)
@@ -134,7 +166,7 @@ module ThemeConcerns
           saturation: color.hsl.s,
           hue: color.hsl.h
         }
-      rescue StandardError
+      rescue
         nil
       end
 
@@ -192,65 +224,78 @@ module ThemeConcerns
 
       def generate_variables(roles)
         vars = {}
+        primary_hue = extract_hue(roles[:primary])
+        background_hue = extract_hue(roles[:background])
 
         # Background and foreground
         vars["--background"] = to_hsl(roles[:background])
         vars["--background-foreground"] = contrasting_foreground(roles[:background])
-        vars["--background-foreground-muted"] = muted_foreground(roles[:background])
+        vars["--background-foreground-muted"] = tinted_muted_foreground(roles[:background], primary_hue)
 
         # Semantic roles
         %i[primary secondary accent muted card popover destructive warning success].each do |role|
           hex = roles[role]
           vars["--#{role}"] = to_hsl(hex)
           vars["--#{role}-foreground"] = contrasting_foreground(hex)
-          vars["--#{role}-foreground-muted"] = muted_foreground(hex)
+          vars["--#{role}-foreground-muted"] = tinted_muted_foreground(hex, primary_hue)
         end
 
-        # UI elements
-        vars["--border"] = derive_border(roles[:background])
+        # UI elements - tinted with background's hue
+        vars["--border"] = derive_tinted_border(roles[:background], background_hue)
         vars["--input"] = vars["--border"]
         vars["--ring"] = vars["--primary"]
 
-        # Neutrals
-        vars["--neutral-1"] = "hsl(210, 6%, 94%)"
-        vars["--neutral-2"] = "hsl(210, 4%, 89%)"
-        vars["--neutral-3"] = "hsl(210, 3%, 85%)"
+        # Neutrals - tinted with background's hue
+        vars["--neutral-1"] = "hsl(#{background_hue}, 6%, 94%)"
+        vars["--neutral-2"] = "hsl(#{background_hue}, 4%, 89%)"
+        vars["--neutral-3"] = "hsl(#{background_hue}, 3%, 85%)"
 
         vars
       end
 
+      def extract_hue(hex)
+        color = Chroma.paint("##{hex}")
+        color.hsl.h.round
+      rescue
+        210 # Fallback to a neutral blue-gray
+      end
+
       def contrasting_foreground(hex)
         luminance = WCAGColorContrast.relative_luminance(hex)
-        fg = luminance > 0.179 ? DARK_FOREGROUND : LIGHT_FOREGROUND
+        fg = (luminance > 0.179) ? DARK_FOREGROUND : LIGHT_FOREGROUND
         to_hsl(fg)
       end
 
-      def muted_foreground(hex)
-        # Blend foreground toward background for softer contrast
-        luminance = WCAGColorContrast.relative_luminance(hex)
-        if luminance > 0.179
-          # Dark foreground on light background - make it lighter (gray)
-          "hsl(0, 0%, 27%)"
-        else
-          # Light foreground on dark background - make it darker (light gray)
-          "hsl(0, 0%, 75%)"
-        end
+      # Create a muted foreground color that carries a hint of the theme's primary hue.
+      # This ensures muted text feels "on theme" rather than using generic gray.
+      def tinted_muted_foreground(background_hex, primary_hue)
+        luminance = WCAGColorContrast.relative_luminance(background_hex)
+        lightness = luminance > 0.179 ? MUTED_LIGHT_BG_LIGHTNESS : MUTED_DARK_BG_LIGHTNESS
+
+        "hsl(#{primary_hue}, #{MUTED_FOREGROUND_SATURATION}%, #{lightness}%)"
       end
 
-      def derive_border(background_hex)
+      # Create a border color that carries a hint of the background's hue.
+      # This ensures UI elements feel cohesive with the overall theme.
+      def derive_tinted_border(background_hex, background_hue)
         luminance = WCAGColorContrast.relative_luminance(background_hex)
-        if luminance > 0.5
-          "hsl(210, 9%, 96%)"
-        else
-          "hsl(210, 9%, 20%)"
-        end
+        bg_color = Chroma.paint("##{background_hex}")
+
+        # Derive saturation from background, capped to stay subtle
+        saturation = [(bg_color.hsl.s * 15).round, 6].max.clamp(1, BORDER_MAX_SATURATION)
+        lightness = luminance > 0.5 ? 96 : 20
+
+        "hsl(#{background_hue}, #{saturation}%, #{lightness}%)"
+      rescue
+        # Fallback to neutral gray
+        luminance > 0.5 ? "hsl(210, 9%, 96%)" : "hsl(210, 9%, 20%)"
       end
 
       def to_hsl(hex)
         color = Chroma.paint("##{hex}")
         hsl = color.hsl
         "hsl(#{hsl.h.round}, #{(hsl.s * 100).round}%, #{(hsl.l * 100).round}%)"
-      rescue StandardError
+      rescue
         "hsl(0, 0%, 50%)"
       end
     end
