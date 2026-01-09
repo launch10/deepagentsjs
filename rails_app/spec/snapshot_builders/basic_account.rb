@@ -8,6 +8,11 @@ class BasicAccount < BaseBuilder
   end
 
   def build
+    create_basic_user
+    create_admin_user
+  end
+
+  def create_basic_user
     # Create basic test user
     user = User.find_or_initialize_by(email: "test_user@launch10.ai")
     user.assign_attributes(
@@ -37,7 +42,9 @@ class BasicAccount < BaseBuilder
 
     puts "Created user: #{user.email}"
     puts "Account: #{account.name} (ID: #{account.id})"
+  end
 
+  def create_admin_user
     # Create admin user
     admin_user = User.find_or_initialize_by(email: "brett@launch10.ai")
     admin_user.assign_attributes(
@@ -57,6 +64,7 @@ class BasicAccount < BaseBuilder
     admin_account.set_payment_processor :fake_processor, allow_fake: true
 
     unless admin_account.plan&.present?
+      plan = Plan.find_by(name: "pro") || Plan.last
       subscription = admin_account.payment_processor.subscribe(
         plan: plan.fake_processor_id,
         ends_at: nil
