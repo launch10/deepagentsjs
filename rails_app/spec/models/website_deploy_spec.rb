@@ -652,6 +652,91 @@ RSpec.describe WebsiteDeploy, type: :model do
     end
   end
 
+  describe 'environment variable injection' do
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
+
+    before do
+      website_with_files.snapshot
+    end
+
+    describe '#write_env_file!' do
+      let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+      let(:temp_dir) { Dir.mktmpdir("launch10_deploy_test") }
+
+      before do
+        allow(deploy).to receive(:temp_dir).and_return(temp_dir)
+      end
+
+      after do
+        FileUtils.rm_rf(temp_dir)
+      end
+
+      it 'writes .env file with VITE_SIGNUP_TOKEN' do
+        deploy.send(:write_env_file!)
+
+        env_content = File.read(File.join(temp_dir, ".env"))
+        expect(env_content).to include("VITE_SIGNUP_TOKEN=")
+
+        # Verify it's the project's actual signup token
+        expected_token = website_with_files.project.signup_token
+        expect(env_content).to include("VITE_SIGNUP_TOKEN=#{expected_token}")
+      end
+
+      it 'writes .env file with VITE_API_BASE_URL' do
+        deploy.send(:write_env_file!)
+
+        env_content = File.read(File.join(temp_dir, ".env"))
+        expect(env_content).to include("VITE_API_BASE_URL=")
+
+        # Verify it matches Rails config
+        expected_url = Rails.configuration.x.api_base_url
+        expect(env_content).to include("VITE_API_BASE_URL=#{expected_url}")
+      end
+
+      it 'writes env vars in correct format for Vite' do
+        deploy.send(:write_env_file!)
+
+        env_content = File.read(File.join(temp_dir, ".env"))
+        lines = env_content.split("\n")
+
+        # Each line should be KEY=value format (no quotes, no spaces around =)
+        lines.each do |line|
+          expect(line).to match(/^VITE_[A-Z_]+=.+$/)
+        end
+      end
+    end
+
+    describe 'build! writes env file before building' do
+      let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+
+      before do
+        allow(FileUtils).to receive(:mkdir_p)
+        allow(File).to receive(:write).and_call_original
+        allow(Dir).to receive(:chdir).and_yield
+        allow(Dir).to receive(:exist?).and_return(true)
+        allow(deploy).to receive(:system).and_return(true)
+      end
+
+      it 'writes .env file to temp directory during build' do
+        env_file_written = false
+        env_content = nil
+
+        allow(File).to receive(:write) do |path, content|
+          if path.end_with?('.env')
+            env_file_written = true
+            env_content = content
+          end
+        end
+
+        deploy.build!
+
+        expect(env_file_written).to be true
+        expect(env_content).to include("VITE_SIGNUP_TOKEN=")
+        expect(env_content).to include("VITE_API_BASE_URL=")
+      end
+    end
+  end
+
   describe 'later_deploy_exists check' do
     let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
 

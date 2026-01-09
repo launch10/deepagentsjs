@@ -20,6 +20,9 @@ module WebsiteDeployConcerns
         File.write(file_path, file.content)
       end
 
+      # Write environment variables for Vite build
+      write_env_file!
+
       # Run pnpm install and build
       unless build_exists?
         Dir.chdir(temp_dir) do
@@ -39,6 +42,14 @@ module WebsiteDeployConcerns
     end
 
     private
+
+    def write_env_file!
+      env_vars = {
+        "VITE_SIGNUP_TOKEN" => website.project.signup_token,
+        "VITE_API_BASE_URL" => Rails.configuration.x.api_base_url
+      }
+      File.write(File.join(temp_dir, ".env"), env_vars.map { |k, v| "#{k}=#{v}" }.join("\n"))
+    end
 
     def validate_website_has_files
       if website.files.empty?
