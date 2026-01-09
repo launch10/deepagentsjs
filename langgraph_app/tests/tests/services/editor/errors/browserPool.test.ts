@@ -175,9 +175,7 @@ describe("BrowserPool", () => {
 
   describe("Bounded Concurrency", () => {
     it("allows up to MAX_CONTEXTS (10) concurrent contexts", async () => {
-      const contexts = await Promise.all(
-        Array.from({ length: 10 }, () => pool.getContext())
-      );
+      const contexts = await Promise.all(Array.from({ length: 10 }, () => pool.getContext()));
 
       expect(pool.getActiveContextCount()).toBe(10);
       expect(pool.getWaitQueueLength()).toBe(0);
@@ -188,9 +186,7 @@ describe("BrowserPool", () => {
 
     it("queues requests beyond MAX_CONTEXTS", async () => {
       // Acquire 10 contexts (max)
-      const contexts = await Promise.all(
-        Array.from({ length: 10 }, () => pool.getContext())
-      );
+      const contexts = await Promise.all(Array.from({ length: 10 }, () => pool.getContext()));
 
       expect(pool.getActiveContextCount()).toBe(10);
 
@@ -222,9 +218,7 @@ describe("BrowserPool", () => {
     });
 
     it("processes wait queue in FIFO order", async () => {
-      const contexts = await Promise.all(
-        Array.from({ length: 10 }, () => pool.getContext())
-      );
+      const contexts = await Promise.all(Array.from({ length: 10 }, () => pool.getContext()));
 
       const order: number[] = [];
 
@@ -281,11 +275,7 @@ describe("BrowserPool", () => {
       );
 
       // Fire off multiple concurrent getContext calls
-      const promises = [
-        pool.getContext(),
-        pool.getContext(),
-        pool.getContext(),
-      ];
+      const promises = [pool.getContext(), pool.getContext(), pool.getContext()];
 
       // All should be waiting on the same launch
       expect(chromium.launch).toHaveBeenCalledOnce();
@@ -313,7 +303,7 @@ describe("BrowserPool", () => {
         isConnected: vi.fn().mockReturnValue(true),
         newContext: vi.fn().mockReturnValue({ close: vi.fn() }),
         close: vi.fn(),
-      };
+      } as any;
       vi.mocked(chromium.launch).mockResolvedValue(newMockBrowser);
 
       // Next call should relaunch
@@ -363,9 +353,7 @@ describe("BrowserPool", () => {
     });
 
     it("wakes up waiters even if context.close() fails", async () => {
-      const contexts = await Promise.all(
-        Array.from({ length: 10 }, () => pool.getContext())
-      );
+      const contexts = await Promise.all(Array.from({ length: 10 }, () => pool.getContext()));
 
       contexts[0].close.mockRejectedValue(new Error("Close failed"));
 
@@ -437,9 +425,7 @@ describe("BrowserPool", () => {
 
     it("frees queue slot when context times out", async () => {
       // Fill pool to capacity
-      const contexts = await Promise.all(
-        Array.from({ length: 10 }, () => pool.getContext())
-      );
+      const contexts = await Promise.all(Array.from({ length: 10 }, () => pool.getContext()));
 
       // 11th waits in queue
       let waiterResolved = false;
