@@ -1,11 +1,12 @@
-import { chromium, type Browser, type Page, type ConsoleMessage } from "playwright";
+import { type BrowserContext, type Page, type ConsoleMessage } from "playwright";
 import { type ConsoleError } from "@types";
+import { browserPool } from "./browserPool";
 
 /**
  * Captures browser console errors using Playwright
  */
 export class BrowserErrorCapture {
-  private browser: Browser | null = null;
+  private context: BrowserContext | null = null;
   private page: Page | null = null;
   private errors: ConsoleError[] = [];
   private url: string;
@@ -20,14 +21,11 @@ export class BrowserErrorCapture {
   async start(): Promise<void> {
     console.log(`Starting browser for ${this.url}`);
 
-    // Launch browser
-    this.browser = await chromium.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    // Get context from pool (waits if at capacity)
+    this.context = await browserPool.getContext();
 
     // Create page
-    this.page = await this.browser.newPage();
+    this.page = await this.context.newPage();
 
     // Set up console listener before navigation
     this.page.on("console", (msg: ConsoleMessage) => {
@@ -183,17 +181,28 @@ export class BrowserErrorCapture {
    * Stop the browser
    */
   async stop(): Promise<void> {
-    if (this.page) {
-      await this.page.close();
-      this.page = null;
+    const context = this.context;
+    const page = this.page;
+
+    // Clear references first to prevent double-cleanup
+    this.page = null;
+    this.context = null;
+
+    // Close page with error handling
+    try {
+      if (page) {
+        await page.close();
+      }
+    } catch (error) {
+      console.error("Error closing page:", error);
+    } finally {
+      // ALWAYS release context, even if page.close() failed
+      if (context) {
+        await browserPool.releaseContext(context);
+      }
     }
 
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
-    }
-
-    console.log(`  ✓ Browser closed (captured ${this.errors.length} errors)`);
+    console.log(`  ✓ Browser context released (captured ${this.errors.length} errors)`);
   }
 
   /**
