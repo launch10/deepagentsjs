@@ -48,9 +48,10 @@ RSpec.describe "Brainstorms API", type: :request do
 
       response '201', 'brainstorm created in owned account' do
         schema APISchemas::Brainstorm.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:brainstorm_params) { valid_brainstorm_params(name: "Brainstorm in Owned Account") }
 
         run_test! do |response|
@@ -69,9 +70,10 @@ RSpec.describe "Brainstorms API", type: :request do
 
       response '201', 'brainstorm created with provided project UUID' do
         schema APISchemas::Brainstorm.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:project_uuid) { SecureRandom.uuid }
         let(:brainstorm_params) { valid_brainstorm_params(name: "Brainstorm with UUID", project_uuid: project_uuid) }
 
@@ -87,9 +89,10 @@ RSpec.describe "Brainstorms API", type: :request do
 
       response '201', 'brainstorm created in team account after switching' do
         schema APISchemas::Brainstorm.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:brainstorm_params) { valid_brainstorm_params(name: "Brainstorm in Team Account") }
 
         before do
@@ -117,9 +120,10 @@ RSpec.describe "Brainstorms API", type: :request do
       end
 
       response '422', 'invalid request - missing thread_id' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:brainstorm_params) do
           {
             brainstorm: {
@@ -158,9 +162,10 @@ RSpec.describe "Brainstorms API", type: :request do
 
       response '200', 'brainstorm found in owned account' do
         schema APISchemas::Brainstorm.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:thread_id) { "123" }
 
         run_test! do |response|
@@ -171,9 +176,10 @@ RSpec.describe "Brainstorms API", type: :request do
       end
 
       response '404', 'cannot access team account brainstorm from owned account' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:thread_id) { "456" }
 
         run_test! do |response|
@@ -184,9 +190,10 @@ RSpec.describe "Brainstorms API", type: :request do
 
       response '200', 'brainstorm found in team account after switching' do
         schema APISchemas::Brainstorm.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:thread_id) { "456" }
 
         before do
@@ -201,9 +208,10 @@ RSpec.describe "Brainstorms API", type: :request do
       end
 
       response '404', 'brainstorm not found' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:thread_id) { "nonexistent" }
 
         run_test! do |response|
@@ -235,9 +243,10 @@ RSpec.describe "Brainstorms API", type: :request do
 
       response '200', 'brainstorm updated in owned account' do
         schema APISchemas::Brainstorm.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:thread_id) { brainstorm1_owned.thread_id }
         let(:brainstorm_params) { { brainstorm: { idea: "Updated idea" } } }
 
@@ -248,9 +257,10 @@ RSpec.describe "Brainstorms API", type: :request do
       end
 
       response '404', 'cannot update team account brainstorm from owned account' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:thread_id) { brainstorm1_team.thread_id }
         let(:brainstorm_params) { { brainstorm: { idea: "Should not update" } } }
 
@@ -265,9 +275,10 @@ RSpec.describe "Brainstorms API", type: :request do
 
       response '200', 'brainstorm updated in team account after switching' do
         schema APISchemas::Brainstorm.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:thread_id) { brainstorm1_team.thread_id }
         let(:brainstorm_params) { { brainstorm: { idea: "Team idea" } } }
 
@@ -282,9 +293,10 @@ RSpec.describe "Brainstorms API", type: :request do
       end
 
       response '404', 'brainstorm not found' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:thread_id) { "nonexistent-thread-id" }
         let(:brainstorm_params) { { brainstorm: { name: "Updated" } } }
 

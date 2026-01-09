@@ -73,9 +73,10 @@ RSpec.describe "Campaigns API", type: :request do
 
       response '201', 'campaign created with ad group and ad' do
         schema APISchemas::Campaign.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:campaign_params) do
           {
             campaign: {
@@ -104,9 +105,10 @@ RSpec.describe "Campaigns API", type: :request do
 
       response '200', 'campaign already exists and is returned' do
         schema APISchemas::Campaign.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:campaign_params) do
           {
             campaign: {
@@ -155,9 +157,10 @@ RSpec.describe "Campaigns API", type: :request do
 
       response '201', 'campaign created without website_id (falls back to project website)' do
         schema APISchemas::Campaign.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:campaign_params) do
           {
             campaign: {
@@ -176,9 +179,10 @@ RSpec.describe "Campaigns API", type: :request do
 
       response '422', 'invalid request - missing thread_id' do
         schema APISchemas::Campaign.error_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:campaign_params) do
           {
             campaign: {
@@ -231,9 +235,10 @@ RSpec.describe "Campaigns API", type: :request do
       describe "General" do
         response '200', 'campaign updated' do
           schema APISchemas::Campaign.response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { campaign1.id }
           let(:campaign_params) do
             {
@@ -254,9 +259,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '200', 'campaign updated with flat ad group attributes' do
           schema APISchemas::Campaign.response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { campaign1.id }
           let(:campaign_params) do
             {
@@ -276,9 +282,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '404', 'cannot access another users campaign' do
           schema APISchemas::Campaign.error_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { campaign2.id }
           let(:campaign_params) do
             {
@@ -299,9 +306,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '404', 'campaign not found' do
           schema APISchemas::Campaign.error_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { 999999 }
           let(:campaign_params) do
             {
@@ -324,9 +332,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '200', 'idempotently creates headlines on first update' do
           schema APISchemas::Campaign.response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { campaign1.id }
           let(:campaign_params) do
             {
@@ -357,9 +366,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '200', 'ready_for_next_stage is true after creating 3 headlines and 2 descriptions' do
           schema APISchemas::Campaign.response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { campaign1.id }
           let(:campaign_params) do
             {
@@ -395,9 +405,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '200', 'idempotently replaces headlines - soft delete and reify' do
           schema APISchemas::Campaign.response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { content_stage_campaign.id }
 
           let!(:initial_headlines) do
@@ -434,9 +445,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '200', 'idempotently creates descriptions on first update' do
           schema APISchemas::Campaign.response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { campaign1.id }
           let(:campaign_params) do
             {
@@ -466,9 +478,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '200', 'idempotently replaces descriptions - soft delete and reify' do
           schema APISchemas::Campaign.response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { campaign1.id }
 
           let!(:initial_descriptions) do
@@ -510,9 +523,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '200', 'idempotently replaces both headlines and descriptions together' do
           schema APISchemas::Campaign.response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { campaign1.id }
 
           let!(:initial_content) do
@@ -576,9 +590,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'idempotently creates callouts on first update' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -607,9 +622,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'ready_for_next_stage is true after creating 2 callouts' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -637,9 +653,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'idempotently replaces callouts - soft delete and reify' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             let!(:initial_callouts) do
               ad_group = highlights_campaign.ad_groups.first
@@ -679,9 +696,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'preserves headlines and descriptions when updating callouts' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             let!(:initial_headlines) { highlights_campaign.headlines }
             let!(:initial_descriptions) { highlights_campaign.descriptions }
@@ -717,9 +735,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'idempotently creates structured snippet on first update' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -748,9 +767,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'idempotently updates structured snippet' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             let!(:initial_snippet) do
               create(:ad_structured_snippet, campaign: highlights_campaign, category: "brands", values: ["Nike", "Adidas", "Puma"])
@@ -783,9 +803,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'ready_for_next_stage works with callouts and structured snippet' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -818,9 +839,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'preserves headlines and descriptions when updating structured snippet' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             let!(:initial_headlines) { highlights_campaign.headlines }
             let!(:initial_descriptions) { highlights_campaign.descriptions }
@@ -858,9 +880,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'idempotently creates keywords on first update' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -896,9 +919,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'ready_for_next_stage is true after creating 5 keywords' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -929,9 +953,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'idempotently replaces keywords - soft delete and reify' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             let!(:initial_keywords) do
               ad_group = keywords_campaign.ad_groups.first
@@ -975,9 +1000,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'preserves headlines, descriptions, and callouts when updating keywords' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             let!(:initial_headlines) { keywords_campaign.headlines }
             let!(:initial_descriptions) { keywords_campaign.descriptions }
@@ -1024,9 +1050,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'idempotently updates location targets' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -1055,9 +1082,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'updates ad schedules' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -1084,9 +1112,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'soft deletes ad schedules when days are removed' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             let!(:initial_schedules) do
               settings_campaign.update_ad_schedules({
@@ -1131,9 +1160,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'reifies (un-deletes) previously deleted ad schedules' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             let!(:initial_schedules) do
               settings_campaign.update_ad_schedules({
@@ -1181,9 +1211,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'updates daily budget' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -1205,9 +1236,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'ready_for_next_stage is true after all settings configured' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -1241,9 +1273,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'replaces location targets idempotently' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             before do
               settings_campaign.update_location_targets([
@@ -1291,9 +1324,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'soft deletes location targets when removed from request' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             let!(:initial_location_targets) do
               settings_campaign.update_location_targets([
@@ -1352,9 +1386,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'reifies (un-deletes) previously deleted location targets' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             # Create GeoTargetConstants for the test
             let!(:alaska_geo_target) do
@@ -1420,9 +1455,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'preserves headlines, descriptions, callouts, and keywords when updating settings' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             let!(:initial_headlines) { settings_campaign.headlines }
             let!(:initial_descriptions) { settings_campaign.descriptions }
@@ -1478,9 +1514,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'updates google_advertising_channel_type' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -1501,9 +1538,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'updates google_bidding_strategy' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -1524,9 +1562,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'updates start_date' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -1547,9 +1586,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'updates end_date' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -1570,9 +1610,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'ready_for_next_stage is true after all launch fields are configured' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
             let(:campaign_params) do
               {
                 campaign: {
@@ -1598,9 +1639,10 @@ RSpec.describe "Campaigns API", type: :request do
 
           response '200', 'preserves all previous stage content when updating launch settings' do
             schema APISchemas::Campaign.response
-            let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-            let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-            let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+            let(:auth_headers) { auth_headers_for(user1) }
+            let(:Authorization) { auth_headers['Authorization'] }
+            let(:"X-Signature") { auth_headers['X-Signature'] }
+            let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
             let!(:initial_headlines) { launch_campaign.headlines }
             let!(:initial_descriptions) { launch_campaign.descriptions }
@@ -1668,9 +1710,10 @@ RSpec.describe "Campaigns API", type: :request do
 
       response '404', 'campaign not found' do
         schema APISchemas::Campaign.error_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { 999999 }
 
         run_test! do |response|
@@ -1681,9 +1724,10 @@ RSpec.describe "Campaigns API", type: :request do
       describe "Content -> Highlights" do
         response '200', 'campaign advanced to next stage' do
           schema APISchemas::Campaign.advance_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { campaign1.id }
 
           before do
@@ -1704,9 +1748,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '422', 'cannot advance - stage validation failed' do
           schema APISchemas::Campaign.error_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { campaign1.id }
 
           run_test! do |response|
@@ -1725,9 +1770,10 @@ RSpec.describe "Campaigns API", type: :request do
       describe "Highlights -> Keywords" do
         response '200', 'campaign advanced from highlights to keywords stage' do
           schema APISchemas::Campaign.advance_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
           let!(:highlights_stage_campaign) do
             result = Campaign.create_campaign!(user1_account, {
@@ -1761,9 +1807,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '422', 'cannot advance from highlights - validation failed' do
           schema APISchemas::Campaign.error_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
           let!(:highlights_stage_campaign) do
             result = Campaign.create_campaign!(user1_account, {
@@ -1795,9 +1842,10 @@ RSpec.describe "Campaigns API", type: :request do
       describe "Keywords -> Settings" do
         response '200', 'campaign advanced from keywords to settings stage' do
           schema APISchemas::Campaign.advance_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
           let!(:keywords_stage_campaign) do
             result = Campaign.create_campaign!(user1_account, {
@@ -1834,9 +1882,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '422', 'cannot advance from keywords - validation failed' do
           schema APISchemas::Campaign.error_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
           let!(:keywords_stage_campaign) do
             result = Campaign.create_campaign!(user1_account, {
@@ -1873,9 +1922,10 @@ RSpec.describe "Campaigns API", type: :request do
       describe "Settings -> Launch" do
         response '200', 'campaign advanced from settings to launch stage' do
           schema APISchemas::Campaign.advance_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
           let!(:settings_stage_campaign) do
             result = Campaign.create_campaign!(user1_account, {
@@ -1923,9 +1973,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '422', 'cannot advance from settings - validation failed (missing location)' do
           schema APISchemas::Campaign.error_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
           let!(:settings_stage_campaign) do
             result = Campaign.create_campaign!(user1_account, {
@@ -1965,9 +2016,10 @@ RSpec.describe "Campaigns API", type: :request do
       describe "Launch -> Review" do
         response '200', 'campaign advanced from launch to review stage' do
           schema APISchemas::Campaign.advance_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
           let!(:launch_stage_campaign) do
             result = Campaign.create_campaign!(user1_account, {
@@ -2024,9 +2076,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '422', 'cannot advance from launch - validation failed (missing fields)' do
           schema APISchemas::Campaign.error_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
           let!(:launch_stage_campaign) do
             result = Campaign.create_campaign!(user1_account, {
@@ -2092,9 +2145,10 @@ RSpec.describe "Campaigns API", type: :request do
       describe "Content -> Website Builder" do
         response '200', 'goes back to previous project workflow step when at first campaign stage' do
           schema APISchemas::Campaign.advance_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
           let!(:first_stage_campaign) do
             campaign, _, _ = create_campaign(user1_account)
@@ -2128,9 +2182,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '200', 'campaign stepped back to previous stage' do
           schema APISchemas::Campaign.advance_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { highlights_campaign.id }
 
           run_test! do |response|
@@ -2153,9 +2208,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '200', 'campaign stepped back to previous stage' do
           schema APISchemas::Campaign.advance_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { keywords_campaign.id }
 
           run_test! do |response|
@@ -2178,9 +2234,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '200', 'campaign stepped back to previous stage' do
           schema APISchemas::Campaign.advance_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { settings_campaign.id }
 
           run_test! do |response|
@@ -2203,9 +2260,10 @@ RSpec.describe "Campaigns API", type: :request do
 
         response '200', 'campaign stepped back to previous stage' do
           schema APISchemas::Campaign.advance_response
-          let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user1) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:id) { launch_campaign.id }
 
           run_test! do |response|
@@ -2221,9 +2279,10 @@ RSpec.describe "Campaigns API", type: :request do
 
       response '404', 'campaign not found' do
         schema APISchemas::Campaign.error_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { 999999 }
 
         run_test! do |response|
@@ -2257,9 +2316,10 @@ RSpec.describe "Campaigns API", type: :request do
         parameter name: 'X-Timestamp', in: :header, type: :string, required: false
         parameter name: :campaign_params, in: :body, schema: APISchemas::Campaign.params_schema
 
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { campaign1.id }
 
         describe 'Campaign validations' do

@@ -30,9 +30,10 @@ RSpec.describe "Themes API", type: :request do
 
       response '200', 'themes retrieved' do
         schema APISchemas::Theme.collection_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
         before do
           official_theme1.theme_labels << label
@@ -59,9 +60,10 @@ RSpec.describe "Themes API", type: :request do
 
       response '200', 'retrieves official + account themes' do
         schema APISchemas::Theme.collection_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
         before do
           switch_account_to(account2)
@@ -107,9 +109,10 @@ RSpec.describe "Themes API", type: :request do
 
       response '200', 'theme created' do
         schema APISchemas::Theme.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:theme) { { theme: { name: 'New Theme', colors: ['#000000', '#ffffff'] } } }
 
         run_test! do |response|

@@ -32,9 +32,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '200', 'returns social links for the project' do
         schema APISchemas::SocialLink.list_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -53,9 +54,10 @@ RSpec.describe "Social Links API", type: :request do
       end
 
       response '404', 'project not found' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:project_uuid) { 'non-existent-uuid' }
 
         run_test! do |response|
@@ -79,9 +81,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '201', 'social link created successfully' do
         schema APISchemas::SocialLink.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:social_link_params) do
           {
             social_link: {
@@ -103,9 +106,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '201', 'normalizes Twitter username to full URL' do
         schema APISchemas::SocialLink.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:social_link_params) do
           {
             social_link: {
@@ -123,9 +127,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '201', 'normalizes Instagram username to full URL' do
         schema APISchemas::SocialLink.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:social_link_params) do
           {
             social_link: {
@@ -143,9 +148,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '201', 'normalizes YouTube username to full URL' do
         schema APISchemas::SocialLink.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:social_link_params) do
           {
             social_link: {
@@ -163,9 +169,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '201', 'normalizes x.com URL to twitter.com' do
         schema APISchemas::SocialLink.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:social_link_params) do
           {
             social_link: {
@@ -182,9 +189,10 @@ RSpec.describe "Social Links API", type: :request do
       end
 
       response '422', 'invalid platform' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:social_link_params) do
           {
             social_link: {
@@ -201,9 +209,10 @@ RSpec.describe "Social Links API", type: :request do
       end
 
       response '422', 'missing URL' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:social_link_params) do
           {
             social_link: {
@@ -220,9 +229,10 @@ RSpec.describe "Social Links API", type: :request do
       end
 
       response '422', 'duplicate platform for project' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let!(:existing_link) { create(:social_link, :twitter, project: project) }
         let(:social_link_params) do
           {
@@ -273,9 +283,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '200', 'social link found' do
         schema APISchemas::SocialLink.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { social_link.id }
 
         run_test! do |response|
@@ -286,9 +297,10 @@ RSpec.describe "Social Links API", type: :request do
       end
 
       response '404', 'social link not found' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { 999999 }
 
         run_test! do |response|
@@ -319,9 +331,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '200', 'social link updated successfully' do
         schema APISchemas::SocialLink.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { social_link.id }
         let(:social_link_params) do
           {
@@ -340,9 +353,10 @@ RSpec.describe "Social Links API", type: :request do
       end
 
       response '422', 'invalid URL format for non-normalizable platform' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let!(:facebook_link) { create(:social_link, :facebook, project: project) }
         let(:id) { facebook_link.id }
         let(:social_link_params) do
@@ -361,9 +375,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '200', 'normalizes username on update' do
         schema APISchemas::SocialLink.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { social_link.id }
         let(:social_link_params) do
           {
@@ -380,9 +395,10 @@ RSpec.describe "Social Links API", type: :request do
       end
 
       response '404', 'social link not found' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { 999999 }
         let(:social_link_params) do
           {
@@ -408,9 +424,10 @@ RSpec.describe "Social Links API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
       response '204', 'social link deleted successfully' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { social_link.id }
 
         run_test! do |response|
@@ -420,9 +437,10 @@ RSpec.describe "Social Links API", type: :request do
       end
 
       response '404', 'social link not found' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { 999999 }
 
         run_test! do |response|
@@ -459,9 +477,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '200', 'all social links created/updated successfully' do
         schema APISchemas::SocialLink.bulk_upsert_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:bulk_params) do
           {
             social_links: [
@@ -481,9 +500,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '200', 'updates existing social links' do
         schema APISchemas::SocialLink.bulk_upsert_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let!(:existing_link) { create(:social_link, :twitter, project: project, handle: '@old') }
         let(:bulk_params) do
           {
@@ -503,9 +523,10 @@ RSpec.describe "Social Links API", type: :request do
 
       response '422', 'validation failure rolls back all changes (atomic)' do
         schema APISchemas::SocialLink.bulk_upsert_error_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:bulk_params) do
           {
             social_links: [
@@ -563,9 +584,10 @@ RSpec.describe "Social Links API", type: :request do
         parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
         response '404', 'project not found for other account' do
-          let(:Authorization) { auth_headers_for(user)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:project_uuid) { other_project.uuid }
 
           run_test! do |response|

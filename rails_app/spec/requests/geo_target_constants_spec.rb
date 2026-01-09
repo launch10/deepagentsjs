@@ -44,9 +44,10 @@ RSpec.describe "Geo Target Constants API", type: :request do
 
       response '200', 'returns matching locations' do
         schema APISchemas::GeoTargetConstant.index_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:location_query) { "New York" }
 
         before do
@@ -63,9 +64,10 @@ RSpec.describe "Geo Target Constants API", type: :request do
 
       response '200', 'returns empty array for no matches' do
         schema APISchemas::GeoTargetConstant.index_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:location_query) { "xyznonexistent" }
 
         before do
@@ -80,9 +82,10 @@ RSpec.describe "Geo Target Constants API", type: :request do
 
       response '200', 'searches canonical name as well' do
         schema APISchemas::GeoTargetConstant.index_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:location_query) { "California" }
 
         before do
