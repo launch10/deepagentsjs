@@ -1,4 +1,6 @@
 namespace :madmin, path: :admin do
+  resource :theme_playground, only: [:show]
+
   if defined?(Sidekiq)
     require "sidekiq/web"
     mount Sidekiq::Web => "/sidekiq"

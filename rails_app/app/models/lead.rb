@@ -20,9 +20,9 @@ class Lead < ApplicationRecord
   belongs_to :project
 
   validates :email, presence: true,
-                    length: { maximum: 255 },
-                    format: { with: URI::MailTo::EMAIL_REGEXP },
-                    uniqueness: { scope: :project_id, case_sensitive: false }
+    length: { maximum: 255 },
+    format: { with: URI::MailTo::EMAIL_REGEXP },
+    uniqueness: { scope: :project_id, case_sensitive: false }
   validates :name, length: { maximum: 255 }, allow_blank: true
 
   before_validation :normalize_email

@@ -2,19 +2,18 @@
 #
 # Table name: job_runs
 #
-#  id                     :bigint           not null, primary key
-#  completed_at           :datetime
-#  error_message          :text
-#  job_args               :jsonb
-#  job_class              :string           not null
-#  langgraph_callback_url :string
-#  result_data            :jsonb
-#  started_at             :datetime
-#  status                 :string           default("pending"), not null
-#  created_at             :datetime         not null
-#  updated_at             :datetime         not null
-#  account_id             :bigint
-#  langgraph_thread_id    :string
+#  id                  :bigint           not null, primary key
+#  completed_at        :datetime
+#  error_message       :text
+#  job_args            :jsonb
+#  job_class           :string           not null
+#  result_data         :jsonb
+#  started_at          :datetime
+#  status              :string           default("pending"), not null
+#  created_at          :datetime         not null
+#  updated_at          :datetime         not null
+#  account_id          :bigint
+#  langgraph_thread_id :string
 #
 # Indexes
 #
@@ -78,9 +77,19 @@ class JobRun < ApplicationRecord
 
   # Enqueues async webhook delivery - no bang since it doesn't raise
   def notify_langgraph(status:, result: nil, error: nil)
-    return unless langgraph_callback_url.present?
+    return unless langgraph_thread_id.present? && langgraph_callback_url.present?
 
     LanggraphCallbackWorker.perform_async(id, callback_payload(status, result, error))
+  end
+
+  # Derive callback URL from config - never stored in DB (SSRF prevention)
+  def langgraph_callback_url
+    return nil unless langgraph_thread_id.present?
+
+    base_url = ENV["LANGGRAPH_API_URL"]
+    return nil if base_url.blank?
+
+    "#{base_url}/webhooks/job_run_callback"
   end
 
   def pending? = status == "pending"

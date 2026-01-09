@@ -10,8 +10,7 @@ class API::V1::JobRunsController < API::BaseController
     job_run = current_account.job_runs.create!(
       job_class: params[:job_class],
       job_args: permitted_job_args,
-      langgraph_thread_id: params[:thread_id],
-      langgraph_callback_url: langgraph_callback_url
+      langgraph_thread_id: params[:thread_id]
     )
 
     # Dispatch job after record is committed to avoid processing non-existent job_runs
@@ -52,11 +51,5 @@ class API::V1::JobRunsController < API::BaseController
     end.to_h
 
     args.merge(account_id: current_account.id)
-  end
-
-  def langgraph_callback_url
-    # Auto-construct callback URL from server config to prevent SSRF
-    # Client-provided callback_url is intentionally ignored
-    "#{ENV.fetch("LANGGRAPH_API_URL")}/webhooks/job_run_callback"
   end
 end
