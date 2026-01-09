@@ -12,7 +12,7 @@ export class WebsiteRunner implements AsyncDisposable {
   private port: number;
   private serverUrl: string;
 
-  constructor(projectDir: string, port: number = 5173) {
+  constructor(projectDir: string, port: number = 0) {
     this.projectDir = projectDir;
     this.port = port;
     this.serverUrl = `http://localhost:${port}`;
