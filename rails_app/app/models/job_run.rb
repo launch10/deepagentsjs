@@ -2,19 +2,18 @@
 #
 # Table name: job_runs
 #
-#  id                     :bigint           not null, primary key
-#  completed_at           :datetime
-#  error_message          :text
-#  job_args               :jsonb
-#  job_class              :string           not null
-#  langgraph_callback_url :string
-#  result_data            :jsonb
-#  started_at             :datetime
-#  status                 :string           default("pending"), not null
-#  created_at             :datetime         not null
-#  updated_at             :datetime         not null
-#  account_id             :bigint
-#  langgraph_thread_id    :string
+#  id                  :bigint           not null, primary key
+#  completed_at        :datetime
+#  error_message       :text
+#  job_args            :jsonb
+#  job_class           :string           not null
+#  result_data         :jsonb
+#  started_at          :datetime
+#  status              :string           default("pending"), not null
+#  created_at          :datetime         not null
+#  updated_at          :datetime         not null
+#  account_id          :bigint
+#  langgraph_thread_id :string
 #
 # Indexes
 #
