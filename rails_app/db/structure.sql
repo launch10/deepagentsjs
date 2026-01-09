@@ -2521,6 +2521,39 @@ ALTER SEQUENCE public.job_runs_id_seq OWNED BY public.job_runs.id;
 
 
 --
+-- Name: leads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.leads (
+    id bigint NOT NULL,
+    project_id bigint NOT NULL,
+    email character varying(255) NOT NULL,
+    name character varying(255),
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: leads_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.leads_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: leads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.leads_id_seq OWNED BY public.leads.id;
+
+
+--
 -- Name: noticed_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4366,6 +4399,13 @@ ALTER TABLE ONLY public.job_runs ALTER COLUMN id SET DEFAULT nextval('public.job
 
 
 --
+-- Name: leads id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads ALTER COLUMN id SET DEFAULT nextval('public.leads_id_seq'::regclass);
+
+
+--
 -- Name: noticed_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5290,6 +5330,14 @@ ALTER TABLE ONLY public.inbound_webhooks
 
 ALTER TABLE ONLY public.job_runs
     ADD CONSTRAINT job_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: leads leads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_pkey PRIMARY KEY (id);
 
 
 --
@@ -7946,6 +7994,27 @@ CREATE INDEX index_job_runs_on_status ON public.job_runs USING btree (status);
 
 
 --
+-- Name: index_leads_on_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_email ON public.leads USING btree (email);
+
+
+--
+-- Name: index_leads_on_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_project_id ON public.leads USING btree (project_id);
+
+
+--
+-- Name: index_leads_on_project_id_and_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_leads_on_project_id_and_email ON public.leads USING btree (project_id, email);
+
+
+--
 -- Name: index_noticed_events_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10188,6 +10257,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260108105901'),
 ('20260107115249'),
 ('20260105183720'),
 ('20260105171150'),

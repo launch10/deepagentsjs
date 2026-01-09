@@ -1,5 +1,8 @@
 namespace :api, defaults: {format: :json} do
   namespace :v1 do
+    # Public endpoint for lead capture from deployed landing pages
+    resources :leads, only: [:create]
+
     # Endpoint for authenticated (via session) users to obtain a JWT
     post "jwt", to: "jwts#create"
     resource :auth
