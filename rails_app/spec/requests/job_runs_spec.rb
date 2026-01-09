@@ -261,7 +261,7 @@ RSpec.describe "Job Runs API", type: :request do
 
         response '404', 'cannot access other accounts campaign' do
           let(:auth_headers) { auth_headers_for(user) }
-        let(:Authorization) { auth_headers['Authorization'] }
+          let(:Authorization) { auth_headers['Authorization'] }
           let(:"X-Signature") { auth_headers['X-Signature'] }
           let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:job_run_params) do

@@ -199,7 +199,7 @@ RSpec.describe "Websites API", type: :request do
 
         response '404', 'project not found for other account' do
           let(:auth_headers) { auth_headers_for(user) }
-        let(:Authorization) { auth_headers['Authorization'] }
+          let(:Authorization) { auth_headers['Authorization'] }
           let(:"X-Signature") { auth_headers['X-Signature'] }
           let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:project_uuid) { other_project.uuid }
