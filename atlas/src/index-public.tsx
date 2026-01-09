@@ -95,6 +95,14 @@ app.get('*', async (c) => {
     strippedPathname = pathname.slice(matchedPath.length) || '/';
   }
 
+  // SPA Fallback: Determine if this request should fallback to index.html on miss
+  // Check BEFORE path normalization, since normalization adds /index.html
+  const lastSegment = strippedPathname.split('/').pop() || '';
+  const isAssetRequest = lastSegment.includes('.');      // /app.js, /logo.png
+  const isDotfile = strippedPathname.includes('/.');     // /.well-known, /.htaccess
+  const isApiRequest = strippedPathname.startsWith('/api/');
+  const shouldFallbackOnMiss = !isAssetRequest && !isDotfile && !isApiRequest;
+
   // 2. Normalize the path to construct the R2 object key.
   if (strippedPathname.endsWith('/')) {
     strippedPathname = strippedPathname.concat('index.html');
@@ -115,13 +123,19 @@ app.get('*', async (c) => {
   requestLogger.debug(`objectKey: ${objectKey}, environment: ${cloudEnv}`);
   
   let r2Bucket: R2Bucket = c.env.DEPLOYS_R2;
-  
+
   // 5. Fetch from R2
-  const object = await r2Bucket.get(objectKey);
+  let object = await r2Bucket.get(objectKey);
+
+  // SPA fallback: serve index.html for route paths that don't exist
+  if (object === null && shouldFallbackOnMiss) {
+    const fallbackKey = `${cloudEnv}/${website.id}/${targetDir}/index.html`;
+    object = await r2Bucket.get(fallbackKey);
+  }
 
   // 6. Handle the "Not Found" case.
   if (object === null) {
-    return new Response(`Website not found, error 505`, { status: 404 });
+    return new Response(`File not found`, { status: 404 });
   }
 
   // 7. Build the response.
