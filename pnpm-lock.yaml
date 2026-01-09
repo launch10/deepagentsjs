@@ -1049,8 +1049,8 @@ importers:
         specifier: ^5.4.19
         version: 5.4.21(@types/node@20.19.27)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)
       vite-plugin-ruby:
-        specifier: ^5.1.1
-        version: 5.1.2(vite@5.4.21(@types/node@20.19.27)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1))
+        specifier: 5.1.1
+        version: 5.1.1(vite@5.4.21(@types/node@20.19.27)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.3)(vite@5.4.21(@types/node@20.19.27)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1))
@@ -9396,8 +9396,8 @@ packages:
     peerDependencies:
       vite: ^7.0.0 || ^6.0.0 || ^5.0.0 || ^4.0.0 || ^3.0.0 || ^2.0.0
 
-  vite-plugin-ruby@5.1.2:
-    resolution: {integrity: sha512-aIhAhq9BOVhfWGYuludgYK9ch58SQClpDVyF8WfpNsr5xr6dCw24mgpFso2KsXYONGYzX2kDt+cca54nDzkitg==}
+  vite-plugin-ruby@5.1.1:
+    resolution: {integrity: sha512-I1dXJq2ywdvTD2Cz5LYNcYLujqQ3eUxPoCjruRdfm2QBtHBY15NEeb6x5HuPM3T5S+y8S3p9fwRsieQQCjk0gg==}
     peerDependencies:
       vite: '>=5.0.0'
 
@@ -15692,7 +15692,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.13.2)
+      retry-axios: 2.6.0(axios@1.13.2(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -17740,7 +17740,7 @@ snapshots:
 
   ret@0.5.0: {}
 
-  retry-axios@2.6.0(axios@1.13.2):
+  retry-axios@2.6.0(axios@1.13.2(debug@4.4.3)):
     dependencies:
       axios: 1.13.2(debug@4.4.3)
 
@@ -18777,7 +18777,7 @@ snapshots:
     dependencies:
       vite: 6.4.1(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
-  vite-plugin-ruby@5.1.2(vite@5.4.21(@types/node@20.19.27)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)):
+  vite-plugin-ruby@5.1.1(vite@5.4.21(@types/node@20.19.27)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)):
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
       fast-glob: 3.3.3
