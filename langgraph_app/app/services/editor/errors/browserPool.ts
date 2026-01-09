@@ -6,7 +6,7 @@ import { chromium, type Browser, type BrowserContext } from "playwright";
  * Why this exists:
  * - Each Chromium instance uses ~200MB RAM
  * - Multi-tenant SaaS = multiple concurrent deploys
- * - 10 concurrent deploys = 2GB RAM = OOM
+ * - 20 concurrent deploys = 4GB RAM = OOM
  *
  * Solution:
  * - One browser process, multiple contexts (~10MB each)
@@ -15,7 +15,7 @@ import { chromium, type Browser, type BrowserContext } from "playwright";
  * - Auto-release: contexts timeout after 60s to prevent leaks
  */
 class BrowserPool {
-  private static readonly MAX_CONTEXTS = 10;
+  private static readonly MAX_CONTEXTS = 20;
   private static readonly CONTEXT_TIMEOUT_MS = 60_000; // 60 seconds max hold time
 
   private browser: Browser | null = null;
