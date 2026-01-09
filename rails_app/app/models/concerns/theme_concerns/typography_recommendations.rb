@@ -73,7 +73,7 @@ module ThemeConcerns
         return "" if recommendations.blank?
 
         lines = ["Typography Guide:"]
-        lines << "Palette: #{colors.map { |c| "##{c}" }.join(', ')}"
+        lines << "Palette: #{colors.map { |c| "##{c}" }.join(", ")}"
         lines << ""
 
         recommendations.each do |bg_color, recs|
@@ -87,7 +87,7 @@ module ThemeConcerns
               contrast = rec[:contrast] || rec["contrast"]
               level = rec[:level] || rec["level"]
               style = rec[:style] || rec["style"]
-              style_note = style == "bold" ? "palette color" : "standard"
+              style_note = (style == "bold") ? "palette color" : "standard"
               lines << "    - ##{color} (#{contrast}:1 #{level}) [#{style_note}]"
             end
           end
@@ -170,7 +170,7 @@ module ThemeConcerns
         end
 
         palette_options.each do |p|
-          min_size = get_level(p) == "AA-large" ? "18pt+" : "any"
+          min_size = (get_level(p) == "AA-large") ? "18pt+" : "any"
           results << build_recommendation(p, "palette", min_size)
         end
 
@@ -210,10 +210,10 @@ module ThemeConcerns
 
         palette_accents.map do |p|
           use = case get_level(p)
-                when "AAA", "AA" then "text or decorative"
-                when "AA-large" then "large text (18pt+) or decorative"
-                else "decorative only"
-                end
+          when "AAA", "AA" then "text or decorative"
+          when "AA-large" then "large text (18pt+) or decorative"
+          else "decorative only"
+          end
           build_recommendation(p, "accent", use)
         end.first(5)
       end
