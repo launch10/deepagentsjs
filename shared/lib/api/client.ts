@@ -82,10 +82,12 @@ const headers = (jwtToken?: string) => {
  */
 export async function createRailsApiClient(options: RailsApiClientOptions) {
   const { jwt: jwtToken, baseUrl = env.RAILS_API_URL || env.VITE_RAILS_API_URL || "http://localhost:3000" } = options;
+  console.log(baseUrl)
 
   if (isBackend()) {
     await loadBackendModules();
   }
+  console.log(isBackend())
 
   const client = createClient<paths>({
     baseUrl,

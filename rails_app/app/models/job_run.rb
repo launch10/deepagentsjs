@@ -107,6 +107,10 @@ class JobRun < ApplicationRecord
     completed_at - started_at
   end
 
+  def langgraph_callback_url
+    "#{ENV.fetch("LANGGRAPH_API_URL")}/webhooks/job_run_callback"
+  end
+
   private
 
   def callback_payload(status, result, error)

@@ -29,7 +29,6 @@ FactoryBot.define do
 
     trait :with_langgraph_callback do
       langgraph_thread_id { "thread_#{SecureRandom.hex(8)}" }
-      # callback_url is derived from ENV["LANGGRAPH_API_URL"] in the model
     end
   end
 end

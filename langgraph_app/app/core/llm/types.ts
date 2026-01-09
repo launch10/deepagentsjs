@@ -26,8 +26,10 @@ export interface LLMAttributes {
 
 // LLM Model Names
 export const LLMNames = {
-  Haiku: "claude-haiku-4-5" as const,
+  Opus: "claude-opus-4-5" as const,
   Sonnet: "claude-sonnet-4-5" as const,
+  Haiku: "claude-haiku-4-5" as const,
+  Haiku3: "claude-3-haiku-20240307" as const,
   Gpt5: "gpt-5" as const,
   Gpt5Mini: "gpt-5-mini" as const,
   GptOss: "gpt-oss:20b" as const,
@@ -40,6 +42,14 @@ export type LLMName = keyof typeof LLMNames;
 export type LLMModelCard = ValueOf<typeof LLMNames>;
 
 export const EstimatedLLMAttributes: Record<LLMName, LLMAttributes> = {
+  Opus: {
+    tokensPerSecond: 25,
+    contextTokens: 200_000,
+    completionTokens: 32_000,
+    costIn: 15.0,
+    costOut: 75.0,
+    timeToFirstToken: 2000,
+  },
   Sonnet: {
     tokensPerSecond: 40,
     contextTokens: 1_000_000,
@@ -55,6 +65,14 @@ export const EstimatedLLMAttributes: Record<LLMName, LLMAttributes> = {
     costIn: 1.0,
     costOut: 5.0,
     timeToFirstToken: 650,
+  },
+  Haiku3: {
+    tokensPerSecond: 120,
+    contextTokens: 200_000,
+    completionTokens: 4_096,
+    costIn: 0.25,
+    costOut: 1.25,
+    timeToFirstToken: 400,
   },
   Gpt5: {
     tokensPerSecond: 50,
@@ -123,6 +141,10 @@ export interface ILLMConfig {
   temperature: Temperature;
   tags?: string[];
   maxTokens: number;
+  // Maximum user usage percentage at which this model is available
+  // e.g., maxUsagePercent: 80 means model is only used when user's usage is < 80%
+  // Defaults to 100 (always available)
+  maxUsagePercent?: number;
 }
 
 export interface ILocalConfig extends ILLMConfig {
@@ -145,6 +167,15 @@ export interface LLMsConfig {
   reasoning: LLMConfig;
 }
 
+// Fallback chain configuration - array of configs in priority order
+// Each model's maxUsagePercent determines when it's available
+export interface LLMsFallbackConfig {
+  planning: LLMConfig[];
+  writing: LLMConfig[];
+  coding: LLMConfig[];
+  reasoning: LLMConfig[];
+}
+
 export interface LLMAppConfig {
   free: {
     blazing: LLMsConfig;
@@ -158,19 +189,36 @@ export interface LLMAppConfig {
   };
 }
 
+export interface LLMFallbackAppConfig {
+  free: {
+    blazing: LLMsFallbackConfig;
+    fast: LLMsFallbackConfig;
+    slow: LLMsFallbackConfig;
+  };
+  paid: {
+    blazing: LLMsFallbackConfig;
+    fast: LLMsFallbackConfig;
+    slow: LLMsFallbackConfig;
+  };
+}
+
 const anthropicApiKey = env.ANTHROPIC_API_KEY;
 const groqApiKey = env.GROQ_API_KEY;
 const googleApiKey = env.GOOGLE_API_KEY;
 const openaiApiKey = env.OPENAI_API_KEY;
 
-export const HaikuConfig: IAPIConfig = {
+// Usage thresholds: More expensive models get lower thresholds
+// This ensures we preserve budget as users approach their limits
+
+export const OpusConfig: IAPIConfig = {
   type: "api",
   provider: "anthropic",
-  model: "Haiku",
-  modelCard: LLMNames.Haiku,
+  model: "Opus",
+  modelCard: LLMNames.Opus,
   temperature: 0,
-  maxTokens: 180_000,
+  maxTokens: 32_000,
   apiKey: anthropicApiKey,
+  maxUsagePercent: 80, // Most expensive - cut first
 };
 
 export const SonnetConfig: IAPIConfig = {
@@ -181,6 +229,29 @@ export const SonnetConfig: IAPIConfig = {
   temperature: 0,
   maxTokens: 180_000,
   apiKey: anthropicApiKey,
+  maxUsagePercent: 90,
+};
+
+export const HaikuConfig: IAPIConfig = {
+  type: "api",
+  provider: "anthropic",
+  model: "Haiku",
+  modelCard: LLMNames.Haiku,
+  temperature: 0,
+  maxTokens: 180_000,
+  apiKey: anthropicApiKey,
+  maxUsagePercent: 95,
+};
+
+export const Haiku3Config: IAPIConfig = {
+  type: "api",
+  provider: "anthropic",
+  model: "Haiku3",
+  modelCard: LLMNames.Haiku3,
+  temperature: 0,
+  maxTokens: 4_096,
+  apiKey: anthropicApiKey,
+  // No limit - cheapest Claude model, always available
 };
 
 export const GroqGptOss120bConfig: IAPIConfig = {
@@ -191,6 +262,7 @@ export const GroqGptOss120bConfig: IAPIConfig = {
   temperature: 0,
   maxTokens: 128_000,
   apiKey: groqApiKey,
+  maxUsagePercent: 90, // External API, moderate limit
 };
 
 export const Gpt5Config: IAPIConfig = {
@@ -201,6 +273,7 @@ export const Gpt5Config: IAPIConfig = {
   temperature: 0,
   maxTokens: 128_000,
   apiKey: openaiApiKey,
+  // No limit - fallback option
 };
 
 export const Gpt5MiniConfig: IAPIConfig = {
@@ -211,6 +284,7 @@ export const Gpt5MiniConfig: IAPIConfig = {
   temperature: 0,
   maxTokens: 128_000,
   apiKey: openaiApiKey,
+  // No limit - cheap fallback
 };
 
 export const GptOssConfig: ILocalConfig = {
@@ -220,6 +294,7 @@ export const GptOssConfig: ILocalConfig = {
   modelCard: LLMNames.GptOss,
   temperature: 0,
   maxTokens: 128_000,
+  // No limit - local model, always available
 };
 
 export const GeminiFlashConfig: IAPIConfig = {
@@ -230,6 +305,7 @@ export const GeminiFlashConfig: IAPIConfig = {
   maxTokens: 1_000_000,
   apiKey: googleApiKey,
   temperature: 0,
+  // No limit - very cheap
 };
 
 export const FakeConfig: ILocalConfig = {
@@ -239,11 +315,14 @@ export const FakeConfig: ILocalConfig = {
   modelCard: LLMNames.Fake,
   temperature: 0,
   maxTokens: 128_000,
+  // No limit - testing only
 };
 
 export const Models: Record<LLMName, LLMConfig> = {
-  Haiku: HaikuConfig,
+  Opus: OpusConfig,
   Sonnet: SonnetConfig,
+  Haiku: HaikuConfig,
+  Haiku3: Haiku3Config,
   Gpt5: Gpt5Config,
   Gpt5Mini: Gpt5MiniConfig,
   GptOss: GptOssConfig,

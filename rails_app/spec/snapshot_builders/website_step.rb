@@ -1,4 +1,4 @@
-class WebsiteCreated < BaseBuilder
+class BrainstormCreated < BaseBuilder
   def base_snapshot
     "basic_account"
   end

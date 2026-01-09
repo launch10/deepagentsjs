@@ -1,6 +1,8 @@
 module Embeddable
   extend ActiveSupport::Concern
 
+  mattr_accessor :generate_in_test, default: false
+
   included do
     has_neighbors :embedding
 
@@ -20,6 +22,12 @@ module Embeddable
   end
 
   def enqueue_embedding_generation
-    AI::GenerateEmbeddingWorker.perform_async(self.class.name, id)
+    return if Rails.env.test? && !Embeddable.generate_in_test
+
+    if Rails.env.production?
+      AI::GenerateEmbeddingWorker.perform_async(self.class.name, id)
+    else
+      AI::GenerateEmbeddingWorker.new.perform(self.class.name, id)
+    end
   end
 end

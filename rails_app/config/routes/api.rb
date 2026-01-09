@@ -36,6 +36,11 @@ namespace :api, defaults: {format: :json} do
         end
       end
     end
+
+    resources :websites, only: [] do
+      post "files/write", to: "website_files#write"
+      patch "files/edit", to: "website_files#edit"
+    end
   end
 end
 

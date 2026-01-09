@@ -20,9 +20,13 @@ class WebsiteStepFinished < BaseBuilder
     end
 
     website = project.website
-    raise "No website found for project #{project.id}" unless website
 
-    Core::TestSites.import_to_website(website, "hello-world")
+    ExampleWebsites.find("launch-proof").files.reject(&:binary?).each do |file|
+      website.website_files.create!(
+        path: file.relative_path,
+        content: file.content
+      )
+    end
 
     domain = website.domains.first || create(:domain, website: website, account: account, domain: "example.launch10.site")
     website_url = website.website_urls.first || create(:website_url, website: website, domain: domain, account: account, path: "/bingo?cloudEnv=staging")

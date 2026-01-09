@@ -160,28 +160,25 @@ RSpec.describe JobRun, type: :model do
         langgraph_thread_id: "thread_123")
     end
 
-    context "with a callback URL" do
-      it "enqueues a LanggraphCallbackWorker" do
-        expect(LanggraphCallbackWorker).to receive(:perform_async).with(
-          job_run.id,
-          hash_including(
-            job_run_id: job_run.id,
-            thread_id: "thread_123",
-            status: "completed"
-          )
+    it "enqueues a LanggraphCallbackWorker" do
+      expect(LanggraphCallbackWorker).to receive(:perform_async).with(
+        job_run.id,
+        hash_including(
+          job_run_id: job_run.id,
+          thread_id: "thread_123",
+          status: "completed"
         )
+      )
 
-        job_run.notify_langgraph(status: "completed", result: { success: true })
-      end
+      job_run.notify_langgraph(status: "completed", result: { success: true })
     end
+  end
 
-    context "without a callback URL" do
-      let(:job_run) { create(:job_run, account: account, langgraph_thread_id: nil) }
+  describe "#langgraph_callback_url" do
+    let(:job_run) { create(:job_run, account: account) }
 
-      it "does not enqueue a worker" do
-        expect(LanggraphCallbackWorker).not_to receive(:perform_async)
-        job_run.notify_langgraph(status: "completed")
-      end
+    it "returns the callback URL constructed from LANGGRAPH_API_URL" do
+      expect(job_run.langgraph_callback_url).to eq("#{ENV["LANGGRAPH_API_URL"]}/webhooks/job_run_callback")
     end
   end
 
