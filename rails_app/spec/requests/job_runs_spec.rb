@@ -19,9 +19,10 @@ RSpec.describe "Job Runs API", type: :request do
 
       response '201', 'job run created successfully' do
         schema APISchemas::JobRun.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:job_run_params) do
           {
             job_class: "CampaignDeploy",
@@ -55,9 +56,10 @@ RSpec.describe "Job Runs API", type: :request do
 
       response '201', 'ignores client-provided callback_url (SSRF prevention)' do
         schema APISchemas::JobRun.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:job_run_params) do
           {
             job_class: "CampaignDeploy",
@@ -83,9 +85,10 @@ RSpec.describe "Job Runs API", type: :request do
 
       response '201', 'filters unpermitted arguments' do
         schema APISchemas::JobRun.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:job_run_params) do
           {
             job_class: "CampaignDeploy",
@@ -119,9 +122,10 @@ RSpec.describe "Job Runs API", type: :request do
 
       response '422', 'invalid job_class' do
         schema APISchemas::JobRun.error_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:job_run_params) do
           {
             job_class: "InvalidJob",
@@ -138,9 +142,10 @@ RSpec.describe "Job Runs API", type: :request do
 
       response '404', 'campaign not found' do
         schema APISchemas::JobRun.error_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:job_run_params) do
           {
             job_class: "CampaignDeploy",
@@ -157,9 +162,10 @@ RSpec.describe "Job Runs API", type: :request do
 
       response '422', 'missing job_class' do
         schema APISchemas::JobRun.error_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:job_run_params) do
           {
             arguments: {campaign_id: campaign.id},
@@ -175,9 +181,10 @@ RSpec.describe "Job Runs API", type: :request do
 
       response '422', 'does not enqueue job when job_run creation fails' do
         schema APISchemas::JobRun.error_response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:job_run_params) do
           {
             job_class: "CampaignDeploy",
@@ -253,9 +260,10 @@ RSpec.describe "Job Runs API", type: :request do
         parameter name: :job_run_params, in: :body, schema: APISchemas::JobRun.params_schema
 
         response '404', 'cannot access other accounts campaign' do
-          let(:Authorization) { auth_headers_for(user)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:job_run_params) do
             {
               job_class: "CampaignDeploy",
