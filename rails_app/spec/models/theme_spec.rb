@@ -192,7 +192,7 @@ RSpec.describe Theme do
           "--secondary", "--secondary-foreground",
           "--accent", "--accent-foreground",
           "--muted", "--muted-foreground",
-          "--background", "--background-foreground",
+          "--background", "--foreground",
           "--card", "--card-foreground",
           "--popover", "--popover-foreground",
           "--destructive", "--destructive-foreground",

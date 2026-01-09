@@ -62,8 +62,8 @@ On #264653 background:
 **Implementation:**
 
 - `ThemeConcerns::TypographyRecommendations` concern computes recommendations
-- `theme.typography_guide_for_prompt` formats for AI prompts
-- Stored alongside `theme`, `pairings` in Theme model
+- `typography_recommendations` (JSONB) stores structured data
+- Langgraph formats for prompts as needed
 - Automatically computed when colors change
 
 **Status:** Current

@@ -149,10 +149,14 @@ RSpec.describe JobRun, type: :model do
   end
 
   describe "#notify_langgraph" do
+    before do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")
+    end
+
     let(:job_run) do
       create(:job_run,
         account: account,
-        langgraph_callback_url: "http://localhost:4000/webhooks/job_run_callback",
         langgraph_thread_id: "thread_123")
     end
 
@@ -172,7 +176,7 @@ RSpec.describe JobRun, type: :model do
     end
 
     context "without a callback URL" do
-      let(:job_run) { create(:job_run, account: account, langgraph_callback_url: nil) }
+      let(:job_run) { create(:job_run, account: account, langgraph_thread_id: nil) }
 
       it "does not enqueue a worker" do
         expect(LanggraphCallbackWorker).not_to receive(:perform_async)
