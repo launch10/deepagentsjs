@@ -41,7 +41,11 @@
     "overrides": {
       "langgraph-ai-sdk": "workspace:*",
       "langgraph-ai-sdk-types": "workspace:*",
-      "langgraph-ai-sdk-react": "workspace:*"
+      "langgraph-ai-sdk-react": "workspace:*",
+      "@langchain/langgraph": "1.0.2",
+      "@langchain/core": "1.1.4",
+      "langchain": "1.1.5",
+      "zod": "3.25.76"
     }
   }
 }

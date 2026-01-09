@@ -2,10 +2,6 @@ require 'swagger_helper'
 
 RSpec.describe "Website Files API", type: :request do
   let(:fake_embedding) { Array.new(1536) { rand(-1.0..1.0) } }
-
-  before do
-    allow(EmbeddingService).to receive(:generate).and_return(fake_embedding)
-  end
   let!(:template) { Template.first || create(:template) }
   let!(:user1) { create(:user, name: "User 1") }
   let!(:user2) { create(:user, name: "User 2") }
@@ -49,6 +45,7 @@ RSpec.describe "Website Files API", type: :request do
 
       response '200', 'files created successfully' do
         schema APISchemas::WebsiteFile.write_response
+        let(:id) { website1_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -60,6 +57,15 @@ RSpec.describe "Website Files API", type: :request do
               { path: "/styles.css", content: "body { color: red; }" }
             ]
           }
+        end
+
+        before do
+          Embeddable.generate_in_test = true
+          allow(EmbeddingService).to receive(:generate).and_return(fake_embedding)
+        end
+
+        after do
+          Embeddable.generate_in_test = false
         end
 
         run_test! do |response|
@@ -75,6 +81,7 @@ RSpec.describe "Website Files API", type: :request do
 
       response '200', 'files updated when path already exists' do
         schema APISchemas::WebsiteFile.write_response
+        let(:id) { website1_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -100,6 +107,7 @@ RSpec.describe "Website Files API", type: :request do
 
       response '200', 'creates new and updates existing files in same request' do
         schema APISchemas::WebsiteFile.write_response
+        let(:id) { website1_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -126,6 +134,7 @@ RSpec.describe "Website Files API", type: :request do
 
       response '200', 'files created in team account after switching' do
         schema APISchemas::WebsiteFile.write_response
+        let(:id) { website1_team.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -150,6 +159,7 @@ RSpec.describe "Website Files API", type: :request do
       end
 
       response '404', 'website not found in current account' do
+        let(:id) { website1_team.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -169,6 +179,7 @@ RSpec.describe "Website Files API", type: :request do
       end
 
       response '404', 'cannot access other users website' do
+        let(:id) { website2_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -190,6 +201,7 @@ RSpec.describe "Website Files API", type: :request do
       end
 
       response '401', 'unauthorized - missing token' do
+        let(:id) { website1_owned.id }
         let(:Authorization) { nil }
         let(:thread_id) { "thread-123" }
         let(:files_params) do
@@ -206,6 +218,7 @@ RSpec.describe "Website Files API", type: :request do
       end
 
       response '422', 'invalid request - files must be array' do
+        let(:id) { website1_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -223,6 +236,7 @@ RSpec.describe "Website Files API", type: :request do
       end
 
       response '422', 'invalid request - missing path or content' do
+        let(:id) { website1_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -263,6 +277,7 @@ RSpec.describe "Website Files API", type: :request do
 
       response '200', 'file edited successfully' do
         schema APISchemas::WebsiteFile.edit_response
+        let(:id) { website1_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -288,6 +303,7 @@ RSpec.describe "Website Files API", type: :request do
 
       response '200', 'replaces all occurrences when replace_all is true' do
         schema APISchemas::WebsiteFile.edit_response
+        let(:id) { website1_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -310,6 +326,7 @@ RSpec.describe "Website Files API", type: :request do
       end
 
       response '422', 'fails when multiple occurrences without replace_all' do
+        let(:id) { website1_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -330,6 +347,7 @@ RSpec.describe "Website Files API", type: :request do
       end
 
       response '422', 'fails when string not found' do
+        let(:id) { website1_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -350,6 +368,7 @@ RSpec.describe "Website Files API", type: :request do
       end
 
       response '404', 'file not found' do
+        let(:id) { website1_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -369,6 +388,7 @@ RSpec.describe "Website Files API", type: :request do
       end
 
       response '404', 'website not found' do
+        let(:id) { 999999 }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
@@ -388,6 +408,7 @@ RSpec.describe "Website Files API", type: :request do
       end
 
       response '422', 'missing required params' do
+        let(:id) { website1_owned.id }
         let(:Authorization) { auth_headers_for(user1)['Authorization'] }
         let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
         let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }

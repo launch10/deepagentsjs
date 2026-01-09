@@ -78,7 +78,7 @@ describe('Component, Task, and WebsiteFiles Factories', () => {
   });
 
   describe('Task Factory', () => {
-    it.only('creates a basic task', async () => {
+    it('creates a basic task', async () => {
       const task = await taskFactory.create({
         title: 'Create landing page',
         type: 'CodeTask',

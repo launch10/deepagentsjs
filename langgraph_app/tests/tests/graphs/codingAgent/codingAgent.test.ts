@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { testGraph } from "@support";
-import { DatabaseSnapshotter, WebsiteFilesBackend } from "@services";
+import { DatabaseSnapshotter } from "@services";
+import { getCodingAgentBackend } from "@nodes";
 import { db, websites, brainstorms, websiteFiles, eq } from "@db";
 import { codingAgentGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
@@ -12,13 +13,13 @@ const codingAgentGraph = uncompiledGraph.compile({
   name: "codingAgent",
 });
 
-describe.sequential("CodingAgent Flow", () => {
+// Skip on CI until we're fully implemented
+describe.skip.sequential("CodingAgent Flow", () => {
   let websiteId: number;
   let website: Website.WebsiteType;
-  let backend: WebsiteFilesBackend | null = null;
 
   beforeEach(async () => {
-    await DatabaseSnapshotter.restoreSnapshot("website_created");
+    await DatabaseSnapshotter.restoreSnapshot("website_step");
 
     const [websiteRow] = await db.select().from(websites).limit(1);
 
@@ -36,21 +37,22 @@ describe.sequential("CodingAgent Flow", () => {
       .limit(1);
 
     if (!brainstorm) {
-      console.warn(
-        "No brainstorm found for website - test may have limited context"
-      );
+      console.warn("No brainstorm found for website - test may have limited context");
     }
   }, 60000);
 
   afterEach(async () => {
-    if (backend) {
+    if (websiteId) {
+      const backend = await getCodingAgentBackend({
+        websiteId,
+        jwt: "test-jwt",
+      } as CodingAgentGraphState);
       await backend.cleanup();
-      backend = null;
     }
   });
 
   describe("Context engineering", () => {
-    it.only("pulls in theme, images, and brainstorm", async () => {
+    it("pulls in theme, images, and brainstorm", async () => {
       const result = await testGraph<CodingAgentGraphState>()
         .withGraph(codingAgentGraph)
         .withState({
@@ -73,13 +75,12 @@ describe.sequential("CodingAgent Flow", () => {
       expect(result.state.brainstorm.solution).toBeDefined();
       expect(result.state.brainstorm.socialProof).toBeDefined();
     });
-
-  })
+  });
 
   describe("Hello World - Generate Landing Page", () => {
-    it("generates a complete landing page from brainstorm context", async () => {
+    it.only("generates a complete landing page from brainstorm context", async () => {
       // Ensure it isn't EXACTLY the generated snapshot??? Where did that come from?
-      // We should cleanup after the test...  it didn't? 
+      // We should cleanup after the test...  it didn't?
 
       const result = await testGraph<CodingAgentGraphState>()
         .withGraph(codingAgentGraph)

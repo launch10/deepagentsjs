@@ -6,10 +6,10 @@ import { getLLM, getLLMFallbacks } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { copywriterSubAgent, coderSubAgent } from "../subagents";
 import { checkpointer } from "@core";
-import { 
-  toolRetryMiddleware, 
-  modelFallbackMiddleware as modelFallbackMiddlewareBuilder, 
-  type AgentMiddleware
+import {
+  toolRetryMiddleware,
+  modelFallbackMiddleware as modelFallbackMiddlewareBuilder,
+  type AgentMiddleware,
 } from "langchain";
 
 const CODING_AGENT_SYSTEM_PROMPT = `You are an expert landing page developer. You create high-converting landing pages that drive pre-sales signups.
@@ -82,19 +82,18 @@ Available CSS classes:
 
 Start by exploring the existing template structure with ls and glob, then create the landing page sections.`;
 
-
 const getMiddlewares = (): AgentMiddleware[] => {
-  const fallbacks = getLLMFallbacks("coding", "slow", "paid")
-  const modelFallbackMiddleware  = modelFallbackMiddlewareBuilder(...fallbacks)
+  const fallbacks = getLLMFallbacks("coding", "slow", "paid");
+  const modelFallbackMiddleware = modelFallbackMiddlewareBuilder(...fallbacks);
   // const summarizationMiddleware = summarizationMiddlewareBuilder({
   //   model: getLLM("summarization", "fast", "paid"),
   //   trigger: { fraction: 0.7 },
   //   keep: { messages: 15 },
   // })
-  return [toolRetryMiddleware(), modelFallbackMiddleware]
-}
+  return [toolRetryMiddleware(), modelFallbackMiddleware];
+};
 
-export const getBackend = async (state: CodingAgentGraphState) => {
+export const getCodingAgentBackend = async (state: CodingAgentGraphState) => {
   if (!state.websiteId || !state.jwt) {
     throw new Error("websiteId and jwt are required");
   }
@@ -118,14 +117,12 @@ export const getBackend = async (state: CodingAgentGraphState) => {
   });
 
   return backend;
-}
+};
 
-export function createCodingAgent(
-  state: CodingAgentGraphState,
-) {
-  const backend = getBackend(state);
+export function createCodingAgent(state: CodingAgentGraphState) {
+  const backend = getCodingAgentBackend(state);
   const llm = getLLM("coding", "slow", "paid");
-  const middlewares = getMiddlewares()
+  const middlewares = getMiddlewares();
 
   return createDeepAgent({
     model: llm as any,
