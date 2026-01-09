@@ -1273,13 +1273,11 @@ export interface paths {
                         };
                         /** @description LangGraph thread ID for callback resumption */
                         thread_id: string;
-                        /** @description URL to receive webhook callback when job completes */
-                        callback_url: string;
                     };
                 };
             };
             responses: {
-                /** @description job run created successfully */
+                /** @description filters unpermitted arguments */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -1315,7 +1313,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description missing job_class */
+                /** @description does not enqueue job when job_run creation fails */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -2532,6 +2530,206 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/websites/{id}/files/write": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Website ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates or updates website files in bulk */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Website ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Array of files to create or update */
+                        files: {
+                            /** @description File path within the website */
+                            path: string;
+                            /** @description File content */
+                            content: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description files created in team account after switching */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Array of created/updated files */
+                            files: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Unique identifier */
+                                website_id: number;
+                                /** @description File path within the website */
+                                path: string;
+                                /** @description File content */
+                                content: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                updated_at: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot access other users website */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid request - missing path or content */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/websites/{id}/files/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Website ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edits a website file by replacing string occurrences */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Website ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description File path within the website */
+                        path: string;
+                        /** @description String to find and replace */
+                        old_string: string;
+                        /** @description Replacement string */
+                        new_string: string;
+                        /**
+                         * @description Replace all occurrences (default: false)
+                         * @default false
+                         */
+                        replace_all?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description replaces all occurrences when replace_all is true */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            file: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Unique identifier */
+                                website_id: number;
+                                /** @description File path within the website */
+                                path: string;
+                                /** @description File content */
+                                content: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                updated_at: string;
+                            };
+                            /** @description Number of replacements made */
+                            occurrences: number;
+                        };
+                    };
+                };
+                /** @description website not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description missing required params */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/website_urls": {

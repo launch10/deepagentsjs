@@ -2496,7 +2496,6 @@ CREATE TABLE public.job_runs (
     updated_at timestamp(6) without time zone NOT NULL,
     account_id bigint,
     langgraph_thread_id character varying,
-    langgraph_callback_url character varying,
     result_data jsonb DEFAULT '{}'::jsonb
 );
 

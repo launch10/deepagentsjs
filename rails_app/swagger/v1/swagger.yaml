@@ -1572,7 +1572,7 @@ paths:
             type: string
       responses:
         "201":
-          description: job run created successfully
+          description: filters unpermitted arguments
           content:
             application/json:
               schema:
@@ -1593,7 +1593,7 @@ paths:
                   - id
                   - status
         "422":
-          description: missing job_class
+          description: does not enqueue job when job_run creation fails
           content:
             application/json:
               schema:
@@ -2956,6 +2956,209 @@ paths:
           description: upload deleted successfully
         "404":
           description: cannot delete upload owned by another account
+  "/api/v1/websites/{id}/files/write":
+    parameters:
+      - name: id
+        in: path
+        description: Website ID
+        required: true
+        schema:
+          type: number
+    post:
+      summary: Creates or updates website files in bulk
+      tags:
+        - Website Files
+      security:
+        - bearer_auth: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: files created in team account after switching
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        website_id:
+                          type: integer
+                          description: Unique identifier
+                        path:
+                          type: string
+                          description: File path within the website
+                        content:
+                          type: string
+                          description: File content
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Timestamp
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Timestamp
+                      required:
+                        - id
+                        - website_id
+                        - path
+                        - content
+                        - created_at
+                        - updated_at
+                    description: Array of created/updated files
+                required:
+                  - files
+        "404":
+          description: cannot access other users website
+        "401":
+          description: unauthorized - missing token
+        "422":
+          description: invalid request - missing path or content
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      path:
+                        type: string
+                        description: File path within the website
+                      content:
+                        type: string
+                        description: File content
+                    required:
+                      - path
+                      - content
+                  description: Array of files to create or update
+              required:
+                - files
+  "/api/v1/websites/{id}/files/edit":
+    parameters:
+      - name: id
+        in: path
+        description: Website ID
+        required: true
+        schema:
+          type: number
+    patch:
+      summary: Edits a website file by replacing string occurrences
+      tags:
+        - Website Files
+      security:
+        - bearer_auth: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: replaces all occurrences when replace_all is true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  file:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        description: Unique identifier
+                      website_id:
+                        type: integer
+                        description: Unique identifier
+                      path:
+                        type: string
+                        description: File path within the website
+                      content:
+                        type: string
+                        description: File content
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Timestamp
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Timestamp
+                    required:
+                      - id
+                      - website_id
+                      - path
+                      - content
+                      - created_at
+                      - updated_at
+                  occurrences:
+                    type: integer
+                    description: Number of replacements made
+                required:
+                  - file
+                  - occurrences
+        "422":
+          description: missing required params
+        "404":
+          description: website not found
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                  description: File path within the website
+                old_string:
+                  type: string
+                  description: String to find and replace
+                new_string:
+                  type: string
+                  description: Replacement string
+                replace_all:
+                  type: boolean
+                  description: "Replace all occurrences (default: false)"
+                  default: false
+              required:
+                - path
+                - old_string
+                - new_string
   "/api/v1/website_urls":
     post:
       summary: Creates a website URL

@@ -2,7 +2,6 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { LaunchGraphState } from "@annotation";
 import { JobRunAPIService } from "@services";
 import { NodeMiddleware } from "@middleware";
-import { env } from "@core";
 import { createChecklistTask, findChecklistTask, updateChecklistTask } from "@types";
 
 const TASK_NAME = "CampaignDeploy";
@@ -65,14 +64,13 @@ export const deployCampaignNode = NodeMiddleware.use(
       throw new Error("Campaign ID is required");
     }
 
-    const callbackUrl = `${env.LANGGRAPH_API_URL}/webhooks/job_run_callback`;
     const jobRunApi = new JobRunAPIService({ jwt: state.jwt });
 
+    // Note: callback URL is auto-constructed by Rails from LANGGRAPH_API_URL (SSRF prevention)
     const jobRun = await jobRunApi.create({
       jobClass: "CampaignDeploy",
       arguments: { campaign_id: state.campaignId },
       threadId: state.threadId,
-      callbackUrl,
     });
 
     return {

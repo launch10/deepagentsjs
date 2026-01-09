@@ -1,6 +1,6 @@
 class API::V1::WebsiteFilesController < API::BaseController
   def edit
-    website = current_account.websites.find_by(thread_id: params[:thread_id])
+    website = current_account.websites.find_by(id: params[:website_id])
     unless website
       render json: {errors: ["Website not found"]}, status: :not_found and return
     end
@@ -47,7 +47,7 @@ class API::V1::WebsiteFilesController < API::BaseController
   end
 
   def write
-    website = current_account.websites.find_by(thread_id: params[:thread_id])
+    website = current_account.websites.find_by(id: params[:website_id])
     unless website
       render json: {errors: ["Website not found"]}, status: :not_found and return
     end

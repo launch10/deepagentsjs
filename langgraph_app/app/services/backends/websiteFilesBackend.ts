@@ -14,13 +14,11 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { snakeCase } from "lodash";
 import micromatch from "micromatch";
-import { WebsiteFilesAPIService } from "@services";
-
+import { WebsiteFilesAPIService } from "@rails_api";
 export interface CreateBackendParams {
   website: Website.WebsiteType;
   jwt: string;
 }
-
 export class WebsiteFilesBackend implements BackendProtocol {
   private fs: FilesystemBackend;
   private website: Website.WebsiteType;
@@ -44,9 +42,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
     return `agents/websites/${this.website.accountId}/${name}`;
   }
 
-  static async create(
-    params: CreateBackendParams,
-  ): Promise<WebsiteFilesBackend> {
+  static async create(params: CreateBackendParams): Promise<WebsiteFilesBackend> {
     const backend = new WebsiteFilesBackend(params);
     await backend.hydrate();
     return backend;
@@ -91,11 +87,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
     return this.fs.lsInfo(path);
   }
 
-  async read(
-    filePath: string,
-    offset: number = 0,
-    limit: number = 2000
-  ): Promise<string> {
+  async read(filePath: string, offset: number = 0, limit: number = 2000): Promise<string> {
     return this.fs.read(filePath, offset, limit);
   }
 
@@ -120,9 +112,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
         .select({
           path: codeFiles.path,
           content: codeFiles.content,
-          rank: sql<number>`ts_rank(content_tsv, to_tsquery('english', ${tsQuery}))`.as(
-            "rank"
-          ),
+          rank: sql<number>`ts_rank(content_tsv, to_tsquery('english', ${tsQuery}))`.as("rank"),
         })
         .from(codeFiles)
         .where(
@@ -138,9 +128,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
       for (const result of results) {
         if (!result.content || !result.path) continue;
 
-        const pathWithSlash = result.path.startsWith("/")
-          ? result.path
-          : `/${result.path}`;
+        const pathWithSlash = result.path.startsWith("/") ? result.path : `/${result.path}`;
 
         if (pathPrefix !== "/" && !pathWithSlash.startsWith(pathPrefix)) {
           continue;
@@ -191,7 +179,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
       id: this.getWebsiteId(),
       files: [{ path: filePath, content }],
     });
-    
+
     return { path: filePath, filesUpdate: null };
   }
 
@@ -203,7 +191,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
   ): Promise<EditResult> {
     const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
     if (fsResult.error) return fsResult;
-    
+
     const service = new WebsiteFilesAPIService({ jwt: this.jwt });
     const result = await service.edit({
       id: this.getWebsiteId(),
@@ -212,7 +200,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
       newString,
       replaceAll,
     });
-    
+
     return {
       path: filePath,
       occurrences: fsResult.occurrences,

@@ -5,27 +5,25 @@ import { websiteFiles, websites, eq, and, db } from "@db";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { uniq } from "@utils";
+import type { FileInfo, GrepMatch } from "deepagents";
 
 describe("WebsiteFilesBackend", () => {
   let backend: WebsiteFilesBackend;
   let websiteId: number;
 
   beforeEach(async () => {
-    await DatabaseSnapshotter.restoreSnapshot("website_finished");
+    await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
 
-    const [website] = await db
-      .select()
-      .from(websites)
-      .limit(1);
+    const [website] = await db.select().from(websites).limit(1);
 
     if (!website || !website.name || website.name === null) {
       throw new Error("No website found in snapshot");
     }
     websiteId = website.id;
 
-    backend = await WebsiteFilesBackend.create({ 
+    backend = await WebsiteFilesBackend.create({
       website: website as Website.WebsiteType,
-      jwt: "test-jwt"
+      jwt: "test-jwt",
     });
   }, 30000);
 
@@ -43,10 +41,7 @@ describe("WebsiteFilesBackend", () => {
 
     it("hydrates files to filesystem from code_files view", async () => {
       const rootDir = backend.getRootDir();
-      const packageJson = await fs.readFile(
-        path.join(rootDir, "package.json"),
-        "utf-8"
-      );
+      const packageJson = await fs.readFile(path.join(rootDir, "package.json"), "utf-8");
       expect(packageJson).toContain("name");
     });
   });
@@ -55,14 +50,16 @@ describe("WebsiteFilesBackend", () => {
     it("lists files in root directory", async () => {
       const files = await backend.lsInfo("/");
       expect(files.length).toBeGreaterThan(0);
-      expect(files.some((f) => f.path.includes("src") || f.path.includes("package"))).toBe(true);
+      expect(
+        files.some((f: FileInfo) => f.path.includes("src") || f.path.includes("package"))
+      ).toBe(true);
     });
 
     it("lists files in a subdirectory", async () => {
       const files = await backend.lsInfo("/src");
-      const paths = files.map((f) => f.path);
-      expect(paths.some((p) => p.includes("src/App.tsx"))).toBe(true);
-      expect(paths.some((p) => p.includes("src/components"))).toBe(true);
+      const paths = files.map((f: FileInfo) => f.path);
+      expect(paths.some((p: string) => p.includes("src/App.tsx"))).toBe(true);
+      expect(paths.some((p: string) => p.includes("src/components"))).toBe(true);
       expect(files.length).toBeGreaterThan(0);
     });
   });
@@ -92,7 +89,7 @@ describe("WebsiteFilesBackend", () => {
     it("finds TypeScript files", async () => {
       const files = await backend.globInfo("**/*.tsx");
       expect(files.length).toBeGreaterThan(0);
-      expect(files.every((f) => f.path.endsWith(".tsx"))).toBe(true);
+      expect(files.every((f: FileInfo) => f.path.endsWith(".tsx"))).toBe(true);
     });
 
     it("finds files with specific pattern", async () => {
@@ -119,7 +116,7 @@ describe("WebsiteFilesBackend", () => {
       if (typeof results === "string") return;
 
       if (results.length > 0) {
-        expect(results.every((r) => r.path.startsWith("/src"))).toBe(true);
+        expect(results.every((r: GrepMatch) => r.path.startsWith("/src"))).toBe(true);
       }
     });
 
@@ -129,7 +126,7 @@ describe("WebsiteFilesBackend", () => {
       if (typeof results === "string") return;
 
       expect(results.length).toBeGreaterThan(0);
-      expect(results.every((r) => r.path.endsWith(".tsx"))).toBe(true);
+      expect(results.every((r: GrepMatch) => r.path.endsWith(".tsx"))).toBe(true);
     });
 
     it("filters by glob pattern for specific directory", async () => {
@@ -138,7 +135,7 @@ describe("WebsiteFilesBackend", () => {
       if (typeof results === "string") return;
 
       if (results.length > 0) {
-        expect(results.every((r) => r.path.includes("/components/"))).toBe(true);
+        expect(results.every((r: GrepMatch) => r.path.includes("/components/"))).toBe(true);
       }
     });
 
@@ -148,7 +145,9 @@ describe("WebsiteFilesBackend", () => {
       if (typeof results === "string") return;
 
       if (results.length > 0) {
-        expect(results.every((r) => r.path.startsWith("/src") && r.path.endsWith(".tsx"))).toBe(true);
+        expect(
+          results.every((r: GrepMatch) => r.path.startsWith("/src") && r.path.endsWith(".tsx"))
+        ).toBe(true);
       }
     });
 
@@ -186,10 +185,7 @@ describe("WebsiteFilesBackend", () => {
         .select()
         .from(websiteFiles)
         .where(
-          and(
-            eq(websiteFiles.websiteId, websiteId),
-            eq(websiteFiles.path, "src/test-file.ts")
-          )
+          and(eq(websiteFiles.websiteId, websiteId), eq(websiteFiles.path, "src/test-file.ts"))
         );
 
       expect(dbFiles.length).toBe(1);
@@ -217,10 +213,7 @@ describe("WebsiteFilesBackend", () => {
         .select()
         .from(websiteFiles)
         .where(
-          and(
-            eq(websiteFiles.websiteId, websiteId),
-            eq(websiteFiles.path, "src/update-test.ts")
-          )
+          and(eq(websiteFiles.websiteId, websiteId), eq(websiteFiles.path, "src/update-test.ts"))
         );
 
       expect(dbFiles.length).toBe(1);
@@ -249,10 +242,7 @@ describe("WebsiteFilesBackend", () => {
         .select()
         .from(websiteFiles)
         .where(
-          and(
-            eq(websiteFiles.websiteId, websiteId),
-            eq(websiteFiles.path, "src/edit-test.ts")
-          )
+          and(eq(websiteFiles.websiteId, websiteId), eq(websiteFiles.path, "src/edit-test.ts"))
         );
 
       expect(dbFiles[0]?.content).toBe('const greeting = "world";');

@@ -119,9 +119,17 @@ describe("Usage-Based LLM Filtering", () => {
     it("filters models correctly at exact threshold boundaries", () => {
       // At exactly 80%, Opus should still be available (usage < threshold)
       const fallbacksAt80 = getLLMFallbacks("coding", "slow", "paid", 80);
+      console.log(
+        "fallbacksAt80",
+        fallbacksAt80.map((m) => (m as any).modelName)
+      );
 
       // At 80.1%, Opus should be excluded (usage >= threshold)
       const fallbacksAbove80 = getLLMFallbacks("coding", "slow", "paid", 80.1);
+      console.log(
+        "fallbacksAbove80",
+        fallbacksAbove80.map((m) => (m as any).modelName)
+      );
 
       // Should have one less model after crossing the threshold
       expect(fallbacksAbove80.length).toBeLessThan(fallbacksAt80.length);

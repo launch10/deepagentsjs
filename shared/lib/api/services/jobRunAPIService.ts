@@ -24,7 +24,6 @@ export interface SimpleCreateJobRunParams {
   jobClass: CreateJobRunRequest["job_class"];
   arguments: Record<string, unknown>;
   threadId: string;
-  callbackUrl: string;
 }
 
 // ============================================================================
@@ -53,7 +52,6 @@ export class JobRunAPIService extends RailsAPIBase {
             job_class: options.jobClass,
             arguments: options.arguments,
             thread_id: options.threadId,
-            callback_url: options.callbackUrl,
           };
 
     const response = await client.POST("/api/v1/job_runs", {

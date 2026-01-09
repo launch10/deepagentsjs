@@ -1,5 +1,4 @@
-import { RailsAPIBase, type paths } from "@rails_api";
-import type { ThreadIDType } from "@types";
+import { RailsAPIBase, type paths } from "../index";
 import type { Simplify } from "type-fest";
 
 export type WriteFilesRequest = NonNullable<

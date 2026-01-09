@@ -173,7 +173,7 @@ export class LLMManagerFactory {
     // Filter configs that are within usage threshold (maxUsagePercent defaults to 100)
     return configs.filter((config) => {
       const maxUsage = config.maxUsagePercent ?? 100;
-      return usagePercent < maxUsage;
+      return usagePercent <= maxUsage;
     });
   }
 
