@@ -82,10 +82,7 @@ class JobRun < ApplicationRecord
     LanggraphCallbackWorker.perform_async(id, callback_payload(status, result, error))
   end
 
-  # Derive callback URL from config - never stored in DB (SSRF prevention)
   def langgraph_callback_url
-    return nil unless langgraph_thread_id.present?
-
     base_url = ENV["LANGGRAPH_API_URL"]
     return nil if base_url.blank?
 
@@ -105,10 +102,6 @@ class JobRun < ApplicationRecord
   def duration
     return nil unless started_at && completed_at
     completed_at - started_at
-  end
-
-  def langgraph_callback_url
-    "#{ENV.fetch("LANGGRAPH_API_URL")}/webhooks/job_run_callback"
   end
 
   private

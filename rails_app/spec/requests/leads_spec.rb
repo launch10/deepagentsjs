@@ -14,7 +14,7 @@ RSpec.describe "Leads API", type: :request do
   # 4. CORS configured to allow all origins, but ONLY for this endpoint
   # 5. No cookies/credentials sent (credentials: false in CORS config)
   #
-  # The signed_id token is embedded in deployed landing pages at build time
+  # The signup_token token is embedded in deployed landing pages at build time
   # via the VITE_SIGNUP_TOKEN environment variable.
   # ==========================================================================
 
@@ -29,13 +29,13 @@ RSpec.describe "Leads API", type: :request do
   let!(:account) { user.owned_account }
   let!(:project) { create(:project, account: account, name: "Test Landing Page") }
 
-  # Generate a valid signed_id token for the project
-  let(:valid_token) { project.signed_id(purpose: :lead_signup) }
+  # Generate a valid signup_token token for the project
+  let(:valid_token) { project.signup_token }
 
   # Create a second project to test token isolation
   let!(:other_account) { create(:account, name: "Other Account") }
   let!(:other_project) { create(:project, account: other_account, name: "Other Project") }
-  let(:other_token) { other_project.signed_id(purpose: :lead_signup) }
+  let(:other_token) { other_project.signup_token }
 
   path '/api/v1/leads' do
     post 'Creates a lead signup from a deployed landing page' do
@@ -47,7 +47,7 @@ RSpec.describe "Leads API", type: :request do
 
         **Authentication:**
         - Token passed as query parameter `token`
-        - Token is a Rails signed_id generated from the project
+        - Token is a Rails signup_token generated from the project
         - Token is purpose-scoped to :lead_signup
 
         **Idempotency:**
@@ -249,7 +249,7 @@ RSpec.describe "Leads API", type: :request do
         schema APISchemas::Lead.auth_error_response
 
         let!(:deleted_project) { create(:project, account: account, name: "To Be Deleted") }
-        let(:token) { deleted_project.signed_id(purpose: :lead_signup) }
+        let(:token) { deleted_project.signup_token }
         let(:lead_params) { { email: 'test@example.com' } }
 
         before do

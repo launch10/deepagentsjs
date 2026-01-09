@@ -94,6 +94,12 @@ class Project < ApplicationRecord
     Launchy.open(url)
   end
 
+  # Generate a signed token for lead capture authentication.
+  # Uses Rails signed_id for stateless, tamper-proof authentication.
+  def signup_token
+    signed_id(purpose: :lead_signup)
+  end
+
   private
 
   def set_uuid
