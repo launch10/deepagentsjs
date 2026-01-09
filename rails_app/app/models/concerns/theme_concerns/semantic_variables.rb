@@ -135,7 +135,7 @@ module ThemeConcerns
           popover: background[:hex],
           destructive: find_by_hue(analyzed, 345..15) || derive_status_color(primary, :destructive),
           warning: find_by_hue(analyzed, 35..55) || derive_status_color(primary, :warning),
-          success: find_by_hue(analyzed, 100..160) || derive_status_color(primary, :success)
+          success: find_by_hue(analyzed, 100..170) || derive_status_color(primary, :success)
         }
       end
 
@@ -152,11 +152,11 @@ module ThemeConcerns
         # Ensure derived color has 4.5:1+ contrast with its foreground
         # Avoid the "middle zone" (45-55%) where neither foreground has great contrast
         lightness = if initial_lightness > 0.45 && initial_lightness < 0.55
-                      # Push to darker side for better contrast with light foreground
-                      0.42
-                    else
-                      initial_lightness
-                    end
+          # Push to darker side for better contrast with light foreground
+          0.42
+        else
+          initial_lightness
+        end
 
         derived = Chroma.paint("hsl(#{target_hue}, #{saturation * 100}%, #{lightness * 100}%)")
         derived.to_hex.delete("#").upcase
@@ -175,6 +175,7 @@ module ThemeConcerns
           hex: hex,
           luminance: WCAGColorContrast.relative_luminance(hex),
           saturation: color.hsl.s,
+          lightness: color.hsl.l,
           hue: color.hsl.h
         }
       rescue
@@ -224,8 +225,15 @@ module ThemeConcerns
         background[:hex] # Fallback to background itself
       end
 
+      # Find a color by hue range that's also suitable for status colors
+      # (not too light, not too dark, sufficiently saturated)
       def find_by_hue(colors, range)
-        colors.find { |c| hue_in_range?(c[:hue], range) }&.dig(:hex)
+        colors.find do |c|
+          hue_in_range?(c[:hue], range) &&
+            c[:saturation] >= MIN_STATUS_SATURATION &&
+            c[:lightness] >= MIN_STATUS_LIGHTNESS &&
+            c[:lightness] <= MAX_STATUS_LIGHTNESS
+        end&.dig(:hex)
       end
 
       def hue_in_range?(hue, range)

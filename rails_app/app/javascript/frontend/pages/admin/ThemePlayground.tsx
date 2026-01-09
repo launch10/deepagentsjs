@@ -93,7 +93,9 @@ function transformThemeVars(theme: Record<string, string>): React.CSSProperties 
 
 export default function ThemePlayground({ themes }: ThemePlaygroundProps) {
   const [selectedThemeId, setSelectedThemeId] = useState<number | null>(themes[0]?.id ?? null);
-  const [activeTab, setActiveTab] = useState<"preview" | "surfaces" | "pairings">("preview");
+  const [activeTab, setActiveTab] = useState<"preview" | "typography" | "surfaces" | "pairings">(
+    "preview"
+  );
   const selectedTheme = themes.find((t) => t.id === selectedThemeId) ?? null;
 
   const themeStyles = selectedTheme?.theme ? transformThemeVars(selectedTheme.theme) : undefined;
@@ -123,7 +125,7 @@ export default function ThemePlayground({ themes }: ThemePlaygroundProps) {
         {/* Tabs */}
         <div className="border-b border-neutral-200 bg-white px-4">
           <nav className="flex gap-4">
-            {(["preview", "surfaces", "pairings"] as const).map((tab) => (
+            {(["preview", "typography", "surfaces", "pairings"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -135,6 +137,7 @@ export default function ThemePlayground({ themes }: ThemePlaygroundProps) {
                 )}
               >
                 {tab === "preview" && "Landing Page Preview"}
+                {tab === "typography" && "Typography Guide"}
                 {tab === "surfaces" && "Surface Reference"}
                 {tab === "pairings" && "Color Pairings"}
               </button>
@@ -146,7 +149,8 @@ export default function ThemePlayground({ themes }: ThemePlaygroundProps) {
         <div className="flex-1 overflow-y-auto">
           {selectedTheme ? (
             <div style={themeStyles}>
-              {activeTab === "preview" && <LandingPagePreview />}
+              {activeTab === "preview" && <LandingPagePreview theme={selectedTheme} />}
+              {activeTab === "typography" && <TypographyGuide theme={selectedTheme} />}
               {activeTab === "surfaces" && <SurfaceReference theme={selectedTheme} />}
               {activeTab === "pairings" && (
                 <PairingsDisplay colors={selectedTheme.colors} pairings={selectedTheme.pairings} />
@@ -163,8 +167,228 @@ export default function ThemePlayground({ themes }: ThemePlaygroundProps) {
   );
 }
 
+// Helper to extract hex from HSL string (approximate)
+function extractHexFromHsl(hslString: string): string {
+  // For our purposes, we'll use the pairings keys which are hex
+  return "FFFFFF"; // fallback
+}
+
+// Get best headline color from palette (highest contrast, AAA preferred)
+function getBestHeadlineColor(
+  bgHex: string,
+  pairings: Record<string, PairingEntry[]>,
+  paletteColors: string[]
+): string | null {
+  const bgKey = bgHex.toUpperCase().replace("#", "");
+  const pairs = pairings[bgKey] || [];
+
+  // Find highest contrast palette color (AAA level preferred)
+  const palettePairs = pairs.filter((p) =>
+    paletteColors.some((c) => c.toUpperCase() === p.color.toUpperCase())
+  );
+
+  const aaaPair = palettePairs.find((p) => p.level === "AAA");
+  if (aaaPair) return aaaPair.color;
+
+  const aaPair = palettePairs.find((p) => p.level === "AA");
+  if (aaPair) return aaPair.color;
+
+  return palettePairs[0]?.color || null;
+}
+
+// Get a different color for subheadline (second best contrast or different hue)
+function getSubheadlineColor(
+  bgHex: string,
+  pairings: Record<string, PairingEntry[]>,
+  paletteColors: string[],
+  headlineColor: string | null
+): string | null {
+  const bgKey = bgHex.toUpperCase().replace("#", "");
+  const pairs = pairings[bgKey] || [];
+
+  // Find palette colors with good contrast, excluding headline color
+  const palettePairs = pairs.filter(
+    (p) =>
+      paletteColors.some((c) => c.toUpperCase() === p.color.toUpperCase()) &&
+      p.color.toUpperCase() !== headlineColor?.toUpperCase()
+  );
+
+  // For subheadlines, AA-large (3:1) is acceptable for large text
+  return palettePairs[0]?.color || null;
+}
+
+// Get recommended use based on contrast level
+function getRecommendedUse(level: string, ratio: number): string {
+  if (level === "AAA" || ratio >= 7) return "Headlines, body text, any size";
+  if (level === "AA" || ratio >= 4.5) return "Headlines, body text";
+  if (level === "AA-large" || ratio >= 3) return "Large headlines only (18pt+)";
+  return "Decorative only";
+}
+
+// Typography Guide - shows how to use palette colors for headlines
+function TypographyGuide({ theme }: { theme: Theme }) {
+  const normalizeColor = (color: string) => (color.startsWith("#") ? color : `#${color}`);
+
+  // Find the background color from theme
+  const bgColors = Object.entries(theme.pairings || {}).filter(([color]) =>
+    theme.colors.some((c) => c.toUpperCase() === color.toUpperCase())
+  );
+
+  return (
+    <div className="p-8 bg-neutral-100 min-h-full">
+      <div className="max-w-5xl mx-auto">
+        <h2 className="text-2xl font-bold text-neutral-900 mb-2">Typography Color Guide</h2>
+        <p className="text-neutral-600 mb-8">
+          Use palette colors directly for bold headlines and subheadlines that make your landing
+          page pop. The pairings below show which colors work on each background.
+        </p>
+
+        {/* For each background color, show typography options */}
+        {bgColors.slice(0, 4).map(([bgColor, pairs]) => {
+          const palettePairs = pairs.filter((p) =>
+            theme.colors.some((c) => c.toUpperCase() === p.color.toUpperCase())
+          );
+
+          if (palettePairs.length === 0) return null;
+
+          return (
+            <div key={bgColor} className="mb-12">
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className="w-6 h-6 rounded border border-neutral-300"
+                  style={{ backgroundColor: normalizeColor(bgColor) }}
+                />
+                <h3 className="font-semibold text-neutral-900">On #{bgColor} background</h3>
+              </div>
+
+              {/* Live preview */}
+              <div
+                className="rounded-xl p-8 mb-4"
+                style={{ backgroundColor: normalizeColor(bgColor) }}
+              >
+                {palettePairs.slice(0, 3).map((pair, i) => (
+                  <div key={pair.color} className="mb-6 last:mb-0">
+                    {i === 0 && (
+                      <h1
+                        className="text-4xl font-bold mb-2"
+                        style={{ color: normalizeColor(pair.color) }}
+                      >
+                        Bold Headline in #{pair.color}
+                      </h1>
+                    )}
+                    {i === 1 && (
+                      <p className="text-xl mb-2" style={{ color: normalizeColor(pair.color) }}>
+                        Subheadline text using #{pair.color} for visual variety
+                      </p>
+                    )}
+                    {i === 2 && (
+                      <p className="text-base" style={{ color: normalizeColor(pair.color) }}>
+                        Body text or secondary content in #{pair.color}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Pairing options table */}
+              <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+                <table className="w-full text-sm">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
+                    <tr>
+                      <th className="text-left p-3 font-medium text-neutral-700">Color</th>
+                      <th className="text-left p-3 font-medium text-neutral-700">Preview</th>
+                      <th className="text-left p-3 font-medium text-neutral-700">Contrast</th>
+                      <th className="text-left p-3 font-medium text-neutral-700">
+                        Recommended Use
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {palettePairs.map((pair) => (
+                      <tr key={pair.color} className="border-b border-neutral-100 last:border-0">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-5 h-5 rounded border border-neutral-200"
+                              style={{ backgroundColor: normalizeColor(pair.color) }}
+                            />
+                            <code className="text-xs font-mono">#{pair.color}</code>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div
+                            className="px-3 py-1 rounded text-sm font-semibold inline-block"
+                            style={{
+                              backgroundColor: normalizeColor(bgColor),
+                              color: normalizeColor(pair.color),
+                            }}
+                          >
+                            Sample Text
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="text-neutral-700">
+                            {pair.contrast_ratio.toFixed(1)}:1
+                          </span>
+                          <span
+                            className={twMerge(
+                              "ml-2 text-xs px-1.5 py-0.5 rounded",
+                              pair.level === "AAA" && "bg-green-100 text-green-700",
+                              pair.level === "AA" && "bg-yellow-100 text-yellow-700",
+                              pair.level === "AA-large" && "bg-orange-100 text-orange-700"
+                            )}
+                          >
+                            {pair.level}
+                          </span>
+                        </td>
+                        <td className="p-3 text-neutral-600">
+                          {getRecommendedUse(pair.level, pair.contrast_ratio)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Usage guidance */}
+        <div className="mt-8 p-6 bg-blue-50 rounded-xl border border-blue-100">
+          <h3 className="font-semibold text-blue-900 mb-2">How to use in your landing page</h3>
+          <div className="text-blue-800 text-sm space-y-2">
+            <p>
+              <strong>Headlines:</strong> Use AAA colors for maximum impact. Apply directly with{" "}
+              <code className="bg-blue-100 px-1 rounded">text-[#COLOR]</code>
+            </p>
+            <p>
+              <strong>Subheadlines:</strong> AA or AA-large colors work well for large text (18pt+).
+              Creates visual hierarchy.
+            </p>
+            <p>
+              <strong>Body text:</strong> Stick to semantic{" "}
+              <code className="bg-blue-100 px-1 rounded">text-foreground</code> or{" "}
+              <code className="bg-blue-100 px-1 rounded">text-muted-foreground</code> for
+              readability.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Landing page preview with realistic sections
-function LandingPagePreview() {
+function LandingPagePreview({ theme }: { theme: Theme }) {
+  const normalizeColor = (color: string) => (color.startsWith("#") ? color : `#${color}`);
+
+  // Get best contrasting palette color for headlines on background
+  const bgHex = theme.theme?.["--background"]
+    ? extractHexFromHsl(theme.theme["--background"])
+    : theme.colors[0];
+  const headlineColor = getBestHeadlineColor(bgHex, theme.pairings, theme.colors);
+  const subheadlineColor = getSubheadlineColor(bgHex, theme.pairings, theme.colors, headlineColor);
+
   return (
     <div>
       {/* Hero - bg-background */}

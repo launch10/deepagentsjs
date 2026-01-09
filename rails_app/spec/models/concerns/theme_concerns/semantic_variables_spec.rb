@@ -245,7 +245,7 @@ RSpec.describe ThemeConcerns::SemanticVariables do
 
       it "creates a subdued but readable text color" do
         muted_fg = parse_hsl(result["--muted-foreground"])
-        fg = parse_hsl(result["--foreground"])
+        parse_hsl(result["--foreground"])
 
         # Muted foreground should be less extreme than regular foreground
         # (closer to middle lightness, but still readable - 25-75% range)

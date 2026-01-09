@@ -4,15 +4,16 @@
 #
 # Table name: themes
 #
-#  id         :bigint           not null, primary key
-#  colors     :jsonb
-#  name       :string           not null
-#  pairings   :jsonb
-#  theme      :jsonb
-#  theme_type :string           not null
-#  created_at :datetime         not null
-#  updated_at :datetime         not null
-#  author_id  :bigint
+#  id                         :bigint           not null, primary key
+#  colors                     :jsonb
+#  name                       :string           not null
+#  pairings                   :jsonb
+#  theme                      :jsonb
+#  theme_type                 :string           not null
+#  typography_recommendations :jsonb
+#  created_at                 :datetime         not null
+#  updated_at                 :datetime         not null
+#  author_id                  :bigint
 #
 # Indexes
 #
