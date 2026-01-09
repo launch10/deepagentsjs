@@ -2496,7 +2496,6 @@ CREATE TABLE public.job_runs (
     updated_at timestamp(6) without time zone NOT NULL,
     account_id bigint,
     langgraph_thread_id character varying,
-    langgraph_callback_url character varying,
     result_data jsonb DEFAULT '{}'::jsonb
 );
 
@@ -10258,7 +10257,10 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260109151006'),
+('20260109144621'),
 ('20260109140318'),
+('20260109132117'),
 ('20260108110952'),
 ('20260108105901'),
 ('20260107115249'),

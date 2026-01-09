@@ -19,9 +19,10 @@ module ThemeConcerns
     }.freeze
 
     # Guardrails for derived status colors to feel "colorful"
+    # Lightness bounds ensure 4.5:1+ contrast with black/white foreground
     MIN_STATUS_SATURATION = 0.45
-    MIN_STATUS_LIGHTNESS = 0.35
-    MAX_STATUS_LIGHTNESS = 0.55
+    MIN_STATUS_LIGHTNESS = 0.30  # Dark enough for light foreground contrast
+    MAX_STATUS_LIGHTNESS = 0.50  # Light enough for dark foreground contrast
 
     # Tinting configuration for on-theme muted and border colors
     MUTED_FOREGROUND_SATURATION = 10  # Subtle but visible tint
@@ -108,7 +109,7 @@ module ThemeConcerns
       # - Primary: most saturated with good contrast against background
       # - Secondary: second most saturated, different hue from primary
       # - Accent: third option, or derived from primary
-      # - Muted: lowest saturation (most neutral)
+      # - Muted: derived from background (tonally similar per shadcn convention)
 
       def assign_roles(colors)
         analyzed = colors.map { |hex| analyze_color(hex) }.compact
@@ -121,14 +122,15 @@ module ThemeConcerns
         primary = select_primary(sorted_by_saturation, background)
         secondary = select_secondary(analyzed, primary, background)
         accent = select_accent(analyzed, primary, secondary, background)
-        muted = sorted_by_saturation.last
+        # Muted should be tonally similar to background (shadcn convention)
+        muted = derive_muted_from_background(background)
 
         {
           background: background[:hex],
           primary: primary[:hex],
           secondary: secondary[:hex],
           accent: accent[:hex],
-          muted: muted[:hex],
+          muted: muted,
           card: background[:hex],
           popover: background[:hex],
           destructive: find_by_hue(analyzed, 345..15) || derive_status_color(primary, :destructive),
@@ -145,7 +147,16 @@ module ThemeConcerns
 
         # Use primary's saturation and lightness as baseline, with guardrails
         saturation = [primary_color.hsl.s, MIN_STATUS_SATURATION].max
-        lightness = primary_color.hsl.l.clamp(MIN_STATUS_LIGHTNESS, MAX_STATUS_LIGHTNESS)
+        initial_lightness = primary_color.hsl.l.clamp(MIN_STATUS_LIGHTNESS, MAX_STATUS_LIGHTNESS)
+
+        # Ensure derived color has 4.5:1+ contrast with its foreground
+        # Avoid the "middle zone" (45-55%) where neither foreground has great contrast
+        lightness = if initial_lightness > 0.45 && initial_lightness < 0.55
+                      # Push to darker side for better contrast with light foreground
+                      0.42
+                    else
+                      initial_lightness
+                    end
 
         derived = Chroma.paint("hsl(#{target_hue}, #{saturation * 100}%, #{lightness * 100}%)")
         derived.to_hex.delete("#").upcase
@@ -187,6 +198,32 @@ module ThemeConcerns
         candidates.first || secondary
       end
 
+      # Derive muted from background (shadcn convention: muted is tonally similar to background)
+      # Light backgrounds get a slightly darker/grayer muted; dark backgrounds get slightly lighter
+      def derive_muted_from_background(background)
+        bg_color = Chroma.paint("##{background[:hex]}")
+        bg_lightness = bg_color.hsl.l
+        bg_hue = bg_color.hsl.h
+        bg_saturation = bg_color.hsl.s
+
+        if bg_lightness > 0.5
+          # Light background: muted is slightly darker and desaturated
+          # Similar to shadcn's 240 4.8% 95.9% for light theme muted
+          muted_lightness = [bg_lightness - 0.05, 0.90].max
+          muted_saturation = [bg_saturation * 0.3, 0.05].max
+        else
+          # Dark background: muted is slightly lighter and desaturated
+          # Similar to shadcn's 217.2 32.6% 17.5% for dark theme muted
+          muted_lightness = [bg_lightness + 0.08, 0.25].min
+          muted_saturation = [bg_saturation * 0.5, 0.15].max
+        end
+
+        muted_color = Chroma.paint("hsl(#{bg_hue}, #{muted_saturation * 100}%, #{muted_lightness * 100}%)")
+        muted_color.to_hex.delete("#").upcase
+      rescue
+        background[:hex] # Fallback to background itself
+      end
+
       def find_by_hue(colors, range)
         colors.find { |c| hue_in_range?(c[:hue], range) }&.dig(:hex)
       end
@@ -221,36 +258,57 @@ module ThemeConcerns
       end
 
       # === Variable Generation ===
+      # Generates CSS variables following shadcn/ui naming conventions:
+      # - --background / --foreground (main page)
+      # - --muted-foreground (subdued text, works on background AND muted)
+      # - --{role} / --{role}-foreground for each semantic role
 
       def generate_variables(roles)
         vars = {}
         primary_hue = extract_hue(roles[:primary])
         background_hue = extract_hue(roles[:background])
 
-        # Background and foreground
+        # Background and foreground (shadcn convention: --foreground, not --background-foreground)
         vars["--background"] = to_hsl(roles[:background])
-        vars["--background-foreground"] = contrasting_foreground(roles[:background])
-        vars["--background-foreground-muted"] = tinted_muted_foreground(roles[:background], primary_hue)
+        vars["--foreground"] = contrasting_foreground(roles[:background])
 
-        # Semantic roles
-        %i[primary secondary accent muted card popover destructive warning success].each do |role|
+        # Muted foreground - subdued text that works on BOTH --background AND --muted
+        # This is the shadcn convention: --muted-foreground is a global subdued text color
+        vars["--muted-foreground"] = muted_foreground_color(roles[:background], roles[:muted], primary_hue)
+
+        # Semantic surface roles - each has bg + fg
+        %i[primary secondary accent card popover destructive warning success].each do |role|
           hex = roles[role]
           vars["--#{role}"] = to_hsl(hex)
           vars["--#{role}-foreground"] = contrasting_foreground(hex)
-          vars["--#{role}-foreground-muted"] = tinted_muted_foreground(hex, primary_hue)
         end
+
+        # Muted surface (background uses --muted-foreground for text per shadcn)
+        vars["--muted"] = to_hsl(roles[:muted])
 
         # UI elements - tinted with background's hue
         vars["--border"] = derive_tinted_border(roles[:background], background_hue)
         vars["--input"] = vars["--border"]
         vars["--ring"] = vars["--primary"]
 
-        # Neutrals - tinted with background's hue
-        vars["--neutral-1"] = "hsl(#{background_hue}, 6%, 94%)"
-        vars["--neutral-2"] = "hsl(#{background_hue}, 4%, 89%)"
-        vars["--neutral-3"] = "hsl(#{background_hue}, 3%, 85%)"
-
         vars
+      end
+
+      # Create a muted foreground that has sufficient contrast with --background.
+      # Per shadcn convention, --muted-foreground is subdued text used on background surfaces.
+      # We prioritize contrast with --background since that's the primary use case.
+      def muted_foreground_color(background_hex, _muted_hex, primary_hue)
+        bg_luminance = WCAGColorContrast.relative_luminance(background_hex)
+
+        # Create muted foreground with AA contrast against background
+        # Light backgrounds get dark muted text, dark backgrounds get light muted text
+        if bg_luminance > 0.179
+          # Light background: use dark-ish gray (28% lightness gives ~5:1 on light backgrounds)
+          "hsl(#{primary_hue}, 5%, 28%)"
+        else
+          # Dark background: use light-ish gray (75% lightness gives ~5:1 on dark backgrounds)
+          "hsl(#{primary_hue}, 5%, 75%)"
+        end
       end
 
       def extract_hue(hex)
@@ -270,7 +328,7 @@ module ThemeConcerns
       # This ensures muted text feels "on theme" rather than using generic gray.
       def tinted_muted_foreground(background_hex, primary_hue)
         luminance = WCAGColorContrast.relative_luminance(background_hex)
-        lightness = luminance > 0.179 ? MUTED_LIGHT_BG_LIGHTNESS : MUTED_DARK_BG_LIGHTNESS
+        lightness = (luminance > 0.179) ? MUTED_LIGHT_BG_LIGHTNESS : MUTED_DARK_BG_LIGHTNESS
 
         "hsl(#{primary_hue}, #{MUTED_FOREGROUND_SATURATION}%, #{lightness}%)"
       end
@@ -283,12 +341,12 @@ module ThemeConcerns
 
         # Derive saturation from background, capped to stay subtle
         saturation = [(bg_color.hsl.s * 15).round, 6].max.clamp(1, BORDER_MAX_SATURATION)
-        lightness = luminance > 0.5 ? 96 : 20
+        lightness = (luminance > 0.5) ? 96 : 20
 
         "hsl(#{background_hue}, #{saturation}%, #{lightness}%)"
       rescue
         # Fallback to neutral gray
-        luminance > 0.5 ? "hsl(210, 9%, 96%)" : "hsl(210, 9%, 20%)"
+        (luminance > 0.5) ? "hsl(210, 9%, 96%)" : "hsl(210, 9%, 20%)"
       end
 
       def to_hsl(hex)
