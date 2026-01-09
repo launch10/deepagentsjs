@@ -77,9 +77,19 @@ class JobRun < ApplicationRecord
 
   # Enqueues async webhook delivery - no bang since it doesn't raise
   def notify_langgraph(status:, result: nil, error: nil)
-    return unless langgraph_callback_url.present?
+    return unless langgraph_thread_id.present? && langgraph_callback_url.present?
 
     LanggraphCallbackWorker.perform_async(id, callback_payload(status, result, error))
+  end
+
+  # Derive callback URL from config - never stored in DB (SSRF prevention)
+  def langgraph_callback_url
+    return nil unless langgraph_thread_id.present?
+
+    base_url = ENV["LANGGRAPH_API_URL"]
+    return nil if base_url.blank?
+
+    "#{base_url}/webhooks/job_run_callback"
   end
 
   def pending? = status == "pending"

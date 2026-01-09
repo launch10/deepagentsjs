@@ -149,6 +149,11 @@ RSpec.describe JobRun, type: :model do
   end
 
   describe "#notify_langgraph" do
+    before do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")
+    end
+
     let(:job_run) do
       create(:job_run,
         account: account,
