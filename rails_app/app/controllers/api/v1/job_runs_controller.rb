@@ -30,6 +30,9 @@ class API::V1::JobRunsController < API::BaseController
     when "CampaignDeploy"
       campaign_id = params[:arguments]&.dig(:campaign_id) || params[:arguments]&.dig("campaign_id")
       { campaign: current_account.campaigns.find(campaign_id) }
+    when "WebsiteDeploy"
+      website_id = params[:arguments]&.dig(:website_id) || params[:arguments]&.dig("website_id")
+      { website: current_account.websites.find(website_id) }
     else
       {}
     end
@@ -39,6 +42,8 @@ class API::V1::JobRunsController < API::BaseController
     case job_type
     when "CampaignDeploy"
       CampaignDeploy.deploy(resources[:campaign], job_run_id: job_run.id)
+    when "WebsiteDeploy"
+      resources[:website].deploy_async(job_run_id: job_run.id)
     end
   end
 
@@ -46,6 +51,8 @@ class API::V1::JobRunsController < API::BaseController
     args = case params[:job_class]
     when "CampaignDeploy"
       params.require(:arguments).permit(:campaign_id)
+    when "WebsiteDeploy"
+      params.require(:arguments).permit(:website_id)
     else
       ActionController::Parameters.new({}).permit
     end.to_h

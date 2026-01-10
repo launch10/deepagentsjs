@@ -1266,7 +1266,7 @@ export interface paths {
                          * @description Job type identifier
                          * @enum {string}
                          */
-                        job_class: "CampaignDeploy";
+                        job_class: "CampaignDeploy" | "WebsiteDeploy";
                         /** @description Arguments to pass to the worker */
                         arguments: {
                             [key: string]: unknown;

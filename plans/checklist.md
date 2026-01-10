@@ -76,7 +76,29 @@ All Phase 1 features have been implemented:
 - [x] Create fixWithCodingAgentNode (invokes codingAgentGraph)
 - [x] Copy deployCampaignNode to deploy/ with DeployGraphState
 - [x] Add TaskNames for new deploy tasks (WebsiteDeploy, etc.)
-- [ ] Add WebsiteDeploy to Rails ALLOWED_JOBS
-- [ ] Update swagger and regenerate types
-- [ ] Create tracking.ts template for L10.conversion()
-- [ ] Implement full instrumentationNode with LLM analysis
+- [x] Add WebsiteDeploy to Rails ALLOWED_JOBS
+- [x] Update swagger and regenerate types
+- [x] Create tracking.ts template for L10.conversion()
+- [x] Implement full instrumentationNode with LLM analysis
+
+## Phase 3 Complete
+
+All Phase 3 features have been implemented:
+- DeployAnnotation with task-based state pattern
+- Unified deployGraph with conditional edges for validation/fix loop
+- runtimeValidationNode using Playwright ErrorExporter
+- deployWebsiteNode with fire-and-forget Rails job pattern
+- instrumentationNode with LLM analysis for conversion tracking injection
+- fixWithCodingAgentNode invoking codingAgentGraph subgraph
+- deployCampaignNode for Google Ads deployment
+- tracking.ts template for L10.conversion()
+- Rails WebsiteDeploy job integration
+
+## Pending
+
+### Phase 4: Integration Testing
+- [ ] Create e2e test for deployGraph flow
+- [ ] Test instrumentation injects L10.conversion correctly
+- [ ] Test runtime validation catches console errors
+- [ ] Test fix loop retries with coding agent
+- [ ] Test WebsiteDeploy job execution
