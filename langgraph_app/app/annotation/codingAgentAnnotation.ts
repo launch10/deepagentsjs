@@ -2,6 +2,7 @@ import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import type { PrimaryKeyType } from "@types";
 import { Brainstorm, Website } from "@types";
+import { Core } from "@types";
 
 export interface ConsoleError {
   message: string;
@@ -17,11 +18,6 @@ export interface CodingAgentContext {
 
 export const CodingAgentAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
-
-  workDir: Annotation<string | undefined>({
-    default: () => undefined,
-    reducer: (current, next) => next,
-  }),
 
   brainstormId: Annotation<PrimaryKeyType | undefined>({
     default: () => undefined,
@@ -53,8 +49,8 @@ export const CodingAgentAnnotation = Annotation.Root({
     reducer: (current, next) => next,
   }),
 
-  status: Annotation<"initializing" | "running" | "completed" | "error">({
-    default: () => "initializing",
+  status: Annotation<Core.Status>({
+    default: () => "pending",
     reducer: (current, next) => next,
   }),
 });

@@ -2,30 +2,11 @@ import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "../codingAgent/utils";
-import { graphParams } from "@core";
 import { HumanMessage } from "@langchain/core/messages";
 import { Task } from "@types";
+import { buildBugFixPrompt } from "@prompts";
 
 const TASK_NAME = "BugFix" as const;
-
-const fixBugSystemPrompt = (errorContext: string) => {
-  return `
-    The user has a simple, static landing page that uses:
-      1. React Router
-      2. Tailwind
-      3. ShadCN
-
-    <task>
-      Fix the following errors:
-    </task>
-
-    <errors>
-      ${errorContext}
-    </errors>
-
-    Analyze the errors and modify the code files to resolve them.
-  `;
-};
 
 /**
  * Fix With Coding Agent Node
@@ -58,7 +39,7 @@ export const bugFixNode = NodeMiddleware.use(
     }
 
     const errorContext = validationTask.error;
-    const systemPrompt = fixBugSystemPrompt(errorContext);
+    const systemPrompt = buildBugFixPrompt(errorContext);
     const task = Task.findTask(state.tasks, TASK_NAME);
 
     try {

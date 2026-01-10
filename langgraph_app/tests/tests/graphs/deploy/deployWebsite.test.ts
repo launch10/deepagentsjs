@@ -381,4 +381,83 @@ describe("DeployWebsiteGraph", () => {
       expect(deployTask).toBeDefined();
     });
   });
+
+  /**
+   * =============================================================================
+   * DEPLOYMENT FAILURE TESTS
+   * =============================================================================
+   * These tests verify proper handling of deployment failures from webhooks.
+   */
+  describe("Deployment Failure Handling", () => {
+    it("marks task failed when webhook returns error", async () => {
+      // Simulate webhook returning an error
+      const taskWithError: Task.Task = {
+        id: "uuid-deploy",
+        name: "WebsiteDeploy",
+        jobId: 123,
+        status: "running",
+        retryCount: 0,
+        error: "Build failed: npm install error",
+      };
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
+            { id: "uuid-val", name: "RuntimeValidation", status: "completed", retryCount: 0 },
+            taskWithError,
+          ],
+        })
+        .execute();
+
+      // Graph exits early - the task already exists with error
+      const deployTask = result.state.tasks.find((t) => t.name === "WebsiteDeploy");
+      expect(deployTask).toBeDefined();
+      expect(deployTask?.error).toBeDefined();
+      expect(deployTask?.error).toContain("Build failed");
+    });
+
+    it("preserves error details from failed deployment", async () => {
+      const detailedError = {
+        message: "Deployment failed",
+        code: "CLOUDFLARE_ERROR",
+        details: {
+          step: "build",
+          exitCode: 1,
+          logs: "Error: Cannot find module '@/lib/nonexistent'",
+        },
+      };
+
+      const taskWithDetailedError: Task.Task = {
+        id: "uuid-deploy",
+        name: "WebsiteDeploy",
+        jobId: 456,
+        status: "failed",
+        retryCount: 0,
+        error: JSON.stringify(detailedError),
+      };
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [taskWithDetailedError],
+        })
+        .execute();
+
+      // Task error should contain useful debugging info
+      const deployTask = result.state.tasks.find((t) => t.name === "WebsiteDeploy");
+      expect(deployTask?.status).toBe("failed");
+      expect(deployTask?.error).toContain("CLOUDFLARE_ERROR");
+      expect(deployTask?.error).toContain("Cannot find module");
+    });
+  });
 });

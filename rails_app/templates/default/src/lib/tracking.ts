@@ -2,20 +2,27 @@
  * L10 Conversion Tracking
  *
  * Provides Google Ads conversion tracking for landing pages.
- * Configured via window.L10_CONFIG injected by instrumentationNode.
+ * Configured via window.L10_CONFIG injected at build time.
+ *
+ * This file is self-contained for deployment to user pages.
  */
 
-interface ConversionConfig {
+export interface ConversionConfig {
   googleAdsId?: string;
   conversionLabels?: Record<string, string>;
 }
 
-interface ConversionProperties {
-  label: string; // Semantic label: "signup", "lead", "purchase", "download"
-  value?: number; // Conversion value for ROAS calculation
-  currency?: string; // Default: USD
-}
+export const TrackingLabels = ["signup", "lead", "purchase", "download"] as const;
+export type TrackingLabel = (typeof TrackingLabels)[number];
 
+export const CurrencyLabels = ["USD"] as const;
+export type CurrencyLabel = (typeof CurrencyLabels)[number];
+
+export interface ConversionProperties {
+  label: TrackingLabel;
+  value?: number; // Conversion value for ROAS calculation
+  currency?: CurrencyLabel;
+}
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
@@ -42,11 +49,8 @@ export const L10 = {
    * // Signup with no monetary value
    * L10.conversion({ label: 'signup' });
    *
-   * // Lead with estimated value
-   * L10.conversion({ label: 'lead', value: 50, currency: 'USD' });
-   *
-   * // Purchase with actual value
-   * L10.conversion({ label: 'purchase', value: 99.99, currency: 'USD' });
+   * // Tiered pricing with value
+   * L10.conversion({ label: 'signup', value: 99 });
    */
   conversion(properties: ConversionProperties) {
     // Lookup the actual Google Ads conversion label from our semantic label

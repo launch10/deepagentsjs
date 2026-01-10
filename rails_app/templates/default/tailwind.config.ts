@@ -20,56 +20,49 @@ export default {
 		},
 		extend: {
 			colors: {
-				"background": 'hsl(var(--background))',
-				"background-foreground": 'hsl(var(--background-foreground))',
-				"background-foreground-muted": 'hsl(var(--background-foreground-muted))',
-				"foreground": 'hsl(var(--foreground))',
-
-				"primary": 'hsl(var(--primary))',
-				"primary-foreground": 'hsl(var(--primary-foreground))',
-				"primary-foreground-muted": 'hsl(var(--primary-foreground-muted))',
-
-				"secondary": 'hsl(var(--secondary))',
-				"secondary-foreground": 'hsl(var(--secondary-foreground))',
-				"secondary-foreground-muted": 'hsl(var(--secondary-foreground-muted))',
-
-				"neutral": 'hsl(var(--neutral))',
-				"neutral-foreground": 'hsl(var(--neutral-foreground))',
-				"neutral-foreground-muted": 'hsl(var(--neutral-foreground-muted))',
-
-				"card": 'hsl(var(--card))',
-				"card-foreground": 'hsl(var(--card-foreground))',
-				"card-foreground-muted": 'hsl(var(--card-foreground-muted))',
-
-				"popover": 'hsl(var(--popover))',
-				"popover-foreground": 'hsl(var(--popover-foreground))',
-				"popover-foreground-muted": 'hsl(var(--popover-foreground-muted))',
-
-				"muted": 'hsl(var(--muted))',
-				"muted-foreground": 'hsl(var(--muted-foreground))',
-				"muted-foreground-muted": 'hsl(var(--muted-foreground-muted))',
-
-				"accent": 'hsl(var(--accent))',
-				"accent-foreground": 'hsl(var(--accent-foreground))',
-				"accent-foreground-muted": 'hsl(var(--accent-foreground-muted))',
-
-				"input": 'hsl(var(--input))',
-				"border": 'hsl(var(--border))',
-				"ring": 'hsl(var(--ring))',
-				"ring-foreground": 'hsl(var(--ring-foreground))',
-				"ring-foreground-muted": 'hsl(var(--ring-foreground-muted))',
-
-				"success": 'hsl(var(--success))',
-				"success-foreground": 'hsl(var(--success-foreground))',
-				"success-foreground-muted": 'hsl(var(--success-foreground-muted))',
-
-				"warning": 'hsl(var(--warning))',
-				"warning-foreground": 'hsl(var(--warning-foreground))',
-				"warning-foreground-muted": 'hsl(var(--warning-foreground-muted))',
-
-				"destructive": 'hsl(var(--destructive))',
-				"destructive-foreground": 'hsl(var(--destructive-foreground))',
-				"destructive-foreground-muted": 'hsl(var(--destructive-foreground-muted))',
+				// shadcn standard
+				background: 'hsl(var(--background))',
+				foreground: 'hsl(var(--foreground))',
+				primary: {
+					DEFAULT: 'hsl(var(--primary))',
+					foreground: 'hsl(var(--primary-foreground))',
+				},
+				secondary: {
+					DEFAULT: 'hsl(var(--secondary))',
+					foreground: 'hsl(var(--secondary-foreground))',
+				},
+				muted: {
+					DEFAULT: 'hsl(var(--muted))',
+					foreground: 'hsl(var(--muted-foreground))',
+				},
+				accent: {
+					DEFAULT: 'hsl(var(--accent))',
+					foreground: 'hsl(var(--accent-foreground))',
+				},
+				destructive: {
+					DEFAULT: 'hsl(var(--destructive))',
+					foreground: 'hsl(var(--destructive-foreground))',
+				},
+				card: {
+					DEFAULT: 'hsl(var(--card))',
+					foreground: 'hsl(var(--card-foreground))',
+				},
+				popover: {
+					DEFAULT: 'hsl(var(--popover))',
+					foreground: 'hsl(var(--popover-foreground))',
+				},
+				border: 'hsl(var(--border))',
+				input: 'hsl(var(--input))',
+				ring: 'hsl(var(--ring))',
+				// L10 extensions
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))',
+				},
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					foreground: 'hsl(var(--success-foreground))',
+				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

@@ -28,6 +28,14 @@ const ConversionAnalysisSchema = z.object({
     .string()
     .optional()
     .describe("Code snippet where L10.conversion() should be inserted after"),
+  hasTieredPricing: z
+    .boolean()
+    .optional()
+    .describe("Whether the page has tiered pricing where users select a tier before signing up"),
+  tierPriceVariable: z
+    .string()
+    .optional()
+    .describe("The variable name that holds the selected tier price (e.g., 'tierPrice', 'selectedPlan.price')"),
 });
 
 type ConversionAnalysis = z.infer<typeof ConversionAnalysisSchema>;
@@ -49,6 +57,14 @@ Analyze the provided code files and identify:
 3. The type of conversion (signup, lead, purchase, download, waitlist)
 4. The name of the submit handler function
 5. A code snippet showing where L10.conversion() should be inserted
+6. Whether this is a TIERED PRICING page where users click a pricing tier before signing up
+7. If tiered, what variable holds the selected tier's price
+
+TIERED PRICING DETECTION:
+- Look for pricing components with multiple tiers (Basic/Pro/Enterprise, Starter/Growth/Scale, etc.)
+- Look for tier selection that opens a modal or form
+- Look for variables that store the selected tier price (e.g., selectedPlan.price, tierPrice, plan.amount)
+- This is common for pre-selling/waitlist pages where we want to track which price point converts
 
 IMPORTANT:
 - Only identify ONE primary conversion form (the most important one)
@@ -62,7 +78,9 @@ Respond with a JSON object matching this schema:
   "formFilePath": string | undefined,
   "formType": "signup" | "lead" | "purchase" | "download" | "waitlist" | undefined,
   "submitHandlerName": string | undefined,
-  "suggestedInsertionPoint": string | undefined
+  "suggestedInsertionPoint": string | undefined,
+  "hasTieredPricing": boolean | undefined,
+  "tierPriceVariable": string | undefined
 }`;
 
 /**
@@ -187,7 +205,10 @@ export const instrumentationNode = NodeMiddleware.use(
             const insertionIndex = newContent.indexOf(analysis.suggestedInsertionPoint);
             if (insertionIndex !== -1) {
               const afterInsertion = insertionIndex + analysis.suggestedInsertionPoint.length;
-              const conversionCall = `\n      L10.conversion({ label: '${analysis.formType}' });`;
+              // Include tier value if this is a tiered pricing page
+              const conversionCall = analysis.hasTieredPricing && analysis.tierPriceVariable
+                ? `\n      L10.conversion({ label: '${analysis.formType}', value: ${analysis.tierPriceVariable} });`
+                : `\n      L10.conversion({ label: '${analysis.formType}', value: 0 });`;
               newContent =
                 newContent.slice(0, afterInsertion) +
                 conversionCall +
