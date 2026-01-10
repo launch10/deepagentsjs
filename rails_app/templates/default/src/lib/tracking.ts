@@ -1,79 +1,78 @@
 /**
- * L10 Conversion Tracking
+ * L10 Lead Capture & Conversion Tracking
  *
- * Provides Google Ads conversion tracking for landing pages.
- * Configured via window.L10_CONFIG injected at build time.
+ * Simple API for landing pages:
+ * - L10.createLead(email, { value }) - Submit lead + track conversion
  *
- * This file is self-contained for deployment to user pages.
+ * All config via environment variables (injected at build time):
+ * - VITE_API_BASE_URL
+ * - VITE_SIGNUP_TOKEN
+ * - VITE_GOOGLE_ADS_ID
  */
 
-export interface ConversionConfig {
-  googleAdsId?: string;
-  conversionLabels?: Record<string, string>;
+export class LeadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LeadError";
+  }
 }
 
-export const TrackingLabels = ["signup", "lead", "purchase", "download"] as const;
-export type TrackingLabel = (typeof TrackingLabels)[number];
-
-export const CurrencyLabels = ["USD"] as const;
-export type CurrencyLabel = (typeof CurrencyLabels)[number];
-
-export interface ConversionProperties {
-  label: TrackingLabel;
-  value?: number; // Conversion value for ROAS calculation
-  currency?: CurrencyLabel;
-}
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
-    L10: typeof L10;
-    L10_CONFIG?: ConversionConfig;
   }
 }
 
 export const L10 = {
-  _config: {} as ConversionConfig,
-
   /**
-   * Initialize L10 with configuration.
-   * Called automatically if window.L10_CONFIG is present.
-   */
-  init(config?: ConversionConfig) {
-    this._config = { ...window.L10_CONFIG, ...config };
-  },
-
-  /**
-   * Track a conversion event.
+   * Create a lead and track the conversion.
+   * Resolves on success, rejects on failure.
    *
    * @example
-   * // Signup with no monetary value
-   * L10.conversion({ label: 'signup' });
-   *
-   * // Tiered pricing with value
-   * L10.conversion({ label: 'signup', value: 99 });
+   * L10.createLead(email).then(showSuccess).catch(showError);
+   * L10.createLead(email, { value: 99 }).then(showSuccess).catch(showError);
    */
-  conversion(properties: ConversionProperties) {
-    // Lookup the actual Google Ads conversion label from our semantic label
-    const label =
-      this._config.conversionLabels?.[properties.label] || properties.label;
+  async createLead(
+    email: string,
+    options?: { value?: number; name?: string }
+  ): Promise<void> {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+    const signupToken = import.meta.env.VITE_SIGNUP_TOKEN;
+    const googleAdsId = import.meta.env.VITE_GOOGLE_ADS_ID;
 
-    if (window.gtag && this._config.googleAdsId) {
-      window.gtag("event", "conversion", {
-        send_to: `${this._config.googleAdsId}/${label}`,
-        value: properties.value,
-        currency: properties.currency || "USD",
-      });
+    if (!apiBaseUrl || !signupToken) {
+      console.error("[L10] Missing VITE_API_BASE_URL or VITE_SIGNUP_TOKEN");
+      throw new LeadError("Configuration error");
     }
 
-    // Log in development for debugging
-    if (import.meta.env.DEV) {
-      console.log("[L10.conversion]", properties);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          name: options?.name,
+          token: signupToken,
+        }),
+      });
+
+      if (response.ok) {
+        // Fire Google Ads conversion on success
+        if (window.gtag && googleAdsId) {
+          window.gtag("event", "conversion", {
+            send_to: `${googleAdsId}/signup`,
+            value: options?.value ?? 0,
+            currency: "USD",
+          });
+        }
+        return;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      throw new LeadError(data.error || "Signup failed");
+    } catch (error) {
+      if (error instanceof LeadError) throw error;
+      throw new LeadError("Network error");
     }
   },
 };
-
-// Auto-initialize when loaded in browser
-if (typeof window !== "undefined") {
-  window.L10 = L10;
-  if (window.L10_CONFIG) L10.init();
-}

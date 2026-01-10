@@ -1,45 +1,45 @@
 /**
- * Conversion tracking context for coding agents.
- * Describes the two main conversion patterns and lets the agent decide which applies.
+ * Lead capture and conversion tracking context for coding agents.
+ * L10.createLead() handles both the API call and conversion tracking transparently.
  */
-export const trackingContextPrompt = () => `
-## Conversion Tracking
+import type { CodingPromptState, CodingPromptFn } from "./types";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
-All landing pages require conversion tracking. Determine the appropriate pattern based on page structure:
+export const trackingContextPrompt: CodingPromptFn = async (
+  _state: CodingPromptState,
+  _config?: LangGraphRunnableConfig
+): Promise<string> => `
+## Lead Capture & Conversion Tracking
+
+All landing pages capture email leads via \`L10.createLead()\`. This single call handles:
+1. Submitting the email to our backend API
+2. Firing Google Ads conversion tracking on success
 
 ### Scenario 1: Tiered Pricing Pages
-When the page has pricing tiers (e.g., Basic/Pro/Enterprise), users click a tier to open a waitlist modal.
-- Pass the tier price to track conversion value for ROAS measurement
-- The tier value helps us understand which price points convert best
-- We do not actually allow checkout - we only allow waitlist signups
+When the page has pricing tiers (e.g., Basic/Pro/Enterprise), pass the tier price for ROAS measurement.
 
 \`\`\`tsx
-// When user signs up from a pricing tier
-const handleTierSignup = async (email: string, tierPrice: number) => {
-  const response = await submitToWaitlist(email);
-  if (response.ok) {
-    L10.conversion({ label: 'signup', value: tierPrice });
-  }
+const handleTierSignup = (email: string, tierPrice: number) => {
+  L10.createLead(email, { value: tierPrice })
+    .then(() => setStatus('success'))
+    .catch((e) => setError(e.message));
 };
 \`\`\`
 
 ### Scenario 2: Simple Waitlist/Signup
-When the page has a basic signup form without pricing context (hero signup, footer CTA, etc.).
-- Track with zero value since there's no tier selection
+For basic signup forms without pricing context (hero signup, footer CTA, etc.).
 
 \`\`\`tsx
-// Simple email signup without pricing
-const handleSignup = async (email: string) => {
-  const response = await submitToWaitlist(email);
-  if (response.ok) {
-    L10.conversion({ label: 'signup', value: 0 });
-  }
+const handleSignup = (email: string) => {
+  L10.createLead(email)
+    .then(() => setStatus('success'))
+    .catch((e) => setError(e.message));
 };
 \`\`\`
 
 ### Implementation Rules
 - Import: \`import { L10 } from '@/lib/tracking'\`
-- Fire on SUCCESS only (after API confirms signup, before showing thank-you state)
-- One conversion per signup action, not on every button click
-- Config uses \`import.meta.env.VITE_GOOGLE_ADS_ID\` (injected at build time)
+- Use \`L10.createLead(email)\` for all email signups - it handles everything
+- Pass \`{ value: tierPrice }\` only when user selected a pricing tier
+- Resolves on success, rejects on error - use \`.then()/.catch()\` or try/catch
 `;

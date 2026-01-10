@@ -1,129 +1,84 @@
 /**
- * Unit tests for L10 conversion tracking library.
+ * Unit tests for L10 lead capture library.
  *
- * Tests the actual tracking.ts from the template.
- * This is the single source of truth that gets deployed to user pages.
+ * Note: import.meta.env is compile-time replaced by Vite, so we can't fully mock it.
+ * These tests verify the API shape and error handling. Full integration tests
+ * should run in a Vite environment with real env vars.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { L10, LeadError } from "../../../../rails_app/templates/default/src/lib/tracking";
 
-// Import the real implementation from the template
-// This ensures we're testing what actually gets deployed
-import { L10 } from "../../../../rails_app/templates/default/src/lib/tracking";
-
-declare global {
-  var window: Window & typeof globalThis;
-}
-
-describe("L10 Conversion Tracking", () => {
-  let mockGtag: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    mockGtag = vi.fn();
-
-    // Mock window and gtag
-    global.window = {
-      gtag: mockGtag,
-      L10_CONFIG: undefined,
-      L10: L10,
-    } as unknown as Window & typeof globalThis;
-
-    // Reset L10 config
-    L10._config = {};
-  });
-
-  describe("conversion()", () => {
-    it("fires gtag with correct send_to format", () => {
-      L10.init({ googleAdsId: "AW-123456789" });
-
-      L10.conversion({ label: "signup" });
-
-      expect(mockGtag).toHaveBeenCalledWith("event", "conversion", {
-        send_to: "AW-123456789/signup",
-        value: undefined,
-        currency: "USD",
-      });
+describe("L10", () => {
+  describe("LeadError", () => {
+    it("is an Error subclass", () => {
+      const error = new LeadError("test message");
+      expect(error).toBeInstanceOf(Error);
+      expect(error.name).toBe("LeadError");
+      expect(error.message).toBe("test message");
     });
 
-    it("looks up semantic label from conversionLabels config", () => {
-      L10.init({
-        googleAdsId: "AW-123456789",
-        conversionLabels: {
-          signup: "abc123xyz",
-          lead: "def456uvw",
-        },
-      });
-
-      L10.conversion({ label: "signup" });
-
-      expect(mockGtag).toHaveBeenCalledWith("event", "conversion", {
-        send_to: "AW-123456789/abc123xyz",
-        value: undefined,
-        currency: "USD",
-      });
-    });
-
-    it("passes value and currency correctly for ROAS tracking", () => {
-      L10.init({ googleAdsId: "AW-123456789" });
-
-      L10.conversion({ label: "signup", value: 99, currency: "USD" });
-
-      expect(mockGtag).toHaveBeenCalledWith("event", "conversion", {
-        send_to: "AW-123456789/signup",
-        value: 99,
-        currency: "USD",
-      });
-    });
-
-    it("defaults currency to USD when not specified", () => {
-      L10.init({ googleAdsId: "AW-123456789" });
-
-      L10.conversion({ label: "signup", value: 50 });
-
-      expect(mockGtag).toHaveBeenCalledWith("event", "conversion", {
-        send_to: "AW-123456789/signup",
-        value: 50,
-        currency: "USD",
-      });
-    });
-
-    it("does not call gtag when googleAdsId is missing", () => {
-      L10.init({});
-
-      L10.conversion({ label: "signup" });
-
-      expect(mockGtag).not.toHaveBeenCalled();
-    });
-
-    it("does not call gtag when window.gtag is undefined", () => {
-      global.window = { L10_CONFIG: undefined } as unknown as Window & typeof globalThis;
-
-      L10.init({ googleAdsId: "AW-123456789" });
-      L10.conversion({ label: "signup" });
-
-      expect(mockGtag).not.toHaveBeenCalled();
+    it("has proper stack trace", () => {
+      const error = new LeadError("test");
+      expect(error.stack).toBeDefined();
+      expect(error.stack).toContain("LeadError");
     });
   });
 
-  describe("init()", () => {
-    it("merges window.L10_CONFIG with provided config", () => {
-      global.window = {
-        gtag: mockGtag,
-        L10_CONFIG: {
-          googleAdsId: "AW-111111111",
-          conversionLabels: { signup: "label1" },
-        },
-        L10: L10,
-      } as unknown as Window & typeof globalThis;
+  describe("createLead", () => {
+    let mockFetch: ReturnType<typeof vi.fn>;
+    let originalFetch: typeof global.fetch;
 
-      L10.init({ conversionLabels: { lead: "label2" } });
+    beforeEach(() => {
+      mockFetch = vi.fn();
+      originalFetch = global.fetch;
+      global.fetch = mockFetch;
+    });
 
-      L10.conversion({ label: "signup" });
+    afterEach(() => {
+      global.fetch = originalFetch;
+      vi.restoreAllMocks();
+    });
 
-      expect(mockGtag).toHaveBeenCalledWith("event", "conversion", {
-        send_to: "AW-111111111/signup",
-        value: undefined,
-        currency: "USD",
-      });
+    it("is an async function", () => {
+      expect(typeof L10.createLead).toBe("function");
+      // Returns a promise
+      const result = L10.createLead("test@example.com");
+      expect(result).toBeInstanceOf(Promise);
+      // Catch to prevent unhandled rejection (will fail due to missing env vars)
+      result.catch(() => {});
+    });
+
+    it("throws LeadError when env vars are missing", async () => {
+      // In test environment, import.meta.env.VITE_* are undefined
+      await expect(L10.createLead("test@example.com")).rejects.toThrow(LeadError);
+      await expect(L10.createLead("test@example.com")).rejects.toThrow("Configuration error");
+    });
+
+    it("accepts email and optional options", async () => {
+      // Verify the function signature accepts these parameters
+      // (will still fail due to missing env vars, but tests the interface)
+      const promise1 = L10.createLead("test@example.com");
+      const promise2 = L10.createLead("test@example.com", { value: 99 });
+      const promise3 = L10.createLead("test@example.com", { name: "John" });
+      const promise4 = L10.createLead("test@example.com", { value: 99, name: "John" });
+
+      // All should be promises (will reject due to missing env)
+      expect(promise1).toBeInstanceOf(Promise);
+      expect(promise2).toBeInstanceOf(Promise);
+      expect(promise3).toBeInstanceOf(Promise);
+      expect(promise4).toBeInstanceOf(Promise);
+
+      // Catch all to prevent unhandled rejections
+      await Promise.allSettled([promise1, promise2, promise3, promise4]);
+    });
+
+    it("does not call fetch when env vars are missing", async () => {
+      try {
+        await L10.createLead("test@example.com");
+      } catch {
+        // Expected to throw
+      }
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,4 +1,4 @@
-import { db, websites, eq } from "@db";
+import { db, websites, themes, eq } from "@db";
 import { Website } from "@types";
 import { createDeepAgent } from "deepagents";
 import { getLLM, getLLMFallbacks } from "@core";
@@ -11,7 +11,7 @@ import {
   modelFallbackMiddleware as modelFallbackMiddlewareBuilder,
   type AgentMiddleware,
 } from "langchain";
-import { buildCodingPrompt } from "@prompts";
+import { buildCodingPrompt, type CodingPromptState } from "@prompts";
 
 const getMiddlewares = (): AgentMiddleware[] => {
   const fallbacks = getLLMFallbacks("coding", "slow", "paid");
@@ -25,8 +25,10 @@ const getMiddlewares = (): AgentMiddleware[] => {
 };
 
 export type MinimalCodingAgentState = {
-  websiteId: number;
-  jwt: string;
+  websiteId?: number;
+  jwt?: string;
+  theme?: CodingPromptState["theme"];
+  errors?: string;
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
@@ -59,7 +61,42 @@ export async function createCodingAgent(state: MinimalCodingAgentState, prompt?:
   const backend = await getCodingAgentBackend(state);
   const llm = getLLM("coding", "slow", "paid");
   const middlewares = getMiddlewares();
-  const systemPrompt = prompt || buildCodingPrompt();
+
+  // Build prompt state for async prompt generation
+  const promptState: CodingPromptState = {
+    websiteId: state.websiteId,
+    jwt: state.jwt,
+    theme: state.theme,
+    errors: state.errors,
+  };
+
+  // If no theme in state but we have websiteId, fetch theme from website
+  if (!promptState.theme && state.websiteId) {
+    const [websiteRow] = await db
+      .select({ themeId: websites.themeId })
+      .from(websites)
+      .where(eq(websites.id, state.websiteId))
+      .limit(1);
+
+    if (websiteRow?.themeId) {
+      const [themeRow] = await db
+        .select()
+        .from(themes)
+        .where(eq(themes.id, websiteRow.themeId))
+        .limit(1);
+
+      if (themeRow) {
+        promptState.theme = {
+          id: themeRow.id,
+          name: themeRow.name,
+          colors: themeRow.colors as string[] | undefined,
+        };
+      }
+    }
+  }
+
+  // Build prompt - now async
+  const systemPrompt = prompt || (await buildCodingPrompt(promptState));
 
   return createDeepAgent({
     model: llm as any,

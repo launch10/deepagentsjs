@@ -1,7 +1,13 @@
 /**
  * Standard workflow for creating landing pages.
  */
-export const workflowPrompt = () => `
+import type { CodingPromptState, CodingPromptFn } from "./types";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+
+export const workflowPrompt: CodingPromptFn = async (
+  _state: CodingPromptState,
+  _config?: LangGraphRunnableConfig
+): Promise<string> => `
 ## Workflow
 
 1. **Plan**: Break down the landing page into sections (Hero, Features, Pricing, Social Proof, CTA, Footer)

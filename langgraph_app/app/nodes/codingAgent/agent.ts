@@ -10,7 +10,10 @@ export const codingAgentNode = NodeMiddleware.use(
     state: CodingAgentGraphState,
     config: LangGraphRunnableConfig
   ): Promise<Partial<CodingAgentGraphState>> => {
-    const agent = createCodingAgent(state);
+    if (!state.websiteId || !state.jwt) {
+      throw new Error("websiteId and jwt are required");
+    }
+    const agent = await createCodingAgent(state);
     const contextMessage = `
 ## Brainstorm Context
 - Idea: ${state.brainstorm.idea || "Not provided"}

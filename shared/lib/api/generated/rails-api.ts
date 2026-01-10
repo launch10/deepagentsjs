@@ -1333,6 +1333,122 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Creates a lead signup from a deployed landing page
+         * @description Public endpoint for landing pages to submit email signups.
+         *     This endpoint is called from deployed landing pages and uses a signed token
+         *     for authentication instead of JWT/session auth.
+         *
+         *     **Authentication:**
+         *     - Token passed as query parameter `token`
+         *     - Token is a Rails signup_token generated from the project
+         *     - Token is purpose-scoped to :lead_signup
+         *
+         *     **Idempotency:**
+         *     - Returns 201 Created for new leads
+         *     - Returns 200 OK for existing leads (same email, same project)
+         *     - Email is normalized (lowercase, trimmed) before matching
+         *
+         *     **CORS:**
+         *     - Allows requests from any origin
+         *     - Only Content-Type header allowed
+         *     - No credentials/cookies sent
+         */
+        post: {
+            parameters: {
+                query: {
+                    /** @description Signed ID token authenticating the request */
+                    token: string;
+                };
+                header?: {
+                    /** @description Origin of the request (for future CSRF protection via origin validation) */
+                    Origin?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Lead signup data */
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: email
+                         * @description Email address for the lead signup (required)
+                         */
+                        email: string;
+                        /** @description Optional name of the person signing up */
+                        name?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description existing lead matched case-insensitively */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Indicates the lead was successfully created or updated */
+                            success: boolean;
+                        };
+                    };
+                };
+                /** @description accepts requests with custom domain Origin */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Indicates the lead was successfully created or updated */
+                            success: boolean;
+                        };
+                    };
+                };
+                /** @description deleted project returns unauthorized (no information leakage) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Authentication error message (e.g., "Invalid token") */
+                            error: string;
+                        };
+                    };
+                };
+                /** @description name too long returns validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Validation error messages keyed by field name */
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_uuid}/workflows/{id}": {
         parameters: {
             query?: never;
@@ -2320,6 +2436,154 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/themes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieves a theme with full details */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Theme ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description theme retrieved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Theme name */
+                            name: string;
+                            /** @description Theme color palette */
+                            colors: string[];
+                            /** @description CSS theme variables (HSL values) */
+                            theme?: {
+                                [key: string]: string;
+                            };
+                            /** @description Color pairing recommendations */
+                            pairings?: {
+                                [key: string]: unknown;
+                            };
+                            /** @description Typography recommendations per background color */
+                            typography_recommendations?: {
+                                [key: string]: {
+                                    /** @description Headline color options */
+                                    headlines: {
+                                        /** @description Hex color code */
+                                        color: string;
+                                        /** @description Contrast ratio */
+                                        contrast: number;
+                                        /**
+                                         * @description WCAG compliance level
+                                         * @enum {string}
+                                         */
+                                        level: "AAA" | "AA" | "AA-large" | "fail";
+                                        /** @description Style hint */
+                                        style: string;
+                                        /** @description Additional guidance */
+                                        note?: string | null;
+                                    }[];
+                                    /** @description Subheadline color options */
+                                    subheadlines: {
+                                        /** @description Hex color code */
+                                        color: string;
+                                        /** @description Contrast ratio */
+                                        contrast: number;
+                                        /**
+                                         * @description WCAG compliance level
+                                         * @enum {string}
+                                         */
+                                        level: "AAA" | "AA" | "AA-large" | "fail";
+                                        /** @description Style hint */
+                                        style: string;
+                                        /** @description Additional guidance */
+                                        note?: string | null;
+                                    }[];
+                                    /** @description Body text color options */
+                                    body: {
+                                        /** @description Hex color code */
+                                        color: string;
+                                        /** @description Contrast ratio */
+                                        contrast: number;
+                                        /**
+                                         * @description WCAG compliance level
+                                         * @enum {string}
+                                         */
+                                        level: "AAA" | "AA" | "AA-large" | "fail";
+                                        /** @description Style hint */
+                                        style: string;
+                                        /** @description Additional guidance */
+                                        note?: string | null;
+                                    }[];
+                                    /** @description Accent color options */
+                                    accents: {
+                                        /** @description Hex color code */
+                                        color: string;
+                                        /** @description Contrast ratio */
+                                        contrast: number;
+                                        /**
+                                         * @description WCAG compliance level
+                                         * @enum {string}
+                                         */
+                                        level: "AAA" | "AA" | "AA-large" | "fail";
+                                        /** @description Style hint */
+                                        style: string;
+                                        /** @description Additional guidance */
+                                        note?: string | null;
+                                    }[];
+                                };
+                            } | null;
+                            /** @description Associated theme labels */
+                            theme_labels: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Label name */
+                                name: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description theme not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

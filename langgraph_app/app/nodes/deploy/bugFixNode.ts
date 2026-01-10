@@ -38,13 +38,22 @@ export const bugFixNode = NodeMiddleware.use(
       throw new Error("Validation error is required");
     }
 
-    const errorContext = validationTask.error;
-    const systemPrompt = buildBugFixPrompt(errorContext);
     const task = Task.findTask(state.tasks, TASK_NAME);
+
+    // Build prompt with errors in state for consistent async pattern
+    const promptState = {
+      websiteId: state.websiteId,
+      jwt: state.jwt,
+      errors: validationTask.error,
+    };
+    const systemPrompt = await buildBugFixPrompt(promptState, config);
 
     try {
       // Compile and invoke codingAgentGraph as subgraph
-      const agent = await createCodingAgent({ websiteId: state.websiteId, jwt: state.jwt }, systemPrompt);
+      const agent = await createCodingAgent(
+        { websiteId: state.websiteId, jwt: state.jwt },
+        systemPrompt
+      );
 
       // This will update the files in the database, or throw an error
       await agent.invoke({
@@ -64,8 +73,8 @@ export const bugFixNode = NodeMiddleware.use(
           {
             ...task,
             status: "completed",
-          } as Task.Task
-        ]
+          } as Task.Task,
+        ],
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";

@@ -1,7 +1,13 @@
 /**
  * Code guidelines for landing page development.
  */
-export const codeGuidelinesPrompt = () => `
+import type { CodingPromptState, CodingPromptFn } from "./types";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+
+export const codeGuidelinesPrompt: CodingPromptFn = async (
+  _state: CodingPromptState,
+  _config?: LangGraphRunnableConfig
+): Promise<string> => `
 ## Code Guidelines
 
 - Use ONLY shadcn/ui components from the template

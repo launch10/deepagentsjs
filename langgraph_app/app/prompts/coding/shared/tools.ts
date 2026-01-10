@@ -1,7 +1,13 @@
 /**
  * Tools documentation for coding agents.
  */
-export const codingToolsPrompt = () => `
+import type { CodingPromptState, CodingPromptFn } from "./types";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+
+export const codingToolsPrompt: CodingPromptFn = async (
+  _state: CodingPromptState,
+  _config?: LangGraphRunnableConfig
+): Promise<string> => `
 ## Your Tools
 
 1. **Filesystem tools**: ls, read_file, write_file, edit_file, glob, grep

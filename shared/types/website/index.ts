@@ -47,7 +47,14 @@ export { websiteFileSchema, codeFileSchema, fileSpecSchema, fileSchema, CodeFile
 export type { PageType } from "./page";
 export { pageSchema, pagePlanPromptSchema, type PagePlanType } from "./page";
 export { type ContentStrategyType,contentStrategySchema } from "./contentStrategy";
-export { type ThemeType, themeSchema } from "./theme";
+export {
+  type ThemeType,
+  themeSchema,
+  type TypographyRecommendationsType,
+  type TypographyCategoryType,
+  type TypographyRecommendationType,
+  typographyRecommendationsSchema,
+} from "./theme";
 export { projectSchema } from "../project";
 
 export {

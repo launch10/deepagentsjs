@@ -1,7 +1,13 @@
 /**
  * Context available to the coding agent.
  */
-export const contextPrompt = () => `
+import type { CodingPromptState, CodingPromptFn } from "./types";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+
+export const contextPrompt: CodingPromptFn = async (
+  _state: CodingPromptState,
+  _config?: LangGraphRunnableConfig
+): Promise<string> => `
 ## Your Context
 
 You have access to:

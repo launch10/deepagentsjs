@@ -2,7 +2,13 @@
  * Theme color utilities available in landing pages.
  * Follows shadcn/ui conventions.
  */
-export const themeColorsPrompt = () => `
+import type { CodingPromptState, CodingPromptFn } from "./types";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+
+export const themeColorsPrompt: CodingPromptFn = async (
+  _state: CodingPromptState,
+  _config?: LangGraphRunnableConfig
+): Promise<string> => `
 ## Theme Colors (shadcn standard)
 
 Use semantic color classes. Each role has a background and matching text color:

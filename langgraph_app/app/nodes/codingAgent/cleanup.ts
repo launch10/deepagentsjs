@@ -9,6 +9,10 @@ export const cleanupNode = NodeMiddleware.use(
     state: CodingAgentGraphState,
     config: LangGraphRunnableConfig
   ): Promise<Partial<CodingAgentGraphState>> => {
+    if (!state.websiteId || !state.jwt) {
+      // Nothing to clean up if no website context
+      return {};
+    }
     const backend = await getCodingAgentBackend(state);
     await backend.cleanup();
 

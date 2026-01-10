@@ -12,7 +12,7 @@ namespace :api, defaults: {format: :json} do
     resources :users
     resources :notification_tokens, param: :token, only: [:create, :destroy]
     resources :templates
-    resources :themes, only: [:index, :create]
+    resources :themes, only: [:index, :show, :create]
     resources :brainstorms, param: :thread_id, only: [:show, :create, :update]
     resources :uploads, only: [:create, :index, :show, :destroy]
     patch "projects/:project_uuid/workflows/:id", to: "project_workflows#update"
