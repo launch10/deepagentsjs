@@ -7,3 +7,4 @@ export * from "./brainstorm";
 export * from "./webhooks";
 export * from "./faq";
 export * from "./backends";
+export * from "./searchIconsService";
