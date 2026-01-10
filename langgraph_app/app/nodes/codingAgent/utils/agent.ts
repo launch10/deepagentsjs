@@ -145,15 +145,16 @@ export const getCodingAgentBackend = async (state: CodingAgentGraphState) => {
   return backend;
 };
 
-export function createCodingAgent(state: CodingAgentGraphState) {
+export function createCodingAgent(state: CodingAgentGraphState, prompt?: string) {
   const backend = getCodingAgentBackend(state);
   const llm = getLLM("coding", "slow", "paid");
   const middlewares = getMiddlewares();
+  const systemPrompt = prompt || CODING_AGENT_SYSTEM_PROMPT;
 
   return createDeepAgent({
     model: llm as any,
     name: "coding-agent",
-    systemPrompt: CODING_AGENT_SYSTEM_PROMPT,
+    systemPrompt,
     backend: () => backend as any,
     subagents: [copywriterSubAgent, coderSubAgent],
     tools: [new SearchIconsTool()],

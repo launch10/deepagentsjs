@@ -39,7 +39,8 @@ export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
 
   .addConditionalEdges(START, (state) => {
     const websiteDeployTask = Task.findTask(state.tasks, "WebsiteDeploy");
-    if (websiteDeployTask?.status === "completed") {
+    // If we've created the website deploy task AT ALL, that means we're already in progress or finished
+    if (websiteDeployTask) {
       return END;
     }
     return "instrumentation";

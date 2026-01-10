@@ -1,7 +1,7 @@
 import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
-import { createTask, findTask } from "@types";
+import { Task } from "@types";
 import { db, codeFiles, websites, eq } from "@db";
 import { getLLM } from "@core";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
@@ -9,7 +9,9 @@ import { z } from "zod";
 import { WebsiteFilesBackend } from "@services";
 import type { Website } from "@types";
 
-const TASK_NAME = "instrumentation" as const;
+// Let's do a MUCH better job at instrumentation! We're just going to ask a codingAgent to inject the code.
+
+const TASK_NAME = "Instrumentation" as const;
 
 /**
  * Schema for LLM's conversion analysis response
@@ -76,31 +78,23 @@ export const instrumentationNode = NodeMiddleware.use(
     state: DeployGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
-    const existingTask = findTask(state.tasks, TASK_NAME);
+    const existingTask = Task.findTask(state.tasks, TASK_NAME);
 
-    // Already completed? No-op (idempotent)
-    if (existingTask?.status === "completed") {
+    // If we already have the task, no-op -- idempotent
+    if (existingTask) {
       return {};
     }
 
     if (!state.websiteId) {
-      return {
-        tasks: [
-          ...state.tasks.filter((t) => t.name !== TASK_NAME),
-          { ...createTask(TASK_NAME), status: "failed", error: "Missing websiteId" },
-        ],
-      };
+      throw new Error("Missing websiteId");
     }
 
     const jwt = config?.configurable?.jwt as string | undefined;
     if (!jwt) {
-      return {
-        tasks: [
-          ...state.tasks.filter((t) => t.name !== TASK_NAME),
-          { ...createTask(TASK_NAME), status: "failed", error: "Missing JWT" },
-        ],
-      };
+      throw new Error("Missing JWT");
     }
+
+    const task = Task.createTask(TASK_NAME);
 
     try {
       // 1. Load website files
@@ -119,9 +113,8 @@ export const instrumentationNode = NodeMiddleware.use(
       if (codeFilesList.length === 0) {
         return {
           tasks: [
-            ...state.tasks.filter((t) => t.name !== TASK_NAME),
             {
-              ...createTask(TASK_NAME),
+              ...task,
               status: "completed",
               result: { note: "No code files found to instrument" },
             },
@@ -135,9 +128,8 @@ export const instrumentationNode = NodeMiddleware.use(
       if (!analysis.hasConversionForm || !analysis.formFilePath) {
         return {
           tasks: [
-            ...state.tasks.filter((t) => t.name !== TASK_NAME),
             {
-              ...createTask(TASK_NAME),
+              ...task,
               status: "completed",
               result: {
                 note: "No conversion form found",
@@ -213,38 +205,38 @@ export const instrumentationNode = NodeMiddleware.use(
       }
 
       // 5. Inject gtag.js and L10_CONFIG into index.html if we have a Google Ads ID
-      if (state.googleAdsId) {
-        const indexHtml = files.find((f) => f.path === "/index.html" || f.path === "index.html");
-        if (indexHtml && indexHtml.path && indexHtml.content && !indexHtml.content.includes("gtag.js")) {
-          const gtagScript = `
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=${state.googleAdsId}"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', '${state.googleAdsId}');
-      window.L10_CONFIG = {
-        googleAdsId: '${state.googleAdsId}'
-      };
-    </script>
-  </head>`;
+      //     const googleAdsId = lookupViaApi()
+      //     if (state.googleAdsId) {
+      //       const indexHtml = files.find((f) => f.path === "/index.html" || f.path === "index.html");
+      //       if (indexHtml && indexHtml.path && indexHtml.content && !indexHtml.content.includes("gtag.js")) {
+      //         const gtagScript = `
+      //   <!-- Google Analytics -->
+      //   <script async src="https://www.googletagmanager.com/gtag/js?id=${state.googleAdsId}"></script>
+      //   <script>
+      //     window.dataLayer = window.dataLayer || [];
+      //     function gtag(){dataLayer.push(arguments);}
+      //     gtag('js', new Date());
+      //     gtag('config', '${state.googleAdsId}');
+      //     window.L10_CONFIG = {
+      //       googleAdsId: '${state.googleAdsId}'
+      //     };
+      //   </script>
+      // </head>`;
 
-          const newIndexHtml = indexHtml.content.replace("</head>", gtagScript);
-          const indexPath = indexHtml.path.startsWith("/") ? indexHtml.path : `/${indexHtml.path}`;
-          await backend.write(indexPath, newIndexHtml);
-          instrumentedFiles.push(indexPath);
-        }
-      }
+      //         const newIndexHtml = indexHtml.content.replace("</head>", gtagScript);
+      //         const indexPath = indexHtml.path.startsWith("/") ? indexHtml.path : `/${indexHtml.path}`;
+      //         await backend.write(indexPath, newIndexHtml);
+      //         instrumentedFiles.push(indexPath);
+      //       }
+      //     }
 
       // Cleanup backend
       await backend.cleanup();
 
       return {
         tasks: [
-          ...state.tasks.filter((t) => t.name !== TASK_NAME),
           {
-            ...createTask(TASK_NAME),
+            ...task,
             status: "completed",
             result: {
               instrumentedFiles,
@@ -258,9 +250,8 @@ export const instrumentationNode = NodeMiddleware.use(
       const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         tasks: [
-          ...state.tasks.filter((t) => t.name !== TASK_NAME),
           {
-            ...createTask(TASK_NAME),
+            ...task,
             status: "failed",
             error: errorMessage,
           },

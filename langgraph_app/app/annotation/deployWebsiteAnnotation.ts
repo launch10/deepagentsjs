@@ -2,11 +2,10 @@ import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import { Task, type ConsoleError, Deploy } from "@types";
 
-const DefaultTasks = [
-  Task.createTask("Instrumentation"),
-  Task.createTask("RuntimeValidation"),
-  Task.createTask("WebsiteDeploy"),
-];
+// const DefaultTasks = [];
+// Task.createTask("Instrumentation"),
+// Task.createTask("RuntimeValidation"),
+// Task.createTask("WebsiteDeploy"),
 
 export const DeployAnnotation = Annotation.Root({
   // WebsiteId already in BaseAnnotation
@@ -31,7 +30,7 @@ export const DeployAnnotation = Annotation.Root({
 
   // Task tracking - ALL state lives here
   tasks: Annotation<Task.Task[]>({
-    default: () => DefaultTasks,
+    default: () => [],
     reducer: (current, next) => {
       const taskMap = new Map(current.map((t) => [t.name, t]));
       for (const task of next) {
