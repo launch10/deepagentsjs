@@ -90,6 +90,5 @@ Rails.application.configure do
   config.action_mailer.smtp_settings = Jumpstart.config.smtp_settings
 
   # API base URL for deployed websites (used by lead capture forms)
-
   config.x.api_base_url = ENV.fetch("API_BASE_URL", "https://launch10.ai")
 end
