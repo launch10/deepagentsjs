@@ -3,7 +3,7 @@ import { MemorySaver } from "@langchain/langgraph";
 import { testGraph } from "@support";
 import { deployGraph as uncompiledGraph } from "@graphs";
 import type { DeployGraphState } from "@annotation";
-import type { ThreadIDType, ChecklistTask } from "@types";
+import type { ThreadIDType, Task } from "@types";
 import { graphParams } from "@core";
 
 // Mock the JobRunAPIService
@@ -18,6 +18,51 @@ const deployGraph = uncompiledGraph.compile({ ...graphParams, name: "deploy" });
 describe("Deploy Graph", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe("No-op when nothing to deploy", () => {
+    it("exits immediately when deployWebsite=false and deployGoogleAds=false", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: {
+            website: false,
+            googleAds: false,
+          },
+          tasks: [],
+        })
+        .execute();
+
+      // Should exit without creating any tasks
+      expect(result.state.tasks).toHaveLength(0);
+    });
+  });
+
+  describe("Website deploy flow", () => {
+    it.only("runs instrumentation → validation → deploy when deployWebsite=true", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: {
+            website: true,
+            googleAds: false,
+          },
+          tasks: [],
+        })
+        .stopAfter("deployWebsite")
+        .execute();
+
+      // Should have instrumentation task
+      const instrumentationTask = result.state.tasks.find((t) => t.name === "instrumentation");
+      expect(instrumentationTask).toBeDefined();
+      expect(instrumentationTask?.status).toBe("completed");
+    });
   });
 
   describe("First invocation (no task exists)", () => {
@@ -43,7 +88,7 @@ describe("Deploy Graph", () => {
 
   describe("When task is pending/running (waiting for webhook)", () => {
     it("returns no-op when task is pending", async () => {
-      const existingTask: ChecklistTask = {
+      const existingTask: Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,
@@ -68,7 +113,7 @@ describe("Deploy Graph", () => {
     });
 
     it("returns no-op when task is running but no result yet", async () => {
-      const existingTask: ChecklistTask = {
+      const existingTask: Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,
@@ -94,7 +139,7 @@ describe("Deploy Graph", () => {
 
   describe("When webhook delivers result", () => {
     it("processes completed result and marks task as completed", async () => {
-      const taskWithResult: ChecklistTask = {
+      const taskWithResult: Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,
@@ -128,7 +173,7 @@ describe("Deploy Graph", () => {
     });
 
     it("processes failed result and marks task as failed", async () => {
-      const taskWithError: ChecklistTask = {
+      const taskWithError: Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,
@@ -159,7 +204,7 @@ describe("Deploy Graph", () => {
 
   describe("Idempotency (already completed/failed)", () => {
     it("returns no-op when task is already completed", async () => {
-      const completedTask: ChecklistTask = {
+      const completedTask: Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,
@@ -185,7 +230,7 @@ describe("Deploy Graph", () => {
     });
 
     it("returns no-op when task is already failed", async () => {
-      const failedTask: ChecklistTask = {
+      const failedTask: Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,

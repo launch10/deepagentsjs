@@ -1,7 +1,7 @@
 import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
-import { createChecklistTask, findChecklistTask } from "@types";
+import { createTask, findTask } from "@types";
 import { db, codeFiles, websites, eq } from "@db";
 import { getLLM } from "@core";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
@@ -76,7 +76,7 @@ export const instrumentationNode = NodeMiddleware.use(
     state: DeployGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
-    const existingTask = findChecklistTask(state.tasks, TASK_NAME);
+    const existingTask = findTask(state.tasks, TASK_NAME);
 
     // Already completed? No-op (idempotent)
     if (existingTask?.status === "completed") {
@@ -87,7 +87,7 @@ export const instrumentationNode = NodeMiddleware.use(
       return {
         tasks: [
           ...state.tasks.filter((t) => t.name !== TASK_NAME),
-          { ...createChecklistTask(TASK_NAME), status: "failed", error: "Missing websiteId" },
+          { ...createTask(TASK_NAME), status: "failed", error: "Missing websiteId" },
         ],
       };
     }
@@ -97,7 +97,7 @@ export const instrumentationNode = NodeMiddleware.use(
       return {
         tasks: [
           ...state.tasks.filter((t) => t.name !== TASK_NAME),
-          { ...createChecklistTask(TASK_NAME), status: "failed", error: "Missing JWT" },
+          { ...createTask(TASK_NAME), status: "failed", error: "Missing JWT" },
         ],
       };
     }
@@ -121,7 +121,7 @@ export const instrumentationNode = NodeMiddleware.use(
           tasks: [
             ...state.tasks.filter((t) => t.name !== TASK_NAME),
             {
-              ...createChecklistTask(TASK_NAME),
+              ...createTask(TASK_NAME),
               status: "completed",
               result: { note: "No code files found to instrument" },
             },
@@ -137,7 +137,7 @@ export const instrumentationNode = NodeMiddleware.use(
           tasks: [
             ...state.tasks.filter((t) => t.name !== TASK_NAME),
             {
-              ...createChecklistTask(TASK_NAME),
+              ...createTask(TASK_NAME),
               status: "completed",
               result: {
                 note: "No conversion form found",
@@ -244,7 +244,7 @@ export const instrumentationNode = NodeMiddleware.use(
         tasks: [
           ...state.tasks.filter((t) => t.name !== TASK_NAME),
           {
-            ...createChecklistTask(TASK_NAME),
+            ...createTask(TASK_NAME),
             status: "completed",
             result: {
               instrumentedFiles,
@@ -260,7 +260,7 @@ export const instrumentationNode = NodeMiddleware.use(
         tasks: [
           ...state.tasks.filter((t) => t.name !== TASK_NAME),
           {
-            ...createChecklistTask(TASK_NAME),
+            ...createTask(TASK_NAME),
             status: "failed",
             error: errorMessage,
           },

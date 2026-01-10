@@ -3,7 +3,7 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { JobRunAPIService } from "@services";
 import { env } from "@core";
-import { createChecklistTask, findChecklistTask, updateChecklistTask } from "@types";
+import { createTask, findTask, updateTask } from "@types";
 
 const TASK_NAME = "WebsiteDeploy" as const;
 
@@ -22,7 +22,7 @@ export const deployWebsiteNode = NodeMiddleware.use(
     state: DeployGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
-    const task = findChecklistTask(state.tasks, TASK_NAME);
+    const task = findTask(state.tasks, TASK_NAME);
 
     // 1. Already completed or failed? No-op (idempotent)
     if (task?.status === "completed" || task?.status === "failed") {
@@ -32,7 +32,7 @@ export const deployWebsiteNode = NodeMiddleware.use(
     // 2. Task exists with result? Process it
     if (task?.status === "running" && task.result) {
       return {
-        tasks: updateChecklistTask(state.tasks, TASK_NAME, { status: "completed" }),
+        tasks: updateTask(state.tasks, TASK_NAME, { status: "completed" }),
         status: "completed",
         result: task.result,
       };
@@ -41,7 +41,7 @@ export const deployWebsiteNode = NodeMiddleware.use(
     // 3. Task exists with error? Mark failed
     if (task?.status === "running" && task.error) {
       return {
-        tasks: updateChecklistTask(state.tasks, TASK_NAME, { status: "failed" }),
+        tasks: updateTask(state.tasks, TASK_NAME, { status: "failed" }),
         status: "failed",
         error: { message: task.error, node: "deployWebsiteNode" },
       };
@@ -74,7 +74,7 @@ export const deployWebsiteNode = NodeMiddleware.use(
     });
 
     return {
-      tasks: [...state.tasks, createChecklistTask(TASK_NAME, jobRun.id)],
+      tasks: [...state.tasks, createTask(TASK_NAME, jobRun.id)],
       status: "pending",
     };
   }

@@ -4,7 +4,7 @@ import { NodeMiddleware } from "@middleware";
 import { codingAgentGraph } from "@graphs";
 import { graphParams } from "@core";
 import { HumanMessage } from "@langchain/core/messages";
-import { createChecklistTask, findChecklistTask, updateChecklistTask } from "@types";
+import { createTask, findTask, updateTask } from "@types";
 
 const TASK_NAME = "code_fix" as const;
 
@@ -21,7 +21,7 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
     config?: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
     // Get validation errors from runtime_validation task
-    const validationTask = findChecklistTask(state.tasks, "runtime_validation");
+    const validationTask = findTask(state.tasks, "runtime_validation");
     const consoleErrors = state.consoleErrors ?? [];
 
     if (consoleErrors.length === 0) {
@@ -35,7 +35,7 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
       .join("\n");
 
     // Create task with running status
-    const task = createChecklistTask(TASK_NAME);
+    const task = createTask(TASK_NAME);
     const tasksWithRunning = [...state.tasks, { ...task, status: "running" as const }];
 
     try {
@@ -59,7 +59,7 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
       });
 
       return {
-        tasks: updateChecklistTask(tasksWithRunning, TASK_NAME, {
+        tasks: updateTask(tasksWithRunning, TASK_NAME, {
           status: "completed",
           result: { errorsFixed: consoleErrors.length },
         }),
@@ -71,7 +71,7 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return {
-        tasks: updateChecklistTask(tasksWithRunning, TASK_NAME, {
+        tasks: updateTask(tasksWithRunning, TASK_NAME, {
           status: "failed",
           error: errorMessage,
         }),

@@ -1,8 +1,15 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
-import type { PrimaryKeyType, Task, ConsoleError, Deploy } from "@types";
+import { Task, type ConsoleError, Deploy } from "@types";
+
+const DefaultTasks = [
+  Task.createTask("Instrumentation"),
+  Task.createTask("RuntimeValidation"),
+  Task.createTask("WebsiteDeploy"),
+];
 
 export const DeployAnnotation = Annotation.Root({
+  // WebsiteId already in BaseAnnotation
   ...BaseAnnotation.spec,
 
   // Final deploy status for frontend
@@ -23,35 +30,20 @@ export const DeployAnnotation = Annotation.Root({
     reducer: (current, next) => next ?? current,
   }),
 
-  // IDs (websiteId already in BaseAnnotation)
-  campaignId: Annotation<PrimaryKeyType | undefined>({
-    default: () => undefined,
-    reducer: (current, next) => next ?? current,
-  }),
-  googleAdsId: Annotation<string | undefined>({
-    default: () => undefined,
-    reducer: (current, next) => next ?? current,
-  }),
-
   // Retry tracking for fix loop
   retryCount: Annotation<number>({
     default: () => 0,
     reducer: (current, next) => next,
   }),
 
-  // Validation state
-  validationPassed: Annotation<boolean>({
-    default: () => false,
-    reducer: (current, next) => next,
-  }),
   consoleErrors: Annotation<ConsoleError[]>({
     default: () => [],
     reducer: (current, next) => next,
   }),
 
   // Task tracking - ALL state lives here
-  tasks: Annotation<Task[]>({
-    default: () => [],
+  tasks: Annotation<Task.Task[]>({
+    default: () => DefaultTasks,
     reducer: (current, next) => {
       const taskMap = new Map(current.map((t) => [t.name, t]));
       for (const task of next) {

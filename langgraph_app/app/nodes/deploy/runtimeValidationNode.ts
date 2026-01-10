@@ -2,7 +2,7 @@ import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { ErrorExporter } from "@services";
-import { createChecklistTask, findChecklistTask, updateChecklistTask } from "@types";
+import { createTask, findTask, updateTask } from "@types";
 
 const TASK_NAME = "runtime_validation" as const;
 
@@ -21,7 +21,7 @@ export const runtimeValidationNode = NodeMiddleware.use(
     state: DeployGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
-    const existingTask = findChecklistTask(state.tasks, TASK_NAME);
+    const existingTask = findTask(state.tasks, TASK_NAME);
 
     // Already completed or failed? No-op (idempotent)
     if (existingTask?.status === "completed" || existingTask?.status === "failed") {
@@ -33,13 +33,13 @@ export const runtimeValidationNode = NodeMiddleware.use(
         validationPassed: false,
         tasks: [
           ...state.tasks,
-          { ...createChecklistTask(TASK_NAME), status: "failed", error: "Missing websiteId" },
+          { ...createTask(TASK_NAME), status: "failed", error: "Missing websiteId" },
         ],
       };
     }
 
     // Create task with running status
-    const task = createChecklistTask(TASK_NAME);
+    const task = createTask(TASK_NAME);
     const tasksWithRunning = [...state.tasks, { ...task, status: "running" as const }];
 
     try {
@@ -52,7 +52,7 @@ export const runtimeValidationNode = NodeMiddleware.use(
       return {
         validationPassed: passed,
         consoleErrors: errors,
-        tasks: updateChecklistTask(tasksWithRunning, TASK_NAME, {
+        tasks: updateTask(tasksWithRunning, TASK_NAME, {
           status: passed ? "completed" : "failed",
           result: { errorCount: errors.length },
           error: passed ? undefined : `Found ${errors.length} console error(s)`,
@@ -62,7 +62,7 @@ export const runtimeValidationNode = NodeMiddleware.use(
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return {
         validationPassed: false,
-        tasks: updateChecklistTask(tasksWithRunning, TASK_NAME, {
+        tasks: updateTask(tasksWithRunning, TASK_NAME, {
           status: "failed",
           error: errorMessage,
         }),
