@@ -4,6 +4,7 @@ import { Website } from "@types";
 import { createDeepAgent } from "deepagents";
 import { getLLM, getLLMFallbacks } from "@core";
 import { WebsiteFilesBackend } from "@services";
+import { SearchIconsTool } from "@tools";
 import { copywriterSubAgent, coderSubAgent } from "../subagents";
 import { checkpointer } from "@core";
 import {
@@ -25,6 +26,7 @@ You have access to:
 
 1. **Filesystem tools**: ls, read_file, write_file, edit_file, glob, grep
 2. **Copywriter subagent**: Use the task tool with subagent_type="copywriter" to draft marketing copy before coding each section
+3. **searchIcons**: Search for Lucide React icons by concept (e.g., "fast delivery", "security lock")
 
 CRITICAL: When using write_file, you MUST provide both parameters:
 - file_path: The absolute path (e.g., "/src/components/Hero.tsx")
@@ -154,6 +156,7 @@ export function createCodingAgent(state: CodingAgentGraphState) {
     systemPrompt: CODING_AGENT_SYSTEM_PROMPT,
     backend: () => backend as any,
     subagents: [copywriterSubAgent, coderSubAgent],
+    tools: [new SearchIconsTool()],
     middleware: middlewares as any,
     checkpointer: checkpointer as any,
   });
