@@ -4,7 +4,7 @@ import {
   instrumentationNode,
   deployWebsiteNode,
   runtimeValidationNode,
-  fixWithCodingAgentNode,
+  bugFixNode,
   createEnqueueNode,
 } from "@nodes";
 import { Task } from "@types";
@@ -35,7 +35,7 @@ export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
   // Work nodes
   .addNode("instrumentation", instrumentationNode)
   .addNode("runtimeValidation", runtimeValidationNode)
-  .addNode("fixWithCodingAgent", fixWithCodingAgentNode)
+  .addNode("bugFixNode", bugFixNode)
   .addNode("deployWebsite", deployWebsiteNode)
 
   // START → enqueue → work
@@ -54,7 +54,7 @@ export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
   // Validation routing: pass → deploy, fail → fix (with retry limit)
   .addConditionalEdges("runtimeValidation", (state) => {
     const status = getTaskStatus(state, "RuntimeValidation");
-    if (status === "passed") {
+    if (status === "completed") {
       return "enqueueDeploy";
     }
     const retryCount = Task.findTask(state.tasks, "RuntimeValidation")?.retryCount || 0;
@@ -65,8 +65,8 @@ export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
   })
 
   // Fix loop back to instrumentation (re-enqueue for retry)
-  .addEdge("enqueueBugFix", "fixWithCodingAgent")
-  .addEdge("fixWithCodingAgent", "enqueueInstrumentation")
+  .addEdge("enqueueBugFix", "bugFixNode")
+  .addEdge("bugFixNode", "runtimeValidation")
 
   // Deploy
   .addEdge("enqueueDeploy", "deployWebsite")

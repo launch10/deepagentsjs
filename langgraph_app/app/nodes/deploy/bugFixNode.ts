@@ -33,7 +33,7 @@ const fixBugSystemPrompt = (errorContext: string) => {
  * Invokes the codingAgentGraph as a subgraph to fix runtime errors.
  * Increments retryCount to track retry attempts.
  */
-export const fixWithCodingAgentNode = NodeMiddleware.use(
+export const bugFixNode = NodeMiddleware.use(
   {},
   async (
     state: DeployGraphState,
@@ -76,6 +76,10 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
 
       return {
         tasks: [
+          {
+            ...validationTask,
+            retryCount: validationTask.retryCount + 1,
+          } as Task.Task,
           {
             ...task,
             status: "completed",
