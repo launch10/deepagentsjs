@@ -1,5 +1,5 @@
-import { StateGraph, END, START } from "@langchain/langgraph";
-import { DeployAnnotation } from "@annotation";
+import { StateGraph, END, START, type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import {
   instrumentationNode,
   deployWebsiteNode,
@@ -11,8 +11,15 @@ import { Task } from "@types";
 const MAX_RETRY_COUNT = 2;
 
 // Helper to check task status
-const getTaskStatus = (state: typeof DeployAnnotation.State, name: Task.TaskName) =>
+const getTaskStatus = (state: DeployGraphState, name: Task.TaskName) =>
   Task.findTask(state.tasks, name)?.status;
+
+const idempotencyCheckNode = (state: DeployGraphState, config: LangGraphRunnableConfig) => {
+  const task = Task.findTask(state.tasks, "WebsiteDeploy");
+  if (task?.status === "completed") {
+    return END;
+  }
+}
 
 /**
  * Website Deploy Graph
@@ -24,13 +31,19 @@ const getTaskStatus = (state: typeof DeployAnnotation.State, name: Task.TaskName
  * 3) If validation fails, fix with coding agent
  * 4) Deploy website
  */
-export const deployGraph = new StateGraph(DeployAnnotation)
+export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
   .addNode("instrumentation", instrumentationNode)
   .addNode("runtimeValidation", runtimeValidationNode)
   .addNode("fixWithCodingAgent", fixWithCodingAgentNode)
   .addNode("deployWebsite", deployWebsiteNode)
 
-  .addEdge(START, "instrumentation")
+  .addConditionalEdges(START, (state) => {
+    const websiteDeployTask = Task.findTask(state.tasks, "WebsiteDeploy");
+    if (websiteDeployTask?.status === "completed") {
+      return END;
+    }
+    return "instrumentation";
+  })
   .addEdge("instrumentation", "runtimeValidation")
 
   // Validation routing: pass → deploy, fail → fix (with retry limit)
@@ -39,7 +52,8 @@ export const deployGraph = new StateGraph(DeployAnnotation)
     if (status === "passed") {
       return "deployWebsite";
     }
-    if (state.retryCount >= MAX_RETRY_COUNT) {
+    const retryCount = Task.findTask(state.tasks, "RuntimeValidation")?.retryCount || 0;
+    if (retryCount >= MAX_RETRY_COUNT) {
       return END;
     }
     return "fixWithCodingAgent";

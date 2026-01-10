@@ -1,16 +1,11 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
-import { DeployAnnotation } from "@annotation";
-import {
-  instrumentationNode,
-  deployWebsiteNode,
-  runtimeValidationNode,
-  fixWithCodingAgentNode,
-} from "@nodes";
+import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import { Deploy } from "@types";
-import { deployCampaignNode } from "../nodes/deploy/deployCampaignNode";
+import { deployWebsiteGraph } from "./deployWebsite";
+import { deployCampaignGraph } from "./deployCampaign";
 
 // Helper to check task status
-const getTaskStatus = (state: typeof DeployAnnotation.State, name: string) =>
+const getTaskStatus = (state: DeployGraphState, name: string) =>
   state.tasks.find((t) => t.name === name)?.status;
 
 /**
@@ -37,40 +32,18 @@ const getTaskStatus = (state: typeof DeployAnnotation.State, name: string) =>
  * END
  */
 export const deployGraph = new StateGraph(DeployAnnotation)
-  .addNode("instrumentation", instrumentationNode)
-  .addNode("runtimeValidation", runtimeValidationNode)
-  .addNode("fixWithCodingAgent", fixWithCodingAgentNode)
-  .addNode("deployWebsite", deployWebsiteNode)
-  .addNode("deployCampaign", deployCampaignNode)
+  .addNode("deployWebsite", deployWebsiteGraph as any)
+  .addNode("deployCampaign", deployCampaignGraph as any)
 
   // Start: check flags, exit early if nothing to deploy
   .addConditionalEdges(START, (state) => {
     if (!Deploy.shouldDeployAnything(state)) return END; // No-op
-    if (Deploy.shouldDeployWebsite(state)) return "instrumentation";
+    if (Deploy.shouldDeployWebsite(state)) return "deployWebsite";
     return "deployCampaign";
   })
 
-  // Website deploy flow: instrumentation → validation
-  .addEdge("instrumentation", "runtimeValidation")
-
-  // Validation routing: pass → deploy, fail → fix (with retry limit)
-  .addConditionalEdges("runtimeValidation", (state) => {
-    if (state.validationPassed) {
-      return "deployWebsite";
-    }
-    if (state.retryCount >= 2) {
-      // Max retries reached, proceed anyway (errors visible in tasks[])
-      return "deployWebsite";
-    }
-    return "fixWithCodingAgent";
-  })
-
-  // Fix loop back to instrumentation
-  .addEdge("fixWithCodingAgent", "instrumentation")
-
-  // After website deploy, check if we need to deploy campaign
   .addConditionalEdges("deployWebsite", (state) => {
-    return state.deployGoogleAds ? "deployCampaign" : END;
+    // if did deploy successfully + shouldDeployCampaign, then deploy campaign, else end
   })
 
   // Campaign deploy to END

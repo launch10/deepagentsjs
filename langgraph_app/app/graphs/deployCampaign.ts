@@ -36,7 +36,7 @@ const getTaskStatus = (state: typeof DeployAnnotation.State, name: string) =>
  *   ↓
  * END
  */
-export const deployGraph = new StateGraph(DeployAnnotation)
+export const deployCampaignGraph = new StateGraph(DeployAnnotation)
   .addNode("instrumentation", instrumentationNode)
   .addNode("runtimeValidation", runtimeValidationNode)
   .addNode("fixWithCodingAgent", fixWithCodingAgentNode)

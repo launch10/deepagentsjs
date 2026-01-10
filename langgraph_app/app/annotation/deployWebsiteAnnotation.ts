@@ -18,22 +18,10 @@ export const DeployAnnotation = Annotation.Root({
     reducer: (current, next) => next,
   }),
 
-  // Deploy result from the job
-  result: Annotation<Record<string, unknown> | undefined>({
-    default: () => undefined,
-    reducer: (current, next) => next,
-  }),
-
   // Boolean flags for what to deploy
   deploy: Annotation<Deploy.Instructions>({
     default: () => ({ }),
     reducer: (current, next) => next ?? current,
-  }),
-
-  // Retry tracking for fix loop
-  retryCount: Annotation<number>({
-    default: () => 0,
-    reducer: (current, next) => next,
   }),
 
   consoleErrors: Annotation<ConsoleError[]>({

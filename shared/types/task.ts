@@ -28,6 +28,7 @@ export const TaskSchema = z.object({
   status: z.enum(Statuses),
   result: z.record(z.unknown()).optional(),
   error: z.string().optional(),
+  retryCount: z.number().default(0),
 });
 
 export type Task = z.infer<typeof TaskSchema>;
@@ -41,6 +42,7 @@ export function createTask(name: TaskName, jobId?: number): Task {
     name,
     jobId,
     status: "pending",
+    retryCount: 0,
   };
 }
 

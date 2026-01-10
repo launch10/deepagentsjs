@@ -42,7 +42,7 @@ describe("Deploy Graph", () => {
   });
 
   describe("Website deploy flow", () => {
-    it.only("runs instrumentation → validation → deploy when deployWebsite=true", async () => {
+    it("runs instrumentation → validation → deploy when deployWebsite=true", async () => {
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
         .withState({
@@ -88,11 +88,12 @@ describe("Deploy Graph", () => {
 
   describe("When task is pending/running (waiting for webhook)", () => {
     it("returns no-op when task is pending", async () => {
-      const existingTask: Task = {
+      const existingTask: Task.Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,
         status: "pending",
+        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -113,11 +114,12 @@ describe("Deploy Graph", () => {
     });
 
     it("returns no-op when task is running but no result yet", async () => {
-      const existingTask: Task = {
+      const existingTask: Task.Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,
         status: "running",
+        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -139,11 +141,12 @@ describe("Deploy Graph", () => {
 
   describe("When webhook delivers result", () => {
     it("processes completed result and marks task as completed", async () => {
-      const taskWithResult: Task = {
+      const taskWithResult: Task.Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,
         status: "running",
+        retryCount: 0,
         result: {
           campaign_id: 456,
           external_id: "ext_789",
@@ -173,7 +176,7 @@ describe("Deploy Graph", () => {
     });
 
     it("processes failed result and marks task as failed", async () => {
-      const taskWithError: Task = {
+      const taskWithError: Task.Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,
@@ -204,12 +207,12 @@ describe("Deploy Graph", () => {
 
   describe("Idempotency (already completed/failed)", () => {
     it("returns no-op when task is already completed", async () => {
-      const completedTask: Task = {
+      const completedTask: Task.Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,
         status: "completed",
-        result: { success: true },
+        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -230,12 +233,13 @@ describe("Deploy Graph", () => {
     });
 
     it("returns no-op when task is already failed", async () => {
-      const failedTask: Task = {
+      const failedTask: Task.Task = {
         id: "uuid-123",
         name: "CampaignDeploy",
         jobId: 123,
         status: "failed",
         error: "Some error",
+        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -304,7 +308,7 @@ describe("Deploy Graph", () => {
   });
 
   describe("Full workflow: fire-and-forget + webhook pattern", () => {
-    it("first invocation fires job and returns pending, second invocation with result completes", async () => {
+    it.only("first invocation fires job and returns pending, second invocation with result completes", async () => {
       const checkpointer = new MemorySaver();
       const graph = uncompiledGraph.compile({ checkpointer });
       const threadId = "test-thread-123";
@@ -320,6 +324,7 @@ describe("Deploy Graph", () => {
         configurable: { thread_id: threadId },
       });
 
+      debugger;
       expect(firstResult.status).toBe("pending");
       expect(firstResult.tasks).toHaveLength(1);
       expect(firstResult.tasks[0]!.name).toBe("CampaignDeploy");
@@ -346,6 +351,7 @@ describe("Deploy Graph", () => {
 
       // Second invocation (e.g., from frontend poll or webhook graph run)
       const secondResult = await graph.invoke({}, { configurable: { thread_id: threadId } });
+      debugger
 
       expect(secondResult.status).toBe("completed");
       expect(secondResult.result).toEqual({
