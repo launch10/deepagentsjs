@@ -2,9 +2,9 @@ import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { ErrorExporter } from "@services";
-import { createTask, findTask, updateTask } from "@types";
+import { Task } from "@types";
 
-const TASK_NAME = "runtime_validation" as const;
+const TASK_NAME = "RuntimeValidation" as const;
 
 /**
  * Runtime Validation Node
@@ -21,26 +21,19 @@ export const runtimeValidationNode = NodeMiddleware.use(
     state: DeployGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
-    const existingTask = findTask(state.tasks, TASK_NAME);
+    const existingTask = Task.findTask(state.tasks, TASK_NAME);
 
     // Already completed or failed? No-op (idempotent)
-    if (existingTask?.status === "completed" || existingTask?.status === "failed") {
+    if (existingTask) {
       return {};
     }
 
     if (!state.websiteId) {
-      return {
-        validationPassed: false,
-        tasks: [
-          ...state.tasks,
-          { ...createTask(TASK_NAME), status: "failed", error: "Missing websiteId" },
-        ],
-      };
+      throw new Error("WebsiteId is required for runtime validation");
     }
 
     // Create task with running status
-    const task = createTask(TASK_NAME);
-    const tasksWithRunning = [...state.tasks, { ...task, status: "running" as const }];
+    const task = Task.createTask(TASK_NAME);
 
     try {
       // Use await using for proper cleanup (AsyncDisposable)
@@ -50,22 +43,25 @@ export const runtimeValidationNode = NodeMiddleware.use(
       const passed = errors.length === 0;
 
       return {
-        validationPassed: passed,
-        consoleErrors: errors,
-        tasks: updateTask(tasksWithRunning, TASK_NAME, {
-          status: passed ? "completed" : "failed",
-          result: { errorCount: errors.length },
-          error: passed ? undefined : `Found ${errors.length} console error(s)`,
-        }),
+        tasks: [
+          {
+            ...task,
+            status: passed ? "completed" : "failed",
+            result: { errorCount: errors.length },
+            error: passed ? undefined : `Found ${errors.length} console error(s)`,
+          }
+        ]
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return {
-        validationPassed: false,
-        tasks: updateTask(tasksWithRunning, TASK_NAME, {
-          status: "failed",
-          error: errorMessage,
-        }),
+        tasks: [
+          {
+            ...task,
+            status: "failed",
+            error: errorMessage
+          }
+        ]
       };
     }
   }

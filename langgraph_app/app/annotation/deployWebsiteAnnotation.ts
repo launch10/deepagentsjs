@@ -2,11 +2,6 @@ import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import { Task, type ConsoleError, Deploy } from "@types";
 
-// const DefaultTasks = [];
-// Task.createTask("Instrumentation"),
-// Task.createTask("RuntimeValidation"),
-// Task.createTask("WebsiteDeploy"),
-
 export const DeployAnnotation = Annotation.Root({
   // WebsiteId already in BaseAnnotation
   ...BaseAnnotation.spec,
