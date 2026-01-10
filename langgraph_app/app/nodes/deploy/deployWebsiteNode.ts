@@ -24,13 +24,17 @@ export const deployWebsiteNode = NodeMiddleware.use(
   ): Promise<Partial<DeployGraphState>> => {
     const task = Task.findTask(state.tasks, TASK_NAME);
 
-    // 1. Already completed or failed? No-op (idempotent)
-    if (task?.status === "completed" || task?.status === "failed") {
+    if (!task) {
+      throw new Error("WebsiteDeploy task not found");
+    }
+
+    // 1. If task is not running, we're done 
+    if (task?.status !== "running") {
       return {};
     }
 
-    // 2. Task exists with result? Process it
-    if (task?.status === "running" && task.result) {
+    // 2. Did webhook return us a result? We're done.
+    if (task?.result) {
       return {
         tasks: Task.updateTask(state.tasks, TASK_NAME, { status: "completed" }),
         status: "completed",
@@ -38,8 +42,8 @@ export const deployWebsiteNode = NodeMiddleware.use(
       };
     }
 
-    // 3. Task exists with error? Mark failed
-    if (task?.status === "running" && task.error) {
+    // 3. Did webhook return us an error? We're done. 
+    if (task.error) {
       return {
         tasks: Task.updateTask(state.tasks, TASK_NAME, { status: "failed" }),
         status: "failed",
@@ -47,12 +51,12 @@ export const deployWebsiteNode = NodeMiddleware.use(
       };
     }
 
-    // 4. Task already pending/running? Just waiting, no-op
-    if (task?.status === "pending" || task?.status === "running") {
+    if (task.jobId) {
+      // we already enqueued, we're just waiting for the webhook
       return {};
     }
 
-    // 5. First run: validate and fire-and-forget
+    // 4. We haven't fired a webhook yet. Do so now.
     if (!state.jwt) {
       throw new Error("JWT token is required for API authentication");
     }
@@ -63,19 +67,19 @@ export const deployWebsiteNode = NodeMiddleware.use(
       throw new Error("Website ID is required");
     }
 
-    const callbackUrl = `${env.LANGGRAPH_API_URL}/webhooks/job_run_callback`;
     const jobRunApi = new JobRunAPIService({ jwt: state.jwt });
 
     const jobRun = await jobRunApi.create({
       jobClass: "WebsiteDeploy",
       arguments: { website_id: state.websiteId },
       threadId: state.threadId,
-      callbackUrl,
     });
 
     return {
-      tasks: [...state.tasks, Task.createTask(TASK_NAME, jobRun.id)],
-      status: "pending",
+      tasks: [{
+        ...task,
+        jobId: jobRun.id,
+      }],
     };
   }
 );
