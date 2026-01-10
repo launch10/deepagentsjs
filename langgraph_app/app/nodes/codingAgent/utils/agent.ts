@@ -149,8 +149,8 @@ export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
   return backend;
 };
 
-export function createCodingAgent(state: MinimalCodingAgentState, prompt?: string) {
-  const backend = getCodingAgentBackend(state);
+export async function createCodingAgent(state: MinimalCodingAgentState, prompt?: string) {
+  const backend = await getCodingAgentBackend(state);
   const llm = getLLM("coding", "slow", "paid");
   const middlewares = getMiddlewares();
   const systemPrompt = prompt || CODING_AGENT_SYSTEM_PROMPT;

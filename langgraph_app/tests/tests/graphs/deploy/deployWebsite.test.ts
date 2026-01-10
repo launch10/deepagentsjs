@@ -6,6 +6,8 @@ import type { DeployGraphState } from "@annotation";
 import type { ThreadIDType, Task } from "@types";
 import { graphParams } from "@core";
 import { DatabaseSnapshotter } from "@rails_api";
+import { websiteFiles, and, eq, db } from "@db";
+import { getCodingAgentBackend } from "@nodes";
 
 const deployWebsiteGraph = uncompiledGraph.compile({ ...graphParams, name: "deployWebsite" });
 
@@ -328,10 +330,28 @@ describe("DeployWebsiteGraph", () => {
         .stopAfter("fixWithCodingAgent")
         .execute();
 
-      // Should route to fix
-      debugger;
-      expect(result.state.tasks[0]!.name).toBe("Fix");
-    })
+      const updatedFile = await db.select().from(websiteFiles).where(
+        and(
+          eq(websiteFiles.websiteId, 1),
+          eq(websiteFiles.path, "src/pages/IndexPage.tsx")
+        ),
+      ).execute().then((files) => files.at(-1));
+
+      expect(updatedFile?.content).toContain("Hello World")
+      expect(updatedFile?.content).toContain("const IndexPage")
+      expect(updatedFile?.content).not.toContain("NonExistentComponent") // It fixes the bug
+
+      const backend = await getCodingAgentBackend({
+        websiteId: 1,
+        jwt: "test-jwt",
+      } as any);
+
+      await backend.cleanup();
+
+      const task = result.state.tasks.find((t) => t.name === "BugFix");
+      expect(task).toBeDefined();
+      expect(task?.status).toBe("completed");
+    });
 
     it("routes to deployWebsite when validation passes", async () => {
       const passedValidationTask: Task.Task = {

@@ -59,29 +59,30 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
 
     const errorContext = validationTask.error;
     const systemPrompt = fixBugSystemPrompt(errorContext);
+    const task = Task.findTask(state.tasks, TASK_NAME);
 
     try {
       // Compile and invoke codingAgentGraph as subgraph
-      const agent = createCodingAgent({ websiteId: state.websiteId, jwt: state.jwt }, systemPrompt)
+      const agent = await createCodingAgent({ websiteId: state.websiteId, jwt: state.jwt }, systemPrompt);
 
-      debugger;
-      const result = await agent.invoke({
-        websiteId: state.websiteId,
-        accountId: state.accountId,
-        projectId: state.projectId,
-        jwt: state.jwt,
-        threadId: state.threadId,
+      // This will update the files in the database, or throw an error
+      await agent.invoke({
         messages: [
           new HumanMessage(
             `Please analyze the errors and resolve them so my site runs successfully.`
           ),
         ],
       });
-      debugger;
 
-      return {};
+      return {
+        tasks: [
+          {
+            ...task,
+            status: "completed",
+          } as Task.Task
+        ]
+      };
     } catch (error) {
-      debugger;
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return {};
     }
