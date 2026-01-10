@@ -4,9 +4,9 @@ import { NodeMiddleware } from "@middleware";
 import { codingAgentGraph } from "@graphs";
 import { graphParams } from "@core";
 import { HumanMessage } from "@langchain/core/messages";
-import { createTask, findTask, updateTask } from "@types";
+import { Task } from "@types";
 
-const TASK_NAME = "code_fix" as const;
+const TASK_NAME = "BugFix" as const;
 
 /**
  * Fix With Coding Agent Node
@@ -21,9 +21,12 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
     config?: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
     // Get validation errors from runtime_validation task
-    const validationTask = findTask(state.tasks, "runtime_validation");
-    const consoleErrors = state.consoleErrors ?? [];
+    const validationTask = Task.findTask(state.tasks, "RuntimeValidation");
+    if (validationTask?.status === "completed") {
+      return {};
+    }
 
+    const consoleErrors = state.consoleErrors ?? [];
     if (consoleErrors.length === 0) {
       // No errors to fix
       return {};
@@ -35,7 +38,7 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
       .join("\n");
 
     // Create task with running status
-    const task = createTask(TASK_NAME);
+    const task = Task.createTask(TASK_NAME);
     const tasksWithRunning = [...state.tasks, { ...task, status: "running" as const }];
 
     try {
@@ -59,7 +62,7 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
       });
 
       return {
-        tasks: updateTask(tasksWithRunning, TASK_NAME, {
+        tasks: Task.updateTask(tasksWithRunning, TASK_NAME, {
           status: "completed",
           result: { errorsFixed: consoleErrors.length },
         }),
@@ -71,7 +74,7 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return {
-        tasks: updateTask(tasksWithRunning, TASK_NAME, {
+        tasks: Task.updateTask(tasksWithRunning, TASK_NAME, {
           status: "failed",
           error: errorMessage,
         }),

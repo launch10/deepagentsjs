@@ -1,12 +1,12 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { DeployAnnotation, type DeployGraphState } from "@annotation";
-import { Deploy } from "@types";
+import { Deploy, Task } from "@types";
 import { deployWebsiteGraph } from "./deployWebsite";
 import { deployCampaignGraph } from "./deployCampaign";
 
-// Helper to check task status
-const getTaskStatus = (state: DeployGraphState, name: string) =>
-  state.tasks.find((t) => t.name === name)?.status;
+// Compile subgraphs for use as nodes
+const compiledWebsiteGraph = deployWebsiteGraph.compile();
+const compiledCampaignGraph = deployCampaignGraph.compile();
 
 /**
  * Deploy Graph (Unified)
@@ -19,21 +19,19 @@ const getTaskStatus = (state: DeployGraphState, name: string) =>
  *   ↓
  *   ├── (if !deployWebsite && !deployGoogleAds) → END (no-op)
  *   ↓
- * instrumentationNode (if deployWebsite)
+ * deployWebsite subgraph (if deployWebsite)
  *   ↓
- * runtimeValidationNode (if deployWebsite) - validates BEFORE deploy
- *   ↓  (if errors && retryCount < 2)
- *   └──→ fixWithCodingAgentNode → instrumentationNode
- *   ↓  (if pass || retryCount >= 2)
- * deployWebsiteNode (if deployWebsite)
+ *   ├── (if WebsiteDeploy completed && shouldDeployGoogleAds) → deployCampaign
+ *   ├── (if WebsiteDeploy failed) → END
+ *   └── (else) → END
  *   ↓
- * deployCampaignNode (if deployGoogleAds)
+ * deployCampaign subgraph (if deployGoogleAds)
  *   ↓
  * END
  */
 export const deployGraph = new StateGraph(DeployAnnotation)
-  .addNode("deployWebsite", deployWebsiteGraph as any)
-  .addNode("deployCampaign", deployCampaignGraph as any)
+  .addNode("deployWebsite", compiledWebsiteGraph)
+  .addNode("deployCampaign", compiledCampaignGraph)
 
   // Start: check flags, exit early if nothing to deploy
   .addConditionalEdges(START, (state) => {
@@ -42,8 +40,20 @@ export const deployGraph = new StateGraph(DeployAnnotation)
     return "deployCampaign";
   })
 
+  // After website deploy: check if we should proceed to campaign
   .addConditionalEdges("deployWebsite", (state) => {
-    // if did deploy successfully + shouldDeployCampaign, then deploy campaign, else end
+    const websiteTask = Task.findTask(state.tasks, "WebsiteDeploy");
+
+    // If website deploy failed, don't proceed to campaign
+    if (websiteTask?.status === "failed") return END;
+
+    // If website deploy not yet completed, exit (waiting for webhook)
+    if (websiteTask?.status !== "completed") return END;
+
+    // Website completed - proceed to campaign if needed
+    if (Deploy.shouldDeployGoogleAds(state)) return "deployCampaign";
+
+    return END;
   })
 
   // Campaign deploy to END

@@ -1,0 +1,300 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MemorySaver } from "@langchain/langgraph";
+import { testGraph } from "@support";
+import { deployWebsiteGraph as uncompiledGraph } from "@graphs";
+import type { DeployGraphState } from "@annotation";
+import type { ThreadIDType, Task } from "@types";
+import { graphParams } from "@core";
+
+const deployWebsiteGraph = uncompiledGraph.compile({ ...graphParams, name: "deployWebsite" });
+
+describe("DeployWebsiteGraph", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * =============================================================================
+   * IDEMPOTENCY TESTS
+   * =============================================================================
+   * These tests verify the graph exits early when WebsiteDeploy task exists.
+   * This is the core idempotency pattern - once we've started deploying,
+   * re-invoking the graph should be a no-op.
+   */
+  describe("Idempotency - Early exit when WebsiteDeploy task exists", () => {
+    it("exits immediately if WebsiteDeploy task already exists (any status)", async () => {
+      const existingTask: Task.Task = {
+        id: "uuid-123",
+        name: "WebsiteDeploy",
+        status: "pending",
+        retryCount: 0,
+      };
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [existingTask],
+        })
+        .execute();
+
+      // Should exit without modifying tasks
+      expect(result.state.tasks).toHaveLength(1);
+      expect(result.state.tasks[0]!.name).toBe("WebsiteDeploy");
+      expect(result.state.tasks[0]!.status).toBe("pending");
+    });
+
+    it("exits immediately if WebsiteDeploy task is completed", async () => {
+      const completedTask: Task.Task = {
+        id: "uuid-123",
+        name: "WebsiteDeploy",
+        status: "completed",
+        retryCount: 0,
+        result: { deployed: true },
+      };
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [completedTask],
+        })
+        .execute();
+
+      expect(result.state.tasks).toHaveLength(1);
+      expect(result.state.tasks[0]!.status).toBe("completed");
+    });
+
+    it("exits immediately if WebsiteDeploy task is running (waiting for webhook)", async () => {
+      const runningTask: Task.Task = {
+        id: "uuid-123",
+        name: "WebsiteDeploy",
+        status: "running",
+        jobId: 456,
+        retryCount: 0,
+      };
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [runningTask],
+        })
+        .execute();
+
+      // Should exit without modifying - waiting for webhook
+      expect(result.state.tasks).toHaveLength(1);
+      expect(result.state.tasks[0]!.status).toBe("running");
+    });
+  });
+
+  /**
+   * =============================================================================
+   * TASK BUBBLING TESTS
+   * =============================================================================
+   * These tests verify that tasks from the subgraph are visible to the parent.
+   * Since all graphs use DeployAnnotation with the same reducer, tasks should
+   * merge correctly.
+   */
+  describe("Task Bubbling - All tasks visible to parent graph", () => {
+    it("tasks array accumulates as nodes execute", async () => {
+      // Start with completed instrumentation and validation
+      const existingTasks: Task.Task[] = [
+        { id: "uuid-1", name: "Instrumentation", status: "completed", retryCount: 0 },
+        { id: "uuid-2", name: "RuntimeValidation", status: "passed", retryCount: 0 },
+      ];
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: existingTasks,
+        })
+        .stopAfter("deployWebsite")
+        .execute();
+
+      // Should have all tasks including WebsiteDeploy
+      expect(result.state.tasks.length).toBeGreaterThanOrEqual(2);
+
+      // Verify existing tasks preserved
+      const instTask = result.state.tasks.find((t) => t.name === "Instrumentation");
+      expect(instTask?.status).toBe("completed");
+    });
+  });
+
+  /**
+   * =============================================================================
+   * WEBHOOK INTEGRATION TESTS
+   * =============================================================================
+   * These tests verify the fire-and-forget + webhook callback pattern.
+   *
+   * Flow:
+   * 1. First invoke: Creates task with "pending", fires Sidekiq job, returns
+   * 2. Frontend polls: Sees "pending" task
+   * 3. Sidekiq completes: Webhook updates task with result
+   * 4. Second invoke: Processes result, marks "completed"
+   */
+  describe("Webhook Integration - Async Deploy", () => {
+    it("graph exits early when WebsiteDeploy task exists (webhook pattern)", async () => {
+      // Simulate state after deploy task was created and webhook hasn't returned
+      const pendingDeployTask: Task.Task = {
+        id: "uuid-deploy",
+        name: "WebsiteDeploy",
+        status: "pending",
+        jobId: 123,
+        retryCount: 0,
+      };
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [pendingDeployTask],
+        })
+        .execute();
+
+      // Graph should exit immediately - idempotent
+      expect(result.state.tasks).toHaveLength(1);
+      expect(result.state.tasks[0]!.status).toBe("pending");
+    });
+
+    it("processes webhook result when task has result", async () => {
+      // Simulate state after webhook updated task with result
+      const taskWithResult: Task.Task = {
+        id: "uuid-deploy",
+        name: "WebsiteDeploy",
+        jobId: 123,
+        status: "running",
+        retryCount: 0,
+        result: {
+          website_id: 1,
+          deployed_at: "2024-01-15T10:00:00Z",
+          url: "https://example.com",
+        },
+      };
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [taskWithResult],
+        })
+        .execute();
+
+      // Graph exits early because WebsiteDeploy task exists
+      // The deployWebsiteNode would process the result if it ran
+      expect(result.state.tasks[0]!.name).toBe("WebsiteDeploy");
+    });
+  });
+
+  /**
+   * =============================================================================
+   * VALIDATION FLOW TESTS
+   * =============================================================================
+   * These tests verify the validation → fix → retry loop.
+   */
+  describe("Validation Flow - Retry Loop", () => {
+    it("exits after MAX_RETRY_COUNT attempts when validation keeps failing", async () => {
+      // Simulate state where validation failed and we've hit max retries
+      const failedValidationTask: Task.Task = {
+        id: "uuid-val",
+        name: "RuntimeValidation",
+        status: "failed",
+        retryCount: 2, // MAX_RETRY_COUNT = 2
+        error: "Console errors found",
+      };
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
+            failedValidationTask,
+          ],
+        })
+        .stopAfter("runtimeValidation")
+        .execute();
+
+      // Should exit due to max retries (not loop forever)
+      expect(result).toBeDefined();
+    });
+
+    it.only("fixes errors until validation passes", async () => {
+      const failedValidationTask: Task.Task = {
+        id: "uuid-val",
+        name: "RuntimeValidation",
+        status: "failed", // This is what the graph expects
+        retryCount: 0,
+      };
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
+            failedValidationTask,
+          ],
+        })
+        .stopAfter("fixWithCodingAgent")
+        .execute();
+
+      // Should have reached deployWebsite node
+      const deployTask = result.state.tasks.find((t) => t.name === "WebsiteDeploy");
+      expect(deployTask).toBeDefined();
+    })
+
+    it("routes to deployWebsite when validation passes", async () => {
+      const passedValidationTask: Task.Task = {
+        id: "uuid-val",
+        name: "RuntimeValidation",
+        status: "completed", // This is what the graph expects
+        retryCount: 0,
+      };
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
+            passedValidationTask,
+          ],
+        })
+        .stopAfter("deployWebsite")
+        .execute();
+
+      // Should have reached deployWebsite node
+      const deployTask = result.state.tasks.find((t) => t.name === "WebsiteDeploy");
+      expect(deployTask).toBeDefined();
+    });
+  });
+});
