@@ -14,7 +14,14 @@ import { v7 as uuid } from "uuid";
 export const ChecklistTaskStatuses = ["pending", "running", "completed", "failed"] as const;
 export type ChecklistTaskStatus = typeof ChecklistTaskStatuses[number];
 
-export const TaskNames = ["CampaignDeploy"] as const;
+export const TaskNames = [
+  "CampaignDeploy",
+  "WebsiteDeploy",
+  "instrumentation",
+  "website_deploy",
+  "runtime_validation",
+  "code_fix",
+] as const;
 export type TaskName = typeof TaskNames[number];
 
 export const ChecklistTaskSchema = z.object({

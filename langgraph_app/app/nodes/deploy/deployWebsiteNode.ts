@@ -1,23 +1,22 @@
-import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { DeployGraphState } from "@annotation";
-import { JobRunAPIService } from "@services";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
+import { JobRunAPIService } from "@services";
+import { env } from "@core";
 import { createChecklistTask, findChecklistTask, updateChecklistTask } from "@types";
 
-const TASK_NAME = "CampaignDeploy";
+const TASK_NAME = "WebsiteDeploy" as const;
 
 /**
- * Deploy Campaign Node (Idempotent Pattern)
+ * Deploy Website Node (Idempotent Pattern)
  *
- * This node uses the fire-and-forget + idempotent pattern:
+ * Uses the fire-and-forget + idempotent pattern:
  * 1. First invocation: fires Rails job, creates task with "pending" status
  * 2. Subsequent invocations with pending/running task: returns {} (no-op)
  * 3. When webhook updates task with result: processes result, marks completed
  * 4. Already completed/failed: returns {} (no-op)
- *
- * The node is fully idempotent - safe to run multiple times without side effects.
  */
-export const deployCampaignNode = NodeMiddleware.use(
+export const deployWebsiteNode = NodeMiddleware.use(
   {},
   async (
     state: DeployGraphState,
@@ -44,7 +43,7 @@ export const deployCampaignNode = NodeMiddleware.use(
       return {
         tasks: updateChecklistTask(state.tasks, TASK_NAME, { status: "failed" }),
         status: "failed",
-        error: { message: task.error, node: "deployCampaignNode" },
+        error: { message: task.error, node: "deployWebsiteNode" },
       };
     }
 
@@ -60,17 +59,18 @@ export const deployCampaignNode = NodeMiddleware.use(
     if (!state.threadId) {
       throw new Error("Thread ID is required");
     }
-    if (!state.campaignId) {
-      throw new Error("Campaign ID is required");
+    if (!state.websiteId) {
+      throw new Error("Website ID is required");
     }
 
+    const callbackUrl = `${env.LANGGRAPH_API_URL}/webhooks/job_run_callback`;
     const jobRunApi = new JobRunAPIService({ jwt: state.jwt });
 
-    // Note: callback URL is auto-constructed by Rails from LANGGRAPH_API_URL (SSRF prevention)
     const jobRun = await jobRunApi.create({
-      jobClass: "CampaignDeploy",
-      arguments: { campaign_id: state.campaignId },
+      jobClass: "WebsiteDeploy",
+      arguments: { website_id: state.websiteId },
       threadId: state.threadId,
+      callbackUrl,
     });
 
     return {

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemorySaver } from "@langchain/langgraph";
 import { testGraph } from "@support";
-import { launchGraph as uncompiledGraph } from "@graphs";
-import type { LaunchGraphState } from "@annotation";
+import { deployGraph as uncompiledGraph } from "@graphs";
+import type { DeployGraphState } from "@annotation";
 import type { ThreadIDType, ChecklistTask } from "@types";
 import { graphParams } from "@core";
 
@@ -13,17 +13,17 @@ vi.mock("@services", () => ({
   })),
 }));
 
-const launchGraph = uncompiledGraph.compile({ ...graphParams, name: "launch" });
+const deployGraph = uncompiledGraph.compile({ ...graphParams, name: "deploy" });
 
-describe("Launch Graph", () => {
+describe("Deploy Graph", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe("First invocation (no task exists)", () => {
     it("creates a job, adds task to tasks[], returns pending status", async () => {
-      const result = await testGraph<LaunchGraphState>()
-        .withGraph(launchGraph)
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
@@ -33,7 +33,7 @@ describe("Launch Graph", () => {
         .stopAfter("deployCampaign")
         .execute();
 
-      expect(result.state.deployStatus).toBe("pending");
+      expect(result.state.status).toBe("pending");
       expect(result.state.tasks).toHaveLength(1);
       expect(result.state.tasks[0]!.name).toBe("CampaignDeploy");
       expect(result.state.tasks[0]!.status).toBe("pending");
@@ -50,21 +50,21 @@ describe("Launch Graph", () => {
         status: "pending",
       };
 
-      const result = await testGraph<LaunchGraphState>()
-        .withGraph(launchGraph)
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
           campaignId: 456,
           tasks: [existingTask],
-          deployStatus: "pending",
+          status: "pending",
         })
         .stopAfter("deployCampaign")
         .execute();
 
       expect(result.state.tasks).toHaveLength(1);
       expect(result.state.tasks[0]!.status).toBe("pending");
-      expect(result.state.deployStatus).toBe("pending");
+      expect(result.state.status).toBe("pending");
     });
 
     it("returns no-op when task is running but no result yet", async () => {
@@ -75,14 +75,14 @@ describe("Launch Graph", () => {
         status: "running",
       };
 
-      const result = await testGraph<LaunchGraphState>()
-        .withGraph(launchGraph)
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
           campaignId: 456,
           tasks: [existingTask],
-          deployStatus: "pending",
+          status: "pending",
         })
         .stopAfter("deployCampaign")
         .execute();
@@ -106,20 +106,20 @@ describe("Launch Graph", () => {
         },
       };
 
-      const result = await testGraph<LaunchGraphState>()
-        .withGraph(launchGraph)
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
           campaignId: 456,
           tasks: [taskWithResult],
-          deployStatus: "pending",
+          status: "pending",
         })
         .stopAfter("deployCampaign")
         .execute();
 
-      expect(result.state.deployStatus).toBe("completed");
-      expect(result.state.deployResult).toEqual({
+      expect(result.state.status).toBe("completed");
+      expect(result.state.result).toEqual({
         campaign_id: 456,
         external_id: "ext_789",
         deployed_at: "2024-01-15T10:00:00Z",
@@ -136,19 +136,19 @@ describe("Launch Graph", () => {
         error: "API rate limit exceeded",
       };
 
-      const result = await testGraph<LaunchGraphState>()
-        .withGraph(launchGraph)
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
           campaignId: 456,
           tasks: [taskWithError],
-          deployStatus: "pending",
+          status: "pending",
         })
         .stopAfter("deployCampaign")
         .execute();
 
-      expect(result.state.deployStatus).toBe("failed");
+      expect(result.state.status).toBe("failed");
       expect(result.state.error).toEqual({
         message: "API rate limit exceeded",
         node: "deployCampaignNode",
@@ -167,21 +167,21 @@ describe("Launch Graph", () => {
         result: { success: true },
       };
 
-      const result = await testGraph<LaunchGraphState>()
-        .withGraph(launchGraph)
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
           campaignId: 456,
           tasks: [completedTask],
-          deployStatus: "completed",
-          deployResult: { success: true },
+          status: "completed",
+          result: { success: true },
         })
         .stopAfter("deployCampaign")
         .execute();
 
       expect(result.state.tasks[0]!.status).toBe("completed");
-      expect(result.state.deployStatus).toBe("completed");
+      expect(result.state.status).toBe("completed");
     });
 
     it("returns no-op when task is already failed", async () => {
@@ -193,27 +193,27 @@ describe("Launch Graph", () => {
         error: "Some error",
       };
 
-      const result = await testGraph<LaunchGraphState>()
-        .withGraph(launchGraph)
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
           campaignId: 456,
           tasks: [failedTask],
-          deployStatus: "failed",
+          status: "failed",
         })
         .stopAfter("deployCampaign")
         .execute();
 
       expect(result.state.tasks[0]!.status).toBe("failed");
-      expect(result.state.deployStatus).toBe("failed");
+      expect(result.state.status).toBe("failed");
     });
   });
 
   describe("Validation errors", () => {
     it("sets error when JWT is missing", async () => {
-      const result = await testGraph<LaunchGraphState>()
-        .withGraph(launchGraph)
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
         .withState({
           threadId: "thread_123" as ThreadIDType,
           campaignId: 456,
@@ -228,8 +228,8 @@ describe("Launch Graph", () => {
     });
 
     it("sets error when threadId is missing", async () => {
-      const result = await testGraph<LaunchGraphState>()
-        .withGraph(launchGraph)
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           campaignId: 456,
@@ -243,8 +243,8 @@ describe("Launch Graph", () => {
     });
 
     it("sets error when campaignId is missing", async () => {
-      const result = await testGraph<LaunchGraphState>()
-        .withGraph(launchGraph)
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
@@ -264,7 +264,7 @@ describe("Launch Graph", () => {
       const graph = uncompiledGraph.compile({ checkpointer });
       const threadId = "test-thread-123";
 
-      const initialState: Partial<LaunchGraphState> = {
+      const initialState: Partial<DeployGraphState> = {
         jwt: "test-jwt",
         threadId: "thread_123" as ThreadIDType,
         campaignId: 456,
@@ -275,7 +275,7 @@ describe("Launch Graph", () => {
         configurable: { thread_id: threadId },
       });
 
-      expect(firstResult.deployStatus).toBe("pending");
+      expect(firstResult.status).toBe("pending");
       expect(firstResult.tasks).toHaveLength(1);
       expect(firstResult.tasks[0]!.name).toBe("CampaignDeploy");
       expect(firstResult.tasks[0]!.status).toBe("pending");
@@ -302,8 +302,8 @@ describe("Launch Graph", () => {
       // Second invocation (e.g., from frontend poll or webhook graph run)
       const secondResult = await graph.invoke({}, { configurable: { thread_id: threadId } });
 
-      expect(secondResult.deployStatus).toBe("completed");
-      expect(secondResult.deployResult).toEqual({
+      expect(secondResult.status).toBe("completed");
+      expect(secondResult.result).toEqual({
         campaign_id: 456,
         external_id: "ext_789",
         deployed_at: "2024-01-15T10:00:00Z",
@@ -316,7 +316,7 @@ describe("Launch Graph", () => {
       const graph = uncompiledGraph.compile({ checkpointer });
       const threadId = "test-thread-failure";
 
-      const initialState: Partial<LaunchGraphState> = {
+      const initialState: Partial<DeployGraphState> = {
         jwt: "test-jwt",
         threadId: "thread_123" as ThreadIDType,
         campaignId: 456,
@@ -327,7 +327,7 @@ describe("Launch Graph", () => {
         configurable: { thread_id: threadId },
       });
 
-      expect(firstResult.deployStatus).toBe("pending");
+      expect(firstResult.status).toBe("pending");
 
       // Simulate webhook with error
       await graph.updateState(
@@ -346,7 +346,7 @@ describe("Launch Graph", () => {
       // Next invocation processes the error
       const secondResult = await graph.invoke({}, { configurable: { thread_id: threadId } });
 
-      expect(secondResult.deployStatus).toBe("failed");
+      expect(secondResult.status).toBe("failed");
       expect(secondResult.error).toEqual({
         message: "API rate limit exceeded",
         node: "deployCampaignNode",
@@ -371,12 +371,12 @@ describe("Launch Graph", () => {
         { configurable: { thread_id: threadId } }
       );
 
-      expect(firstResult.deployStatus).toBe("pending");
+      expect(firstResult.status).toBe("pending");
 
       // Get current state (simulates what frontend would see)
       const state = await graph.getState({ configurable: { thread_id: threadId } });
 
-      expect(state?.values?.deployStatus).toBe("pending");
+      expect(state?.values?.status).toBe("pending");
       expect(state?.values?.tasks[0]!.status).toBe("pending");
     });
   });
