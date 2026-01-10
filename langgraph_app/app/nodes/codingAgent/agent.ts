@@ -2,16 +2,19 @@ import type { CodingAgentGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "./utils/agent";
+import { createMultimodalPseudoMessage } from "@utils";
 
-export const codingAgentNode = NodeMiddleware.use({}, async(
-  state: CodingAgentGraphState,
-  config: LangGraphRunnableConfig,
-): Promise<Partial<CodingAgentGraphState>> => {
-  const agent = createCodingAgent(state);
-  const contextMessage = `
+export const codingAgentNode = NodeMiddleware.use(
+  {},
+  async (
+    state: CodingAgentGraphState,
+    config: LangGraphRunnableConfig
+  ): Promise<Partial<CodingAgentGraphState>> => {
+    const agent = createCodingAgent(state);
+    const contextMessage = `
 ## Brainstorm Context
 - Idea: ${state.brainstorm.idea || "Not provided"}
-- Audience: ${state.brainstorm.audience || "Not provided"}  
+- Audience: ${state.brainstorm.audience || "Not provided"}
 - Solution: ${state.brainstorm.solution || "Not provided"}
 - Social Proof: ${state.brainstorm.socialProof || "Not provided"}
 
@@ -24,21 +27,31 @@ ${state.images.length > 0 ? state.images.map((img) => `- ${img.url}${img.isLogo 
 Please create a landing page based on this context.
 `;
 
-  const result = await agent.invoke(
-    {
-      messages: [
-        ...(state.messages || []),
-        { role: "user", content: contextMessage },
-      ],
-    },
-    {
-      recursionLimit: 100,
-      ...config,
-    }
-  );
+    // Build user message - combine context with visual images if available
+    const userMessage =
+      state.images.length > 0
+        ? createMultimodalPseudoMessage([
+            { type: "text" as const, text: contextMessage },
+            ...state.images.map((img) => ({
+              type: "image_url" as const,
+              image_url: { url: img.url },
+            })),
+          ])
+        : { role: "user", content: contextMessage };
 
-  return {
-    messages: result.messages,
-    status: "completed",
-  };
-});
+    const result = await agent.invoke(
+      {
+        messages: [...(state.messages || []), userMessage],
+      },
+      {
+        recursionLimit: 100,
+        ...config,
+      }
+    );
+
+    return {
+      messages: result.messages,
+      status: "completed",
+    };
+  }
+);
