@@ -11,11 +11,27 @@ export class WebsiteRunner implements AsyncDisposable {
   private devServerProcess: ChildProcess | null = null;
   private port: number;
   private serverUrl: string;
+  private stdoutLines: string[] = [];
+  private stderrLines: string[] = [];
 
   constructor(projectDir: string, port: number = 0) {
     this.projectDir = projectDir;
     this.port = port;
     this.serverUrl = `http://localhost:${port}`;
+  }
+
+  /**
+   * Get accumulated stdout lines from the dev server
+   */
+  getStdout(): string[] {
+    return this.stdoutLines;
+  }
+
+  /**
+   * Get accumulated stderr lines from the dev server
+   */
+  getStderr(): string[] {
+    return this.stderrLines;
   }
 
   /**
@@ -81,7 +97,11 @@ export class WebsiteRunner implements AsyncDisposable {
       // Capture stdout to detect when server is ready
       this.devServerProcess.stdout?.on("data", (data) => {
         const output = data.toString();
-        console.log(`  Server: ${output.trim()}`);
+        const trimmed = output.trim();
+        if (trimmed) {
+          this.stdoutLines.push(trimmed);
+        }
+        console.log(`  Server: ${trimmed}`);
 
         // Look for the actual port being used
         const portMatch = output.match(/Local:\s+https?:\/\/localhost:(\d+)/);
@@ -98,8 +118,12 @@ export class WebsiteRunner implements AsyncDisposable {
 
       // Capture stderr for errors
       this.devServerProcess.stderr?.on("data", (data) => {
+        const trimmed = data.toString().trim();
         errorOutput += data.toString();
-        console.error(`  Server Error: ${data.toString().trim()}`);
+        if (trimmed) {
+          this.stderrLines.push(trimmed);
+        }
+        console.error(`  Server Error: ${trimmed}`);
       });
 
       this.devServerProcess.on("error", (error) => {
@@ -156,6 +180,9 @@ export class WebsiteRunner implements AsyncDisposable {
         // Remove listeners
         processToKill?.removeAllListeners();
         this.devServerProcess = null;
+        // Clear captured output for fresh start
+        this.stdoutLines = [];
+        this.stderrLines = [];
         console.log("  ✓ Dev server stopped");
         resolve();
       };

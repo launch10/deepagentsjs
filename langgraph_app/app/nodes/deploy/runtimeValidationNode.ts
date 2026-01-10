@@ -21,10 +21,10 @@ export const runtimeValidationNode = NodeMiddleware.use(
     state: DeployGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
-    const existingTask = Task.findTask(state.tasks, TASK_NAME);
+    const task = Task.findTask(state.tasks, TASK_NAME);
 
     // Already completed or failed? No-op (idempotent)
-    if (existingTask) {
+    if (task?.status !== "running") {
       return {};
     }
 
@@ -32,23 +32,26 @@ export const runtimeValidationNode = NodeMiddleware.use(
       throw new Error("WebsiteId is required for runtime validation");
     }
 
-    // Create task with running status
-    const task = Task.createTask(TASK_NAME);
-
     try {
       // Use await using for proper cleanup (AsyncDisposable)
       await using exporter = new ErrorExporter(state.websiteId);
       const errors = await exporter.run();
 
-      const passed = errors.length === 0;
+      // Use hasErrors with excludeWarnings to only fail on actual errors
+      const passed = !errors.hasErrors({ excludeWarnings: true });
 
       return {
         tasks: [
           {
             ...task,
             status: passed ? "completed" : "failed",
-            result: { errorCount: errors.length },
-            error: passed ? undefined : `Found ${errors.length} console error(s)`,
+            result: {
+              browserErrorCount: errors.browser.filter(e => e.type === "error").length,
+              serverErrorCount: errors.server.length,
+              viteOverlayErrorCount: errors.viteOverlay.length,
+              report: errors.getFormattedReport()
+            },
+            error: passed ? undefined : errors.getFormattedReport(),
           }
         ]
       };

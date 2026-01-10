@@ -324,7 +324,6 @@ describe("Deploy Graph", () => {
         configurable: { thread_id: threadId },
       });
 
-      debugger;
       expect(firstResult.status).toBe("pending");
       expect(firstResult.tasks).toHaveLength(1);
       expect(firstResult.tasks[0]!.name).toBe("CampaignDeploy");

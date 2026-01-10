@@ -5,6 +5,7 @@ import { deployWebsiteGraph as uncompiledGraph } from "@graphs";
 import type { DeployGraphState } from "@annotation";
 import type { ThreadIDType, Task } from "@types";
 import { graphParams } from "@core";
+import { DatabaseSnapshotter } from "@rails_api";
 
 const deployWebsiteGraph = uncompiledGraph.compile({ ...graphParams, name: "deployWebsite" });
 
@@ -241,12 +242,75 @@ describe("DeployWebsiteGraph", () => {
       expect(result).toBeDefined();
     });
 
-    it.only("fixes errors until validation passes", async () => {
+    it("detects errors from all sources (browser, server, viteOverlay)", async () => {
+      await DatabaseSnapshotter.restoreSnapshot("website_with_import_errors");
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
+          ],
+        })
+        .stopAfter("runtimeValidation")
+        .execute();
+
+      // RuntimeValidation should have failed due to detected errors
+      const validationTask = result.state.tasks.find((t) => t.name === "RuntimeValidation");
+      console.log(validationTask)
+      expect(validationTask).toBeDefined();
+      expect(validationTask?.status).toBe("failed");
+
+      // The error report should contain the syntax error details
+      const error = validationTask?.error as string;
+      expect(error).toContain("NonExistentComponent");
+    })
+
+    it.only("routes to fix when validation fails", async () => {
       const failedValidationTask: Task.Task = {
         id: "uuid-val",
         name: "RuntimeValidation",
-        status: "failed", // This is what the graph expects
+        status: "failed",
         retryCount: 0,
+        result: {
+          browserErrorCount: 2,
+          serverErrorCount: 4,
+          viteOverlayErrorCount: 1,
+          report: '## Build Errors\n' +
+            '\n' +
+            "1. Expected ',', got 'ident'\n" +
+            '   File: src/pages/IndexPage.tsx\n' +
+            '   Code:\n' +
+            '   3 | export const IndexPage = () => {\n' +
+            '    4 |   return (\n' +
+            '    5 |       <NonExistentComponent />\n' +
+            '    6 |     <div className="min-h-screen flex items-center justify-center bg-background">\n' +
+            '\n' +
+            '2. Error:   Failed to scan for dependencies from entries:\n' +
+            '   File: IndexPage.tsx:6\n' +
+            '   Code:\n' +
+            '   6 │     <div className="min-h-screen flex items-center justify-center b...\n' +
+            '           │          ~~~~~~~~~'
+        },
+        error: '## Build Errors\n' +
+          '\n' +
+          "1. Expected ',', got 'ident'\n" +
+          '   File: src/pages/IndexPage.tsx\n' +
+          '   Code:\n' +
+          '   3 | export const IndexPage = () => {\n' +
+          '    4 |   return (\n' +
+          '    5 |       <NonExistentComponent />\n' +
+          '    6 |     <div className="min-h-screen flex items-center justify-center bg-background">\n' +
+          '\n' +
+          '2. Error:   Failed to scan for dependencies from entries:\n' +
+          '   File: IndexPage.tsx:6\n' +
+          '   Code:\n' +
+          '   6 │     <div className="min-h-screen flex items-center justify-center b...\n' +
+          '           │          ~~~~~~~~~'
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -264,9 +328,9 @@ describe("DeployWebsiteGraph", () => {
         .stopAfter("fixWithCodingAgent")
         .execute();
 
-      // Should have reached deployWebsite node
-      const deployTask = result.state.tasks.find((t) => t.name === "WebsiteDeploy");
-      expect(deployTask).toBeDefined();
+      // Should route to fix
+      debugger;
+      expect(result.state.tasks[0]!.name).toBe("Fix");
     })
 
     it("routes to deployWebsite when validation passes", async () => {

@@ -78,10 +78,10 @@ export const instrumentationNode = NodeMiddleware.use(
     state: DeployGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
-    const existingTask = Task.findTask(state.tasks, TASK_NAME);
+    const task = Task.findTask(state.tasks, TASK_NAME);
 
     // If we already have the task, no-op -- idempotent
-    if (existingTask) {
+    if (task?.status === "completed") {
       return {};
     }
 
@@ -89,12 +89,10 @@ export const instrumentationNode = NodeMiddleware.use(
       throw new Error("Missing websiteId");
     }
 
-    const jwt = config?.configurable?.jwt as string | undefined;
+    const jwt = state.jwt as string | undefined;
     if (!jwt) {
       throw new Error("Missing JWT");
     }
-
-    const task = Task.createTask(TASK_NAME);
 
     try {
       // 1. Load website files

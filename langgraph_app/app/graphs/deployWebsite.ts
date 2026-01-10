@@ -5,6 +5,7 @@ import {
   deployWebsiteNode,
   runtimeValidationNode,
   fixWithCodingAgentNode,
+  createEnqueueNode,
 } from "@nodes";
 import { Task } from "@types";
 
@@ -13,13 +14,6 @@ const MAX_RETRY_COUNT = 2;
 // Helper to check task status
 const getTaskStatus = (state: DeployGraphState, name: Task.TaskName) =>
   Task.findTask(state.tasks, name)?.status;
-
-const idempotencyCheckNode = (state: DeployGraphState, config: LangGraphRunnableConfig) => {
-  const task = Task.findTask(state.tasks, "WebsiteDeploy");
-  if (task?.status === "completed") {
-    return END;
-  }
-}
 
 /**
  * Website Deploy Graph
@@ -32,36 +26,48 @@ const idempotencyCheckNode = (state: DeployGraphState, config: LangGraphRunnable
  * 4) Deploy website
  */
 export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
+  // Enqueue nodes (lightweight, checkpoint state before work)
+  .addNode("enqueueInstrumentation", createEnqueueNode("Instrumentation"))
+  .addNode("enqueueValidation", createEnqueueNode("RuntimeValidation"))
+  .addNode("enqueueBugFix", createEnqueueNode("BugFix"))
+  .addNode("enqueueDeploy", createEnqueueNode("WebsiteDeploy"))
+
+  // Work nodes
   .addNode("instrumentation", instrumentationNode)
   .addNode("runtimeValidation", runtimeValidationNode)
   .addNode("fixWithCodingAgent", fixWithCodingAgentNode)
   .addNode("deployWebsite", deployWebsiteNode)
 
+  // START → enqueue → work
   .addConditionalEdges(START, (state) => {
     const websiteDeployTask = Task.findTask(state.tasks, "WebsiteDeploy");
     // If we've created the website deploy task AT ALL, that means we're already in progress or finished
     if (websiteDeployTask) {
       return END;
     }
-    return "instrumentation";
+    return "enqueueInstrumentation";
   })
-  .addEdge("instrumentation", "runtimeValidation")
+  .addEdge("enqueueInstrumentation", "instrumentation")
+  .addEdge("instrumentation", "enqueueValidation")
+  .addEdge("enqueueValidation", "runtimeValidation")
 
   // Validation routing: pass → deploy, fail → fix (with retry limit)
   .addConditionalEdges("runtimeValidation", (state) => {
     const status = getTaskStatus(state, "RuntimeValidation");
     if (status === "passed") {
-      return "deployWebsite";
+      return "enqueueDeploy";
     }
     const retryCount = Task.findTask(state.tasks, "RuntimeValidation")?.retryCount || 0;
     if (retryCount >= MAX_RETRY_COUNT) {
       return END;
     }
-    return "fixWithCodingAgent";
+    return "enqueueBugFix";
   })
 
-  // Fix loop back to instrumentation
-  .addEdge("fixWithCodingAgent", "instrumentation")
+  // Fix loop back to instrumentation (re-enqueue for retry)
+  .addEdge("enqueueBugFix", "fixWithCodingAgent")
+  .addEdge("fixWithCodingAgent", "enqueueInstrumentation")
 
-  // Deploy website to END
+  // Deploy
+  .addEdge("enqueueDeploy", "deployWebsite")
   .addEdge("deployWebsite", END)

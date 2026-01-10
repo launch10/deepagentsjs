@@ -1,4 +1,3 @@
-import type { CodingAgentGraphState } from "@annotation";
 import { db, websites, eq } from "@db";
 import { Website } from "@types";
 import { createDeepAgent } from "deepagents";
@@ -119,7 +118,12 @@ const getMiddlewares = (): AgentMiddleware[] => {
   return [toolRetryMiddleware(), modelFallbackMiddleware];
 };
 
-export const getCodingAgentBackend = async (state: CodingAgentGraphState) => {
+export type MinimalCodingAgentState = {
+  websiteId: number;
+  jwt: string;
+};
+
+export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
   if (!state.websiteId || !state.jwt) {
     throw new Error("websiteId and jwt are required");
   }
@@ -145,7 +149,7 @@ export const getCodingAgentBackend = async (state: CodingAgentGraphState) => {
   return backend;
 };
 
-export function createCodingAgent(state: CodingAgentGraphState, prompt?: string) {
+export function createCodingAgent(state: MinimalCodingAgentState, prompt?: string) {
   const backend = getCodingAgentBackend(state);
   const llm = getLLM("coding", "slow", "paid");
   const middlewares = getMiddlewares();

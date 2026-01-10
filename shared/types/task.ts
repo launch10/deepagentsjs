@@ -66,3 +66,15 @@ export function updateTask(
 ): Task[] {
   return tasks.map((t) => (t.name === name ? { ...t, ...updates } : t));
 }
+
+export function enqueueTask(tasks: Task[], taskName: TaskName): Task[] {
+  if (findTask(tasks, taskName)) {
+    return tasks;
+  }
+  const task = createTask(taskName)
+
+  return [...tasks, {
+    ...task,
+    status: "running"
+  }];
+}

@@ -1,12 +1,31 @@
 import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
-import { codingAgentGraph } from "@graphs";
+import { createCodingAgent } from "../codingAgent/utils";
 import { graphParams } from "@core";
 import { HumanMessage } from "@langchain/core/messages";
 import { Task } from "@types";
 
 const TASK_NAME = "BugFix" as const;
+
+const fixBugSystemPrompt = (errorContext: string) => {
+  return `
+    The user has a simple, static landing page that uses:
+      1. React Router
+      2. Tailwind
+      3. ShadCN
+
+    <task>
+      Fix the following errors:
+    </task>
+
+    <errors>
+      ${errorContext}
+    </errors>
+
+    Analyze the errors and modify the code files to resolve them.
+  `;
+};
 
 /**
  * Fix With Coding Agent Node
@@ -22,33 +41,31 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
   ): Promise<Partial<DeployGraphState>> => {
     // Get validation errors from runtime_validation task
     const validationTask = Task.findTask(state.tasks, "RuntimeValidation");
-    if (validationTask?.status === "completed") {
+    if (!validationTask) {
       return {};
     }
 
-    const consoleErrors = state.consoleErrors ?? [];
-    if (consoleErrors.length === 0) {
-      // No errors to fix
+    if (validationTask.status !== "failed") {
       return {};
     }
 
-    // Format errors for coding agent
-    const errorContext = consoleErrors
-      .map((e) => `- ${e.type || "error"}: ${e.message}`)
-      .join("\n");
+    if (!state.websiteId || !state.jwt) {
+      throw new Error("websiteId and jwt are required");
+    }
 
-    // Create task with running status
-    const task = Task.createTask(TASK_NAME);
-    const tasksWithRunning = [...state.tasks, { ...task, status: "running" as const }];
+    if (!validationTask.error) {
+      throw new Error("Validation error is required");
+    }
+
+    const errorContext = validationTask.error;
+    const systemPrompt = fixBugSystemPrompt(errorContext);
 
     try {
       // Compile and invoke codingAgentGraph as subgraph
-      const compiled = codingAgentGraph.compile({
-        ...graphParams,
-        name: "codingAgent-fix",
-      });
+      const agent = createCodingAgent({ websiteId: state.websiteId, jwt: state.jwt }, systemPrompt)
 
-      await compiled.invoke({
+      debugger;
+      const result = await agent.invoke({
         websiteId: state.websiteId,
         accountId: state.accountId,
         projectId: state.projectId,
@@ -56,30 +73,17 @@ export const fixWithCodingAgentNode = NodeMiddleware.use(
         threadId: state.threadId,
         messages: [
           new HumanMessage(
-            `Fix the following runtime errors:\n\n${errorContext}\n\nAnalyze the errors and modify the code files to resolve them.`
+            `Please analyze the errors and resolve them so my site runs successfully.`
           ),
         ],
       });
+      debugger;
 
-      return {
-        tasks: Task.updateTask(tasksWithRunning, TASK_NAME, {
-          status: "completed",
-          result: { errorsFixed: consoleErrors.length },
-        }),
-        retryCount: state.retryCount + 1,
-        // Reset validation state for re-validation
-        validationPassed: false,
-        consoleErrors: [],
-      };
+      return {};
     } catch (error) {
+      debugger;
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      return {
-        tasks: Task.updateTask(tasksWithRunning, TASK_NAME, {
-          status: "failed",
-          error: errorMessage,
-        }),
-        retryCount: state.retryCount + 1,
-      };
+      return {};
     }
   }
 );

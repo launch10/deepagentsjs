@@ -12,7 +12,7 @@ basic_account:
   description: "Creates a subscribed test user account"
 
 website_step:
-  class: WebsiteCreated
+  class: WebsiteStep
   base_snapshot: basic_account
   description: "Creates a website with brainstorm data"
 
@@ -20,6 +20,11 @@ website_step_finished:
   class: WebsiteStepFinished
   base_snapshot: website_step
   description: "Finishes website step and advances workflow to ad_campaign:content"
+
+website_with_import_errors:
+  class: WebsiteWithImportErrors
+  base_snapshot: website_step_finished
+  description: "Website with import errors for deploy validation testing"
 
 campaign_content_step:
   class: CampaignContentStep
