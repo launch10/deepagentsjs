@@ -10,9 +10,14 @@ import type { Brainstorm } from "@types";
 import { NodeMiddleware } from "@middleware";
 
 /**
- * Build context for the coding agent.
- * Note: Theme is seeded at the agent utils layer via ThemeAPIService,
- * so we only need to fetch brainstorm and images here.
+ * Build context for the coding agent on the WebsiteBuilder page.
+ * 
+ * Note: 
+ * - We only need to seed things here that are NOT already seeded at the agent utils layer
+ * - For example, theme is needed by EVERY prompt, so it is seeded at the agent utils layer
+ * - Brainstorm is fetched here
+ * - Images are fetched here
+ * - Think about: What does the builder need that deploy/bug fix does not? 
  */
 export const buildContext = NodeMiddleware.use({}, async (
   state: CodingAgentGraphState,

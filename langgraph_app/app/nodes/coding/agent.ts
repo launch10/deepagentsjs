@@ -4,7 +4,7 @@ import { createDeepAgent } from "deepagents";
 import { getLLM, getLLMFallbacks } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
-import { copywriterSubAgent, coderSubAgent } from "../subagents";
+import { copywriterSubAgent, coderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
   toolRetryMiddleware,

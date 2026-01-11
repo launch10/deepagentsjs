@@ -4,11 +4,11 @@ import type { DeployGraphState } from "@annotation";
 import type { Task } from "@types";
 
 // Mock createCodingAgent
-vi.mock("../../../../app/nodes/codingAgent/utils", () => ({
+vi.mock("../../../../app/nodes/coding/agent", () => ({
   createCodingAgent: vi.fn(),
 }));
 
-import { createCodingAgent } from "../../../../app/nodes/codingAgent/utils";
+import { createCodingAgent } from "@nodes";
 
 const mockCreateCodingAgent = vi.mocked(createCodingAgent);
 

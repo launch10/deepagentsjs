@@ -86,7 +86,7 @@ function validateLinks(files: { path: string; content: string }[]): ValidationEr
   return errors;
 }
 
-export const staticValidationNode = NodeMiddleware.use(
+export const validateLinksNode = NodeMiddleware.use(
   {},
   async (
     state: CodingAgentGraphState,
