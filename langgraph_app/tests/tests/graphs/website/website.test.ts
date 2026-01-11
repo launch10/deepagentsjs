@@ -3,14 +3,14 @@ import { testGraph } from "@support";
 import { DatabaseSnapshotter } from "@services";
 import { getCodingAgentBackend } from "@nodes";
 import { db, websites, brainstorms, websiteFiles, eq } from "@db";
-import { codingAgentGraph as uncompiledGraph } from "@graphs";
+import { websiteGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
-import type { CodingAgentGraphState } from "@annotation";
+import type { WebsiteGraphState } from "@annotation";
 import type { Website } from "@types";
 
-const codingAgentGraph = uncompiledGraph.compile({
+const websiteGraph = uncompiledGraph.compile({
   ...graphParams,
-  name: "codingAgent",
+  name: "website",
 });
 
 // Skip on CI until we're fully implemented
@@ -46,15 +46,15 @@ describe.skip.sequential("CodingAgent Flow", () => {
       const backend = await getCodingAgentBackend({
         websiteId,
         jwt: "test-jwt",
-      } as CodingAgentGraphState);
+      } as WebsiteGraphState);
       await backend.cleanup();
     }
   });
 
   describe("Context engineering", () => {
     it("pulls in theme, images, and brainstorm", async () => {
-      const result = await testGraph<CodingAgentGraphState>()
-        .withGraph(codingAgentGraph)
+      const result = await testGraph<WebsiteGraphState>()
+        .withGraph(websiteGraph)
         .withState({
           websiteId,
           accountId: website.accountId ?? undefined,
@@ -82,8 +82,8 @@ describe.skip.sequential("CodingAgent Flow", () => {
       // Ensure it isn't EXACTLY the generated snapshot??? Where did that come from?
       // We should cleanup after the test...  it didn't?
 
-      const result = await testGraph<CodingAgentGraphState>()
-        .withGraph(codingAgentGraph)
+      const result = await testGraph<WebsiteGraphState>()
+        .withGraph(websiteGraph)
         .withState({
           websiteId,
           accountId: website.accountId ?? undefined,

@@ -327,7 +327,7 @@ describe("DeployWebsiteGraph", () => {
             failedValidationTask,
           ],
         })
-        .stopAfter("fixWithCodingAgent")
+        .stopAfter("bugFixNode")
         .execute();
 
       const updatedFile = await db.select().from(websiteFiles).where(

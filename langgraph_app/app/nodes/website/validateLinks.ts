@@ -1,4 +1,4 @@
-import type { CodingAgentGraphState } from "@annotation";
+import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { HumanMessage } from "@langchain/core/messages";
@@ -89,9 +89,9 @@ function validateLinks(files: { path: string; content: string }[]): ValidationEr
 export const validateLinksNode = NodeMiddleware.use(
   {},
   async (
-    state: CodingAgentGraphState,
+    state: WebsiteGraphState,
     config: LangGraphRunnableConfig
-  ): Promise<Partial<CodingAgentGraphState>> => {
+  ): Promise<Partial<WebsiteGraphState>> => {
     if (!state.websiteId) {
       return { status: "completed" };
     }

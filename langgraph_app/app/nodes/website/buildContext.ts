@@ -1,4 +1,4 @@
-import type { CodingAgentGraphState } from "@annotation";
+import type { WebsiteGraphState } from "@annotation";
 import {
   db,
   brainstorms,
@@ -20,8 +20,8 @@ import { NodeMiddleware } from "@middleware";
  * - Think about: What does the builder need that deploy/bug fix does not? 
  */
 export const buildContext = NodeMiddleware.use({}, async (
-  state: CodingAgentGraphState,
-): Promise<Partial<CodingAgentGraphState>> => {
+  state: WebsiteGraphState,
+): Promise<Partial<WebsiteGraphState>> => {
   if (!state.websiteId) {
     throw new Error("websiteId is required");
   }

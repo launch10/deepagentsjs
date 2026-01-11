@@ -4,7 +4,7 @@ import type { PrimaryKeyType } from "@types";
 import { Brainstorm, Website } from "@types";
 import { Core, type ConsoleError } from "@types";
 
-export const CodingAgentAnnotation = Annotation.Root({
+export const WebsiteAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
 
   brainstormId: Annotation<PrimaryKeyType | undefined>({
@@ -43,4 +43,4 @@ export const CodingAgentAnnotation = Annotation.Root({
   }),
 });
 
-export type CodingAgentGraphState = typeof CodingAgentAnnotation.State;
+export type WebsiteGraphState = typeof WebsiteAnnotation.State;

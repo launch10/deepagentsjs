@@ -1,8 +1,8 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
-import { CodingAgentAnnotation } from "@annotation";
+import { WebsiteAnnotation } from "@annotation";
 import { buildContext, websiteBuilderNode, cleanupFilesystemNode, validateLinksNode } from "@nodes";
 
-export const websiteGraph = new StateGraph(CodingAgentAnnotation)
+export const websiteGraph = new StateGraph(WebsiteAnnotation)
   .addNode("buildContext", buildContext)
   .addNode("websiteBuilder", websiteBuilderNode)
   .addNode("validateLinks", validateLinksNode)
@@ -12,6 +12,6 @@ export const websiteGraph = new StateGraph(CodingAgentAnnotation)
   .addEdge("buildContext", "websiteBuilder")
   .addEdge("websiteBuilder", "validateLinks")
   .addConditionalEdges("validateLinks", (state) =>
-    state.status === "completed" ? "cleanupFilesystem" : "codingAgent"
+    state.status === "completed" ? "cleanupFilesystem" : "websiteBuilder"
   )
   .addEdge("cleanupFilesystem", END);

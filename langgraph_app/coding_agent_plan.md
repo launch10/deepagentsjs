@@ -53,8 +53,7 @@ const skills = tool(
   },
   {
     name: "skills",
-    description:
-      "List available skills or load a specific skill's instructions",
+    description: "List available skills or load a specific skill's instructions",
     schema: z.object({
       action: z.enum(["list", "load"]),
       skillName: z.string().optional(),
@@ -138,11 +137,7 @@ class WriteThroughBackend implements BackendProtocol {
   }
 
   // Search goes to Postgres (leverages FTS indexes)
-  async grepRaw(
-    pattern: string,
-    path?: string,
-    glob?: string
-  ): Promise<GrepMatch[] | string> {
+  async grepRaw(pattern: string, path?: string, glob?: string): Promise<GrepMatch[] | string> {
     const results = await CodeFileModel.searchWithRank(pattern, this.websiteId);
     return results.map((r) => ({
       path: r.path,
@@ -304,7 +299,7 @@ class WriteThroughBackend implements BackendProtocol {
 ## State Schema
 
 ```typescript
-const CodingAgentAnnotation = Annotation.Root({
+const WebsiteAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
 
   // Work directory (created in initialize)
@@ -382,7 +377,7 @@ Signup forms: onSubmit={() => posthog.capture('signup_completed')}
 
 1. Build `WriteThroughBackend` implementing `BackendProtocol`
 2. Build hydration logic (code_files → filesystem)
-3. Create `CodingAgentAnnotation` state schema
+3. Create `WebsiteAnnotation` state schema
 4. Wire up filesystem middleware from deepagentsjs
 5. Add shell tool for bash commands
 

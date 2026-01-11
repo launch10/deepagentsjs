@@ -1,10 +1,10 @@
-import type { CodingAgentGraphState } from "@annotation";
+import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
 import { createMultimodalPseudoMessage } from "@utils";
 
-const createContextMessage = (state: CodingAgentGraphState) => {
+const createContextMessage = (state: WebsiteGraphState) => {
     const contextContent = `
       ## Brainstorm Context
       - Idea: ${state.brainstorm.idea || "Not provided"}
@@ -39,9 +39,9 @@ const createContextMessage = (state: CodingAgentGraphState) => {
 export const websiteBuilderNode = NodeMiddleware.use(
   {},
   async (
-    state: CodingAgentGraphState,
+    state: WebsiteGraphState,
     config: LangGraphRunnableConfig
-  ): Promise<Partial<CodingAgentGraphState>> => {
+  ): Promise<Partial<WebsiteGraphState>> => {
     if (!state.websiteId || !state.jwt) {
       throw new Error("websiteId and jwt are required");
     }

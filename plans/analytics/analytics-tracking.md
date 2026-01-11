@@ -1,8 +1,9 @@
-# Plan: Analytics Tracking Infrastructure (Expanded)
+# Plan: Analytics Tracking Infrastructure
 
 ## Problem
 
 Landing pages need Google Ads conversion tracking for ROAS measurement. Currently:
+
 - Agent hardcodes `posthog.capture()` calls (unnecessary distraction)
 - No Google Ads conversion tracking
 - Agent distracted by analytics instead of focusing on beautiful pages
@@ -10,6 +11,7 @@ Landing pages need Google Ads conversion tracking for ROAS measurement. Currentl
 ## Key Insight: Keep It Simple
 
 **PostHog is out of scope for now.** Reasons:
+
 - Would require giving users our API key (they'd see our data)
 - Or each user needs their own PostHog account (friction)
 - Or proxy through backend (complex)
@@ -17,6 +19,7 @@ Landing pages need Google Ads conversion tracking for ROAS measurement. Currentl
 **Focus on Google Ads conversions only** - users bring their own Google Ads account, no API key sharing issues.
 
 ## Design Decisions (from discussion)
+
 - **Semantic defaults** for conversion labels (signup, purchase, lead)
 - **Every deploy** runs instrumentation
 - **Google Ads only** for now (Meta later)
@@ -28,26 +31,31 @@ Landing pages need Google Ads conversion tracking for ROAS measurement. Currentl
 ### Current Architecture
 
 **Coding Agent** (`codingAgent.ts`):
+
 - Uses `WebsiteFilesBackend` to read/write files
 - Files persisted to Rails via `WebsiteFilesAPIService`
 - Flow: buildContext → codingAgent → cleanup
 
 **Launch Graph** (`launch.ts`):
+
 - Currently ONLY has `deployCampaignNode` (deploys to Google Ads)
 - Uses fire-and-forget + webhook callback pattern
 - Needs expansion for website deploy + analytics instrumentation
 
 **Key Files**:
+
 - `langgraph_app/app/graphs/launch.ts` - Launch graph
 - `langgraph_app/app/nodes/launch/deployCampaignNode.ts` - Campaign deploy node
 - `langgraph_app/app/services/backends/websiteFilesBackend.ts` - File backend
 
 ### Key Models
+
 - `AdsAccount.google_customer_id` - Google Ads customer ID (platform_settings JSONB)
 - `Campaign.google_customer_id` - delegates to account
 - `Website.campaigns` - links website to campaigns
 
 ### Template Structure
+
 ```
 rails_app/templates/default/src/lib/
 └── utils.ts    # Currently only cn() helper - tracking.ts goes here
@@ -58,6 +66,7 @@ rails_app/templates/default/src/lib/
 ## Solution Architecture
 
 ### Architecture Overview
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      CODING AGENT                           │
@@ -115,9 +124,9 @@ interface ConversionConfig {
 }
 
 interface ConversionProperties {
-  label: string;        // Google Ads conversion label
-  value?: number;       // Conversion value for ROAS
-  currency?: string;    // Default: USD
+  label: string; // Google Ads conversion label
+  value?: number; // Conversion value for ROAS
+  currency?: string; // Default: USD
 }
 
 declare global {
@@ -137,19 +146,19 @@ export const L10 = {
 
   conversion(properties: ConversionProperties) {
     if (window.gtag && this._config.googleAdsId) {
-      window.gtag('event', 'conversion', {
+      window.gtag("event", "conversion", {
         send_to: `${this._config.googleAdsId}/${properties.label}`,
         value: properties.value,
-        currency: properties.currency || 'USD',
+        currency: properties.currency || "USD",
       });
     }
     if (import.meta.env.DEV) {
-      console.log('[L10.conversion]', properties);
+      console.log("[L10.conversion]", properties);
     }
   },
 };
 
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.L10 = L10;
   if (window.L10_CONFIG) L10.init();
 }
@@ -197,12 +206,14 @@ export const deployGraph = new StateGraph(DeployAnnotation)
 **File:** `langgraph_app/app/nodes/deploy/instrumentationNode.ts`
 
 This node uses an LLM agent with `WebsiteFilesBackend` to:
+
 1. Read the website's form components
 2. Identify the primary conversion form (signup, waitlist, purchase)
 3. Add `L10.conversion()` call on successful submission
 4. Inject gtag.js snippet into index.html with the campaign's Google Ads ID
 
 **System Prompt:**
+
 ```
 You are a pre-deployment agent. Your job is to add Google Ads conversion tracking.
 
@@ -294,33 +305,37 @@ export const DeployAnnotation = Annotation.Root({
 ## Files to Create/Modify
 
 ### Template
-| File | Change |
-|------|--------|
+
+| File                                              | Change                                         |
+| ------------------------------------------------- | ---------------------------------------------- |
 | `rails_app/templates/default/src/lib/tracking.ts` | NEW: L10.conversion() module with label lookup |
 
 ### Langgraph (Deploy Graph)
-| File | Change |
-|------|--------|
-| `langgraph_app/app/graphs/deploy.ts` | NEW: Unified deploy graph |
-| `langgraph_app/app/nodes/deploy/instrumentationNode.ts` | NEW: LLM agent for tracking instrumentation |
-| `langgraph_app/app/nodes/deploy/deployWebsiteNode.ts` | NEW: Fire-and-forget website deploy |
-| `langgraph_app/app/nodes/deploy/runtimeValidationNode.ts` | NEW: Playwright-based validation |
-| `langgraph_app/app/nodes/deploy/fixWithCodingAgentNode.ts` | NEW: Invoke codingAgentGraph for fixes |
-| `langgraph_app/app/nodes/deploy/deployCampaignNode.ts` | MOVE: From launch/ to deploy/ |
-| `langgraph_app/app/nodes/deploy/index.ts` | NEW: Export all nodes |
-| `langgraph_app/app/annotation/deployAnnotation.ts` | NEW: Deploy graph state |
-| `langgraph_app/app/graphs/launch.ts` | DELETE: Replaced by deploy.ts |
+
+| File                                                       | Change                                      |
+| ---------------------------------------------------------- | ------------------------------------------- |
+| `langgraph_app/app/graphs/deploy.ts`                       | NEW: Unified deploy graph                   |
+| `langgraph_app/app/nodes/deploy/instrumentationNode.ts`    | NEW: LLM agent for tracking instrumentation |
+| `langgraph_app/app/nodes/deploy/deployWebsiteNode.ts`      | NEW: Fire-and-forget website deploy         |
+| `langgraph_app/app/nodes/deploy/runtimeValidationNode.ts`  | NEW: Playwright-based validation            |
+| `langgraph_app/app/nodes/deploy/fixWithCodingAgentNode.ts` | NEW: Invoke codingAgentGraph for fixes      |
+| `langgraph_app/app/nodes/deploy/deployCampaignNode.ts`     | MOVE: From launch/ to deploy/               |
+| `langgraph_app/app/nodes/deploy/index.ts`                  | NEW: Export all nodes                       |
+| `langgraph_app/app/annotation/deployAnnotation.ts`         | NEW: Deploy graph state                     |
+| `langgraph_app/app/graphs/launch.ts`                       | DELETE: Replaced by deploy.ts               |
 
 ### Rails (Google Ads Integration)
-| File | Change |
-|------|--------|
-| `rails_app/app/services/google_ads/resources/conversion_action.rb` | NEW: Create/manage conversion actions |
-| `rails_app/app/models/concerns/campaign_concerns/google_platform_settings.rb` | MODIFY: Add conversion_labels accessor |
-| `rails_app/app/workers/campaign_deploy/create_conversion_actions_worker.rb` | NEW: Create standard conversion actions on deploy |
+
+| File                                                                          | Change                                            |
+| ----------------------------------------------------------------------------- | ------------------------------------------------- |
+| `rails_app/app/services/google_ads/resources/conversion_action.rb`            | NEW: Create/manage conversion actions             |
+| `rails_app/app/models/concerns/campaign_concerns/google_platform_settings.rb` | MODIFY: Add conversion_labels accessor            |
+| `rails_app/app/workers/campaign_deploy/create_conversion_actions_worker.rb`   | NEW: Create standard conversion actions on deploy |
 
 ### Coding Agent
-| File | Change |
-|------|--------|
+
+| File                       | Change                                  |
+| -------------------------- | --------------------------------------- |
 | Coding agent system prompt | REMOVE: analytics/tracking instructions |
 
 ---
@@ -328,21 +343,24 @@ export const DeployAnnotation = Annotation.Root({
 ## Event Types & Tracking Strategy
 
 ### What gtag.js Handles Automatically
+
 When we inject `gtag('config', 'AW-xxx')`:
+
 - **Page views** - Automatic on page load
 - **Session data** - Duration, bounce rate
 - **Traffic source** - UTM params, referrer
 
 ### What Needs L10.conversion() (Manual)
 
-| Event Type | Label | When to Fire | Example |
-|------------|-------|--------------|---------|
-| **Signup** | `signup` | Form submission success | Email waitlist, create account |
-| **Lead** | `lead` | Contact form submission | "Get in touch", "Request demo" |
-| **Purchase** | `purchase` | Payment confirmation | Checkout complete (if applicable) |
-| **Download** | `download` | Resource download click | PDF, ebook, whitepaper |
+| Event Type   | Label      | When to Fire            | Example                           |
+| ------------ | ---------- | ----------------------- | --------------------------------- |
+| **Signup**   | `signup`   | Form submission success | Email waitlist, create account    |
+| **Lead**     | `lead`     | Contact form submission | "Get in touch", "Request demo"    |
+| **Purchase** | `purchase` | Payment confirmation    | Checkout complete (if applicable) |
+| **Download** | `download` | Resource download click | PDF, ebook, whitepaper            |
 
 ### What We DON'T Track (Not Conversions)
+
 - Navigation clicks
 - Scroll depth
 - Time on page
@@ -350,16 +368,18 @@ When we inject `gtag('config', 'AW-xxx')`:
 - Social shares
 
 ### Conversion Value
+
 For ROAS calculation, some conversions can include value:
+
 ```typescript
 // Signup with no monetary value
-L10.conversion({ label: 'signup' });
+L10.conversion({ label: "signup" });
 
 // Lead with estimated value
-L10.conversion({ label: 'lead', value: 50, currency: 'USD' });
+L10.conversion({ label: "lead", value: 50, currency: "USD" });
 
 // Purchase with actual value
-L10.conversion({ label: 'purchase', value: 99.99, currency: 'USD' });
+L10.conversion({ label: "purchase", value: 99.99, currency: "USD" });
 ```
 
 ### Google Ads Conversion Action Setup
@@ -367,6 +387,7 @@ L10.conversion({ label: 'purchase', value: 99.99, currency: 'USD' });
 **Approach**: Auto-create conversion actions in Google Ads via API
 
 When a campaign is deployed:
+
 1. We create conversion actions in Google Ads with our semantic names
 2. Google returns conversion labels for each action
 3. We store the label mapping in the Campaign model
@@ -381,6 +402,7 @@ When a campaign is deployed:
 | `download` | "Resource Download" | OTHER |
 
 **Implementation:**
+
 ```ruby
 # In CampaignDeploy job or GoogleAds::Resources::ConversionAction
 class GoogleAds::Resources::ConversionAction
@@ -401,6 +423,7 @@ end
 ```
 
 **Campaign Model Addition:**
+
 ```ruby
 # Add to Campaign model
 store_accessor :platform_settings, :conversion_labels
@@ -408,20 +431,22 @@ store_accessor :platform_settings, :conversion_labels
 ```
 
 **Injected Config (by instrumentTrackingNode):**
+
 ```html
 <!-- In index.html -->
 <script>
   window.L10_CONFIG = {
     googleAdsId: "AW-123456789",
     conversionLabels: {
-      "signup": "abc123",
-      "lead": "def456"
-    }
+      signup: "abc123",
+      lead: "def456",
+    },
   };
 </script>
 ```
 
 **L10.conversion() Flow:**
+
 ```
 L10.conversion({ label: 'signup' })
     ↓
@@ -431,6 +456,7 @@ gtag('event', 'conversion', { send_to: 'AW-123456789/abc123' })
 ```
 
 **Updated tracking.ts:**
+
 ```typescript
 interface ConversionConfig {
   googleAdsId?: string;

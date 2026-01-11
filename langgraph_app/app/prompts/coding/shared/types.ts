@@ -33,7 +33,7 @@ export type TypographyRecommendations = ThemeAPIResponse["typography_recommendat
 
 /**
  * State required by coding prompts.
- * Minimal subset of CodingAgentGraphState needed for prompt generation.
+ * Minimal subset of WebsiteGraphState needed for prompt generation.
  */
 export interface CodingPromptState {
   websiteId?: number;

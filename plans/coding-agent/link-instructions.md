@@ -18,22 +18,25 @@ Add to `CODER_SYSTEM_PROMPT` in `coder.ts`:
 ## Link Patterns
 
 ### Page Routes (React Router)
+
 When creating a new page:
+
 1. Create component in \`/src/pages/\` (e.g., \`PricingPage.tsx\`)
 2. Add route in \`/src/App.tsx\` ABOVE the catch-all route: \`<Route path="/pricing" element={<PricingPage />} />\`
 3. Link with \`<a href="/pricing">\` or use \`<Link to="/pricing">\` from react-router-dom
 
 ### Anchor Links (Same Page)
+
 Use \`<a href="#features">\` to link to elements with \`id="features"\` on the same page.
 
 ### Common Mistakes to Avoid
 
-| Wrong | Right | Why |
-|-------|-------|-----|
-| \`href="/pricing.html"\` | \`href="/pricing"\` | No .html extensions in React Router |
-| \`href="#Features"\` | \`href="#features"\` | IDs are case-sensitive |
-| \`href="/about"\` without Route | Add \`<Route path="/about">\` first | Routes must be defined |
-| \`href="pricing"\` | \`href="/pricing"\` | Always use leading slash for routes |
+| Wrong                           | Right                               | Why                                 |
+| ------------------------------- | ----------------------------------- | ----------------------------------- |
+| \`href="/pricing.html"\`        | \`href="/pricing"\`                 | No .html extensions in React Router |
+| \`href="#Features"\`            | \`href="#features"\`                | IDs are case-sensitive              |
+| \`href="/about"\` without Route | Add \`<Route path="/about">\` first | Routes must be defined              |
+| \`href="pricing"\`              | \`href="/pricing"\`                 | Always use leading slash for routes |
 ```
 
 ---
@@ -58,6 +61,7 @@ Use \`<a href="#features">\` to link to elements with \`id="features"\` on the s
 ## GREEN (Implementation)
 
 ### Prompt Change (Done)
+
 - [x] Add link instructions to `CODER_SYSTEM_PROMPT` in `coder.ts`
 
 ### Tests to Add
