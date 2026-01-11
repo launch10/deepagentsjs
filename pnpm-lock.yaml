@@ -170,8 +170,8 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       deepagents:
-        specifier: ^1.3.1
-        version: 1.3.1(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod-to-json-schema@3.25.1(zod@3.25.76))
+        specifier: ^1.4.0
+        version: 1.4.0(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod-to-json-schema@3.25.1(zod@3.25.76))
       diff:
         specifier: ^7.0.0
         version: 7.0.0
@@ -5828,8 +5828,8 @@ packages:
   deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
 
-  deepagents@1.3.1:
-    resolution: {integrity: sha512-xFSr3297qACQoz9HqrBSYYup8Vj/HExEsZNkNMKuv+KqmQPy0dsVqpAzGogWi7Qh29+Drco6iLcUtYzcYDgFzw==}
+  deepagents@1.4.0:
+    resolution: {integrity: sha512-S7+kxafOTvb62hsNX/85VzHc8YsCv/NJLCXO16SngXw/qktwREHiQglmWkn4XcuhMcMYsy73sf1h6G4HHEwehg==}
 
   deepmerge@4.3.1:
     resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
@@ -14514,7 +14514,7 @@ snapshots:
 
   deep-is@0.1.4: {}
 
-  deepagents@1.3.1(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod-to-json-schema@3.25.1(zod@3.25.76)):
+  deepagents@1.4.0(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod-to-json-schema@3.25.1(zod@3.25.76)):
     dependencies:
       '@langchain/anthropic': 1.3.7(@langchain/core@1.1.4(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76)))
       '@langchain/core': 1.1.4(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))
@@ -14522,6 +14522,7 @@ snapshots:
       fast-glob: 3.3.3
       langchain: 1.1.5(@langchain/core@1.1.4(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76)))(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod-to-json-schema@3.25.1(zod@3.25.76))
       micromatch: 4.0.8
+      yaml: 2.8.2
       zod: 3.25.76
     transitivePeerDependencies:
       - '@opentelemetry/api'

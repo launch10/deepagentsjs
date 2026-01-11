@@ -1,8 +1,7 @@
 /**
  * Typography recommendations prompt for the coding agent.
- * Fetches theme typography data via Rails API.
+ * Theme data (including typography_recommendations) is seeded at the agent utils layer.
  */
-import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type {
   CodingPromptState,
   CodingPromptFn,
@@ -10,27 +9,6 @@ import type {
   TypographyCategory,
   TypographyRecommendation,
 } from "./types";
-import { createRailsApiClient } from "@rails_api";
-
-/**
- * Fetch theme with typography recommendations from Rails API.
- */
-async function fetchThemeTypography(
-  themeId: number,
-  jwt: string
-): Promise<TypographyRecommendations | undefined> {
-  const client = await createRailsApiClient({ jwt });
-
-  const response = await client.GET("/api/v1/themes/{id}", {
-    params: { path: { id: themeId } },
-  });
-
-  if (!response.data) {
-    return undefined;
-  }
-
-  return response.data.typography_recommendations;
-}
 
 /**
  * Format a single typography recommendation.
@@ -104,28 +82,14 @@ export function formatTypographyPrompt(
 
 /**
  * Typography prompt for coding agent.
- * Fetches theme with typography recommendations if theme ID is available.
+ * Uses typography_recommendations from state (seeded at agent utils layer).
  */
 export const typographyPrompt: CodingPromptFn = async (
   state: CodingPromptState,
-  _config?: LangGraphRunnableConfig
 ): Promise<string> => {
-  // If no theme or jwt, return empty
-  if (!state.theme?.id || !state.jwt) {
+  if (!state.theme?.typography_recommendations) {
     return "";
   }
 
-  // Check if typography_recommendations already in state
-  if (state.theme.typography_recommendations) {
-    return formatTypographyPrompt(state.theme.typography_recommendations, state.theme.colors);
-  }
-
-  // Fetch from API
-  try {
-    const recommendations = await fetchThemeTypography(state.theme.id, state.jwt);
-    return formatTypographyPrompt(recommendations, state.theme.colors);
-  } catch {
-    // If API call fails, return empty rather than crashing
-    return "";
-  }
+  return formatTypographyPrompt(state.theme.typography_recommendations, state.theme.colors);
 };

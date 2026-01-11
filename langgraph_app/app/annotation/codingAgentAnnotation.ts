@@ -2,19 +2,7 @@ import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import type { PrimaryKeyType } from "@types";
 import { Brainstorm, Website } from "@types";
-import { Core } from "@types";
-
-export interface ConsoleError {
-  message: string;
-  stack?: string;
-  timestamp: string;
-}
-
-export interface CodingAgentContext {
-  brainstorm: Brainstorm.MemoriesType;
-  theme: Website.ThemeType;
-  images: Array<{ url: string; isLogo: boolean }>;
-}
+import { Core, type ConsoleError } from "@types";
 
 export const CodingAgentAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,

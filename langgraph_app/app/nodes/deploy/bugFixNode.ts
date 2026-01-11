@@ -78,7 +78,21 @@ export const bugFixNode = NodeMiddleware.use(
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      return {};
+      // IMPORTANT: Still increment retryCount to prevent infinite retry loop
+      // Even if the fix attempt failed, it counts as a retry
+      return {
+        tasks: [
+          {
+            ...validationTask,
+            retryCount: validationTask.retryCount + 1,
+          } as Task.Task,
+          {
+            ...task,
+            status: "failed",
+            error: errorMessage,
+          } as Task.Task,
+        ],
+      };
     }
   }
 );

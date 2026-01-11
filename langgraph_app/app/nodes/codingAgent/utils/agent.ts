@@ -1,4 +1,4 @@
-import { db, websites, themes, eq } from "@db";
+import { db, websites, eq } from "@db";
 import { Website } from "@types";
 import { createDeepAgent } from "deepagents";
 import { getLLM, getLLMFallbacks } from "@core";
@@ -9,26 +9,28 @@ import { checkpointer } from "@core";
 import {
   toolRetryMiddleware,
   modelFallbackMiddleware as modelFallbackMiddlewareBuilder,
+  summarizationMiddleware as summarizationMiddlewareBuilder,
   type AgentMiddleware,
 } from "langchain";
 import { buildCodingPrompt, type CodingPromptState } from "@prompts";
-
-const getMiddlewares = (): AgentMiddleware[] => {
-  const fallbacks = getLLMFallbacks("coding", "slow", "paid");
-  const modelFallbackMiddleware = modelFallbackMiddlewareBuilder(...fallbacks);
-  // const summarizationMiddleware = summarizationMiddlewareBuilder({
-  //   model: getLLM("summarization", "fast", "paid"),
-  //   trigger: { fraction: 0.7 },
-  //   keep: { messages: 15 },
-  // })
-  return [toolRetryMiddleware(), modelFallbackMiddleware];
-};
+import { ThemeAPIService } from "@rails_api";
 
 export type MinimalCodingAgentState = {
   websiteId?: number;
   jwt?: string;
   theme?: CodingPromptState["theme"];
   errors?: string;
+};
+
+const getMiddlewares = (): AgentMiddleware[] => {
+  const fallbacks = getLLMFallbacks("coding", "slow", "paid");
+  const modelFallbackMiddleware = modelFallbackMiddlewareBuilder(...fallbacks);
+  const summarizationMiddleware = summarizationMiddlewareBuilder({
+    model: getLLM("reasoning", "fast", "paid"),
+    trigger: { fraction: 0.7 },
+    keep: { messages: 15 },
+  })
+  return [toolRetryMiddleware(), modelFallbackMiddleware, summarizationMiddleware];
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
@@ -57,6 +59,32 @@ export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
   return backend;
 };
 
+const getTheme = async (state: MinimalCodingAgentState): Promise<CodingPromptState["theme"] | undefined> => {
+  if (!state.websiteId || !state.jwt) {
+    return undefined;
+  }
+
+  const [websiteRow] = await db
+    .select({ themeId: websites.themeId })
+    .from(websites)
+    .where(eq(websites.id, state.websiteId!))
+    .limit(1);
+
+  if (websiteRow?.themeId) {
+    const themeAPI = new ThemeAPIService({ jwt: state.jwt });
+    const theme = await themeAPI.get(websiteRow.themeId);
+
+    return {
+      id: theme.id,
+      name: theme.name,
+      colors: theme.colors,
+      typography_recommendations: theme.typography_recommendations,
+    };
+  }
+
+  return undefined;
+}
+
 export async function createCodingAgent(state: MinimalCodingAgentState, prompt?: string) {
   const backend = await getCodingAgentBackend(state);
   const llm = getLLM("coding", "slow", "paid");
@@ -72,27 +100,7 @@ export async function createCodingAgent(state: MinimalCodingAgentState, prompt?:
 
   // If no theme in state but we have websiteId, fetch theme from website
   if (!promptState.theme && state.websiteId) {
-    const [websiteRow] = await db
-      .select({ themeId: websites.themeId })
-      .from(websites)
-      .where(eq(websites.id, state.websiteId))
-      .limit(1);
-
-    if (websiteRow?.themeId) {
-      const [themeRow] = await db
-        .select()
-        .from(themes)
-        .where(eq(themes.id, websiteRow.themeId))
-        .limit(1);
-
-      if (themeRow) {
-        promptState.theme = {
-          id: themeRow.id,
-          name: themeRow.name,
-          colors: themeRow.colors as string[] | undefined,
-        };
-      }
-    }
+    promptState.theme = await getTheme(state);
   }
 
   // Build prompt - now async

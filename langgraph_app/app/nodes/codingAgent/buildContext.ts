@@ -1,17 +1,19 @@
-import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { CodingAgentGraphState } from "@annotation";
 import {
   db,
-  websites,
   brainstorms,
-  themes,
   uploads,
   websiteUploads,
   eq,
 } from "@db";
-import type { Brainstorm, Website } from "@types";
+import type { Brainstorm } from "@types";
 import { NodeMiddleware } from "@middleware";
 
+/**
+ * Build context for the coding agent.
+ * Note: Theme is seeded at the agent utils layer via ThemeAPIService,
+ * so we only need to fetch brainstorm and images here.
+ */
 export const buildContext = NodeMiddleware.use({}, async (
   state: CodingAgentGraphState,
 ): Promise<Partial<CodingAgentGraphState>> => {
@@ -19,39 +21,11 @@ export const buildContext = NodeMiddleware.use({}, async (
     throw new Error("websiteId is required");
   }
 
-  const [website] = await db
-    .select()
-    .from(websites)
-    .where(eq(websites.id, state.websiteId))
-    .limit(1);
-
-  if (!website) {
-    throw new Error(`Website ${state.websiteId} not found`);
-  }
-
   const [brainstorm] = await db
     .select()
     .from(brainstorms)
     .where(eq(brainstorms.websiteId, state.websiteId))
     .limit(1);
-
-  let theme: Website.ThemeType | undefined;
-  if (website.themeId) {
-    const [themeRow] = await db
-      .select()
-      .from(themes)
-      .where(eq(themes.id, website.themeId))
-      .limit(1);
-
-    if (themeRow) {
-      theme = {
-        id: themeRow.id,
-        name: themeRow.name,
-        colors: (themeRow.colors as string[]) || [],
-        theme: (themeRow.theme as Website.Theme.CssThemeType) || {},
-      };
-    }
-  }
 
   const websiteUploadRows = await db
     .select({
@@ -76,7 +50,6 @@ export const buildContext = NodeMiddleware.use({}, async (
 
   return {
     brainstorm: brainstormContext,
-    theme,
     images,
     status: "running",
   };

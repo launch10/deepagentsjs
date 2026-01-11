@@ -1,12 +1,24 @@
 import { RailsAPIBase, type paths } from "../index";
 import type { Simplify } from "type-fest";
 
+export type GetThemeRequest = NonNullable<
+  paths["/api/v1/themes/{id}"]["get"]["parameters"]["path"]
+>;
+
+// Single theme response (from /api/v1/themes/{id})
+export type GetThemeResponse = NonNullable<
+  paths["/api/v1/themes/{id}"]["get"]["responses"][200]["content"]["application/json"]
+>;
+
 export type GetThemesRequest = NonNullable<
   paths["/api/v1/themes"]["get"]["parameters"]["path"]
 >;
+
+// Multiple themes response (from /api/v1/themes)
 export type GetThemesResponse = NonNullable<
   paths["/api/v1/themes"]["get"]["responses"][200]["content"]["application/json"]
 >;
+
 export type CreateThemeRequest = NonNullable<
   paths["/api/v1/themes"]["post"]["requestBody"]
 >["content"]["application/json"];
@@ -22,16 +34,33 @@ export class ThemeAPIService extends RailsAPIBase {
     super(options);
   }
 
-  async get(): Promise<GetThemesResponse> {
+  async get(id: number): Promise<GetThemeResponse> {
     const client = await this.getClient();
-    const response = await client.GET("/api/v1/themes", {});
+    const response = await client.GET("/api/v1/themes/{id}", {
+      params: { path: { id } },
+    });
 
     if (response.error) {
-      throw new Error(`Failed to get themes: ${JSON.stringify(response.error)}`);
+      throw new Error(`Failed to get theme: ${JSON.stringify(response.error)}`);
     }
 
     if (!response.data) {
-      throw new Error("Failed to get themes: No data returned");
+      throw new Error("Failed to get theme: No data returned");
+    }
+
+    return response.data satisfies GetThemeResponse;
+  }
+
+  async list(): Promise<GetThemesResponse> {
+    const client = await this.getClient();
+    const response = await client.GET("/api/v1/themes");
+
+    if (response.error) {
+      throw new Error(`Failed to list themes: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      throw new Error("Failed to list themes: No data returned");
     }
 
     return response.data satisfies GetThemesResponse;
