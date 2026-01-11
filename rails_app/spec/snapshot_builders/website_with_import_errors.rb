@@ -15,15 +15,13 @@ class WebsiteWithImportErrors < BaseBuilder
     # Add a broken import and USE it so Vite can't tree-shake it away
     prepend_to_file!(website,
       path: "src/pages/IndexPage.tsx",
-      content: "import { NonExistentComponent } from \"../components/NonExistent.tsx\";\n\n"
-    )
+      content: "import { NonExistentComponent } from \"../components/NonExistent.tsx\";\n\n")
 
     # Also add the component usage so it will actually be resolved
     insert_component_usage!(website,
       path: "src/pages/IndexPage.tsx",
       marker: "return (",
-      component: "<NonExistentComponent />"
-    )
+      component: "<NonExistentComponent />")
 
     Rails.logger.info "Applied import error modifications to website #{website.id}"
     website

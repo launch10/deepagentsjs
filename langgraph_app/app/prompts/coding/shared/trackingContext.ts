@@ -11,12 +11,21 @@ export const trackingContextPrompt: CodingPromptFn = async (
 ): Promise<string> => `
 ## Lead Capture & Conversion Tracking
 
+EVERY landing page MUST include email capture to track leads and conversions.
+
+1. Import: import { L10 } from '@/lib/tracking'
+2. On form submit success:
+   - Simple signup: await L10.createLead(email)
+   - Tiered pricing: await L10.createLead(email, { value: selectedPrice })
+3. Show success state AFTER L10.createLead resolves
+4. Handle errors gracefully (show "Try again" message)
+
 All landing pages capture email leads via \`L10.createLead()\`. This single call handles:
 1. Submitting the email to our backend API
 2. Firing Google Ads conversion tracking on success
 
 ### Scenario 1: Tiered Pricing Pages
-When the page has pricing tiers (e.g., Basic/Pro/Enterprise), pass the tier price for ROAS measurement.
+When the page has pricing tiers (e.g., Basic/Pro/Enterprise), pass the tier price in USD for ROAS measurement.
 
 \`\`\`tsx
 const handleTierSignup = (email: string, tierPrice: number) => {

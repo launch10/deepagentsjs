@@ -101,7 +101,13 @@ export class BrowserErrorCapture {
 
       // Extract error details from the overlay's shadow DOM
       const errorDetails = await overlay.evaluate((el) => {
-        const shadow = el.shadowRoot;
+        const shadow = (
+          el as unknown as {
+            shadowRoot: {
+              querySelector: (selector: string) => { textContent?: string } | null;
+            } | null;
+          }
+        ).shadowRoot;
         if (!shadow) return null;
 
         // Get the error message

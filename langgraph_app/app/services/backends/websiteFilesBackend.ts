@@ -3,6 +3,8 @@ import type {
   EditResult,
   FileData,
   FileInfo,
+  FileUploadResponse,
+  FileDownloadResponse,
   GrepMatch,
   WriteResult,
 } from "deepagents";
@@ -206,5 +208,15 @@ export class WebsiteFilesBackend implements BackendProtocol {
       occurrences: fsResult.occurrences,
       filesUpdate: null,
     };
+  }
+
+  async uploadFiles(files: Array<[string, Uint8Array]>): Promise<FileUploadResponse[]> {
+    // Not implemented - use write() instead for text files
+    throw new Error("uploadFiles not implemented - use write() for text files");
+  }
+
+  async downloadFiles(paths: string[]): Promise<FileDownloadResponse[]> {
+    // Not implemented - use read() instead
+    throw new Error("downloadFiles not implemented - use read() for text files");
   }
 }

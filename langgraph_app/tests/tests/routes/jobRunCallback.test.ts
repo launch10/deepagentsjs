@@ -10,7 +10,7 @@ const mockGetState = vi.fn();
 const mockUpdateState = vi.fn();
 
 vi.mock("@graphs", () => ({
-  launchGraph: {
+  deployGraph: {
     compile: vi.fn().mockReturnValue({
       getState: (...args: unknown[]) => mockGetState(...args),
       updateState: (...args: unknown[]) => mockUpdateState(...args),
@@ -39,11 +39,12 @@ describe("jobRunCallback webhook route (tasks pattern)", () => {
     return createHmac("sha256", env.JWT_SECRET).update(body).digest("hex");
   };
 
-  const existingTask: Task = {
+  const existingTask: Task.Task = {
     id: "uuid-123",
     name: "CampaignDeploy",
     jobId: 123,
     status: "pending",
+    retryCount: 0,
   };
 
   describe("POST /webhooks/job_run_callback", () => {

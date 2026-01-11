@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createHmac, timingSafeEqual } from "crypto";
-import { launchGraph } from "@graphs";
+import { deployGraph } from "@graphs";
 import { graphParams, env } from "@core";
 import { Task } from "@types";
 
@@ -15,10 +15,10 @@ interface JobRunCallbackPayload {
 export const jobRunCallbackRoutes = new Hono();
 
 // Lazy initialization to avoid circular deps
-let _graph: ReturnType<typeof launchGraph.compile> | null = null;
+let _graph: ReturnType<typeof deployGraph.compile> | null = null;
 function getGraph() {
   if (!_graph) {
-    _graph = launchGraph.compile({ ...graphParams });
+    _graph = deployGraph.compile({ ...graphParams });
   }
   return _graph;
 }
@@ -50,9 +50,7 @@ jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
     const task = tasks.find((t) => t.jobId === payload.job_run_id);
 
     if (!task) {
-      console.error(
-        `[jobRunCallback] Task with jobId ${payload.job_run_id} not found`
-      );
+      console.error(`[jobRunCallback] Task with jobId ${payload.job_run_id} not found`);
       return c.json({ error: "Task not found" }, 404);
     }
 
@@ -83,9 +81,7 @@ function verifySignature(body: string, signature: string | undefined): boolean {
     console.error("[verifySignature] JWT_SECRET is not configured");
     return false;
   }
-  const expected = createHmac("sha256", env.JWT_SECRET)
-    .update(body)
-    .digest("hex");
+  const expected = createHmac("sha256", env.JWT_SECRET).update(body).digest("hex");
   try {
     return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
   } catch (e) {

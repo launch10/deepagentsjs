@@ -17,11 +17,10 @@ export class LeadError extends Error {
   }
 }
 
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-  }
-}
+// Extend globalThis for browser environment
+declare const window: {
+  gtag?: (...args: unknown[]) => void;
+} | undefined;
 
 export const L10 = {
   /**
@@ -58,7 +57,7 @@ export const L10 = {
 
       if (response.ok) {
         // Fire Google Ads conversion on success
-        if (window.gtag && googleAdsId) {
+        if (typeof window !== 'undefined' && window.gtag && googleAdsId) {
           window.gtag("event", "conversion", {
             send_to: `${googleAdsId}/signup`,
             value: options?.value ?? 0,
@@ -68,7 +67,7 @@ export const L10 = {
         return;
       }
 
-      const data = await response.json().catch(() => ({}));
+      const data = await response.json().catch(() => ({})) as { error?: string };
       throw new LeadError(data.error || "Signup failed");
     } catch (error) {
       if (error instanceof LeadError) throw error;

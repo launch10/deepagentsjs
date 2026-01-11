@@ -37,11 +37,12 @@ const bugfixWorkflow = `
 4. **Diagnose**: Identify the root cause of the bug (syntax error, missing import, incorrect logic, etc.)
 5. **Fix**: Make the minimal fix necessary to resolve the error
 6. **Verify**: Read the fixed files back to confirm the error is resolved
+7. **Double-check**: Confirm the links are correctly formatted - either anchor tags or React Router links
 `;
 
 type Workflow = "Create" | "Edit" | "BugFix";
 
-const workflowIs = (state: CodingPromptState) => {
+const workflowIs = (state: CodingPromptState): Workflow => {
   if (state.errors) {
     return "BugFix";
   }

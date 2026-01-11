@@ -59,7 +59,7 @@ describe("Deploy Graph", () => {
         .execute();
 
       // Should have instrumentation task
-      const instrumentationTask = result.state.tasks.find((t) => t.name === "instrumentation");
+      const instrumentationTask = result.state.tasks.find((t) => t.name === "Instrumentation");
       expect(instrumentationTask).toBeDefined();
       expect(instrumentationTask?.status).toBe("completed");
     });
@@ -182,6 +182,7 @@ describe("Deploy Graph", () => {
         jobId: 123,
         status: "running",
         error: "API rate limit exceeded",
+        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -350,7 +351,7 @@ describe("Deploy Graph", () => {
 
       // Second invocation (e.g., from frontend poll or webhook graph run)
       const secondResult = await graph.invoke({}, { configurable: { thread_id: threadId } });
-      debugger
+      debugger;
 
       expect(secondResult.status).toBe("completed");
       expect(secondResult.result).toEqual({

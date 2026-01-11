@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { bugFixNode } from "../../../../app/nodes/deploy/bugFixNode";
 import type { DeployGraphState } from "@annotation";
 import type { Task } from "@types";
@@ -34,7 +35,7 @@ describe("bugFixNode", () => {
         tasks: [],
       };
 
-      const result = await bugFixNode(state as DeployGraphState, undefined);
+      const result = await bugFixNode(state as DeployGraphState, {} as LangGraphRunnableConfig);
       expect(result).toEqual({});
       expect(mockCreateCodingAgent).not.toHaveBeenCalled();
     });
@@ -53,7 +54,7 @@ describe("bugFixNode", () => {
         ],
       };
 
-      const result = await bugFixNode(state as DeployGraphState, undefined);
+      const result = await bugFixNode(state as DeployGraphState, {} as LangGraphRunnableConfig);
       expect(result).toEqual({});
       expect(mockCreateCodingAgent).not.toHaveBeenCalled();
     });
@@ -82,7 +83,10 @@ describe("bugFixNode", () => {
         ],
       };
 
-      const result = await bugFixNode(state as DeployGraphState, undefined);
+      const result = (await bugFixNode(
+        state as DeployGraphState,
+        {} as LangGraphRunnableConfig
+      )) as Partial<DeployGraphState>;
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain("websiteId and jwt are required");
     });
@@ -102,7 +106,10 @@ describe("bugFixNode", () => {
         ],
       };
 
-      const result = await bugFixNode(state as DeployGraphState, undefined);
+      const result = (await bugFixNode(
+        state as DeployGraphState,
+        {} as LangGraphRunnableConfig
+      )) as Partial<DeployGraphState>;
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain("websiteId and jwt are required");
     });
@@ -122,7 +129,10 @@ describe("bugFixNode", () => {
         ],
       };
 
-      const result = await bugFixNode(state as DeployGraphState, undefined);
+      const result = (await bugFixNode(
+        state as DeployGraphState,
+        {} as LangGraphRunnableConfig
+      )) as Partial<DeployGraphState>;
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain("Validation error is required");
     });
@@ -160,18 +170,21 @@ describe("bugFixNode", () => {
         ],
       };
 
-      const result = await bugFixNode(state as DeployGraphState, undefined);
+      const result = (await bugFixNode(
+        state as DeployGraphState,
+        {} as LangGraphRunnableConfig
+      )) as Partial<DeployGraphState>;
 
       // Verify coding agent was called with correct websiteId and jwt
       expect(mockCreateCodingAgent).toHaveBeenCalledWith(
-        { websiteId: 1, jwt: "test-jwt" },
+        { websiteId: 1, jwt: "test-jwt", isFirstMessage: false },
         expect.any(String) // System prompt is dynamically generated
       );
       expect(mockAgent.invoke).toHaveBeenCalled();
 
       // Should mark BugFix as completed and increment validation retryCount
-      const bugFixTask = result.tasks?.find((t) => t.name === "BugFix");
-      const validationTask = result.tasks?.find((t) => t.name === "RuntimeValidation");
+      const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "BugFix");
+      const validationTask = result.tasks?.find((t: Task.Task) => t.name === "RuntimeValidation");
 
       expect(bugFixTask?.status).toBe("completed");
       expect(validationTask?.retryCount).toBe(1);
@@ -203,9 +216,12 @@ describe("bugFixNode", () => {
         ],
       };
 
-      const result = await bugFixNode(state as DeployGraphState, undefined);
+      const result = (await bugFixNode(
+        state as DeployGraphState,
+        {} as LangGraphRunnableConfig
+      )) as Partial<DeployGraphState>;
 
-      const validationTask = result.tasks?.find((t) => t.name === "RuntimeValidation");
+      const validationTask = result.tasks?.find((t: Task.Task) => t.name === "RuntimeValidation");
       expect(validationTask?.retryCount).toBe(2);
     });
   });
@@ -244,13 +260,16 @@ describe("bugFixNode", () => {
         ],
       };
 
-      const result = await bugFixNode(state as DeployGraphState, undefined);
+      const result = (await bugFixNode(
+        state as DeployGraphState,
+        {} as LangGraphRunnableConfig
+      )) as Partial<DeployGraphState>;
 
       // Should NOT return empty object - must mark task as failed
       expect(result.tasks).toBeDefined();
       expect(result.tasks?.length).toBeGreaterThan(0);
 
-      const bugFixTask = result.tasks?.find((t) => t.name === "BugFix");
+      const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "BugFix");
       expect(bugFixTask?.status).toBe("failed");
       expect(bugFixTask?.error).toBe("Agent failed to fix the code");
     });
@@ -281,10 +300,13 @@ describe("bugFixNode", () => {
         ],
       };
 
-      const result = await bugFixNode(state as DeployGraphState, undefined);
+      const result = (await bugFixNode(
+        state as DeployGraphState,
+        {} as LangGraphRunnableConfig
+      )) as Partial<DeployGraphState>;
 
       // CRITICAL: retryCount must be incremented to prevent infinite retry loop
-      const validationTask = result.tasks?.find((t) => t.name === "RuntimeValidation");
+      const validationTask = result.tasks?.find((t: Task.Task) => t.name === "RuntimeValidation");
       expect(validationTask?.retryCount).toBe(2);
     });
 
@@ -314,9 +336,12 @@ describe("bugFixNode", () => {
         ],
       };
 
-      const result = await bugFixNode(state as DeployGraphState, undefined);
+      const result = (await bugFixNode(
+        state as DeployGraphState,
+        {} as LangGraphRunnableConfig
+      )) as Partial<DeployGraphState>;
 
-      const bugFixTask = result.tasks?.find((t) => t.name === "BugFix");
+      const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "BugFix");
       expect(bugFixTask?.status).toBe("failed");
       expect(bugFixTask?.error).toBe("Unknown error");
     });
@@ -347,7 +372,10 @@ describe("bugFixNode", () => {
         ],
       };
 
-      const result = await bugFixNode(state as DeployGraphState, undefined);
+      const result = (await bugFixNode(
+        state as DeployGraphState,
+        {} as LangGraphRunnableConfig
+      )) as Partial<DeployGraphState>;
 
       // The bug was: catch block returned {} which silently swallowed errors
       // This test ensures we return meaningful task state on error

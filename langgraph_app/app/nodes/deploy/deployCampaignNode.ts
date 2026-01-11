@@ -2,8 +2,7 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { DeployGraphState } from "@annotation";
 import { JobRunAPIService } from "@services";
 import { NodeMiddleware } from "@middleware";
-import { env } from "@core";
-import { createTask, findTask, updateTask } from "@types";
+import { Task } from "@types";
 
 const TASK_NAME = "CampaignDeploy" as const;
 
@@ -24,7 +23,7 @@ export const deployCampaignNode = NodeMiddleware.use(
     state: DeployGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
-    const task = findTask(state.tasks, TASK_NAME);
+    const task = Task.findTask(state.tasks, TASK_NAME);
 
     // 1. Already completed or failed? No-op (idempotent)
     if (task?.status === "completed" || task?.status === "failed") {
@@ -34,7 +33,7 @@ export const deployCampaignNode = NodeMiddleware.use(
     // 2. Task exists with result? Process it
     if (task?.status === "running" && task.result) {
       return {
-        tasks: updateTask(state.tasks, TASK_NAME, { status: "completed" }),
+        tasks: Task.updateTask(state.tasks, TASK_NAME, { status: "completed" }),
         status: "completed",
         result: task.result,
       };
@@ -43,7 +42,7 @@ export const deployCampaignNode = NodeMiddleware.use(
     // 3. Task exists with error? Mark failed
     if (task?.status === "running" && task.error) {
       return {
-        tasks: updateTask(state.tasks, TASK_NAME, { status: "failed" }),
+        tasks: Task.updateTask(state.tasks, TASK_NAME, { status: "failed" }),
         status: "failed",
         error: { message: task.error, node: "deployCampaignNode" },
       };
@@ -65,18 +64,17 @@ export const deployCampaignNode = NodeMiddleware.use(
       throw new Error("Campaign ID is required");
     }
 
-    const callbackUrl = `${env.LANGGRAPH_API_URL}/webhooks/job_run_callback`;
     const jobRunApi = new JobRunAPIService({ jwt: state.jwt });
 
+    // Note: callback URL is auto-constructed by Rails from LANGGRAPH_API_URL (SSRF prevention)
     const jobRun = await jobRunApi.create({
       jobClass: "CampaignDeploy",
       arguments: { campaign_id: state.campaignId },
       threadId: state.threadId,
-      callbackUrl,
     });
 
     return {
-      tasks: [...state.tasks, createTask(TASK_NAME, jobRun.id)],
+      tasks: [...state.tasks, Task.createTask(TASK_NAME, jobRun.id)],
       status: "pending",
     };
   }

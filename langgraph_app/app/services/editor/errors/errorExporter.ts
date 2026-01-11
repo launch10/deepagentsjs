@@ -26,11 +26,11 @@ function stripAnsi(text: string): string {
 function cleanFilePath(filePath: string): string {
   // Match patterns like /tmp/.../src/pages/IndexPage.tsx or /var/folders/.../src/...
   const srcMatch = filePath.match(/\/(src\/[^\s:]+)/);
-  if (srcMatch) return srcMatch[1];
+  if (srcMatch?.[1]) return srcMatch[1];
 
   // Also try matching just the filename if no src/ found
   const fileMatch = filePath.match(/\/([^/]+\.(tsx?|jsx?|css|html))$/i);
-  if (fileMatch) return fileMatch[1];
+  if (fileMatch?.[1]) return fileMatch[1];
 
   return filePath;
 }
@@ -53,24 +53,28 @@ function extractFileInfo(text: string): { file?: string; line?: number } {
     const match = text.match(pattern);
     if (match) {
       // Code frame pattern only gives line number, not file
-      if (pattern.source.includes('[│|]')) {
+      if (pattern.source.includes("[│|]")) {
         // Try to find file from other patterns first
         for (const filePattern of patterns.slice(0, 2)) {
           const fileMatch = text.match(filePattern);
-          if (fileMatch) {
+          if (fileMatch?.[1] && match[1]) {
             return { file: cleanFilePath(fileMatch[1]), line: parseInt(match[1], 10) };
           }
         }
         // Just return line if no file found
-        return { line: parseInt(match[1], 10) };
+        if (match[1]) {
+          return { line: parseInt(match[1], 10) };
+        }
       }
-      return { file: cleanFilePath(match[1]), line: parseInt(match[2], 10) };
+      if (match[1] && match[2]) {
+        return { file: cleanFilePath(match[1]), line: parseInt(match[2], 10) };
+      }
     }
   }
 
   // Try to find just the file if no line number
   const fileOnlyMatch = text.match(/([^\s:]+\.tsx?)(?::|$|\s)/i);
-  if (fileOnlyMatch) {
+  if (fileOnlyMatch?.[1]) {
     return { file: cleanFilePath(fileOnlyMatch[1]) };
   }
 
@@ -81,7 +85,7 @@ function extractFileInfo(text: string): { file?: string; line?: number } {
  * Check if server error line is noise (not actionable)
  */
 function isServerNoise(line: string): boolean {
-  return SERVER_NOISE_PATTERNS.some(pattern => pattern.test(line));
+  return SERVER_NOISE_PATTERNS.some((pattern) => pattern.test(line));
 }
 
 /**
@@ -98,7 +102,7 @@ function isBrowserSymptom(error: ConsoleError, hasBuildErrors: boolean): boolean
     /Request failed/i,
   ];
 
-  return symptomPatterns.some(pattern => pattern.test(error.message));
+  return symptomPatterns.some((pattern) => pattern.test(error.message));
 }
 
 /**
@@ -106,19 +110,23 @@ function isBrowserSymptom(error: ConsoleError, hasBuildErrors: boolean): boolean
  */
 function classifyErrorType(text: string): string {
   const lower = text.toLowerCase();
-  if (lower.includes('expected') || lower.includes('unexpected') || lower.includes('syntax')) {
-    return 'syntax';
+  if (lower.includes("expected") || lower.includes("unexpected") || lower.includes("syntax")) {
+    return "syntax";
   }
-  if (lower.includes('cannot find') || lower.includes('not found') || lower.includes('does not exist')) {
-    return 'notfound';
+  if (
+    lower.includes("cannot find") ||
+    lower.includes("not found") ||
+    lower.includes("does not exist")
+  ) {
+    return "notfound";
   }
-  if (lower.includes('type') && (lower.includes('error') || lower.includes('mismatch'))) {
-    return 'type';
+  if (lower.includes("type") && (lower.includes("error") || lower.includes("mismatch"))) {
+    return "type";
   }
-  if (lower.includes('import') || lower.includes('module') || lower.includes('dependencies')) {
-    return 'import';
+  if (lower.includes("import") || lower.includes("module") || lower.includes("dependencies")) {
+    return "import";
   }
-  return 'other';
+  return "other";
 }
 
 /**
@@ -148,18 +156,18 @@ function getErrorSignature(text: string): string {
 
   // Last resort: classify by error type + first significant line
   const errorType = classifyErrorType(clean);
-  const lines = clean.split('\n').filter(l => l.trim());
-  const firstLine = (lines[0] || '').slice(0, 50);
+  const lines = clean.split("\n").filter((l) => l.trim());
+  const firstLine = (lines[0] || "").slice(0, 50);
   return `unknown:${errorType}:${firstLine}`;
 }
 
 interface ParsedError {
-  type: 'build' | 'runtime' | 'warning';
+  type: "build" | "runtime" | "warning";
   file?: string;
   line?: number;
   message: string;
   codeFrame?: string;
-  source: 'vite-overlay' | 'server' | 'browser';
+  source: "vite-overlay" | "server" | "browser";
 }
 
 /**
@@ -186,12 +194,12 @@ function parseErrors(
     const frameMatch = clean.match(/(\d+\s*\|[^\n]+(?:\n[^\n]*\|[^\n]+)*)/);
 
     errors.push({
-      type: 'build',
+      type: "build",
       file: fileInfo.file || (error.file ? cleanFilePath(error.file) : undefined),
       line: fileInfo.line,
       message: extractCoreMessage(clean),
       codeFrame: frameMatch ? frameMatch[1] : undefined,
-      source: 'vite-overlay',
+      source: "vite-overlay",
     });
   }
 
@@ -211,17 +219,17 @@ function parseErrors(
     const frameMatch = clean.match(/(\d+\s*[│|][^\n]+(?:\n[^\n]*[│|][^\n]+)*)/);
 
     errors.push({
-      type: 'build',
+      type: "build",
       file: fileInfo.file,
       line: fileInfo.line,
       message: extractCoreMessage(clean),
       codeFrame: frameMatch ? frameMatch[1] : undefined,
-      source: 'server',
+      source: "server",
     });
   }
 
   // 3. Browser errors (runtime errors - only if not symptoms of build failure)
-  const hasBuildErrorsNow = errors.some(e => e.type === 'build');
+  const hasBuildErrorsNow = errors.some((e) => e.type === "build");
   for (const error of browser) {
     if (isBrowserSymptom(error, hasBuildErrorsNow)) continue;
 
@@ -230,10 +238,10 @@ function parseErrors(
     seen.add(signature);
 
     errors.push({
-      type: error.type === 'warning' ? 'warning' : 'runtime',
+      type: error.type === "warning" ? "warning" : "runtime",
       file: error.location ? cleanFilePath(error.location) : undefined,
       message: error.message,
-      source: 'browser',
+      source: "browser",
     });
   }
 
@@ -244,32 +252,40 @@ function parseErrors(
  * Extract the core error message from verbose output
  */
 function extractCoreMessage(text: string): string {
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
 
   // Look for the main error description
   for (const line of lines) {
     // Skip lines that are just file paths or stack traces
-    if (line.startsWith('at ')) continue;
-    if (line.startsWith('File:')) continue;
+    if (line.startsWith("at ")) continue;
+    if (line.startsWith("File:")) continue;
     if (line.match(/^\d+\s*[│|]/)) continue; // Code frame lines
     if (line.match(/^[├└─│|]/)) continue; // Box drawing
     if (line.match(/^\s*\^+\s*$/)) continue; // Pointer lines
 
     // Found a meaningful line
-    if (line.includes('Error') || line.includes('error') || line.includes('Expected') || line.includes('Cannot')) {
+    if (
+      line.includes("Error") ||
+      line.includes("error") ||
+      line.includes("Expected") ||
+      line.includes("Cannot")
+    ) {
       // Clean up the message
       return line
-        .replace(/^\[ERROR\]\s*/i, '')
-        .replace(/^[x✘]\s*/i, '')
-        .replace(/^\d+:\d+:\d+\s*(AM|PM)\s*\[vite\]\s*/i, '')
-        .replace(/Internal server error:\s*/i, '')
-        .replace(/Pre-transform error:\s*/i, '')
+        .replace(/^\[ERROR\]\s*/i, "")
+        .replace(/^[x✘]\s*/i, "")
+        .replace(/^\d+:\d+:\d+\s*(AM|PM)\s*\[vite\]\s*/i, "")
+        .replace(/Internal server error:\s*/i, "")
+        .replace(/Pre-transform error:\s*/i, "")
         .trim();
     }
   }
 
   // Fallback to first non-empty line
-  return lines[0]?.slice(0, 200) || 'Unknown error';
+  return lines[0]?.slice(0, 200) || "Unknown error";
 }
 
 /**
@@ -288,7 +304,7 @@ function createCombinedErrors(
       const { excludeWarnings = false } = options || {};
 
       // Filter server noise before checking
-      const realServerErrors = server.filter(line => !isServerNoise(line));
+      const realServerErrors = server.filter((line) => !isServerNoise(line));
       if (realServerErrors.length > 0) return true;
 
       // Check Vite overlay errors (always count as errors)
@@ -308,9 +324,9 @@ function createCombinedErrors(
       }
 
       // Group by type
-      const buildErrors = parsed.filter(e => e.type === 'build');
-      const runtimeErrors = parsed.filter(e => e.type === 'runtime');
-      const warnings = parsed.filter(e => e.type === 'warning');
+      const buildErrors = parsed.filter((e) => e.type === "build");
+      const runtimeErrors = parsed.filter((e) => e.type === "runtime");
+      const warnings = parsed.filter((e) => e.type === "warning");
 
       const sections: string[] = [];
 
@@ -320,11 +336,11 @@ function createCombinedErrors(
         buildErrors.forEach((error, i) => {
           sections.push(`${i + 1}. ${error.message}`);
           if (error.file) {
-            sections.push(`   File: ${error.file}${error.line ? `:${error.line}` : ''}`);
+            sections.push(`   File: ${error.file}${error.line ? `:${error.line}` : ""}`);
           }
           if (error.codeFrame) {
             sections.push(`   Code:`);
-            error.codeFrame.split('\n').forEach(line => {
+            error.codeFrame.split("\n").forEach((line) => {
               sections.push(`   ${line}`);
             });
           }

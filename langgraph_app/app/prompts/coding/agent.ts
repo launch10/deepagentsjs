@@ -15,6 +15,8 @@ import {
   environmentPrompt,
   typographyPrompt,
   startByPrompt,
+  linksPrompt,
+  imagesPrompt,
   type CodingPromptState,
 } from "./shared";
 
@@ -39,6 +41,8 @@ export const buildCodingPrompt = async (
     environment,
     typography,
     startBy,
+    links,
+    images,
   ] = await Promise.all([
     userGoalPrompt(state, config),
     rolePrompt(state, config),
@@ -51,6 +55,8 @@ export const buildCodingPrompt = async (
     environmentPrompt(state, config),
     typographyPrompt(state, config),
     startByPrompt(state, config),
+    linksPrompt(state, config),
+    imagesPrompt(state, config),
   ]);
 
   return `
@@ -58,11 +64,15 @@ ${userGoal}
 
 ${role}
 
+${workflow}
+
 ${context}
 
 ${tools}
 
-${workflow}
+${links}
+
+${images}
 
 ${guidelines}
 
@@ -73,6 +83,8 @@ ${themeColors}
 ${typography}
 
 ${environment}
+
+${workflow}
 
 ${startBy}
 `;

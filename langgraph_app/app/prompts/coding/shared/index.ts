@@ -13,6 +13,8 @@ export { workflowPrompt, startByPrompt } from "./workflow";
 export { contextPrompt } from "./context";
 export { userGoalPrompt } from "./goal";
 export { rolePrompt } from "./role";
+export { linksPrompt } from "./links";
+export { imagesPrompt } from "./images";
 export type {
   CodingPromptState,
   CodingPromptFn,

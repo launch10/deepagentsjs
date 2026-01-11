@@ -15,4 +15,5 @@ export const shouldDeployAnything = (state: {deploy: Instructions}) => {
     return (state.deploy?.website ?? false) || (state.deploy?.googleAds ?? false);
 }
 
-export { Status, Statuses } from "../core";
+export type { Status } from "../core";
+export { Statuses } from "../core";
