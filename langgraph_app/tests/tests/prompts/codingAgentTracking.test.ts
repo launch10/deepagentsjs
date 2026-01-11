@@ -12,6 +12,7 @@ describe("Coding Agent Tracking Prompts", () => {
   const mockState: CodingPromptState = {
     websiteId: 1,
     jwt: "test-jwt",
+    isFirstMessage: true,
   };
 
   describe("buildCodingPrompt()", () => {

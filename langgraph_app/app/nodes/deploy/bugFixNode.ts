@@ -1,7 +1,7 @@
 import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
-import { createCodingAgent } from "../website/utils";
+import { createCodingAgent } from "@nodes";
 import { HumanMessage } from "@langchain/core/messages";
 import { Task } from "@types";
 import { buildBugFixPrompt } from "@prompts";
@@ -41,17 +41,19 @@ export const bugFixNode = NodeMiddleware.use(
     const task = Task.findTask(state.tasks, TASK_NAME);
 
     // Build prompt with errors in state for consistent async pattern
+    // Bug fixes are always edits (isFirstMessage: false) with errors present
     const promptState = {
       websiteId: state.websiteId,
       jwt: state.jwt,
       errors: validationTask.error,
+      isFirstMessage: false,
     };
     const systemPrompt = await buildBugFixPrompt(promptState, config);
 
     try {
       // Compile and invoke codingAgentGraph as subgraph
       const agent = await createCodingAgent(
-        { websiteId: state.websiteId, jwt: state.jwt },
+        { websiteId: state.websiteId, jwt: state.jwt, isFirstMessage: false },
         systemPrompt
       );
 

@@ -9,8 +9,10 @@ export { fileStructurePrompt } from "./fileStructure";
 export { themeColorsPrompt } from "./themeColors";
 export { typographyPrompt, formatTypographyPrompt } from "./typography";
 export { codingToolsPrompt } from "./tools";
-export { workflowPrompt } from "./workflow";
+export { workflowPrompt, startByPrompt } from "./workflow";
 export { contextPrompt } from "./context";
+export { userGoalPrompt } from "./goal";
+export { rolePrompt } from "./role";
 export type {
   CodingPromptState,
   CodingPromptFn,

@@ -4,15 +4,17 @@
  */
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import {
+  userGoalPrompt,
+  rolePrompt,
   contextPrompt,
   codingToolsPrompt,
   workflowPrompt,
   codeGuidelinesPrompt,
   trackingContextPrompt,
-  fileStructurePrompt,
   themeColorsPrompt,
   environmentPrompt,
   typographyPrompt,
+  startByPrompt,
   type CodingPromptState,
 } from "./shared";
 
@@ -26,28 +28,35 @@ export const buildCodingPrompt = async (
 ): Promise<string> => {
   // Fetch all prompt sections in parallel
   const [
+    userGoal,
+    role,
     context,
     tools,
     workflow,
     guidelines,
     tracking,
-    fileStructure,
     themeColors,
     environment,
     typography,
+    startBy,
   ] = await Promise.all([
+    userGoalPrompt(state, config),
+    rolePrompt(state, config),
     contextPrompt(state, config),
     codingToolsPrompt(state, config),
     workflowPrompt(state, config),
     codeGuidelinesPrompt(state, config),
     trackingContextPrompt(state, config),
-    fileStructurePrompt(state, config),
     themeColorsPrompt(state, config),
     environmentPrompt(state, config),
     typographyPrompt(state, config),
+    startByPrompt(state, config),
   ]);
 
-  return `You are an expert landing page developer. You create high-converting landing pages that drive pre-sales signups.
+  return `
+${userGoal}
+
+${role}
 
 ${context}
 
@@ -59,13 +68,12 @@ ${guidelines}
 
 ${tracking}
 
-${fileStructure}
-
 ${themeColors}
 
 ${typography}
 
 ${environment}
 
-Start by exploring the existing template structure with ls and glob, then create the landing page sections.`;
+${startBy}
+`;
 };

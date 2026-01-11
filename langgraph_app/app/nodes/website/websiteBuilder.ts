@@ -2,10 +2,10 @@ import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
-import { createMultimodalPseudoMessage } from "@utils";
+import { createMultimodalPseudoMessage, isFirstMessage } from "@utils";
 
 const createContextMessage = (state: WebsiteGraphState) => {
-    const contextContent = `
+  const contextContent = `
       ## Brainstorm Context
       - Idea: ${state.brainstorm.idea || "Not provided"}
       - Audience: ${state.brainstorm.audience || "Not provided"}
@@ -21,20 +21,20 @@ const createContextMessage = (state: WebsiteGraphState) => {
       Please create a landing page based on this context.
     `;
 
-    // Build user message - combine context with visual images if available
-    const contextMessage =
-      state.images.length > 0
-        ? createMultimodalPseudoMessage([
-            { type: "text" as const, text: contextContent },
-            ...state.images.map((img) => ({
-              type: "image_url" as const,
-              image_url: { url: img.url },
-            })),
-          ])
-        : { role: "user", content: contextContent };
+  // Build user message - combine context with visual images if available
+  const contextMessage =
+    state.images.length > 0
+      ? createMultimodalPseudoMessage([
+          { type: "text" as const, text: contextContent },
+          ...state.images.map((img) => ({
+            type: "image_url" as const,
+            image_url: { url: img.url },
+          })),
+        ])
+      : { role: "user", content: contextContent };
 
-    return contextMessage;
-}
+  return contextMessage;
+};
 
 export const websiteBuilderNode = NodeMiddleware.use(
   {},
@@ -45,7 +45,8 @@ export const websiteBuilderNode = NodeMiddleware.use(
     if (!state.websiteId || !state.jwt) {
       throw new Error("websiteId and jwt are required");
     }
-    const agent = await createCodingAgent(state);
+
+    const agent = await createCodingAgent({ ...state, isFirstMessage: isFirstMessage(state) });
     const contextMessage = createContextMessage(state);
     const result = await agent.invoke(
       {

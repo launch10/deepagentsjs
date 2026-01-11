@@ -48,7 +48,7 @@ export const instrumentationNode = NodeMiddleware.use(
             {
               ...task,
               status: "completed",
-            },
+            } as Task.Task,
           ],
         };
       }
@@ -65,7 +65,7 @@ export const instrumentationNode = NodeMiddleware.use(
           {
             ...task,
             status: isCompliant ? "completed" : "failed",
-          },
+          } as Task.Task,
         ],
       };
     } catch (error) {
@@ -76,7 +76,7 @@ export const instrumentationNode = NodeMiddleware.use(
             ...task,
             status: "failed",
             error: errorMessage,
-          },
+          } as Task.Task,
         ],
       };
     }

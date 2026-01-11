@@ -20,6 +20,7 @@ export type MinimalCodingAgentState = {
   jwt?: string;
   theme?: CodingPromptState["theme"];
   errors?: string;
+  isFirstMessage?: boolean;
 };
 
 const getMiddlewares = (): AgentMiddleware[] => {
@@ -29,7 +30,7 @@ const getMiddlewares = (): AgentMiddleware[] => {
     model: getLLM("reasoning", "fast", "paid"),
     trigger: { fraction: 0.7 },
     keep: { messages: 15 },
-  })
+  });
   return [toolRetryMiddleware(), modelFallbackMiddleware, summarizationMiddleware];
 };
 
@@ -59,7 +60,9 @@ export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
   return backend;
 };
 
-const getTheme = async (state: MinimalCodingAgentState): Promise<CodingPromptState["theme"] | undefined> => {
+const getTheme = async (
+  state: MinimalCodingAgentState
+): Promise<CodingPromptState["theme"] | undefined> => {
   if (!state.websiteId || !state.jwt) {
     return undefined;
   }
@@ -83,9 +86,15 @@ const getTheme = async (state: MinimalCodingAgentState): Promise<CodingPromptSta
   }
 
   return undefined;
-}
+};
 
 export async function createCodingAgent(state: MinimalCodingAgentState, prompt?: string) {
+  if (state.isFirstMessage === undefined) {
+    throw new Error(
+      "isFirstMessage is required - explicitly set to true (create) or false (edit/bugfix)"
+    );
+  }
+
   const backend = await getCodingAgentBackend(state);
   const llm = getLLM("coding", "slow", "paid");
   const middlewares = getMiddlewares();
@@ -96,6 +105,7 @@ export async function createCodingAgent(state: MinimalCodingAgentState, prompt?:
     jwt: state.jwt,
     theme: state.theme,
     errors: state.errors,
+    isFirstMessage: state.isFirstMessage,
   };
 
   // If no theme in state but we have websiteId, fetch theme from website
