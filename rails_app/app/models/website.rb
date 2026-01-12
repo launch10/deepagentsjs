@@ -47,7 +47,7 @@ class Website < ApplicationRecord
   has_many :deploys, class_name: "WebsiteDeploy", dependent: :destroy
 
   has_many :website_uploads
-  has_many :uploads, through: :website_uploads
+  has_many :uploads, -> { order(:id) }, through: :website_uploads
   has_many :campaigns
   alias_method :ad_campaigns, :campaigns
 

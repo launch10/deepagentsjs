@@ -25,12 +25,12 @@ const createContextMessage = (state: WebsiteGraphState) => {
   const contextMessage =
     state.images.length > 0
       ? createMultimodalPseudoMessage([
-          { type: "text" as const, text: contextContent },
-          ...state.images.map((img) => ({
-            type: "image_url" as const,
-            image_url: { url: img.url },
-          })),
-        ])
+        { type: "text" as const, text: contextContent },
+        ...state.images.map((img) => ({
+          type: "image_url" as const,
+          image_url: { url: img.url },
+        })),
+      ])
       : { role: "user", content: contextContent };
 
   return contextMessage;
@@ -48,6 +48,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
 
     const agent = await createCodingAgent({ ...state, isFirstMessage: isFirstMessage(state) });
     const contextMessage = createContextMessage(state);
+
     const result = await agent.invoke(
       {
         messages: [...(state.messages || []), contextMessage],

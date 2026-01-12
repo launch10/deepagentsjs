@@ -216,17 +216,16 @@ export class SearchIconsService {
       await Promise.all(
         normalizedQueries.map(async (query) => {
           const searchResults = await this.embeddingsService.search(query, topK, {
-            enableCache: true,
-            ttlSeconds: 86400, // 24 hours
-            minSimilarity: 0.25, // Cache reasonably good results
+            enableCache: false,
           });
           results[query] = searchResults;
         })
       );
 
-      // Enhance results with icon data
+      // Enhance results with icon data - iterate in original query order for determinism
       const enhancedResults: IconSearchResults = {};
-      for (const [query, matches] of Object.entries(results)) {
+      for (const query of normalizedQueries) {
+        const matches = results[query] || [];
         const originalQuery = originalQueryMap.get(query);
         if (!originalQuery) {
           throw new Error(`Original query not found for normalized query: ${query}`);
