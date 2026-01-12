@@ -24,7 +24,6 @@
 class Theme < ApplicationRecord
   include ThemeConcerns::SemanticVariables
   include ThemeConcerns::TypographyRecommendations
-  include ThemeConcerns::IndexCssGeneration
 
   has_many :theme_to_theme_labels, dependent: :destroy
   has_many :theme_labels, through: :theme_to_theme_labels
