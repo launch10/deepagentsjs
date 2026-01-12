@@ -22,6 +22,7 @@ class WebsiteStepFinished < BaseBuilder
     website = project.website
 
     ExampleWebsites.find("launch-proof").files.reject(&:binary?).each do |file|
+      binding.pry if file.content.blank?
       website.website_files.create!(
         path: file.relative_path,
         content: file.content
