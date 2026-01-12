@@ -44,8 +44,6 @@ class Website < ApplicationRecord
   has_many :website_urls, dependent: :destroy
   alias_method :urls, :website_urls
   has_many :deploys, class_name: "WebsiteDeploy", dependent: :destroy
-  has_one :content_strategy, class_name: "ContentStrategy"
-  alias_method :strategy, :content_strategy
 
   has_many :website_uploads
   has_many :uploads, through: :website_uploads

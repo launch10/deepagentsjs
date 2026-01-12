@@ -145,6 +145,9 @@ export interface ILLMConfig {
   // e.g., maxUsagePercent: 80 means model is only used when user's usage is < 80%
   // Defaults to 100 (always available)
   maxUsagePercent?: number;
+  // Whether this model is enabled. Set to false to disable without removing from chains.
+  // Defaults to true (enabled)
+  enabled?: boolean;
 }
 
 export interface ILocalConfig extends ILLMConfig {

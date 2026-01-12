@@ -75,19 +75,33 @@ export class LLMManagerFactory {
 
   /**
    * Creates a model instance from a config object.
-   * Returns null if the model is not properly configured (missing API key, etc.)
+   * Returns null if the model is disabled or not properly configured (missing API key, etc.)
    */
   createModelFromConfig(config: LLMConfig): BaseChatModel | null {
+    // Check if model is explicitly disabled
+    if (config.enabled === false) {
+      return null;
+    }
+
     switch (config.provider) {
-      case "anthropic":
+      case "anthropic": {
         if (!this.apiConfigured(config)) {
           return null;
         }
-        return new ChatAnthropic({
+        const model = new ChatAnthropic({
           apiKey: config.apiKey,
           model: config.modelCard,
           temperature: config.temperature,
         });
+        // WORKAROUND: @langchain/anthropic has a bug where it checks for "opus-4-1"
+        // instead of "opus-4-5", so claude-opus-4-5 takes the legacy branch where
+        // topP/topK default to -1. Anthropic API rejects -1, so we must set them
+        // to undefined AFTER construction to bypass the constructor's fallback logic.
+        // See: https://github.com/langchain-ai/langchainjs/issues/XXXX
+        model.topP = undefined;
+        (model as unknown as { topK: number | undefined }).topK = undefined;
+        return model;
+      }
       case "openai":
         if (!this.apiConfigured(config)) {
           return null;

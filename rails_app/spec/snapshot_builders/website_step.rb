@@ -47,7 +47,7 @@ class WebsiteStep < BaseBuilder
       { file: "21b36cfc-f657-471f-8256-d36bea9689fc.png", is_logo: true },
       { file: "024dfc6c-335d-4f11-883b-f8e241f91744.png", is_logo: false },
       { file: "21b36cfc-f657-471f-8256-d36bea9689fc.png", is_logo: false },
-      { file: "024dfc6c-335d-4f11-883b-f8e241f91744.png", is_logo: false },
+      { file: "024dfc6c-335d-4f11-883b-f8e241f91744.png", is_logo: false }
     ]
 
     cdn_images.each_with_index do |img, i|
@@ -61,7 +61,7 @@ class WebsiteStep < BaseBuilder
       upload[:file] = img[:file]
       upload.save!(validate: false)
       WebsiteUpload.create!(website: website, upload: upload)
-      puts "Created #{img[:is_logo] ? 'logo' : 'image'} upload #{i + 1}: #{upload.id} (#{img[:file]})"
+      puts "Created #{img[:is_logo] ? "logo" : "image"} upload #{i + 1}: #{upload.id} (#{img[:file]})"
     end
 
     project.current_workflow.update!(step: "website") # Ready to do website builder

@@ -2,20 +2,12 @@ import { relations } from "drizzle-orm/relations";
 import {
   accounts,
   accountUsers,
-  componentContentPlans,
-  componentOverviews,
-  components,
-  contentStrategies,
-  fileSpecifications,
-  pages,
   projects,
   tasks,
   templateFiles,
   templates,
   themes,
   themeLabels,
-  themeVariants,
-  themesToThemeLabels,
   websiteFiles,
   websites,
   users,
@@ -39,67 +31,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   accountUsers: many(accountUsers),
 }));
 
-export const componentContentPlansRelations = relations(componentContentPlans, ({ one }) => ({
-  component: one(components, {
-    fields: [componentContentPlans.componentId],
-    references: [components.id],
-  }),
-  componentOverview: one(componentOverviews, {
-    fields: [componentContentPlans.componentOverviewId],
-    references: [componentOverviews.id],
-  }),
-}));
-
-export const componentOverviewsRelations = relations(componentOverviews, ({ one }) => ({
-  component: one(components, {
-    fields: [componentOverviews.componentId],
-    references: [components.id],
-  }),
-  website: one(websites, {
-    fields: [componentOverviews.websiteId],
-    references: [websites.id],
-  }),
-  fileSpecification: one(fileSpecifications, {
-    fields: [componentOverviews.fileSpecificationId],
-    references: [fileSpecifications.id],
-  }),
-}));
-
-export const componentsRelations = relations(components, ({ one, many }) => ({
-  componentContentPlans: many(componentContentPlans),
-  componentOverviews: many(componentOverviews),
-  website: one(websites, {
-    fields: [components.websiteId],
-    references: [websites.id],
-  }),
-  page: one(pages, {
-    fields: [components.pageId],
-    references: [pages.id],
-  }),
-}));
-
-export const contentStrategiesRelations = relations(contentStrategies, ({ one }) => ({
-  website: one(websites, {
-    fields: [contentStrategies.websiteId],
-    references: [websites.id],
-  }),
-}));
-
-export const pagesRelations = relations(pages, ({ one }) => ({
-  website: one(websites, {
-    fields: [pages.websiteId],
-    references: [websites.id],
-  }),
-  websiteFile: one(websiteFiles, {
-    fields: [pages.websiteFileId],
-    references: [websiteFiles.id],
-  }),
-  fileSpecification: one(fileSpecifications, {
-    fields: [pages.fileSpecificationId],
-    references: [fileSpecifications.id],
-  }),
-}));
-
 export const projectsRelations = relations(projects, ({ one }) => ({
   account: one(accounts, {
     fields: [projects.accountId],
@@ -115,14 +46,6 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   project: one(projects, {
     fields: [tasks.projectId],
     references: [projects.id],
-  }),
-  fileSpecification: one(fileSpecifications, {
-    fields: [tasks.fileSpecificationId],
-    references: [fileSpecifications.id],
-  }),
-  component: one(components, {
-    fields: [tasks.componentId],
-    references: [components.id],
   }),
 }));
 
@@ -153,6 +76,5 @@ export const websitesRelations = relations(websites, ({ one, many }) => ({
     fields: [websites.accountId],
     references: [accounts.id],
   }),
-  pages: many(pages),
   websiteFiles: many(websiteFiles),
 }));

@@ -17,7 +17,7 @@ namespace :api, defaults: {format: :json} do
     resources :uploads, only: [:create, :index, :show, :destroy]
 
     resources :websites, only: [] do
-      resource :context, only: [:show], controller: 'context'
+      resource :context, only: [:show], controller: "context"
     end
     patch "projects/:project_uuid/workflows/:id", to: "project_workflows#update"
     patch "projects/:project_uuid/workflows/:id/next", to: "project_workflows#next"

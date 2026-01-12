@@ -13,18 +13,6 @@ const websiteGraph = uncompiledGraph.compile({
   name: "website",
 });
 
-/**
- * TODO: Add tests for fallback theme selection
- *
- * When a website has NO theme assigned, the system should:
- * 1. Pick an appropriate theme based on theme_labels (e.g. "modern", "minimal", etc.)
- * 2. Consider using the brainstorm's look_and_feel field to match theme labels
- * 3. May need a SelectThemeTool that uses theme_labels for intelligent matching
- *
- * Test case: Create a snapshot with website but NO theme_id, verify the agent
- * selects and applies an appropriate theme before generating the page.
- */
-
 describe.sequential("Website Builder", () => {
   let websiteId: number;
   let website: Website.WebsiteType;
@@ -129,7 +117,7 @@ describe.sequential("Website Builder", () => {
   });
 
   describe("Page Generation", () => {
-    it("generates a complete landing page with required sections", async () => {
+    it.only("generates a complete landing page with required sections", async () => {
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({

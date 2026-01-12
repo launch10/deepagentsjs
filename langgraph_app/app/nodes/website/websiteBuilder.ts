@@ -53,8 +53,8 @@ export const websiteBuilderNode = NodeMiddleware.use(
         messages: [...(state.messages || []), contextMessage],
       },
       {
-        recursionLimit: 100,
         ...config,
+        recursionLimit: 100, // Must come AFTER spread to override any default
       }
     );
 
