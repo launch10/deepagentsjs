@@ -25,14 +25,14 @@ export type MinimalCodingAgentState = {
 
 const getMiddlewares = (): AgentMiddleware[] => {
   const fallbacks = getLLMFallbacks("coding", "slow", "paid");
-  const modelFallbackMiddleware = modelFallbackMiddlewareBuilder(...fallbacks);
+  // const modelFallbackMiddleware = modelFallbackMiddlewareBuilder(...fallbacks);
   // TODO: We get error: SummarizationMiddleware is defined multiple times... is it defined inside deepagents lib?
   // const summarizationMiddleware = summarizationMiddlewareBuilder({
   //   model: getLLM("reasoning", "fast", "paid"),
   //   trigger: { fraction: 0.7 },
   //   keep: { messages: 15 },
   // });
-  return [toolRetryMiddleware(), modelFallbackMiddleware];
+  return [toolRetryMiddleware()];
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {

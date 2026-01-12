@@ -1,61 +1,44 @@
 import type { WebsiteGraphState } from "@annotation";
-import {
-  db,
-  brainstorms,
-  uploads,
-  websiteUploads,
-  eq,
-} from "@db";
 import type { Brainstorm } from "@types";
 import { NodeMiddleware } from "@middleware";
+import { ContextAPIService } from "@rails_api";
 
 /**
  * Build context for the coding agent on the WebsiteBuilder page.
- * 
- * Note: 
- * - We only need to seed things here that are NOT already seeded at the agent utils layer
- * - For example, theme is needed by EVERY prompt, so it is seeded at the agent utils layer
- * - Brainstorm is fetched here
- * - Images are fetched here
- * - Think about: What does the builder need that deploy/bug fix does not? 
+ *
+ * Fetches brainstorm content and uploads (with proper URLs) from Rails API.
+ * Theme is fetched separately in the coding agent since it needs the full CSS variables.
  */
-export const buildContext = NodeMiddleware.use({}, async (
-  state: WebsiteGraphState,
-): Promise<Partial<WebsiteGraphState>> => {
-  if (!state.websiteId) {
-    throw new Error("websiteId is required");
+export const buildContext = NodeMiddleware.use(
+  {},
+  async (state: WebsiteGraphState): Promise<Partial<WebsiteGraphState>> => {
+    if (!state.websiteId) {
+      throw new Error("websiteId is required");
+    }
+
+    if (!state.jwt) {
+      throw new Error("jwt is required");
+    }
+
+    const contextAPI = new ContextAPIService({ jwt: state.jwt });
+    const context = await contextAPI.get(state.websiteId);
+
+    const images = context.uploads.map((upload) => ({
+      url: upload.url,
+      isLogo: upload.is_logo,
+    }));
+
+    const brainstormContext: Brainstorm.MemoriesType = {
+      idea: context.brainstorm?.idea ?? null,
+      audience: context.brainstorm?.audience ?? null,
+      solution: context.brainstorm?.solution ?? null,
+      socialProof: context.brainstorm?.social_proof ?? null,
+    };
+
+    return {
+      brainstorm: brainstormContext,
+      images,
+      status: "running",
+    };
   }
-
-  const [brainstorm] = await db
-    .select()
-    .from(brainstorms)
-    .where(eq(brainstorms.websiteId, state.websiteId))
-    .limit(1);
-
-  const websiteUploadRows = await db
-    .select({
-      file: uploads.file,
-      isLogo: uploads.isLogo,
-    })
-    .from(websiteUploads)
-    .innerJoin(uploads, eq(websiteUploads.uploadId, uploads.id))
-    .where(eq(websiteUploads.websiteId, state.websiteId));
-
-  const images = websiteUploadRows.map((row) => ({
-    url: row.file,
-    isLogo: row.isLogo,
-  }));
-
-  const brainstormContext: Brainstorm.MemoriesType = {
-    idea: brainstorm?.idea ?? null,
-    audience: brainstorm?.audience ?? null,
-    solution: brainstorm?.solution ?? null,
-    socialProof: brainstorm?.socialProof ?? null,
-  };
-
-  return {
-    brainstorm: brainstormContext,
-    images,
-    status: "running",
-  };
-});
+);

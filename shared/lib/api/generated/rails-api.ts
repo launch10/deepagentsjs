@@ -948,6 +948,186 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/websites/{website_id}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieves context for a website */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Website ID */
+                    website_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns context without brainstorm when website has none */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            brainstorm?: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description The core idea for the landing page */
+                                idea?: string | null;
+                                /** @description Target audience for the landing page */
+                                audience?: string | null;
+                                /** @description The solution being offered */
+                                solution?: string | null;
+                                /** @description Social proof elements */
+                                social_proof?: string | null;
+                                /** @description Design preferences */
+                                look_and_feel?: string | null;
+                            } | null;
+                            uploads: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Upload UUID */
+                                uuid: string;
+                                /** @description Full size file URL */
+                                url: string;
+                                /** @description Thumbnail URL (images only) */
+                                thumb_url?: string | null;
+                                /** @description Medium size URL (images only) */
+                                medium_url?: string | null;
+                                /**
+                                 * @description Media type
+                                 * @enum {string}
+                                 */
+                                media_type: "image" | "video" | "document";
+                                /** @description Whether this upload is a logo */
+                                is_logo: boolean;
+                                /** @description Original filename */
+                                filename: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Creation timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Last update timestamp
+                                 */
+                                updated_at: string;
+                            }[];
+                            theme?: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Theme name */
+                                name: string;
+                                /** @description Theme color palette */
+                                colors: string[];
+                                /** @description Typography recommendations per background color */
+                                typography_recommendations?: {
+                                    [key: string]: {
+                                        /** @description Headline color options */
+                                        headlines: {
+                                            /** @description Hex color code */
+                                            color: string;
+                                            /** @description Contrast ratio */
+                                            contrast: number;
+                                            /**
+                                             * @description WCAG compliance level
+                                             * @enum {string}
+                                             */
+                                            level: "AAA" | "AA" | "AA-large" | "fail";
+                                            /** @description Style hint */
+                                            style: string;
+                                            /** @description Additional guidance */
+                                            note?: string | null;
+                                        }[];
+                                        /** @description Subheadline color options */
+                                        subheadlines: {
+                                            /** @description Hex color code */
+                                            color: string;
+                                            /** @description Contrast ratio */
+                                            contrast: number;
+                                            /**
+                                             * @description WCAG compliance level
+                                             * @enum {string}
+                                             */
+                                            level: "AAA" | "AA" | "AA-large" | "fail";
+                                            /** @description Style hint */
+                                            style: string;
+                                            /** @description Additional guidance */
+                                            note?: string | null;
+                                        }[];
+                                        /** @description Body text color options */
+                                        body: {
+                                            /** @description Hex color code */
+                                            color: string;
+                                            /** @description Contrast ratio */
+                                            contrast: number;
+                                            /**
+                                             * @description WCAG compliance level
+                                             * @enum {string}
+                                             */
+                                            level: "AAA" | "AA" | "AA-large" | "fail";
+                                            /** @description Style hint */
+                                            style: string;
+                                            /** @description Additional guidance */
+                                            note?: string | null;
+                                        }[];
+                                        /** @description Accent color options */
+                                        accents: {
+                                            /** @description Hex color code */
+                                            color: string;
+                                            /** @description Contrast ratio */
+                                            contrast: number;
+                                            /**
+                                             * @description WCAG compliance level
+                                             * @enum {string}
+                                             */
+                                            level: "AAA" | "AA" | "AA-large" | "fail";
+                                            /** @description Style hint */
+                                            style: string;
+                                            /** @description Additional guidance */
+                                            note?: string | null;
+                                        }[];
+                                    };
+                                } | null;
+                            } | null;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot access website owned by another account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/domains": {
         parameters: {
             query?: never;

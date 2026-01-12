@@ -20,14 +20,12 @@ import {
 
 export class LLMManagerFactory {
   mode: "test" | "regular" = "regular";
-  private config: LLMAppConfig;
-  private fallbackConfig: LLMFallbackAppConfig;
+  private config: LLMFallbackAppConfig;
   private llmCache: Partial<Record<string, BaseChatModel>>;
 
-  constructor(config: LLMAppConfig, fallbackConfig: LLMFallbackAppConfig) {
+  constructor(config: LLMFallbackAppConfig) {
     this.llmCache = {};
     this.config = config;
-    this.fallbackConfig = fallbackConfig;
   }
 
   reset() {
@@ -120,30 +118,6 @@ export class LLMManagerFactory {
     }
   }
 
-  getModel(llmSkill: LLMSkill, llmSpeed: LLMSpeed, llmCost: LLMCost) {
-    // Get the specific config for the requested skill, speed, and tier
-    const speedConfig = this.config[llmCost]?.[llmSpeed];
-    if (!speedConfig) {
-      throw new Error(`LLM configuration not found for tier '${llmCost}' and speed '${llmSpeed}'.`);
-    }
-
-    const config: LLMConfig | undefined = speedConfig[llmSkill];
-    if (!config) {
-      throw new Error(
-        `LLM configuration not found for skill '${llmSkill}' within tier '${llmCost}' and speed '${llmSpeed}'.`
-      );
-    }
-
-    const modelInstance = this.createModelFromConfig(config);
-    if (!modelInstance) {
-      throw new Error(
-        `Failed to create model for ${config.provider} - check API keys and configuration`
-      );
-    }
-
-    return modelInstance;
-  }
-
   /**
    * Get available fallback configs for a given skill/speed/cost combination.
    * Returns configs that are within the usage threshold.
@@ -156,7 +130,7 @@ export class LLMManagerFactory {
     llmCost: LLMCost,
     usagePercent: number = 0
   ): LLMConfig[] {
-    const speedConfig = this.fallbackConfig[llmCost]?.[llmSpeed];
+    const speedConfig = this.config[llmCost]?.[llmSpeed];
     if (!speedConfig) {
       throw new Error(
         `LLM fallback configuration not found for tier '${llmCost}' and speed '${llmSpeed}'.`
@@ -282,7 +256,7 @@ export class LLMManagerFactory {
     if (cacheKey in this.llmCache) {
       return this.llmCache[cacheKey]!;
     }
-    const result = this.getModel(llmSkill, llmSpeed, llmCost);
+    const result = this.getFirstAvailableModel(llmSkill, llmSpeed, llmCost);
     this.llmCache[cacheKey] = result;
     return result;
   }
