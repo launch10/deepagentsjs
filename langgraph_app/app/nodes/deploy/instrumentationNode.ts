@@ -3,7 +3,7 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { Task } from "@types";
 import { createCodingAgent } from "@nodes";
-import { codingToolsPrompt, trackingContextPrompt, environmentPrompt } from "@prompts/coding/shared";
+import { codingToolsPrompt, trackingContextPrompt, environmentPrompt } from "@prompts";
 
 const TASK_NAME = "Instrumentation" as const;
 
@@ -72,7 +72,7 @@ export const instrumentationNode = NodeMiddleware.use(
             content: `Verify that the landing page uses L10.createLead() for lead capture.`,
           }
         ]
-      })
+      });
       return {
         tasks: [
           {

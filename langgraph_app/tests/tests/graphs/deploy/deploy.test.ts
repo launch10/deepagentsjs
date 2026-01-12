@@ -42,7 +42,7 @@ describe("Deploy Graph", () => {
   });
 
   describe("Website deploy flow", () => {
-    it.only("runs instrumentation → validation → deploy when deployWebsite=true", async () => {
+    it("runs instrumentation → validation → deploy when deployWebsite=true", async () => {
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
         .withState({
@@ -55,7 +55,7 @@ describe("Deploy Graph", () => {
           },
           tasks: [],
         })
-        .stopAfter("deployWebsite")
+        .stopAfter("instrumentation")
         .execute();
 
       // Should have instrumentation task

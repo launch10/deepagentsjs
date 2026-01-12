@@ -23,42 +23,19 @@ Simplified plan based on 3 parallel reviews (DHH, Kieran, Simplicity). Focus on 
 
 ### Deploy System
 
-| Capability                      | Status  | Gap                          |
-| ------------------------------- | ------- | ---------------------------- |
-| Runtime validation (Playwright) | Done    | -                            |
-| Bug fix via coding agent        | Done    | -                            |
-| Instrumentation check           | Partial | Uses fragile string matching |
-| Cloudflare deployment           | Done    | -                            |
-| Google Ads campaign             | Done    | -                            |
+| Capability                      | Status | Gap |
+| ------------------------------- | ------ | --- |
+| Runtime validation (Playwright) | Done   | -   |
+| Bug fix via coding agent        | Done   | -   |
+| Instrumentation check           | Done   | -   |
+| Cloudflare deployment           | Done   | -   |
+| Google Ads campaign             | Done   | -   |
 
 ---
 
-## Phase 1: Bug Fixes
+IMPORTANT:
 
-### 1b. Refactor instrumentationNode to use codingAgent
-
-**File:** `app/nodes/deploy/instrumentationNode.ts`
-
-Replace custom LLM logic with `createCodingAgent()`:
-
-```typescript
-const instrumentationSystemPrompt = `
-You are a pre-deployment agent. Add Google Ads conversion tracking to the PRIMARY conversion form.
-
-Tasks:
-1. Find the primary conversion form (signup, waitlist, purchase, lead capture)
-2. Import L10 from '@/lib/tracking' if not already imported
-3. Add L10.conversion({ label: '<type>' }) after successful form submission
-
-Labels: "signup" | "lead" | "purchase" | "download"
-
-Rules:
-- Only instrument ONE primary conversion per page
-- Fire on SUCCESS (after API success, before thank you state)
-`;
-```
-
----
+These outcome-based tests need a valid working website to run against. We haven't finished the website node yet so we should hold off on this for now.
 
 ## Phase 3: Outcome-Based Tests
 
