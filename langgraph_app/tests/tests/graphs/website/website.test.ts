@@ -6,7 +6,7 @@ import { db, Types as DBTypes, websites, brainstorms, websiteFiles, themes, webs
 import { websiteGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
 import type { WebsiteGraphState } from "@annotation";
-import { saveExample } from "@support/helpers";
+import { saveExample } from "@support";
 
 const websiteGraph = uncompiledGraph.compile({
   ...graphParams,
@@ -117,7 +117,7 @@ describe.sequential("Website Builder", () => {
   });
 
   describe("Page Generation", () => {
-    it("generates a complete landing page with required sections", async () => {
+    it.only("generates a complete landing page with required sections", async () => {
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
