@@ -24,7 +24,7 @@ export type MinimalCodingAgentState = {
 };
 
 const getMiddlewares = (): AgentMiddleware[] => {
-  const fallbacks = getLLMFallbacks("coding", "slow", "paid");
+  // const fallbacks = getLLMFallbacks("coding", "slow", "paid");
   // const modelFallbackMiddleware = modelFallbackMiddlewareBuilder(...fallbacks);
   // TODO: We get error: SummarizationMiddleware is defined multiple times... is it defined inside deepagents lib?
   // const summarizationMiddleware = summarizationMiddlewareBuilder({
@@ -50,7 +50,7 @@ export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
     throw new Error(`Website ${state.websiteId} not found`);
   }
 
-  const website = websiteRow as Website.WebsiteType;
+  const website = websiteRow;
 
   // Move to using, so it will auto-cleanup, and add the async cleanup functions!
   const backend = await WebsiteFilesBackend.create({

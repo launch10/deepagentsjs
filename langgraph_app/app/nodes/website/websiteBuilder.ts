@@ -2,7 +2,7 @@ import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
-import { createMultimodalPseudoMessage, isFirstMessage } from "@utils";
+import { createMultimodalPseudoMessage, createPseudoMessage } from "@utils";
 
 const createContextMessage = (state: WebsiteGraphState) => {
   const contextContent = `
@@ -46,16 +46,21 @@ export const websiteBuilderNode = NodeMiddleware.use(
       throw new Error("websiteId and jwt are required");
     }
 
-    const agent = await createCodingAgent({ ...state, isFirstMessage: isFirstMessage(state) });
+    const isCreateCommand = state.command === "create";
+    const agent = await createCodingAgent({ ...state, isFirstMessage: isCreateCommand });
     const contextMessage = createContextMessage(state);
 
     const result = await agent.invoke(
       {
-        messages: [...(state.messages || []), contextMessage],
+        messages: [
+          ...(state.messages || []),
+          ...(isCreateCommand ? [createPseudoMessage("Create a landing page for this business")] : []),
+          contextMessage,
+        ],
       },
       {
         ...config,
-        recursionLimit: 100, // Must come AFTER spread to override any default
+        recursionLimit: 100,
       }
     );
 

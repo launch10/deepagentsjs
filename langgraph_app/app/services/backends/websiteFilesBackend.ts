@@ -9,21 +9,20 @@ import type {
   WriteResult,
 } from "deepagents";
 import { FilesystemBackend } from "deepagents";
-import { db, codeFiles, eq, and, sql } from "@db";
-import { Website } from "@types";
-import type { DB } from "@db";
+import { db, codeFiles, eq, and, sql, Types as DBTypes, type DB } from "@db";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { snakeCase } from "lodash";
 import micromatch from "micromatch";
 import { WebsiteFilesAPIService } from "@rails_api";
+
 export interface CreateBackendParams {
-  website: Website.WebsiteType;
+  website: DBTypes.WebsiteType;
   jwt: string;
 }
 export class WebsiteFilesBackend implements BackendProtocol {
   private fs: FilesystemBackend;
-  private website: Website.WebsiteType;
+  private website: DBTypes.WebsiteType;
   private database: DB;
   private rootDir: string;
   private jwt: string;
@@ -40,7 +39,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   makeRootDir(): string {
-    const name = snakeCase(this.website.name);
+    const name = snakeCase(this.website.name ?? "");
     return `agents/websites/${this.website.accountId}/${name}`;
   }
 

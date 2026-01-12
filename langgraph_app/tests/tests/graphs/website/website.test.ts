@@ -2,11 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { testGraph } from "@support";
 import { DatabaseSnapshotter } from "@services";
 import { getCodingAgentBackend } from "@nodes";
-import { db, websites, brainstorms, websiteFiles, themes, websiteUploads, eq } from "@db";
+import { db, Types as DBTypes, websites, brainstorms, websiteFiles, themes, websiteUploads, eq } from "@db";
 import { websiteGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
 import type { WebsiteGraphState } from "@annotation";
-import type { Website } from "@types";
 
 const websiteGraph = uncompiledGraph.compile({
   ...graphParams,
@@ -15,7 +14,7 @@ const websiteGraph = uncompiledGraph.compile({
 
 describe.sequential("Website Builder", () => {
   let websiteId: number;
-  let website: Website.WebsiteType;
+  let website: DBTypes.WebsiteType;
   let themeColors: string[];
 
   beforeEach(async () => {
@@ -32,7 +31,7 @@ describe.sequential("Website Builder", () => {
     }
 
     websiteId = websiteRow.id;
-    website = websiteRow as Website.WebsiteType;
+    website = websiteRow;
 
     // Get theme colors for assertions
     if (websiteRow.themeId) {
@@ -121,11 +120,11 @@ describe.sequential("Website Builder", () => {
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
+          command: "create",
           websiteId,
           accountId: website.accountId ?? undefined,
           projectId: website.projectId ?? undefined,
         })
-        .withPrompt("Create a landing page for this business")
         .execute();
 
       expect(result.error).toBeUndefined();

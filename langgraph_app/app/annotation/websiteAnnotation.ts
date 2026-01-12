@@ -7,6 +7,11 @@ import { Core, type ConsoleError } from "@types";
 export const WebsiteAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
 
+  command: Annotation<Website.CommandName | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next,
+  }),
+
   brainstormId: Annotation<PrimaryKeyType | undefined>({
     default: () => undefined,
     reducer: (current, next) => next,
