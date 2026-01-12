@@ -1,8 +1,8 @@
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import type { LaunchGraphState } from "@annotation";
+import type { DeployGraphState } from "@annotation";
 import { JobRunAPIService } from "@services";
 import { NodeMiddleware } from "@middleware";
-import { createChecklistTask, findChecklistTask, updateChecklistTask } from "@types";
+import { Task } from "@types";
 
 const TASK_NAME = "CampaignDeploy";
 
@@ -20,10 +20,10 @@ const TASK_NAME = "CampaignDeploy";
 export const deployCampaignNode = NodeMiddleware.use(
   {},
   async (
-    state: LaunchGraphState,
+    state: DeployGraphState,
     config?: LangGraphRunnableConfig
-  ): Promise<Partial<LaunchGraphState>> => {
-    const task = findChecklistTask(state.tasks, TASK_NAME);
+  ): Promise<Partial<DeployGraphState>> => {
+    const task = Task.findTask(state.tasks, TASK_NAME);
 
     // 1. Already completed or failed? No-op (idempotent)
     if (task?.status === "completed" || task?.status === "failed") {
@@ -33,17 +33,17 @@ export const deployCampaignNode = NodeMiddleware.use(
     // 2. Task exists with result? Process it
     if (task?.status === "running" && task.result) {
       return {
-        tasks: updateChecklistTask(state.tasks, TASK_NAME, { status: "completed" }),
-        deployStatus: "completed",
-        deployResult: task.result,
+        tasks: Task.updateTask(state.tasks, TASK_NAME, { status: "completed" }),
+        status: "completed",
+        result: task.result,
       };
     }
 
     // 3. Task exists with error? Mark failed
     if (task?.status === "running" && task.error) {
       return {
-        tasks: updateChecklistTask(state.tasks, TASK_NAME, { status: "failed" }),
-        deployStatus: "failed",
+        tasks: Task.updateTask(state.tasks, TASK_NAME, { status: "failed" }),
+        status: "failed",
         error: { message: task.error, node: "deployCampaignNode" },
       };
     }
@@ -74,8 +74,8 @@ export const deployCampaignNode = NodeMiddleware.use(
     });
 
     return {
-      tasks: [...state.tasks, createChecklistTask(TASK_NAME, jobRun.id)],
-      deployStatus: "pending",
+      tasks: [...state.tasks, Task.createTask(TASK_NAME, jobRun.id)],
+      status: "pending",
     };
   }
 );

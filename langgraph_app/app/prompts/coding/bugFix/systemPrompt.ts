@@ -1,0 +1,37 @@
+/**
+ * Bug fix prompt builder for the coding agent.
+ * Uses shared components plus error context from state.
+ */
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { codeGuidelinesPrompt, type CodingPromptState, type CodingPromptFn } from "../shared";
+
+/**
+ * Build a system prompt for fixing runtime errors.
+ * Errors are passed via state.errors for consistency with other prompts.
+ */
+export const buildBugFixPrompt: CodingPromptFn = async (
+  state: CodingPromptState,
+  config?: LangGraphRunnableConfig
+): Promise<string> => {
+  const guidelines = await codeGuidelinesPrompt(state, config);
+  const errorContext = state.errors || "";
+
+  return `You are fixing runtime errors in a landing page.
+
+The user has a simple, static landing page that uses:
+1. React Router
+2. Tailwind
+3. ShadCN
+
+<task>
+Fix the following errors:
+</task>
+
+<errors>
+${errorContext}
+</errors>
+
+${guidelines}
+
+Analyze the errors and modify the code files to resolve them.`;
+};

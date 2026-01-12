@@ -135,4 +135,64 @@ RSpec.describe "Themes API", type: :request do
       end
     end
   end
+
+  path '/api/v1/themes/{id}' do
+    get 'Retrieves a theme with full details' do
+      tags 'Themes'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :id, in: :path, type: :integer, description: 'Theme ID'
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+
+      response '200', 'theme retrieved' do
+        schema APISchemas::Theme.full_response
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:id) { official_theme1.id }
+
+        before do
+          switch_account_to(account)
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['id']).to eq(official_theme1.id)
+          expect(data['name']).to eq('Modern')
+          expect(data['colors']).to eq(['#000000', '#ffffff'])
+          expect(data).to have_key('theme')
+          expect(data).to have_key('pairings')
+          expect(data).to have_key('typography_recommendations')
+        end
+      end
+
+      response '404', 'theme not found' do
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:id) { 999999 }
+
+        before do
+          switch_account_to(account)
+        end
+
+        run_test! do |response|
+          expect(response.code).to eq("404")
+        end
+      end
+
+      response '401', 'unauthorized' do
+        let(:Authorization) { nil }
+        let(:id) { official_theme1.id }
+
+        run_test! do |response|
+          expect(response.code).to eq("401")
+        end
+      end
+    end
+  end
 end

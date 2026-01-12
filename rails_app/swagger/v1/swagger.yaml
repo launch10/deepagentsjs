@@ -8,27 +8,27 @@ paths:
     post:
       summary: Creates a brainstorm
       tags:
-        - Brainstorms
+      - Brainstorms
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "201":
+        '201':
           description: brainstorm created in team account after switching
           content:
             application/json:
@@ -63,17 +63,17 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - thread_id
-                  - account_id
-                  - website_id
-                  - project_id
-                  - name
-                  - created_at
-                  - updated_at
-        "401":
+                - id
+                - thread_id
+                - account_id
+                - website_id
+                - project_id
+                - name
+                - created_at
+                - updated_at
+        '401':
           description: unauthorized - missing token
-        "422":
+        '422':
           description: invalid request - missing thread_id
       requestBody:
         content:
@@ -113,39 +113,39 @@ paths:
                           type: string
                           description: Optional UUID for the project
               required:
-                - brainstorm
+              - brainstorm
   "/api/v1/brainstorms/{thread_id}":
     parameters:
-      - name: thread_id
-        in: path
-        description: Thread ID from Langgraph
-        required: true
-        schema:
-          type: string
+    - name: thread_id
+      in: path
+      description: Thread ID from Langgraph
+      required: true
+      schema:
+        type: string
     get:
       summary: Retrieves a brainstorm
       tags:
-        - Brainstorms
+      - Brainstorms
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: brainstorm found in team account after switching
           content:
             application/json:
@@ -180,40 +180,40 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - thread_id
-                  - account_id
-                  - website_id
-                  - project_id
-                  - name
-                  - created_at
-                  - updated_at
-        "404":
+                - id
+                - thread_id
+                - account_id
+                - website_id
+                - project_id
+                - name
+                - created_at
+                - updated_at
+        '404':
           description: brainstorm not found
     patch:
       summary: Updates a brainstorm
       tags:
-        - Brainstorms
+      - Brainstorms
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: brainstorm updated in team account after switching
           content:
             application/json:
@@ -248,15 +248,15 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - thread_id
-                  - account_id
-                  - website_id
-                  - project_id
-                  - name
-                  - created_at
-                  - updated_at
-        "404":
+                - id
+                - thread_id
+                - account_id
+                - website_id
+                - project_id
+                - name
+                - created_at
+                - updated_at
+        '404':
           description: brainstorm not found
       requestBody:
         content:
@@ -296,32 +296,32 @@ paths:
                           type: string
                           description: Optional UUID for the project
               required:
-                - brainstorm
+              - brainstorm
   "/api/v1/campaigns":
     post:
       summary: Creates a campaign
       tags:
-        - Campaigns
+      - Campaigns
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "201":
+        '201':
           description: campaign created without website_id (falls back to project
             website)
           content:
@@ -460,15 +460,15 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - stage
-                  - status
-                  - account_id
-                  - project_id
-                  - website_id
-                  - created_at
-                  - updated_at
-        "200":
+                - id
+                - stage
+                - status
+                - account_id
+                - project_id
+                - website_id
+                - created_at
+                - updated_at
+        '200':
           description: campaign already exists and is returned
           content:
             application/json:
@@ -606,17 +606,17 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - stage
-                  - status
-                  - account_id
-                  - project_id
-                  - website_id
-                  - created_at
-                  - updated_at
-        "401":
+                - id
+                - stage
+                - status
+                - account_id
+                - project_id
+                - website_id
+                - created_at
+                - updated_at
+        '401':
           description: unauthorized - missing token
-        "422":
+        '422':
           description: invalid request - missing thread_id
           content:
             application/json:
@@ -628,17 +628,17 @@ paths:
                     description: Single error message
                   errors:
                     oneOf:
-                      - type: array
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
                         items:
                           type: string
-                        description: Array of error messages
-                      - type: object
-                        additionalProperties:
-                          type: array
-                          items:
-                            type: string
-                        description: Object with field paths as keys and arrays of error
-                          messages as values
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
       requestBody:
         content:
           application/json:
@@ -661,42 +661,42 @@ paths:
                       type: string
                       description: Thread ID
                   required:
-                    - project_id
-                    - thread_id
+                  - project_id
+                  - thread_id
               required:
-                - campaign
+              - campaign
   "/api/v1/campaigns/{id}":
     parameters:
-      - name: id
-        in: path
-        description: Campaign ID
-        required: true
-        schema:
-          type: integer
+    - name: id
+      in: path
+      description: Campaign ID
+      required: true
+      schema:
+        type: integer
     patch:
       summary: Validates campaign updates
       tags:
-        - Campaigns
+      - Campaigns
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: preserves all previous stage content when updating launch settings
           content:
             application/json:
@@ -834,15 +834,15 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - stage
-                  - status
-                  - account_id
-                  - project_id
-                  - website_id
-                  - created_at
-                  - updated_at
-        "404":
+                - id
+                - stage
+                - status
+                - account_id
+                - project_id
+                - website_id
+                - created_at
+                - updated_at
+        '404':
           description: campaign not found
           content:
             application/json:
@@ -854,18 +854,18 @@ paths:
                     description: Single error message
                   errors:
                     oneOf:
-                      - type: array
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
                         items:
                           type: string
-                        description: Array of error messages
-                      - type: object
-                        additionalProperties:
-                          type: array
-                          items:
-                            type: string
-                        description: Object with field paths as keys and arrays of error
-                          messages as values
-        "422":
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
+        '422':
           description: does not save any changes when validation fails
           content:
             application/json:
@@ -877,17 +877,17 @@ paths:
                     description: Single error message
                   errors:
                     oneOf:
-                      - type: array
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
                         items:
                           type: string
-                        description: Array of error messages
-                      - type: object
-                        additionalProperties:
-                          type: array
-                          items:
-                            type: string
-                        description: Object with field paths as keys and arrays of error
-                          messages as values
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
       requestBody:
         content:
           application/json:
@@ -1024,41 +1024,41 @@ paths:
                         type: string
                       description: Days when ads should run
                       example:
-                        - Monday
-                        - Tuesday
-                        - Wednesday
+                      - Monday
+                      - Tuesday
+                      - Wednesday
   "/api/v1/campaigns/{id}/advance":
     parameters:
-      - name: id
-        in: path
-        description: Campaign ID
-        required: true
-        schema:
-          type: integer
+    - name: id
+      in: path
+      description: Campaign ID
+      required: true
+      schema:
+        type: integer
     post:
       summary: Advances campaign to next stage
       tags:
-        - Campaigns
+      - Campaigns
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "404":
+        '404':
           description: campaign not found
           content:
             application/json:
@@ -1070,18 +1070,18 @@ paths:
                     description: Single error message
                   errors:
                     oneOf:
-                      - type: array
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
                         items:
                           type: string
-                        description: Array of error messages
-                      - type: object
-                        additionalProperties:
-                          type: array
-                          items:
-                            type: string
-                        description: Object with field paths as keys and arrays of error
-                          messages as values
-        "200":
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
+        '200':
           description: campaign advanced from launch to review stage
           content:
             application/json:
@@ -1115,10 +1115,10 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - stage
-                  - status
-        "422":
+                - id
+                - stage
+                - status
+        '422':
           description: cannot advance from launch - validation failed (missing fields)
           content:
             application/json:
@@ -1130,49 +1130,49 @@ paths:
                     description: Single error message
                   errors:
                     oneOf:
-                      - type: array
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
                         items:
                           type: string
-                        description: Array of error messages
-                      - type: object
-                        additionalProperties:
-                          type: array
-                          items:
-                            type: string
-                        description: Object with field paths as keys and arrays of error
-                          messages as values
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
   "/api/v1/campaigns/{id}/back":
     parameters:
-      - name: id
-        in: path
-        description: Campaign ID
-        required: true
-        schema:
-          type: integer
+    - name: id
+      in: path
+      description: Campaign ID
+      required: true
+      schema:
+        type: integer
     post:
       summary: Steps back to previous stage
       tags:
-        - Campaigns
+      - Campaigns
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: campaign stepped back to previous stage
           content:
             application/json:
@@ -1206,10 +1206,10 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - stage
-                  - status
-        "404":
+                - id
+                - stage
+                - status
+        '404':
           description: campaign not found
           content:
             application/json:
@@ -1221,42 +1221,42 @@ paths:
                     description: Single error message
                   errors:
                     oneOf:
-                      - type: array
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
                         items:
                           type: string
-                        description: Array of error messages
-                      - type: object
-                        additionalProperties:
-                          type: array
-                          items:
-                            type: string
-                        description: Object with field paths as keys and arrays of error
-                          messages as values
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
   "/api/v1/domains":
     post:
       summary: Creates a domain
       tags:
-        - Domains
+      - Domains
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "201":
+        '201':
           description: domain created in team account after switching
           content:
             application/json:
@@ -1292,15 +1292,15 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - domain
-                  - account_id
-                  - is_platform_subdomain
-                  - created_at
-                  - updated_at
-        "401":
+                - id
+                - domain
+                - account_id
+                - is_platform_subdomain
+                - created_at
+                - updated_at
+        '401':
           description: unauthorized - missing token
-        "422":
+        '422':
           description: subdomain limit exceeded
       requestBody:
         content:
@@ -1321,37 +1321,37 @@ paths:
                       type: boolean
                       description: Whether this is a platform subdomain
               required:
-                - domain
+              - domain
     get:
       summary: Lists domains for the account
       tags:
-        - Domains
+      - Domains
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: website_id
-          in: query
-          required: false
-          description: Filter by website ID
-          schema:
-            type: integer
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: website_id
+        in: query
+        required: false
+        description: Filter by website ID
+        schema:
+          type: integer
       responses:
-        "200":
+        '200':
           description: filters domains by website_id
           content:
             application/json:
@@ -1392,48 +1392,48 @@ paths:
                           format: date-time
                           description: Timestamp
                       required:
-                        - id
-                        - domain
-                        - account_id
-                        - is_platform_subdomain
-                        - created_at
-                        - updated_at
+                      - id
+                      - domain
+                      - account_id
+                      - is_platform_subdomain
+                      - created_at
+                      - updated_at
                 required:
-                  - domains
-        "401":
+                - domains
+        '401':
           description: unauthorized - missing token
   "/api/v1/domains/{id}":
     parameters:
-      - name: id
-        in: path
-        description: Domain ID
-        required: true
-        schema:
-          type: integer
+    - name: id
+      in: path
+      description: Domain ID
+      required: true
+      schema:
+        type: integer
     get:
       summary: Retrieves a domain
       tags:
-        - Domains
+      - Domains
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: domain found in team account after switching
           content:
             application/json:
@@ -1469,45 +1469,45 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - domain
-                  - account_id
-                  - is_platform_subdomain
-                  - created_at
-                  - updated_at
-        "404":
+                - id
+                - domain
+                - account_id
+                - is_platform_subdomain
+                - created_at
+                - updated_at
+        '404':
           description: cannot access other user domain
   "/api/v1/geo_target_constants":
     get:
       summary: Search geo target constants
       tags:
-        - Geo Target Constants
+      - Geo Target Constants
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: location_query
-          in: query
-          required: true
-          description: Search query for location names
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: location_query
+        in: query
+        required: true
+        description: Search query for location names
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: searches canonical name as well
           content:
             application/json:
@@ -1539,39 +1539,39 @@ paths:
                       type: string
                       description: Active status
                   required:
-                    - id
-                    - criteria_id
-                    - name
-                    - canonical_name
-                    - target_type
-                    - status
-        "401":
+                  - id
+                  - criteria_id
+                  - name
+                  - canonical_name
+                  - target_type
+                  - status
+        '401':
           description: unauthorized without token
   "/api/v1/job_runs":
     post:
       summary: Creates job run scoped to requesting account
       tags:
-        - Job Runs
+      - Job Runs
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "201":
+        '201':
           description: filters unpermitted arguments
           content:
             application/json:
@@ -1584,15 +1584,15 @@ paths:
                   status:
                     type: string
                     enum:
-                      - pending
-                      - running
-                      - completed
-                      - failed
+                    - pending
+                    - running
+                    - completed
+                    - failed
                     description: Current status of the job run
                 required:
-                  - id
-                  - status
-        "422":
+                - id
+                - status
+        '422':
           description: does not enqueue job when job_run creation fails
           content:
             application/json:
@@ -1605,8 +1605,8 @@ paths:
                       type: string
                     description: Validation error messages
                 required:
-                  - errors
-        "404":
+                - errors
+        '404':
           description: cannot access other accounts campaign
           content:
             application/json:
@@ -1619,8 +1619,8 @@ paths:
                       type: string
                     description: Validation error messages
                 required:
-                  - errors
-        "401":
+                - errors
+        '401':
           description: unauthorized - expired token
       requestBody:
         content:
@@ -1631,7 +1631,8 @@ paths:
                 job_class:
                   type: string
                   enum:
-                    - CampaignDeploy
+                  - CampaignDeploy
+                  - WebsiteDeploy
                   description: Job type identifier
                 arguments:
                   type: object
@@ -1641,47 +1642,161 @@ paths:
                   type: string
                   description: LangGraph thread ID for callback resumption
               required:
-                - job_class
-                - arguments
-                - thread_id
+              - job_class
+              - arguments
+              - thread_id
+  "/api/v1/leads":
+    post:
+      summary: Creates a lead signup from a deployed landing page
+      tags:
+      - Leads
+      description: |
+        Public endpoint for landing pages to submit email signups.
+        This endpoint is called from deployed landing pages and uses a signed token
+        for authentication instead of JWT/session auth.
+
+        **Authentication:**
+        - Token passed as query parameter `token`
+        - Token is a Rails signup_token generated from the project
+        - Token is purpose-scoped to :lead_signup
+
+        **Idempotency:**
+        - Returns 201 Created for new leads
+        - Returns 200 OK for existing leads (same email, same project)
+        - Email is normalized (lowercase, trimmed) before matching
+
+        **CORS:**
+        - Allows requests from any origin
+        - Only Content-Type header allowed
+        - No credentials/cookies sent
+      parameters:
+      - name: token
+        in: query
+        schema:
+          type: string
+          description: |-
+            Signed ID token that authenticates the request and identifies the project.
+            Generated via Project#signed_id(purpose: :lead_signup).
+            This token is embedded in deployed landing pages at build time.
+        required: true
+        description: Signed ID token authenticating the request
+      - name: Origin
+        in: header
+        required: false
+        description: Origin of the request (for future CSRF protection via origin
+          validation)
+        schema:
+          type: string
+      responses:
+        '201':
+          description: accepts requests with custom domain Origin
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates the lead was successfully created or updated
+                required:
+                - success
+        '200':
+          description: existing lead matched case-insensitively
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates the lead was successfully created or updated
+                required:
+                - success
+        '401':
+          description: deleted project returns unauthorized (no information leakage)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Authentication error message (e.g., "Invalid token")
+                required:
+                - error
+        '422':
+          description: name too long returns validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                    description: Validation error messages keyed by field name
+                required:
+                - errors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+                  description: Email address for the lead signup (required)
+                name:
+                  type: string
+                  maxLength: 255
+                  nullable: true
+                  description: Optional name of the person signing up
+              required:
+              - email
+        description: Lead signup data
   "/api/v1/projects/{project_uuid}/workflows/{id}":
     parameters:
-      - name: project_uuid
-        in: path
-        description: Project UUID
-        required: true
-        schema:
-          type: string
-      - name: id
-        in: path
-        description: Workflow ID
-        required: true
-        schema:
-          type: string
+    - name: project_uuid
+      in: path
+      description: Project UUID
+      required: true
+      schema:
+        type: string
+    - name: id
+      in: path
+      description: Workflow ID
+      required: true
+      schema:
+        type: string
     patch:
       summary: Updates a project workflow
       tags:
-        - Project Workflows
+      - Project Workflows
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: workflow advanced in team account after switching
           content:
             application/json:
@@ -1707,13 +1822,13 @@ paths:
                       type: string
                     description: List of available steps in this workflow
                 required:
-                  - workflow_type
-                  - page
-                  - progress
-                  - available_steps
-        "404":
+                - workflow_type
+                - page
+                - progress
+                - available_steps
+        '404':
           description: project not found
-        "422":
+        '422':
           description: missing step parameter
       requestBody:
         content:
@@ -1731,47 +1846,47 @@ paths:
                       type: string
                       description: Optional substep to advance to
                   required:
-                    - step
+                  - step
               required:
-                - project_workflow
+              - project_workflow
   "/api/v1/projects/{project_uuid}/workflows/{id}/next":
     parameters:
-      - name: project_uuid
-        in: path
-        description: Project UUID
-        required: true
-        schema:
-          type: string
-      - name: id
-        in: path
-        description: Workflow ID
-        required: true
-        schema:
-          type: string
+    - name: project_uuid
+      in: path
+      description: Project UUID
+      required: true
+      schema:
+        type: string
+    - name: id
+      in: path
+      description: Workflow ID
+      required: true
+      schema:
+        type: string
     patch:
       summary: Advances workflow to next step
       tags:
-        - Project Workflows
+      - Project Workflows
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: workflow advanced to next step with substep
           content:
             application/json:
@@ -1797,46 +1912,46 @@ paths:
                       type: string
                     description: List of available steps in this workflow
                 required:
-                  - workflow_type
-                  - page
-                  - progress
-                  - available_steps
-        "422":
+                - workflow_type
+                - page
+                - progress
+                - available_steps
+        '422':
           description: already at final step
-        "404":
+        '404':
           description: workflow not found
   "/api/v1/projects/{project_uuid}/social_links":
     parameters:
-      - name: project_uuid
-        in: path
-        description: Project UUID
-        required: true
-        schema:
-          type: string
+    - name: project_uuid
+      in: path
+      description: Project UUID
+      required: true
+      schema:
+        type: string
     get:
       summary: Cannot access other account project social links
       tags:
-        - Social Links
+      - Social Links
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: returns social links for the project
           content:
             application/json:
@@ -1851,14 +1966,14 @@ paths:
                     platform:
                       type: string
                       enum:
-                        - twitter
-                        - instagram
-                        - facebook
-                        - linkedin
-                        - youtube
-                        - tiktok
-                        - website
-                        - other
+                      - twitter
+                      - instagram
+                      - facebook
+                      - linkedin
+                      - youtube
+                      - tiktok
+                      - website
+                      - other
                       description: Social platform type
                     url:
                       type: string
@@ -1881,40 +1996,40 @@ paths:
                       format: date-time
                       description: Timestamp
                   required:
-                    - id
-                    - platform
-                    - url
-                    - project_id
-                    - created_at
-                    - updated_at
-        "401":
+                  - id
+                  - platform
+                  - url
+                  - project_id
+                  - created_at
+                  - updated_at
+        '401':
           description: unauthorized - missing token
-        "404":
+        '404':
           description: project not found for other account
     post:
       summary: Creates a social link
       tags:
-        - Social Links
+      - Social Links
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "201":
+        '201':
           description: normalizes x.com URL to twitter.com
           content:
             application/json:
@@ -1927,14 +2042,14 @@ paths:
                   platform:
                     type: string
                     enum:
-                      - twitter
-                      - instagram
-                      - facebook
-                      - linkedin
-                      - youtube
-                      - tiktok
-                      - website
-                      - other
+                    - twitter
+                    - instagram
+                    - facebook
+                    - linkedin
+                    - youtube
+                    - tiktok
+                    - website
+                    - other
                     description: Social platform type
                   url:
                     type: string
@@ -1957,15 +2072,15 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - platform
-                  - url
-                  - project_id
-                  - created_at
-                  - updated_at
-        "422":
+                - id
+                - platform
+                - url
+                - project_id
+                - created_at
+                - updated_at
+        '422':
           description: duplicate platform for project
-        "401":
+        '401':
           description: unauthorized - missing token
       requestBody:
         content:
@@ -1979,67 +2094,67 @@ paths:
                     platform:
                       type: string
                       enum:
-                        - twitter
-                        - instagram
-                        - facebook
-                        - linkedin
-                        - youtube
-                        - tiktok
-                        - website
-                        - other
+                      - twitter
+                      - instagram
+                      - facebook
+                      - linkedin
+                      - youtube
+                      - tiktok
+                      - website
+                      - other
                       description: Social platform type
                     url:
                       type: string
-                      description: "URL to the social profile. For twitter, instagram,
+                      description: 'URL to the social profile. For twitter, instagram,
                         and youtube: accepts full URLs (http/https, with/without www),
                         usernames, or @usernames. Automatically normalized to canonical
-                        format (e.g., @johndoe -> https://twitter.com/johndoe)"
+                        format (e.g., @johndoe -> https://twitter.com/johndoe)'
                     handle:
                       type: string
                       description: Social handle/username
                   required:
-                    - platform
-                    - url
+                  - platform
+                  - url
               required:
-                - social_link
+              - social_link
   "/api/v1/projects/{project_uuid}/social_links/{id}":
     parameters:
-      - name: project_uuid
-        in: path
-        description: Project UUID
-        required: true
-        schema:
-          type: string
-      - name: id
-        in: path
-        description: Social Link ID
-        required: true
-        schema:
-          type: integer
+    - name: project_uuid
+      in: path
+      description: Project UUID
+      required: true
+      schema:
+        type: string
+    - name: id
+      in: path
+      description: Social Link ID
+      required: true
+      schema:
+        type: integer
     get:
       summary: Retrieves a social link
       tags:
-        - Social Links
+      - Social Links
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: social link found
           content:
             application/json:
@@ -2052,14 +2167,14 @@ paths:
                   platform:
                     type: string
                     enum:
-                      - twitter
-                      - instagram
-                      - facebook
-                      - linkedin
-                      - youtube
-                      - tiktok
-                      - website
-                      - other
+                    - twitter
+                    - instagram
+                    - facebook
+                    - linkedin
+                    - youtube
+                    - tiktok
+                    - website
+                    - other
                     description: Social platform type
                   url:
                     type: string
@@ -2082,40 +2197,40 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - platform
-                  - url
-                  - project_id
-                  - created_at
-                  - updated_at
-        "404":
+                - id
+                - platform
+                - url
+                - project_id
+                - created_at
+                - updated_at
+        '404':
           description: social link not found
-        "401":
+        '401':
           description: unauthorized - missing token
     patch:
       summary: Updates a social link
       tags:
-        - Social Links
+      - Social Links
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: normalizes username on update
           content:
             application/json:
@@ -2128,14 +2243,14 @@ paths:
                   platform:
                     type: string
                     enum:
-                      - twitter
-                      - instagram
-                      - facebook
-                      - linkedin
-                      - youtube
-                      - tiktok
-                      - website
-                      - other
+                    - twitter
+                    - instagram
+                    - facebook
+                    - linkedin
+                    - youtube
+                    - tiktok
+                    - website
+                    - other
                     description: Social platform type
                   url:
                     type: string
@@ -2158,15 +2273,15 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - platform
-                  - url
-                  - project_id
-                  - created_at
-                  - updated_at
-        "422":
+                - id
+                - platform
+                - url
+                - project_id
+                - created_at
+                - updated_at
+        '422':
           description: invalid URL format for non-normalizable platform
-        "404":
+        '404':
           description: social link not found
       requestBody:
         content:
@@ -2180,90 +2295,90 @@ paths:
                     platform:
                       type: string
                       enum:
-                        - twitter
-                        - instagram
-                        - facebook
-                        - linkedin
-                        - youtube
-                        - tiktok
-                        - website
-                        - other
+                      - twitter
+                      - instagram
+                      - facebook
+                      - linkedin
+                      - youtube
+                      - tiktok
+                      - website
+                      - other
                       description: Social platform type
                     url:
                       type: string
-                      description: "URL to the social profile. For twitter, instagram,
+                      description: 'URL to the social profile. For twitter, instagram,
                         and youtube: accepts full URLs (http/https, with/without www),
                         usernames, or @usernames. Automatically normalized to canonical
-                        format (e.g., @johndoe -> https://twitter.com/johndoe)"
+                        format (e.g., @johndoe -> https://twitter.com/johndoe)'
                     handle:
                       type: string
                       description: Social handle/username
                   required:
-                    - platform
-                    - url
+                  - platform
+                  - url
               required:
-                - social_link
+              - social_link
     delete:
       summary: Deletes a social link
       tags:
-        - Social Links
+      - Social Links
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "204":
+        '204':
           description: social link deleted successfully
-        "404":
+        '404':
           description: social link not found
-        "401":
+        '401':
           description: unauthorized - missing token
   "/api/v1/projects/{project_uuid}/social_links/bulk_upsert":
     parameters:
-      - name: project_uuid
-        in: path
-        description: Project UUID
-        required: true
-        schema:
-          type: string
+    - name: project_uuid
+      in: path
+      description: Project UUID
+      required: true
+      schema:
+        type: string
     post:
       summary: Bulk upsert social links
       tags:
-        - Social Links
+      - Social Links
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: updates existing social links
           content:
             application/json:
@@ -2278,14 +2393,14 @@ paths:
                     platform:
                       type: string
                       enum:
-                        - twitter
-                        - instagram
-                        - facebook
-                        - linkedin
-                        - youtube
-                        - tiktok
-                        - website
-                        - other
+                      - twitter
+                      - instagram
+                      - facebook
+                      - linkedin
+                      - youtube
+                      - tiktok
+                      - website
+                      - other
                       description: Social platform type
                     url:
                       type: string
@@ -2308,13 +2423,13 @@ paths:
                       format: date-time
                       description: Timestamp
                   required:
-                    - id
-                    - platform
-                    - url
-                    - project_id
-                    - created_at
-                    - updated_at
-        "422":
+                  - id
+                  - platform
+                  - url
+                  - project_id
+                  - created_at
+                  - updated_at
+        '422':
           description: validation failure rolls back all changes (atomic)
           content:
             application/json:
@@ -2328,8 +2443,8 @@ paths:
                     description: Validation error messages (transaction rolls back
                       all changes)
                 required:
-                  - errors
-        "401":
+                - errors
+        '401':
           description: unauthorized - missing token
       requestBody:
         content:
@@ -2345,38 +2460,38 @@ paths:
                       platform:
                         type: string
                         enum:
-                          - twitter
-                          - instagram
-                          - facebook
-                          - linkedin
-                          - youtube
-                          - tiktok
-                          - website
-                          - other
+                        - twitter
+                        - instagram
+                        - facebook
+                        - linkedin
+                        - youtube
+                        - tiktok
+                        - website
+                        - other
                         description: Social platform type
                       url:
                         type: string
-                        description: "URL to the social profile. For twitter, instagram,
+                        description: 'URL to the social profile. For twitter, instagram,
                           and youtube: accepts full URLs (http/https, with/without
                           www), usernames, or @usernames. Automatically normalized
-                          to canonical format (e.g., @johndoe -> https://twitter.com/johndoe)"
+                          to canonical format (e.g., @johndoe -> https://twitter.com/johndoe)'
                       handle:
                         type: string
                         description: Social handle/username
                     required:
-                      - platform
-                      - url
+                    - platform
+                    - url
               required:
-                - social_links
+              - social_links
   "/test/database/truncate":
     post:
       summary: Truncates the database
       tags:
-        - Test Database
+      - Test Database
       description: Truncates all tables in the database. Only available in development/test
         environments.
       responses:
-        "200":
+        '200':
           description: database truncated successfully
           content:
             application/json:
@@ -2390,9 +2505,9 @@ paths:
                     type: string
                     example: Operation completed successfully
                 required:
-                  - status
-                  - message
-        "500":
+                - status
+                - message
+        '500':
           description: internal server error
           content:
             application/json:
@@ -2406,19 +2521,19 @@ paths:
                     type: array
                     items:
                       type: string
-                      example: "Failed to perform operation: error details"
+                      example: 'Failed to perform operation: error details'
                 required:
-                  - status
-                  - errors
+                - status
+                - errors
   "/test/database/snapshots":
     get:
       summary: Lists available database snapshots
       tags:
-        - Test Database
+      - Test Database
       description: Returns a list of all available database snapshot names. Only available
         in development/test environments.
       responses:
-        "200":
+        '200':
           description: snapshots listed successfully
           content:
             application/json:
@@ -2431,16 +2546,16 @@ paths:
                       type: string
                     description: Array of snapshot names (without .sql extension)
                 required:
-                  - snapshots
+                - snapshots
     post:
       summary: Creates a database snapshot
       tags:
-        - Test Database
+      - Test Database
       description: Creates a new database snapshot with the specified name. Only available
         in development/test environments.
       parameters: []
       responses:
-        "201":
+        '201':
           description: snapshot created successfully
           content:
             application/json:
@@ -2454,9 +2569,9 @@ paths:
                     type: string
                     example: Operation completed successfully
                 required:
-                  - status
-                  - message
-        "422":
+                - status
+                - message
+        '422':
           description: missing required parameters
           content:
             application/json:
@@ -2470,10 +2585,10 @@ paths:
                     type: array
                     items:
                       type: string
-                      example: "Failed to perform operation: error details"
+                      example: 'Failed to perform operation: error details'
                 required:
-                  - status
-                  - errors
+                - status
+                - errors
       requestBody:
         content:
           application/json:
@@ -2491,19 +2606,19 @@ paths:
                       description: Whether to truncate the database before restoring
                       default: false
                   required:
-                    - name
+                  - name
               required:
-                - snapshot
+              - snapshot
   "/test/database/restore_snapshot":
     post:
       summary: Restores a database snapshot
       tags:
-        - Test Database
+      - Test Database
       description: Restores the database from a snapshot. Optionally truncates the
         database before restoring. Only available in development/test environments.
       parameters: []
       responses:
-        "200":
+        '200':
           description: snapshot restored successfully
           content:
             application/json:
@@ -2517,9 +2632,9 @@ paths:
                     type: string
                     example: Operation completed successfully
                 required:
-                  - status
-                  - message
-        "422":
+                - status
+                - message
+        '422':
           description: missing required parameters
           content:
             application/json:
@@ -2533,10 +2648,10 @@ paths:
                     type: array
                     items:
                       type: string
-                      example: "Failed to perform operation: error details"
+                      example: 'Failed to perform operation: error details'
                 required:
-                  - status
-                  - errors
+                - status
+                - errors
       requestBody:
         content:
           application/json:
@@ -2554,34 +2669,34 @@ paths:
                       description: Whether to truncate the database before restoring
                       default: false
                   required:
-                    - name
+                  - name
               required:
-                - snapshot
+              - snapshot
   "/api/v1/themes":
     get:
       summary: Lists official themes + themes in account
       tags:
-        - Themes
+      - Themes
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: retrieves official + account themes
           content:
             application/json:
@@ -2613,40 +2728,40 @@ paths:
                             type: string
                             description: Label name
                         required:
-                          - id
-                          - name
+                        - id
+                        - name
                       description: Associated theme labels
                   required:
-                    - id
-                    - name
-                    - colors
-                    - theme_labels
-        "401":
+                  - id
+                  - name
+                  - colors
+                  - theme_labels
+        '401':
           description: unauthorized - invalid token
     post:
       summary: Creates theme
       tags:
-        - Themes
+      - Themes
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: theme created
           content:
             application/json:
@@ -2676,15 +2791,15 @@ paths:
                           type: string
                           description: Label name
                       required:
-                        - id
-                        - name
+                      - id
+                      - name
                     description: Associated theme labels
                 required:
-                  - id
-                  - name
-                  - colors
-                  - theme_labels
-        "401":
+                - id
+                - name
+                - colors
+                - theme_labels
+        '401':
           description: unauthorized
           content:
             application/json:
@@ -2696,17 +2811,17 @@ paths:
                     description: Single error message
                   errors:
                     oneOf:
-                      - type: array
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
                         items:
                           type: string
-                        description: Array of error messages
-                      - type: object
-                        additionalProperties:
-                          type: array
-                          items:
-                            type: string
-                        description: Object with field paths as keys and arrays of error
-                          messages as values
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
       requestBody:
         content:
           application/json:
@@ -2725,35 +2840,256 @@ paths:
                         type: string
                       description: Theme color palette
                   required:
-                    - name
-                    - colors
+                  - name
+                  - colors
               required:
-                - theme
+              - theme
+  "/api/v1/themes/{id}":
+    get:
+      summary: Retrieves a theme with full details
+      tags:
+      - Themes
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: id
+        in: path
+        description: Theme ID
+        required: true
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: theme retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    description: Theme name
+                  colors:
+                    type: array
+                    items:
+                      type: string
+                    description: Theme color palette
+                  theme:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: CSS theme variables (HSL values)
+                  pairings:
+                    type: object
+                    additionalProperties: true
+                    description: Color pairing recommendations
+                  typography_recommendations:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        headlines:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              color:
+                                type: string
+                                description: Hex color code
+                              contrast:
+                                type: number
+                                description: Contrast ratio
+                              level:
+                                type: string
+                                enum:
+                                - AAA
+                                - AA
+                                - AA-large
+                                - fail
+                                description: WCAG compliance level
+                              style:
+                                type: string
+                                description: Style hint
+                              note:
+                                type: string
+                                nullable: true
+                                description: Additional guidance
+                            required:
+                            - color
+                            - contrast
+                            - level
+                            - style
+                          description: Headline color options
+                        subheadlines:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              color:
+                                type: string
+                                description: Hex color code
+                              contrast:
+                                type: number
+                                description: Contrast ratio
+                              level:
+                                type: string
+                                enum:
+                                - AAA
+                                - AA
+                                - AA-large
+                                - fail
+                                description: WCAG compliance level
+                              style:
+                                type: string
+                                description: Style hint
+                              note:
+                                type: string
+                                nullable: true
+                                description: Additional guidance
+                            required:
+                            - color
+                            - contrast
+                            - level
+                            - style
+                          description: Subheadline color options
+                        body:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              color:
+                                type: string
+                                description: Hex color code
+                              contrast:
+                                type: number
+                                description: Contrast ratio
+                              level:
+                                type: string
+                                enum:
+                                - AAA
+                                - AA
+                                - AA-large
+                                - fail
+                                description: WCAG compliance level
+                              style:
+                                type: string
+                                description: Style hint
+                              note:
+                                type: string
+                                nullable: true
+                                description: Additional guidance
+                            required:
+                            - color
+                            - contrast
+                            - level
+                            - style
+                          description: Body text color options
+                        accents:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              color:
+                                type: string
+                                description: Hex color code
+                              contrast:
+                                type: number
+                                description: Contrast ratio
+                              level:
+                                type: string
+                                enum:
+                                - AAA
+                                - AA
+                                - AA-large
+                                - fail
+                                description: WCAG compliance level
+                              style:
+                                type: string
+                                description: Style hint
+                              note:
+                                type: string
+                                nullable: true
+                                description: Additional guidance
+                            required:
+                            - color
+                            - contrast
+                            - level
+                            - style
+                          description: Accent color options
+                      required:
+                      - headlines
+                      - subheadlines
+                      - body
+                      - accents
+                    nullable: true
+                    description: Typography recommendations per background color
+                  theme_labels:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        name:
+                          type: string
+                          description: Label name
+                      required:
+                      - id
+                      - name
+                    description: Associated theme labels
+                required:
+                - id
+                - name
+                - colors
+                - theme_labels
+        '404':
+          description: theme not found
+        '401':
+          description: unauthorized
   "/api/v1/uploads":
     post:
       summary: Creates an upload
       tags:
-        - Uploads
+      - Uploads
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "201":
+        '201':
           description: PDF upload associated with website
           content:
             application/json:
@@ -2780,9 +3116,9 @@ paths:
                   media_type:
                     type: string
                     enum:
-                      - image
-                      - video
-                      - document
+                    - image
+                    - video
+                    - document
                     description: Media type
                   is_logo:
                     type: boolean
@@ -2799,17 +3135,17 @@ paths:
                     format: date-time
                     description: Last update timestamp
                 required:
-                  - id
-                  - uuid
-                  - url
-                  - media_type
-                  - is_logo
-                  - filename
-                  - created_at
-                  - updated_at
-        "422":
+                - id
+                - uuid
+                - url
+                - media_type
+                - is_logo
+                - filename
+                - created_at
+                - updated_at
+        '422':
           description: website not exist
-        "401":
+        '401':
           description: unauthorized - missing token
       requestBody:
         content:
@@ -2820,51 +3156,51 @@ paths:
     get:
       summary: Retrieves uploads
       tags:
-        - Uploads
+      - Uploads
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: website_id
-          in: query
-          required: false
-          description: Filter by website
-          schema:
-            type: integer
-        - name: is_logo
-          in: query
-          required: false
-          description: Filter by logo status (true for logos, false for product images)
-          schema:
-            type: boolean
-        - name: order
-          in: query
-          required: false
-          description: Sort order (recent for created_at desc)
-          schema:
-            type: string
-        - name: limit
-          in: query
-          required: false
-          description: Limit number of results
-          schema:
-            type: integer
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: website_id
+        in: query
+        required: false
+        description: Filter by website
+        schema:
+          type: integer
+      - name: is_logo
+        in: query
+        required: false
+        description: Filter by logo status (true for logos, false for product images)
+        schema:
+          type: boolean
+      - name: order
+        in: query
+        required: false
+        description: Sort order (recent for created_at desc)
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        description: Limit number of results
+        schema:
+          type: integer
       responses:
-        "200":
+        '200':
           description: returns uploads with order=recent and limit combined
           content:
             application/json:
@@ -2893,9 +3229,9 @@ paths:
                     media_type:
                       type: string
                       enum:
-                        - image
-                        - video
-                        - document
+                      - image
+                      - video
+                      - document
                       description: Media type
                     is_logo:
                       type: boolean
@@ -2912,82 +3248,82 @@ paths:
                       format: date-time
                       description: Last update timestamp
                   required:
-                    - id
-                    - uuid
-                    - url
-                    - media_type
-                    - is_logo
-                    - filename
-                    - created_at
-                    - updated_at
-        "404":
+                  - id
+                  - uuid
+                  - url
+                  - media_type
+                  - is_logo
+                  - filename
+                  - created_at
+                  - updated_at
+        '404':
           description: website not found when filtering
   "/api/v1/uploads/{id}":
     delete:
       summary: Deletes an upload
       tags:
-        - Uploads
+      - Uploads
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: id
-          in: path
-          required: true
-          description: Upload ID
-          schema:
-            type: integer
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        description: Upload ID
+        schema:
+          type: integer
       responses:
-        "204":
+        '204':
           description: upload deleted successfully
-        "404":
+        '404':
           description: cannot delete upload owned by another account
   "/api/v1/websites/{id}/files/write":
     parameters:
-      - name: id
-        in: path
-        description: Website ID
-        required: true
-        schema:
-          type: number
+    - name: id
+      in: path
+      description: Website ID
+      required: true
+      schema:
+        type: number
     post:
       summary: Creates or updates website files in bulk
       tags:
-        - Website Files
+      - Website Files
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: files created in team account after switching
           content:
             application/json:
@@ -3020,20 +3356,20 @@ paths:
                           format: date-time
                           description: Timestamp
                       required:
-                        - id
-                        - website_id
-                        - path
-                        - content
-                        - created_at
-                        - updated_at
+                      - id
+                      - website_id
+                      - path
+                      - content
+                      - created_at
+                      - updated_at
                     description: Array of created/updated files
                 required:
-                  - files
-        "404":
+                - files
+        '404':
           description: cannot access other users website
-        "401":
+        '401':
           description: unauthorized - missing token
-        "422":
+        '422':
           description: invalid request - missing path or content
       requestBody:
         content:
@@ -3053,43 +3389,43 @@ paths:
                         type: string
                         description: File content
                     required:
-                      - path
-                      - content
+                    - path
+                    - content
                   description: Array of files to create or update
               required:
-                - files
+              - files
   "/api/v1/websites/{id}/files/edit":
     parameters:
-      - name: id
-        in: path
-        description: Website ID
-        required: true
-        schema:
-          type: number
+    - name: id
+      in: path
+      description: Website ID
+      required: true
+      schema:
+        type: number
     patch:
       summary: Edits a website file by replacing string occurrences
       tags:
-        - Website Files
+      - Website Files
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: replaces all occurrences when replace_all is true
           content:
             application/json:
@@ -3120,21 +3456,21 @@ paths:
                         format: date-time
                         description: Timestamp
                     required:
-                      - id
-                      - website_id
-                      - path
-                      - content
-                      - created_at
-                      - updated_at
+                    - id
+                    - website_id
+                    - path
+                    - content
+                    - created_at
+                    - updated_at
                   occurrences:
                     type: integer
                     description: Number of replacements made
                 required:
-                  - file
-                  - occurrences
-        "422":
+                - file
+                - occurrences
+        '422':
           description: missing required params
-        "404":
+        '404':
           description: website not found
       requestBody:
         content:
@@ -3153,37 +3489,37 @@ paths:
                   description: Replacement string
                 replace_all:
                   type: boolean
-                  description: "Replace all occurrences (default: false)"
+                  description: 'Replace all occurrences (default: false)'
                   default: false
               required:
-                - path
-                - old_string
-                - new_string
+              - path
+              - old_string
+              - new_string
   "/api/v1/website_urls":
     post:
       summary: Creates a website URL
       tags:
-        - WebsiteUrls
+      - WebsiteUrls
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "201":
+        '201':
           description: website URL created in team account after switching
           content:
             application/json:
@@ -3218,16 +3554,16 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - path
-                  - account_id
-                  - website_id
-                  - domain_id
-                  - created_at
-                  - updated_at
-        "401":
+                - id
+                - path
+                - account_id
+                - website_id
+                - domain_id
+                - created_at
+                - updated_at
+        '401':
           description: unauthorized - missing token
-        "422":
+        '422':
           description: domain does not belong to account
       requestBody:
         content:
@@ -3248,47 +3584,47 @@ paths:
                       type: integer
                       description: Associated domain ID
                   required:
-                    - domain_id
-                    - website_id
-                    - path
+                  - domain_id
+                  - website_id
+                  - path
               required:
-                - website_url
+              - website_url
     get:
       summary: Lists website URLs for the account
       tags:
-        - WebsiteUrls
+      - WebsiteUrls
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: website_id
-          in: query
-          required: false
-          description: Filter by website ID
-          schema:
-            type: integer
-        - name: domain_id
-          in: query
-          required: false
-          description: Filter by domain ID
-          schema:
-            type: integer
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: website_id
+        in: query
+        required: false
+        description: Filter by website ID
+        schema:
+          type: integer
+      - name: domain_id
+        in: query
+        required: false
+        description: Filter by domain ID
+        schema:
+          type: integer
       responses:
-        "200":
+        '200':
           description: filters website URLs by domain_id
           content:
             application/json:
@@ -3328,49 +3664,49 @@ paths:
                           format: date-time
                           description: Timestamp
                       required:
-                        - id
-                        - path
-                        - account_id
-                        - website_id
-                        - domain_id
-                        - created_at
-                        - updated_at
+                      - id
+                      - path
+                      - account_id
+                      - website_id
+                      - domain_id
+                      - created_at
+                      - updated_at
                 required:
-                  - website_urls
-        "401":
+                - website_urls
+        '401':
           description: unauthorized - missing token
   "/api/v1/website_urls/{id}":
     parameters:
-      - name: id
-        in: path
-        description: WebsiteUrl ID
-        required: true
-        schema:
-          type: integer
+    - name: id
+      in: path
+      description: WebsiteUrl ID
+      required: true
+      schema:
+        type: integer
     get:
       summary: Retrieves a website URL
       tags:
-        - WebsiteUrls
+      - WebsiteUrls
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: website URL found in team account after switching
           content:
             application/json:
@@ -3405,39 +3741,39 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - path
-                  - account_id
-                  - website_id
-                  - domain_id
-                  - created_at
-                  - updated_at
-        "404":
+                - id
+                - path
+                - account_id
+                - website_id
+                - domain_id
+                - created_at
+                - updated_at
+        '404':
           description: cannot access other user website URL
     patch:
       summary: Updates a website URL
       tags:
-        - WebsiteUrls
+      - WebsiteUrls
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: website URL updated in team account after switching
           content:
             application/json:
@@ -3472,18 +3808,18 @@ paths:
                     format: date-time
                     description: Timestamp
                 required:
-                  - id
-                  - path
-                  - account_id
-                  - website_id
-                  - domain_id
-                  - created_at
-                  - updated_at
-        "404":
+                - id
+                - path
+                - account_id
+                - website_id
+                - domain_id
+                - created_at
+                - updated_at
+        '404':
           description: cannot update other user website URL
-        "422":
+        '422':
           description: duplicate domain and path on update
-        "401":
+        '401':
           description: unauthorized - missing token
       requestBody:
         content:
@@ -3504,43 +3840,43 @@ paths:
                       type: integer
                       description: Associated domain ID
                   required:
-                    - domain_id
-                    - website_id
-                    - path
+                  - domain_id
+                  - website_id
+                  - path
               required:
-                - website_url
+              - website_url
   "/api/v1/projects/{project_uuid}/website":
     parameters:
-      - name: project_uuid
-        in: path
-        description: Project UUID
-        required: true
-        schema:
-          type: string
+    - name: project_uuid
+      in: path
+      description: Project UUID
+      required: true
+      schema:
+        type: string
     get:
       summary: Retrieves a website
       tags:
-        - Websites
+      - Websites
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: website found
           content:
             application/json:
@@ -3559,35 +3895,35 @@ paths:
                     nullable: true
                     description: Theme ID
                 required:
-                  - id
-        "401":
+                - id
+        '401':
           description: unauthorized - missing token
-        "404":
+        '404':
           description: website not found for project
     patch:
       summary: Cannot update other account website
       tags:
-        - Websites
+      - Websites
       security:
-        - bearer_auth: []
+      - bearer_auth: []
       parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: website updated successfully
           content:
             application/json:
@@ -3606,10 +3942,10 @@ paths:
                     nullable: true
                     description: Theme ID
                 required:
-                  - id
-        "401":
+                - id
+        '401':
           description: unauthorized - missing token
-        "404":
+        '404':
           description: project not found for other account
       requestBody:
         content:
@@ -3625,9 +3961,9 @@ paths:
                       nullable: true
                       description: Theme ID to set for the website
               required:
-                - website
+              - website
 servers:
-  - url: https://{defaultHost}
-    variables:
-      defaultHost:
-        default: www.example.com
+- url: https://{defaultHost}
+  variables:
+    defaultHost:
+      default: www.example.com

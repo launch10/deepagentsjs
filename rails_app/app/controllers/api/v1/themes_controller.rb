@@ -4,6 +4,14 @@ class API::V1::ThemesController < API::BaseController
     render json: @themes.as_json(only: [:id, :name, :colors], include: {theme_labels: {only: [:id, :name]}})
   end
 
+  def show
+    @theme = policy_scope(Theme).find(params[:id])
+    render json: @theme.as_json(
+      only: [:id, :name, :colors, :theme, :pairings, :typography_recommendations],
+      include: {theme_labels: {only: [:id, :name]}}
+    )
+  end
+
   def create
     @theme = Theme.new(themes_params)
     @theme.author = current_account
