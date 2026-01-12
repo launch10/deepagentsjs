@@ -6,6 +6,7 @@ import { db, Types as DBTypes, websites, brainstorms, websiteFiles, themes, webs
 import { websiteGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
 import type { WebsiteGraphState } from "@annotation";
+import { saveExample } from "@support/helpers";
 
 const websiteGraph = uncompiledGraph.compile({
   ...graphParams,
@@ -116,7 +117,7 @@ describe.sequential("Website Builder", () => {
   });
 
   describe("Page Generation", () => {
-    it.only("generates a complete landing page with required sections", async () => {
+    it("generates a complete landing page with required sections", async () => {
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
@@ -147,6 +148,12 @@ describe.sequential("Website Builder", () => {
       expect(heroFile?.content).toBeDefined();
       expect(heroFile?.content).toContain("export");
       expect(heroFile?.content).toMatch(/function|const/);
+
+      // At least one file contains tracking
+      const trackingFile = generatedFiles.find((f) => f.content.match(/L10.createLead/));
+      expect(trackingFile).toBeDefined();
+
+      await saveExample(websiteId, "scheduling-tool"); // So we can see the result
     }, 300000);
 
     it("uses theme colors in generated components", async () => {

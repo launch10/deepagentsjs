@@ -312,10 +312,10 @@ module ThemeConcerns
         # Light backgrounds get dark muted text, dark backgrounds get light muted text
         if bg_luminance > 0.179
           # Light background: use dark-ish gray (28% lightness gives ~5:1 on light backgrounds)
-          "hsl(#{primary_hue}, 5%, 28%)"
+          "#{primary_hue} 5% 28%"
         else
           # Dark background: use light-ish gray (75% lightness gives ~5:1 on dark backgrounds)
-          "hsl(#{primary_hue}, 5%, 75%)"
+          "#{primary_hue} 5% 75%"
         end
       end
 
@@ -338,7 +338,7 @@ module ThemeConcerns
         luminance = WCAGColorContrast.relative_luminance(background_hex)
         lightness = (luminance > 0.179) ? MUTED_LIGHT_BG_LIGHTNESS : MUTED_DARK_BG_LIGHTNESS
 
-        "hsl(#{primary_hue}, #{MUTED_FOREGROUND_SATURATION}%, #{lightness}%)"
+        "#{primary_hue} #{MUTED_FOREGROUND_SATURATION}% #{lightness}%"
       end
 
       # Create a border color that carries a hint of the background's hue.
@@ -351,18 +351,18 @@ module ThemeConcerns
         saturation = [(bg_color.hsl.s * 15).round, 6].max.clamp(1, BORDER_MAX_SATURATION)
         lightness = (luminance > 0.5) ? 96 : 20
 
-        "hsl(#{background_hue}, #{saturation}%, #{lightness}%)"
+        "#{background_hue} #{saturation}% #{lightness}%"
       rescue
         # Fallback to neutral gray
-        (luminance > 0.5) ? "hsl(210, 9%, 96%)" : "hsl(210, 9%, 20%)"
+        (luminance > 0.5) ? "210 9% 96%" : "210 9% 20%"
       end
 
       def to_hsl(hex)
         color = Chroma.paint("##{hex}")
         hsl = color.hsl
-        "hsl(#{hsl.h.round}, #{(hsl.s * 100).round}%, #{(hsl.l * 100).round}%)"
+        "#{hsl.h.round} #{(hsl.s * 100).round}% #{(hsl.l * 100).round}%"
       rescue
-        "hsl(0, 0%, 50%)"
+        "0 0% 50%"
       end
     end
   end

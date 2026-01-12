@@ -83,7 +83,7 @@ module ThemeConcerns
     private
 
     def should_regenerate_css?
-      saved_change_to_theme? && theme.present?
+      (saved_change_to_theme? && theme.present?) || index_css_content.blank?
     end
 
     # Regenerate CSS content and propagate to all associated websites

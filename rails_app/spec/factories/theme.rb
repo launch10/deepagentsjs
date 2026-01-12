@@ -2,14 +2,14 @@ FactoryBot.define do
   factory :theme do
     sequence(:name) { |n| "Theme #{n}" }
     colors { %w[264653 2A9D8F E9C46A F4A261 E76F51] }
-    theme { {"--primary" => "hsl(197, 37%, 24%)", "--background" => "hsl(43, 74%, 66%)"} }
+    theme { {"--primary" => "197 37% 24%", "--background" => "43 74% 66%"} }
     theme_type { "official" }
     author { nil }
 
     trait :official do
       theme_type { "official" }
       author { nil }
-      theme { {"--primary" => "hsl(197, 37%, 24%)", "--background" => "hsl(43, 74%, 66%)"} }
+      theme { {"--primary" => "197 37% 24%", "--background" => "43 74% 66%"} }
     end
 
     trait :official_without_theme do

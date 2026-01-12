@@ -82,13 +82,13 @@ RSpec.describe Theme do
         theme.save!
 
         expect(theme.theme).to be_present
-        expect(theme.theme["--primary"]).to match(/hsl\(/)
-        expect(theme.theme["--background"]).to match(/hsl\(/)
-        expect(theme.theme["--secondary"]).to match(/hsl\(/)
+        expect(theme.theme["--primary"]).to match(/^\d+ \d+% \d+%$/)
+        expect(theme.theme["--background"]).to match(/^\d+ \d+% \d+%$/)
+        expect(theme.theme["--secondary"]).to match(/^\d+ \d+% \d+%$/)
       end
 
       it "regenerates theme when colors change even if theme exists" do
-        existing_theme = {"--primary" => "hsl(200, 50%, 50%)"}
+        existing_theme = {"--primary" => "200 50% 50%"}
         theme = Theme.new(
           name: "My Community Theme",
           colors: colors,
@@ -99,8 +99,8 @@ RSpec.describe Theme do
         theme.save!
         # Theme should be regenerated from colors, not kept as existing
         expect(theme.theme).not_to eq(existing_theme)
-        expect(theme.theme["--primary"]).to match(/hsl\(/)
-        expect(theme.theme["--background"]).to match(/hsl\(/)
+        expect(theme.theme["--primary"]).to match(/^\d+ \d+% \d+%$/)
+        expect(theme.theme["--background"]).to match(/^\d+ \d+% \d+%$/)
       end
     end
 
@@ -116,12 +116,12 @@ RSpec.describe Theme do
         theme.save!
 
         expect(theme.theme).to be_present
-        expect(theme.theme["--primary"]).to match(/hsl\(/)
-        expect(theme.theme["--background"]).to match(/hsl\(/)
+        expect(theme.theme["--primary"]).to match(/^\d+ \d+% \d+%$/)
+        expect(theme.theme["--background"]).to match(/^\d+ \d+% \d+%$/)
       end
 
       it "regenerates theme when colors change even if theme exists" do
-        existing_theme = {"--primary" => "hsl(10, 100%, 60%)", "--background" => "hsl(0, 0%, 100%)"}
+        existing_theme = {"--primary" => "10 100% 60%", "--background" => "0 0% 100%"}
         theme = Theme.new(
           name: "Official Theme",
           colors: colors,
@@ -132,8 +132,8 @@ RSpec.describe Theme do
         theme.save!
         # Theme should be regenerated from colors, not kept as existing
         expect(theme.theme).not_to eq(existing_theme)
-        expect(theme.theme["--primary"]).to match(/hsl\(/)
-        expect(theme.theme["--background"]).to match(/hsl\(/)
+        expect(theme.theme["--primary"]).to match(/^\d+ \d+% \d+%$/)
+        expect(theme.theme["--background"]).to match(/^\d+ \d+% \d+%$/)
       end
     end
 
@@ -153,7 +153,7 @@ RSpec.describe Theme do
         theme.update!(colors: colors)
 
         expect(theme.theme).to be_present
-        expect(theme.theme["--primary"]).to match(/hsl\(/)
+        expect(theme.theme["--primary"]).to match(/^\d+ \d+% \d+%$/)
       end
 
       it "does not run when colors are blank" do
@@ -201,7 +201,7 @@ RSpec.describe Theme do
         )
       end
 
-      it "generates valid HSL color values" do
+      it "generates raw HSL color values (shadcn format without hsl() wrapper)" do
         theme = Theme.new(
           name: "HSL Theme",
           colors: colors,
@@ -212,7 +212,7 @@ RSpec.describe Theme do
         theme.theme.each do |key, value|
           next if key.start_with?("--neutral") # Neutrals are static
 
-          expect(value).to match(/hsl\(\d+, \d+%, \d+%\)/), "Expected #{key} to be HSL format, got: #{value}"
+          expect(value).to match(/^\d+ \d+% \d+%$/), "Expected #{key} to be raw HSL format, got: #{value}"
         end
       end
     end

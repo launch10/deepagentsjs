@@ -61,6 +61,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async hydrate(): Promise<void> {
+    console.log(`hydrating...`);
     const files = await this.database
       .select({
         path: codeFiles.path,
@@ -81,22 +82,27 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async cleanup(): Promise<void> {
+    console.log(`cleaning up...`);
     await fs.rm(this.rootDir, { recursive: true, force: true });
   }
 
   async lsInfo(path: string): Promise<FileInfo[]> {
+    console.log(`lsInfo ${path}`);
     return this.fs.lsInfo(path);
   }
 
   async read(filePath: string, offset: number = 0, limit: number = 2000): Promise<string> {
+    console.log(`read ${filePath}`);
     return this.fs.read(filePath, offset, limit);
   }
 
   async readRaw(filePath: string): Promise<FileData> {
+    console.log(`readRaw ${filePath}`);
     return this.fs.readRaw(filePath);
   }
 
   async globInfo(pattern: string, path: string = "/"): Promise<FileInfo[]> {
+    console.log(`globInfo ${pattern}`)
     return this.fs.globInfo(pattern, path);
   }
 
@@ -105,6 +111,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
     pathPrefix: string = "/",
     glob: string | null = null
   ): Promise<GrepMatch[] | string> {
+    console.log(`grepRaw ${pattern} ${pathPrefix} ${glob}`);
     try {
       const regex = new RegExp(pattern);
       const tsQuery = this.regexToTsQuery(pattern);
@@ -172,6 +179,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async write(filePath: string, content: string): Promise<WriteResult> {
+    console.log(`writing ${filePath}`);
     const fsResult = await this.fs.write(filePath, content);
     if (fsResult.error) return fsResult;
 
@@ -190,6 +198,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
     newString: string,
     replaceAll: boolean = false
   ): Promise<EditResult> {
+    console.log(`editing ${filePath}`);
     const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
     if (fsResult.error) return fsResult;
 
