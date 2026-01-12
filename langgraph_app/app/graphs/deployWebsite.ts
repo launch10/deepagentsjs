@@ -53,11 +53,12 @@ export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
 
   // Validation routing: pass → deploy, fail → fix (with retry limit)
   .addConditionalEdges("runtimeValidation", (state) => {
-    const status = getTaskStatus(state, "RuntimeValidation");
+    const task = Task.findTask(state.tasks, "RuntimeValidation")
+    const status = task?.status;
     if (status === "completed") {
       return "enqueueDeploy";
     }
-    const retryCount = Task.findTask(state.tasks, "RuntimeValidation")?.retryCount || 0;
+    const retryCount = task?.retryCount || 0;
     if (retryCount >= MAX_RETRY_COUNT) {
       return END;
     }

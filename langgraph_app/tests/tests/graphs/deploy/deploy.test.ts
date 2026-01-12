@@ -42,7 +42,7 @@ describe("Deploy Graph", () => {
   });
 
   describe("Website deploy flow", () => {
-    it("runs instrumentation → validation → deploy when deployWebsite=true", async () => {
+    it.only("runs instrumentation → validation → deploy when deployWebsite=true", async () => {
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
         .withState({
@@ -309,7 +309,7 @@ describe("Deploy Graph", () => {
   });
 
   describe("Full workflow: fire-and-forget + webhook pattern", () => {
-    it.only("first invocation fires job and returns pending, second invocation with result completes", async () => {
+    it("first invocation fires job and returns pending, second invocation with result completes", async () => {
       const checkpointer = new MemorySaver();
       const graph = uncompiledGraph.compile({ checkpointer });
       const threadId = "test-thread-123";

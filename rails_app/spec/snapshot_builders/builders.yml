@@ -14,7 +14,7 @@ basic_account:
 website_step:
   class: WebsiteStep
   base_snapshot: basic_account
-  description: "Creates a website with brainstorm data"
+  description: "Creates a website with brainstorm, theme, and uploads (logo + images)"
 
 website_step_finished:
   class: WebsiteStepFinished

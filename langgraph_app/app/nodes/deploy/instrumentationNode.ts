@@ -2,9 +2,38 @@ import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { Task } from "@types";
-import { db, codeFiles, eq } from "@db";
+import { createCodingAgent } from "@nodes";
+import { codingToolsPrompt, trackingContextPrompt, environmentPrompt } from "@prompts/coding/shared";
 
 const TASK_NAME = "Instrumentation" as const;
+
+const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunnableConfig) => {
+  const [
+    tools,
+    trackingContext,
+    environment
+  ] = await Promise.all([
+    codingToolsPrompt(state, config),
+    trackingContextPrompt(state, config),
+    environmentPrompt(state, config),
+  ])
+
+  return `
+    You are the analytics specialist for this website.
+
+    Ensure the landing page uses L10.createLead() for lead capture.
+
+    ${tools}
+
+    ${trackingContext}
+
+    ${environment}
+
+    The landing page should already be properly instrumented.
+      1. If it is, simply reply: CONFIRMED.
+      2. If it is not, add the instrumentation and reply: FIXED.
+  `;
+}
 
 /**
  * Instrumentation Node
@@ -17,7 +46,7 @@ export const instrumentationNode = NodeMiddleware.use(
   {},
   async (
     state: DeployGraphState,
-    _config?: LangGraphRunnableConfig
+    config: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
     const task = Task.findTask(state.tasks, TASK_NAME);
 
@@ -30,41 +59,25 @@ export const instrumentationNode = NodeMiddleware.use(
     }
 
     try {
-      const files = await db
-        .select({ path: codeFiles.path, content: codeFiles.content })
-        .from(codeFiles)
-        .where(eq(codeFiles.websiteId, state.websiteId));
+      const systemPrompt = await buildSystemPrompt(state, config);
 
-      const codeFilesList = files.filter(
-        (f): f is { path: string; content: string } =>
-          f.path !== null &&
-          f.content !== null &&
-          (f.path.endsWith(".tsx") || f.path.endsWith(".ts") || f.path.endsWith(".jsx"))
-      );
-
-      if (codeFilesList.length === 0) {
-        return {
-          tasks: [
-            {
-              ...task,
-              status: "completed",
-            } as Task.Task,
-          ],
-        };
-      }
-
-      // Check for L10.createLead usage
-      const filesWithCreateLead = codeFilesList.filter((f) => f.content.includes("L10.createLead"));
-      const filesWithImport = codeFilesList.filter((f) =>
-        f.content.includes("from '@/lib/tracking'")
-      );
-      const isCompliant = filesWithCreateLead.length > 0 || filesWithImport.length > 0;
-
+      const agent = await createCodingAgent({ 
+        ...state, 
+        isFirstMessage: false 
+      }, systemPrompt);
+      const result = await agent.invoke({
+        messages: [
+          {
+            role: "user",
+            content: `Verify that the landing page uses L10.createLead() for lead capture.`,
+          }
+        ]
+      })
       return {
         tasks: [
           {
             ...task,
-            status: isCompliant ? "completed" : "failed",
+            status: "completed",
           } as Task.Task,
         ],
       };

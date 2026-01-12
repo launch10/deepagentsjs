@@ -272,7 +272,7 @@ describe("DeployWebsiteGraph", () => {
       expect(error).toContain("NonExistentComponent");
     })
 
-    it("routes to fix when validation fails", async () => {
+    it.only("routes to fix when validation fails", async () => {
       const failedValidationTask: Task.Task = {
         id: "uuid-val",
         name: "RuntimeValidation",

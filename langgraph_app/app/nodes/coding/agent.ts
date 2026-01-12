@@ -26,12 +26,13 @@ export type MinimalCodingAgentState = {
 const getMiddlewares = (): AgentMiddleware[] => {
   const fallbacks = getLLMFallbacks("coding", "slow", "paid");
   const modelFallbackMiddleware = modelFallbackMiddlewareBuilder(...fallbacks);
-  const summarizationMiddleware = summarizationMiddlewareBuilder({
-    model: getLLM("reasoning", "fast", "paid"),
-    trigger: { fraction: 0.7 },
-    keep: { messages: 15 },
-  });
-  return [toolRetryMiddleware(), modelFallbackMiddleware, summarizationMiddleware];
+  // TODO: We get error: SummarizationMiddleware is defined multiple times... is it defined inside deepagents lib?
+  // const summarizationMiddleware = summarizationMiddlewareBuilder({
+  //   model: getLLM("reasoning", "fast", "paid"),
+  //   trigger: { fraction: 0.7 },
+  //   keep: { messages: 15 },
+  // });
+  return [toolRetryMiddleware(), modelFallbackMiddleware];
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
@@ -88,7 +89,7 @@ const getTheme = async (
   return undefined;
 };
 
-export async function createCodingAgent(state: MinimalCodingAgentState, prompt?: string) {
+export async function createCodingAgent(state: MinimalCodingAgentState, systemPrompt?: string) {
   if (state.isFirstMessage === undefined) {
     throw new Error(
       "isFirstMessage is required - explicitly set to true (create) or false (edit/bugfix)"
@@ -114,12 +115,12 @@ export async function createCodingAgent(state: MinimalCodingAgentState, prompt?:
   }
 
   // Build prompt - now async
-  const systemPrompt = prompt || (await buildCodingPrompt(promptState));
+  const finalSystemPrompt = systemPrompt || (await buildCodingPrompt(promptState));
 
   return createDeepAgent({
     model: llm as any,
     name: "coding-agent",
-    systemPrompt,
+    systemPrompt: finalSystemPrompt,
     backend: () => backend as any,
     subagents: [copywriterSubAgent, coderSubAgent],
     tools: [new SearchIconsTool()],
