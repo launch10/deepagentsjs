@@ -115,6 +115,35 @@ RSpec.describe "Websites API", type: :request do
         end
       end
 
+      response '200', 'website theme update injects CSS variables into index.css' do
+        schema APISchemas::Website.response
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let!(:theme_with_colors) { create(:theme, colors: %w[264653 2A9D8F E9C46A F4A261 E76F51]) }
+        let(:website_params) do
+          {
+            website: {
+              theme_id: theme_with_colors.id
+            }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['theme_id']).to eq(theme_with_colors.id)
+
+          # Verify that the theme CSS was injected
+          website.reload
+          css_file = website.website_files.find_by(path: "src/index.css")
+          expect(css_file).to be_present
+          expect(css_file.content).to include("--primary:")
+          expect(css_file.content).to include("--background:")
+          expect(css_file.content).to include("@tailwind base;")
+        end
+      end
+
       response '401', 'unauthorized - missing token' do
         let(:Authorization) { nil }
         let(:website_params) do

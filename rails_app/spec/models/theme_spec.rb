@@ -6,6 +6,7 @@
 #
 #  id                         :bigint           not null, primary key
 #  colors                     :jsonb
+#  index_css_content          :text
 #  name                       :string           not null
 #  pairings                   :jsonb
 #  theme                      :jsonb

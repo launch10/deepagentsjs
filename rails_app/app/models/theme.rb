@@ -4,6 +4,7 @@
 #
 #  id                         :bigint           not null, primary key
 #  colors                     :jsonb
+#  index_css_content          :text
 #  name                       :string           not null
 #  pairings                   :jsonb
 #  theme                      :jsonb
@@ -23,9 +24,11 @@
 class Theme < ApplicationRecord
   include ThemeConcerns::SemanticVariables
   include ThemeConcerns::TypographyRecommendations
+  include ThemeConcerns::IndexCssGeneration
 
   has_many :theme_to_theme_labels, dependent: :destroy
   has_many :theme_labels, through: :theme_to_theme_labels
+  has_many :websites
   belongs_to :author, class_name: "Account", optional: true
 
   alias_method :labels, :theme_labels

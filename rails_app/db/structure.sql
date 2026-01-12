@@ -3134,7 +3134,8 @@ CREATE TABLE public.themes (
     theme_type character varying NOT NULL,
     author_id bigint,
     pairings jsonb,
-    typography_recommendations jsonb
+    typography_recommendations jsonb,
+    index_css_content text
 );
 
 
@@ -9646,6 +9647,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260112152551'),
 ('20260112140931'),
 ('20260109153827'),
 ('20260109153750'),

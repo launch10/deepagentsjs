@@ -28,6 +28,7 @@ class Website < ApplicationRecord
   include Atlas::Website
   include WebsiteConcerns::ShasumHashable
   include WebsiteConcerns::FileManagement
+  include WebsiteConcerns::ThemeCssInjection
   historiographer_mode :snapshot_only
 
   belongs_to :project
