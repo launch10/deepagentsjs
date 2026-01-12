@@ -275,4 +275,77 @@ describe("WebsiteFilesBackend", () => {
       expect(result.error).toBeDefined();
     });
   });
+
+  describe("filesUpdate for state sync", () => {
+    it("write() returns filesUpdate with file content as lines array", async () => {
+      const testPath = "/src/state-sync-write.ts";
+      const testContent = 'export const value = "synced";';
+
+      const result = await backend.write(testPath, testContent);
+
+      expect(result.error).toBeUndefined();
+      expect(result.filesUpdate).toBeDefined();
+      expect(result.filesUpdate).not.toBeNull();
+
+      const fileData = result.filesUpdate?.[testPath];
+      expect(fileData).toBeDefined();
+      // FileData format: content is an array of lines
+      expect(Array.isArray(fileData?.content)).toBe(true);
+      expect(fileData?.content.join("\n")).toBe(testContent);
+      expect(fileData?.created_at).toBeDefined();
+      expect(fileData?.modified_at).toBeDefined();
+    });
+
+    it("edit() returns filesUpdate with updated content", async () => {
+      const testPath = "/src/state-sync-edit.ts";
+      const initialContent = 'const msg = "before";';
+      const expectedContent = 'const msg = "after";';
+
+      await backend.write(testPath, initialContent);
+      const result = await backend.edit(testPath, "before", "after");
+
+      expect(result.error).toBeUndefined();
+      expect(result.filesUpdate).toBeDefined();
+      expect(result.filesUpdate).not.toBeNull();
+
+      const fileData = result.filesUpdate?.[testPath];
+      expect(fileData).toBeDefined();
+      expect(fileData?.content.join("\n")).toBe(expectedContent);
+      expect(fileData?.modified_at).toBeDefined();
+    });
+
+    it("edit() with replaceAll returns filesUpdate with all replacements", async () => {
+      const testPath = "/src/state-sync-replace-all.ts";
+      const initialContent = "foo bar foo baz foo";
+      const expectedContent = "qux bar qux baz qux";
+
+      await backend.write(testPath, initialContent);
+      const result = await backend.edit(testPath, "foo", "qux", true);
+
+      expect(result.error).toBeUndefined();
+      expect(result.occurrences).toBe(3);
+      expect(result.filesUpdate).toBeDefined();
+
+      const fileData = result.filesUpdate?.[testPath];
+      expect(fileData?.content.join("\n")).toBe(expectedContent);
+    });
+
+    it("write() filesUpdate format matches deepagents FileData interface", async () => {
+      const testPath = "/src/middleware-compat.ts";
+      const testContent = "export default {}";
+
+      const result = await backend.write(testPath, testContent);
+
+      // Middleware expects Record<string, FileData> where FileData has:
+      // { content: string[], created_at: string, modified_at: string }
+      expect(typeof result.filesUpdate).toBe("object");
+      expect(result.filesUpdate).not.toBeNull();
+
+      const fileData = result.filesUpdate?.[testPath];
+      expect(fileData).toBeDefined();
+      expect(Array.isArray(fileData?.content)).toBe(true);
+      expect(typeof fileData?.created_at).toBe("string");
+      expect(typeof fileData?.modified_at).toBe("string");
+    });
+  });
 });

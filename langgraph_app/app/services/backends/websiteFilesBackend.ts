@@ -189,7 +189,18 @@ export class WebsiteFilesBackend implements BackendProtocol {
       files: [{ path: filePath, content }],
     });
 
-    return { path: filePath, filesUpdate: null };
+    // Return filesUpdate so middleware syncs to state
+    const now = new Date().toISOString();
+    return {
+      path: filePath,
+      filesUpdate: {
+        [filePath]: {
+          content: content.split("\n"),
+          created_at: now,
+          modified_at: now,
+        },
+      },
+    };
   }
 
   async edit(
@@ -211,10 +222,23 @@ export class WebsiteFilesBackend implements BackendProtocol {
       replaceAll,
     });
 
+    // Read updated content from filesystem for filesUpdate
+    const normalizedPath = filePath.startsWith("/") ? filePath.slice(1) : filePath;
+    const fullPath = path.join(this.rootDir, normalizedPath);
+    const updatedContent = await fs.readFile(fullPath, "utf-8");
+
+    // Return filesUpdate so middleware syncs to state
+    const now = new Date().toISOString();
     return {
       path: filePath,
       occurrences: fsResult.occurrences,
-      filesUpdate: null,
+      filesUpdate: {
+        [filePath]: {
+          content: updatedContent.split("\n"),
+          created_at: now,
+          modified_at: now,
+        },
+      },
     };
   }
 

@@ -1,8 +1,7 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import type { PrimaryKeyType } from "@types";
-import { Brainstorm, Website } from "@types";
-import { Core, type ConsoleError } from "@types";
+import { Brainstorm, Website, Core, type ConsoleError } from "@types";
 
 export const WebsiteAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
@@ -45,6 +44,13 @@ export const WebsiteAnnotation = Annotation.Root({
   status: Annotation<Core.Status>({
     default: () => "pending",
     reducer: (current, next) => next,
+  }),
+
+  // Files synced from database via syncFilesToState node after agent completes
+  // FileData format: { content: string[], created_at: string, modified_at: string }
+  files: Annotation<Website.FileMap>({
+    default: () => ({}),
+    reducer: (current, next) => ({ ...current, ...next }),
   }),
 });
 
