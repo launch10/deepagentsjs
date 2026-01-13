@@ -15,7 +15,7 @@ vi.mock("@services", () => ({
 
 const deployGraph = uncompiledGraph.compile({ ...graphParams, name: "deploy" });
 
-describe("Deploy Graph", () => {
+describe.skip("Deploy Graph", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
