@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { db, websiteFiles, websites, eq } from "@db";
+import { db, codeFiles, websites, eq } from "@db";
 import { snakeCase } from "lodash";
 
 const EXAMPLES_DIR = path.resolve(__dirname, "../../../shared/websites/examples");
@@ -62,11 +62,11 @@ export class WebsiteExporter {
     // Get all files for this website
     const files = await db
       .select({
-        path: websiteFiles.path,
-        content: websiteFiles.content,
+        path: codeFiles.path,
+        content: codeFiles.content,
       })
-      .from(websiteFiles)
-      .where(eq(websiteFiles.websiteId, websiteId));
+      .from(codeFiles)
+      .where(eq(codeFiles.websiteId, websiteId));
 
     if (files.length === 0) {
       throw new Error(`No files found for website ${websiteId}`);

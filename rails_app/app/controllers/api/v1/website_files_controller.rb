@@ -17,8 +17,15 @@ class API::V1::WebsiteFilesController < API::BaseController
     normalized_path = path.gsub(/^\//, "")
     website_file = website.website_files.find_by(path: normalized_path)
 
+    # If not found in website_files, check template_files and create a website_file from it
     unless website_file
-      render json: {errors: ["File not found: #{normalized_path}"]}, status: :not_found and return
+      template_file = website.template_files.find_by(path: normalized_path)
+      unless template_file
+        render json: {errors: ["File not found: #{normalized_path}"]}, status: :not_found and return
+      end
+
+      # Create website_file from template_file content
+      website_file = website.website_files.create!(path: normalized_path, content: template_file.content)
     end
 
     content = website_file.content

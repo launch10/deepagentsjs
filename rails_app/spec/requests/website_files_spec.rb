@@ -424,6 +424,38 @@ RSpec.describe "Website Files API", type: :request do
           expect(data["errors"]).to include("path, old_string, and new_string are required")
         end
       end
+
+      response '200', 'creates website_file from template_file when file not yet customized' do
+        schema APISchemas::WebsiteFile.edit_response
+        let(:id) { website1_owned.id }
+        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:thread_id) { "thread-123" }
+        let!(:template_file) { create(:template_file, template: template, path: "src/pages/IndexPage.tsx", content: "<div>Template Content</div>") }
+        let(:edit_params) do
+          {
+            path: "src/pages/IndexPage.tsx",
+            old_string: "Template Content",
+            new_string: "Custom Content"
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["file"]["content"]).to eq("<div>Custom Content</div>")
+          expect(data["occurrences"]).to eq(1)
+
+          # Verify website_file was created
+          website_file = website1_owned.website_files.find_by(path: "src/pages/IndexPage.tsx")
+          expect(website_file).to be_present
+          expect(website_file.content).to eq("<div>Custom Content</div>")
+
+          # Verify template_file was NOT modified
+          template_file.reload
+          expect(template_file.content).to eq("<div>Template Content</div>")
+        end
+      end
     end
   end
 end

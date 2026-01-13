@@ -15,11 +15,13 @@ import * as path from "path";
 import { snakeCase } from "lodash";
 import micromatch from "micromatch";
 import { WebsiteFilesAPIService } from "@rails_api";
+import { RedisLock } from "@ext";
 
 export interface CreateBackendParams {
   website: DBTypes.WebsiteType;
   jwt: string;
 }
+
 export class WebsiteFilesBackend implements BackendProtocol {
   private fs: FilesystemBackend;
   private website: DBTypes.WebsiteType;
@@ -179,29 +181,23 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async write(filePath: string, content: string): Promise<WriteResult> {
-    console.log(`writing ${filePath}`);
-    const fsResult = await this.fs.write(filePath, content);
-    if (fsResult.error) return fsResult;
+    const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
+    return RedisLock.withLock(lockKey, async () => {
+      console.log(`writing ${filePath}`);
+      const fsResult = await this.fs.write(filePath, content);
+      if (fsResult.error) return fsResult;
 
-    const service = new WebsiteFilesAPIService({ jwt: this.jwt });
-    const result = await service.write({
-      id: this.getWebsiteId(),
-      files: [{ path: filePath, content }],
+      const service = new WebsiteFilesAPIService({ jwt: this.jwt });
+      await service.write({
+        id: this.getWebsiteId(),
+        files: [{ path: filePath, content }],
+      });
+
+      return {
+        path: filePath,
+        filesUpdate: null,
+      };
     });
-
-    // Return filesUpdate so middleware syncs to state
-    const now = new Date().toISOString();
-    return {
-      path: filePath,
-      filesUpdate: null,
-      // filesUpdate: {
-      //   [filePath]: {
-      //     content: content.split("\n"),
-      //     created_at: now,
-      //     modified_at: now,
-      //   },
-      // },
-    };
   }
 
   async edit(
@@ -210,38 +206,29 @@ export class WebsiteFilesBackend implements BackendProtocol {
     newString: string,
     replaceAll: boolean = false
   ): Promise<EditResult> {
-    console.log(`editing ${filePath}`);
-    const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
-    if (fsResult.error) return fsResult;
+    const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
+    return RedisLock.withLock(lockKey, async () => {
+      console.log(`editing ${filePath}`);
+      const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
+      if (fsResult.error) {
+        return fsResult;
+      }
 
-    const service = new WebsiteFilesAPIService({ jwt: this.jwt });
-    const result = await service.edit({
-      id: this.getWebsiteId(),
-      path: filePath,
-      oldString,
-      newString,
-      replaceAll,
+      const service = new WebsiteFilesAPIService({ jwt: this.jwt });
+      await service.edit({
+        id: this.getWebsiteId(),
+        path: filePath,
+        oldString,
+        newString,
+        replaceAll,
+      });
+
+      return {
+        path: filePath,
+        occurrences: fsResult.occurrences,
+        filesUpdate: null,
+      };
     });
-
-    // Read updated content from filesystem for filesUpdate
-    const normalizedPath = filePath.startsWith("/") ? filePath.slice(1) : filePath;
-    const fullPath = path.join(this.rootDir, normalizedPath);
-    const updatedContent = await fs.readFile(fullPath, "utf-8");
-
-    // Return filesUpdate so middleware syncs to state
-    const now = new Date().toISOString();
-    return {
-      path: filePath,
-      occurrences: fsResult.occurrences,
-      filesUpdate: null,
-      // filesUpdate: {
-      //   [filePath]: {
-      //     content: updatedContent.split("\n"),
-      //     created_at: now,
-      //     modified_at: now,
-      //   },
-      // },
-    };
   }
 
   async uploadFiles(files: Array<[string, Uint8Array]>): Promise<FileUploadResponse[]> {

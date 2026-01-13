@@ -157,7 +157,14 @@ describe.sequential("Website Builder", () => {
       const trackingFile = generatedFiles.find((f) => f.content.match(/L10.createLead/));
       expect(trackingFile).toBeDefined();
 
+      // Expect IndexPage has been edited
+      const indexPage = generatedFiles.find((f) => f.path?.includes("IndexPage"));
+      expect(indexPage?.content).toBeDefined();
+      expect(indexPage?.content).toContain("Hero");
+      expect(indexPage?.content).toContain("Feature"); // It includes the sections
+
       await saveExample(websiteId, "scheduling-tool"); // So we can see the result
+      debugger;
     }, 300000);
 
     it("uses theme colors in generated components", async () => {

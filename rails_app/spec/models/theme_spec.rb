@@ -6,7 +6,6 @@
 #
 #  id                         :bigint           not null, primary key
 #  colors                     :jsonb
-#  index_css_content          :text
 #  name                       :string           not null
 #  pairings                   :jsonb
 #  theme                      :jsonb
@@ -24,6 +23,7 @@
 #
 
 require "rails_helper"
+require "sidekiq/testing"
 
 RSpec.describe Theme do
   describe "validations" do
@@ -336,6 +336,70 @@ RSpec.describe Theme do
 
       # Should include light and dark foreground colors
       expect(theme.pairings.keys).to include("FAFAFA", "0A0A0A")
+    end
+  end
+
+  describe "theme propagation to websites" do
+    let(:account) { create(:account) }
+    let(:theme) { create(:theme, :official) }
+    let(:template_index_css) { File.read(Rails.root.join("templates/default/src/index.css")) }
+
+    before do
+      Sidekiq::Testing.fake!
+    end
+
+    after do
+      Sidekiq::Worker.clear_all
+    end
+
+    it "enqueues a worker to propagate theme changes" do
+      project = create(:project, account: account)
+      create(:website, project: project, account: account, theme: theme)
+
+      expect {
+        theme.update!(colors: %w[FF0000 00FF00 0000FF FFFF00 FF00FF])
+      }.to change(Themes::PropagateToWebsitesWorker.jobs, :size).by(1)
+
+      job = Themes::PropagateToWebsitesWorker.jobs.last
+      expect(job["args"]).to eq([theme.id])
+    end
+
+    it "propagates theme changes to all websites using the theme" do
+      # Create websites using this theme
+      project1 = create(:project, account: account)
+      project2 = create(:project, account: account)
+      website1 = create(:website, project: project1, account: account, theme: theme)
+      website2 = create(:website, project: project2, account: account, theme: theme)
+
+      # Give them index.css files
+      website1.website_files.create!(path: "src/index.css", content: template_index_css)
+      website2.website_files.create!(path: "src/index.css", content: template_index_css)
+
+      # Update the theme colors and run both batch and individual workers inline
+      new_colors = %w[FF0000 00FF00 0000FF FFFF00 FF00FF]
+      Sidekiq::Testing.inline! do
+        theme.update!(colors: new_colors)
+      end
+
+      # Both websites should have updated CSS
+      css1 = website1.website_files.find_by(path: "src/index.css").reload.content
+      css2 = website2.website_files.find_by(path: "src/index.css").reload.content
+
+      # The new theme should be reflected in both
+      expect(css1).to include("--primary:")
+      expect(css2).to include("--primary:")
+
+      # And they should match
+      expect(css1).to eq(css2)
+    end
+
+    it "does not enqueue worker when non-theme attributes change" do
+      project = create(:project, account: account)
+      create(:website, project: project, account: account, theme: theme)
+
+      expect {
+        theme.update!(name: "Renamed Theme")
+      }.not_to change(Themes::PropagateToWebsitesWorker.jobs, :size)
     end
   end
 end

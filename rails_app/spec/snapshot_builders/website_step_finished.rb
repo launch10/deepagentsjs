@@ -22,11 +22,7 @@ class WebsiteStepFinished < BaseBuilder
     website = project.website
 
     ExampleWebsites.find("launch-proof").files.reject(&:binary?).each do |file|
-      binding.pry if file.content.blank?
-      website.website_files.create!(
-        path: file.relative_path,
-        content: file.content
-      )
+      website.website_files.find_or_initialize_by(path: file.relative_path).update!(content: file.content)
     end
 
     domain = website.domains.first || create(:domain, website: website, account: account, domain: "example.launch10.site")
