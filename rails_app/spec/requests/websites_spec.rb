@@ -121,6 +121,7 @@ RSpec.describe "Websites API", type: :request do
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let!(:template_with_css) { create(:template, :with_index_css) }
         let!(:theme_with_colors) { create(:theme, colors: %w[264653 2A9D8F E9C46A F4A261 E76F51]) }
         let(:website_params) do
           {
@@ -128,6 +129,10 @@ RSpec.describe "Websites API", type: :request do
               theme_id: theme_with_colors.id
             }
           }
+        end
+
+        before do
+          website.update!(template: template_with_css)
         end
 
         run_test! do |response|

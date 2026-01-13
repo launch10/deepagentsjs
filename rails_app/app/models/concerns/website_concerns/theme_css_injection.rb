@@ -17,7 +17,7 @@ module WebsiteConcerns
       return unless theme&.theme.present?
 
       css_file = website_files.find_by(path: INDEX_CSS_PATH)
-      unless css_file&.content.present?
+      if css_file&.content.nil?
         template_css = template_files.find_by(path: INDEX_CSS_PATH)
         return unless template_css&.content.present?
 

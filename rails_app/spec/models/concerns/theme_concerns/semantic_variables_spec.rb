@@ -182,9 +182,9 @@ RSpec.describe ThemeConcerns::SemanticVariables do
         expect(bg[:lightness]).to be > 50
       end
 
-      it "assigns card and popover to match background" do
-        expect(result["--card"]).to eq(result["--background"])
-        expect(result["--popover"]).to eq(result["--background"])
+      it "assigns card and popover to create depth (different from background)" do
+        expect(result["--card"]).to eq(result["--popover"])
+        expect(result["--card"]).not_to eq(result["--background"])
       end
 
       it "assigns ring to match primary" do
