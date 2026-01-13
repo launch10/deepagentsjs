@@ -60,7 +60,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
       },
       {
         ...config,
-        recursionLimit: 100,
+        recursionLimit: 150,
       }
     );
 

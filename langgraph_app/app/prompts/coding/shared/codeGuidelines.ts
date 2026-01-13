@@ -10,8 +10,12 @@ export const codeGuidelinesPrompt: CodingPromptFn = async (
 ): Promise<string> => `
 ## Code Guidelines
 
-- Use ONLY shadcn/ui components from the template
-- Use ONLY theme color utilities (bg-primary, text-secondary-foreground, etc.)
-- Never use hardcoded hex colors
+- Use shadcn/ui components from the template as your foundation
+- Use theme color utilities for main elements (bg-primary, text-secondary-foreground, etc.)
+- For gradients and atmospheric effects, you MAY use:
+  - Opacity variants: \`bg-primary/20\`, \`text-accent/80\`
+  - Gradient stops: \`from-background via-muted to-background\`
+  - Raw hex for dark/atmospheric backgrounds ONLY: \`from-[#0a0a1a]\`
 - One component per file, under 150 lines
+- Prefer CSS-only animations where possible
 `;

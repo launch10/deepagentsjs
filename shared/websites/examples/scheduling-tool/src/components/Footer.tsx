@@ -4,65 +4,55 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-primary text-primary-foreground py-12">
-      <div className="container mx-auto px-4">
-        <div className="grid md:grid-cols-3 gap-8 mb-8">
-          <div className="space-y-4">
+    <footer className="bg-muted py-12 md:py-16">
+      <div className="container px-4 md:px-6">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          {/* Logo and tagline */}
+          <div className="flex items-center gap-3">
             <img 
               src="https://dev-uploads.launch10.ai/uploads/21b36cfc-f657-471f-8256-d36bea9689fc.png" 
               alt="Logo" 
-              className="h-8 w-auto"
+              className="h-10 w-auto"
             />
-            <p className="text-sm text-primary-foreground/80">
-              Automatic scheduling for distributed teams. No more time zone headaches.
-            </p>
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Scheduling made simple for distributed teams
+              </p>
+            </div>
           </div>
 
-          <div>
-            <h3 className="font-semibold mb-4">Product</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a href="#features" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
-                  Features
-                </a>
-              </li>
-              <li>
-                <a href="#social-proof" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
-                  Why Us
-                </a>
-              </li>
-              <li>
-                <a href="#hero" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
-                  Get Started
-                </a>
-              </li>
-            </ul>
+          {/* Links */}
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
+            <a 
+              href="#features" 
+              className="text-muted-foreground hover:text-[#264653] transition-colors"
+            >
+              Features
+            </a>
+            <a 
+              href="#" 
+              className="text-muted-foreground hover:text-[#264653] transition-colors"
+            >
+              Privacy
+            </a>
+            <a 
+              href="#" 
+              className="text-muted-foreground hover:text-[#264653] transition-colors"
+            >
+              Terms
+            </a>
+            <a 
+              href="#" 
+              className="text-muted-foreground hover:text-[#264653] transition-colors"
+            >
+              Contact
+            </a>
           </div>
 
-          <div>
-            <h3 className="font-semibold mb-4">Company</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a href="#" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
-                  About
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
-                  Privacy Policy
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
-                  Terms of Service
-                </a>
-              </li>
-            </ul>
+          {/* Copyright */}
+          <div className="text-sm text-muted-foreground">
+            © {currentYear} All rights reserved
           </div>
-        </div>
-
-        <div className="border-t border-primary-foreground/20 pt-8 text-center text-sm text-primary-foreground/70">
-          <p>&copy; {currentYear} All rights reserved.</p>
         </div>
       </div>
     </footer>

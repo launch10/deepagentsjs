@@ -35,6 +35,12 @@ export type TypographyRecommendations = ThemeAPIResponse["typography_recommendat
  * State required by coding prompts.
  * Minimal subset of WebsiteGraphState needed for prompt generation.
  */
+/**
+ * Semantic CSS variables from the theme (HSL values).
+ * Keys are CSS custom property names like '--background', '--primary', etc.
+ */
+export type SemanticVariables = Record<string, string>;
+
 export interface CodingPromptState {
   websiteId?: number;
   jwt?: string;
@@ -42,6 +48,8 @@ export interface CodingPromptState {
     id?: number;
     name?: string;
     colors?: string[];
+    /** Semantic CSS variables (HSL values) */
+    semanticVariables?: SemanticVariables;
     typography_recommendations?: TypographyRecommendations;
   };
   /**

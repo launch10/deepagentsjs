@@ -1,60 +1,61 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Globe, Zap, Calendar, Users } from 'lucide-react';
+import { Globe, CalendarSync, Settings, Zap } from 'lucide-react';
 
 const features = [
   {
     icon: Globe,
-    title: 'Smart Time Zone Matching',
-    description: 'Automatically finds meeting times that respect everyone\'s working hours, no matter where they are.',
+    title: 'Smart Time Zone Magic',
+    description: 'Automatically converts and compares time zones to find slots that work for everyone. No more mental math or accidentally scheduling 3am meetings for your Tokyo teammates.',
+  },
+  {
+    icon: CalendarSync,
+    title: 'Works With Your Calendar',
+    description: 'Syncs seamlessly with Google Calendar, Outlook, and Apple Calendar. No duplicate entries, no switching apps—just one source of truth for your entire team\'s availability.',
+  },
+  {
+    icon: Settings,
+    title: 'Set It Once, Forget It',
+    description: 'Define your working hours and preferences one time. The system respects everyone\'s boundaries automatically, so you\'ll never get meeting requests during your off-hours again.',
   },
   {
     icon: Zap,
-    title: 'End the Scheduling Chaos',
-    description: 'No more endless message threads. Get instant time suggestions that work for your entire team.',
-  },
-  {
-    icon: Calendar,
-    title: 'Seamless Calendar Sync',
-    description: 'Connects with your existing calendar to show real availability and prevent double-bookings automatically.',
-  },
-  {
-    icon: Users,
-    title: 'One-Click Team Decisions',
-    description: 'Share suggested times with your team. Everyone clicks yes, and the meeting is instantly scheduled.',
+    title: 'Instant Meeting Time Suggestions',
+    description: 'Get optimal time slots in seconds based on everyone\'s real availability. Share a link, let teammates pick their preference, and you\'re done—no endless email chains required.',
   },
 ];
 
 export function Features() {
   return (
-    <section id="features" className="py-24 bg-muted">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16 space-y-4">
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground">
-            Scheduling That Actually Works
+    <section className="py-20 md:py-24 lg:py-28 bg-muted">
+      <div className="container px-4 md:px-6">
+        <div className="max-w-3xl mx-auto text-center mb-16">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-foreground">
+            Schedule Meetings{' '}
+            <span className="text-[#264653]">Without The Headache</span>
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Built for distributed teams who need to coordinate across time zones without the headache.
+          <p className="text-lg md:text-xl text-muted-foreground">
+            Stop playing email ping-pong across time zones. Find the perfect meeting time for everyone in seconds, not hours.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 max-w-6xl mx-auto">
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
-              <Card key={index} className="border-border bg-card hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6 space-y-4">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Icon className="w-6 h-6 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-card-foreground">
-                    {feature.title}
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {feature.description}
-                  </p>
-                </CardContent>
-              </Card>
+              <div
+                key={index}
+                className="group bg-card rounded-3xl p-8 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#264653] mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <Icon className="w-7 h-7 text-[#E9C46A]" />
+                </div>
+                <h3 className="text-xl md:text-2xl font-semibold mb-3 text-card-foreground">
+                  {feature.title}
+                </h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  {feature.description}
+                </p>
+              </div>
             );
           })}
         </div>

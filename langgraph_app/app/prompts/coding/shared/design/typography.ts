@@ -8,7 +8,7 @@ import type {
   TypographyRecommendations,
   TypographyCategory,
   TypographyRecommendation,
-} from "./types";
+} from "../types";
 
 /**
  * Format a single typography recommendation.

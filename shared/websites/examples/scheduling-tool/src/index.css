@@ -4,18 +4,18 @@
 
 @layer base {
   :root {
-    --card: 43 74% 66%;
+    --card: 0 0% 100%;
     --ring: 197 37% 24%;
-    --input: 43 11% 96%;
-    --muted: 44 22% 90%;
-    --accent: 173 58% 39%;
-    --border: 43 11% 96%;
-    --popover: 43 74% 66%;
+    --input: 30 6% 96%;
+    --muted: 24 16% 94%;
+    --accent: 12 76% 61%;
+    --border: 30 6% 96%;
+    --popover: 0 0% 100%;
     --primary: 197 37% 24%;
     --success: 140 45% 30%;
     --warning: 45 45% 30%;
     --secondary: 27 87% 67%;
-    --background: 43 74% 66%;
+    --background: 30 20% 98%;
     --foreground: 0 0% 4%;
     --destructive: 0 45% 30%;
     --card-foreground: 0 0% 4%;
@@ -68,5 +68,10 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
   }
 }

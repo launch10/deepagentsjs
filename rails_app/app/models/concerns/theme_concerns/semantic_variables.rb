@@ -129,7 +129,7 @@ module ThemeConcerns
         background = derive_neutral_background(dominant_color, is_dark_palette)
 
         # Card = pure white (light theme) or slight contrast (dark theme)
-        card = derive_card_color(is_dark_palette)
+        card = derive_card_color(dominant_color, is_dark_palette)
 
         # Primary = darkest saturated color (for hero/CTA backgrounds)
         # Must have good saturation to not look muddy
@@ -181,14 +181,19 @@ module ThemeConcerns
 
       # Card should be pure white (light) or slightly elevated (dark)
       # KEY: Card must be DIFFERENT from background to create depth
-      def derive_card_color(is_dark)
+      def derive_card_color(dominant_color, is_dark)
         if is_dark
-          # Dark theme: slightly lighter than background
-          "1A1A2E"
+          # Dark theme: slightly lighter than background, tinted with palette hue
+          hue = dominant_color[:hue].round
+          derived = Chroma.paint("hsl(#{hue}, 20%, 12%)")
+          derived.to_hex.delete("#").upcase
         else
           # Light theme: pure white for clean card look
           "FFFFFF"
         end
+      rescue => e
+        Rails.logger.error("derive_card_color error: #{e.message}")
+        is_dark ? "1A1A2E" : "FFFFFF"
       end
 
       # Select accent color: vibrant, different hue from primary/secondary

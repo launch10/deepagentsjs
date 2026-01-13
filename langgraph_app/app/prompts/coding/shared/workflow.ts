@@ -7,15 +7,14 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
 const createWorkflow = `
 ## Workflow
-
-1. **Plan**: Break down the landing page into sections (Hero, Features, Pricing, Social Proof, CTA, Footer)
-2. **Draft copy**: For each section, use the copywriter subagent to draft compelling copy
-3. **Assign images**: For any images the user provided, decided where they should be placed in the landing page
-4. **Code**: Create React components in /src/components/ using the drafted copy
-5. **Assemble**: Create the main page in /src/pages/IndexPage.tsx and optionally /src/pages/PricingPage.tsx
-6. **Add Analytics**: Identify the main conversion type (tiered pricing, simple waitlist, etc.), and implement the appropriate tracking using L10.createLead()
-7. **Verify**: Read files back to confirm they're correct
+1. **Plan**: Break down into sections (e.g. Hero, Features, Pricing, Social Proof, CTA, Footer) based on page needs
+2. **Draft copy**: Use the copywriter subagent to draft all section copy at once
+3. **Assign images**: Place user-provided images appropriately
+4. **Code**: Create React components in /src/components/
+5. **Assemble**: Create /src/pages/IndexPage.tsx (and optionally PricingPage.tsx)
+6. **Track**: Implement L10.createLead() based on conversion type (tiered pricing vs. simple waitlist)
 `;
+// 7. **Verify**: Read files back to confirm correctness
 
 const editWorkflow = `
 ## Workflow

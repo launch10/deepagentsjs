@@ -1,10 +1,10 @@
 import { db, websites, eq } from "@db";
 import { Website } from "@types";
-import { createDeepAgent } from "deepagents";
+import { createDeepAgent, createSkillsMiddleware, createSettings } from "deepagents";
 import { getLLM, getLLMFallbacks } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
-import { copywriterSubAgent, coderSubAgent } from "./subagents";
+import { copywriterSubAgent, coderSubAgent, designerSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
   toolRetryMiddleware,
@@ -14,6 +14,7 @@ import {
 } from "langchain";
 import { buildCodingPrompt, type CodingPromptState } from "@prompts";
 import { ThemeAPIService } from "@rails_api";
+import path from "path";
 
 export type MinimalCodingAgentState = {
   websiteId?: number;
@@ -22,6 +23,9 @@ export type MinimalCodingAgentState = {
   errors?: string;
   isFirstMessage?: boolean;
 };
+
+// Skills directory for design-focused agent skills
+const SKILLS_DIR = path.join(__dirname, "../../../.deepagents/skills");
 
 const getMiddlewares = (): AgentMiddleware[] => {
   // const fallbacks = getLLMFallbacks("coding", "slow", "paid");
@@ -32,7 +36,14 @@ const getMiddlewares = (): AgentMiddleware[] => {
   //   trigger: { fraction: 0.7 },
   //   keep: { messages: 15 },
   // });
-  return [toolRetryMiddleware()];
+
+  // Skills middleware for design-focused skills
+  const skillsMiddleware = createSkillsMiddleware({
+    skillsDir: SKILLS_DIR,
+    assistantId: "coding-agent",
+  });
+
+  return [toolRetryMiddleware(), skillsMiddleware];
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
@@ -78,10 +89,12 @@ const getTheme = async (
     const themeAPI = new ThemeAPIService({ jwt: state.jwt });
     const theme = await themeAPI.get(websiteRow.themeId);
 
+    console.log(theme);
     return {
       id: theme.id,
       name: theme.name,
       colors: theme.colors,
+      semanticVariables: theme.theme, // CSS custom properties (HSL values)
       typography_recommendations: theme.typography_recommendations,
     };
   }
@@ -116,13 +129,14 @@ export async function createCodingAgent(state: MinimalCodingAgentState, systemPr
 
   // Build prompt - now async
   const finalSystemPrompt = systemPrompt || (await buildCodingPrompt(promptState));
+  console.log(finalSystemPrompt);
 
   return createDeepAgent({
     model: llm as any,
     name: "coding-agent",
     systemPrompt: finalSystemPrompt,
     backend: () => backend as any,
-    subagents: [copywriterSubAgent, coderSubAgent],
+    subagents: [copywriterSubAgent, coderSubAgent, designerSubAgent],
     tools: [new SearchIconsTool()],
     middleware: middlewares as any,
     checkpointer: checkpointer as any,

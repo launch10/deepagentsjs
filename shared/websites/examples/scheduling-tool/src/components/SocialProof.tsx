@@ -1,57 +1,69 @@
 import React from 'react';
+import { Users, TrendingDown, Clock } from 'lucide-react';
 
 const stats = [
   {
+    icon: Users,
     number: '2,000+',
-    label: 'Distributed Teams',
+    label: 'Distributed teams coordinating effortlessly',
   },
   {
+    icon: TrendingDown,
     number: '80%',
-    label: 'Less Coordination Time',
+    label: 'Less time spent on meeting coordination',
   },
   {
-    number: '15',
-    label: 'Hours Saved Weekly',
+    icon: Clock,
+    number: '15 hrs/week',
+    label: 'Average time saved per company',
   },
 ];
 
 export function SocialProof() {
   return (
-    <section id="social-proof" className="py-24 bg-secondary">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-secondary-foreground">
-            Trusted by Teams Who Value Time
+    <section className="py-20 md:py-24 lg:py-28 bg-background">
+      <div className="container px-4 md:px-6">
+        <div className="max-w-3xl mx-auto text-center mb-16">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-foreground">
+            Trusted by teams who{' '}
+            <span className="text-[#264653]">value their time</span>
           </h2>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-          {stats.map((stat, index) => (
-            <div key={index} className="text-center space-y-2">
-              <div className="text-5xl md:text-6xl font-bold text-accent">
-                {stat.number}
+        {/* Stats grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 max-w-5xl mx-auto mb-16">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <div key={index} className="text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#E9C46A] mb-4">
+                  <Icon className="w-8 h-8 text-[#264653]" />
+                </div>
+                <div className="text-4xl md:text-5xl font-bold text-[#264653] mb-2">
+                  {stat.number}
+                </div>
+                <p className="text-muted-foreground text-sm md:text-base">
+                  {stat.label}
+                </p>
               </div>
-              <div className="text-lg text-secondary-foreground/80">
-                {stat.label}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        <div className="mt-16 max-w-3xl mx-auto">
-          <div className="bg-card rounded-lg p-8 shadow-lg border border-border">
+        {/* Testimonial */}
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-card rounded-3xl p-8 md:p-10 shadow-lg border-l-4 border-[#2A9D8F]">
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-2xl">
-                  💼
-                </div>
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-[#2A9D8F] flex items-center justify-center text-white font-bold text-xl">
+                S
               </div>
-              <div className="space-y-2">
-                <p className="text-lg text-card-foreground italic leading-relaxed">
-                  "We used to waste hours every week just trying to find a time that worked for our global team. Now it takes seconds. This tool has been a game-changer for our productivity."
+              <div>
+                <p className="text-lg md:text-xl text-card-foreground mb-4 leading-relaxed italic">
+                  "We used to waste entire mornings just finding meeting times across time zones. Now scheduling happens in seconds, and my team actually has time to do their real work."
                 </p>
-                <div className="text-sm text-muted-foreground">
-                  <span className="font-semibold">Sarah Chen</span>, Project Manager at TechCorp
+                <div>
+                  <p className="font-semibold text-card-foreground">Sarah Chen</p>
+                  <p className="text-sm text-muted-foreground">Project Manager at TechCorp</p>
                 </div>
               </div>
             </div>
