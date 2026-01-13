@@ -3085,42 +3085,6 @@ ALTER SEQUENCE public.theme_labels_id_seq OWNED BY public.theme_labels.id;
 
 
 --
--- Name: theme_variants; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.theme_variants (
-    id bigint NOT NULL,
-    background_class character varying NOT NULL,
-    foreground_class character varying,
-    muted_class character varying,
-    primary_class character varying,
-    secondary_class character varying,
-    accent_class character varying,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: theme_variants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.theme_variants_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: theme_variants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.theme_variants_id_seq OWNED BY public.theme_variants.id;
-
-
---
 -- Name: themes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4264,13 +4228,6 @@ ALTER TABLE ONLY public.theme_labels ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
--- Name: theme_variants id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.theme_variants ALTER COLUMN id SET DEFAULT nextval('public.theme_variants_id_seq'::regclass);
-
-
---
 -- Name: themes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5200,14 +5157,6 @@ ALTER TABLE ONLY public.templates
 
 ALTER TABLE ONLY public.theme_labels
     ADD CONSTRAINT theme_labels_pkey PRIMARY KEY (id);
-
-
---
--- Name: theme_variants theme_variants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.theme_variants
-    ADD CONSTRAINT theme_variants_pkey PRIMARY KEY (id);
 
 
 --
@@ -7874,20 +7823,6 @@ CREATE INDEX index_theme_labels_on_name ON public.theme_labels USING btree (name
 
 
 --
--- Name: index_theme_variants_on_background_class; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_theme_variants_on_background_class ON public.theme_variants USING btree (background_class);
-
-
---
--- Name: index_theme_variants_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_theme_variants_on_created_at ON public.theme_variants USING btree (created_at);
-
-
---
 -- Name: index_themes_on_author_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9647,6 +9582,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260112235846'),
 ('20260112152551'),
 ('20260112140931'),
 ('20260109153827'),

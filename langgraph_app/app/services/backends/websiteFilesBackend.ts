@@ -193,13 +193,14 @@ export class WebsiteFilesBackend implements BackendProtocol {
     const now = new Date().toISOString();
     return {
       path: filePath,
-      filesUpdate: {
-        [filePath]: {
-          content: content.split("\n"),
-          created_at: now,
-          modified_at: now,
-        },
-      },
+      filesUpdate: null,
+      // filesUpdate: {
+      //   [filePath]: {
+      //     content: content.split("\n"),
+      //     created_at: now,
+      //     modified_at: now,
+      //   },
+      // },
     };
   }
 
@@ -232,13 +233,14 @@ export class WebsiteFilesBackend implements BackendProtocol {
     return {
       path: filePath,
       occurrences: fsResult.occurrences,
-      filesUpdate: {
-        [filePath]: {
-          content: updatedContent.split("\n"),
-          created_at: now,
-          modified_at: now,
-        },
-      },
+      filesUpdate: null,
+      // filesUpdate: {
+      //   [filePath]: {
+      //     content: updatedContent.split("\n"),
+      //     created_at: now,
+      //     modified_at: now,
+      //   },
+      // },
     };
   }
 

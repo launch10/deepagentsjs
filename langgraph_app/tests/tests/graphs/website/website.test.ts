@@ -3,6 +3,7 @@ import { testGraph } from "@support";
 import { DatabaseSnapshotter } from "@services";
 import { getCodingAgentBackend } from "@nodes";
 import { db, Types as DBTypes, websites, brainstorms, websiteFiles, themes, websiteUploads, eq } from "@db";
+import { Website } from "@types";
 import { websiteGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
 import type { WebsiteGraphState } from "@annotation";
@@ -148,6 +149,9 @@ describe.sequential("Website Builder", () => {
       expect(heroFile?.content).toBeDefined();
       expect(heroFile?.content).toContain("export");
       expect(heroFile?.content).toMatch(/function|const/);
+
+      const stateHeroFile = result.state.files[heroFile?.path!] as Website.File.File;
+      expect(stateHeroFile?.content).toEqual(heroFile?.content)
 
       // At least one file contains tracking
       const trackingFile = generatedFiles.find((f) => f.content.match(/L10.createLead/));

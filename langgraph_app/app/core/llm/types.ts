@@ -222,6 +222,7 @@ export const OpusConfig: IAPIConfig = {
   maxTokens: 32_000,
   apiKey: anthropicApiKey,
   maxUsagePercent: 80, // Most expensive - cut first
+  enabled: false,
 };
 
 export const SonnetConfig: IAPIConfig = {
