@@ -150,6 +150,6 @@ class Website < ApplicationRecord
   end
 
   def set_default_theme
-    self.theme = Theme.first if theme.nil?
+    self.theme = Theme.order(id: :asc).first if theme.nil?
   end
 end

@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { WebsiteFilesBackend, DatabaseSnapshotter } from "@services";
-import { Website } from "@types";
-import { websiteFiles, websites, eq, and, db } from "@db";
+import { websiteFiles, websites, eq, and, db, Types as DBTypes } from "@db";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { uniq } from "@utils";
 import type { FileInfo, GrepMatch } from "deepagents";
 
 describe("WebsiteFilesBackend", () => {
@@ -22,7 +20,7 @@ describe("WebsiteFilesBackend", () => {
     websiteId = website.id;
 
     backend = await WebsiteFilesBackend.create({
-      website: website as Website.WebsiteType,
+      website: website as DBTypes.WebsiteType,
       jwt: "test-jwt",
     });
   }, 30000);

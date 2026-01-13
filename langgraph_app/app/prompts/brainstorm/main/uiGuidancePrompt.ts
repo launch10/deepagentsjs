@@ -1,7 +1,6 @@
 import { type BrainstormGraphState } from "@state";
 import { type LangGraphRunnableConfig, Brainstorm } from "@types";
  import { finishedTool} from "@tools";
-import { toolsPrompt } from "@prompts";
 import { structuredOutputPrompt } from "@prompts";
 import { collectedAnswersPrompt, backgroundPrompt } from "../shared";
 
@@ -9,9 +8,8 @@ export const uiGuidancePrompt = async (
   state: BrainstormGraphState,
   config?: LangGraphRunnableConfig
 ) => {
-  const [background, availableTools, collectedAnswers, outputInstructions] = await Promise.all([
+  const [background, collectedAnswers, outputInstructions] = await Promise.all([
     backgroundPrompt(state, config),
-    toolsPrompt({ tools: [finishedTool] }),
     collectedAnswersPrompt(state, config),
     structuredOutputPrompt({ schema: Brainstorm.replySchema }),
   ]);
@@ -176,8 +174,6 @@ export const uiGuidancePrompt = async (
                 - Use when: The user mentions images they've uploaded previously
                 - Call the query_uploads tool to fetch their images
         </task>
-
-        ${availableTools}
 
         <output>
             If outputting a response, use the following JSON schema:

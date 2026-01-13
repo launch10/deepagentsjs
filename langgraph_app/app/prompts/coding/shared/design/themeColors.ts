@@ -2,7 +2,7 @@
  * Theme color utilities available in landing pages.
  * Follows shadcn/ui conventions.
  */
-import type { CodingPromptState, CodingPromptFn } from "./types";
+import type { CodingPromptState, CodingPromptFn } from "../types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
 export const themeColorsPrompt: CodingPromptFn = async (

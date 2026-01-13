@@ -1,8 +1,11 @@
-import type { FileType, FileMap } from "../types";
+import { Website } from "../types";
 
-export function filesToFileMap(files: FileType[]): FileMap {
+export function filesToFileMap(files: Website.File.File[]): Website.File.FileMap {
   return files.reduce((acc, file) => {
+    if (!file.path) {
+      return acc;
+    }
     acc[file.path] = file;
     return acc;
-  }, {} as FileMap);
+  }, {} as Website.File.FileMap);
 }
