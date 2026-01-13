@@ -1,7 +1,7 @@
 /**
  * Utilities for analyzing theme properties.
  */
-import type { SemanticVariables, CodingPromptState } from "./types";
+import type { SemanticVariables, CodingPromptState } from "../types";
 
 /**
  * Parse HSL string to extract lightness value.

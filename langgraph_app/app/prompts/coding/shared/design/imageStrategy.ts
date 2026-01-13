@@ -4,7 +4,7 @@
  */
 import type { CodingPromptState, CodingPromptFn } from "../types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getThemeMode } from "../themeUtils";
+import { getThemeMode } from "./themeUtils";
 
 export const imageStrategyPrompt: CodingPromptFn = async (
   state: CodingPromptState,

@@ -2,7 +2,7 @@
  * Design quality checklist - self-review before completion.
  * Ensures the agent validates design quality before finishing.
  */
-import type { CodingPromptState, CodingPromptFn } from "./types";
+import type { CodingPromptState, CodingPromptFn } from "../types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getThemeMode } from "./themeUtils";
 

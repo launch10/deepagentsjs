@@ -1,8 +1,11 @@
 import * as fs from "fs/promises";
 import * as path from "path";
+import { fileURLToPath } from "url";
 import { db, codeFiles, websites, eq } from "@db";
-import { snakeCase } from "lodash";
+import _ from "lodash";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const EXAMPLES_DIR = path.resolve(__dirname, "../../../shared/websites/examples");
 
 export interface ExportWebsiteOptions {
@@ -41,7 +44,7 @@ export class WebsiteExporter {
       throw new Error(`Website ${websiteId} not found`);
     }
 
-    const exportName = options.name || snakeCase(website.name || `website_${websiteId}`);
+    const exportName = options.name || _.snakeCase(website.name || `website_${websiteId}`);
     const exportPath = path.join(EXAMPLES_DIR, exportName);
 
     // Check if directory exists
