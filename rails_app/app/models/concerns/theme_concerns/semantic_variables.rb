@@ -115,28 +115,111 @@ module ThemeConcerns
         analyzed = colors.map { |hex| analyze_color(hex) }.compact
         return {} if analyzed.empty?
 
-        sorted_by_luminance = analyzed.sort_by { |c| -c[:luminance] }
-        sorted_by_saturation = analyzed.sort_by { |c| -c[:saturation] }
+        # Sort by different properties for role selection
+        sorted_by_luminance = analyzed.sort_by { |c| c[:luminance] }  # darkest first
+        sorted_by_saturation = analyzed.sort_by { |c| -c[:saturation] }  # most vibrant first
 
-        background = sorted_by_luminance.first
-        primary = select_primary(sorted_by_saturation, background)
-        secondary = select_secondary(analyzed, primary, background)
-        accent = select_accent(analyzed, primary, secondary, background)
-        # Muted should be tonally similar to background (shadcn convention)
-        muted = derive_muted_from_background(background)
+        # Determine if user wants a dark or light theme based on palette
+        avg_luminance = analyzed.sum { |c| c[:luminance] } / analyzed.size
+        is_dark_palette = avg_luminance < 0.25
+
+        # KEY FIX: Derive neutral background instead of picking from palette
+        # Palette colors are ACCENTS, not backgrounds!
+        dominant_color = sorted_by_saturation.first
+        background = derive_neutral_background(dominant_color, is_dark_palette)
+
+        # Card = pure white (light theme) or slight contrast (dark theme)
+        card = derive_card_color(is_dark_palette)
+
+        # Primary = darkest saturated color (for hero/CTA backgrounds)
+        # Must have good saturation to not look muddy
+        primary = sorted_by_luminance.find { |c| c[:saturation] > 0.25 } || sorted_by_luminance.first
+
+        # Secondary = most vibrant color (for buttons, badges)
+        secondary = sorted_by_saturation.find { |c| c[:hex] != primary[:hex] } || sorted_by_saturation.first
+
+        # Accent = second most vibrant, different hue from secondary
+        accent = select_accent_color(sorted_by_saturation, primary, secondary)
+
+        # Muted = subtle variation from background (same hue, slightly darker)
+        muted = derive_muted_surface(dominant_color, is_dark_palette)
 
         {
-          background: background[:hex],
+          background: background,
           primary: primary[:hex],
           secondary: secondary[:hex],
           accent: accent[:hex],
           muted: muted,
-          card: background[:hex],
-          popover: background[:hex],
+          card: card,
+          popover: card,
           destructive: find_by_hue(analyzed, 345..15) || derive_status_color(primary, :destructive),
           warning: find_by_hue(analyzed, 35..55) || derive_status_color(primary, :warning),
           success: find_by_hue(analyzed, 100..170) || derive_status_color(primary, :success)
         }
+      end
+
+      # Derive a near-neutral background with a hint of the palette's dominant hue
+      # This is the key fix: backgrounds should be neutral, not vibrant!
+      def derive_neutral_background(dominant_color, is_dark)
+        hue = dominant_color[:hue].round
+
+        if is_dark
+          # Dark theme: near-black with subtle hue tint
+          derived = Chroma.paint("hsl(#{hue}, 15%, 8%)")
+        else
+          # Light theme: warm off-white with subtle hue tint
+          # Saturation 15-25% keeps it warm but neutral
+          # Lightness 96-98% keeps it very light
+          derived = Chroma.paint("hsl(#{hue}, 20%, 98%)")
+        end
+
+        derived.to_hex.delete("#").upcase
+      rescue => e
+        Rails.logger.error("derive_neutral_background error: #{e.message}")
+        is_dark ? "0A0A0A" : "FAFAFA"
+      end
+
+      # Card should be pure white (light) or slightly elevated (dark)
+      # KEY: Card must be DIFFERENT from background to create depth
+      def derive_card_color(is_dark)
+        if is_dark
+          # Dark theme: slightly lighter than background
+          "1A1A2E"
+        else
+          # Light theme: pure white for clean card look
+          "FFFFFF"
+        end
+      end
+
+      # Select accent color: vibrant, different hue from primary/secondary
+      def select_accent_color(by_saturation, primary, secondary)
+        used_hexes = [primary[:hex], secondary[:hex]]
+
+        # Find a color with different hue from both primary and secondary
+        candidate = by_saturation.find do |c|
+          next false if used_hexes.include?(c[:hex])
+          hue_distance(c[:hue], primary[:hue]) > 25 || hue_distance(c[:hue], secondary[:hue]) > 25
+        end
+
+        candidate || by_saturation.find { |c| !used_hexes.include?(c[:hex]) } || secondary
+      end
+
+      # Derive muted surface: same hue as dominant, very desaturated
+      def derive_muted_surface(dominant_color, is_dark)
+        hue = dominant_color[:hue].round
+
+        if is_dark
+          # Dark theme: slightly lighter, low saturation
+          derived = Chroma.paint("hsl(#{hue}, 10%, 15%)")
+        else
+          # Light theme: slightly darker than background, low saturation
+          derived = Chroma.paint("hsl(#{hue}, 15%, 94%)")
+        end
+
+        derived.to_hex.delete("#").upcase
+      rescue => e
+        Rails.logger.error("derive_muted_surface error: #{e.message}")
+        is_dark ? "1F1F1F" : "F0F0F0"
       end
 
       # Derive a status color using the theme's primary color characteristics
@@ -180,49 +263,6 @@ module ThemeConcerns
         }
       rescue
         nil
-      end
-
-      def select_primary(by_saturation, background)
-        # Most saturated that has good contrast with background
-        by_saturation.find { |c| contrast_ratio(c[:hex], background[:hex]) >= 3.0 } || by_saturation.first
-      end
-
-      def select_secondary(colors, primary, background)
-        # Different hue from primary, good contrast with background
-        candidates = colors.reject { |c| c[:hex] == primary[:hex] || c[:hex] == background[:hex] }
-        candidates.find { |c| hue_distance(c[:hue], primary[:hue]) > 30 } || candidates.first || primary
-      end
-
-      def select_accent(colors, primary, secondary, background)
-        used = [primary[:hex], secondary[:hex], background[:hex]]
-        candidates = colors.reject { |c| used.include?(c[:hex]) }
-        candidates.first || secondary
-      end
-
-      # Derive muted from background (shadcn convention: muted is tonally similar to background)
-      # Light backgrounds get a slightly darker/grayer muted; dark backgrounds get slightly lighter
-      def derive_muted_from_background(background)
-        bg_color = Chroma.paint("##{background[:hex]}")
-        bg_lightness = bg_color.hsl.l
-        bg_hue = bg_color.hsl.h
-        bg_saturation = bg_color.hsl.s
-
-        if bg_lightness > 0.5
-          # Light background: muted is slightly darker and desaturated
-          # Similar to shadcn's 240 4.8% 95.9% for light theme muted
-          muted_lightness = [bg_lightness - 0.05, 0.90].max
-          muted_saturation = [bg_saturation * 0.3, 0.05].max
-        else
-          # Dark background: muted is slightly lighter and desaturated
-          # Similar to shadcn's 217.2 32.6% 17.5% for dark theme muted
-          muted_lightness = [bg_lightness + 0.08, 0.25].min
-          muted_saturation = [bg_saturation * 0.5, 0.15].max
-        end
-
-        muted_color = Chroma.paint("hsl(#{bg_hue}, #{muted_saturation * 100}%, #{muted_lightness * 100}%)")
-        muted_color.to_hex.delete("#").upcase
-      rescue
-        background[:hex] # Fallback to background itself
       end
 
       # Find a color by hue range that's also suitable for status colors
