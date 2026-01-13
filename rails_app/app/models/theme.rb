@@ -35,7 +35,6 @@ class Theme < ApplicationRecord
   validate :community_theme_must_have_author
 
   before_save :save_semantic_variables, if: :should_save_semantic_variables?
-  after_save :propagate_theme_to_websites, if: :saved_change_to_theme?
 
   scope :official, -> { where(theme_type: "official") }
   scope :community, -> { where(theme_type: "community") }
@@ -91,10 +90,5 @@ class Theme < ApplicationRecord
     if theme_type == "community" && author.nil?
       errors.add(:author, "must be present for community themes")
     end
-  end
-
-  # When theme variables change, propagate to all websites using this theme
-  def propagate_theme_to_websites
-    Themes::PropagateToWebsitesWorker.perform_async(id)
   end
 end

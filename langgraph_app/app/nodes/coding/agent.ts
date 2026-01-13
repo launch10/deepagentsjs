@@ -4,7 +4,7 @@ import { createDeepAgent, createSkillsMiddleware, createSettings } from "deepage
 import { getLLM, getLLMFallbacks } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
-import { copywriterSubAgent, coderSubAgent, designerSubAgent } from "./subagents";
+import { copywriterSubAgent, coderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
   toolRetryMiddleware,
@@ -25,7 +25,7 @@ export type MinimalCodingAgentState = {
 };
 
 // Skills directory for design-focused agent skills
-const SKILLS_DIR = path.join(__dirname, "../../../.deepagents/skills");
+const SKILLS_DIR = path.join(process.cwd(), ".deepagents/skills");
 
 const getMiddlewares = (): AgentMiddleware[] => {
   // const fallbacks = getLLMFallbacks("coding", "slow", "paid");
@@ -136,7 +136,7 @@ export async function createCodingAgent(state: MinimalCodingAgentState, systemPr
     name: "coding-agent",
     systemPrompt: finalSystemPrompt,
     backend: () => backend as any,
-    subagents: [copywriterSubAgent, coderSubAgent, designerSubAgent],
+    subagents: [copywriterSubAgent, coderSubAgent],
     tools: [new SearchIconsTool()],
     middleware: middlewares as any,
     checkpointer: checkpointer as any,

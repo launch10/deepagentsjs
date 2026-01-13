@@ -118,7 +118,7 @@ describe.sequential("Website Builder", () => {
   });
 
   describe("Page Generation", () => {
-    it.only("generates a complete landing page with required sections", async () => {
+    it("generates a complete landing page with required sections", async () => {
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
@@ -164,7 +164,6 @@ describe.sequential("Website Builder", () => {
       expect(indexPage?.content).toContain("Feature"); // It includes the sections
 
       await saveExample(websiteId, "scheduling-tool"); // So we can see the result
-      debugger;
     }, 300000);
 
     it("uses theme colors in generated components", async () => {

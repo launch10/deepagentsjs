@@ -94,9 +94,6 @@ Heroes often need visual interest even without product images:
 </section>
 \`\`\`
 
-### Icons
-
-**Always use Lucide icons** (already available in the project):
 
 \`\`\`tsx
 import { Zap, Shield, BarChart, Globe, Users, Mail, Check } from "lucide-react";

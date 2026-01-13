@@ -7,3 +7,4 @@ export * as File from "./file";
 export * from "./theme";
 export * from "./commands";
 export * from "./file";
+export * from "./image";

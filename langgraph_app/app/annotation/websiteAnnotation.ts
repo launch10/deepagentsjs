@@ -26,12 +26,12 @@ export const WebsiteAnnotation = Annotation.Root({
     reducer: (current, next) => next,
   }),
 
-  images: Annotation<Array<{ url: string; isLogo: boolean }>>({
+  images: Annotation<Website.Image[]>({
     default: () => [],
     reducer: (current, next) => next,
   }),
 
-  consoleErrors: Annotation<ConsoleError[]>({
+  consoleErrors: Annotation<Website.Errors.ConsoleError[]>({
     default: () => [],
     reducer: (current, next) => [...current, ...next],
   }),
