@@ -8,15 +8,12 @@ import { codingToolsPrompt, trackingContextPrompt, environmentPrompt } from "@pr
 const TASK_NAME = "Instrumentation" as const;
 
 const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunnableConfig) => {
-  const [
-    tools,
-    trackingContext,
-    environment
-  ] = await Promise.all([
-    codingToolsPrompt(state, config),
-    trackingContextPrompt(state, config),
-    environmentPrompt(state, config),
-  ])
+  let mergedState = { ...state, isFirstMessage: false };
+  const [tools, trackingContext, environment] = await Promise.all([
+    codingToolsPrompt(mergedState, config),
+    trackingContextPrompt(mergedState, config),
+    environmentPrompt(mergedState, config),
+  ]);
 
   return `
     You are the analytics specialist for this website.
@@ -33,7 +30,7 @@ const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunna
       1. If it is, simply reply: CONFIRMED.
       2. If it is not, add the instrumentation and reply: FIXED.
   `;
-}
+};
 
 /**
  * Instrumentation Node
@@ -61,17 +58,20 @@ export const instrumentationNode = NodeMiddleware.use(
     try {
       const systemPrompt = await buildSystemPrompt(state, config);
 
-      const agent = await createCodingAgent({ 
-        ...state, 
-        isFirstMessage: false 
-      }, systemPrompt);
+      const agent = await createCodingAgent(
+        {
+          ...state,
+          isFirstMessage: false,
+        },
+        systemPrompt
+      );
       const result = await agent.invoke({
         messages: [
           {
             role: "user",
             content: `Verify that the landing page uses L10.createLead() for lead capture.`,
-          }
-        ]
+          },
+        ],
       });
       return {
         tasks: [

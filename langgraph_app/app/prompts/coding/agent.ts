@@ -14,9 +14,13 @@ import {
   themeColorsPrompt,
   environmentPrompt,
   typographyPrompt,
+  animationsPrompt,
   startByPrompt,
   linksPrompt,
   imagesPrompt,
+  fontAndResponsivePrompt,
+  designChecklistPrompt,
+  iconsPrompt,
   type CodingPromptState,
 } from "./shared";
 
@@ -40,9 +44,13 @@ export const buildCodingPrompt = async (
     themeColors,
     environment,
     typography,
+    animations,
     startBy,
     links,
     images,
+    icons,
+    fontAndResponsive,
+    designChecklist,
   ] = await Promise.all([
     userGoalPrompt(state, config),
     rolePrompt(state, config),
@@ -54,9 +62,13 @@ export const buildCodingPrompt = async (
     themeColorsPrompt(state, config),
     environmentPrompt(state, config),
     typographyPrompt(state, config),
+    animationsPrompt(state, config),
     startByPrompt(state, config),
     linksPrompt(state, config),
     imagesPrompt(state, config),
+    iconsPrompt(state, config),
+    fontAndResponsivePrompt(state, config),
+    designChecklistPrompt(state, config),
   ]);
 
   return `
@@ -72,20 +84,30 @@ ${tools}
 
 ${links}
 
+${icons}
+
 ${images}
 
 ${guidelines}
 
 ${tracking}
 
+## DESIGN GUIDANCE
+
 ${themeColors}
 
 ${typography}
 
+${animations}
+
+${fontAndResponsive}
+
+## EXECUTION
+
 ${environment}
 
-${workflow}
-
 ${startBy}
+
+${designChecklist}
 `;
 };

@@ -7,6 +7,10 @@ CarrierWave.configure do |config|
     config.storage = :file
     # Disable processing in unit tests for speed, but keep it for E2E (USE_LOCAL_STORAGE)
     config.enable_processing = ENV["USE_LOCAL_STORAGE"] == "true"
+    # Use dev CDN for asset_host so file.url returns publicly accessible URLs
+    # This is required for APIs that need full URLs (e.g., OpenAI vision API)
+    # Test snapshots use files that already exist on dev-uploads CDN
+    config.asset_host = "https://dev-uploads.launch10.ai"
   else
     config.storage = :aws
     config.aws_bucket = ENV.fetch("CLOUDFLARE_UPLOADS_BUCKET") do

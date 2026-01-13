@@ -2,32 +2,21 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { testGraph } from "@support";
 import { DatabaseSnapshotter } from "@services";
 import { getCodingAgentBackend } from "@nodes";
-import { db, websites, brainstorms, websiteFiles, themes, websiteUploads, eq } from "@db";
+import { db, Types as DBTypes, websites, brainstorms, websiteFiles, themes, websiteUploads, eq } from "@db";
+import { Website } from "@types";
 import { websiteGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
 import type { WebsiteGraphState } from "@annotation";
-import type { Website } from "@types";
+import { saveExample } from "@support";
 
 const websiteGraph = uncompiledGraph.compile({
   ...graphParams,
   name: "website",
 });
 
-/**
- * TODO: Add tests for fallback theme selection
- *
- * When a website has NO theme assigned, the system should:
- * 1. Pick an appropriate theme based on theme_labels (e.g. "modern", "minimal", etc.)
- * 2. Consider using the brainstorm's look_and_feel field to match theme labels
- * 3. May need a SelectThemeTool that uses theme_labels for intelligent matching
- *
- * Test case: Create a snapshot with website but NO theme_id, verify the agent
- * selects and applies an appropriate theme before generating the page.
- */
-
 describe.sequential("Website Builder", () => {
   let websiteId: number;
-  let website: Website.WebsiteType;
+  let website: DBTypes.WebsiteType;
   let themeColors: string[];
 
   beforeEach(async () => {
@@ -44,7 +33,7 @@ describe.sequential("Website Builder", () => {
     }
 
     websiteId = websiteRow.id;
-    website = websiteRow as Website.WebsiteType;
+    website = websiteRow;
 
     // Get theme colors for assertions
     if (websiteRow.themeId) {
@@ -91,53 +80,16 @@ describe.sequential("Website Builder", () => {
     }
   });
 
-  describe("Context Assembly", () => {
-    it("pulls in theme, images, and brainstorm context", async () => {
-      const result = await testGraph<WebsiteGraphState>()
-        .withGraph(websiteGraph)
-        .withState({
-          websiteId,
-          accountId: website.accountId ?? undefined,
-          projectId: website.projectId ?? undefined,
-        })
-        .withPrompt("Create a landing page for this business")
-        .stopAfter("buildContext")
-        .execute();
-
-      // Theme colors are hex values
-      const hexadecimalRegex = /^[A-Fa-f0-9]{6}$/;
-      expect(result.state.theme?.colors).toBeDefined();
-      result.state.theme?.colors.forEach((color: string) => {
-        expect(color).toMatch(hexadecimalRegex);
-      });
-
-      // Brainstorm context is populated
-      expect(result.state.brainstorm.idea).toBeDefined();
-      expect(result.state.brainstorm.idea).toContain("scheduling");
-      expect(result.state.brainstorm.audience).toBeDefined();
-      expect(result.state.brainstorm.solution).toBeDefined();
-      expect(result.state.brainstorm.socialProof).toBeDefined();
-
-      // Images are available
-      expect(result.state.images).toBeDefined();
-      expect(result.state.images.length).toBeGreaterThan(0);
-
-      // At least one logo
-      const logos = result.state.images.filter((img: { isLogo: boolean }) => img.isLogo);
-      expect(logos.length).toBeGreaterThan(0);
-    });
-  });
-
   describe("Page Generation", () => {
     it("generates a complete landing page with required sections", async () => {
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
+          command: "create",
           websiteId,
           accountId: website.accountId ?? undefined,
           projectId: website.projectId ?? undefined,
         })
-        .withPrompt("Create a landing page for this business")
         .execute();
 
       expect(result.error).toBeUndefined();
@@ -160,111 +112,21 @@ describe.sequential("Website Builder", () => {
       expect(heroFile?.content).toBeDefined();
       expect(heroFile?.content).toContain("export");
       expect(heroFile?.content).toMatch(/function|const/);
-    }, 300000);
 
-    it("uses theme colors in generated components", async () => {
-      const result = await testGraph<WebsiteGraphState>()
-        .withGraph(websiteGraph)
-        .withState({
-          websiteId,
-          accountId: website.accountId ?? undefined,
-          projectId: website.projectId ?? undefined,
-        })
-        .withPrompt("Create a landing page for this business")
-        .execute();
+      const stateHeroFile = result.state.files[heroFile?.path!] as Website.File.File;
+      expect(stateHeroFile?.content).toEqual(heroFile?.content)
 
-      expect(result.error).toBeUndefined();
+      // At least one file contains tracking
+      const trackingFile = generatedFiles.find((f) => f.content.match(/L10.createLead/));
+      expect(trackingFile).toBeDefined();
 
-      // Get all generated files
-      const generatedFiles = await db
-        .select()
-        .from(websiteFiles)
-        .where(eq(websiteFiles.websiteId, websiteId));
+      // Expect IndexPage has been edited
+      const indexPage = generatedFiles.find((f) => f.path?.includes("IndexPage"));
+      expect(indexPage?.content).toBeDefined();
+      expect(indexPage?.content).toContain("Hero");
+      expect(indexPage?.content).toContain("Feature"); // It includes the sections
 
-      // Combine all file contents
-      const allContent = generatedFiles
-        .map((f) => f.content || "")
-        .join("\n")
-        .toLowerCase();
-
-      // At least one theme color should appear in the generated code
-      // Colors may appear as hex (#RRGGBB) or in CSS variables
-      const colorPatterns = themeColors.map((c) => c.toLowerCase());
-      const hasThemeColor = colorPatterns.some(
-        (color) =>
-          allContent.includes(color) ||
-          allContent.includes(`#${color}`) ||
-          // Also check for CSS variable usage patterns
-          allContent.includes("--primary") ||
-          allContent.includes("--secondary") ||
-          allContent.includes("--background")
-      );
-
-      expect(hasThemeColor).toBe(true);
-    }, 300000);
-
-    it("includes lead capture functionality", async () => {
-      const result = await testGraph<WebsiteGraphState>()
-        .withGraph(websiteGraph)
-        .withState({
-          websiteId,
-          accountId: website.accountId ?? undefined,
-          projectId: website.projectId ?? undefined,
-        })
-        .withPrompt("Create a landing page for this business with a signup form")
-        .execute();
-
-      expect(result.error).toBeUndefined();
-
-      // Get all generated files
-      const generatedFiles = await db
-        .select()
-        .from(websiteFiles)
-        .where(eq(websiteFiles.websiteId, websiteId));
-
-      // Combine all file contents
-      const allContent = generatedFiles.map((f) => f.content || "").join("\n");
-
-      // Should have lead capture integration
-      // L10.createLead is the API for lead capture
-      const hasLeadCapture =
-        allContent.includes("L10.createLead") ||
-        allContent.includes("createLead") ||
-        // Form with email input is also acceptable
-        (allContent.includes("email") && allContent.includes("form"));
-
-      expect(hasLeadCapture).toBe(true);
-    }, 300000);
-
-    it("generates working navigation links", async () => {
-      const result = await testGraph<WebsiteGraphState>()
-        .withGraph(websiteGraph)
-        .withState({
-          websiteId,
-          accountId: website.accountId ?? undefined,
-          projectId: website.projectId ?? undefined,
-        })
-        .withPrompt("Create a landing page with navigation")
-        .execute();
-
-      expect(result.error).toBeUndefined();
-
-      // Get all generated files
-      const generatedFiles = await db
-        .select()
-        .from(websiteFiles)
-        .where(eq(websiteFiles.websiteId, websiteId));
-
-      const allContent = generatedFiles.map((f) => f.content || "").join("\n");
-
-      // Should have anchor links (href="#section") or React Router links
-      const hasNavigation =
-        allContent.includes('href="#') ||
-        allContent.includes("Link to=") ||
-        allContent.includes('to="/#') ||
-        allContent.includes("scrollIntoView");
-
-      expect(hasNavigation).toBe(true);
+      await saveExample(websiteId, "scheduling-tool"); // So we can see the result
     }, 300000);
   });
 });

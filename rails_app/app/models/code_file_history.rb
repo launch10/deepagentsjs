@@ -2,17 +2,16 @@
 #
 # Table name: code_file_histories
 #
-#  content               :string
-#  content_tsv           :tsvector
-#  path                  :string
-#  shasum                :string
-#  source_type           :text
-#  created_at            :datetime
-#  updated_at            :datetime
-#  file_specification_id :integer
-#  snapshot_id           :string
-#  source_id             :bigint
-#  website_id            :integer
+#  content     :string
+#  content_tsv :tsvector
+#  path        :string
+#  shasum      :string
+#  source_type :text
+#  created_at  :datetime
+#  updated_at  :datetime
+#  snapshot_id :string
+#  source_id   :bigint
+#  website_id  :integer
 #
 class CodeFileHistory < ApplicationRecord
   self.table_name = "code_file_histories"

@@ -4,9 +4,15 @@ import { ErrorExporter } from "@services";
 import { existsSync, readFileSync, writeFileSync, statSync, readdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { db, websiteFiles, websites, eq, sql } from "@db";
-import type { WebsiteFileType, ConsoleError, CombinedErrors } from "@types";
+import { Website, type ConsoleError, type CombinedErrors } from "@types";
 import { loadScenarioConfig, loadScenarioModifications } from "./scenarioSaver";
 import { withTimestamps } from "@db";
+
+type WebsiteFileType = {
+  path: string;
+  content: string;
+  websiteId: number;
+}
 
 // File modification schema for inline modifications
 export const fileModificationSchema = z.object({

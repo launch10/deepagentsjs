@@ -1,6 +1,6 @@
 import { db, websites, eq } from "@db";
 import { Website } from "@types";
-import { createDeepAgent } from "deepagents";
+import { createDeepAgent, createSkillsMiddleware, createSettings } from "deepagents";
 import { getLLM, getLLMFallbacks } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
@@ -14,6 +14,7 @@ import {
 } from "langchain";
 import { buildCodingPrompt, type CodingPromptState } from "@prompts";
 import { ThemeAPIService } from "@rails_api";
+import path from "path";
 
 export type MinimalCodingAgentState = {
   websiteId?: number;
@@ -23,16 +24,26 @@ export type MinimalCodingAgentState = {
   isFirstMessage?: boolean;
 };
 
+// Skills directory for design-focused agent skills
+const SKILLS_DIR = path.join(process.cwd(), ".deepagents/skills");
+
 const getMiddlewares = (): AgentMiddleware[] => {
-  const fallbacks = getLLMFallbacks("coding", "slow", "paid");
-  const modelFallbackMiddleware = modelFallbackMiddlewareBuilder(...fallbacks);
+  // const fallbacks = getLLMFallbacks("coding", "slow", "paid");
+  // const modelFallbackMiddleware = modelFallbackMiddlewareBuilder(...fallbacks);
   // TODO: We get error: SummarizationMiddleware is defined multiple times... is it defined inside deepagents lib?
   // const summarizationMiddleware = summarizationMiddlewareBuilder({
   //   model: getLLM("reasoning", "fast", "paid"),
   //   trigger: { fraction: 0.7 },
   //   keep: { messages: 15 },
   // });
-  return [toolRetryMiddleware(), modelFallbackMiddleware];
+
+  // Skills middleware for design-focused skills
+  const skillsMiddleware = createSkillsMiddleware({
+    skillsDir: SKILLS_DIR,
+    assistantId: "coding-agent",
+  });
+
+  return [toolRetryMiddleware(), skillsMiddleware];
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
@@ -50,7 +61,7 @@ export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
     throw new Error(`Website ${state.websiteId} not found`);
   }
 
-  const website = websiteRow as Website.WebsiteType;
+  const website = websiteRow;
 
   // Move to using, so it will auto-cleanup, and add the async cleanup functions!
   const backend = await WebsiteFilesBackend.create({
@@ -78,10 +89,12 @@ const getTheme = async (
     const themeAPI = new ThemeAPIService({ jwt: state.jwt });
     const theme = await themeAPI.get(websiteRow.themeId);
 
+    console.log(theme);
     return {
       id: theme.id,
       name: theme.name,
       colors: theme.colors,
+      semanticVariables: theme.theme, // CSS custom properties (HSL values)
       typography_recommendations: theme.typography_recommendations,
     };
   }
@@ -116,6 +129,7 @@ export async function createCodingAgent(state: MinimalCodingAgentState, systemPr
 
   // Build prompt - now async
   const finalSystemPrompt = systemPrompt || (await buildCodingPrompt(promptState));
+  console.log(finalSystemPrompt);
 
   return createDeepAgent({
     model: llm as any,

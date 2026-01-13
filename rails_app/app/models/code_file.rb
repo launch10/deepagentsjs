@@ -2,17 +2,16 @@
 #
 # Table name: code_files
 #
-#  content               :string
-#  content_tsv           :tsvector
-#  embedding             :vector(1536)
-#  path                  :string
-#  shasum                :string
-#  source_type           :text
-#  created_at            :datetime
-#  updated_at            :datetime
-#  file_specification_id :bigint
-#  source_id             :bigint
-#  website_id            :bigint
+#  content     :string
+#  content_tsv :tsvector
+#  embedding   :vector(1536)
+#  path        :string
+#  shasum      :string
+#  source_type :text
+#  created_at  :datetime
+#  updated_at  :datetime
+#  source_id   :bigint
+#  website_id  :bigint
 #
 
 class CodeFile < ApplicationRecord

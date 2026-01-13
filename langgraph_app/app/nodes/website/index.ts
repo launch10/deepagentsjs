@@ -1,3 +1,3 @@
 export * from "./websiteBuilder";
 export * from "./buildContext";
-export * from "./validateLinks";
+export * from "./syncFiles";

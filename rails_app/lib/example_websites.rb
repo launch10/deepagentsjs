@@ -39,6 +39,7 @@ class ExampleWebsites
 
     Dir.glob("**/*", base: path)
       .reject { |f| File.directory?(File.join(path, f)) }
+      .reject { |f| f.start_with?("node_modules/") || f.include?("/node_modules/") }
       .map { |relative_path| ExampleFile.new(self, relative_path) }
   end
 

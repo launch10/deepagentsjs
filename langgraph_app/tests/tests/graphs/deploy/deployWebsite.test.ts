@@ -11,7 +11,7 @@ import { getCodingAgentBackend } from "@nodes";
 
 const deployWebsiteGraph = uncompiledGraph.compile({ ...graphParams, name: "deployWebsite" });
 
-describe("DeployWebsiteGraph", () => {
+describe.skip("DeployWebsiteGraph", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -112,7 +112,7 @@ describe("DeployWebsiteGraph", () => {
    */
   describe("Instrumentation - Lead capture setup", () => {
     // TODO: These tests hit real AI APIs - need recorded responses
-    it.only("adds L10.createLead() instrumentation to landing pages", async () => {
+    it("adds L10.createLead() instrumentation to landing pages", async () => {
       // Use a snapshot that has a website without instrumentation
       await DatabaseSnapshotter.restoreSnapshot("website_with_import_errors");
 

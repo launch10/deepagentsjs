@@ -2832,6 +2832,34 @@ RSpec.describe "Campaigns API", type: :request do
               expect(data.dig("errors", "location_targets[0].city")).to include("can't be blank")
             end
           end
+
+          response '422', 'returns field-keyed error when GeoTargetConstant not found' do
+            schema APISchemas::Campaign.error_response
+            let(:campaign_params) do
+              {
+                campaign: {
+                  location_targets: [
+                    {
+                      criteria_id: 999999,
+                      name: 'Nonexistent Location',
+                      target_type: 'Country',
+                      country_code: 'XX',
+                      targeted: true
+                    }
+                  ]
+                }
+              }
+            end
+
+            run_test! do |response|
+              data = JSON.parse(response.body)
+              expect(data["errors"]).to be_present
+              # Error should be keyed to location_targets field, not returned as array
+              expect(data["errors"]).to be_a(Hash)
+              expect(data.dig("errors", "location_targets")).to be_present
+              expect(data.dig("errors", "location_targets").first).to include("GeoTargetConstant not found")
+            end
+          end
         end
 
         describe 'Ad schedule validations' do

@@ -20,14 +20,12 @@ import {
 
 export class LLMManagerFactory {
   mode: "test" | "regular" = "regular";
-  private config: LLMAppConfig;
-  private fallbackConfig: LLMFallbackAppConfig;
+  private config: LLMFallbackAppConfig;
   private llmCache: Partial<Record<string, BaseChatModel>>;
 
-  constructor(config: LLMAppConfig, fallbackConfig: LLMFallbackAppConfig) {
+  constructor(config: LLMFallbackAppConfig) {
     this.llmCache = {};
     this.config = config;
-    this.fallbackConfig = fallbackConfig;
   }
 
   reset() {
@@ -77,19 +75,33 @@ export class LLMManagerFactory {
 
   /**
    * Creates a model instance from a config object.
-   * Returns null if the model is not properly configured (missing API key, etc.)
+   * Returns null if the model is disabled or not properly configured (missing API key, etc.)
    */
   createModelFromConfig(config: LLMConfig): BaseChatModel | null {
+    // Check if model is explicitly disabled
+    if (config.enabled === false) {
+      return null;
+    }
+
     switch (config.provider) {
-      case "anthropic":
+      case "anthropic": {
         if (!this.apiConfigured(config)) {
           return null;
         }
-        return new ChatAnthropic({
+        const model = new ChatAnthropic({
           apiKey: config.apiKey,
           model: config.modelCard,
           temperature: config.temperature,
         });
+        // WORKAROUND: @langchain/anthropic has a bug where it checks for "opus-4-1"
+        // instead of "opus-4-5", so claude-opus-4-5 takes the legacy branch where
+        // topP/topK default to -1. Anthropic API rejects -1, so we must set them
+        // to undefined AFTER construction to bypass the constructor's fallback logic.
+        // See: https://github.com/langchain-ai/langchainjs/issues/XXXX
+        model.topP = undefined;
+        (model as unknown as { topK: number | undefined }).topK = undefined;
+        return model;
+      }
       case "openai":
         if (!this.apiConfigured(config)) {
           return null;
@@ -120,30 +132,6 @@ export class LLMManagerFactory {
     }
   }
 
-  getModel(llmSkill: LLMSkill, llmSpeed: LLMSpeed, llmCost: LLMCost) {
-    // Get the specific config for the requested skill, speed, and tier
-    const speedConfig = this.config[llmCost]?.[llmSpeed];
-    if (!speedConfig) {
-      throw new Error(`LLM configuration not found for tier '${llmCost}' and speed '${llmSpeed}'.`);
-    }
-
-    const config: LLMConfig | undefined = speedConfig[llmSkill];
-    if (!config) {
-      throw new Error(
-        `LLM configuration not found for skill '${llmSkill}' within tier '${llmCost}' and speed '${llmSpeed}'.`
-      );
-    }
-
-    const modelInstance = this.createModelFromConfig(config);
-    if (!modelInstance) {
-      throw new Error(
-        `Failed to create model for ${config.provider} - check API keys and configuration`
-      );
-    }
-
-    return modelInstance;
-  }
-
   /**
    * Get available fallback configs for a given skill/speed/cost combination.
    * Returns configs that are within the usage threshold.
@@ -156,7 +144,7 @@ export class LLMManagerFactory {
     llmCost: LLMCost,
     usagePercent: number = 0
   ): LLMConfig[] {
-    const speedConfig = this.fallbackConfig[llmCost]?.[llmSpeed];
+    const speedConfig = this.config[llmCost]?.[llmSpeed];
     if (!speedConfig) {
       throw new Error(
         `LLM fallback configuration not found for tier '${llmCost}' and speed '${llmSpeed}'.`
@@ -282,7 +270,7 @@ export class LLMManagerFactory {
     if (cacheKey in this.llmCache) {
       return this.llmCache[cacheKey]!;
     }
-    const result = this.getModel(llmSkill, llmSpeed, llmCost);
+    const result = this.getFirstAvailableModel(llmSkill, llmSpeed, llmCost);
     this.llmCache[cacheKey] = result;
     return result;
   }

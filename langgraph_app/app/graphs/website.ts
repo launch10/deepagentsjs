@@ -1,17 +1,22 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
-import { WebsiteAnnotation } from "@annotation";
-import { buildContext, websiteBuilderNode, cleanupFilesystemNode, validateLinksNode } from "@nodes";
+import { WebsiteAnnotation, type WebsiteGraphState } from "@annotation";
+import { buildContext, websiteBuilderNode, cleanupFilesystemNode, syncFilesNode } from "@nodes";
+import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 
 export const websiteGraph = new StateGraph(WebsiteAnnotation)
   .addNode("buildContext", buildContext)
   .addNode("websiteBuilder", websiteBuilderNode)
-  .addNode("validateLinks", validateLinksNode)
   .addNode("cleanupFilesystem", cleanupFilesystemNode)
+  .addNode("syncFiles", syncFilesNode)
+  .addNode("cleanupState", (state: WebsiteGraphState, config: LangGraphRunnableConfig) => {
+    return {
+      command: undefined,
+    };
+  })
 
   .addEdge(START, "buildContext")
   .addEdge("buildContext", "websiteBuilder")
-  .addEdge("websiteBuilder", "validateLinks")
-  .addConditionalEdges("validateLinks", (state) =>
-    state.status === "completed" ? "cleanupFilesystem" : "websiteBuilder"
-  )
-  .addEdge("cleanupFilesystem", END);
+  .addEdge("websiteBuilder", "cleanupFilesystem")
+  .addEdge("cleanupFilesystem", "syncFiles")
+  .addEdge("syncFiles", "cleanupState")
+  .addEdge("cleanupState", END);

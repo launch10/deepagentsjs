@@ -1,11 +1,15 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import type { PrimaryKeyType } from "@types";
-import { Brainstorm, Website } from "@types";
-import { Core, type ConsoleError } from "@types";
+import { Brainstorm, Website, Core, type ConsoleError } from "@types";
 
 export const WebsiteAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
+
+  command: Annotation<Website.CommandName | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next,
+  }),
 
   brainstormId: Annotation<PrimaryKeyType | undefined>({
     default: () => undefined,
@@ -22,12 +26,12 @@ export const WebsiteAnnotation = Annotation.Root({
     reducer: (current, next) => next,
   }),
 
-  images: Annotation<Array<{ url: string; isLogo: boolean }>>({
+  images: Annotation<Website.Image[]>({
     default: () => [],
     reducer: (current, next) => next,
   }),
 
-  consoleErrors: Annotation<ConsoleError[]>({
+  consoleErrors: Annotation<Website.Errors.ConsoleError[]>({
     default: () => [],
     reducer: (current, next) => [...current, ...next],
   }),
@@ -40,6 +44,13 @@ export const WebsiteAnnotation = Annotation.Root({
   status: Annotation<Core.Status>({
     default: () => "pending",
     reducer: (current, next) => next,
+  }),
+
+  // Files synced from database via syncFilesToState node after agent completes
+  // FileData format: { content: string[], created_at: string, modified_at: string }
+  files: Annotation<Website.FileMap>({
+    default: () => ({}),
+    reducer: (current, next) => ({ ...current, ...next }),
   }),
 });
 

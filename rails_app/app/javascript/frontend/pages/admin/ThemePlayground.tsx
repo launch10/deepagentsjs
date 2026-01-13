@@ -81,14 +81,34 @@ function transformThemeVars(theme: Record<string, string>): React.CSSProperties 
   const transformed: Record<string, string> = {};
 
   for (const [key, value] of Object.entries(theme)) {
+    // Wrap bare HSL values in hsl() function
+    // Values look like "43 74% 66%" and need to become "hsl(43 74% 66%)"
+    const wrappedValue = wrapHslValue(value);
+
     if (key.startsWith("--") && !key.startsWith("--color-")) {
-      transformed[`--color-${key.slice(2)}`] = value;
+      transformed[`--color-${key.slice(2)}`] = wrappedValue;
     } else {
-      transformed[key] = value;
+      transformed[key] = wrappedValue;
     }
   }
 
   return transformed as React.CSSProperties;
+}
+
+// Wrap bare HSL string in hsl() function if needed
+// "43 74% 66%" -> "hsl(43 74% 66%)"
+// Already wrapped values pass through unchanged
+function wrapHslValue(value: string): string {
+  if (!value || typeof value !== "string") return value;
+  // Already wrapped in hsl/rgb/etc
+  if (value.startsWith("hsl") || value.startsWith("rgb") || value.startsWith("#")) {
+    return value;
+  }
+  // Looks like bare HSL: "43 74% 66%" or "43, 74%, 66%"
+  if (/^\d+[\s,]+\d+%[\s,]+\d+%$/.test(value.trim())) {
+    return `hsl(${value})`;
+  }
+  return value;
 }
 
 export default function ThemePlayground({ themes }: ThemePlaygroundProps) {
@@ -541,7 +561,7 @@ function SurfaceReference({ theme }: { theme: Theme }) {
               <div key={key} className="flex items-center gap-2">
                 <div
                   className="w-4 h-4 rounded border border-neutral-200 flex-shrink-0"
-                  style={{ backgroundColor: value.toString() }}
+                  style={{ backgroundColor: wrapHslValue(value.toString()) }}
                 />
                 <span className="text-neutral-600">{key}:</span>
                 <span className="text-neutral-900 truncate">{value}</span>

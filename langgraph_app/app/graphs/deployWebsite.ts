@@ -4,6 +4,7 @@ import {
   instrumentationNode,
   deployWebsiteNode,
   runtimeValidationNode,
+  validateLinksNode,
   bugFixNode,
   createEnqueueNode,
 } from "@nodes";
@@ -21,19 +22,22 @@ const getTaskStatus = (state: DeployGraphState, name: Task.TaskName) =>
  * Orchestrates website deployment to Cloudflare.
  *
  * 1) Ensure instrumentation is up to date
- * 2) Validate website
- * 3) If validation fails, fix with coding agent
- * 4) Deploy website
+ * 2) Validate links (static analysis)
+ * 3) Validate website (runtime with Playwright)
+ * 4) If validation fails, fix with coding agent
+ * 5) Deploy website
  */
 export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
   // Enqueue nodes (lightweight, checkpoint state before work)
   .addNode("enqueueInstrumentation", createEnqueueNode("Instrumentation"))
-  .addNode("enqueueValidation", createEnqueueNode("RuntimeValidation"))
+  .addNode("enqueueValidateLinks", createEnqueueNode("ValidateLinks"))
+  .addNode("enqueueRuntimeValidation", createEnqueueNode("RuntimeValidation"))
   .addNode("enqueueBugFix", createEnqueueNode("BugFix"))
   .addNode("enqueueDeploy", createEnqueueNode("WebsiteDeploy"))
 
   // Work nodes
   .addNode("instrumentation", instrumentationNode)
+  .addNode("validateLinks", validateLinksNode)
   .addNode("runtimeValidation", runtimeValidationNode)
   .addNode("bugFixNode", bugFixNode)
   .addNode("deployWebsite", deployWebsiteNode)
@@ -48,12 +52,23 @@ export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
     return "enqueueInstrumentation";
   })
   .addEdge("enqueueInstrumentation", "instrumentation")
-  .addEdge("instrumentation", "enqueueValidation")
-  .addEdge("enqueueValidation", "runtimeValidation")
+  .addEdge("instrumentation", "enqueueValidateLinks")
+  .addEdge("enqueueValidateLinks", "validateLinks")
 
-  // Validation routing: pass → deploy, fail → fix (with retry limit)
+  // Link validation routing: pass → runtime validation, fail → fix
+  .addConditionalEdges("validateLinks", (state) => {
+    const task = Task.findTask(state.tasks, "ValidateLinks");
+    if (task?.status === "completed") {
+      return "enqueueRuntimeValidation";
+    }
+    return "enqueueBugFix";
+  })
+
+  .addEdge("enqueueRuntimeValidation", "runtimeValidation")
+
+  // Runtime validation routing: pass → deploy, fail → fix (with retry limit)
   .addConditionalEdges("runtimeValidation", (state) => {
-    const task = Task.findTask(state.tasks, "RuntimeValidation")
+    const task = Task.findTask(state.tasks, "RuntimeValidation");
     const status = task?.status;
     if (status === "completed") {
       return "enqueueDeploy";
@@ -65,10 +80,10 @@ export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
     return "enqueueBugFix";
   })
 
-  // Fix loop back to instrumentation (re-enqueue for retry)
+  // Fix loop back to validateLinks (re-validate after fix)
   .addEdge("enqueueBugFix", "bugFixNode")
-  .addEdge("bugFixNode", "runtimeValidation")
+  .addEdge("bugFixNode", "validateLinks")
 
   // Deploy
   .addEdge("enqueueDeploy", "deployWebsite")
-  .addEdge("deployWebsite", END)
+  .addEdge("deployWebsite", END);

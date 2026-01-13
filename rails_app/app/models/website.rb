@@ -28,6 +28,7 @@ class Website < ApplicationRecord
   include Atlas::Website
   include WebsiteConcerns::ShasumHashable
   include WebsiteConcerns::FileManagement
+  include WebsiteConcerns::ThemeCssInjection
   historiographer_mode :snapshot_only
 
   belongs_to :project
@@ -44,11 +45,9 @@ class Website < ApplicationRecord
   has_many :website_urls, dependent: :destroy
   alias_method :urls, :website_urls
   has_many :deploys, class_name: "WebsiteDeploy", dependent: :destroy
-  has_one :content_strategy, class_name: "ContentStrategy"
-  alias_method :strategy, :content_strategy
 
   has_many :website_uploads
-  has_many :uploads, through: :website_uploads
+  has_many :uploads, -> { order(:id) }, through: :website_uploads
   has_many :campaigns
   alias_method :ad_campaigns, :campaigns
 
@@ -151,6 +150,6 @@ class Website < ApplicationRecord
   end
 
   def set_default_theme
-    self.theme = Theme.first if theme.nil?
+    self.theme = Theme.order(id: :asc).first if theme.nil?
   end
 end

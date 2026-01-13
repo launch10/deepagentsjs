@@ -26,6 +26,7 @@ class Theme < ApplicationRecord
 
   has_many :theme_to_theme_labels, dependent: :destroy
   has_many :theme_labels, through: :theme_to_theme_labels
+  has_many :websites
   belongs_to :author, class_name: "Account", optional: true
 
   alias_method :labels, :theme_labels

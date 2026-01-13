@@ -32,6 +32,10 @@ class API::V1::CampaignsController < API::BaseController
       render json: {errors: e.errors}, status: :unprocessable_entity and return
     rescue ActiveRecord::RecordInvalid => e
       render json: {errors: e.record.errors.full_messages}, status: :unprocessable_entity and return
+    rescue ActiveRecord::RecordNotFound => e
+      # Return field-keyed errors for better frontend handling
+      field = e.message.include?("GeoTargetConstant") ? "location_targets" : "base"
+      render json: {errors: {field => [e.message]}}, status: :unprocessable_entity and return
     rescue => e
       render json: {errors: [e.message]}, status: :unprocessable_entity and return
     end

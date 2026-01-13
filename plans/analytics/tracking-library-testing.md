@@ -6,6 +6,200 @@ The L10 tracking library enables conversion tracking for Launch10 landing pages.
 
 ---
 
+## Current State vs. Plan (2025-01-12)
+
+We built our first website (`scheduling-tool`) and evaluated the generated `tracking.ts`. The implementation diverges significantly from this plan.
+
+### Gap Analysis
+
+| Feature | Plan (Target) | Rails Template | Built (scheduling-tool) |
+|---------|---------------|----------------|-------------------------|
+| **API endpoint** | `${VITE_API_BASE_URL}/api/v1/leads` | ✅ Same | ❌ `/api/leads` (relative) |
+| **Auth token** | `token: VITE_SIGNUP_TOKEN` | ✅ Same | ❌ None |
+| **Google send_to** | `VITE_GOOGLE_ADS_SEND_TO` | `${VITE_GOOGLE_ADS_ID}/signup` | `${googleAdsId}/${labels[label]}` |
+| **Config source** | Vite env vars (build-time) | ✅ Same | ❌ `window.L10_CONFIG` (runtime) |
+| **gclid capture** | ✅ Yes | ❌ No | ❌ No |
+| **LeadError class** | ✅ Yes | ✅ Yes | ❌ Generic Error |
+
+### Root Cause
+
+**Stale template seeds.** The `template_files` table in the database was not synced with the filesystem.
+
+The website builder correctly uses template files from the database (via `TemplateFile` records). However, the canonical `tracking.ts` at `rails_app/templates/default/src/lib/tracking.ts` was not in the database because seeds hadn't been run recently.
+
+Template files are seeded by `rails_app/spec/snapshot_builders/core/templates.rb`, which:
+1. Reads all files from `rails_app/templates/{template_name}/**/*`
+2. Upserts them into `template_files` table
+
+**Fix:** Run `bundle exec rake db:seed` in rails_app to sync template files.
+
+### What Would Break in Production
+
+1. **`/api/leads` (relative URL)** - Won't work on Atlas; needs absolute URL to Rails backend
+2. **No auth token** - Rails API will reject unauthenticated requests
+3. **No gclid** - Attribution broken; can't track which ad clicks convert
+
+---
+
+## Next Steps
+
+### Phase 0: Sync Template Files (Immediate Fix)
+
+```bash
+cd rails_app && bundle exec rake db:seed
+```
+
+This syncs the canonical `tracking.ts` to the database so the website builder will use it.
+
+### Phase 1: Update Rails Template to Match Spec
+
+1. **Add `getGclid()` function** (currently missing from Rails template)
+2. **Change `VITE_GOOGLE_ADS_ID` → `VITE_GOOGLE_ADS_SEND_TO`** (full send_to string)
+3. **Include `gclid: getGclid()` in POST body**
+4. **Re-run seeds** after updating the template file
+
+### Phase 2: Build-Time Injection (buildable.rb)
+
+5. **Implement `write_env_file!`** in buildable.rb
+   - Write `VITE_API_BASE_URL`
+   - Write `VITE_SIGNUP_TOKEN`
+   - Write `VITE_GOOGLE_ADS_SEND_TO`
+
+6. **Implement `inject_gtag_script!`** in buildable.rb
+   - Inject gtag.js into `<head>` before build
+
+### Phase 3: Google Ads Integration
+
+7. **Create ConversionAction on AdsAccount creation**
+   - Implement `GoogleAds::Resources::ConversionAction` service
+   - Store `conversion_label` on AdsAccount
+
+8. **Add gclid to Lead model**
+   - Migration to add `gclid` column
+   - Update leads controller to accept gclid
+
+---
+
+## Verification Testing Plan
+
+### Test 0: Template Sync (Prerequisite)
+
+**Goal:** Verify template files are synced to database
+
+```bash
+# Run seeds to sync templates
+cd rails_app && bundle exec rake db:seed
+
+# Verify tracking.ts exists in template_files
+rails runner "puts TemplateFile.find_by(path: 'src/lib/tracking.ts')&.content&.first(100)"
+```
+
+**Pass criteria:** Should output the beginning of tracking.ts content (not nil)
+
+### Test 1: Template Usage (Unit)
+
+**Goal:** Verify website builder uses canonical tracking.ts
+
+```bash
+# After building a website, compare tracking.ts
+diff rails_app/templates/default/src/lib/tracking.ts \
+     shared/websites/examples/scheduling-tool/src/lib/tracking.ts
+```
+
+**Pass criteria:** Files should be identical (or only differ by configuration)
+
+### Test 2: Env Vars Present (Integration)
+
+**Goal:** Verify buildable.rb writes correct env vars
+
+```bash
+# After build, check .env file
+cat shared/websites/examples/scheduling-tool/.env
+```
+
+**Expected output:**
+```
+VITE_API_BASE_URL=https://api.launch10.ai
+VITE_SIGNUP_TOKEN=abc123...
+VITE_GOOGLE_ADS_SEND_TO=AW-123456789/xyz789
+```
+
+### Test 3: gtag.js Injection (Integration)
+
+**Goal:** Verify gtag script injected into index.html
+
+```bash
+grep -A5 "googletagmanager" shared/websites/examples/scheduling-tool/index.html
+```
+
+**Pass criteria:** Should find gtag.js script with correct AW-xxx ID
+
+### Test 4: Lead Submission (E2E)
+
+**Goal:** End-to-end lead capture flow
+
+```typescript
+// e2e/lead_capture.spec.ts
+test('submits lead with gclid to correct endpoint', async ({ page }) => {
+  // Navigate with gclid
+  await page.goto('/?gclid=test123');
+
+  // Fill and submit form
+  await page.fill('[type="email"]', 'test@example.com');
+  await page.click('button[type="submit"]');
+
+  // Verify request went to correct endpoint with token
+  const request = await page.waitForRequest(r => r.url().includes('/api/v1/leads'));
+  const body = JSON.parse(request.postData());
+
+  expect(request.url()).toContain('api.launch10.ai');
+  expect(body.token).toBeDefined();
+  expect(body.gclid).toBe('test123');
+});
+```
+
+### Test 5: Conversion Tracking (E2E)
+
+**Goal:** Verify gtag conversion fires on success
+
+```typescript
+test('fires gtag conversion on successful lead submission', async ({ page }) => {
+  // Capture dataLayer pushes
+  const conversions = [];
+  await page.exposeFunction('captureConversion', (data) => conversions.push(data));
+  await page.addInitScript(() => {
+    window.gtag = (...args) => window.captureConversion(args);
+  });
+
+  await page.goto('/');
+  await page.fill('[type="email"]', 'test@example.com');
+  await page.click('button[type="submit"]');
+
+  // Wait for success state
+  await page.waitForSelector('text=You\'re on the list');
+
+  // Verify conversion fired
+  expect(conversions).toContainEqual(
+    expect.arrayContaining(['event', 'conversion', expect.objectContaining({ send_to: expect.stringMatching(/^AW-/) })])
+  );
+});
+```
+
+### Test 6: No Ads Account Fallback (E2E)
+
+**Goal:** Leads still work without Google Ads configured
+
+```typescript
+test('creates lead without ads account (no gtag)', async ({ page }) => {
+  // Build site without ads account configured
+  // Submit form
+  // Verify lead created successfully
+  // Verify no gtag errors in console
+});
+```
+
+---
+
 ## Architecture Overview
 
 ```

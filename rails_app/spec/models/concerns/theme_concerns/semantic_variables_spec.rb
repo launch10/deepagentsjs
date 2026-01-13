@@ -3,9 +3,9 @@
 require "rails_helper"
 
 RSpec.describe ThemeConcerns::SemanticVariables do
-  # Helper to extract HSL components from a CSS HSL string
+  # Helper to extract HSL components from a raw HSL string (shadcn format: "210 50% 98%")
   def parse_hsl(hsl_string)
-    match = hsl_string.match(/hsl\((\d+), (\d+)%, (\d+)%\)/)
+    match = hsl_string.match(/^(\d+) (\d+)% (\d+)%$/)
     return nil unless match
 
     {
@@ -15,7 +15,7 @@ RSpec.describe ThemeConcerns::SemanticVariables do
     }
   end
 
-  # Helper to convert HSL string back to hex for contrast checking
+  # Helper to convert raw HSL string back to hex for contrast checking
   def hsl_to_hex(hsl_string)
     parsed = parse_hsl(hsl_string)
     return nil unless parsed
@@ -89,10 +89,10 @@ RSpec.describe ThemeConcerns::SemanticVariables do
         end
       end
 
-      it "generates HSL string values" do
-        expect(result["--primary"]).to match(/hsl\(\d+, \d+%, \d+%\)/)
-        expect(result["--background"]).to match(/hsl\(\d+, \d+%, \d+%\)/)
-        expect(result["--foreground"]).to match(/hsl\(\d+, \d+%, \d+%\)/)
+      it "generates raw HSL values (shadcn format without hsl() wrapper)" do
+        expect(result["--primary"]).to match(/^\d+ \d+% \d+%$/)
+        expect(result["--background"]).to match(/^\d+ \d+% \d+%$/)
+        expect(result["--foreground"]).to match(/^\d+ \d+% \d+%$/)
       end
     end
 
@@ -182,9 +182,9 @@ RSpec.describe ThemeConcerns::SemanticVariables do
         expect(bg[:lightness]).to be > 50
       end
 
-      it "assigns card and popover to match background" do
-        expect(result["--card"]).to eq(result["--background"])
-        expect(result["--popover"]).to eq(result["--background"])
+      it "assigns card and popover to create depth (different from background)" do
+        expect(result["--card"]).to eq(result["--popover"])
+        expect(result["--card"]).not_to eq(result["--background"])
       end
 
       it "assigns ring to match primary" do

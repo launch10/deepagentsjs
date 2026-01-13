@@ -2,7 +2,7 @@ import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
-import { createMultimodalPseudoMessage, isFirstMessage } from "@utils";
+import { createMultimodalPseudoMessage, createPseudoMessage } from "@utils";
 
 const createContextMessage = (state: WebsiteGraphState) => {
   const contextContent = `
@@ -25,12 +25,12 @@ const createContextMessage = (state: WebsiteGraphState) => {
   const contextMessage =
     state.images.length > 0
       ? createMultimodalPseudoMessage([
-          { type: "text" as const, text: contextContent },
-          ...state.images.map((img) => ({
-            type: "image_url" as const,
-            image_url: { url: img.url },
-          })),
-        ])
+        { type: "text" as const, text: contextContent },
+        ...state.images.map((img) => ({
+          type: "image_url" as const,
+          image_url: { url: img.url },
+        })),
+      ])
       : { role: "user", content: contextContent };
 
   return contextMessage;
@@ -46,15 +46,21 @@ export const websiteBuilderNode = NodeMiddleware.use(
       throw new Error("websiteId and jwt are required");
     }
 
-    const agent = await createCodingAgent({ ...state, isFirstMessage: isFirstMessage(state) });
+    const isCreateCommand = state.command === "create";
+    const agent = await createCodingAgent({ ...state, isFirstMessage: isCreateCommand });
     const contextMessage = createContextMessage(state);
+
     const result = await agent.invoke(
       {
-        messages: [...(state.messages || []), contextMessage],
+        messages: [
+          ...(state.messages || []),
+          ...(isCreateCommand ? [createPseudoMessage("Create a landing page for this business")] : []),
+          contextMessage,
+        ],
       },
       {
-        recursionLimit: 100,
         ...config,
+        recursionLimit: 150,
       }
     );
 

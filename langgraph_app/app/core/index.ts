@@ -5,5 +5,4 @@ export * from "./node";
 export * from "./llm";
 export * from "./postgres";
 export * from "./graphParams";
-export * from "./fileSpecRegistry";
 export * from "./env";

@@ -12,49 +12,6 @@ import {
   GroqGptOss120bConfig,
 } from "./types";
 
-export const coreLLMConfig: LLMAppConfig = {
-  free: {
-    blazing: {
-      planning: GptOssConfig,
-      writing: GptOssConfig,
-      coding: GptOssConfig,
-      reasoning: GptOssConfig,
-    },
-    fast: {
-      planning: GptOssConfig,
-      writing: GptOssConfig,
-      coding: GptOssConfig,
-      reasoning: GptOssConfig,
-    },
-    slow: {
-      planning: GptOssConfig,
-      writing: GptOssConfig,
-      coding: GptOssConfig,
-      reasoning: GptOssConfig,
-    },
-  },
-  paid: {
-    blazing: {
-      planning: GroqGptOss120bConfig,
-      writing: GroqGptOss120bConfig,
-      coding: GroqGptOss120bConfig,
-      reasoning: GroqGptOss120bConfig,
-    },
-    fast: {
-      planning: SonnetConfig,
-      writing: HaikuConfig,
-      coding: HaikuConfig,
-      reasoning: HaikuConfig,
-    },
-    slow: {
-      planning: SonnetConfig,
-      writing: HaikuConfig,
-      coding: SonnetConfig,
-      reasoning: SonnetConfig,
-    },
-  },
-};
-
 // Fallback chains: ordered from highest quality to lowest
 // First model is primary, rest are fallbacks in priority order
 //
@@ -66,7 +23,7 @@ export const coreLLMConfig: LLMAppConfig = {
 //
 // As user approaches their monthly limit, more expensive models are
 // automatically filtered out based on their maxUsagePercent.
-export const coreLLMFallbackConfig: LLMFallbackAppConfig = {
+export const llmConfig: LLMFallbackAppConfig = {
   free: {
     blazing: {
       planning: [GptOssConfig],
@@ -114,4 +71,4 @@ export const coreLLMFallbackConfig: LLMFallbackAppConfig = {
   },
 };
 
-export const LLMManager = new LLMManagerFactory(coreLLMConfig, coreLLMFallbackConfig);
+export const LLMManager = new LLMManagerFactory(llmConfig);

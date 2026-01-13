@@ -1,0 +1,122 @@
+{
+  "hero_section": {
+    "headline": "Stop Playing Calendar Tetris Across Time Zones",
+    "subheadline": "The scheduling tool that instantly finds meeting times everyone can actually attend—no more endless Slack threads asking 'when works for you?'",
+    "primary_cta": "Start Scheduling Smarter",
+    "supporting_text": "Free 14-day trial • No credit card required • Setup in 2 minutes"
+  },
+
+  "problem_section": {
+    "headline": "Sound Familiar?",
+    "pain_points": [
+      {
+        "title": "The 47-Message Scheduling Thread",
+        "description": "You send out meeting requests. Someone in Tokyo can't make it. Someone in London has a conflict. You propose new times. Repeat. What should take 30 seconds takes 3 days and 47 Slack messages."
+      },
+      {
+        "title": "The 'Sorry, I Thought That Was 3pm My Time' No-Show",
+        "description": "Time zone math is hard. Someone inevitably converts wrong, misses the meeting, and now you're scheduling a makeup meeting. Which means another 47-message thread."
+      },
+      {
+        "title": "The Project Manager Who's Actually a Full-Time Scheduler",
+        "description": "You didn't sign up to be a human calendar coordinator. But here you are, spending 15+ hours a week just trying to get people in the same (virtual) room."
+      }
+    ]
+  },
+
+  "solution_section": {
+    "headline": "How It Works (Seriously, It's This Simple)",
+    "steps": [
+      {
+        "step_number": 1,
+        "title": "Connect Your Calendar",
+        "description": "Link your Google Calendar, Outlook, or any calendar in 60 seconds. We sync your availability automatically."
+      },
+      {
+        "step_number": 2,
+        "title": "Set Your Preferences Once",
+        "description": "Tell us your working hours, time zone, and meeting preferences. Never repeat yourself again."
+      },
+      {
+        "step_number": 3,
+        "title": "We Find the Perfect Time",
+        "description": "Our AI instantly analyzes everyone's availability across all time zones and suggests optimal meeting times. Your team just clicks 'yes.' Done."
+      }
+    ]
+  },
+
+  "features_section": {
+    "headline": "Everything You Need to Schedule Smarter",
+    "features": [
+      {
+        "title": "Smart Time Zone Detection",
+        "description": "Automatically converts and displays meeting times in each participant's local time zone. No more mental math or embarrassing no-shows."
+      },
+      {
+        "title": "Team Availability Overlay",
+        "description": "See everyone's availability at a glance with visual overlays that highlight when your entire team is free—across continents."
+      },
+      {
+        "title": "Instant Optimal Suggestions",
+        "description": "Our algorithm considers time zones, working hours, meeting preferences, and calendar conflicts to suggest the best times in seconds, not days."
+      },
+      {
+        "title": "One-Click Scheduling",
+        "description": "No more back-and-forth. Share a link, team members vote on suggested times, and the meeting auto-schedules when consensus is reached."
+      },
+      {
+        "title": "Integrates With Everything",
+        "description": "Works seamlessly with Google Calendar, Outlook, Slack, Microsoft Teams, and Zoom. Fits right into your existing workflow."
+      }
+    ]
+  },
+
+  "social_proof_section": {
+    "headline": "Join 2,000+ Teams Who've Ditched the Scheduling Chaos",
+    "testimonials": [
+      {
+        "quote": "We used to spend the first 10 minutes of every project kickoff just trying to schedule the next meeting. Now it's instant. Our team saves at least 15 hours a week—that's almost half a full-time employee just on scheduling.",
+        "author": "Sarah Chen",
+        "role": "Head of Operations",
+        "company": "TechCorp"
+      },
+      {
+        "quote": "Managing a team across San Francisco, London, and Singapore was a nightmare. I was basically a full-time calendar coordinator. This tool gave me my job back. And my sanity.",
+        "author": "Marcus Rodriguez",
+        "role": "Engineering Manager",
+        "company": "CloudScale"
+      },
+      {
+        "quote": "The time zone conversion alone is worth it. No more 'wait, is that 3am for me?' panic. Everyone sees their local time automatically. Game changer for our distributed team.",
+        "author": "Priya Patel",
+        "role": "Product Manager",
+        "company": "DataFlow"
+      }
+    ],
+    "stats": [
+      {
+        "number": "80%",
+        "description": "Less time spent on meeting coordination"
+      },
+      {
+        "number": "15 hours",
+        "description": "Average hours saved per team per week"
+      },
+      {
+        "number": "2,000+",
+        "description": "Distributed teams scheduling smarter"
+      }
+    ]
+  },
+
+  "final_cta_section": {
+    "headline": "Stop Wasting Time on Scheduling. Start in 2 Minutes.",
+    "subheadline": "Join the 2,000+ distributed teams who've already eliminated the back-and-forth. Your first perfectly scheduled meeting is 2 minutes away.",
+    "cta_button": "Get Started Free",
+    "supporting_text": "14-day free trial • No credit card required • Cancel anytime"
+  },
+
+  "footer": {
+    "tagline": "The scheduling tool that actually understands time zones—so you don't have to."
+  }
+}

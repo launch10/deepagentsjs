@@ -42,26 +42,24 @@ class WebsiteStep < BaseBuilder
     end
 
     # Create uploads (logo + images) and associate with website
-    test_image_path = Rails.root.join("spec/fixtures/files/test_image.jpg")
+    # Use actual CDN URLs that OpenAI can access (files already exist on dev-uploads.launch10.ai)
+    cdn_images = [
+      { file: "21b36cfc-f657-471f-8256-d36bea9689fc.png", is_logo: true },
+      { file: "024dfc6c-335d-4f11-883b-f8e241f91744.png", is_logo: false }
+    ]
 
-    # Create a logo
-    logo_upload = Upload.create!(
-      account: account,
-      file: Rack::Test::UploadedFile.new(test_image_path, "image/jpeg"),
-      is_logo: true
-    )
-    WebsiteUpload.create!(website: website, upload: logo_upload)
-    puts "Created logo upload: #{logo_upload.id}"
-
-    # Create a few regular images
-    3.times do |i|
-      image_upload = Upload.create!(
+    cdn_images.each_with_index do |img, i|
+      upload = Upload.new(
         account: account,
-        file: Rack::Test::UploadedFile.new(test_image_path, "image/jpeg"),
-        is_logo: false
+        is_logo: img[:is_logo],
+        media_type: "image",
+        original_filename: img[:file]
       )
-      WebsiteUpload.create!(website: website, upload: image_upload)
-      puts "Created image upload #{i + 1}: #{image_upload.id}"
+      # Set file column directly (bypasses CarrierWave upload processing)
+      upload[:file] = img[:file]
+      upload.save!(validate: false)
+      WebsiteUpload.create!(website: website, upload: upload)
+      puts "Created #{img[:is_logo] ? "logo" : "image"} upload #{i + 1}: #{upload.id} (#{img[:file]})"
     end
 
     project.current_workflow.update!(step: "website") # Ready to do website builder

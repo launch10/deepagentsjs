@@ -9,21 +9,22 @@ import type {
   WriteResult,
 } from "deepagents";
 import { FilesystemBackend } from "deepagents";
-import { db, codeFiles, eq, and, sql } from "@db";
-import { Website } from "@types";
-import type { DB } from "@db";
+import { db, codeFiles, eq, and, sql, Types as DBTypes, type DB } from "@db";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { snakeCase } from "lodash";
+import _ from "lodash";
 import micromatch from "micromatch";
 import { WebsiteFilesAPIService } from "@rails_api";
+import { RedisLock } from "@ext";
+
 export interface CreateBackendParams {
-  website: Website.WebsiteType;
+  website: DBTypes.WebsiteType;
   jwt: string;
 }
+
 export class WebsiteFilesBackend implements BackendProtocol {
   private fs: FilesystemBackend;
-  private website: Website.WebsiteType;
+  private website: DBTypes.WebsiteType;
   private database: DB;
   private rootDir: string;
   private jwt: string;
@@ -40,7 +41,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   makeRootDir(): string {
-    const name = snakeCase(this.website.name);
+    const name = _.snakeCase(this.website.name ?? "");
     return `agents/websites/${this.website.accountId}/${name}`;
   }
 
@@ -173,16 +174,22 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async write(filePath: string, content: string): Promise<WriteResult> {
-    const fsResult = await this.fs.write(filePath, content);
-    if (fsResult.error) return fsResult;
+    const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
+    return RedisLock.withLock(lockKey, async () => {
+      const fsResult = await this.fs.write(filePath, content);
+      if (fsResult.error) return fsResult;
 
-    const service = new WebsiteFilesAPIService({ jwt: this.jwt });
-    const result = await service.write({
-      id: this.getWebsiteId(),
-      files: [{ path: filePath, content }],
+      const service = new WebsiteFilesAPIService({ jwt: this.jwt });
+      await service.write({
+        id: this.getWebsiteId(),
+        files: [{ path: filePath, content }],
+      });
+
+      return {
+        path: filePath,
+        filesUpdate: null,
+      };
     });
-
-    return { path: filePath, filesUpdate: null };
   }
 
   async edit(
@@ -191,23 +198,28 @@ export class WebsiteFilesBackend implements BackendProtocol {
     newString: string,
     replaceAll: boolean = false
   ): Promise<EditResult> {
-    const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
-    if (fsResult.error) return fsResult;
+    const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
+    return RedisLock.withLock(lockKey, async () => {
+      const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
+      if (fsResult.error) {
+        return fsResult;
+      }
 
-    const service = new WebsiteFilesAPIService({ jwt: this.jwt });
-    const result = await service.edit({
-      id: this.getWebsiteId(),
-      path: filePath,
-      oldString,
-      newString,
-      replaceAll,
+      const service = new WebsiteFilesAPIService({ jwt: this.jwt });
+      await service.edit({
+        id: this.getWebsiteId(),
+        path: filePath,
+        oldString,
+        newString,
+        replaceAll,
+      });
+
+      return {
+        path: filePath,
+        occurrences: fsResult.occurrences,
+        filesUpdate: null,
+      };
     });
-
-    return {
-      path: filePath,
-      occurrences: fsResult.occurrences,
-      filesUpdate: null,
-    };
   }
 
   async uploadFiles(files: Array<[string, Uint8Array]>): Promise<FileUploadResponse[]> {
