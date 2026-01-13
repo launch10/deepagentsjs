@@ -10,12 +10,10 @@ export const IndexPage = () => {
   return (
     <div className="min-h-screen">
       <Header />
-      <main>
-        <Hero />
-        <Features />
-        <SocialProof />
-        <CTA />
-      </main>
+      <Hero />
+      <Features />
+      <SocialProof />
+      <CTA />
       <Footer />
     </div>
   );

@@ -27,55 +27,57 @@ export function CTA() {
   };
 
   return (
-    <section id="cta" className="py-16 sm:py-24 bg-primary text-primary-foreground">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
-            Stop wasting hours on scheduling—start in 60 seconds
-          </h2>
-          <p className="text-lg sm:text-xl mb-8 text-primary-foreground/90">
-            Join thousands of teams who've eliminated the back-and-forth and reclaimed their time for work that actually matters.
-          </p>
+    <section className="py-24 bg-accent text-accent-foreground">
+      <div className="container mx-auto px-4">
+        <div className="max-w-3xl mx-auto text-center space-y-8">
+          <div className="space-y-4">
+            <h2 className="text-4xl md:text-5xl font-bold">
+              Stop the scheduling chaos. Start today.
+            </h2>
+            <p className="text-xl text-accent-foreground/90">
+              Join in 60 seconds—no credit card, no time zone math required.
+            </p>
+          </div>
 
-          {/* Email Capture Form */}
           {status === 'success' ? (
-            <div className="bg-success/20 border border-success/30 rounded-lg p-6 flex items-start space-x-3 max-w-md mx-auto">
-              <CheckCircle2 className="h-6 w-6 text-success-foreground flex-shrink-0 mt-0.5" />
+            <div className="bg-success/20 border border-success/30 rounded-lg p-6 flex items-start gap-3 max-w-md mx-auto">
+              <CheckCircle2 className="w-6 h-6 text-success-foreground flex-shrink-0 mt-0.5" />
               <div className="text-left">
-                <p className="font-semibold text-primary-foreground">You're on the list!</p>
-                <p className="text-sm text-primary-foreground/80 mt-1">We'll send you early access details soon.</p>
+                <p className="font-semibold text-success-foreground">Welcome aboard!</p>
+                <p className="text-sm text-success-foreground/80 mt-1">Check your inbox for next steps.</p>
               </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
               <Input
                 type="email"
-                placeholder="Enter your work email"
+                placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={status === 'loading'}
-                className="flex-1 h-12 text-base bg-background text-foreground"
+                className="flex-1 bg-background text-foreground"
               />
               <Button 
                 type="submit" 
+                size="lg"
                 disabled={status === 'loading'}
-                className="bg-secondary text-secondary-foreground hover:bg-secondary/90 h-12 px-8 whitespace-nowrap"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 whitespace-nowrap"
               >
                 {status === 'loading' ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Joining...
                   </>
                 ) : (
-                  'Get Early Access Free'
+                  'Get Started Free'
                 )}
               </Button>
             </form>
           )}
 
           {status === 'error' && (
-            <p className="text-destructive-foreground bg-destructive/20 rounded px-4 py-2 text-sm mt-3 inline-block">
+            <p className="text-sm text-destructive-foreground bg-destructive/20 border border-destructive/30 rounded p-3 max-w-md mx-auto">
               {errorMessage}
             </p>
           )}

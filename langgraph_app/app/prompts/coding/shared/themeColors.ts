@@ -24,4 +24,8 @@ Use semantic color classes. Each role has a background and matching text color:
 | Destructive | bg-destructive | text-destructive-foreground |
 
 For subdued text on the page background, use \`text-muted-foreground\`.
+
+You should try to vary the background colors of subsequent sections, so that the page is not monotonous. 
+
+See the typography instructions for recommendations on which colors go well with which background colors.
 `;
