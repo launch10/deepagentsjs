@@ -12,6 +12,7 @@ module GoogleAdsMocks
     @mock_ad_group_ad_service = double("AdGroupAdService")
     @mock_asset_service = double("AssetService")
     @mock_campaign_asset_service = double("CampaignAssetService")
+    @mock_conversion_action_service = double("ConversionActionService")
     @mock_operation = double("Operation")
     @mock_resource = double("Resource")
     @mock_update_resource = double("UpdateResource")
@@ -32,7 +33,8 @@ module GoogleAdsMocks
         ad_group_criterion: @mock_ad_group_criterion_service,
         ad_group_ad: @mock_ad_group_ad_service,
         asset: @mock_asset_service,
-        campaign_asset: @mock_campaign_asset_service)
+        campaign_asset: @mock_campaign_asset_service,
+        conversion_action: @mock_conversion_action_service)
     )
 
     allow(@mock_client).to receive(:resource).and_return(@mock_resource)
@@ -41,7 +43,47 @@ module GoogleAdsMocks
     allow(@mock_operation).to receive(:update_resource).and_return(@mock_update_resource)
     allow(@mock_operation).to receive(:remove_resource).and_return(@mock_remove_resource)
 
+    # Default mocks for conversion action (used during Account creation)
+    setup_default_conversion_action_mocks
+
     @mock_client
+  end
+
+  def setup_default_conversion_action_mocks
+    # Mock conversion action resource creation
+    mock_conversion_action = double("ConversionAction")
+    allow(mock_conversion_action).to receive(:name=)
+    allow(mock_conversion_action).to receive(:type=)
+    allow(mock_conversion_action).to receive(:category=)
+    allow(mock_conversion_action).to receive(:status=)
+    allow(mock_conversion_action).to receive(:counting_type=)
+    allow(mock_conversion_action).to receive(:click_through_lookback_window_days=)
+    allow(mock_conversion_action).to receive(:view_through_lookback_window_days=)
+    allow(mock_conversion_action).to receive(:attribution_model_settings=)
+    allow(mock_conversion_action).to receive(:value_settings=)
+    allow(@mock_resource).to receive(:conversion_action).and_yield(mock_conversion_action).and_return(mock_conversion_action)
+
+    # Mock nested resources for conversion action
+    mock_attribution_settings = double("AttributionModelSettings")
+    allow(mock_attribution_settings).to receive(:attribution_model=)
+    allow(@mock_resource).to receive(:attribution_model_settings).and_yield(mock_attribution_settings).and_return(mock_attribution_settings)
+
+    mock_value_settings = double("ValueSettings")
+    allow(mock_value_settings).to receive(:default_value=)
+    allow(mock_value_settings).to receive(:default_currency_code=)
+    allow(mock_value_settings).to receive(:always_use_default_value=)
+    allow(@mock_resource).to receive(:value_settings).and_yield(mock_value_settings).and_return(mock_value_settings)
+
+    # Mock operation create_resource for conversion action
+    create_op = double("CreateOperation")
+    allow(@mock_operation).to receive(:create_resource).and_return(
+      double("CreateResource", conversion_action: create_op)
+    )
+
+    # Mock conversion action service mutate (default: success)
+    response = double("MutateConversionActionsResponse",
+      results: [double("Result", resource_name: "customers/123/conversionActions/456")])
+    allow(@mock_conversion_action_service).to receive(:mutate_conversion_actions).and_return(response)
   end
 
   def mock_create_customer_client_response(customer_id: "9876543210")

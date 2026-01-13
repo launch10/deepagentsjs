@@ -207,7 +207,10 @@ module CampaignConcerns
     end
 
     def deployable?
-      done_launch_stage? && google_customer_id.present?
+      done_launch_stage? &&
+        google_customer_id.present? &&
+        google_conversion_id.present? &&
+        google_conversion_label.present?
     end
 
     def can_go_live?

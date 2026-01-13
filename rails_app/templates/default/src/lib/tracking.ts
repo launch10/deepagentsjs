@@ -8,6 +8,7 @@
  * - VITE_API_BASE_URL
  * - VITE_SIGNUP_TOKEN
  * - VITE_GOOGLE_ADS_ID
+ * - VITE_GOOGLE_ADS_SEND_TO
  */
 
 export class LeadError extends Error {
