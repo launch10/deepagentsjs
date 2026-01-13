@@ -80,8 +80,8 @@ namespace :themes do
           theme.updated_at.iso8601(6),
           theme.theme_type,
           author_id,
-          pairings_json == "\\N" ? pairings_json : pairings_json,
-          typography_json == "\\N" ? typography_json : typography_json
+          pairings_json,
+          typography_json
         ].join("\t")
       end
 

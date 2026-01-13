@@ -344,7 +344,7 @@ The ConversionAction is created automatically when a new AdsAccount is synced to
 
 ---
 
-## Step 1: Inject gtag.js Script (buildable.rb)
+## Step 1: Inject gtag.js Script (buildable.rb) ✅ DONE
 
 **File:** `rails_app/app/models/concerns/website_deploy_concerns/buildable.rb`
 
@@ -353,7 +353,7 @@ def build!
   # ... existing code ...
 
   # After writing files, before build
-  inject_gtag_script! if google_send_to.present?
+  inject_gtag_script!
 
   # ... rest of build ...
 end
@@ -361,10 +361,14 @@ end
 private
 
 def inject_gtag_script!
+  return unless google_send_to.present?
+
   index_path = File.join(temp_dir, "index.html")
+  return unless File.exist?(index_path)
+
   content = File.read(index_path)
 
-  # Use conversion_id (AW-xxx) for gtag config, full send_to for conversions
+  # Use conversion_id (already has AW- prefix) for gtag config
   gtag_script = <<~HTML
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=#{google_conversion_id}"></script>
@@ -381,11 +385,11 @@ def inject_gtag_script!
 end
 
 def google_conversion_id
-  ads_account&.google_conversion_id
+  ads_account&.google_conversion_id  # Already has AW- prefix, e.g., "AW-123456789"
 end
 
 def google_send_to
-  ads_account&.google_send_to
+  ads_account&.google_send_to  # Full send_to value, e.g., "AW-123456789/abc123XYZ"
 end
 
 def ads_account
@@ -395,9 +399,9 @@ end
 
 ---
 
-## Step 2: Write VITE_GOOGLE_ADS_SEND_TO (buildable.rb)
+## Step 2: Write VITE_GOOGLE_ADS_SEND_TO (buildable.rb) ✅ DONE
 
-**Modify:** `write_env_file!` in buildable.rb
+**File:** `rails_app/app/models/concerns/website_deploy_concerns/buildable.rb`
 
 ```ruby
 def write_env_file!

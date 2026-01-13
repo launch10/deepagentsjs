@@ -468,7 +468,7 @@ RSpec.describe 'Tracking Library', type: :integration do
     double("MutateConversionActionsResponse", results: [result])
   end
 
-  def mock_search_response_with_conversion_action_tag_snippets(resource_name:, conversion_id: "AW-123456789", conversion_label:)
+  def mock_search_response_with_conversion_action_tag_snippets(resource_name:, conversion_label:, conversion_id: "AW-123456789")
     # The event_snippet contains the send_to value like:
     # gtag('event', 'conversion', {'send_to': 'AW-123456789/abc123XYZ'});
     event_snippet = "gtag('event', 'conversion', {'send_to': '#{conversion_id}/#{conversion_label}'});"
@@ -722,7 +722,7 @@ RSpec.describe 'Tracking Library', type: :integration do
         allow(deploy).to receive(:build_exists?).and_return(false)
         # Final dist directory check should pass
         allow(Dir).to receive(:exist?).and_wrap_original do |method, path|
-          path.end_with?('/dist') ? true : method.call(path)
+          path.end_with?('/dist') || method.call(path)
         end
 
         # Set up Google Ads account with conversion tracking

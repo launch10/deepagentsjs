@@ -74,7 +74,7 @@ module WebsiteDeployConcerns
         </script>
       HTML
 
-      content.sub!('</head>', "#{gtag_script}</head>")
+      content.sub!("</head>", "#{gtag_script}</head>")
       File.write(index_path, content)
     end
 

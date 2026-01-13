@@ -290,7 +290,7 @@ module GoogleAds
 
       def sync_conversion_action
         ConversionAction.new(record).sync
-      rescue StandardError => e
+      rescue => e
         Rails.logger.warn("[GoogleAds::Resources::Account] Failed to create ConversionAction: #{e.message}")
         nil
       end
