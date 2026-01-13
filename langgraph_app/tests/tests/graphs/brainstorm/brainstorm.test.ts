@@ -6,7 +6,7 @@ import { brainstormGraph as uncompiledGraph } from "@graphs";
 import { HumanMessage, AIMessage, BaseMessage, ToolMessage } from "@langchain/core/messages";
 import { lastAIMessage, type UUIDType, firstHumanMessage } from "@types";
 import { createBrainstorm } from "@nodes";
-import { summarizeAndSaveAnswers } from "@tools";
+import { saveAnswers } from "@tools";
 import { v7 as uuidv7 } from "uuid";
 import { Brainstorm } from "@types";
 import { graphParams } from "@core";
@@ -210,7 +210,22 @@ const restartChatFrom = async (
   // has been answered
   let allMessages: BaseMessage[] = [];
 
-  for (let i = 0; i < Brainstorm.BrainstormTopics.indexOf(topic); i++) {
+  // Directly save known valid answers for topics before the target topic
+  // This avoids non-deterministic LLM extraction which can skip ahead
+  const topicIndex = Brainstorm.BrainstormTopics.indexOf(topic);
+  const topicsToSave = Brainstorm.BrainstormTopics.slice(0, topicIndex);
+  const memories: Partial<Record<Brainstorm.TopicName, string>> = {};
+  for (const t of topicsToSave) {
+    memories[t as Brainstorm.TopicName] = validAnswers[t as Brainstorm.TopicName];
+  }
+
+  // Save the pre-defined answers directly to the database
+  if (Object.keys(memories).length > 0) {
+    await saveAnswers(memories, partialState.websiteId!, []);
+  }
+
+  // Tag messages with topics for proper history tracking
+  for (let i = 0; i < topicIndex; i++) {
     const currentTopic = Brainstorm.BrainstormTopics[i];
     const nextTopic = Brainstorm.BrainstormTopics[i + 1];
 
@@ -221,27 +236,21 @@ const restartChatFrom = async (
     // Get only the NEW messages since our last iteration (after already-tagged messages)
     const newMessages = fullChatUpToNextQuestion.slice(allMessages.length);
 
+    // Tag the new messages with the current topic
+    const taggedNewMessages = newMessages.map((msg) => {
+      msg.additional_kwargs = {
+        ...msg.additional_kwargs,
+        topics: [currentTopic],
+      };
+      return msg;
+    });
+
     // Append new messages to our tagged history
-    allMessages = [...allMessages, ...newMessages];
-
-    partialState = {
-      ...partialState,
-      messages: allMessages,
-      currentTopic,
-    };
-
-    const result = await summarizeAndSaveAnswers(allMessages, partialState.websiteId!, []);
-
-    // Capture the tagged messages for next iteration
-    allMessages = result.messages!;
-    partialState = {
-      ...partialState,
-      messages: allMessages,
-    };
+    allMessages = [...allMessages, ...taggedNewMessages];
   }
 
   // Get all the saved memories we have
-  const memories = await new BrainstormNextStepsService(partialState as any).getMemories();
+  const savedMemories = await new BrainstormNextStepsService(partialState as any).getMemories();
 
   // Append any new messages from chatHistory that come after our tagged messages
   const newMessages = chatHistory.slice(allMessages.length);
@@ -250,7 +259,7 @@ const restartChatFrom = async (
   // create state
   const state = {
     ...partialState,
-    memories,
+    memories: savedMemories,
     messages: finalMessages,
     currentTopic: topic,
   };
