@@ -187,7 +187,6 @@ module CampaignConcerns
     def google_ready_to_enable?
       google_advertising_channel_type.present? &&
         google_bidding_strategy.present? &&
-        google_language_codes.present? &&
         google_customer_id.present? &&
         billing_enabled?
     end
