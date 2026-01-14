@@ -34,7 +34,8 @@ class Project < ApplicationRecord
   has_one :website
   has_one :ads_account, through: :account
   has_one :brainstorm, through: :website
-  has_many :leads, dependent: :destroy
+  # Leads are now account-scoped via website_leads join table
+  # Access via: project.website.leads
   has_many :workflows, class_name: "ProjectWorkflow", dependent: :destroy
   has_one :launch_workflow, -> { where(workflow_type: "launch") }, class_name: "ProjectWorkflow"
   has_many :chats

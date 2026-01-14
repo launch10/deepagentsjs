@@ -50,6 +50,19 @@ describe Website do
     expect(website).to be_valid
   end
 
+  describe "visits association" do
+    it "has many visits" do
+      visit = Ahoy::Visit.create!(
+        website_id: website.id,
+        visitor_token: "test-visitor",
+        visit_token: "test-visit",
+        started_at: Time.current
+      )
+
+      expect(website.visits).to include(visit)
+    end
+  end
+
   it "snapshots website files" do
     file = website.website_files.create!(path: "index.html", content: "Hello World")
     expect(website.website_files.count).to eq(1)

@@ -56,7 +56,7 @@ module WebsiteDeployConcerns
     end
 
     def inject_gtag_script!
-      throw "Google Ads conversion tracking is not configured" unless google_send_to.present?
+      return unless google_send_to.present?
 
       index_path = File.join(temp_dir, "index.html")
       return unless File.exist?(index_path)

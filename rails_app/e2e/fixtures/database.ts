@@ -89,7 +89,7 @@ export const DatabaseSnapshotter = {
    * Gets the first project from the database.
    * Useful for getting the project UUID after restoring a snapshot.
    */
-  async getFirstProject(): Promise<{ uuid: string; name: string }> {
+  async getFirstProject(): Promise<{ id: number; uuid: string; name: string }> {
     const response = await fetch(`${BASE_URL}/test/database/first_project`, {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -102,5 +102,24 @@ export const DatabaseSnapshotter = {
 
     const data = await response.json();
     return data.project;
+  },
+
+  /**
+   * Gets the first website from the database.
+   * Useful for tracking tests that need a website ID.
+   */
+  async getFirstWebsite(): Promise<{ id: number; name: string; project_id: number }> {
+    const response = await fetch(`${BASE_URL}/test/database/first_website`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to get first website: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.website;
   },
 };

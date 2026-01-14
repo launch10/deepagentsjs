@@ -696,12 +696,14 @@ RSpec.describe 'Tracking Library', type: :integration do
         before do
           account.ads_accounts.destroy_all
         end
-        it 'throws an error' do
-          expect { deploy.send(:inject_gtag_script!) }.to raise_error
+
+        it 'returns early without error' do
+          expect { deploy.send(:inject_gtag_script!) }.not_to raise_error
         end
+
         it 'leaves index.html unchanged' do
           original_content = File.read(File.join(temp_dir, "index.html"))
-          expect { deploy.send(:inject_gtag_script!) }.to raise_error
+          deploy.send(:inject_gtag_script!)
           new_content = File.read(File.join(temp_dir, "index.html"))
 
           expect(new_content).to eq(original_content)

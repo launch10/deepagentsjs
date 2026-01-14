@@ -2,7 +2,7 @@ require 'faker'
 
 FactoryBot.define do
   factory :lead do
-    association :project
+    association :account
     sequence(:email) { |n| "lead#{n}@example.com" }
     name { Faker::Name.name }
 
@@ -15,6 +15,19 @@ FactoryBot.define do
         custom_email { "custom@example.com" }
       end
       email { custom_email }
+    end
+
+    # Convenience trait to create a lead with a website_lead
+    trait :with_website_lead do
+      transient do
+        website { nil }
+      end
+
+      after(:create) do |lead, evaluator|
+        if evaluator.website
+          create(:website_lead, lead: lead, website: evaluator.website)
+        end
+      end
     end
   end
 end

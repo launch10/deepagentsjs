@@ -7,30 +7,61 @@
 #  name       :string(255)
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
-#  project_id :bigint           not null
+#  account_id :bigint           not null
 #
 # Indexes
 #
+#  index_leads_on_account_id            (account_id)
+#  index_leads_on_account_id_and_email  (account_id,email) UNIQUE
 #  index_leads_on_email                 (email)
-#  index_leads_on_project_id            (project_id)
-#  index_leads_on_project_id_and_email  (project_id,email) UNIQUE
 #
 
 class Lead < ApplicationRecord
-  belongs_to :project
+  belongs_to :account
+  has_many :website_leads, dependent: :destroy
+  has_many :websites, through: :website_leads
 
   validates :email, presence: true,
     length: { maximum: 255 },
     format: { with: URI::MailTo::EMAIL_REGEXP },
-    uniqueness: { scope: :project_id, case_sensitive: false }
+    uniqueness: { scope: :account_id, case_sensitive: false }
   validates :name, length: { maximum: 255 }, allow_blank: true
 
   before_validation :normalize_email
 
+  # Find or create a lead for a signup, returning the lead and website_lead
+  def self.find_or_create_for_signup(account:, website:, email:, name: nil, visit: nil, visitor_token: nil, gclid: nil)
+    normalized_email = normalize_email(email)
+
+    lead = account.leads.find_by(email: normalized_email)
+    created = false
+
+    if lead.nil?
+      lead = account.leads.create!(email: normalized_email, name: name)
+      created = true
+    end
+
+    # Check if already converted on this website
+    existing_website_lead = lead.website_leads.find_by(website_id: website.id)
+    if existing_website_lead
+      return { lead: lead, website_lead: existing_website_lead, created: false, already_converted: true }
+    end
+
+    # Create the website_lead with attribution
+    website_lead = lead.website_leads.create!(
+      website: website,
+      visit: visit,
+      visitor_token: visitor_token,
+      gclid: gclid || visit&.gclid
+    )
+
+    { lead: lead, website_lead: website_lead, created: created, already_converted: false }
+  end
+
   private
 
   def normalize_email
-    self.email = email&.downcase&.strip
+    self.email = self.class.normalize_email(email)
   end
 
   class << self
