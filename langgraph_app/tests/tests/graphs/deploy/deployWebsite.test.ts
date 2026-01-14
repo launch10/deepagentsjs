@@ -11,6 +11,229 @@ import { getCodingAgentBackend } from "@nodes";
 
 const deployWebsiteGraph = uncompiledGraph.compile({ ...graphParams, name: "deployWebsite" });
 
+/**
+ * =============================================================================
+ * SEO OPTIMIZATION TESTS
+ * =============================================================================
+ * These tests verify the SEO optimization node properly adds meta tags to index.html.
+ *
+ * USER OUTCOME: Landing pages have proper SEO meta tags for search engines
+ * and social media sharing (Open Graph, Twitter Cards).
+ */
+describe("SEO Optimization - Meta Tags Generation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * Test that SEO optimization adds the required meta tags to index.html <head>
+   * TODO: These tests hit real AI APIs - need recorded responses or database snapshots
+   */
+  it.only("adds SEO meta tags to index.html", async () => {
+    // Use website_finished snapshot which has a complete website
+    await DatabaseSnapshotter.restoreSnapshot("website_finished");
+
+    const result = await testGraph<DeployGraphState>()
+      .withGraph(deployWebsiteGraph)
+      .withState({
+        jwt: "test-jwt",
+        threadId: "thread_123" as ThreadIDType,
+        websiteId: 1,
+        deploy: { website: true },
+        tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
+      })
+      .stopAfter("seoOptimization")
+      .execute();
+
+    // Verify the SEO task completed
+    const seoTask = result.state.tasks.find((t) => t.name === "SEOOptimization");
+    debugger;
+    expect(seoTask).toBeDefined();
+    expect(seoTask?.status).toBe("completed");
+
+    // Verify the actual USER OUTCOME: meta tags are now in index.html
+    const indexFile = await db
+      .select()
+      .from(websiteFiles)
+      .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "index.html")))
+      .execute()
+      .then((files) => files.at(-1));
+
+    expect(indexFile?.content).toBeDefined();
+
+    // Required SEO meta tags
+    expect(indexFile?.content).toContain('<meta name="description"');
+    expect(indexFile?.content).toContain("<title>");
+
+    // Open Graph tags
+    expect(indexFile?.content).toContain('<meta property="og:title"');
+    expect(indexFile?.content).toContain('<meta property="og:description"');
+    expect(indexFile?.content).toContain('<meta property="og:image"');
+    expect(indexFile?.content).toContain('<meta property="og:url"');
+
+    // Twitter Card tags
+    expect(indexFile?.content).toContain('<meta name="twitter:card"');
+    expect(indexFile?.content).toContain('<meta name="twitter:title"');
+    expect(indexFile?.content).toContain('<meta name="twitter:description"');
+    expect(indexFile?.content).toContain('<meta name="twitter:image"');
+
+    // Canonical URL
+    expect(indexFile?.content).toContain('<link rel="canonical"');
+
+    // Cleanup the coding agent backend
+    const backend = await getCodingAgentBackend({
+      websiteId: 1,
+      jwt: "test-jwt",
+    } as any);
+    await backend.cleanup();
+  });
+
+  it.skip("generates meta description within recommended length (150-160 chars)", async () => {
+    await DatabaseSnapshotter.restoreSnapshot("website_finished");
+
+    const result = await testGraph<DeployGraphState>()
+      .withGraph(deployWebsiteGraph)
+      .withState({
+        jwt: "test-jwt",
+        threadId: "thread_123" as ThreadIDType,
+        websiteId: 1,
+        deploy: { website: true },
+        tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
+      })
+      .stopAfter("seoOptimization")
+      .execute();
+
+    const seoTask = result.state.tasks.find((t) => t.name === "SEOOptimization");
+    expect(seoTask?.status).toBe("completed");
+
+    // Verify meta description is within recommended length
+    const indexFile = await db
+      .select()
+      .from(websiteFiles)
+      .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "index.html")))
+      .execute()
+      .then((files) => files.at(-1));
+
+    const descriptionMatch = indexFile?.content?.match(
+      /<meta name="description" content="([^"]+)"/
+    );
+    expect(descriptionMatch).toBeDefined();
+    if (descriptionMatch && descriptionMatch[1]) {
+      expect(descriptionMatch[1].length).toBeLessThanOrEqual(160);
+      expect(descriptionMatch[1].length).toBeGreaterThanOrEqual(50);
+    }
+
+    // Verify title is within recommended length (< 60 chars)
+    const titleMatch = indexFile?.content?.match(/<title>([^<]+)<\/title>/);
+    expect(titleMatch).toBeDefined();
+    if (titleMatch && titleMatch[1]) {
+      expect(titleMatch[1].length).toBeLessThanOrEqual(60);
+    }
+
+    // Cleanup
+    const backend = await getCodingAgentBackend({
+      websiteId: 1,
+      jwt: "test-jwt",
+    } as any);
+    await backend.cleanup();
+  });
+
+  it.skip("sets og:image with absolute URL", async () => {
+    await DatabaseSnapshotter.restoreSnapshot("website_finished");
+
+    const result = await testGraph<DeployGraphState>()
+      .withGraph(deployWebsiteGraph)
+      .withState({
+        jwt: "test-jwt",
+        threadId: "thread_123" as ThreadIDType,
+        websiteId: 1,
+        deploy: { website: true },
+        tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
+      })
+      .stopAfter("seoOptimization")
+      .execute();
+
+    const indexFile = await db
+      .select()
+      .from(websiteFiles)
+      .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "index.html")))
+      .execute()
+      .then((files) => files.at(-1));
+
+    // Verify og:image points to an actual image URL
+    const ogImageMatch = indexFile?.content?.match(/<meta property="og:image" content="([^"]+)"/);
+    expect(ogImageMatch).toBeDefined();
+    if (ogImageMatch) {
+      expect(ogImageMatch[1]).toMatch(/^https?:\/\//); // Must be absolute URL
+    }
+
+    // Cleanup
+    const backend = await getCodingAgentBackend({
+      websiteId: 1,
+      jwt: "test-jwt",
+    } as any);
+    await backend.cleanup();
+  });
+
+  it("skips SEO optimization if task already completed", async () => {
+    const completedTask: Task.Task = {
+      id: "uuid-seo",
+      name: "SEOOptimization",
+      status: "completed",
+      retryCount: 0,
+    };
+
+    const result = await testGraph<DeployGraphState>()
+      .withGraph(deployWebsiteGraph)
+      .withState({
+        jwt: "test-jwt",
+        threadId: "thread_123" as ThreadIDType,
+        websiteId: 1,
+        deploy: { website: true },
+        tasks: [
+          { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
+          completedTask,
+        ],
+      })
+      .stopAfter("seoOptimization")
+      .execute();
+
+    // Should proceed without re-running SEO optimization
+    const seoTask = result.state.tasks.find((t) => t.name === "SEOOptimization");
+    expect(seoTask).toBeDefined();
+    expect(seoTask?.status).toBe("completed");
+  });
+
+  it("SEO node is in the correct position in graph flow", async () => {
+    // This test verifies that SEO optimization runs between instrumentation and validateLinks
+    const result = await testGraph<DeployGraphState>()
+      .withGraph(deployWebsiteGraph)
+      .withState({
+        jwt: "test-jwt",
+        threadId: "thread_123" as ThreadIDType,
+        websiteId: 1,
+        deploy: { website: true },
+        tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
+      })
+      .stopAfter("seoOptimization")
+      .execute();
+
+    // Verify the SEO task was created and attempted
+    const tasks = result.state.tasks;
+    const seoTask = tasks.find((t) => t.name === "SEOOptimization");
+
+    expect(seoTask).toBeDefined();
+    // The task might be completed or failed, but it should exist
+    // This proves the graph flow goes through SEO after instrumentation
+    expect(["completed", "failed", "running"]).toContain(seoTask?.status);
+
+    // If it failed, check the error for debugging
+    if (seoTask?.status === "failed" && seoTask.error) {
+      console.log("SEO task error:", seoTask.error);
+    }
+  });
+});
+
 describe.skip("DeployWebsiteGraph", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -116,7 +339,7 @@ describe.skip("DeployWebsiteGraph", () => {
       // Use a snapshot that has a website without instrumentation
       await DatabaseSnapshotter.restoreSnapshot("website_with_import_errors");
 
-      console.log(`running graph`)
+      console.log(`running graph`);
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployWebsiteGraph)
         .withState({
@@ -136,9 +359,11 @@ describe.skip("DeployWebsiteGraph", () => {
 
       // Verify the actual USER OUTCOME: L10.createLead is now in the codebase
       // Check all website files for the instrumentation
-      const allFiles = await db.select().from(websiteFiles).where(
-        eq(websiteFiles.websiteId, 1)
-      ).execute();
+      const allFiles = await db
+        .select()
+        .from(websiteFiles)
+        .where(eq(websiteFiles.websiteId, 1))
+        .execute();
 
       // At least one file should contain L10.createLead for lead capture
       const hasInstrumentation = allFiles.some(
@@ -164,9 +389,7 @@ describe.skip("DeployWebsiteGraph", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: [
-            { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
-          ],
+          tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
         })
         .stopAfter("runtimeValidation")
         .execute();
@@ -331,9 +554,7 @@ describe.skip("DeployWebsiteGraph", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: [
-            { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
-          ],
+          tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
         })
         .stopAfter("runtimeValidation")
         .execute();
@@ -346,7 +567,7 @@ describe.skip("DeployWebsiteGraph", () => {
       // The error report should contain the syntax error details
       const error = validationTask?.error as string;
       expect(error).toContain("NonExistentComponent");
-    })
+    });
 
     it("routes to fix when validation fails", async () => {
       await DatabaseSnapshotter.restoreSnapshot("website_with_import_errors");
@@ -360,37 +581,39 @@ describe.skip("DeployWebsiteGraph", () => {
           browserErrorCount: 2,
           serverErrorCount: 4,
           viteOverlayErrorCount: 1,
-          report: '## Build Errors\n' +
-            '\n' +
+          report:
+            "## Build Errors\n" +
+            "\n" +
             "1. Expected ',', got 'ident'\n" +
-            '   File: src/pages/IndexPage.tsx\n' +
-            '   Code:\n' +
-            '   3 | export const IndexPage = () => {\n' +
-            '    4 |   return (\n' +
-            '    5 |       <NonExistentComponent />\n' +
+            "   File: src/pages/IndexPage.tsx\n" +
+            "   Code:\n" +
+            "   3 | export const IndexPage = () => {\n" +
+            "    4 |   return (\n" +
+            "    5 |       <NonExistentComponent />\n" +
             '    6 |     <div className="min-h-screen flex items-center justify-center bg-background">\n' +
-            '\n' +
-            '2. Error:   Failed to scan for dependencies from entries:\n' +
-            '   File: IndexPage.tsx:6\n' +
-            '   Code:\n' +
+            "\n" +
+            "2. Error:   Failed to scan for dependencies from entries:\n" +
+            "   File: IndexPage.tsx:6\n" +
+            "   Code:\n" +
             '   6 │     <div className="min-h-screen flex items-center justify-center b...\n' +
-            '           │          ~~~~~~~~~'
+            "           │          ~~~~~~~~~",
         },
-        error: '## Build Errors\n' +
-          '\n' +
+        error:
+          "## Build Errors\n" +
+          "\n" +
           "1. Expected ',', got 'ident'\n" +
-          '   File: src/pages/IndexPage.tsx\n' +
-          '   Code:\n' +
-          '   3 | export const IndexPage = () => {\n' +
-          '    4 |   return (\n' +
-          '    5 |       <NonExistentComponent />\n' +
+          "   File: src/pages/IndexPage.tsx\n" +
+          "   Code:\n" +
+          "   3 | export const IndexPage = () => {\n" +
+          "    4 |   return (\n" +
+          "    5 |       <NonExistentComponent />\n" +
           '    6 |     <div className="min-h-screen flex items-center justify-center bg-background">\n' +
-          '\n' +
-          '2. Error:   Failed to scan for dependencies from entries:\n' +
-          '   File: IndexPage.tsx:6\n' +
-          '   Code:\n' +
+          "\n" +
+          "2. Error:   Failed to scan for dependencies from entries:\n" +
+          "   File: IndexPage.tsx:6\n" +
+          "   Code:\n" +
           '   6 │     <div className="min-h-screen flex items-center justify-center b...\n' +
-          '           │          ~~~~~~~~~'
+          "           │          ~~~~~~~~~",
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -408,12 +631,12 @@ describe.skip("DeployWebsiteGraph", () => {
         .stopAfter("bugFixNode")
         .execute();
 
-      const updatedFile = await db.select().from(websiteFiles).where(
-        and(
-          eq(websiteFiles.websiteId, 1),
-          eq(websiteFiles.path, "src/pages/IndexPage.tsx")
-        ),
-      ).execute().then((files) => files.at(-1));
+      const updatedFile = await db
+        .select()
+        .from(websiteFiles)
+        .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "src/pages/IndexPage.tsx")))
+        .execute()
+        .then((files) => files.at(-1));
 
       // The bugFixNode uses an AI agent to fix the code - verify the fix was applied
       // The AI should remove the NonExistentComponent import and usage

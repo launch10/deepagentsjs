@@ -2,6 +2,7 @@ import { StateGraph, END, START, type LangGraphRunnableConfig } from "@langchain
 import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import {
   instrumentationNode,
+  seoOptimizationNode,
   deployWebsiteNode,
   runtimeValidationNode,
   validateLinksNode,
@@ -22,14 +23,16 @@ const getTaskStatus = (state: DeployGraphState, name: Task.TaskName) =>
  * Orchestrates website deployment to Cloudflare.
  *
  * 1) Ensure instrumentation is up to date
- * 2) Validate links (static analysis)
- * 3) Validate website (runtime with Playwright)
- * 4) If validation fails, fix with coding agent
- * 5) Deploy website
+ * 2) Optimize SEO meta tags
+ * 3) Validate links (static analysis)
+ * 4) Validate website (runtime with Playwright)
+ * 5) If validation fails, fix with coding agent
+ * 6) Deploy website
  */
 export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
   // Enqueue nodes (lightweight, checkpoint state before work)
   .addNode("enqueueInstrumentation", createEnqueueNode("Instrumentation"))
+  .addNode("enqueueSEOOptimization", createEnqueueNode("SEOOptimization"))
   .addNode("enqueueValidateLinks", createEnqueueNode("ValidateLinks"))
   .addNode("enqueueRuntimeValidation", createEnqueueNode("RuntimeValidation"))
   .addNode("enqueueBugFix", createEnqueueNode("BugFix"))
@@ -37,6 +40,7 @@ export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
 
   // Work nodes
   .addNode("instrumentation", instrumentationNode)
+  .addNode("seoOptimization", seoOptimizationNode)
   .addNode("validateLinks", validateLinksNode)
   .addNode("runtimeValidation", runtimeValidationNode)
   .addNode("bugFixNode", bugFixNode)
@@ -52,7 +56,9 @@ export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
     return "enqueueInstrumentation";
   })
   .addEdge("enqueueInstrumentation", "instrumentation")
-  .addEdge("instrumentation", "enqueueValidateLinks")
+  .addEdge("instrumentation", "enqueueSEOOptimization")
+  .addEdge("enqueueSEOOptimization", "seoOptimization")
+  .addEdge("seoOptimization", "enqueueValidateLinks")
   .addEdge("enqueueValidateLinks", "validateLinks")
 
   // Link validation routing: pass → runtime validation, fail → fix

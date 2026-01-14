@@ -16,6 +16,7 @@ export const TaskNames = [
   "CampaignDeploy",
   "WebsiteDeploy",
   "Instrumentation",
+  "SEOOptimization",
   "ValidateLinks",
   "RuntimeValidation",
   "BugFix",
