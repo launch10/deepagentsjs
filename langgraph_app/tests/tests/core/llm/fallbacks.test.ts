@@ -102,8 +102,7 @@ describe("Usage-Based LLM Filtering", () => {
     });
 
     it("excludes models above usage threshold", () => {
-      // At 85% usage, Opus (80%) should be excluded
-      const fallbacksHigh = getLLMFallbacks("coding", "slow", "paid", 85);
+      const fallbacksHigh = getLLMFallbacks("coding", "slow", "paid", 100);
       const fallbacksLow = getLLMFallbacks("coding", "slow", "paid", 0);
 
       // High usage should have fewer models
@@ -117,22 +116,22 @@ describe("Usage-Based LLM Filtering", () => {
     });
 
     it("filters models correctly at exact threshold boundaries", () => {
-      // At exactly 80%, Opus should still be available (usage < threshold)
-      const fallbacksAt80 = getLLMFallbacks("coding", "slow", "paid", 80);
+      // At exactly 90%, Sonnet should still be available (usage < threshold)
+      const fallbacksAt90 = getLLMFallbacks("coding", "slow", "paid", 90);
       console.log(
-        "fallbacksAt80",
-        fallbacksAt80.map((m) => (m as any).modelName)
+        "fallbacksAt90",
+        fallbacksAt90.map((m) => (m as any).modelName)
       );
 
-      // At 80.1%, Opus should be excluded (usage >= threshold)
-      const fallbacksAbove80 = getLLMFallbacks("coding", "slow", "paid", 80.1);
+      // At 90.1%, Sonnet should be excluded (usage >= threshold)
+      const fallbacksAbove90 = getLLMFallbacks("coding", "slow", "paid", 90.1);
       console.log(
-        "fallbacksAbove80",
-        fallbacksAbove80.map((m) => (m as any).modelName)
+        "fallbacksAbove90",
+        fallbacksAbove90.map((m) => (m as any).modelName)
       );
 
       // Should have one less model after crossing the threshold
-      expect(fallbacksAbove80.length).toBeLessThan(fallbacksAt80.length);
+      expect(fallbacksAbove90.length).toBeLessThan(fallbacksAt90.length);
     });
 
     it("defaults to 0% usage when not specified", () => {

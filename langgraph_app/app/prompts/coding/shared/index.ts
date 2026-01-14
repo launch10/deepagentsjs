@@ -2,7 +2,7 @@
  * Shared prompt components for coding agents.
  * All prompts follow the async (state, config) pattern.
  */
-export { trackingContextPrompt } from "./trackingContext";
+export { trackingPrompt } from "./tracking";
 export { codeGuidelinesPrompt } from "./codeGuidelines";
 export { environmentPrompt } from "./environment";
 export { fileStructurePrompt } from "./fileStructure";

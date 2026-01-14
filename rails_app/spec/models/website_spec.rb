@@ -24,7 +24,6 @@
 #
 
 require "rails_helper"
-require 'support/website_file_helpers'
 require 'sidekiq/testing'
 
 describe Website do
@@ -48,6 +47,19 @@ describe Website do
 
   it "is valid" do
     expect(website).to be_valid
+  end
+
+  describe "visits association" do
+    it "has many visits" do
+      visit = Ahoy::Visit.create!(
+        website_id: website.id,
+        visitor_token: "test-visitor",
+        visit_token: "test-visit",
+        started_at: Time.current
+      )
+
+      expect(website.visits).to include(visit)
+    end
   end
 
   it "snapshots website files" do

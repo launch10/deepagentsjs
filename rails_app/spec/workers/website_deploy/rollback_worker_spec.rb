@@ -1,6 +1,5 @@
 require 'rails_helper'
 require 'sidekiq/testing'
-require 'support/website_file_helpers'
 
 RSpec.describe WebsiteDeploy::RollbackWorker, type: :worker do
   include WebsiteFileHelpers

@@ -3,6 +3,12 @@ namespace :api, defaults: {format: :json} do
     # Public endpoint for lead capture from deployed landing pages
     resources :leads, only: [:create]
 
+    # Public endpoints for analytics tracking from deployed landing pages
+    scope :tracking do
+      post "visit", to: "tracking#visit"
+      post "event", to: "tracking#event"
+    end
+
     # Endpoint for authenticated (via session) users to obtain a JWT
     post "jwt", to: "jwts#create"
     resource :auth

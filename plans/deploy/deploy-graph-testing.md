@@ -4,10 +4,10 @@
 
 Users create landing pages to validate business ideas. Two conversion patterns:
 
-| Pattern | Tracking |
-|---------|----------|
-| **Tiered Pricing** | `L10.conversion({ label: 'signup', value: tierPrice })` |
-| **Simple Waitlist** | `L10.conversion({ label: 'signup', value: 0 })` |
+| Pattern             | Tracking                                                |
+| ------------------- | ------------------------------------------------------- |
+| **Tiered Pricing**  | `L10.conversion({ label: 'signup', value: tierPrice })` |
+| **Simple Waitlist** | `L10.conversion({ label: 'signup', value: 0 })`         |
 
 ## Architecture Decisions
 
@@ -41,7 +41,7 @@ app/prompts/coding/
 **Tracking context** (`shared/trackingContext.ts`):
 
 ```typescript
-export const trackingContextPrompt = () => `
+export const trackingPrompt = () => `
 ## Conversion Tracking
 
 All landing pages require conversion tracking. Determine the appropriate pattern based on page structure:
@@ -71,7 +71,7 @@ When the page has a basic signup form without pricing context.
 Replace hardcoded `CODING_AGENT_SYSTEM_PROMPT` with composed prompt:
 
 ```typescript
-import { buildCodingPrompt } from '@prompts/coding';
+import { buildCodingPrompt } from "@prompts/coding";
 
 export async function createCodingAgent(state, customPrompt?: string) {
   const systemPrompt = customPrompt || buildCodingPrompt();
@@ -102,60 +102,60 @@ Update `ConversionAnalysisSchema` to include `tierPrice?: number`.
 
 **File:** `tests/tests/lib/tracking.test.ts`
 
-| Test | What it verifies |
-|------|------------------|
-| `fires gtag with correct send_to format` | gtag called with `AW-xxx/label` |
-| `looks up semantic label from conversionLabels` | Config lookup works |
-| `passes value and currency correctly` | ROAS tracking works |
+| Test                                            | What it verifies                |
+| ----------------------------------------------- | ------------------------------- |
+| `fires gtag with correct send_to format`        | gtag called with `AW-xxx/label` |
+| `looks up semantic label from conversionLabels` | Config lookup works             |
+| `passes value and currency correctly`           | ROAS tracking works             |
 
 ### Layer 2: Coding Agent Tracking Tests (3)
 
 **File:** `tests/tests/nodes/codingAgent/tracking.test.ts`
 
-| Test | What it verifies |
-|------|------------------|
-| `tiered pricing -> tracks with tier value` | Value param included |
-| `simple form -> tracks with value: 0` | Zero value for basic signups |
-| `adds L10 import when needed` | Import statement added |
+| Test                                       | What it verifies             |
+| ------------------------------------------ | ---------------------------- |
+| `tiered pricing -> tracks with tier value` | Value param included         |
+| `simple form -> tracks with value: 0`      | Zero value for basic signups |
+| `adds L10 import when needed`              | Import statement added       |
 
 ### Layer 3: Deployment Tests (2)
 
 **File:** `tests/tests/graphs/deploy/deployWebsite.test.ts` (add to existing)
 
-| Test | What it verifies |
-|------|------------------|
-| `marks task failed on webhook error` | Failure handling |
-| `preserves error details` | Debugging info available |
+| Test                                 | What it verifies         |
+| ------------------------------------ | ------------------------ |
+| `marks task failed on webhook error` | Failure handling         |
+| `preserves error details`            | Debugging info available |
 
 ---
 
 ## Database Snapshots (2)
 
-| Snapshot | Contents |
-|----------|----------|
+| Snapshot                     | Contents                                 |
+| ---------------------------- | ---------------------------------------- |
 | `website_with_pricing_tiers` | Page with pricing component, no tracking |
-| `website_with_simple_form` | Page with signup form, no tracking |
+| `website_with_simple_form`   | Page with signup form, no tracking       |
 
 ---
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `app/prompts/coding/index.ts` | NEW: Export buildCodingPrompt() |
-| `app/prompts/coding/shared/trackingContext.ts` | NEW: Tracking scenarios prompt |
-| `app/prompts/coding/shared/codeGuidelines.ts` | NEW: Extract from agent.ts |
-| `app/prompts/coding/shared/environment.ts` | NEW: VITE env var docs |
-| `app/prompts/coding/shared/fileStructure.ts` | NEW: Template structure |
-| `app/prompts/coding/shared/tools.ts` | NEW: Tools documentation |
-| `app/prompts/coding/bugFix/systemPrompt.ts` | NEW: Bug fix prompt using shared/ |
-| `app/nodes/codingAgent/utils/agent.ts` | Refactor to use buildCodingPrompt() |
-| `app/nodes/deploy/bugFixNode.ts` | Use new bugFix prompt builder |
-| `app/nodes/deploy/instrumentationNode.ts` | Add tierPrice to schema + ~10 lines |
-| `tests/tests/lib/tracking.test.ts` | NEW |
-| `tests/tests/nodes/codingAgent/tracking.test.ts` | NEW |
-| `tests/tests/graphs/deploy/deployWebsite.test.ts` | ADD 2 tests |
-| `tests/fixtures/database/snapshots/` | ADD 2 snapshots |
+| File                                              | Change                              |
+| ------------------------------------------------- | ----------------------------------- |
+| `app/prompts/coding/index.ts`                     | NEW: Export buildCodingPrompt()     |
+| `app/prompts/coding/shared/trackingContext.ts`    | NEW: Tracking scenarios prompt      |
+| `app/prompts/coding/shared/codeGuidelines.ts`     | NEW: Extract from agent.ts          |
+| `app/prompts/coding/shared/environment.ts`        | NEW: VITE env var docs              |
+| `app/prompts/coding/shared/fileStructure.ts`      | NEW: Template structure             |
+| `app/prompts/coding/shared/tools.ts`              | NEW: Tools documentation            |
+| `app/prompts/coding/bugFix/systemPrompt.ts`       | NEW: Bug fix prompt using shared/   |
+| `app/nodes/codingAgent/utils/agent.ts`            | Refactor to use buildCodingPrompt() |
+| `app/nodes/deploy/bugFixNode.ts`                  | Use new bugFix prompt builder       |
+| `app/nodes/deploy/instrumentationNode.ts`         | Add tierPrice to schema + ~10 lines |
+| `tests/tests/lib/tracking.test.ts`                | NEW                                 |
+| `tests/tests/nodes/codingAgent/tracking.test.ts`  | NEW                                 |
+| `tests/tests/graphs/deploy/deployWebsite.test.ts` | ADD 2 tests                         |
+| `tests/fixtures/database/snapshots/`              | ADD 2 snapshots                     |
 
 ---
 

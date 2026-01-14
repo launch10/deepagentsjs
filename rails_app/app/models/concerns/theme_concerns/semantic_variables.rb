@@ -163,14 +163,14 @@ module ThemeConcerns
       def derive_neutral_background(dominant_color, is_dark)
         hue = dominant_color[:hue].round
 
-        if is_dark
+        derived = if is_dark
           # Dark theme: near-black with subtle hue tint
-          derived = Chroma.paint("hsl(#{hue}, 15%, 8%)")
+          Chroma.paint("hsl(#{hue}, 15%, 8%)")
         else
           # Light theme: warm off-white with subtle hue tint
           # Saturation 15-25% keeps it warm but neutral
           # Lightness 96-98% keeps it very light
-          derived = Chroma.paint("hsl(#{hue}, 20%, 98%)")
+          Chroma.paint("hsl(#{hue}, 20%, 98%)")
         end
 
         derived.to_hex.delete("#").upcase
@@ -213,12 +213,12 @@ module ThemeConcerns
       def derive_muted_surface(dominant_color, is_dark)
         hue = dominant_color[:hue].round
 
-        if is_dark
+        derived = if is_dark
           # Dark theme: slightly lighter, low saturation
-          derived = Chroma.paint("hsl(#{hue}, 10%, 15%)")
+          Chroma.paint("hsl(#{hue}, 10%, 15%)")
         else
           # Light theme: slightly darker than background, low saturation
-          derived = Chroma.paint("hsl(#{hue}, 15%, 94%)")
+          Chroma.paint("hsl(#{hue}, 15%, 94%)")
         end
 
         derived.to_hex.delete("#").upcase

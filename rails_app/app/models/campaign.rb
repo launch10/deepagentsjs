@@ -138,6 +138,14 @@ class Campaign < ApplicationRecord
     account&.google_customer_id
   end
 
+  def google_conversion_id
+    account&.google_ads_account&.google_conversion_id
+  end
+
+  def google_conversion_label
+    account&.google_ads_account&.google_conversion_label
+  end
+
   def google_account_invitation
     account&.google_account_invitation
   end

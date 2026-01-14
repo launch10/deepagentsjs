@@ -3,7 +3,7 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { Task } from "@types";
 import { createCodingAgent } from "@nodes";
-import { codingToolsPrompt, trackingContextPrompt, environmentPrompt } from "@prompts";
+import { codingToolsPrompt, trackingPrompt, environmentPrompt } from "@prompts";
 
 const TASK_NAME = "Instrumentation" as const;
 
@@ -11,7 +11,7 @@ const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunna
   let mergedState = { ...state, isFirstMessage: false };
   const [tools, trackingContext, environment] = await Promise.all([
     codingToolsPrompt(mergedState, config),
-    trackingContextPrompt(mergedState, config),
+    trackingPrompt(mergedState, config),
     environmentPrompt(mergedState, config),
   ]);
 

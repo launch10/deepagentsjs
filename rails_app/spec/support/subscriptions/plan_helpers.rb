@@ -116,3 +116,7 @@ module PlanHelpers
     end.tap { |pl| pl.update!(limit: limit) }
   end
 end
+
+RSpec.configure do |config|
+  config.include PlanHelpers
+end

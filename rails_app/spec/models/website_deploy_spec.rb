@@ -36,7 +36,6 @@
 #
 
 require 'rails_helper'
-require 'support/website_file_helpers'
 
 RSpec.describe WebsiteDeploy, type: :model do
   include WebsiteFileHelpers

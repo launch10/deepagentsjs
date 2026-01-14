@@ -1091,6 +1091,92 @@ ALTER SEQUENCE public.ads_id_seq OWNED BY public.ads.id;
 
 
 --
+-- Name: ahoy_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ahoy_events (
+    id bigint NOT NULL,
+    visit_id bigint,
+    name character varying,
+    properties jsonb,
+    "time" timestamp(6) without time zone
+);
+
+
+--
+-- Name: ahoy_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ahoy_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ahoy_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ahoy_events_id_seq OWNED BY public.ahoy_events.id;
+
+
+--
+-- Name: ahoy_visits; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ahoy_visits (
+    id bigint NOT NULL,
+    visit_token character varying,
+    visitor_token character varying,
+    website_id bigint,
+    gclid character varying,
+    ip character varying,
+    user_agent text,
+    referrer text,
+    referring_domain character varying,
+    landing_page text,
+    browser character varying,
+    os character varying,
+    device_type character varying,
+    country character varying,
+    region character varying,
+    city character varying,
+    latitude double precision,
+    longitude double precision,
+    utm_source character varying,
+    utm_medium character varying,
+    utm_term character varying,
+    utm_content character varying,
+    utm_campaign character varying,
+    app_version character varying,
+    os_version character varying,
+    platform character varying,
+    started_at timestamp(6) without time zone
+);
+
+
+--
+-- Name: ahoy_visits_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ahoy_visits_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ahoy_visits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ahoy_visits_id_seq OWNED BY public.ahoy_visits.id;
+
+
+--
 -- Name: announcements; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2320,11 +2406,11 @@ ALTER SEQUENCE public.job_runs_id_seq OWNED BY public.job_runs.id;
 
 CREATE TABLE public.leads (
     id bigint NOT NULL,
-    project_id bigint NOT NULL,
     email character varying(255) NOT NULL,
     name character varying(255),
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    account_id bigint NOT NULL
 );
 
 
@@ -3451,6 +3537,41 @@ ALTER SEQUENCE public.website_histories_id_seq OWNED BY public.website_histories
 
 
 --
+-- Name: website_leads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.website_leads (
+    id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    website_id bigint NOT NULL,
+    visit_id bigint,
+    visitor_token character varying,
+    gclid character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: website_leads_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.website_leads_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: website_leads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.website_leads_id_seq OWNED BY public.website_leads.id;
+
+
+--
 -- Name: website_uploads; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3954,6 +4075,20 @@ ALTER TABLE ONLY public.ads_accounts ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: ahoy_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ahoy_events ALTER COLUMN id SET DEFAULT nextval('public.ahoy_events_id_seq'::regclass);
+
+
+--
+-- Name: ahoy_visits id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ahoy_visits ALTER COLUMN id SET DEFAULT nextval('public.ahoy_visits_id_seq'::regclass);
+
+
+--
 -- Name: announcements id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4290,6 +4425,13 @@ ALTER TABLE ONLY public.website_histories ALTER COLUMN id SET DEFAULT nextval('p
 
 
 --
+-- Name: website_leads id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_leads ALTER COLUMN id SET DEFAULT nextval('public.website_leads_id_seq'::regclass);
+
+
+--
 -- Name: website_uploads id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4620,6 +4762,22 @@ ALTER TABLE ONLY public.ads_accounts
 
 ALTER TABLE ONLY public.ads
     ADD CONSTRAINT ads_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ahoy_events ahoy_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ahoy_events
+    ADD CONSTRAINT ahoy_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ahoy_visits ahoy_visits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ahoy_visits
+    ADD CONSTRAINT ahoy_visits_pkey PRIMARY KEY (id);
 
 
 --
@@ -5268,6 +5426,14 @@ ALTER TABLE ONLY public.website_files
 
 ALTER TABLE ONLY public.website_histories
     ADD CONSTRAINT website_histories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: website_leads website_leads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_leads
+    ADD CONSTRAINT website_leads_pkey PRIMARY KEY (id);
 
 
 --
@@ -6807,6 +6973,55 @@ CREATE INDEX index_ads_on_status ON public.ads USING btree (status);
 
 
 --
+-- Name: index_ahoy_events_on_name_and_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_events_on_name_and_time ON public.ahoy_events USING btree (name, "time");
+
+
+--
+-- Name: index_ahoy_events_on_properties; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_events_on_properties ON public.ahoy_events USING gin (properties jsonb_path_ops);
+
+
+--
+-- Name: index_ahoy_events_on_visit_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_events_on_visit_id ON public.ahoy_events USING btree (visit_id);
+
+
+--
+-- Name: index_ahoy_visits_on_gclid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_visits_on_gclid ON public.ahoy_visits USING btree (gclid);
+
+
+--
+-- Name: index_ahoy_visits_on_visit_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_ahoy_visits_on_visit_token ON public.ahoy_visits USING btree (visit_token);
+
+
+--
+-- Name: index_ahoy_visits_on_visitor_token_and_started_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_visits_on_visitor_token_and_started_at ON public.ahoy_visits USING btree (visitor_token, started_at);
+
+
+--
+-- Name: index_ahoy_visits_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_visits_on_website_id ON public.ahoy_visits USING btree (website_id);
+
+
+--
 -- Name: index_api_tokens_on_token; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7395,24 +7610,24 @@ CREATE INDEX index_job_runs_on_status ON public.job_runs USING btree (status);
 
 
 --
+-- Name: index_leads_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_account_id ON public.leads USING btree (account_id);
+
+
+--
+-- Name: index_leads_on_account_id_and_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_leads_on_account_id_and_email ON public.leads USING btree (account_id, email);
+
+
+--
 -- Name: index_leads_on_email; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_leads_on_email ON public.leads USING btree (email);
-
-
---
--- Name: index_leads_on_project_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_leads_on_project_id ON public.leads USING btree (project_id);
-
-
---
--- Name: index_leads_on_project_id_and_email; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_leads_on_project_id_and_email ON public.leads USING btree (project_id, email);
 
 
 --
@@ -8225,6 +8440,48 @@ CREATE INDEX index_website_histories_on_thread_id ON public.website_histories US
 --
 
 CREATE INDEX index_website_histories_on_website_id ON public.website_histories USING btree (website_id);
+
+
+--
+-- Name: index_website_leads_on_gclid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_gclid ON public.website_leads USING btree (gclid);
+
+
+--
+-- Name: index_website_leads_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_lead_id ON public.website_leads USING btree (lead_id);
+
+
+--
+-- Name: index_website_leads_on_lead_id_and_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_website_leads_on_lead_id_and_website_id ON public.website_leads USING btree (lead_id, website_id);
+
+
+--
+-- Name: index_website_leads_on_visit_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_visit_id ON public.website_leads USING btree (visit_id);
+
+
+--
+-- Name: index_website_leads_on_visitor_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_visitor_token ON public.website_leads USING btree (visitor_token);
+
+
+--
+-- Name: index_website_leads_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_website_id ON public.website_leads USING btree (website_id);
 
 
 --
@@ -9581,6 +9838,11 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260113213841'),
+('20260113211110'),
+('20260113201504'),
+('20260113201439'),
+('20260113201418'),
 ('20260113001126'),
 ('20260112235846'),
 ('20260112152551'),

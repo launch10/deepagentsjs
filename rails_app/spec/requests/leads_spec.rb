@@ -1,6 +1,15 @@
 require 'swagger_helper'
+require 'sidekiq/testing'
 
 RSpec.describe "Leads API", type: :request do
+  before do
+    Sidekiq::Testing.inline! unless self.class.metadata[:sidekiq] == :fake
+  end
+
+  after do
+    Sidekiq::Testing.fake!
+  end
+
   # ==========================================================================
   # SECURITY CONTEXT
   # ==========================================================================
@@ -28,6 +37,7 @@ RSpec.describe "Leads API", type: :request do
   let!(:user) { create(:user) }
   let!(:account) { user.owned_account }
   let!(:project) { create(:project, account: account, name: "Test Landing Page") }
+  let!(:website) { create(:website, project: project, account: account) }
 
   # Generate a valid signup_token token for the project
   let(:valid_token) { project.signup_token }
@@ -35,6 +45,7 @@ RSpec.describe "Leads API", type: :request do
   # Create a second project to test token isolation
   let!(:other_account) { create(:account, name: "Other Account") }
   let!(:other_project) { create(:project, account: other_account, name: "Other Project") }
+  let!(:other_website) { create(:website, project: other_project, account: other_account) }
   let(:other_token) { other_project.signup_token }
 
   path '/api/v1/leads' do
@@ -50,10 +61,10 @@ RSpec.describe "Leads API", type: :request do
         - Token is a Rails signup_token generated from the project
         - Token is purpose-scoped to :lead_signup
 
-        **Idempotency:**
-        - Returns 201 Created for new leads
-        - Returns 200 OK for existing leads (same email, same project)
-        - Email is normalized (lowercase, trimmed) before matching
+        **Processing:**
+        - Returns 202 Accepted immediately
+        - Lead creation happens asynchronously via background job
+        - Email validation happens synchronously (422 returned for invalid emails)
 
         **CORS:**
         - Allows requests from any origin
@@ -88,7 +99,7 @@ RSpec.describe "Leads API", type: :request do
       # SUCCESS CASES
       # ========================================================================
 
-      response '201', 'lead created successfully' do
+      response '202', 'lead accepted for processing' do
         schema APISchemas::Lead.success_response
 
         let(:token) { valid_token }
@@ -98,15 +109,17 @@ RSpec.describe "Leads API", type: :request do
           data = JSON.parse(response.body)
           expect(data['success']).to eq(true)
 
-          # Verify lead was created in the correct project
+          # Process the job to verify lead creation
+
           lead = Lead.find_by(email: 'newlead@example.com')
           expect(lead).to be_present
-          expect(lead.project_id).to eq(project.id)
+          expect(lead.account_id).to eq(account.id)
           expect(lead.name).to eq('Jane Doe')
+          expect(lead.websites).to include(website)
         end
       end
 
-      response '201', 'lead created with email only (name optional)' do
+      response '202', 'lead accepted with email only (name optional)' do
         schema APISchemas::Lead.success_response
 
         let(:token) { valid_token }
@@ -122,7 +135,7 @@ RSpec.describe "Leads API", type: :request do
         end
       end
 
-      response '201', 'email is normalized (lowercase and trimmed)' do
+      response '202', 'email is normalized (lowercase and trimmed)' do
         schema APISchemas::Lead.success_response
 
         let(:token) { valid_token }
@@ -138,17 +151,18 @@ RSpec.describe "Leads API", type: :request do
         end
       end
 
-      response '200', 'existing lead returns 200 (idempotent, no update)' do
+      response '202', 'existing lead returns 202 (idempotent)' do
         schema APISchemas::Lead.success_response
 
         let(:token) { valid_token }
-        let!(:existing_lead) { create(:lead, project: project, email: 'existing@example.com', name: 'Original Name') }
+        let!(:existing_lead) { create(:lead, account: account, email: 'existing@example.com', name: 'Original Name') }
+        let!(:existing_website_lead) { create(:website_lead, lead: existing_lead, website: website) }
         let(:lead_params) { { email: 'existing@example.com', name: 'Attempted Update' } }
 
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['success']).to eq(true)
-          expect(response.status).to eq(200)
+          expect(response.status).to eq(202)
 
           # Name should NOT be updated - we just acknowledge and move on
           existing_lead.reload
@@ -156,39 +170,38 @@ RSpec.describe "Leads API", type: :request do
         end
       end
 
-      response '200', 'existing lead matched case-insensitively' do
+      response '202', 'existing lead matched case-insensitively' do
         schema APISchemas::Lead.success_response
 
         let(:token) { valid_token }
-        let!(:existing_lead) { create(:lead, project: project, email: 'test@example.com') }
+        let!(:existing_lead) { create(:lead, account: account, email: 'test@example.com') }
+        let!(:existing_website_lead) { create(:website_lead, lead: existing_lead, website: website) }
         let(:lead_params) { { email: 'TEST@EXAMPLE.COM' } }
 
         run_test! do |response|
-          expect(response.status).to eq(200)
+          expect(response.status).to eq(202)
 
           # Should not create a duplicate
-          expect(Lead.where(project: project).count).to eq(1)
+          expect(website.leads.count).to eq(1)
         end
       end
 
-      response '201', 'same email can be used for different projects' do
+      response '202', 'same email can be used for different accounts' do
         schema APISchemas::Lead.success_response
 
         let(:token) { other_token }
-        let!(:existing_lead) { create(:lead, project: project, email: 'shared@example.com') }
-        let(:lead_params) { { email: 'shared@example.com', name: 'Different Project' } }
+        let!(:existing_lead) { create(:lead, account: account, email: 'shared@example.com') }
+        let!(:existing_website_lead) { create(:website_lead, lead: existing_lead, website: website) }
+        let(:lead_params) { { email: 'shared@example.com', name: 'Different Account' } }
 
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['success']).to eq(true)
 
-          # Should create a new lead for the other project
-          expect(response.status).to eq(201)
-
-          # Now there should be 2 leads with this email (one per project)
+          # Now there should be 2 leads with this email (one per account)
           leads = Lead.where(email: 'shared@example.com')
           expect(leads.count).to eq(2)
-          expect(leads.pluck(:project_id)).to contain_exactly(project.id, other_project.id)
+          expect(leads.pluck(:account_id)).to contain_exactly(account.id, other_account.id)
         end
       end
 
@@ -324,7 +337,7 @@ RSpec.describe "Leads API", type: :request do
       # and doesn't hit the controller. These tests document the expected
       # behavior for API consumers.
 
-      response '201', 'accepts requests with Origin header from any domain' do
+      response '202', 'accepts requests with Origin header from any domain' do
         schema APISchemas::Lead.success_response
 
         let(:token) { valid_token }
@@ -332,11 +345,11 @@ RSpec.describe "Leads API", type: :request do
         let(:Origin) { 'https://my-landing-page.launch10.site' }
 
         run_test! do |response|
-          expect(response.status).to eq(201)
+          expect(response.status).to eq(202)
         end
       end
 
-      response '201', 'accepts requests with custom domain Origin' do
+      response '202', 'accepts requests with custom domain Origin' do
         schema APISchemas::Lead.success_response
 
         let(:token) { valid_token }
@@ -344,8 +357,233 @@ RSpec.describe "Leads API", type: :request do
         let(:Origin) { 'https://my-custom-domain.com' }
 
         run_test! do |response|
-          expect(response.status).to eq(201)
+          expect(response.status).to eq(202)
         end
+      end
+    end
+  end
+
+  # ==========================================================================
+  # VISIT AND GCLID TRACKING TESTS
+  # ==========================================================================
+
+  describe 'visit and gclid tracking' do
+    # Note: website is already created in the outer let! block
+
+    describe 'gclid capture' do
+      it 'stores gclid on the website_lead' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'gclid-test@example.com',
+          gclid: 'test-gclid-12345'
+        }
+
+        expect(response.status).to eq(202)
+
+        lead = Lead.find_by(email: 'gclid-test@example.com')
+        website_lead = lead.website_leads.find_by(website: website)
+        expect(website_lead.gclid).to eq('test-gclid-12345')
+      end
+
+      it 'works without gclid' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'no-gclid@example.com'
+        }
+
+        expect(response.status).to eq(202)
+
+        lead = Lead.find_by(email: 'no-gclid@example.com')
+        website_lead = lead.website_leads.find_by(website: website)
+        expect(website_lead.gclid).to be_nil
+      end
+    end
+
+    describe 'visit association' do
+      let!(:visit) do
+        Ahoy::Visit.create!(
+          website_id: website.id,
+          visitor_token: 'visitor-abc',
+          visit_token: 'visit-xyz',
+          gclid: 'visit-gclid-999',
+          started_at: Time.current
+        )
+      end
+
+      it 'links website_lead to existing visit' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'visit-link@example.com',
+          visitor_token: 'visitor-abc',
+          visit_token: 'visit-xyz'
+        }
+
+        expect(response.status).to eq(202)
+
+        lead = Lead.find_by(email: 'visit-link@example.com')
+        website_lead = lead.website_leads.find_by(website: website)
+        expect(website_lead.visit_id).to eq(visit.id)
+      end
+
+      it 'stores visitor_token on website_lead for multi-touch attribution' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'visitor-token-test@example.com',
+          visitor_token: 'visitor-abc',
+          visit_token: 'visit-xyz'
+        }
+
+        expect(response.status).to eq(202)
+
+        lead = Lead.find_by(email: 'visitor-token-test@example.com')
+        website_lead = lead.website_leads.find_by(website: website)
+        expect(website_lead.visitor_token).to eq('visitor-abc')
+      end
+
+      it 'inherits gclid from visit if not provided directly' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'inherit-gclid@example.com',
+          visitor_token: 'visitor-abc',
+          visit_token: 'visit-xyz'
+        }
+
+        expect(response.status).to eq(202)
+
+        lead = Lead.find_by(email: 'inherit-gclid@example.com')
+        website_lead = lead.website_leads.find_by(website: website)
+        expect(website_lead.gclid).to eq('visit-gclid-999')
+      end
+
+      it 'prefers directly provided gclid over visit gclid' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'prefer-direct-gclid@example.com',
+          visitor_token: 'visitor-abc',
+          visit_token: 'visit-xyz',
+          gclid: 'direct-gclid-override'
+        }
+
+        expect(response.status).to eq(202)
+
+        lead = Lead.find_by(email: 'prefer-direct-gclid@example.com')
+        website_lead = lead.website_leads.find_by(website: website)
+        expect(website_lead.gclid).to eq('direct-gclid-override')
+      end
+    end
+
+    describe 'conversion event tracking' do
+      let!(:visit) do
+        Ahoy::Visit.create!(
+          website_id: website.id,
+          visitor_token: 'visitor-conv',
+          visit_token: 'visit-conv',
+          started_at: Time.current
+        )
+      end
+
+      it 'creates a conversion event when visit is linked' do
+        expect {
+          post '/api/v1/leads', params: {
+            token: valid_token,
+            email: 'conversion-event@example.com',
+            visitor_token: 'visitor-conv',
+            visit_token: 'visit-conv'
+          }
+        }.to change(Ahoy::Event, :count).by(1)
+
+        expect(response.status).to eq(202)
+
+        event = Ahoy::Event.last
+        expect(event.name).to eq('conversion')
+        expect(event.visit_id).to eq(visit.id)
+        expect(event.properties['email']).to eq('conversion-event@example.com')
+      end
+
+      it 'stores conversion value and currency in event properties' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'conversion-value@example.com',
+          visitor_token: 'visitor-conv',
+          visit_token: 'visit-conv',
+          conversion_value: 99.99,
+          conversion_currency: 'USD'
+        }
+
+        expect(response.status).to eq(202)
+
+        event = Ahoy::Event.last
+        expect(event.name).to eq('conversion')
+        expect(event.properties['value']).to eq(99.99)
+        expect(event.properties['currency']).to eq('USD')
+      end
+
+      it 'defaults currency to USD when value is provided without currency' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'conversion-default-currency@example.com',
+          visitor_token: 'visitor-conv',
+          visit_token: 'visit-conv',
+          conversion_value: 50.00
+        }
+
+        expect(response.status).to eq(202)
+
+        event = Ahoy::Event.last
+        expect(event.properties['value']).to eq(50.00)
+        expect(event.properties['currency']).to eq('USD')
+      end
+
+      it 'does not include value/currency when not provided' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'conversion-no-value@example.com',
+          visitor_token: 'visitor-conv',
+          visit_token: 'visit-conv'
+        }
+
+        expect(response.status).to eq(202)
+
+        event = Ahoy::Event.last
+        expect(event.properties).not_to have_key('value')
+        expect(event.properties).not_to have_key('currency')
+      end
+
+      it 'does not create conversion event without visit' do
+        expect {
+          post '/api/v1/leads', params: {
+            token: valid_token,
+            email: 'no-conversion-event@example.com'
+          }
+        }.not_to change(Ahoy::Event, :count)
+
+        expect(response.status).to eq(202)
+      end
+    end
+
+    describe 'visit creation on lead submission' do
+      it 'creates visit if visitor_token and visit_token provided but visit does not exist' do
+        expect {
+          post '/api/v1/leads', params: {
+            token: valid_token,
+            email: 'new-visit@example.com',
+            visitor_token: 'new-visitor-token',
+            visit_token: 'new-visit-token',
+            gclid: 'new-gclid'
+          }
+        }.to change(Ahoy::Visit, :count).by(1)
+
+        expect(response.status).to eq(202)
+
+        visit = Ahoy::Visit.last
+        expect(visit.visitor_token).to eq('new-visitor-token')
+        expect(visit.visit_token).to eq('new-visit-token')
+        expect(visit.gclid).to eq('new-gclid')
+        expect(visit.website_id).to eq(website.id)
+
+        lead = Lead.find_by(email: 'new-visit@example.com')
+        website_lead = lead.website_leads.find_by(website: website)
+        expect(website_lead.visit_id).to eq(visit.id)
       end
     end
   end
@@ -362,29 +600,32 @@ RSpec.describe "Leads API", type: :request do
 
         # First request should succeed
         post '/api/v1/leads', params: { token: token, email: email }
-        expect(response.status).to eq(201)
+        expect(response.status).to eq(202)
 
-        # Second request with same email should return 200 (idempotent)
+        # Second request with same email should also return 202 (idempotent)
         post '/api/v1/leads', params: { token: token, email: email }
-        expect(response.status).to eq(200)
+        expect(response.status).to eq(202)
 
-        # Should only have one lead
-        expect(Lead.where(email: email, project: project).count).to eq(1)
+        # Should only have one lead in account and one website_lead
+        expect(account.leads.where(email: email).count).to eq(1)
+        expect(website.leads.where(email: email).count).to eq(1)
       end
     end
 
     describe 'token isolation' do
-      it 'tokens from one project cannot create leads for another project' do
+      it 'tokens from one project create leads in the correct account and website' do
         # Use project A's token
         post '/api/v1/leads', params: {
           token: valid_token,
           email: 'isolation-test@example.com'
         }
 
-        expect(response.status).to eq(201)
+        expect(response.status).to eq(202)
+
         lead = Lead.find_by(email: 'isolation-test@example.com')
-        expect(lead.project_id).to eq(project.id)
-        expect(lead.project_id).not_to eq(other_project.id)
+        expect(lead.account_id).to eq(account.id)
+        expect(lead.websites).to include(website)
+        expect(lead.websites).not_to include(other_website)
       end
     end
 
@@ -395,7 +636,8 @@ RSpec.describe "Leads API", type: :request do
           email: 'user+tag@example.com'
         }
 
-        expect(response.status).to eq(201)
+        expect(response.status).to eq(202)
+
         expect(Lead.find_by(email: 'user+tag@example.com')).to be_present
       end
 
@@ -405,7 +647,7 @@ RSpec.describe "Leads API", type: :request do
           email: 'user@example.co.uk'
         }
 
-        expect(response.status).to eq(201)
+        expect(response.status).to eq(202)
       end
 
       it 'rejects empty email' do
@@ -432,14 +674,75 @@ RSpec.describe "Leads API", type: :request do
         post '/api/v1/leads', params: {
           token: valid_token,
           email: 'safe@example.com',
-          project_id: other_project.id, # Should be ignored
+          account_id: other_account.id, # Should be ignored
           created_at: 1.year.ago # Should be ignored
         }
 
-        expect(response.status).to eq(201)
+        expect(response.status).to eq(202)
+
         lead = Lead.find_by(email: 'safe@example.com')
-        expect(lead.project_id).to eq(project.id) # Not the injected value
+        expect(lead.account_id).to eq(account.id) # Not the injected value
         expect(lead.created_at).to be_within(1.minute).of(Time.current)
+      end
+    end
+
+    describe 'background worker processing', sidekiq: :fake do
+      before do
+        Sidekiq::Testing.fake!
+        Leads::ProcessWorker.jobs.clear
+      end
+
+      it 'enqueues a Leads::ProcessWorker' do
+        expect {
+          post '/api/v1/leads', params: {
+            token: valid_token,
+            email: 'worker-test@example.com'
+          }
+        }.to change(Leads::ProcessWorker.jobs, :size).by(1)
+      end
+
+      it 'enqueues worker with correct arguments' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'args-test@example.com',
+          name: 'Test Person',
+          gclid: 'test-gclid'
+        }
+
+        job = Leads::ProcessWorker.jobs.last
+        expect(job['args']).to eq([
+          account.id,
+          website.id,
+          'args-test@example.com',
+          'Test Person',
+          nil,
+          nil,
+          'test-gclid',
+          nil,  # conversion_value
+          nil   # conversion_currency
+        ])
+      end
+
+      it 'enqueues worker with conversion value and currency' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'conversion-args@example.com',
+          conversion_value: 99.99,
+          conversion_currency: 'EUR'
+        }
+
+        job = Leads::ProcessWorker.jobs.last
+        expect(job['args']).to eq([
+          account.id,
+          website.id,
+          'conversion-args@example.com',
+          nil,
+          nil,
+          nil,
+          nil,
+          99.99,
+          'EUR'
+        ])
       end
     end
   end

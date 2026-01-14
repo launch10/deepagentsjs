@@ -50,6 +50,9 @@ class Website < ApplicationRecord
   has_many :uploads, -> { order(:id) }, through: :website_uploads
   has_many :campaigns
   alias_method :ad_campaigns, :campaigns
+  has_many :visits, class_name: "Ahoy::Visit"
+  has_many :website_leads, dependent: :destroy
+  has_many :leads, through: :website_leads
 
   accepts_nested_attributes_for :website_files, allow_destroy: true
 

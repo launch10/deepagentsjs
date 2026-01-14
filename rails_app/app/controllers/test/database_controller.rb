@@ -77,6 +77,7 @@ class Test::DatabaseController < Test::TestController
       render json: {
         status: "ok",
         project: {
+          id: project.id,
           uuid: project.uuid,
           name: project.name
         }

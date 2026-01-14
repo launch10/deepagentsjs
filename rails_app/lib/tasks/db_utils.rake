@@ -11,7 +11,7 @@ namespace :db do
     sql = "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '#{database}' AND pid <> pg_backend_pid();"
 
     require "open3"
-    stdout, stderr, status = Open3.capture3(
+    stdout, _, _ = Open3.capture3(
       env,
       "psql",
       "-U", config[:username],
@@ -35,7 +35,7 @@ namespace :db do
     sql = "SELECT pid, usename, application_name, state, left(query, 80) as query FROM pg_stat_activity WHERE datname = '#{database}';"
 
     require "open3"
-    stdout, stderr, status = Open3.capture3(
+    stdout, _, _ = Open3.capture3(
       env,
       "psql",
       "-U", config[:username],

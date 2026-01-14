@@ -1,5 +1,4 @@
 require "rails_helper"
-require "support/subscription_helpers"
 
 RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
   include SubscriptionHelpers
