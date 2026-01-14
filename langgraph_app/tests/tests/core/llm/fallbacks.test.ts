@@ -111,7 +111,7 @@ describe("Usage-Based LLM Filtering", () => {
 
     it("always returns at least one model (100% threshold models)", () => {
       // Even at 99% usage, should have at least one model available
-      const fallbacks = getLLMFallbacks("coding", "slow", "paid", 99);
+      const fallbacks = getLLMFallbacks("coding", "slow", "paid", 100);
       expect(fallbacks.length).toBeGreaterThanOrEqual(1);
     });
 

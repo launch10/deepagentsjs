@@ -20,6 +20,30 @@ const problems = [
 ];
 
 export function ProblemSection() {
+  const problems = [
+    {
+      icon: Globe,
+      title: 'The Timezone Math Nightmare',
+      description: 'Is 2pm EST too early for the Sydney team? Will the London folks have to take a 9pm call? You shouldn\'t need a PhD in timezone arithmetic.',
+      color: 'text-[#E76F51]',
+      bgColor: 'bg-[#E76F51]/10',
+    },
+    {
+      icon: MessageSquare,
+      title: 'The Endless Thread',
+      description: '12 Slack messages later and you\'re still not closer to a meeting time. "Tuesday doesn\'t work." "How about Wednesday?" "I\'m off Wednesday." Sound familiar?',
+      color: 'text-[#F4A261]',
+      bgColor: 'bg-[#F4A261]/10',
+    },
+    {
+      icon: CalendarX,
+      title: 'The Calendar Juggle',
+      description: 'Switching between Google Calendar, Outlook, and that one person who still uses Apple Calendar. Then manually checking everyone\'s availability. There has to be a better way.',
+      color: 'text-[#2A9D8F]',
+      bgColor: 'bg-[#2A9D8F]/10',
+    },
+  ];
+
   return (
     <section className="py-20 md:py-24 lg:py-32 bg-muted">
       <div className="container mx-auto px-4 md:px-6">
@@ -27,8 +51,8 @@ export function ProblemSection() {
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
             Sound Familiar?
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            If you're nodding along, you're not alone. Here's what distributed teams deal with every single day.
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            If you're nodding along, you're not alone. Distributed teams waste hours every week on scheduling.
           </p>
         </div>
 
