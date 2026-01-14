@@ -183,10 +183,11 @@ export const L10 = {
    * @example
    * L10.createLead(email).then(showSuccess).catch(showError);
    * L10.createLead(email, { value: 99 }).then(showSuccess).catch(showError);
+   * L10.createLead(email, { value: 99, currency: "EUR" }).then(showSuccess).catch(showError);
    */
   async createLead(
     email: string,
-    options?: { value?: number; name?: string }
+    options?: { value?: number; currency?: string; name?: string }
   ): Promise<void> {
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
     const signupToken = import.meta.env.VITE_SIGNUP_TOKEN;
@@ -196,6 +197,9 @@ export const L10 = {
       console.error("[L10] Missing VITE_API_BASE_URL or VITE_SIGNUP_TOKEN");
       throw new LeadError("Configuration error");
     }
+
+    const conversionValue = options?.value;
+    const conversionCurrency = options?.currency || "USD";
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/v1/leads`, {
@@ -208,6 +212,8 @@ export const L10 = {
           visitor_token: this.getVisitorToken(),
           visit_token: this.getVisitToken(),
           gclid: getGclid(),
+          conversion_value: conversionValue,
+          conversion_currency: conversionValue !== undefined ? conversionCurrency : undefined,
         }),
       });
 
@@ -216,8 +222,8 @@ export const L10 = {
         if (typeof window !== "undefined" && window.gtag && googleAdsSendTo) {
           window.gtag("event", "conversion", {
             send_to: googleAdsSendTo,
-            value: options?.value ?? 0,
-            currency: "USD",
+            value: conversionValue ?? 0,
+            currency: conversionCurrency,
           });
         }
         return;

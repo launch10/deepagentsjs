@@ -60,34 +60,49 @@ RSpec.describe "Test Tracking API", type: :request do
     end
   end
 
-  describe 'GET /test/tracking/page' do
-    context 'with valid project_id' do
-      it 'returns an HTML page with tracking script' do
-        get "/test/tracking/page", params: { project_id: project.id }
+  describe 'GET /test/tracking/leads' do
+    context 'with valid website_id' do
+      it 'returns leads and conversion data' do
+        # Create a visit, lead, and conversion event
+        visit = Ahoy::Visit.create!(
+          website: website,
+          visitor_token: SecureRandom.uuid,
+          visit_token: SecureRandom.uuid,
+          started_at: Time.current
+        )
+
+        lead = create(:lead, account: account, email: 'test-lead@example.com')
+        create(:website_lead, lead: lead, website: website, visit: visit, gclid: 'test-gclid')
+
+        Ahoy::Event.create!(
+          visit: visit,
+          name: "conversion",
+          properties: { email: 'test-lead@example.com', value: 50.0, currency: 'USD' },
+          time: Time.current
+        )
+
+        get "/test/tracking/leads", params: { website_id: website.id }
 
         expect(response).to have_http_status(:ok)
-        expect(response.content_type).to include('text/html')
+        data = JSON.parse(response.body)
 
-        # Verify the page contains the tracking config
-        expect(response.body).to include('L10_CONFIG')
-        expect(response.body).to include(project.signup_token)
-        expect(response.body).to include('trackVisit')
-        expect(response.body).to include('trackEvent')
+        expect(data['lead_count']).to eq(1)
+        expect(data['leads'].first['email']).to eq('test-lead@example.com')
+        expect(data['leads'].first['gclid']).to eq('test-gclid')
+        expect(data['conversions'].length).to eq(1)
+        expect(data['conversions'].first['value']).to eq(50.0)
+        expect(data['conversions'].first['currency']).to eq('USD')
       end
 
-      it 'includes lead form' do
-        get "/test/tracking/page", params: { project_id: project.id }
+      it 'returns empty data when no leads exist' do
+        get "/test/tracking/leads", params: { website_id: website.id }
 
-        expect(response.body).to include('lead-form')
-        expect(response.body).to include('createLead')
-      end
-    end
+        expect(response).to have_http_status(:ok)
+        data = JSON.parse(response.body)
 
-    context 'with invalid project_id' do
-      it 'returns 404' do
-        get "/test/tracking/page", params: { project_id: 99999 }
-
-        expect(response).to have_http_status(:not_found)
+        expect(data['lead_count']).to eq(0)
+        expect(data['leads']).to eq([])
+        expect(data['conversions']).to eq([])
       end
     end
   end
@@ -103,8 +118,8 @@ RSpec.describe "Test Tracking API", type: :request do
       expect(response).to redirect_to(root_path)
     end
 
-    it 'redirects page endpoint to root' do
-      get "/test/tracking/page", params: { project_id: project.id }
+    it 'redirects leads endpoint to root' do
+      get "/test/tracking/leads", params: { website_id: website.id }
 
       expect(response).to redirect_to(root_path)
     end

@@ -103,4 +103,49 @@ test.describe("Real Tracking Library E2E", () => {
       send_to: expect.stringContaining("AW-TEST123"),
     });
   });
+
+  test("lead is created in the backend database", async ({ page }) => {
+    const { websiteId } = await TrackingHelper.getTestPageInfo();
+
+    // Navigate to the built page
+    await page.goto(TrackingHelper.getTestPageUrl());
+    await page.waitForTimeout(1500);
+
+    // Fill out the lead form with a unique email
+    const testEmail = `lead-test-${Date.now()}@example.com`;
+    await page.fill('input[type="email"]', testEmail);
+    await page.click('button[type="submit"]');
+
+    // Wait for the lead to be created in the backend
+    const lead = await TrackingHelper.waitForLead(websiteId, testEmail);
+
+    // Verify the lead was created
+    expect(lead.email).toBe(testEmail.toLowerCase());
+    expect(lead.created_at).toBeDefined();
+  });
+
+  test("conversion event includes value and currency", async ({ page }) => {
+    const { websiteId } = await TrackingHelper.getTestPageInfo();
+
+    // Navigate to the built page
+    await page.goto(TrackingHelper.getTestPageUrl());
+    await page.waitForTimeout(1500);
+
+    // Fill out the lead form with a unique email
+    const testEmail = `conversion-value-${Date.now()}@example.com`;
+    await page.fill('input[type="email"]', testEmail);
+    await page.click('button[type="submit"]');
+
+    // Wait for the conversion event to be recorded
+    const conversion = await TrackingHelper.waitForConversion(
+      websiteId,
+      testEmail
+    );
+
+    // Verify the conversion includes value and currency
+    // The test App.tsx sends value: 99.00, currency: 'USD'
+    expect(conversion.email).toBe(testEmail.toLowerCase());
+    expect(conversion.value).toBe(99.0);
+    expect(conversion.currency).toBe("USD");
+  });
 });

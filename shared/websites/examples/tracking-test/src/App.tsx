@@ -11,7 +11,8 @@ function App() {
     setMessage('');
 
     try {
-      await L10.createLead(email);
+      // Include conversion value for testing
+      await L10.createLead(email, { value: 99.00, currency: 'USD' });
       setMessage('Success!');
       setIsError(false);
     } catch (error) {

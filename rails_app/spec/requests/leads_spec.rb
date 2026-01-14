@@ -519,6 +519,55 @@ RSpec.describe "Leads API", type: :request do
         expect(event.properties['email']).to eq('conversion-event@example.com')
       end
 
+      it 'stores conversion value and currency in event properties' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'conversion-value@example.com',
+          visitor_token: 'visitor-conv',
+          visit_token: 'visit-conv',
+          conversion_value: 99.99,
+          conversion_currency: 'USD'
+        }
+
+        expect(response.status).to eq(202)
+
+        event = Ahoy::Event.last
+        expect(event.name).to eq('conversion')
+        expect(event.properties['value']).to eq(99.99)
+        expect(event.properties['currency']).to eq('USD')
+      end
+
+      it 'defaults currency to USD when value is provided without currency' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'conversion-default-currency@example.com',
+          visitor_token: 'visitor-conv',
+          visit_token: 'visit-conv',
+          conversion_value: 50.00
+        }
+
+        expect(response.status).to eq(202)
+
+        event = Ahoy::Event.last
+        expect(event.properties['value']).to eq(50.00)
+        expect(event.properties['currency']).to eq('USD')
+      end
+
+      it 'does not include value/currency when not provided' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'conversion-no-value@example.com',
+          visitor_token: 'visitor-conv',
+          visit_token: 'visit-conv'
+        }
+
+        expect(response.status).to eq(202)
+
+        event = Ahoy::Event.last
+        expect(event.properties).not_to have_key('value')
+        expect(event.properties).not_to have_key('currency')
+      end
+
       it 'does not create conversion event without visit' do
         expect {
           post '/api/v1/leads', params: {
@@ -699,7 +748,31 @@ RSpec.describe "Leads API", type: :request do
           'Test Person',
           nil,
           nil,
-          'test-gclid'
+          'test-gclid',
+          nil,  # conversion_value
+          nil   # conversion_currency
+        ])
+      end
+
+      it 'enqueues worker with conversion value and currency' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'conversion-args@example.com',
+          conversion_value: 99.99,
+          conversion_currency: 'EUR'
+        }
+
+        job = Leads::ProcessWorker.jobs.last
+        expect(job['args']).to eq([
+          account.id,
+          website.id,
+          'conversion-args@example.com',
+          nil,
+          nil,
+          nil,
+          nil,
+          99.99,
+          'EUR'
         ])
       end
     end

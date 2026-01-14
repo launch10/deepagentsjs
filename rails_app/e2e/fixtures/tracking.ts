@@ -37,6 +37,28 @@ export interface TrackingStats {
   events: TrackingEvent[];
 }
 
+export interface LeadInfo {
+  email: string;
+  name: string | null;
+  gclid: string | null;
+  visitor_token: string | null;
+  visit_token: string | null;
+  created_at: string;
+}
+
+export interface ConversionInfo {
+  value: number | null;
+  currency: string | null;
+  email: string | null;
+  time: string | null;
+}
+
+export interface LeadStats {
+  lead_count: number;
+  leads: LeadInfo[];
+  conversions: ConversionInfo[];
+}
+
 /**
  * Service for interacting with the Rails Test Tracking API.
  * Used to verify that tracking calls result in database records.
@@ -123,6 +145,86 @@ export const TrackingHelper = {
 
     throw new Error(
       `Timeout waiting for event "${eventName}" for website ${websiteId}`
+    );
+  },
+
+  /**
+   * Gets lead and conversion data for a website.
+   * @param websiteId - The ID of the website to get leads for
+   */
+  async getLeads(websiteId: string | number): Promise<LeadStats> {
+    const response = await fetch(
+      `${BASE_URL}/test/tracking/leads?website_id=${websiteId}`,
+      { headers: { Accept: "application/json" } }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(
+        `Failed to get lead stats for website ${websiteId}: ${response.status} - ${error}`
+      );
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Waits for a lead to be recorded with the given email.
+   * @param websiteId - The ID of the website
+   * @param email - The email to wait for
+   * @param timeoutMs - Maximum time to wait (default 5000ms)
+   * @param intervalMs - Polling interval (default 200ms)
+   */
+  async waitForLead(
+    websiteId: string | number,
+    email: string,
+    timeoutMs: number = 5000,
+    intervalMs: number = 200
+  ): Promise<LeadInfo> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
+      const stats = await this.getLeads(websiteId);
+      const lead = stats.leads.find((l) => l.email === email.toLowerCase());
+      if (lead) {
+        return lead;
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+
+    throw new Error(
+      `Timeout waiting for lead "${email}" for website ${websiteId}`
+    );
+  },
+
+  /**
+   * Waits for a conversion event with the given email.
+   * @param websiteId - The ID of the website
+   * @param email - The email to match in the conversion
+   * @param timeoutMs - Maximum time to wait (default 5000ms)
+   * @param intervalMs - Polling interval (default 200ms)
+   */
+  async waitForConversion(
+    websiteId: string | number,
+    email: string,
+    timeoutMs: number = 5000,
+    intervalMs: number = 200
+  ): Promise<ConversionInfo> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
+      const stats = await this.getLeads(websiteId);
+      const conversion = stats.conversions.find(
+        (c) => c.email === email.toLowerCase()
+      );
+      if (conversion) {
+        return conversion;
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+
+    throw new Error(
+      `Timeout waiting for conversion for "${email}" for website ${websiteId}`
     );
   },
 

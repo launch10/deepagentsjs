@@ -12,6 +12,41 @@ class Test::TrackingController < Test::TestController
     }
   end
 
+  # GET /test/tracking/leads?website_id=X
+  # Returns leads and conversion events for a website
+  def leads
+    website = Website.find(params[:website_id])
+    website_leads = website.website_leads.includes(:lead, :visit)
+
+    # Get conversion events for this website's visits
+    visit_ids = website.visits.pluck(:id)
+    conversion_events = Ahoy::Event
+      .where(visit_id: visit_ids, name: "conversion")
+      .order(time: :desc)
+
+    render json: {
+      lead_count: website_leads.count,
+      leads: website_leads.map do |wl|
+        {
+          email: wl.lead.email,
+          name: wl.lead.name,
+          gclid: wl.gclid,
+          visitor_token: wl.visitor_token,
+          visit_token: wl.visit&.visit_token,
+          created_at: wl.created_at.iso8601
+        }
+      end,
+      conversions: conversion_events.map do |e|
+        {
+          value: e.properties["value"],
+          currency: e.properties["currency"],
+          email: e.properties["email"],
+          time: e.time&.iso8601
+        }
+      end
+    }
+  end
+
   # GET /test/tracking/info
   # Returns info about the built tracking test project/website
   # Creates the test records if they don't exist (e.g., after database restore)

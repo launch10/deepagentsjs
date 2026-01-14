@@ -37,7 +37,9 @@ class API::V1::LeadsController < ActionController::API
       lead_params[:name],
       visit&.id,
       params[:visitor_token],
-      params[:gclid]
+      params[:gclid],
+      params[:conversion_value]&.to_f,
+      params[:conversion_currency]
     )
 
     # Return immediately - processing happens in background
