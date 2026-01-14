@@ -11,7 +11,7 @@ module Leads
     end
 
     def perform(account_id, website_id, email, name = nil, visit_id = nil, visitor_token = nil, gclid = nil, conversion_value = nil, conversion_currency = nil,
-                utm_source = nil, utm_medium = nil, utm_campaign = nil, utm_content = nil, utm_term = nil)
+      utm_source = nil, utm_medium = nil, utm_campaign = nil, utm_content = nil, utm_term = nil)
       account = Account.find(account_id)
       website = Website.find(website_id)
       visit = visit_id.present? ? Ahoy::Visit.find_by(id: visit_id) : nil

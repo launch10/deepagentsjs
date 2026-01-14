@@ -31,7 +31,7 @@ class Lead < ApplicationRecord
 
   # Find or create a lead for a signup, returning the lead and website_lead
   def self.find_or_create_for_signup(account:, website:, email:, name: nil, visit: nil, visitor_token: nil, gclid: nil,
-                                     utm_source: nil, utm_medium: nil, utm_campaign: nil, utm_content: nil, utm_term: nil)
+    utm_source: nil, utm_medium: nil, utm_campaign: nil, utm_content: nil, utm_term: nil)
     normalized_email = normalize_email(email)
 
     lead = account.leads.find_by(email: normalized_email)

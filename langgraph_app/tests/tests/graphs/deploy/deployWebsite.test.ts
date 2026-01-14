@@ -225,6 +225,292 @@ describe("SEO Optimization - Meta Tags Generation", () => {
   });
 });
 
+/**
+ * =============================================================================
+ * PHASE COMPUTATION INTEGRATION TESTS
+ * =============================================================================
+ * These tests verify that phases are correctly computed from tasks during
+ * the deploy website graph execution.
+ *
+ * Key phase for website deploy:
+ * - AddingAnalytics (1:1 with task)
+ * - OptimizingSEO (1:1 with task)
+ * - CheckingForBugs (MERGED: ValidateLinks + RuntimeValidation)
+ * - FixingBugs (1:1 with task)
+ * - DeployingWebsite (1:1 with task)
+ */
+describe("Phase Computation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("CheckingForBugs Phase (merged tasks)", () => {
+    it("computes CheckingForBugs as pending when no validation tasks exist", async () => {
+      // Test phase computation directly via the Deploy module
+      // (The graph test helper has timing issues with stopAfter on enqueue nodes)
+      const tasks: Deploy.Task[] = [
+        { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
+        { ...Deploy.createTask("OptimizingSEO"), status: "running" },
+      ];
+
+      const phases = Deploy.computePhases(tasks);
+      const checkingForBugsPhase = phases.find((p) => p.name === "CheckingForBugs");
+
+      expect(checkingForBugsPhase).toBeDefined();
+      expect(checkingForBugsPhase?.status).toBe("pending");
+      expect(checkingForBugsPhase?.progress).toBe(0);
+    });
+
+    it("computes CheckingForBugs as running when ValidateLinks is running", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
+            { ...Deploy.createTask("OptimizingSEO"), status: "completed" },
+            { ...Deploy.createTask("ValidateLinks"), status: "running" },
+          ],
+        })
+        .stopAfter("validateLinks")
+        .execute();
+
+      const checkingForBugsPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
+
+      expect(checkingForBugsPhase).toBeDefined();
+      expect(checkingForBugsPhase?.status).toBe("running");
+      // ValidateLinks running, RuntimeValidation not yet started
+      expect(checkingForBugsPhase?.progress).toBe(0);
+    });
+
+    it("computes CheckingForBugs at 50% when ValidateLinks completed, RuntimeValidation pending", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
+            { ...Deploy.createTask("OptimizingSEO"), status: "completed" },
+            { ...Deploy.createTask("ValidateLinks"), status: "completed" },
+            { ...Deploy.createTask("RuntimeValidation"), status: "pending" },
+          ],
+        })
+        .stopAfter("runtimeValidation")
+        .execute();
+
+      const checkingForBugsPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
+
+      expect(checkingForBugsPhase).toBeDefined();
+      // One task completed, one pending = running
+      expect(checkingForBugsPhase?.status).toBe("running");
+      expect(checkingForBugsPhase?.progress).toBe(0.5);
+    });
+
+    it("computes CheckingForBugs as failed when RuntimeValidation fails", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
+            { ...Deploy.createTask("OptimizingSEO"), status: "completed" },
+            { ...Deploy.createTask("ValidateLinks"), status: "completed" },
+            {
+              ...Deploy.createTask("RuntimeValidation"),
+              status: "failed",
+              error: "Console errors found in browser",
+            },
+          ],
+        })
+        .stopAfter("bugFixNode")
+        .execute();
+
+      const checkingForBugsPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
+
+      expect(checkingForBugsPhase).toBeDefined();
+      expect(checkingForBugsPhase?.status).toBe("failed");
+      expect(checkingForBugsPhase?.progress).toBe(0.5); // 1/2 completed
+      expect(checkingForBugsPhase?.error).toBe("Console errors found in browser");
+    });
+
+    it("computes CheckingForBugs as completed when both ValidateLinks and RuntimeValidation pass", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
+            { ...Deploy.createTask("OptimizingSEO"), status: "completed" },
+            { ...Deploy.createTask("ValidateLinks"), status: "completed" },
+            { ...Deploy.createTask("RuntimeValidation"), status: "completed" },
+          ],
+        })
+        .stopAfter("deployWebsite")
+        .execute();
+
+      const checkingForBugsPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
+
+      expect(checkingForBugsPhase).toBeDefined();
+      expect(checkingForBugsPhase?.status).toBe("completed");
+      expect(checkingForBugsPhase?.progress).toBe(1);
+      expect(checkingForBugsPhase?.error).toBeUndefined();
+    });
+  });
+
+  describe("FixingBugs Phase (separate from CheckingForBugs)", () => {
+    it("FixingBugs phase is separate from CheckingForBugs phase", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
+            { ...Deploy.createTask("OptimizingSEO"), status: "completed" },
+            { ...Deploy.createTask("ValidateLinks"), status: "completed" },
+            { ...Deploy.createTask("RuntimeValidation"), status: "failed", error: "Error" },
+            { ...Deploy.createTask("FixingBugs"), status: "running" },
+          ],
+        })
+        .stopAfter("bugFixNode")
+        .execute();
+
+      const checkingForBugsPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
+      const fixingBugsPhase = result.state.phases.find((p) => p.name === "FixingBugs");
+
+      // These are separate phases
+      expect(checkingForBugsPhase).toBeDefined();
+      expect(fixingBugsPhase).toBeDefined();
+      expect(checkingForBugsPhase?.name).not.toBe(fixingBugsPhase?.name);
+
+      // CheckingForBugs shows failed (validation found bugs)
+      expect(checkingForBugsPhase?.status).toBe("failed");
+
+      // FixingBugs shows running (actively fixing)
+      expect(fixingBugsPhase?.status).toBe("running");
+    });
+
+    it("FixingBugs phase completes independently of CheckingForBugs", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
+            { ...Deploy.createTask("OptimizingSEO"), status: "completed" },
+            { ...Deploy.createTask("ValidateLinks"), status: "completed" },
+            { ...Deploy.createTask("RuntimeValidation"), status: "completed" },
+            { ...Deploy.createTask("FixingBugs"), status: "completed" },
+          ],
+        })
+        .stopAfter("deployWebsite")
+        .execute();
+
+      const checkingForBugsPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
+      const fixingBugsPhase = result.state.phases.find((p) => p.name === "FixingBugs");
+
+      // Both should be completed
+      expect(checkingForBugsPhase?.status).toBe("completed");
+      expect(fixingBugsPhase?.status).toBe("completed");
+    });
+  });
+
+  describe("Full Phase Flow", () => {
+    it("phases progress correctly through website deploy flow", async () => {
+      // Test phase computation at different stages using computePhases directly
+      // This tests the same logic the graph uses via withPhases()
+
+      // Stage 1: Instrumentation running
+      let tasks: Deploy.Task[] = [{ ...Deploy.createTask("AddingAnalytics"), status: "running" }];
+      let phases = Deploy.computePhases(tasks);
+
+      expect(phases.find((p) => p.name === "AddingAnalytics")?.status).toBe("running");
+      expect(phases.find((p) => p.name === "OptimizingSEO")?.status).toBe("pending");
+      expect(phases.find((p) => p.name === "CheckingForBugs")?.status).toBe("pending");
+      expect(phases.find((p) => p.name === "DeployingWebsite")?.status).toBe("pending");
+
+      // Stage 2: SEO completed, validation running
+      tasks = [
+        { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
+        { ...Deploy.createTask("OptimizingSEO"), status: "completed" },
+        { ...Deploy.createTask("ValidateLinks"), status: "running" },
+      ];
+      phases = Deploy.computePhases(tasks);
+
+      expect(phases.find((p) => p.name === "AddingAnalytics")?.status).toBe("completed");
+      expect(phases.find((p) => p.name === "OptimizingSEO")?.status).toBe("completed");
+      expect(phases.find((p) => p.name === "CheckingForBugs")?.status).toBe("running");
+
+      // Stage 3: Validation complete, deploying
+      tasks = [
+        { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
+        { ...Deploy.createTask("OptimizingSEO"), status: "completed" },
+        { ...Deploy.createTask("ValidateLinks"), status: "completed" },
+        { ...Deploy.createTask("RuntimeValidation"), status: "completed" },
+        { ...Deploy.createTask("DeployingWebsite"), status: "running" },
+      ];
+      phases = Deploy.computePhases(tasks);
+
+      expect(phases.find((p) => p.name === "CheckingForBugs")?.status).toBe("completed");
+      expect(phases.find((p) => p.name === "DeployingWebsite")?.status).toBe("running");
+    });
+
+    it("all website deploy phases are present when computed", () => {
+      // Verify all phases are defined in PhaseTaskMap
+      const phases = Deploy.computePhases([]);
+      const phaseNames = phases.map((p) => p.name);
+
+      // Verify all expected website deploy phases exist
+      expect(phaseNames).toContain("AddingAnalytics");
+      expect(phaseNames).toContain("OptimizingSEO");
+      expect(phaseNames).toContain("CheckingForBugs");
+      expect(phaseNames).toContain("FixingBugs");
+      expect(phaseNames).toContain("DeployingWebsite");
+    });
+
+    it("CheckingForBugs phase contains correct task names", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployWebsiteGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [
+            { ...Deploy.createTask("ValidateLinks"), status: "completed" },
+            { ...Deploy.createTask("RuntimeValidation"), status: "running" },
+          ],
+        })
+        .stopAfter("runtimeValidation")
+        .execute();
+
+      const checkingPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
+
+      expect(checkingPhase?.taskNames).toBeDefined();
+      expect(checkingPhase?.taskNames).toContain("ValidateLinks");
+      expect(checkingPhase?.taskNames).toContain("RuntimeValidation");
+      expect(checkingPhase?.taskNames).not.toContain("FixingBugs"); // FixingBugs is separate
+    });
+  });
+});
+
 describe.skip("DeployWebsiteGraph", () => {
   beforeEach(() => {
     vi.clearAllMocks();
