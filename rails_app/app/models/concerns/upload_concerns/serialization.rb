@@ -9,7 +9,7 @@ module UploadConcerns
         url: file.url,
         thumb_url: image? ? file.thumb.url : nil,
         medium_url: image? ? file.medium.url : nil,
-        favicon_url: is_logo && image? ? file.favicon.url : nil,
+        favicon_url: (is_logo && image?) ? file.favicon.url : nil,
         media_type: media_type,
         is_logo: is_logo,
         filename: original_filename,
