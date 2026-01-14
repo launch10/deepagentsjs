@@ -25,7 +25,8 @@ const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunna
 
     ## Required Meta Tags
 
-    You MUST add or update the following in the <head> section of index.html:
+    You should try add or update the following in the <head> section of index.html:
+      - You can skip anything that's impossible (e.g. if no social images exist, just skip)
 
     ### Basic SEO
     - <title> - Keep under 60 characters, compelling and keyword-optimized
@@ -71,6 +72,8 @@ const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunna
     ${environment}
 
     After making changes, reply with: SEO_OPTIMIZED
+
+    If index.html is already optimized, reply with: SEO_OPTIMIZED and exit early.
   `;
 };
 

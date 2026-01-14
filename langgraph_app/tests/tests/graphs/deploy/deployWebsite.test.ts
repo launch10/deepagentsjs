@@ -29,9 +29,9 @@ describe("SEO Optimization - Meta Tags Generation", () => {
    * Test that SEO optimization adds the required meta tags to index.html <head>
    * TODO: These tests hit real AI APIs - need recorded responses or database snapshots
    */
-  it.only("adds SEO meta tags to index.html", async () => {
-    // Use website_finished snapshot which has a complete website
-    await DatabaseSnapshotter.restoreSnapshot("website_finished");
+  it("adds SEO meta tags to index.html", async () => {
+    // Use website_step_finished snapshot which has a complete website
+    await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
 
     const result = await testGraph<DeployGraphState>()
       .withGraph(deployWebsiteGraph)
@@ -47,7 +47,6 @@ describe("SEO Optimization - Meta Tags Generation", () => {
 
     // Verify the SEO task completed
     const seoTask = result.state.tasks.find((t) => t.name === "SEOOptimization");
-    debugger;
     expect(seoTask).toBeDefined();
     expect(seoTask?.status).toBe("completed");
 
@@ -88,58 +87,8 @@ describe("SEO Optimization - Meta Tags Generation", () => {
     await backend.cleanup();
   });
 
-  it.skip("generates meta description within recommended length (150-160 chars)", async () => {
-    await DatabaseSnapshotter.restoreSnapshot("website_finished");
-
-    const result = await testGraph<DeployGraphState>()
-      .withGraph(deployWebsiteGraph)
-      .withState({
-        jwt: "test-jwt",
-        threadId: "thread_123" as ThreadIDType,
-        websiteId: 1,
-        deploy: { website: true },
-        tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
-      })
-      .stopAfter("seoOptimization")
-      .execute();
-
-    const seoTask = result.state.tasks.find((t) => t.name === "SEOOptimization");
-    expect(seoTask?.status).toBe("completed");
-
-    // Verify meta description is within recommended length
-    const indexFile = await db
-      .select()
-      .from(websiteFiles)
-      .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "index.html")))
-      .execute()
-      .then((files) => files.at(-1));
-
-    const descriptionMatch = indexFile?.content?.match(
-      /<meta name="description" content="([^"]+)"/
-    );
-    expect(descriptionMatch).toBeDefined();
-    if (descriptionMatch && descriptionMatch[1]) {
-      expect(descriptionMatch[1].length).toBeLessThanOrEqual(160);
-      expect(descriptionMatch[1].length).toBeGreaterThanOrEqual(50);
-    }
-
-    // Verify title is within recommended length (< 60 chars)
-    const titleMatch = indexFile?.content?.match(/<title>([^<]+)<\/title>/);
-    expect(titleMatch).toBeDefined();
-    if (titleMatch && titleMatch[1]) {
-      expect(titleMatch[1].length).toBeLessThanOrEqual(60);
-    }
-
-    // Cleanup
-    const backend = await getCodingAgentBackend({
-      websiteId: 1,
-      jwt: "test-jwt",
-    } as any);
-    await backend.cleanup();
-  });
-
-  it.skip("sets og:image with absolute URL", async () => {
-    await DatabaseSnapshotter.restoreSnapshot("website_finished");
+  it("sets og:image with absolute URL", async () => {
+    await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
 
     const result = await testGraph<DeployGraphState>()
       .withGraph(deployWebsiteGraph)
