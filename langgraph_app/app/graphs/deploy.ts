@@ -21,8 +21,8 @@ const compiledCampaignGraph = deployCampaignGraph.compile();
  *   ↓
  * deployWebsite subgraph (if deployWebsite)
  *   ↓
- *   ├── (if WebsiteDeploy completed && shouldDeployGoogleAds) → deployCampaign
- *   ├── (if WebsiteDeploy failed) → END
+ *   ├── (if DeployingWebsite completed && shouldDeployGoogleAds) → deployCampaign
+ *   ├── (if DeployingWebsite failed) → END
  *   └── (else) → END
  *   ↓
  * deployCampaign subgraph (if deployGoogleAds)
@@ -42,7 +42,7 @@ export const deployGraph = new StateGraph(DeployAnnotation)
 
   // After website deploy: check if we should proceed to campaign
   .addConditionalEdges("deployWebsite", (state) => {
-    const websiteTask = Task.findTask(state.tasks, "WebsiteDeploy");
+    const websiteTask = Task.findTask(state.tasks, "DeployingWebsite");
 
     // If website deploy failed, don't proceed to campaign
     if (websiteTask?.status === "failed") return END;

@@ -13,10 +13,6 @@ import { Task } from "@types";
 
 const MAX_RETRY_COUNT = 2;
 
-// Helper to check task status
-const getTaskStatus = (state: DeployGraphState, name: Task.TaskName) =>
-  Task.findTask(state.tasks, name)?.status;
-
 /**
  * Website Deploy Graph
  *
@@ -31,12 +27,12 @@ const getTaskStatus = (state: DeployGraphState, name: Task.TaskName) =>
  */
 export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
   // Enqueue nodes (lightweight, checkpoint state before work)
-  .addNode("enqueueInstrumentation", createEnqueueNode("Instrumentation"))
-  .addNode("enqueueSEOOptimization", createEnqueueNode("SEOOptimization"))
+  .addNode("enqueueInstrumentation", createEnqueueNode("AddingAnalytics"))
+  .addNode("enqueueSEOOptimization", createEnqueueNode("OptimizingSEO"))
   .addNode("enqueueValidateLinks", createEnqueueNode("ValidateLinks"))
   .addNode("enqueueRuntimeValidation", createEnqueueNode("RuntimeValidation"))
-  .addNode("enqueueBugFix", createEnqueueNode("BugFix"))
-  .addNode("enqueueDeploy", createEnqueueNode("WebsiteDeploy"))
+  .addNode("enqueueBugFix", createEnqueueNode("FixingBugs"))
+  .addNode("enqueueDeploy", createEnqueueNode("DeployingWebsite"))
 
   // Work nodes
   .addNode("instrumentation", instrumentationNode)
@@ -48,7 +44,7 @@ export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
 
   // START → enqueue → work
   .addConditionalEdges(START, (state) => {
-    const websiteDeployTask = Task.findTask(state.tasks, "WebsiteDeploy");
+    const websiteDeployTask = Task.findTask(state.tasks, "DeployingWebsite");
     // If we've created the website deploy task AT ALL, that means we're already in progress or finished
     if (websiteDeployTask) {
       return END;

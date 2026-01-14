@@ -5,7 +5,7 @@ import { JobRunAPIService } from "@services";
 import { env } from "@core";
 import { Task } from "@types";
 
-const TASK_NAME = "WebsiteDeploy" as const;
+const TASK_NAME = "DeployingWebsite" as const;
 
 /**
  * Deploy Website Node (Idempotent Pattern)
@@ -25,10 +25,10 @@ export const deployWebsiteNode = NodeMiddleware.use(
     const task = Task.findTask(state.tasks, TASK_NAME);
 
     if (!task) {
-      throw new Error("WebsiteDeploy task not found");
+      throw new Error("DeployingWebsite task not found");
     }
 
-    // 1. If task is not running, we're done 
+    // 1. If task is not running, we're done
     if (task?.status !== "running") {
       return {};
     }
@@ -42,7 +42,7 @@ export const deployWebsiteNode = NodeMiddleware.use(
       };
     }
 
-    // 3. Did webhook return us an error? We're done. 
+    // 3. Did webhook return us an error? We're done.
     if (task.error) {
       return {
         tasks: Task.updateTask(state.tasks, TASK_NAME, { status: "failed" }),
@@ -76,10 +76,12 @@ export const deployWebsiteNode = NodeMiddleware.use(
     });
 
     return {
-      tasks: [{
-        ...task,
-        jobId: jobRun.id,
-      }],
+      tasks: [
+        {
+          ...task,
+          jobId: jobRun.id,
+        },
+      ],
     };
   }
 );

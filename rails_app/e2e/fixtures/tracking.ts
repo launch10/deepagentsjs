@@ -43,6 +43,11 @@ export interface LeadInfo {
   gclid: string | null;
   visitor_token: string | null;
   visit_token: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
   created_at: string;
 }
 
@@ -75,10 +80,9 @@ export const TrackingHelper = {
    * @param websiteId - The ID of the website to get stats for
    */
   async getStats(websiteId: string | number): Promise<TrackingStats> {
-    const response = await fetch(
-      `${BASE_URL}/test/tracking/stats?website_id=${websiteId}`,
-      { headers: { Accept: "application/json" } }
-    );
+    const response = await fetch(`${BASE_URL}/test/tracking/stats?website_id=${websiteId}`, {
+      headers: { Accept: "application/json" },
+    });
 
     if (!response.ok) {
       const error = await response.text();
@@ -114,9 +118,7 @@ export const TrackingHelper = {
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
 
-    throw new Error(
-      `Timeout waiting for ${expectedCount} visits for website ${websiteId}`
-    );
+    throw new Error(`Timeout waiting for ${expectedCount} visits for website ${websiteId}`);
   },
 
   /**
@@ -143,9 +145,7 @@ export const TrackingHelper = {
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
 
-    throw new Error(
-      `Timeout waiting for event "${eventName}" for website ${websiteId}`
-    );
+    throw new Error(`Timeout waiting for event "${eventName}" for website ${websiteId}`);
   },
 
   /**
@@ -153,10 +153,9 @@ export const TrackingHelper = {
    * @param websiteId - The ID of the website to get leads for
    */
   async getLeads(websiteId: string | number): Promise<LeadStats> {
-    const response = await fetch(
-      `${BASE_URL}/test/tracking/leads?website_id=${websiteId}`,
-      { headers: { Accept: "application/json" } }
-    );
+    const response = await fetch(`${BASE_URL}/test/tracking/leads?website_id=${websiteId}`, {
+      headers: { Accept: "application/json" },
+    });
 
     if (!response.ok) {
       const error = await response.text();
@@ -192,9 +191,7 @@ export const TrackingHelper = {
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
 
-    throw new Error(
-      `Timeout waiting for lead "${email}" for website ${websiteId}`
-    );
+    throw new Error(`Timeout waiting for lead "${email}" for website ${websiteId}`);
   },
 
   /**
@@ -214,18 +211,14 @@ export const TrackingHelper = {
 
     while (Date.now() - startTime < timeoutMs) {
       const stats = await this.getLeads(websiteId);
-      const conversion = stats.conversions.find(
-        (c) => c.email === email.toLowerCase()
-      );
+      const conversion = stats.conversions.find((c) => c.email === email.toLowerCase());
       if (conversion) {
         return conversion;
       }
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
 
-    throw new Error(
-      `Timeout waiting for conversion for "${email}" for website ${websiteId}`
-    );
+    throw new Error(`Timeout waiting for conversion for "${email}" for website ${websiteId}`);
   },
 
   /**
@@ -239,7 +232,8 @@ export const TrackingHelper = {
    * and available via getBuiltPageInfo()
    */
   getTestPageUrl(): string {
-    return `${BASE_URL}/test/tracking/built`;
+    // Trailing slash is required for relative asset paths (./assets/...) to resolve correctly
+    return `${BASE_URL}/test/tracking/built/`;
   },
 
   /**
@@ -270,9 +264,7 @@ export const TrackingHelper = {
 
   async cleanup(): Promise<void> {
     if (this.buildExists()) {
-      logger.info(
-        "[TrackingHelper] Build exists but database records mismatched, rebuilding..."
-      );
+      logger.info("[TrackingHelper] Build exists but database records mismatched, rebuilding...");
       execSync("bundle exec rake test:tracking:clean", {
         cwd: RAILS_ROOT,
         stdio: "inherit",
@@ -299,9 +291,7 @@ export const TrackingHelper = {
     }
 
     if (doesBuildExist && dbRecordsMatch) {
-      logger.info(
-        "[TrackingHelper] Build and database records valid, skipping rebuild."
-      );
+      logger.info("[TrackingHelper] Build and database records valid, skipping rebuild.");
       return;
     }
 
@@ -309,9 +299,7 @@ export const TrackingHelper = {
       await this.cleanup();
     }
 
-    logger.info(
-      "[TrackingHelper] Building tracking-test website using real Buildable pipeline..."
-    );
+    logger.info("[TrackingHelper] Building tracking-test website using real Buildable pipeline...");
 
     try {
       execSync("bundle exec rake test:tracking:build", {

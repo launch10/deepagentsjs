@@ -719,7 +719,12 @@ RSpec.describe "Leads API", type: :request do
           nil,
           'test-gclid',
           nil,  # conversion_value
-          nil   # conversion_currency
+          nil,  # conversion_currency
+          nil,  # utm_source
+          nil,  # utm_medium
+          nil,  # utm_campaign
+          nil,  # utm_content
+          nil   # utm_term
         ])
       end
 
@@ -741,7 +746,42 @@ RSpec.describe "Leads API", type: :request do
           nil,
           nil,
           99.99,
-          'EUR'
+          'EUR',
+          nil,  # utm_source
+          nil,  # utm_medium
+          nil,  # utm_campaign
+          nil,  # utm_content
+          nil   # utm_term
+        ])
+      end
+
+      it 'enqueues worker with UTM parameters' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'utm-test@example.com',
+          utm_source: 'google',
+          utm_medium: 'cpc',
+          utm_campaign: 'spring_sale',
+          utm_content: 'banner_ad',
+          utm_term: 'running shoes'
+        }
+
+        job = Leads::ProcessWorker.jobs.last
+        expect(job['args']).to eq([
+          account.id,
+          website.id,
+          'utm-test@example.com',
+          nil,  # name
+          nil,  # visit_id
+          nil,  # visitor_token
+          nil,  # gclid
+          nil,  # conversion_value
+          nil,  # conversion_currency
+          'google',       # utm_source
+          'cpc',          # utm_medium
+          'spring_sale',  # utm_campaign
+          'banner_ad',    # utm_content
+          'running shoes' # utm_term
         ])
       end
     end

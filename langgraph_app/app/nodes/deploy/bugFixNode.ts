@@ -6,7 +6,7 @@ import { HumanMessage } from "@langchain/core/messages";
 import { Task } from "@types";
 import { buildBugFixPrompt } from "@prompts";
 
-const TASK_NAME = "BugFix" as const;
+const TASK_NAME = "FixingBugs" as const;
 
 /**
  * Fix With Coding Agent Node

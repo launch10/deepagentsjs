@@ -39,7 +39,12 @@ class API::V1::LeadsController < ActionController::API
       params[:visitor_token],
       params[:gclid],
       params[:conversion_value]&.to_f,
-      params[:conversion_currency]
+      params[:conversion_currency],
+      params[:utm_source],
+      params[:utm_medium],
+      params[:utm_campaign],
+      params[:utm_content],
+      params[:utm_term]
     )
 
     # Return immediately - processing happens in background

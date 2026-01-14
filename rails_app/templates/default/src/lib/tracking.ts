@@ -214,6 +214,11 @@ export const L10 = {
           gclid: getGclid(),
           conversion_value: conversionValue,
           conversion_currency: conversionValue !== undefined ? conversionCurrency : undefined,
+          utm_source: getParam("utm_source"),
+          utm_medium: getParam("utm_medium"),
+          utm_campaign: getParam("utm_campaign"),
+          utm_content: getParam("utm_content"),
+          utm_term: getParam("utm_term"),
         }),
       });
 

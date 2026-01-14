@@ -4,7 +4,7 @@ import { testGraph } from "@support";
 import { deployWebsiteGraph as uncompiledGraph } from "@graphs";
 import type { DeployGraphState } from "@annotation";
 import type { ThreadIDType } from "@types";
-import { Task } from "@types";
+import { Deploy } from "@types";
 import { graphParams } from "@core";
 import { DatabaseSnapshotter } from "@rails_api";
 import { websiteFiles, and, eq, db } from "@db";
@@ -41,13 +41,13 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         threadId: "thread_123" as ThreadIDType,
         websiteId: 1,
         deploy: { website: true },
-        tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
+        tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
       })
       .stopAfter("seoOptimization")
       .execute();
 
     // Verify the SEO task completed
-    const seoTask = result.state.tasks.find((t) => t.name === "SEOOptimization");
+    const seoTask = result.state.tasks.find((t) => t.name === "OptimizingSEO");
     expect(seoTask).toBeDefined();
     expect(seoTask?.status).toBe("completed");
 
@@ -98,7 +98,7 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         threadId: "thread_123" as ThreadIDType,
         websiteId: 1,
         deploy: { website: true },
-        tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
+        tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
       })
       .stopAfter("seoOptimization")
       .execute();
@@ -126,9 +126,9 @@ describe("SEO Optimization - Meta Tags Generation", () => {
   });
 
   it("skips SEO optimization if task already completed", async () => {
-    const completedTask: Task.Task = {
+    const completedTask: Deploy.Task = {
       id: "uuid-seo",
-      name: "SEOOptimization",
+      name: "OptimizingSEO",
       description: "Optimizing SEO",
       status: "completed",
       retryCount: 0,
@@ -141,13 +141,13 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         threadId: "thread_123" as ThreadIDType,
         websiteId: 1,
         deploy: { website: true },
-        tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }, completedTask],
+        tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }, completedTask],
       })
       .stopAfter("seoOptimization")
       .execute();
 
     // Should proceed without re-running SEO optimization
-    const seoTask = result.state.tasks.find((t) => t.name === "SEOOptimization");
+    const seoTask = result.state.tasks.find((t) => t.name === "OptimizingSEO");
     expect(seoTask).toBeDefined();
     expect(seoTask?.status).toBe("completed");
   });
@@ -163,13 +163,13 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         threadId: "thread_123" as ThreadIDType,
         websiteId: 1,
         deploy: { website: true },
-        tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
+        tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
       })
       .stopAfter("seoOptimization")
       .execute();
 
     // Verify the SEO task completed
-    const seoTask = result.state.tasks.find((t) => t.name === "SEOOptimization");
+    const seoTask = result.state.tasks.find((t) => t.name === "OptimizingSEO");
     expect(seoTask).toBeDefined();
     expect(seoTask?.status).toBe("completed");
 
@@ -204,14 +204,14 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         threadId: "thread_123" as ThreadIDType,
         websiteId: 1,
         deploy: { website: true },
-        tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
+        tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
       })
       .stopAfter("seoOptimization")
       .execute();
 
     // Verify the SEO task was created and attempted
     const tasks = result.state.tasks;
-    const seoTask = tasks.find((t) => t.name === "SEOOptimization");
+    const seoTask = tasks.find((t) => t.name === "OptimizingSEO");
 
     expect(seoTask).toBeDefined();
     // The task might be completed or failed, but it should exist
@@ -234,14 +234,14 @@ describe.skip("DeployWebsiteGraph", () => {
    * =============================================================================
    * IDEMPOTENCY TESTS
    * =============================================================================
-   * These tests verify the graph exits early when WebsiteDeploy task exists.
+   * These tests verify the graph exits early when DeployingWebsite task exists.
    * This is the core idempotency pattern - once we've started deploying,
    * re-invoking the graph should be a no-op.
    */
-  describe("Idempotency - Early exit when WebsiteDeploy task exists", () => {
-    it("exits immediately if WebsiteDeploy task already exists (any status)", async () => {
-      const existingTask: Task.Task = {
-        ...Task.createTask("WebsiteDeploy"),
+  describe("Idempotency - Early exit when DeployingWebsite task exists", () => {
+    it("exits immediately if DeployingWebsite task already exists (any status)", async () => {
+      const existingTask: Deploy.Task = {
+        ...Deploy.createTask("DeployingWebsite"),
         status: "pending",
       };
 
@@ -258,13 +258,13 @@ describe.skip("DeployWebsiteGraph", () => {
 
       // Should exit without modifying tasks
       expect(result.state.tasks).toHaveLength(1);
-      expect(result.state.tasks[0]!.name).toBe("WebsiteDeploy");
+      expect(result.state.tasks[0]!.name).toBe("DeployingWebsite");
       expect(result.state.tasks[0]!.status).toBe("pending");
     });
 
-    it("exits immediately if WebsiteDeploy task is completed", async () => {
-      const completedTask: Task.Task = {
-        ...Task.createTask("WebsiteDeploy"),
+    it("exits immediately if DeployingWebsite task is completed", async () => {
+      const completedTask: Deploy.Task = {
+        ...Deploy.createTask("DeployingWebsite"),
         status: "completed",
         result: { deployed: true },
       };
@@ -284,9 +284,9 @@ describe.skip("DeployWebsiteGraph", () => {
       expect(result.state.tasks[0]!.status).toBe("completed");
     });
 
-    it("exits immediately if WebsiteDeploy task is running (waiting for webhook)", async () => {
-      const runningTask: Task.Task = {
-        ...Task.createTask("WebsiteDeploy", 456),
+    it("exits immediately if DeployingWebsite task is running (waiting for webhook)", async () => {
+      const runningTask: Deploy.Task = {
+        ...Deploy.createTask("DeployingWebsite", 456),
         status: "running",
       };
 
@@ -317,7 +317,7 @@ describe.skip("DeployWebsiteGraph", () => {
    * USER OUTCOME: Lead capture works correctly after deployment because
    * instrumentation adds the necessary L10.createLead() calls.
    */
-  describe("Instrumentation - Lead capture setup", () => {
+  describe("AddingAnalytics - Lead capture setup", () => {
     // TODO: These tests hit real AI APIs - need recorded responses
     it("adds L10.createLead() instrumentation to landing pages", async () => {
       // Use a snapshot that has a website without instrumentation
@@ -337,7 +337,7 @@ describe.skip("DeployWebsiteGraph", () => {
         .execute();
 
       // Verify the instrumentation task completed
-      const instrumentationTask = result.state.tasks.find((t) => t.name === "Instrumentation");
+      const instrumentationTask = result.state.tasks.find((t) => t.name === "AddingAnalytics");
       expect(instrumentationTask).toBeDefined();
       expect(instrumentationTask?.status).toBe("completed");
 
@@ -350,11 +350,11 @@ describe.skip("DeployWebsiteGraph", () => {
         .execute();
 
       // At least one file should contain L10.createLead for lead capture
-      const hasInstrumentation = allFiles.some(
+      const hasAddingAnalytics = allFiles.some(
         (file) => file.content?.includes("L10.createLead") || file.content?.includes("createLead")
       );
 
-      expect(hasInstrumentation).toBe(true);
+      expect(hasAddingAnalytics).toBe(true);
 
       // Cleanup the coding agent backend
       const backend = await getCodingAgentBackend({
@@ -373,13 +373,13 @@ describe.skip("DeployWebsiteGraph", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
+          tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
         })
         .stopAfter("runtimeValidation")
         .execute();
 
       // Should proceed without re-running instrumentation
-      const instrumentationTask = result.state.tasks.find((t) => t.name === "Instrumentation");
+      const instrumentationTask = result.state.tasks.find((t) => t.name === "AddingAnalytics");
       expect(instrumentationTask?.status).toBe("completed");
     });
   });
@@ -395,9 +395,9 @@ describe.skip("DeployWebsiteGraph", () => {
   describe("Task Bubbling - All tasks visible to parent graph", () => {
     it("tasks array accumulates as nodes execute", async () => {
       // Start with completed instrumentation and validation
-      const existingTasks: Task.Task[] = [
-        { ...Task.createTask("Instrumentation"), status: "completed" },
-        { ...Task.createTask("RuntimeValidation"), status: "completed" },
+      const existingTasks: Deploy.Task[] = [
+        { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
+        { ...Deploy.createTask("RuntimeValidation"), status: "completed" },
       ];
 
       const result = await testGraph<DeployGraphState>()
@@ -412,11 +412,11 @@ describe.skip("DeployWebsiteGraph", () => {
         .stopAfter("deployWebsite")
         .execute();
 
-      // Should have all tasks including WebsiteDeploy
+      // Should have all tasks including DeployingWebsite
       expect(result.state.tasks.length).toBeGreaterThanOrEqual(2);
 
       // Verify existing tasks preserved
-      const instTask = result.state.tasks.find((t) => t.name === "Instrumentation");
+      const instTask = result.state.tasks.find((t) => t.name === "AddingAnalytics");
       expect(instTask?.status).toBe("completed");
     });
   });
@@ -434,10 +434,10 @@ describe.skip("DeployWebsiteGraph", () => {
    * 4. Second invoke: Processes result, marks "completed"
    */
   describe("Webhook Integration - Async Deploy", () => {
-    it("graph exits early when WebsiteDeploy task exists (webhook pattern)", async () => {
+    it("graph exits early when DeployingWebsite task exists (webhook pattern)", async () => {
       // Simulate state after deploy task was created and webhook hasn't returned
-      const pendingDeployTask: Task.Task = {
-        ...Task.createTask("WebsiteDeploy", 123),
+      const pendingDeployTask: Deploy.Task = {
+        ...Deploy.createTask("DeployingWebsite", 123),
         status: "pending",
       };
 
@@ -459,8 +459,8 @@ describe.skip("DeployWebsiteGraph", () => {
 
     it("processes webhook result when task has result", async () => {
       // Simulate state after webhook updated task with result
-      const taskWithResult: Task.Task = {
-        ...Task.createTask("WebsiteDeploy", 123),
+      const taskWithResult: Deploy.Task = {
+        ...Deploy.createTask("DeployingWebsite", 123),
         status: "running",
         result: {
           website_id: 1,
@@ -480,9 +480,9 @@ describe.skip("DeployWebsiteGraph", () => {
         })
         .execute();
 
-      // Graph exits early because WebsiteDeploy task exists
+      // Graph exits early because DeployingWebsite task exists
       // The deployWebsiteNode would process the result if it ran
-      expect(result.state.tasks[0]!.name).toBe("WebsiteDeploy");
+      expect(result.state.tasks[0]!.name).toBe("DeployingWebsite");
     });
   });
 
@@ -495,8 +495,8 @@ describe.skip("DeployWebsiteGraph", () => {
   describe("Validation Flow - Retry Loop", () => {
     it("exits after MAX_RETRY_COUNT attempts when validation keeps failing", async () => {
       // Simulate state where validation failed and we've hit max retries
-      const failedValidationTask: Task.Task = {
-        ...Task.createTask("RuntimeValidation"),
+      const failedValidationTask: Deploy.Task = {
+        ...Deploy.createTask("RuntimeValidation"),
         status: "failed",
         retryCount: 2, // MAX_RETRY_COUNT = 2
         error: "Console errors found",
@@ -510,7 +510,7 @@ describe.skip("DeployWebsiteGraph", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [
-            { ...Task.createTask("Instrumentation"), status: "completed" },
+            { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
             failedValidationTask,
           ],
         })
@@ -531,7 +531,7 @@ describe.skip("DeployWebsiteGraph", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
+          tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
         })
         .stopAfter("runtimeValidation")
         .execute();
@@ -549,8 +549,8 @@ describe.skip("DeployWebsiteGraph", () => {
     it("routes to fix when validation fails", async () => {
       await DatabaseSnapshotter.restoreSnapshot("website_with_import_errors");
 
-      const failedValidationTask: Task.Task = {
-        ...Task.createTask("RuntimeValidation"),
+      const failedValidationTask: Deploy.Task = {
+        ...Deploy.createTask("RuntimeValidation"),
         status: "failed",
         result: {
           browserErrorCount: 2,
@@ -599,7 +599,7 @@ describe.skip("DeployWebsiteGraph", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [
-            { ...Task.createTask("Instrumentation"), status: "completed" },
+            { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
             failedValidationTask,
           ],
         })
@@ -625,14 +625,14 @@ describe.skip("DeployWebsiteGraph", () => {
 
       await backend.cleanup();
 
-      const task = result.state.tasks.find((t) => t.name === "BugFix");
+      const task = result.state.tasks.find((t) => t.name === "FixingBugs");
       expect(task).toBeDefined();
       expect(task?.status).toBe("completed");
     });
 
     it("routes to deployWebsite when validation passes", async () => {
-      const passedValidationTask: Task.Task = {
-        ...Task.createTask("RuntimeValidation"),
+      const passedValidationTask: Deploy.Task = {
+        ...Deploy.createTask("RuntimeValidation"),
         status: "completed", // This is what the graph expects
       };
 
@@ -644,7 +644,7 @@ describe.skip("DeployWebsiteGraph", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [
-            { ...Task.createTask("Instrumentation"), status: "completed" },
+            { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
             passedValidationTask,
           ],
         })
@@ -652,7 +652,7 @@ describe.skip("DeployWebsiteGraph", () => {
         .execute();
 
       // Should have reached deployWebsite node
-      const deployTask = result.state.tasks.find((t) => t.name === "WebsiteDeploy");
+      const deployTask = result.state.tasks.find((t) => t.name === "DeployingWebsite");
       expect(deployTask).toBeDefined();
     });
   });
@@ -666,8 +666,8 @@ describe.skip("DeployWebsiteGraph", () => {
   describe("Deployment Failure Handling", () => {
     it("marks task failed when webhook returns error", async () => {
       // Simulate webhook returning an error
-      const taskWithError: Task.Task = {
-        ...Task.createTask("WebsiteDeploy", 123),
+      const taskWithError: Deploy.Task = {
+        ...Deploy.createTask("DeployingWebsite", 123),
         status: "running",
         error: "Build failed: npm install error",
       };
@@ -680,15 +680,15 @@ describe.skip("DeployWebsiteGraph", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [
-            { ...Task.createTask("Instrumentation"), status: "completed" },
-            { ...Task.createTask("RuntimeValidation"), status: "completed" },
+            { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
+            { ...Deploy.createTask("RuntimeValidation"), status: "completed" },
             taskWithError,
           ],
         })
         .execute();
 
       // Graph exits early - the task already exists with error
-      const deployTask = result.state.tasks.find((t) => t.name === "WebsiteDeploy");
+      const deployTask = result.state.tasks.find((t) => t.name === "DeployingWebsite");
       expect(deployTask).toBeDefined();
       expect(deployTask?.error).toBeDefined();
       expect(deployTask?.error).toContain("Build failed");
@@ -705,8 +705,8 @@ describe.skip("DeployWebsiteGraph", () => {
         },
       };
 
-      const taskWithDetailedError: Task.Task = {
-        ...Task.createTask("WebsiteDeploy", 456),
+      const taskWithDetailedError: Deploy.Task = {
+        ...Deploy.createTask("DeployingWebsite", 456),
         status: "failed",
         error: JSON.stringify(detailedError),
       };
@@ -723,7 +723,7 @@ describe.skip("DeployWebsiteGraph", () => {
         .execute();
 
       // Task error should contain useful debugging info
-      const deployTask = result.state.tasks.find((t) => t.name === "WebsiteDeploy");
+      const deployTask = result.state.tasks.find((t) => t.name === "DeployingWebsite");
       expect(deployTask?.status).toBe("failed");
       expect(deployTask?.error).toContain("CLOUDFLARE_ERROR");
       expect(deployTask?.error).toContain("Cannot find module");

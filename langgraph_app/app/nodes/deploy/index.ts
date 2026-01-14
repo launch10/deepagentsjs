@@ -5,3 +5,4 @@ export * from "./runtimeValidationNode";
 export * from "./validateLinksNode";
 export * from "./bugFixNode";
 export * from "./createEnqueueNode";
+export * from "./googleConnectNode";

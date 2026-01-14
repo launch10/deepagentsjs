@@ -3548,7 +3548,12 @@ CREATE TABLE public.website_leads (
     visitor_token character varying,
     gclid character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    utm_source character varying,
+    utm_medium character varying,
+    utm_campaign character varying,
+    utm_content character varying,
+    utm_term character varying
 );
 
 
@@ -9838,6 +9843,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260114203730'),
 ('20260113213841'),
 ('20260113211110'),
 ('20260113201504'),

@@ -5,7 +5,7 @@ import { Task } from "@types";
 import { createCodingAgent } from "@nodes";
 import { codingToolsPrompt, trackingPrompt, environmentPrompt } from "@prompts";
 
-const TASK_NAME = "Instrumentation" as const;
+const TASK_NAME = "AddingAnalytics" as const;
 
 const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunnableConfig) => {
   let mergedState = { ...state, isFirstMessage: false };

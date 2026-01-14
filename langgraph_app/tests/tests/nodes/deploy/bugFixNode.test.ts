@@ -144,7 +144,7 @@ describe("bugFixNode", () => {
    * =============================================================================
    */
   describe("Successful bug fix", () => {
-    it("marks BugFix task as completed on success", async () => {
+    it("marks FixingBugs task as completed on success", async () => {
       const mockAgent = {
         invoke: vi.fn().mockResolvedValue({}),
       };
@@ -163,7 +163,7 @@ describe("bugFixNode", () => {
           } as Task.Task,
           {
             id: "uuid-fix",
-            name: "BugFix",
+            name: "FixingBugs",
             status: "pending",
             retryCount: 0,
           } as Task.Task,
@@ -182,8 +182,8 @@ describe("bugFixNode", () => {
       );
       expect(mockAgent.invoke).toHaveBeenCalled();
 
-      // Should mark BugFix as completed and increment validation retryCount
-      const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "BugFix");
+      // Should mark FixingBugs as completed and increment validation retryCount
+      const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "FixingBugs");
       const validationTask = result.tasks?.find((t: Task.Task) => t.name === "RuntimeValidation");
 
       expect(bugFixTask?.status).toBe("completed");
@@ -209,7 +209,7 @@ describe("bugFixNode", () => {
           } as Task.Task,
           {
             id: "uuid-fix",
-            name: "BugFix",
+            name: "FixingBugs",
             status: "pending",
             retryCount: 0,
           } as Task.Task,
@@ -234,7 +234,7 @@ describe("bugFixNode", () => {
    * AND that retryCount is incremented to prevent infinite loops.
    */
   describe("Agent failure handling", () => {
-    it("marks BugFix task as failed when agent throws", async () => {
+    it("marks FixingBugs task as failed when agent throws", async () => {
       const mockAgent = {
         invoke: vi.fn().mockRejectedValue(new Error("Agent failed to fix the code")),
       };
@@ -253,7 +253,7 @@ describe("bugFixNode", () => {
           } as Task.Task,
           {
             id: "uuid-fix",
-            name: "BugFix",
+            name: "FixingBugs",
             status: "pending",
             retryCount: 0,
           } as Task.Task,
@@ -269,7 +269,7 @@ describe("bugFixNode", () => {
       expect(result.tasks).toBeDefined();
       expect(result.tasks?.length).toBeGreaterThan(0);
 
-      const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "BugFix");
+      const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "FixingBugs");
       expect(bugFixTask?.status).toBe("failed");
       expect(bugFixTask?.error).toBe("Agent failed to fix the code");
     });
@@ -293,7 +293,7 @@ describe("bugFixNode", () => {
           } as Task.Task,
           {
             id: "uuid-fix",
-            name: "BugFix",
+            name: "FixingBugs",
             status: "pending",
             retryCount: 0,
           } as Task.Task,
@@ -329,7 +329,7 @@ describe("bugFixNode", () => {
           } as Task.Task,
           {
             id: "uuid-fix",
-            name: "BugFix",
+            name: "FixingBugs",
             status: "pending",
             retryCount: 0,
           } as Task.Task,
@@ -341,7 +341,7 @@ describe("bugFixNode", () => {
         {} as LangGraphRunnableConfig
       )) as Partial<DeployGraphState>;
 
-      const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "BugFix");
+      const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "FixingBugs");
       expect(bugFixTask?.status).toBe("failed");
       expect(bugFixTask?.error).toBe("Unknown error");
     });
@@ -365,7 +365,7 @@ describe("bugFixNode", () => {
           } as Task.Task,
           {
             id: "uuid-fix",
-            name: "BugFix",
+            name: "FixingBugs",
             status: "pending",
             retryCount: 0,
           } as Task.Task,

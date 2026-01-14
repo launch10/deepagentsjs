@@ -6,7 +6,7 @@ import { createCodingAgent } from "@nodes";
 import { codingToolsPrompt, environmentPrompt } from "@prompts";
 import { ContextAPIService } from "@rails_api";
 
-const TASK_NAME = "SEOOptimization" as const;
+const TASK_NAME = "OptimizingSEO" as const;
 
 /**
  * Build system prompt for SEO optimization AI agent

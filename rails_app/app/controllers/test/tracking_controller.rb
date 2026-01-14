@@ -33,6 +33,11 @@ class Test::TrackingController < Test::TestController
           gclid: wl.gclid,
           visitor_token: wl.visitor_token,
           visit_token: wl.visit&.visit_token,
+          utm_source: wl.utm_source,
+          utm_medium: wl.utm_medium,
+          utm_campaign: wl.utm_campaign,
+          utm_content: wl.utm_content,
+          utm_term: wl.utm_term,
           created_at: wl.created_at.iso8601
         }
       end,
@@ -74,11 +79,9 @@ class Test::TrackingController < Test::TestController
       return render plain: "Tracking test build not found. Run: rake test:tracking:build", status: :not_found
     end
 
-    # Redirect to trailing slash to ensure relative paths resolve correctly
-    # Without this, ./assets/foo.js at /test/tracking/built resolves to /test/tracking/assets/foo.js
-    if params[:path].blank? && !request.original_fullpath.end_with?("/")
-      return redirect_to "#{request.original_fullpath}/"
-    end
+    # NOTE: Don't redirect to trailing slash here - Rails' trailing slash normalization
+    # causes infinite redirect loops. Instead, the built index.html includes absolute
+    # base paths for assets or tests navigate with trailing slash when using query params.
 
     # Default to index.html for root path
     file_path = params[:path].presence || "index.html"
