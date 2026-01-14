@@ -107,7 +107,6 @@ RSpec.describe "Leads API", type: :request do
 
           # Process the job to verify lead creation
 
-
           lead = Lead.find_by(email: 'newlead@example.com')
           expect(lead).to be_present
           expect(lead.account_id).to eq(account.id)
@@ -126,8 +125,6 @@ RSpec.describe "Leads API", type: :request do
           data = JSON.parse(response.body)
           expect(data['success']).to eq(true)
 
-
-
           lead = Lead.find_by(email: 'emailonly@example.com')
           expect(lead).to be_present
           expect(lead.name).to be_nil
@@ -143,8 +140,6 @@ RSpec.describe "Leads API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['success']).to eq(true)
-
-
 
           # Email should be normalized
           lead = Lead.find_by(email: 'uppercase@example.com')
@@ -165,8 +160,6 @@ RSpec.describe "Leads API", type: :request do
           expect(data['success']).to eq(true)
           expect(response.status).to eq(202)
 
-
-
           # Name should NOT be updated - we just acknowledge and move on
           existing_lead.reload
           expect(existing_lead.name).to eq('Original Name')
@@ -184,8 +177,6 @@ RSpec.describe "Leads API", type: :request do
         run_test! do |response|
           expect(response.status).to eq(202)
 
-
-
           # Should not create a duplicate
           expect(website.leads.count).to eq(1)
         end
@@ -202,8 +193,6 @@ RSpec.describe "Leads API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['success']).to eq(true)
-
-
 
           # Now there should be 2 leads with this email (one per account)
           leads = Lead.where(email: 'shared@example.com')
@@ -387,8 +376,6 @@ RSpec.describe "Leads API", type: :request do
 
         expect(response.status).to eq(202)
 
-
-
         lead = Lead.find_by(email: 'gclid-test@example.com')
         website_lead = lead.website_leads.find_by(website: website)
         expect(website_lead.gclid).to eq('test-gclid-12345')
@@ -401,8 +388,6 @@ RSpec.describe "Leads API", type: :request do
         }
 
         expect(response.status).to eq(202)
-
-
 
         lead = Lead.find_by(email: 'no-gclid@example.com')
         website_lead = lead.website_leads.find_by(website: website)
@@ -431,8 +416,6 @@ RSpec.describe "Leads API", type: :request do
 
         expect(response.status).to eq(202)
 
-
-
         lead = Lead.find_by(email: 'visit-link@example.com')
         website_lead = lead.website_leads.find_by(website: website)
         expect(website_lead.visit_id).to eq(visit.id)
@@ -447,8 +430,6 @@ RSpec.describe "Leads API", type: :request do
         }
 
         expect(response.status).to eq(202)
-
-
 
         lead = Lead.find_by(email: 'visitor-token-test@example.com')
         website_lead = lead.website_leads.find_by(website: website)
@@ -465,8 +446,6 @@ RSpec.describe "Leads API", type: :request do
 
         expect(response.status).to eq(202)
 
-
-
         lead = Lead.find_by(email: 'inherit-gclid@example.com')
         website_lead = lead.website_leads.find_by(website: website)
         expect(website_lead.gclid).to eq('visit-gclid-999')
@@ -482,8 +461,6 @@ RSpec.describe "Leads API", type: :request do
         }
 
         expect(response.status).to eq(202)
-
-
 
         lead = Lead.find_by(email: 'prefer-direct-gclid@example.com')
         website_lead = lead.website_leads.find_by(website: website)
@@ -600,8 +577,6 @@ RSpec.describe "Leads API", type: :request do
         expect(visit.gclid).to eq('new-gclid')
         expect(visit.website_id).to eq(website.id)
 
-
-
         lead = Lead.find_by(email: 'new-visit@example.com')
         website_lead = lead.website_leads.find_by(website: website)
         expect(website_lead.visit_id).to eq(visit.id)
@@ -623,13 +598,9 @@ RSpec.describe "Leads API", type: :request do
         post '/api/v1/leads', params: { token: token, email: email }
         expect(response.status).to eq(202)
 
-
-
         # Second request with same email should also return 202 (idempotent)
         post '/api/v1/leads', params: { token: token, email: email }
         expect(response.status).to eq(202)
-
-
 
         # Should only have one lead in account and one website_lead
         expect(account.leads.where(email: email).count).to eq(1)
@@ -647,8 +618,6 @@ RSpec.describe "Leads API", type: :request do
 
         expect(response.status).to eq(202)
 
-
-
         lead = Lead.find_by(email: 'isolation-test@example.com')
         expect(lead.account_id).to eq(account.id)
         expect(lead.websites).to include(website)
@@ -664,8 +633,6 @@ RSpec.describe "Leads API", type: :request do
         }
 
         expect(response.status).to eq(202)
-
-
 
         expect(Lead.find_by(email: 'user+tag@example.com')).to be_present
       end
@@ -708,8 +675,6 @@ RSpec.describe "Leads API", type: :request do
         }
 
         expect(response.status).to eq(202)
-
-
 
         lead = Lead.find_by(email: 'safe@example.com')
         expect(lead.account_id).to eq(account.id) # Not the injected value

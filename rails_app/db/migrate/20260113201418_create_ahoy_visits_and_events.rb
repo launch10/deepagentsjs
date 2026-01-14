@@ -57,6 +57,5 @@ class CreateAhoyVisitsAndEvents < ActiveRecord::Migration[8.0]
       t.index [:name, :time]
       t.index :properties, using: :gin, opclass: :jsonb_path_ops
     end
-
   end
 end

@@ -44,26 +44,26 @@ describe("Coding Agent Tracking Prompts", () => {
 
   describe("trackingPrompt()", () => {
     it("includes both conversion scenarios", async () => {
-      const trackingPrompt = await trackingPrompt(mockState);
+      const tracking = await trackingPrompt(mockState);
 
       // Both scenarios documented
-      expect(trackingPrompt).toContain("Scenario 1");
-      expect(trackingPrompt).toContain("Scenario 2");
+      expect(tracking).toContain("Scenario 1");
+      expect(tracking).toContain("Scenario 2");
     });
 
     it("uses L10.createLead for lead capture", async () => {
-      const trackingPrompt = await trackingPrompt(mockState);
+      const tracking = await trackingPrompt(mockState);
 
       // Should use createLead method
-      expect(trackingPrompt).toContain("L10.createLead");
+      expect(tracking).toContain("L10.createLead");
     });
 
     it("explains when to use each pattern", async () => {
-      const trackingPrompt = await trackingPrompt(mockState);
+      const tracking = await trackingPrompt(mockState);
 
       // Should explain when to use tiered vs simple
-      expect(trackingPrompt).toMatch(/pricing tier|Basic.*Pro.*Enterprise/i);
-      expect(trackingPrompt).toMatch(/basic signup|without pricing/i);
+      expect(tracking).toMatch(/pricing tier|Basic.*Pro.*Enterprise/i);
+      expect(tracking).toMatch(/basic signup|without pricing/i);
     });
   });
 });

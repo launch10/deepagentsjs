@@ -194,7 +194,6 @@ RSpec.describe "Tracking API", type: :request do
         event = Ahoy::Event.last
         expect(event.visit_id).to eq(visit.id)
       end
-
     end
 
     context "background worker processing", sidekiq: :fake do
@@ -219,7 +218,6 @@ RSpec.describe "Tracking API", type: :request do
 
         expect(response).to have_http_status(:accepted)
 
-
         event = Ahoy::Event.last
         expect(event.name).to eq("button_click")
         expect(event.properties["button_id"]).to eq("cta-signup")
@@ -232,7 +230,6 @@ RSpec.describe "Tracking API", type: :request do
         ), as: :json
 
         expect(response).to have_http_status(:accepted)
-
 
         event = Ahoy::Event.last
         expect(event.name).to eq("scroll_depth")
@@ -277,7 +274,6 @@ RSpec.describe "Tracking API", type: :request do
         ), as: :json
 
         expect(response).to have_http_status(:accepted)
-
 
         event = Ahoy::Event.last
         expect(event.properties).to eq({})

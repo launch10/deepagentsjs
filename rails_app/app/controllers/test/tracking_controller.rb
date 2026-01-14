@@ -56,9 +56,7 @@ class Test::TrackingController < Test::TestController
     website = TrackingTestBuilder.test_website
 
     # If website doesn't exist (e.g., after database snapshot restore), create test records
-    unless website
-      website = TrackingTestBuilder.send(:create_test_records!)
-    end
+    website ||= TrackingTestBuilder.send(:create_test_records!)
 
     render json: {
       projectId: website.project_id,

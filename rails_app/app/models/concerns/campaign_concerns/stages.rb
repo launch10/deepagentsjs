@@ -216,7 +216,7 @@ module CampaignConcerns
         "Missing Google Customer ID" => -> { google_customer_id.blank? },
         "Missing Google Conversion ID" => -> { google_conversion_id.blank? },
         "Missing Google Conversion Label" => -> { google_conversion_label.blank? },
-        "Google not ready to enable" => -> { !google_ready_to_enable? },
+        "Google not ready to enable" => -> { !google_ready_to_enable? }
       }.select { |_, condition| condition.call }.map { |reason, _| reason }
     end
 

@@ -70,8 +70,8 @@ RSpec.describe WebsiteLead, type: :model do
     it 'allows same lead to convert on multiple websites' do
       website2 = create(:website, project: create(:project, account: account), account: account)
 
-      wl1 = create(:website_lead, lead: lead, website: website)
-      wl2 = create(:website_lead, lead: lead, website: website2)
+      create(:website_lead, lead: lead, website: website)
+      create(:website_lead, lead: lead, website: website2)
 
       expect(lead.website_leads.count).to eq(2)
       expect(lead.websites).to contain_exactly(website, website2)
