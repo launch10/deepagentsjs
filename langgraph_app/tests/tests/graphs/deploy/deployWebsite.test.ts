@@ -3,7 +3,8 @@ import { MemorySaver } from "@langchain/langgraph";
 import { testGraph } from "@support";
 import { deployWebsiteGraph as uncompiledGraph } from "@graphs";
 import type { DeployGraphState } from "@annotation";
-import type { ThreadIDType, Task } from "@types";
+import type { ThreadIDType } from "@types";
+import { Task } from "@types";
 import { graphParams } from "@core";
 import { DatabaseSnapshotter } from "@rails_api";
 import { websiteFiles, and, eq, db } from "@db";
@@ -40,7 +41,7 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         threadId: "thread_123" as ThreadIDType,
         websiteId: 1,
         deploy: { website: true },
-        tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
+        tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
       })
       .stopAfter("seoOptimization")
       .execute();
@@ -97,7 +98,7 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         threadId: "thread_123" as ThreadIDType,
         websiteId: 1,
         deploy: { website: true },
-        tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
+        tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
       })
       .stopAfter("seoOptimization")
       .execute();
@@ -128,6 +129,7 @@ describe("SEO Optimization - Meta Tags Generation", () => {
     const completedTask: Task.Task = {
       id: "uuid-seo",
       name: "SEOOptimization",
+      description: "Optimizing SEO",
       status: "completed",
       retryCount: 0,
     };
@@ -139,10 +141,7 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         threadId: "thread_123" as ThreadIDType,
         websiteId: 1,
         deploy: { website: true },
-        tasks: [
-          { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
-          completedTask,
-        ],
+        tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }, completedTask],
       })
       .stopAfter("seoOptimization")
       .execute();
@@ -151,6 +150,49 @@ describe("SEO Optimization - Meta Tags Generation", () => {
     const seoTask = result.state.tasks.find((t) => t.name === "SEOOptimization");
     expect(seoTask).toBeDefined();
     expect(seoTask?.status).toBe("completed");
+  });
+
+  it("includes favicon URL for logo uploads in SEO context", async () => {
+    // Use website_finished snapshot which has uploads including logos
+    await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+
+    const result = await testGraph<DeployGraphState>()
+      .withGraph(deployWebsiteGraph)
+      .withState({
+        jwt: "test-jwt",
+        threadId: "thread_123" as ThreadIDType,
+        websiteId: 1,
+        deploy: { website: true },
+        tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
+      })
+      .stopAfter("seoOptimization")
+      .execute();
+
+    // Verify the SEO task completed
+    const seoTask = result.state.tasks.find((t) => t.name === "SEOOptimization");
+    expect(seoTask).toBeDefined();
+    expect(seoTask?.status).toBe("completed");
+
+    // Verify the actual USER OUTCOME: favicon link is now in index.html
+    const indexFile = await db
+      .select()
+      .from(websiteFiles)
+      .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "index.html")))
+      .execute()
+      .then((files) => files.at(-1));
+
+    expect(indexFile?.content).toBeDefined();
+
+    // Favicon link should be present
+    // TODO: we want to probably generate 32x32 ico image...
+    expect(indexFile?.content).toContain('<link rel="icon"');
+
+    // Cleanup the coding agent backend
+    const backend = await getCodingAgentBackend({
+      websiteId: 1,
+      jwt: "test-jwt",
+    } as any);
+    await backend.cleanup();
   });
 
   it("SEO node is in the correct position in graph flow", async () => {
@@ -162,7 +204,7 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         threadId: "thread_123" as ThreadIDType,
         websiteId: 1,
         deploy: { website: true },
-        tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
+        tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
       })
       .stopAfter("seoOptimization")
       .execute();
@@ -199,10 +241,8 @@ describe.skip("DeployWebsiteGraph", () => {
   describe("Idempotency - Early exit when WebsiteDeploy task exists", () => {
     it("exits immediately if WebsiteDeploy task already exists (any status)", async () => {
       const existingTask: Task.Task = {
-        id: "uuid-123",
-        name: "WebsiteDeploy",
+        ...Task.createTask("WebsiteDeploy"),
         status: "pending",
-        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -224,10 +264,8 @@ describe.skip("DeployWebsiteGraph", () => {
 
     it("exits immediately if WebsiteDeploy task is completed", async () => {
       const completedTask: Task.Task = {
-        id: "uuid-123",
-        name: "WebsiteDeploy",
+        ...Task.createTask("WebsiteDeploy"),
         status: "completed",
-        retryCount: 0,
         result: { deployed: true },
       };
 
@@ -248,11 +286,8 @@ describe.skip("DeployWebsiteGraph", () => {
 
     it("exits immediately if WebsiteDeploy task is running (waiting for webhook)", async () => {
       const runningTask: Task.Task = {
-        id: "uuid-123",
-        name: "WebsiteDeploy",
+        ...Task.createTask("WebsiteDeploy", 456),
         status: "running",
-        jobId: 456,
-        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -338,7 +373,7 @@ describe.skip("DeployWebsiteGraph", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
+          tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
         })
         .stopAfter("runtimeValidation")
         .execute();
@@ -361,8 +396,8 @@ describe.skip("DeployWebsiteGraph", () => {
     it("tasks array accumulates as nodes execute", async () => {
       // Start with completed instrumentation and validation
       const existingTasks: Task.Task[] = [
-        { id: "uuid-1", name: "Instrumentation", status: "completed", retryCount: 0 },
-        { id: "uuid-2", name: "RuntimeValidation", status: "completed", retryCount: 0 },
+        { ...Task.createTask("Instrumentation"), status: "completed" },
+        { ...Task.createTask("RuntimeValidation"), status: "completed" },
       ];
 
       const result = await testGraph<DeployGraphState>()
@@ -402,11 +437,8 @@ describe.skip("DeployWebsiteGraph", () => {
     it("graph exits early when WebsiteDeploy task exists (webhook pattern)", async () => {
       // Simulate state after deploy task was created and webhook hasn't returned
       const pendingDeployTask: Task.Task = {
-        id: "uuid-deploy",
-        name: "WebsiteDeploy",
+        ...Task.createTask("WebsiteDeploy", 123),
         status: "pending",
-        jobId: 123,
-        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -428,11 +460,8 @@ describe.skip("DeployWebsiteGraph", () => {
     it("processes webhook result when task has result", async () => {
       // Simulate state after webhook updated task with result
       const taskWithResult: Task.Task = {
-        id: "uuid-deploy",
-        name: "WebsiteDeploy",
-        jobId: 123,
+        ...Task.createTask("WebsiteDeploy", 123),
         status: "running",
-        retryCount: 0,
         result: {
           website_id: 1,
           deployed_at: "2024-01-15T10:00:00Z",
@@ -467,8 +496,7 @@ describe.skip("DeployWebsiteGraph", () => {
     it("exits after MAX_RETRY_COUNT attempts when validation keeps failing", async () => {
       // Simulate state where validation failed and we've hit max retries
       const failedValidationTask: Task.Task = {
-        id: "uuid-val",
-        name: "RuntimeValidation",
+        ...Task.createTask("RuntimeValidation"),
         status: "failed",
         retryCount: 2, // MAX_RETRY_COUNT = 2
         error: "Console errors found",
@@ -482,7 +510,7 @@ describe.skip("DeployWebsiteGraph", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [
-            { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
+            { ...Task.createTask("Instrumentation"), status: "completed" },
             failedValidationTask,
           ],
         })
@@ -503,7 +531,7 @@ describe.skip("DeployWebsiteGraph", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: [{ id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 }],
+          tasks: [{ ...Task.createTask("Instrumentation"), status: "completed" }],
         })
         .stopAfter("runtimeValidation")
         .execute();
@@ -522,10 +550,8 @@ describe.skip("DeployWebsiteGraph", () => {
       await DatabaseSnapshotter.restoreSnapshot("website_with_import_errors");
 
       const failedValidationTask: Task.Task = {
-        id: "uuid-val",
-        name: "RuntimeValidation",
+        ...Task.createTask("RuntimeValidation"),
         status: "failed",
-        retryCount: 0,
         result: {
           browserErrorCount: 2,
           serverErrorCount: 4,
@@ -573,7 +599,7 @@ describe.skip("DeployWebsiteGraph", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [
-            { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
+            { ...Task.createTask("Instrumentation"), status: "completed" },
             failedValidationTask,
           ],
         })
@@ -606,10 +632,8 @@ describe.skip("DeployWebsiteGraph", () => {
 
     it("routes to deployWebsite when validation passes", async () => {
       const passedValidationTask: Task.Task = {
-        id: "uuid-val",
-        name: "RuntimeValidation",
+        ...Task.createTask("RuntimeValidation"),
         status: "completed", // This is what the graph expects
-        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -620,7 +644,7 @@ describe.skip("DeployWebsiteGraph", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [
-            { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
+            { ...Task.createTask("Instrumentation"), status: "completed" },
             passedValidationTask,
           ],
         })
@@ -643,11 +667,8 @@ describe.skip("DeployWebsiteGraph", () => {
     it("marks task failed when webhook returns error", async () => {
       // Simulate webhook returning an error
       const taskWithError: Task.Task = {
-        id: "uuid-deploy",
-        name: "WebsiteDeploy",
-        jobId: 123,
+        ...Task.createTask("WebsiteDeploy", 123),
         status: "running",
-        retryCount: 0,
         error: "Build failed: npm install error",
       };
 
@@ -659,8 +680,8 @@ describe.skip("DeployWebsiteGraph", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [
-            { id: "uuid-inst", name: "Instrumentation", status: "completed", retryCount: 0 },
-            { id: "uuid-val", name: "RuntimeValidation", status: "completed", retryCount: 0 },
+            { ...Task.createTask("Instrumentation"), status: "completed" },
+            { ...Task.createTask("RuntimeValidation"), status: "completed" },
             taskWithError,
           ],
         })
@@ -685,11 +706,8 @@ describe.skip("DeployWebsiteGraph", () => {
       };
 
       const taskWithDetailedError: Task.Task = {
-        id: "uuid-deploy",
-        name: "WebsiteDeploy",
-        jobId: 456,
+        ...Task.createTask("WebsiteDeploy", 456),
         status: "failed",
-        retryCount: 0,
         error: JSON.stringify(detailedError),
       };
 

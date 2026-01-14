@@ -92,6 +92,7 @@ async function fetchSEOContext(state: DeployGraphState) {
     const images = context.uploads.map((upload) => ({
       url: upload.url,
       isLogo: upload.is_logo,
+      faviconUrl: upload.favicon_url,
     }));
 
     return {
@@ -154,9 +155,14 @@ export const seoOptimizationNode = NodeMiddleware.use(
       if (images.length > 0) {
         userMessage += `\n\n## Available Images:\n`;
         images.forEach((img, i) => {
-          userMessage += `${i + 1}. ${img.url} ${img.isLogo ? "(logo)" : ""}\n`;
+          userMessage += `${i + 1}. ${img.url} ${img.isLogo ? "(logo)" : ""}`;
+          if (img.faviconUrl) {
+            userMessage += ` [favicon: ${img.faviconUrl}]`;
+          }
+          userMessage += `\n`;
         });
         userMessage += `\nUse one of these images for og:image and twitter:image.`;
+        userMessage += `\nFor the favicon, use the [favicon: ...] URL if available.`;
       }
 
       const systemPrompt = await buildSystemPrompt(state, config);

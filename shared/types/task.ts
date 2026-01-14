@@ -20,12 +20,31 @@ export const TaskNames = [
   "ValidateLinks",
   "RuntimeValidation",
   "BugFix",
+  "GoogleConnect",
+  "GoogleVerify",
+  "GoogleBillingConnect"
 ] as const;
 export type TaskName = typeof TaskNames[number];
+
+export const TaskDescriptionMap = {
+  "CampaignDeploy": "Syncing Google Ads Campaign",
+  "WebsiteDeploy": "Launching Website",
+  "Instrumentation": "Adding Analytics for Ad",
+  "SEOOptimization": "Optimizing SEO",
+  "ValidateLinks": "Testing Links",
+  "RuntimeValidation": "Checking for Bugs",
+  "BugFix": "Squashing Bugs",
+  "GoogleConnect": "Signing into Google",
+  "GoogleVerify": "Verifying Google Account",
+  "GoogleBillingConnect": "Checking Payment Status",
+} as const;
+export type TaskDescription = typeof TaskDescriptionMap[TaskName];
+export const TaskDescriptions = Object.values(TaskDescriptionMap);
 
 export const TaskSchema = z.object({
   id: z.string().uuid(),
   name: z.enum(TaskNames), // Node name that owns this task
+  description: z.string(),
   jobId: z.number().optional(), // Rails JobRun ID
   status: z.enum(Statuses),
   result: z.record(z.unknown()).optional(),
@@ -42,6 +61,7 @@ export function createTask(name: TaskName, jobId?: number): Task {
   return {
     id: uuid(),
     name,
+    description: TaskDescriptionMap[name],
     jobId,
     status: "pending",
     retryCount: 0,

@@ -1320,6 +1320,10 @@ paths:
                           type: string
                           nullable: true
                           description: Medium size URL (images only)
+                        favicon_url:
+                          type: string
+                          nullable: true
+                          description: Favicon URL (32x32 ICO, logos only)
                         media_type:
                           type: string
                           enum:
@@ -1943,10 +1947,10 @@ paths:
         - Token is a Rails signup_token generated from the project
         - Token is purpose-scoped to :lead_signup
 
-        **Idempotency:**
-        - Returns 201 Created for new leads
-        - Returns 200 OK for existing leads (same email, same project)
-        - Email is normalized (lowercase, trimmed) before matching
+        **Processing:**
+        - Returns 202 Accepted immediately
+        - Lead creation happens asynchronously via background job
+        - Email validation happens synchronously (422 returned for invalid emails)
 
         **CORS:**
         - Allows requests from any origin
@@ -1971,20 +1975,8 @@ paths:
           schema:
             type: string
       responses:
-        "201":
+        "202":
           description: accepts requests with custom domain Origin
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    description: Indicates the lead was successfully created or updated
-                required:
-                  - success
-        "200":
-          description: existing lead matched case-insensitively
           content:
             application/json:
               schema:
@@ -3396,6 +3388,10 @@ paths:
                     type: string
                     nullable: true
                     description: Medium size URL (images only)
+                  favicon_url:
+                    type: string
+                    nullable: true
+                    description: Favicon URL (32x32 ICO, logos only)
                   media_type:
                     type: string
                     enum:
@@ -3509,6 +3505,10 @@ paths:
                       type: string
                       nullable: true
                       description: Medium size URL (images only)
+                    favicon_url:
+                      type: string
+                      nullable: true
+                      description: Favicon URL (32x32 ICO, logos only)
                     media_type:
                       type: string
                       enum:
@@ -3709,7 +3709,7 @@ paths:
             type: string
       responses:
         "200":
-          description: replaces all occurrences when replace_all is true
+          description: creates website_file from template_file when file not yet customized
           content:
             application/json:
               schema:
@@ -4207,7 +4207,7 @@ paths:
             type: string
       responses:
         "200":
-          description: website updated successfully
+          description: website theme update injects CSS variables into index.css
           content:
             application/json:
               schema:

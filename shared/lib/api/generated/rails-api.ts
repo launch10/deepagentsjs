@@ -1004,6 +1004,8 @@ export interface paths {
                                 thumb_url?: string | null;
                                 /** @description Medium size URL (images only) */
                                 medium_url?: string | null;
+                                /** @description Favicon URL (32x32 ICO, logos only) */
+                                favicon_url?: string | null;
                                 /**
                                  * @description Media type
                                  * @enum {string}
@@ -1533,10 +1535,10 @@ export interface paths {
          *     - Token is a Rails signup_token generated from the project
          *     - Token is purpose-scoped to :lead_signup
          *
-         *     **Idempotency:**
-         *     - Returns 201 Created for new leads
-         *     - Returns 200 OK for existing leads (same email, same project)
-         *     - Email is normalized (lowercase, trimmed) before matching
+         *     **Processing:**
+         *     - Returns 202 Accepted immediately
+         *     - Lead creation happens asynchronously via background job
+         *     - Email validation happens synchronously (422 returned for invalid emails)
          *
          *     **CORS:**
          *     - Allows requests from any origin
@@ -1571,20 +1573,8 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description existing lead matched case-insensitively */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @description Indicates the lead was successfully created or updated */
-                            success: boolean;
-                        };
-                    };
-                };
                 /** @description accepts requests with custom domain Origin */
-                201: {
+                202: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2817,6 +2807,8 @@ export interface paths {
                             thumb_url?: string | null;
                             /** @description Medium size URL (images only) */
                             medium_url?: string | null;
+                            /** @description Favicon URL (32x32 ICO, logos only) */
+                            favicon_url?: string | null;
                             /**
                              * @description Media type
                              * @enum {string}
@@ -2884,6 +2876,8 @@ export interface paths {
                             thumb_url?: string | null;
                             /** @description Medium size URL (images only) */
                             medium_url?: string | null;
+                            /** @description Favicon URL (32x32 ICO, logos only) */
+                            favicon_url?: string | null;
                             /**
                              * @description Media type
                              * @enum {string}
@@ -3126,7 +3120,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description replaces all occurrences when replace_all is true */
+                /** @description creates website_file from template_file when file not yet customized */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -3577,7 +3571,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description website updated successfully */
+                /** @description website theme update injects CSS variables into index.css */
                 200: {
                     headers: {
                         [name: string]: unknown;
