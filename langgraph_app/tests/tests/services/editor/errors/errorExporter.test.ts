@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { ConsoleError, CombinedErrors } from "@types";
+import { DatabaseSnapshotter } from "@services";
 
 // Mock the dependencies at the module level
 vi.mock("../../../app/services/editor/core/fileExporter", () => ({
@@ -32,7 +32,8 @@ vi.mock("../../../app/services/editor/errors/browserErrorCapture", () => ({
 import { ErrorExporter } from "@services";
 
 describe("ErrorExporter", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await DatabaseSnapshotter.restoreSnapshot("website_step");
     vi.clearAllMocks();
   });
 
