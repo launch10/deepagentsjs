@@ -59,6 +59,7 @@ RSpec.configure do |config|
   end
 
   config.before(:each) do
+    Sidekiq::Testing.fake!  # Reset to fake mode in case a previous test set inline!
     Sidekiq::Worker.clear_all
   end
 

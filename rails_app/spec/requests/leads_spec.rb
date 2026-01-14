@@ -6,6 +6,10 @@ RSpec.describe "Leads API", type: :request do
     Sidekiq::Testing.inline! unless self.class.metadata[:sidekiq] == :fake
   end
 
+  after do
+    Sidekiq::Testing.fake!
+  end
+
   # ==========================================================================
   # SECURITY CONTEXT
   # ==========================================================================

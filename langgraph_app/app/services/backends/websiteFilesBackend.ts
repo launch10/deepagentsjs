@@ -87,18 +87,22 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async lsInfo(path: string): Promise<FileInfo[]> {
+    console.log("lsInfo", path);
     return this.fs.lsInfo(path);
   }
 
   async read(filePath: string, offset: number = 0, limit: number = 2000): Promise<string> {
+    console.log("read", filePath, offset, limit);
     return this.fs.read(filePath, offset, limit);
   }
 
   async readRaw(filePath: string): Promise<FileData> {
+    console.log("readRaw", filePath);
     return this.fs.readRaw(filePath);
   }
 
   async globInfo(pattern: string, path: string = "/"): Promise<FileInfo[]> {
+    console.log("globInfo", pattern, path);
     return this.fs.globInfo(pattern, path);
   }
 
@@ -107,6 +111,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
     pathPrefix: string = "/",
     glob: string | null = null
   ): Promise<GrepMatch[] | string> {
+    console.log("grepRaw", pattern, pathPrefix, glob);
     try {
       const regex = new RegExp(pattern);
       const tsQuery = this.regexToTsQuery(pattern);
@@ -174,6 +179,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async write(filePath: string, content: string): Promise<WriteResult> {
+    console.log("write", filePath, content);
     const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
     return RedisLock.withLock(lockKey, async () => {
       const fsResult = await this.fs.write(filePath, content);
@@ -198,6 +204,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
     newString: string,
     replaceAll: boolean = false
   ): Promise<EditResult> {
+    console.log("edit", filePath, oldString, newString, replaceAll);
     const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
     return RedisLock.withLock(lockKey, async () => {
       const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);

@@ -5,6 +5,11 @@ RSpec.describe "Tracking API", type: :request do
   before do
     Sidekiq::Testing.inline! unless self.class.metadata[:sidekiq] == :fake
   end
+
+  after do
+    Sidekiq::Testing.fake!
+  end
+
   # ==========================================================================
   # SECURITY CONTEXT
   # ==========================================================================
