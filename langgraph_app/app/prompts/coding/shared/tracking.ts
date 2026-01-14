@@ -5,7 +5,7 @@
 import type { CodingPromptState, CodingPromptFn } from "./types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
-export const trackingContextPrompt: CodingPromptFn = async (
+export const trackingPrompt: CodingPromptFn = async (
   _state: CodingPromptState,
   _config?: LangGraphRunnableConfig
 ): Promise<string> => `

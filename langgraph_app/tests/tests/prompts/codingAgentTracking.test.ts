@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { buildCodingPrompt, type CodingPromptState } from "@prompts";
-import { trackingContextPrompt } from "../../../app/prompts/coding/shared/trackingContext";
+import { trackingPrompt } from "../../../app/prompts/coding/shared/tracking";
 
 describe("Coding Agent Tracking Prompts", () => {
   const mockState: CodingPromptState = {
@@ -42,9 +42,9 @@ describe("Coding Agent Tracking Prompts", () => {
     });
   });
 
-  describe("trackingContextPrompt()", () => {
+  describe("trackingPrompt()", () => {
     it("includes both conversion scenarios", async () => {
-      const trackingPrompt = await trackingContextPrompt(mockState);
+      const trackingPrompt = await trackingPrompt(mockState);
 
       // Both scenarios documented
       expect(trackingPrompt).toContain("Scenario 1");
@@ -52,14 +52,14 @@ describe("Coding Agent Tracking Prompts", () => {
     });
 
     it("uses L10.createLead for lead capture", async () => {
-      const trackingPrompt = await trackingContextPrompt(mockState);
+      const trackingPrompt = await trackingPrompt(mockState);
 
       // Should use createLead method
       expect(trackingPrompt).toContain("L10.createLead");
     });
 
     it("explains when to use each pattern", async () => {
-      const trackingPrompt = await trackingContextPrompt(mockState);
+      const trackingPrompt = await trackingPrompt(mockState);
 
       // Should explain when to use tiered vs simple
       expect(trackingPrompt).toMatch(/pricing tier|Basic.*Pro.*Enterprise/i);

@@ -144,7 +144,6 @@ def write_env_file!
     "VITE_SIGNUP_TOKEN" => website.project.signup_token,
     "VITE_API_BASE_URL" => Rails.configuration.x.api_base_url,
     "VITE_GOOGLE_ADS_SEND_TO" => google_send_to,
-    "VITE_WEBSITE_TOKEN" => website.tracking_token  # New: identifies which website
   }
   File.write(File.join(temp_dir, ".env"), env_vars.compact.map { |k, v| "#{k}=#{v}" }.join("\n"))
 end

@@ -53,3 +53,7 @@ module JwtHelpers
     OpenSSL::HMAC.hexdigest('SHA256', jwt_secret, timestamp.to_s)
   end
 end
+
+RSpec.configure do |config|
+  config.include JwtHelpers, type: :request
+end

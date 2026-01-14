@@ -5,3 +5,7 @@ module AccountHelpers
     account
   end
 end
+
+RSpec.configure do |config|
+  config.include AccountHelpers
+end

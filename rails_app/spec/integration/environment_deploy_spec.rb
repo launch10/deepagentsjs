@@ -1,5 +1,4 @@
 require 'rails_helper'
-require 'support/website_file_helpers'
 
 RSpec.describe 'Environment-aware deploys', type: :integration do
   include WebsiteFileHelpers

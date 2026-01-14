@@ -50,7 +50,6 @@
 #
 
 require 'rails_helper'
-require "support/subscription_helpers"
 
 RSpec.describe User, type: :model do
   let(:user) { build(:user) }

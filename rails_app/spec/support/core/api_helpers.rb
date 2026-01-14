@@ -13,3 +13,7 @@ module APIHelpers
     Cloudflare::FirewallService::Response.new(http_response)
   end
 end
+
+RSpec.configure do |config|
+  config.include APIHelpers
+end

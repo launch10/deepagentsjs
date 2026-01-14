@@ -24,7 +24,6 @@
 #
 
 require "rails_helper"
-require 'support/website_file_helpers'
 require 'sidekiq/testing'
 
 describe Website do

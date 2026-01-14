@@ -42,6 +42,5 @@ class Ahoy::Visit < ApplicationRecord
 
   has_many :events, class_name: "Ahoy::Event"
   has_many :website_leads
-  belongs_to :user, optional: true
   belongs_to :website, optional: true
 end

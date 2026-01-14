@@ -61,3 +61,7 @@ module SubscriptionHelpers
     account
   end
 end
+
+RSpec.configure do |config|
+  config.include SubscriptionHelpers
+end

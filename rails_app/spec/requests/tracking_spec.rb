@@ -218,7 +218,7 @@ RSpec.describe "Tracking API", type: :request do
         ), as: :json
 
         expect(response).to have_http_status(:accepted)
-        
+
 
         event = Ahoy::Event.last
         expect(event.name).to eq("button_click")
@@ -232,7 +232,7 @@ RSpec.describe "Tracking API", type: :request do
         ), as: :json
 
         expect(response).to have_http_status(:accepted)
-        
+
 
         event = Ahoy::Event.last
         expect(event.name).to eq("scroll_depth")
@@ -277,7 +277,7 @@ RSpec.describe "Tracking API", type: :request do
         ), as: :json
 
         expect(response).to have_http_status(:accepted)
-        
+
 
         event = Ahoy::Event.last
         expect(event.properties).to eq({})
