@@ -354,7 +354,7 @@ RSpec.describe "Tracking API", type: :request do
       results = website.visits
         .joins("LEFT JOIN website_leads ON website_leads.visit_id = ahoy_visits.id")
         .group(:utm_content)
-        .select("utm_content, COUNT(DISTINCT website_leads.lead_id) as conversions")
+        .select("ahoy_visits.utm_content, COUNT(DISTINCT website_leads.lead_id) as conversions")
 
       conversions = results.map { |r| [r.utm_content, r.conversions] }.to_h
       expect(conversions["headline_a"]).to eq(1)

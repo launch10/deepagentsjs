@@ -50,7 +50,7 @@ class Test::DatabaseController < Test::TestController
 
       result = Database::Snapshotter.new.restore_snapshot(snapshot_name, truncate: truncate_first)
     rescue => e
-      Rails.logger.error "[Test::DatabaseController] Error restoring snapshot: #{e.message} - #{e.stderr}"
+      Rails.logger.error "[Test::DatabaseController] Error restoring snapshot: #{e.message} - #{e.respond_to?(:stderr) ? e.stderr : ''}"
       render json: {
         status: "error",
         errors: ["Failed to restore snapshot: #{e.message}"]
