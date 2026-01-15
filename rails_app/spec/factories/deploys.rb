@@ -7,6 +7,7 @@
 #  is_live             :boolean          default(FALSE)
 #  stacktrace          :text
 #  status              :string           default("pending"), not null
+#  user_active_at      :datetime
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
 #  campaign_deploy_id  :bigint

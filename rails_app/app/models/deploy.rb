@@ -7,6 +7,7 @@
 #  is_live             :boolean          default(FALSE)
 #  stacktrace          :text
 #  status              :string           default("pending"), not null
+#  user_active_at      :datetime
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
 #  campaign_deploy_id  :bigint
@@ -37,9 +38,15 @@ class Deploy < ApplicationRecord
   belongs_to :project
   belongs_to :website_deploy, class_name: "WebsiteDeploy", optional: true
   belongs_to :campaign_deploy, optional: true
+  has_many :job_runs, dependent: :nullify
 
   validates :status, presence: true, inclusion: { in: STATUS }
 
   scope :live, -> { where(is_live: true) }
   scope :in_progress, -> { where(status: %w[pending running]) }
+  scope :user_recently_active, -> { where(user_active_at: 5.minutes.ago..) }
+
+  def touch_user_active!
+    update_column(:user_active_at, Time.current)
+  end
 end

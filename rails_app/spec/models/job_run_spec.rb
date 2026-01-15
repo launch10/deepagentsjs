@@ -13,11 +13,13 @@
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
 #  account_id          :bigint
+#  deploy_id           :bigint
 #  langgraph_thread_id :string
 #
 # Indexes
 #
 #  index_job_runs_on_account_id            (account_id)
+#  index_job_runs_on_deploy_id             (deploy_id)
 #  index_job_runs_on_job_class             (job_class)
 #  index_job_runs_on_job_class_and_status  (job_class,status)
 #  index_job_runs_on_langgraph_thread_id   (langgraph_thread_id)

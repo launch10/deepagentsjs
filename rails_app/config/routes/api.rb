@@ -39,7 +39,9 @@ namespace :api, defaults: {format: :json} do
     resources :domains, only: [:index, :show, :create]
     resources :website_urls, only: [:index, :show, :create, :update]
     resources :job_runs, only: [:create]
-    resources :deploys, only: [:create, :show, :update]
+    resources :deploys, only: [:create, :show, :update] do
+      post :touch, on: :member
+    end
 
     # Google status APIs for deploy flow
     scope :google do

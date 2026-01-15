@@ -31,5 +31,9 @@ Zhong.schedule do
     every(1.day, "ingest geo target constants", at: "03:00") do
       GoogleAds::LocationTargeting::IngestWorker.perform_async
     end
+
+    every(30.seconds, "poll active invites") do
+      GoogleAds::PollActiveInvitesWorker.perform_async
+    end
   end
 end

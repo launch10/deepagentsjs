@@ -284,6 +284,9 @@ RSpec.describe "Job Runs API", type: :request do
 
   # GoogleAdsInvite job type tests
   describe 'GoogleAdsInvite job' do
+    let!(:project) { create(:project, account: account) }
+    let!(:deploy) { create(:deploy, project: project, status: "running") }
+
     path '/api/v1/job_runs' do
       post 'Creates a GoogleAdsInvite job run' do
         tags 'Job Runs'
@@ -326,6 +329,32 @@ RSpec.describe "Job Runs API", type: :request do
               .with(job_run.id)
           end
         end
+
+        response '201', 'associates job run with deploy when deploy_id is provided' do
+          schema APISchemas::JobRun.response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "GoogleAdsInvite",
+              arguments: {},
+              thread_id: "thread_invite123",
+              deploy_id: deploy.id
+            }
+          end
+
+          before do
+            allow(GoogleAds::SendInviteWorker).to receive(:perform_async)
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            job_run = JobRun.find(data['id'])
+            expect(job_run.deploy_id).to eq(deploy.id)
+          end
+        end
       end
     end
   end
@@ -336,6 +365,8 @@ RSpec.describe "Job Runs API", type: :request do
     let!(:other_account) { other_user.owned_account }
     let!(:other_website) { create(:website, account: other_account) }
     let!(:other_campaign) { create(:campaign, account: other_account, website: other_website) }
+    let!(:other_project) { create(:project, account: other_account) }
+    let!(:other_deploy) { create(:deploy, project: other_project, status: "running") }
 
     path '/api/v1/job_runs' do
       post 'Creates job run scoped to requesting account' do
@@ -364,6 +395,33 @@ RSpec.describe "Job Runs API", type: :request do
           run_test! do |response|
             # Controller now finds campaign directly, so it should 404
             expect(response.code).to eq("404")
+          end
+        end
+
+        response '201', 'ignores deploy_id from other account (creates job without deploy)' do
+          schema APISchemas::JobRun.response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "GoogleAdsInvite",
+              arguments: {},
+              thread_id: "thread_invite123",
+              deploy_id: other_deploy.id
+            }
+          end
+
+          before do
+            allow(GoogleAds::SendInviteWorker).to receive(:perform_async)
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            job_run = JobRun.find(data['id'])
+            # Deploy from other account should be silently ignored
+            expect(job_run.deploy_id).to be_nil
           end
         end
       end

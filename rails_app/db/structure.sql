@@ -1850,7 +1850,8 @@ CREATE TABLE public.deploys (
     website_deploy_id bigint,
     campaign_deploy_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    user_active_at timestamp(6) without time zone
 );
 
 
@@ -2415,7 +2416,8 @@ CREATE TABLE public.job_runs (
     updated_at timestamp(6) without time zone NOT NULL,
     account_id bigint,
     langgraph_thread_id character varying,
-    result_data jsonb DEFAULT '{}'::jsonb
+    result_data jsonb DEFAULT '{}'::jsonb,
+    deploy_id bigint
 );
 
 
@@ -6396,13 +6398,6 @@ CREATE INDEX idx_document_chunks_embedding ON public.document_chunks USING ivffl
 
 
 --
--- Name: idx_fallback_chains_unique; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_fallback_chains_unique ON public.model_fallback_chains USING btree (cost_tier, speed_tier, skill);
-
-
---
 -- Name: idx_icon_embeddings_text; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7807,6 +7802,13 @@ CREATE INDEX index_icon_query_caches_on_use_count ON public.icon_query_caches US
 --
 
 CREATE INDEX index_job_runs_on_account_id ON public.job_runs USING btree (account_id);
+
+
+--
+-- Name: index_job_runs_on_deploy_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_deploy_id ON public.job_runs USING btree (deploy_id);
 
 
 --
@@ -9915,16 +9917,12 @@ ALTER INDEX public.index_user_request_counts_on_user_month ATTACH PARTITION publ
 
 CREATE TRIGGER run_insert_notify AFTER INSERT ON public.runs FOR EACH ROW EXECUTE FUNCTION public.notify_new_run();
 
-ALTER TABLE public.runs DISABLE TRIGGER run_insert_notify;
-
 
 --
 -- Name: template_files tsvector_update_template_files; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER tsvector_update_template_files BEFORE INSERT OR UPDATE OF content, path ON public.template_files FOR EACH ROW EXECUTE FUNCTION public.update_content_tsv();
-
-ALTER TABLE public.template_files DISABLE TRIGGER tsvector_update_template_files;
 
 
 --
@@ -9933,16 +9931,12 @@ ALTER TABLE public.template_files DISABLE TRIGGER tsvector_update_template_files
 
 CREATE TRIGGER tsvector_update_website_files BEFORE INSERT OR UPDATE OF content, path ON public.website_files FOR EACH ROW EXECUTE FUNCTION public.update_content_tsv();
 
-ALTER TABLE public.website_files DISABLE TRIGGER tsvector_update_website_files;
-
 
 --
 -- Name: store update_store_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER update_store_updated_at BEFORE UPDATE ON public.store FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-ALTER TABLE public.store DISABLE TRIGGER update_store_updated_at;
 
 
 --

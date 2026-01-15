@@ -96,8 +96,7 @@ RSpec.describe "Google API", type: :request do
             ads_account: ads_account,
             platform: "google",
             email_address: "test@gmail.com",
-            platform_settings: { google: { status: "pending" } }
-          )
+            platform_settings: { google: { status: "pending" } })
         end
 
         run_test! do |response|
@@ -120,8 +119,7 @@ RSpec.describe "Google API", type: :request do
             ads_account: ads_account,
             platform: "google",
             email_address: "test@gmail.com",
-            platform_settings: { google: { status: "accepted" } }
-          )
+            platform_settings: { google: { status: "accepted" } })
         end
 
         run_test! do |response|

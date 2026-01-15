@@ -1,6 +1,12 @@
 namespace :madmin, path: :admin do
-  resources :model_configs, only: [:index, :update]
-  resources :model_fallback_chains, only: [:index, :update]
+  # Unified model configuration page
+  resources :models, only: [:index] do
+    collection do
+      patch "configs/:id", to: "models#update_config", as: :config
+      patch "preferences/:id", to: "models#update_preference", as: :preference
+    end
+  end
+
   resource :theme_playground, only: [:show]
 
   if defined?(Sidekiq)

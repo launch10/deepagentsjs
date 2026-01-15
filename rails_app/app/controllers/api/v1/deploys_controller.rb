@@ -24,6 +24,15 @@ class API::V1::DeploysController < API::BaseController
     render json: deploy_json(deploy)
   end
 
+  # POST /api/v1/deploys/:id/touch
+  # Updates user_active_at to indicate user is still active on this deploy
+  def touch
+    deploy = find_deploy
+    deploy.touch_user_active!
+
+    render json: { touched_at: deploy.user_active_at }
+  end
+
   private
 
   def find_deploy

@@ -17,6 +17,5 @@ class CreateProjectDeploys < ActiveRecord::Migration[8.0]
       t.index :is_live
       t.index :langgraph_thread_id
     end
-
   end
 end

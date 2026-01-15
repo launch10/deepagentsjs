@@ -7,6 +7,7 @@
 #  is_live             :boolean          default(FALSE)
 #  stacktrace          :text
 #  status              :string           default("pending"), not null
+#  user_active_at      :datetime
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
 #  campaign_deploy_id  :bigint
@@ -115,14 +116,14 @@ RSpec.describe Deploy, type: :model do
   describe "Project#active_deploy" do
     context "when there is an in-progress deploy" do
       it "returns the most recent in-progress deploy" do
-        old_pending = create(:deploy, project: project, status: "pending", created_at: 1.hour.ago)
+        create(:deploy, project: project, status: "pending", created_at: 1.hour.ago)
         new_pending = create(:deploy, project: project, status: "pending", created_at: Time.current)
 
         expect(project.active_deploy).to eq(new_pending)
       end
 
       it "prefers in-progress over completed deploys" do
-        completed = create(:deploy, project: project, status: "completed", created_at: Time.current)
+        create(:deploy, project: project, status: "completed", created_at: Time.current)
         in_progress = create(:deploy, project: project, status: "running", created_at: 1.hour.ago)
 
         expect(project.active_deploy).to eq(in_progress)
@@ -131,7 +132,7 @@ RSpec.describe Deploy, type: :model do
 
     context "when there is no in-progress deploy" do
       it "returns the most recent deploy" do
-        old_completed = create(:deploy, project: project, status: "completed", created_at: 1.hour.ago)
+        create(:deploy, project: project, status: "completed", created_at: 1.hour.ago)
         new_completed = create(:deploy, project: project, status: "completed", created_at: Time.current)
 
         expect(project.active_deploy).to eq(new_completed)
@@ -147,9 +148,9 @@ RSpec.describe Deploy, type: :model do
 
   describe "Project#live_deploy" do
     it "returns the most recent live deploy" do
-      old_live = create(:deploy, project: project, is_live: true, status: "completed", created_at: 1.hour.ago)
+      create(:deploy, project: project, is_live: true, status: "completed", created_at: 1.hour.ago)
       new_live = create(:deploy, project: project, is_live: true, status: "completed", created_at: Time.current)
-      not_live = create(:deploy, project: project, is_live: false, status: "completed")
+      create(:deploy, project: project, is_live: false, status: "completed")
 
       expect(project.live_deploy).to eq(new_live)
     end

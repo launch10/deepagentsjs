@@ -209,4 +209,67 @@ RSpec.describe "Deploys API", type: :request do
       end
     end
   end
+
+  path "/api/v1/deploys/{id}/touch" do
+    parameter name: :id, in: :path, type: :integer, description: "Deploy ID"
+
+    post "Updates user activity timestamp" do
+      tags "Deploys"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
+
+      let!(:deploy) { create(:deploy, project: project, status: "running", user_active_at: 10.minutes.ago) }
+
+      response "200", "user activity updated" do
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:id) { deploy.id }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+
+          expect(data["touched_at"]).to be_present
+
+          deploy.reload
+          expect(deploy.user_active_at).to be_within(5.seconds).of(Time.current)
+        end
+      end
+
+      response "404", "deploy not found" do
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:id) { 999999 }
+
+        run_test! do |response|
+          expect(response.code).to eq("404")
+        end
+      end
+
+      response "404", "cannot touch deploy from different account" do
+        let(:other_user) { create(:user) }
+        let(:other_account) { other_user.owned_account }
+        let(:other_project) { create(:project, account: other_account) }
+        let!(:other_deploy) { create(:deploy, project: other_project) }
+
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:id) { other_deploy.id }
+
+        before do
+          ensure_plans_exist
+          subscribe_account(other_account, plan_name: "pro")
+        end
+
+        run_test! do |response|
+          expect(response.code).to eq("404")
+        end
+      end
+    end
+  end
 end

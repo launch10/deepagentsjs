@@ -1,5 +1,5 @@
 import { type DeployGraphState, withPhases } from "@annotation";
-import { JobRunAPIService } from "@rails_api";
+import { JobRunAPIService, DeployAPIService } from "@rails_api";
 import { GoogleAPIService } from "@services";
 import { Deploy, Task } from "@types";
 
@@ -38,8 +38,14 @@ export const verifyGoogleNode = async (
     return withPhases(state, [{ ...task, status: "failed" } as Task.Task], [TASK_NAME]);
   }
 
-  // 4. Task running with jobId? Waiting for polling to complete, no-op
+  // 4. Task running with jobId? Waiting for polling to complete
+  //    Touch the deploy to indicate user is still active (for batch scheduler)
   if (task?.status === "running" && task.jobId) {
+    if (state.jwt && state.deployId) {
+      const deployApi = new DeployAPIService({ jwt: state.jwt });
+      // Fire-and-forget: don't wait for response, don't fail if it errors
+      deployApi.touch(state.deployId).catch(() => {});
+    }
     return {};
   }
 
@@ -58,6 +64,8 @@ export const verifyGoogleNode = async (
     jobClass: "GoogleAdsInvite",
     arguments: {},
     threadId: state.threadId,
+    // Link to deploy for user activity tracking (batch scheduler uses this)
+    ...(state.deployId && { deployId: state.deployId }),
   });
 
   // Create or update task with jobId

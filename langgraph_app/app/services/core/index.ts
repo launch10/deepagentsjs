@@ -1,5 +1,4 @@
 export * from "./cohereRerankService";
-export * from "./fallbackChainService";
-export * from "./modelConfigService";
+export * from "./modelConfigurationService";
 export * from "./postgresEmbeddingsService";
 export * from "./railsApi";
