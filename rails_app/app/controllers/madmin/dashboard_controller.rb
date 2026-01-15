@@ -1,10 +1,15 @@
 module Madmin
   class DashboardController < Madmin::ApplicationController
     def show
-      @total_revenue = revenue_for_range
-      @last_12_mos = revenue_for_range 12.months.ago..Time.current
-      @last_month = revenue_for_range Time.current.prev_month.all_month
-      @this_month = revenue_for_range Time.current.all_month
+      render inertia: "Madmin/Dashboard",
+        props: {
+          totalRevenue: revenue_for_range,
+          last12Mos: revenue_for_range(12.months.ago..Time.current),
+          lastMonth: revenue_for_range(Time.current.prev_month.all_month),
+          thisMonth: revenue_for_range(Time.current.all_month),
+          userCount: ::User.count,
+          activeSubscriptions: ::Pay::Subscription.active.count
+        }
     end
 
     private

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, createElement } from "react";
 import { Switch } from "@components/ui/switch";
 import { Input } from "@components/ui/input";
 import { Button } from "@components/ui/button";
@@ -14,6 +14,7 @@ import {
 import { cn } from "@lib/utils";
 import { Reorder } from "framer-motion";
 import { useDebouncedCallback } from "use-debounce";
+import { AdminLayout } from "../../layouts/admin-layout";
 
 interface ModelConfig {
   id: number;
@@ -287,7 +288,6 @@ function ModelsIndex({
         setConfigs((prev) => [...prev, created].sort((a, b) => a.modelKey.localeCompare(b.modelKey)));
         setNewModelKey("");
         setNewModelCard("");
-        setShowNewModelForm(false);
       }
     } catch {
       setCreateError("Network error");
@@ -368,24 +368,24 @@ function ModelsIndex({
 
         {/* New Model Form - inline row */}
         <div className="mb-4 flex items-center gap-3">
-          <Input
+          <input
             value={newModelKey}
             onChange={(e) => setNewModelKey(e.target.value)}
             placeholder="Model key"
             disabled={creatingModel}
-            className="w-36 focus:ring-2 focus:ring-primary focus:border-primary"
+            className="w-36 h-9 rounded-md border border-neutral-300 bg-transparent px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow"
           />
-          <Input
+          <input
             value={newModelCard}
             onChange={(e) => setNewModelCard(e.target.value)}
             placeholder="API model card"
             disabled={creatingModel}
-            className="w-64 font-mono text-sm focus:ring-2 focus:ring-primary focus:border-primary"
+            className="w-64 h-9 rounded-md border border-neutral-300 bg-transparent px-3 py-1 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow"
           />
           <Button
             onClick={createModel}
             disabled={creatingModel}
-            className="!bg-primary !border-primary !text-primary-foreground hover:!bg-primary/90 !px-4 !py-2 !h-auto"
+            className="bg-primary border-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 h-auto"
           >
             Add Model
           </Button>
@@ -620,7 +620,7 @@ function camelToSnake(str: string): string {
   return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 }
 
-// Opt out of SiteLayout since madmin has its own layout
-ModelsIndex.layout = (page: React.ReactNode) => page;
+// Use AdminLayout for admin pages
+ModelsIndex.layout = (page: React.ReactNode) => createElement(AdminLayout, null, page);
 
 export default ModelsIndex;

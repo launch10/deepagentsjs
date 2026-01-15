@@ -1,0 +1,8 @@
+<%# Override madmin's default _javascript partial to use Tailwind instead of madmin CSS %>
+<%= javascript_importmap_tags "application", importmap: Madmin.importmap %>
+
+<%# Removed madmin stylesheets - using Tailwind via vite_stylesheet_tag in layout instead %>
+
+<%# Keep flatpickr/tom-select CSS if needed for admin form widgets %>
+<%= stylesheet_link_tag "https://unpkg.com/flatpickr/dist/flatpickr.min.css", "data-turbo-track": "reload" %>
+<%= stylesheet_link_tag "https://unpkg.com/tom-select/dist/css/tom-select.min.css", "data-turbo-track": "reload" %>
