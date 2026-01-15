@@ -21,7 +21,7 @@ Per `architecture-overview.md`:
 
 ```
 deployGraph
-├── instrumentationNode     # Inject tracking
+├── analyticsNode     # Inject tracking
 ├── runtimeValidationNode   # <-- THIS PLAN (validates BEFORE deploy)
 ├── fixWithCodingAgentNode  # Fix errors via codingAgentGraph
 ├── deployWebsiteNode       # Build + upload to R2
@@ -43,6 +43,7 @@ deployGraph
 - `browserPool` - Singleton with bounded concurrency (see `browser-pool.md`)
 
 **ErrorExporter API:**
+
 ```typescript
 // Constructor takes websiteId
 const exporter = new ErrorExporter(websiteId: number);
@@ -85,7 +86,7 @@ Runtime validation focuses on what static validation cannot catch:
 
 ```typescript
 import { DeployAnnotation } from "@annotation";
-import type { ConsoleError } from "@types";  // NOT @annotation - different type shape
+import type { ConsoleError } from "@types"; // NOT @annotation - different type shape
 import { ErrorExporter } from "@services/editor/errors/errorExporter";
 
 export const runtimeValidationNode = async (
@@ -119,7 +120,7 @@ graph
     // Validation failed - route to fix node
     return "fixWithCodingAgent";
   })
-  .addEdge("fixWithCodingAgent", "runtimeValidation");  // Loop back after fix
+  .addEdge("fixWithCodingAgent", "runtimeValidation"); // Loop back after fix
 ```
 
 ### fixWithCodingAgentNode
@@ -143,10 +144,10 @@ consoleErrors: ConsoleError[];
 
 ## Files Summary
 
-| Action | File                                                       |
-| ------ | ---------------------------------------------------------- |
-| Create | `langgraph_app/app/nodes/deploy/runtimeValidationNode.ts`  |
-| Modify | `langgraph_app/app/graphs/deploy.ts` (add node + routing)  |
+| Action | File                                                            |
+| ------ | --------------------------------------------------------------- |
+| Create | `langgraph_app/app/nodes/deploy/runtimeValidationNode.ts`       |
+| Modify | `langgraph_app/app/graphs/deploy.ts` (add node + routing)       |
 | Modify | `langgraph_app/app/annotation/deployAnnotation.ts` (add fields) |
 
 **Prerequisites:** Implement `browser-pool.md` first.

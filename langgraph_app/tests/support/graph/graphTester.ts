@@ -1,5 +1,5 @@
 import { HumanMessage, BaseMessage } from "@langchain/core/messages";
-import { type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { type LangGraphRunnableConfig, Send } from "@langchain/langgraph";
 import { type CoreGraphState } from "@state";
 import { db, eq, and, projects as projectsTable, chats as chatsTable } from "@db";
 import { generateUUID, type ConsoleError } from "@types";
@@ -9,6 +9,11 @@ import { interruptContext } from "app/core/node/middleware";
 import { CompiledStateGraph } from "@langchain/langgraph";
 import { graphParams } from "@core";
 import { vi } from "vitest";
+
+type NodeFunction<TState extends CoreGraphState> = (
+  state: TState,
+  config: LangGraphRunnableConfig
+) => Promise<Partial<TState> | Send[]>;
 export interface NodeTestResult<TState extends CoreGraphState> {
   state: TState;
   messages: BaseMessage[];
@@ -54,6 +59,7 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
   private scenario?: string;
   private threadId?: string;
   private chatType?: string;
+  private nodeFunction?: NodeFunction<TGraphState>;
 
   constructor() {
     // Initialize with an in-memory checkpointer for tests
@@ -191,13 +197,26 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
   }
 
   /**
-   * Execute the graph up to the target node and return the result
+   * Run a single node function in isolation without running the full graph.
+   * This is useful for unit testing individual nodes without the overhead
+   * of running preceding nodes.
+   *
+   * @example
+   * const result = await testGraph<DeployGraphState>()
+   *   .withState({ websiteId: 1, tasks: [] })
+   *   .runNode(analyticsNode)
+   *   .execute();
+   */
+  runNode(nodeFn: NodeFunction<TGraphState>): GraphTestBuilder<TGraphState> {
+    this.nodeFunction = nodeFn;
+    return this;
+  }
+
+  /**
+   * Execute the graph up to the target node and return the result.
+   * If runNode() was called, executes that single node function in isolation.
    */
   async execute(): Promise<NodeTestResult<TGraphState>> {
-    if (!this.graph) {
-      throw new Error("Graph is required. Use .withGraph() to set it.");
-    }
-
     // Load thread ID if website specified
     await this.loadThread();
 
@@ -218,6 +237,47 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
       ...this.initialState,
       messages: userMessage ? [...initialStateMessages, userMessage] : initialStateMessages,
     };
+
+    // If running a single node, execute it directly
+    if (this.nodeFunction) {
+      const initialState = { ...baseState, consoleErrors } as TGraphState;
+
+      try {
+        const result = await this.nodeFunction(
+          initialState,
+          this.config as LangGraphRunnableConfig
+        );
+
+        // Handle Send[] return type (routing nodes)
+        if (Array.isArray(result)) {
+          return {
+            state: initialState,
+            messages: initialState.messages || [],
+            error: undefined,
+          };
+        }
+
+        // Merge the partial result with the initial state
+        const finalState = { ...initialState, ...result } as TGraphState;
+
+        return {
+          state: finalState,
+          messages: finalState.messages || [],
+          error: undefined,
+        };
+      } catch (error) {
+        return {
+          state: initialState,
+          messages: initialState.messages || [],
+          error: error as Error,
+        };
+      }
+    }
+
+    // Otherwise, run the full graph
+    if (!this.graph) {
+      throw new Error("Graph is required. Use .withGraph() or .runNode() to set it.");
+    }
 
     const initialState: TGraphState = (
       this.graph.channels?.consoleErrors ? { ...baseState, consoleErrors } : baseState

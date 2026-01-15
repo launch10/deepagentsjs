@@ -6,21 +6,21 @@ import { Task } from "@types";
 
 const TASK_NAME = "ValidateLinks" as const;
 
-interface ValidationError {
+export interface ValidationError {
   file: string;
   message: string;
 }
 
-type LinkType = "anchor" | "route" | "skip";
+export type LinkType = "anchor" | "route" | "skip";
 
-function getLinkType(href: string): LinkType {
+export function getLinkType(href: string): LinkType {
   if (href.startsWith("#")) return "anchor";
   if (href.startsWith("http") || href.startsWith("mailto:") || href.startsWith("tel:"))
     return "skip";
   return "route";
 }
 
-function collectAnchors(files: { path: string; content: string }[]): Set<string> {
+export function collectAnchors(files: { path: string; content: string }[]): Set<string> {
   const anchors = new Set<string>();
   for (const file of files) {
     const matches = file.content.matchAll(/id=["']([^"']+)["']/g);
@@ -32,7 +32,7 @@ function collectAnchors(files: { path: string; content: string }[]): Set<string>
   return anchors;
 }
 
-function parseRoutes(files: { path: string; content: string }[]): Set<string> {
+export function parseRoutes(files: { path: string; content: string }[]): Set<string> {
   const appFile = files.find((f) => f.path.endsWith("App.tsx"));
   if (!appFile) return new Set(["/"]);
 
@@ -47,7 +47,7 @@ function parseRoutes(files: { path: string; content: string }[]): Set<string> {
   return routes;
 }
 
-function validateLinks(files: { path: string; content: string }[]): ValidationError[] {
+export function validateLinks(files: { path: string; content: string }[]): ValidationError[] {
   const errors: ValidationError[] = [];
   const anchors = collectAnchors(files);
   const routes = parseRoutes(files);

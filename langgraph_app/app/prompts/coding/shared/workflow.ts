@@ -22,8 +22,9 @@ const editWorkflow = `
 1. **Understand**: Read the user's request carefully to understand what changes they want
 2. **Explore**: Use ls and glob to find the relevant files that need to be modified
 3. **Read**: Read the existing code to understand the current implementation
-4. **Plan**: Determine the minimal set of changes needed to fulfill the request
-5. **Edit**: Make targeted edits to the existing files - avoid rewriting entire files when small changes suffice
+4. **Plan**: Determine the changes needed to fulfill the request
+5. **Write**: Use write_file for most changes (adding imports + code, restructuring, multiple edits).
+   Only use edit_file for truly small, single-point changes (fixing a typo, changing one value).
 6. **Verify**: Read the modified files back to confirm the changes are correct
 `;
 

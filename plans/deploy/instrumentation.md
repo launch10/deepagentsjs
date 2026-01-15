@@ -3,11 +3,11 @@
      │ Context                                                                                                       │
      │                                                                                                               │
      │ Current State:                                                                                                │
-     │ - instrumentationNode uses custom LLM prompt + deterministic code injection (fragile)                         │
+     │ - analyticsNode uses custom LLM prompt + deterministic code injection (fragile)                         │
      │ - bugFixNode uses createCodingAgent() pattern (robust, consistent)                                            │
-     │ - User wants instrumentationNode to also use createCodingAgent() for consistency                              │
+     │ - User wants analyticsNode to also use createCodingAgent() for consistency                              │
      │                                                                                                               │
-     │ Goal: Refactor instrumentationNode to use codingAgent, then write focused tests for:                          │
+     │ Goal: Refactor analyticsNode to use codingAgent, then write focused tests for:                          │
      │ 1. Proper instrumentation (L10.conversion for conversions)                                                    │
      │ 2. Deployment failure handling                                                                                │
      │                                                                                                               │
@@ -20,9 +20,9 @@
      │ ---                                                                                                           │
      │ Implementation Plan                                                                                           │
      │                                                                                                               │
-     │ Phase 1: Refactor instrumentationNode to use codingAgent                                                      │
+     │ Phase 1: Refactor analyticsNode to use codingAgent                                                      │
      │                                                                                                               │
-     │ File: app/nodes/deploy/instrumentationNode.ts                                                                 │
+     │ File: app/nodes/deploy/analyticsNode.ts                                                                 │
      │                                                                                                               │
      │ Replace custom LLM logic with createCodingAgent() call:                                                       │
      │                                                                                                               │
@@ -46,7 +46,7 @@
      │ - Do NOT track navigation clicks, scrolls, or non-conversion interactions                                     │
      │ `;                                                                                                            │
      │                                                                                                               │
-     │ export const instrumentationNode = NodeMiddleware.use({}, async (state, config) => {                          │
+     │ export const analyticsNode = NodeMiddleware.use({}, async (state, config) => {                          │
      │   const task = Task.findTask(state.tasks, TASK_NAME);                                                         │
      │   if (task?.status === "completed") return {};                                                                │
      │                                                                                                               │
@@ -67,7 +67,7 @@
      │                                                                                                               │
      │ A. Instrumentation Tests (NEW FILE)                                                                           │
      │                                                                                                               │
-     │ File: tests/tests/nodes/deploy/instrumentationNode.test.ts                                                    │
+     │ File: tests/tests/nodes/deploy/analyticsNode.test.ts                                                    │
      │ ┌─────────────────────────────────────────────┬───────────────────────────────────────────────────────────────│
      │ ──┐                                                                                                           │
      │ │                    Test                     │                        What it verifies                       │
@@ -146,9 +146,9 @@
      │ ┌──────────────────────────────────────────────────────┬────────────────────────────────────────┐             │
      │ │                         File                         │                 Change                 │             │
      │ ├──────────────────────────────────────────────────────┼────────────────────────────────────────┤             │
-     │ │ app/nodes/deploy/instrumentationNode.ts              │ Refactor to use createCodingAgent      │             │
+     │ │ app/nodes/deploy/analyticsNode.ts              │ Refactor to use createCodingAgent      │             │
      │ ├──────────────────────────────────────────────────────┼────────────────────────────────────────┤             │
-     │ │ tests/tests/nodes/deploy/instrumentationNode.test.ts │ NEW: Instrumentation tests             │             │
+     │ │ tests/tests/nodes/deploy/analyticsNode.test.ts │ NEW: Instrumentation tests             │             │
      │ ├──────────────────────────────────────────────────────┼────────────────────────────────────────┤             │
      │ │ tests/tests/graphs/deploy/deployWebsite.test.ts      │ ADD: Deployment failure tests          │             │
      │ ├──────────────────────────────────────────────────────┼────────────────────────────────────────┤             │
@@ -159,7 +159,7 @@
      │                                                                                                               │
      │ 1. Run existing deployWebsite tests → all pass                                                                │
      │ 2. Run new instrumentation tests:                                                                             │
-     │ pnpm test tests/tests/nodes/deploy/instrumentationNode.test.ts                                                │
+     │ pnpm test tests/tests/nodes/deploy/analyticsNode.test.ts                                                │
      │ 3. Manual verification:                                                                                       │
      │   - Create a website with signup form                                                                         │
      │   - Run deployWebsite graph                                                                                   │

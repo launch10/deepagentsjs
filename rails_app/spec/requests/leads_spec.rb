@@ -713,13 +713,11 @@ RSpec.describe "Leads API", type: :request do
         expect(job['args']).to eq([
           account.id,
           website.id,
-          'args-test@example.com',
-          'Test Person',
-          nil,
-          nil,
-          'test-gclid',
-          nil,  # conversion_value
-          nil   # conversion_currency
+          {
+            'email' => 'args-test@example.com',
+            'name' => 'Test Person',
+            'gclid' => 'test-gclid'
+          }
         ])
       end
 
@@ -735,13 +733,37 @@ RSpec.describe "Leads API", type: :request do
         expect(job['args']).to eq([
           account.id,
           website.id,
-          'conversion-args@example.com',
-          nil,
-          nil,
-          nil,
-          nil,
-          99.99,
-          'EUR'
+          {
+            'email' => 'conversion-args@example.com',
+            'conversion_value' => 99.99,
+            'conversion_currency' => 'EUR'
+          }
+        ])
+      end
+
+      it 'enqueues worker with UTM parameters' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'utm-test@example.com',
+          utm_source: 'google',
+          utm_medium: 'cpc',
+          utm_campaign: 'spring_sale',
+          utm_content: 'banner_ad',
+          utm_term: 'running shoes'
+        }
+
+        job = Leads::ProcessWorker.jobs.last
+        expect(job['args']).to eq([
+          account.id,
+          website.id,
+          {
+            'email' => 'utm-test@example.com',
+            'utm_source' => 'google',
+            'utm_medium' => 'cpc',
+            'utm_campaign' => 'spring_sale',
+            'utm_content' => 'banner_ad',
+            'utm_term' => 'running shoes'
+          }
         ])
       end
     end

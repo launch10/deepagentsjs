@@ -7,22 +7,22 @@ import { L10 } from '@/lib/tracking';
 export function Hero() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
     setStatus('loading');
-    setErrorMessage('');
+    setError('');
 
     try {
       await L10.createLead(email);
       setStatus('success');
       setEmail('');
-    } catch (error) {
+    } catch (err) {
       setStatus('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     }
   };
 
@@ -86,9 +86,12 @@ export function Hero() {
                   <p className="text-sm text-[#E9C46A]/80">
                     Free 14-day trial • No credit card required • Setup in 2 minutes
                   </p>
-                </form>
-              )}
-            </div>
+                )}
+                <p className="text-sm text-primary-foreground/70">
+                  Free 14-day trial • No credit card required • 2-minute setup
+                </p>
+              </form>
+            )}
 
             {/* Trust indicators */}
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 pt-4">
@@ -108,8 +111,8 @@ export function Hero() {
             <div className="relative">
               <img
                 src="https://dev-uploads.launch10.ai/uploads/024dfc6c-335d-4f11-883b-f8e241f91744.png"
-                alt="Scheduling dashboard"
-                className="w-full h-auto rounded-3xl shadow-2xl"
+                alt="Scheduling dashboard showing automatic time zone coordination"
+                className="w-full h-auto"
               />
               {/* Decorative elements */}
               <div className="absolute -top-6 -right-6 w-24 h-24 bg-[#E9C46A] rounded-2xl rotate-12 opacity-20 blur-xl" />

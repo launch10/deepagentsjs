@@ -1,7 +1,8 @@
 import { StateGraph, END, START, type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import {
-  instrumentationNode,
+  analyticsNode,
+  seoOptimizationNode,
   deployWebsiteNode,
   runtimeValidationNode,
   validateLinksNode,
@@ -12,47 +13,50 @@ import { Task } from "@types";
 
 const MAX_RETRY_COUNT = 2;
 
-// Helper to check task status
-const getTaskStatus = (state: DeployGraphState, name: Task.TaskName) =>
-  Task.findTask(state.tasks, name)?.status;
-
 /**
  * Website Deploy Graph
  *
  * Orchestrates website deployment to Cloudflare.
  *
- * 1) Ensure instrumentation is up to date
- * 2) Validate links (static analysis)
- * 3) Validate website (runtime with Playwright)
- * 4) If validation fails, fix with coding agent
- * 5) Deploy website
+ * 1) Ensure analytics is up to date
+ * 2) Optimize SEO meta tags
+ * 3) Validate links (static analysis)
+ * 4) Validate website (runtime with Playwright)
+ * 5) If validation fails, fix with coding agent
+ * 6) Deploy website
  */
 export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
   // Enqueue nodes (lightweight, checkpoint state before work)
-  .addNode("enqueueInstrumentation", createEnqueueNode("Instrumentation"))
+  .addNode("enqueueAnalytics", createEnqueueNode("AddingAnalytics"))
+  .addNode("enqueueSEOOptimization", createEnqueueNode("OptimizingSEO"))
   .addNode("enqueueValidateLinks", createEnqueueNode("ValidateLinks"))
   .addNode("enqueueRuntimeValidation", createEnqueueNode("RuntimeValidation"))
-  .addNode("enqueueBugFix", createEnqueueNode("BugFix"))
-  .addNode("enqueueDeploy", createEnqueueNode("WebsiteDeploy"))
+  .addNode("enqueueBugFix", createEnqueueNode("FixingBugs"))
+  .addNode("enqueueDeploy", createEnqueueNode("DeployingWebsite"))
 
   // Work nodes
-  .addNode("instrumentation", instrumentationNode)
+  .addNode("analytics", analyticsNode)
+  .addNode("seoOptimization", seoOptimizationNode)
   .addNode("validateLinks", validateLinksNode)
   .addNode("runtimeValidation", runtimeValidationNode)
   .addNode("bugFixNode", bugFixNode)
   .addNode("deployWebsite", deployWebsiteNode)
 
-  // START → enqueue → work
+  // START → enqueue → work (analytics and SEO run in parallel)
   .addConditionalEdges(START, (state) => {
-    const websiteDeployTask = Task.findTask(state.tasks, "WebsiteDeploy");
+    const websiteDeployTask = Task.findTask(state.tasks, "DeployingWebsite");
     // If we've created the website deploy task AT ALL, that means we're already in progress or finished
     if (websiteDeployTask) {
-      return END;
+      return [];
     }
-    return "enqueueInstrumentation";
+    // Run analytics and SEO optimization in parallel
+    return ["enqueueAnalytics", "enqueueSEOOptimization"];
   })
-  .addEdge("enqueueInstrumentation", "instrumentation")
-  .addEdge("instrumentation", "enqueueValidateLinks")
+  .addEdge("enqueueAnalytics", "analytics")
+  .addEdge("enqueueSEOOptimization", "seoOptimization")
+  // Both parallel branches converge on validateLinks
+  .addEdge("analytics", "enqueueValidateLinks")
+  .addEdge("seoOptimization", "enqueueValidateLinks")
   .addEdge("enqueueValidateLinks", "validateLinks")
 
   // Link validation routing: pass → runtime validation, fail → fix

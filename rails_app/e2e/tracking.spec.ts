@@ -8,6 +8,7 @@ import { TrackingHelper } from "./fixtures/tracking";
  */
 test.describe("Real Tracking Library E2E", () => {
   test.beforeAll(async () => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
     await TrackingHelper.cleanup();
     await TrackingHelper.buildTestPage();
   });
@@ -95,8 +96,7 @@ test.describe("Real Tracking Library E2E", () => {
     // Verify conversion event was fired
     // dataLayer entries are Arguments objects, converted to arrays for easier checking
     const conversionCall = dataLayerCalls.find(
-      (entry: Record<string, unknown>) =>
-        entry["0"] === "event" && entry["1"] === "conversion"
+      (entry: Record<string, unknown>) => entry["0"] === "event" && entry["1"] === "conversion"
     );
     expect(conversionCall).toBeDefined();
     expect(conversionCall?.["2"]).toMatchObject({
@@ -137,15 +137,122 @@ test.describe("Real Tracking Library E2E", () => {
     await page.click('button[type="submit"]');
 
     // Wait for the conversion event to be recorded
-    const conversion = await TrackingHelper.waitForConversion(
-      websiteId,
-      testEmail
-    );
+    const conversion = await TrackingHelper.waitForConversion(websiteId, testEmail);
 
     // Verify the conversion includes value and currency
     // The test App.tsx sends value: 99.00, currency: 'USD'
     expect(conversion.email).toBe(testEmail.toLowerCase());
     expect(conversion.value).toBe(99.0);
     expect(conversion.currency).toBe("USD");
+  });
+
+  test("UTM parameters are captured and stored with lead", async ({ page }) => {
+    const { websiteId } = await TrackingHelper.getTestPageInfo();
+
+    // Navigate with UTM parameters in the URL
+    const utmParams = new URLSearchParams({
+      utm_source: "google",
+      utm_medium: "cpc",
+      utm_campaign: "spring_sale_2026",
+      utm_content: "hero_banner",
+      utm_term: "best running shoes",
+    });
+
+    await page.goto(`${TrackingHelper.getTestPageUrl()}?${utmParams.toString()}`);
+    await page.waitForTimeout(1500);
+
+    // Fill out the lead form with a unique email
+    const testEmail = `utm-test-${Date.now()}@example.com`;
+    await page.fill('input[type="email"]', testEmail);
+    await page.click('button[type="submit"]');
+
+    // Wait for the lead to be created
+    const lead = await TrackingHelper.waitForLead(websiteId, testEmail);
+
+    // Verify UTM parameters were captured on the lead
+    expect(lead.email).toBe(testEmail.toLowerCase());
+    expect(lead.utm_source).toBe("google");
+    expect(lead.utm_medium).toBe("cpc");
+    expect(lead.utm_campaign).toBe("spring_sale_2026");
+    expect(lead.utm_content).toBe("hero_banner");
+    expect(lead.utm_term).toBe("best running shoes");
+  });
+
+  test("gclid is captured and stored with lead", async ({ page }) => {
+    const { websiteId } = await TrackingHelper.getTestPageInfo();
+
+    // Navigate with gclid in the URL (simulating a Google Ads click)
+    const testGclid = `test-gclid-${Date.now()}`;
+    await page.goto(`${TrackingHelper.getTestPageUrl()}?gclid=${testGclid}`);
+    await page.waitForTimeout(1500);
+
+    // Fill out the lead form with a unique email
+    const testEmail = `gclid-test-${Date.now()}@example.com`;
+    await page.fill('input[type="email"]', testEmail);
+    await page.click('button[type="submit"]');
+
+    // Wait for the lead to be created
+    const lead = await TrackingHelper.waitForLead(websiteId, testEmail);
+
+    // Verify gclid was captured on the lead
+    expect(lead.email).toBe(testEmail.toLowerCase());
+    expect(lead.gclid).toBe(testGclid);
+  });
+
+  test("UTM params and gclid are captured together", async ({ page }) => {
+    const { websiteId } = await TrackingHelper.getTestPageInfo();
+
+    // Navigate with both UTM params and gclid (realistic ad click scenario)
+    const testGclid = `combo-gclid-${Date.now()}`;
+    const params = new URLSearchParams({
+      gclid: testGclid,
+      utm_source: "google",
+      utm_medium: "cpc",
+      utm_campaign: "combo_test",
+    });
+
+    await page.goto(`${TrackingHelper.getTestPageUrl()}?${params.toString()}`);
+    await page.waitForTimeout(1500);
+
+    // Fill out the lead form with a unique email
+    const testEmail = `combo-test-${Date.now()}@example.com`;
+    await page.fill('input[type="email"]', testEmail);
+    await page.click('button[type="submit"]');
+
+    // Wait for the lead to be created
+    const lead = await TrackingHelper.waitForLead(websiteId, testEmail);
+
+    // Verify both gclid and UTM params were captured
+    expect(lead.email).toBe(testEmail.toLowerCase());
+    expect(lead.gclid).toBe(testGclid);
+    expect(lead.utm_source).toBe("google");
+    expect(lead.utm_medium).toBe("cpc");
+    expect(lead.utm_campaign).toBe("combo_test");
+  });
+
+  test("new tab creates new visit but preserves visitor identity", async ({ context }) => {
+    // First tab - establish visitor and visit tokens
+    const page1 = await context.newPage();
+    await page1.goto(TrackingHelper.getTestPageUrl());
+    await page1.waitForTimeout(1500);
+
+    const visitor1 = await page1.evaluate(() => localStorage.getItem("l10_visitor"));
+    const visit1 = await page1.evaluate(() => sessionStorage.getItem("l10_visit"));
+
+    // Second tab - simulates user opening new tab (same browser session)
+    // sessionStorage is per-tab, localStorage is shared across tabs
+    const page2 = await context.newPage();
+    await page2.goto(TrackingHelper.getTestPageUrl());
+    await page2.waitForTimeout(1500);
+
+    const visitor2 = await page2.evaluate(() => localStorage.getItem("l10_visitor"));
+    const visit2 = await page2.evaluate(() => sessionStorage.getItem("l10_visit"));
+
+    // Same visitor (localStorage shared), different visit (sessionStorage per-tab)
+    expect(visitor2).toBe(visitor1);
+    expect(visit2).not.toBe(visit1);
+
+    await page1.close();
+    await page2.close();
   });
 });

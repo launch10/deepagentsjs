@@ -3,7 +3,8 @@ import { MemorySaver } from "@langchain/langgraph";
 import { testGraph } from "@support";
 import { deployGraph as uncompiledGraph } from "@graphs";
 import type { DeployGraphState } from "@annotation";
-import type { ThreadIDType, Task } from "@types";
+import type { ThreadIDType } from "@types";
+import { Deploy } from "@types";
 import { graphParams } from "@core";
 
 // Mock the JobRunAPIService
@@ -59,7 +60,7 @@ describe.skip("Deploy Graph", () => {
         .execute();
 
       // Should have instrumentation task
-      const instrumentationTask = result.state.tasks.find((t) => t.name === "Instrumentation");
+      const instrumentationTask = result.state.tasks.find((t) => t.name === "AddingAnalytics");
       expect(instrumentationTask).toBeDefined();
       expect(instrumentationTask?.status).toBe("completed");
     });
@@ -80,7 +81,7 @@ describe.skip("Deploy Graph", () => {
 
       expect(result.state.status).toBe("pending");
       expect(result.state.tasks).toHaveLength(1);
-      expect(result.state.tasks[0]!.name).toBe("CampaignDeploy");
+      expect(result.state.tasks[0]!.name).toBe("DeployingCampaign");
       expect(result.state.tasks[0]!.status).toBe("pending");
       expect(result.state.tasks[0]!.jobId).toBe(123);
     });
@@ -88,12 +89,9 @@ describe.skip("Deploy Graph", () => {
 
   describe("When task is pending/running (waiting for webhook)", () => {
     it("returns no-op when task is pending", async () => {
-      const existingTask: Task.Task = {
-        id: "uuid-123",
-        name: "CampaignDeploy",
-        jobId: 123,
+      const existingTask: Deploy.Task = {
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "pending",
-        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -114,12 +112,9 @@ describe.skip("Deploy Graph", () => {
     });
 
     it("returns no-op when task is running but no result yet", async () => {
-      const existingTask: Task.Task = {
-        id: "uuid-123",
-        name: "CampaignDeploy",
-        jobId: 123,
+      const existingTask: Deploy.Task = {
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "running",
-        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -141,12 +136,9 @@ describe.skip("Deploy Graph", () => {
 
   describe("When webhook delivers result", () => {
     it("processes completed result and marks task as completed", async () => {
-      const taskWithResult: Task.Task = {
-        id: "uuid-123",
-        name: "CampaignDeploy",
-        jobId: 123,
+      const taskWithResult: Deploy.Task = {
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "running",
-        retryCount: 0,
         result: {
           campaign_id: 456,
           external_id: "ext_789",
@@ -176,13 +168,10 @@ describe.skip("Deploy Graph", () => {
     });
 
     it("processes failed result and marks task as failed", async () => {
-      const taskWithError: Task.Task = {
-        id: "uuid-123",
-        name: "CampaignDeploy",
-        jobId: 123,
+      const taskWithError: Deploy.Task = {
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "running",
         error: "API rate limit exceeded",
-        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -208,12 +197,9 @@ describe.skip("Deploy Graph", () => {
 
   describe("Idempotency (already completed/failed)", () => {
     it("returns no-op when task is already completed", async () => {
-      const completedTask: Task.Task = {
-        id: "uuid-123",
-        name: "CampaignDeploy",
-        jobId: 123,
+      const completedTask: Deploy.Task = {
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "completed",
-        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -234,13 +220,10 @@ describe.skip("Deploy Graph", () => {
     });
 
     it("returns no-op when task is already failed", async () => {
-      const failedTask: Task.Task = {
-        id: "uuid-123",
-        name: "CampaignDeploy",
-        jobId: 123,
+      const failedTask: Deploy.Task = {
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "failed",
         error: "Some error",
-        retryCount: 0,
       };
 
       const result = await testGraph<DeployGraphState>()
@@ -327,7 +310,7 @@ describe.skip("Deploy Graph", () => {
 
       expect(firstResult.status).toBe("pending");
       expect(firstResult.tasks).toHaveLength(1);
-      expect(firstResult.tasks[0]!.name).toBe("CampaignDeploy");
+      expect(firstResult.tasks[0]!.name).toBe("DeployingCampaign");
       expect(firstResult.tasks[0]!.status).toBe("pending");
       expect(firstResult.tasks[0]!.jobId).toBe(123);
 

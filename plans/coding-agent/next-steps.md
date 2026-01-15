@@ -77,7 +77,7 @@ Create additional snapshots only when tests fail due to needing isolation.
 | File                                                      | Change                            |
 | --------------------------------------------------------- | --------------------------------- |
 | `app/nodes/deploy/bugFixNode.ts`                          | Fix silent error swallowing       |
-| `app/nodes/deploy/instrumentationNode.ts`                 | Refactor to use createCodingAgent |
+| `app/nodes/deploy/analyticsNode.ts`                       | Refactor to use createCodingAgent |
 | `app/prompts/coding/shared/workflow.ts`                   | Add React Router guidance         |
 | `app/prompts/coding/shared/tracking.ts`                   | Add L10.createLead clarity        |
 | `app/prompts/coding/shared/context.ts`                    | Add image usage guidance          |
@@ -93,8 +93,8 @@ Create additional snapshots only when tests fail due to needing isolation.
 # 1. Fix bugFixNode, run existing tests
 pnpm test tests/tests/nodes/deploy/bugFixNode.test.ts
 
-# 2. Refactor instrumentationNode
-pnpm test tests/tests/nodes/deploy/instrumentationNode.test.ts
+# 2. Refactor analyticsNode
+pnpm test tests/tests/nodes/deploy/analyticsNode.test.ts
 
 # 3. Run integration tests
 pnpm test tests/tests/graphs/codingAgent/integration.test.ts

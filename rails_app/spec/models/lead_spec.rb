@@ -140,5 +140,24 @@ RSpec.describe Lead, type: :model do
       expect(result[:website_lead].visitor_token).to eq('visitor-xyz')
       expect(result[:website_lead].gclid).to eq('gclid-123')
     end
+
+    it 'stores UTM parameters denormalized on the website_lead' do
+      result = Lead.find_or_create_for_signup(
+        account: account,
+        website: website,
+        email: 'utm-test@example.com',
+        utm_source: 'google',
+        utm_medium: 'cpc',
+        utm_campaign: 'spring_sale',
+        utm_content: 'banner_ad',
+        utm_term: 'running shoes'
+      )
+
+      expect(result[:website_lead].utm_source).to eq('google')
+      expect(result[:website_lead].utm_medium).to eq('cpc')
+      expect(result[:website_lead].utm_campaign).to eq('spring_sale')
+      expect(result[:website_lead].utm_content).to eq('banner_ad')
+      expect(result[:website_lead].utm_term).to eq('running shoes')
+    end
   end
 end

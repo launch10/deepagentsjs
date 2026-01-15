@@ -26,6 +26,7 @@ export const buildContext = NodeMiddleware.use(
     const images = context.uploads.map((upload) => ({
       url: upload.url,
       isLogo: upload.is_logo,
+      faviconUrl: upload.favicon_url,
     }));
 
     const brainstormContext: Brainstorm.MemoriesType = {

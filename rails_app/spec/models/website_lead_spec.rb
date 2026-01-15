@@ -6,6 +6,11 @@
 #
 #  id            :bigint           not null, primary key
 #  gclid         :string
+#  utm_campaign  :string
+#  utm_content   :string
+#  utm_medium    :string
+#  utm_source    :string
+#  utm_term      :string
 #  visitor_token :string
 #  created_at    :datetime         not null
 #  updated_at    :datetime         not null

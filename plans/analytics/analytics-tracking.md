@@ -81,7 +81,7 @@ rails_app/templates/default/src/lib/
 │  (All intelligence in Langgraph)                            │
 │  Boolean flags: deployWebsite, deployGoogleAds              │
 │                                                             │
-│  1. instrumentationNode (if deployWebsite)                  │
+│  1. analyticsNode (if deployWebsite)                  │
 │     └─ Add L10.conversion() to signup forms                 │
 │     └─ Uses WebsiteFilesBackend to edit files               │
 │                                                             │
@@ -171,7 +171,7 @@ if (typeof window !== "undefined") {
 ```typescript
 export const deployGraph = new StateGraph(DeployAnnotation)
   // Instrument tracking before deploy (if deployWebsite)
-  .addNode("instrumentation", instrumentationNode)
+  .addNode("instrumentation", analyticsNode)
 
   // Deploy website to R2 (if deployWebsite)
   .addNode("deployWebsite", deployWebsiteNode)
@@ -201,9 +201,9 @@ export const deployGraph = new StateGraph(DeployAnnotation)
   .addEdge("deployCampaign", END);
 ```
 
-### 3. instrumentationNode
+### 3. analyticsNode
 
-**File:** `langgraph_app/app/nodes/deploy/instrumentationNode.ts`
+**File:** `langgraph_app/app/nodes/deploy/analyticsNode.ts`
 
 This node uses an LLM agent with `WebsiteFilesBackend` to:
 
@@ -315,7 +315,7 @@ export const DeployAnnotation = Annotation.Root({
 | File                                                       | Change                                      |
 | ---------------------------------------------------------- | ------------------------------------------- |
 | `langgraph_app/app/graphs/deploy.ts`                       | NEW: Unified deploy graph                   |
-| `langgraph_app/app/nodes/deploy/instrumentationNode.ts`    | NEW: LLM agent for tracking instrumentation |
+| `langgraph_app/app/nodes/deploy/analyticsNode.ts`          | NEW: LLM agent for tracking instrumentation |
 | `langgraph_app/app/nodes/deploy/deployWebsiteNode.ts`      | NEW: Fire-and-forget website deploy         |
 | `langgraph_app/app/nodes/deploy/runtimeValidationNode.ts`  | NEW: Playwright-based validation            |
 | `langgraph_app/app/nodes/deploy/fixWithCodingAgentNode.ts` | NEW: Invoke codingAgentGraph for fixes      |
@@ -481,7 +481,7 @@ conversion(properties: ConversionProperties) {
 
 1. **All intelligence in Langgraph** - Rails only builds/deploys, no tracking injection
 2. **Unified deployGraph** - Single graph with `deployWebsite` and `deployGoogleAds` boolean flags
-3. **instrumentationNode** uses LLM agent with WebsiteFilesBackend to edit files
+3. **analyticsNode** uses LLM agent with WebsiteFilesBackend to edit files
 4. **gtag.js injected by Langgraph** into index.html (not Rails build phase)
 5. **Semantic labels** - "signup", "purchase", "lead" based on form context
 6. **Every deploy** runs instrumentation (keeps tracking up-to-date with page changes)

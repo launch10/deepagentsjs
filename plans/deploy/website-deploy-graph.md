@@ -20,14 +20,15 @@ All deploy operations use the unified `Task` interface for state tracking:
 
 ```typescript
 interface Task {
-  name: string;                                    // e.g., "instrumentation", "website_deploy"
+  name: string; // e.g., "instrumentation", "website_deploy"
   status: "pending" | "running" | "completed" | "failed";
-  result?: Record<string, unknown>;                // Node-specific output
-  error?: string;                                  // Error message on failure
+  result?: Record<string, unknown>; // Node-specific output
+  error?: string; // Error message on failure
 }
 ```
 
 **Benefits:**
+
 - Single `tasks[]` array instead of per-operation status fields
 - Frontend displays progress via Tasks[] API
 - Partial failures are visible (e.g., website_deploy: completed, campaign_deploy: failed)
@@ -36,7 +37,7 @@ interface Task {
 **Task Names:**
 | Task Name | Node | Description |
 |-----------|------|-------------|
-| `instrumentation` | instrumentationNode | LLM analysis + tracking injection |
+| `instrumentation` | analyticsNode | LLM analysis + tracking injection |
 | `website_deploy` | deployWebsiteNode | Build + upload to Cloudflare |
 | `runtime_validation` | runtimeValidationNode | Playwright console/network checks |
 | `code_fix` | fixWithCodingAgentNode | Invoke codingAgentGraph to fix errors |
@@ -48,7 +49,7 @@ interface Task {
 
 ```
 deployGraph
-├── instrumentationNode     # LLM semantic analysis + deterministic inject (if deployWebsite)
+├── analyticsNode     # LLM semantic analysis + deterministic inject (if deployWebsite)
 ├── deployWebsiteNode       # Invoke WebsiteDeploy Rails job (if deployWebsite)
 ├── runtimeValidationNode   # Layer 2 validation via Playwright (if deployWebsite)
 ├── fixWithCodingAgentNode  # Invoke codingAgentGraph subgraph on error
@@ -62,13 +63,13 @@ START
     ↓
     ├── (if !deployWebsite && !deployGoogleAds) → END (no-op)
     ↓
-instrumentationNode (if deployWebsite)
+analyticsNode (if deployWebsite)
     ↓
 deployWebsiteNode (if deployWebsite)
     ↓
 runtimeValidationNode (if deployWebsite)
     ↓  (if errors && retryCount < 2)
-    └──→ fixWithCodingAgentNode → instrumentationNode
+    └──→ fixWithCodingAgentNode → analyticsNode
     ↓  (if pass || retryCount >= 2)
 deployCampaignNode (if deployGoogleAds)
     ↓
@@ -78,8 +79,8 @@ END
 ### Boolean Flags
 
 ```typescript
-deployWebsite: boolean    // default: true - deploy website to Cloudflare
-deployGoogleAds: boolean  // default: false - deploy campaign to Google Ads
+deployWebsite: boolean; // default: true - deploy website to Cloudflare
+deployGoogleAds: boolean; // default: false - deploy campaign to Google Ads
 ```
 
 **Edge case:** If both flags are `false`, the graph exits immediately at START. This is a valid no-op (e.g., caller changed their mind).
@@ -88,17 +89,19 @@ deployGoogleAds: boolean  // default: false - deploy campaign to Google Ads
 
 ## Node Definitions
 
-### 1. instrumentationNode
+### 1. analyticsNode
 
 **Task:** `instrumentation`
 
 **Purpose:** Pre-deploy instrumentation using hybrid LLM + deterministic approach
 
 **Inputs:**
+
 - `websiteId` - Website to deploy
 - `jwt` - Authentication token
 
 **Process:**
+
 1. **LLM semantic analysis:** Analyze page content to determine:
    - Is there a pricing page? → Add conversion tracking
    - Is there a signup form? → Add waitlist tracking
@@ -111,6 +114,7 @@ deployGoogleAds: boolean  // default: false - deploy campaign to Google Ads
    - Call `L10.init()` in main.tsx
 
 **Task Output:**
+
 ```typescript
 {
   name: "instrumentation",
@@ -133,17 +137,20 @@ deployGoogleAds: boolean  // default: false - deploy campaign to Google Ads
 **Pattern:** Fire-and-forget + idempotent (same as `deployCampaignNode`)
 
 **Inputs:**
+
 - `websiteId` - Website to deploy
 - `jwt` - Authentication token
 - `threadId` - For callback
 
 **Process:**
+
 1. Create task with "pending" status
 2. Call Rails API to create WebsiteDeploy job
 3. Return and wait for webhook callback
 4. On callback: update task status, return result
 
 **Task Output:**
+
 ```typescript
 {
   name: "website_deploy",
@@ -165,16 +172,19 @@ deployGoogleAds: boolean  // default: false - deploy campaign to Google Ads
 **Purpose:** Layer 2 validation using Playwright
 
 **Inputs:**
+
 - `websiteId` - Website to validate
 - `tasks` - Contains website_deploy result with URL
 
 **Process:**
+
 1. Use existing `WebsiteRunner` to start dev server
 2. Use existing `BrowserErrorCapture` to load page in Playwright
 3. Capture console errors, warnings, failed requests
 4. Check for visual rendering issues
 
 **Task Output (success):**
+
 ```typescript
 {
   name: "runtime_validation",
@@ -184,6 +194,7 @@ deployGoogleAds: boolean  // default: false - deploy campaign to Google Ads
 ```
 
 **Task Output (failure):**
+
 ```typescript
 {
   name: "runtime_validation",
@@ -207,12 +218,13 @@ deployGoogleAds: boolean  // default: false - deploy campaign to Google Ads
 **Purpose:** Invoke codingAgentGraph as subgraph to fix runtime errors
 
 **Subgraph Invocation:**
+
 ```typescript
 import { codingAgentGraph } from "@graphs/codingAgent";
 
 const fixWithCodingAgentNode = async (state: typeof DeployAnnotation.State) => {
   // Get validation errors from runtime_validation task
-  const validationTask = state.tasks.find(t => t.name === "runtime_validation");
+  const validationTask = state.tasks.find((t) => t.name === "runtime_validation");
   const errors = validationTask?.result?.errors ?? [];
 
   // Format errors for coding agent
@@ -221,23 +233,24 @@ const fixWithCodingAgentNode = async (state: typeof DeployAnnotation.State) => {
   // Invoke codingAgentGraph as subgraph
   const result = await codingAgentGraph.invoke({
     ...state,
-    messages: [
-      new HumanMessage(`Fix the following runtime errors:\n\n${errorContext}`)
-    ],
+    messages: [new HumanMessage(`Fix the following runtime errors:\n\n${errorContext}`)],
   });
 
   return {
-    tasks: [{
-      name: "code_fix",
-      status: "completed",
-      result: { filesModified: result.modifiedFiles }
-    }],
+    tasks: [
+      {
+        name: "code_fix",
+        status: "completed",
+        result: { filesModified: result.modifiedFiles },
+      },
+    ],
     retryCount: state.retryCount + 1,
   };
 };
 ```
 
 **Notes:**
+
 - `codingAgentGraph` is invoked as a subgraph (not API call)
 - Shares state via `BaseAnnotation.spec`
 - Increments `retryCount` to track retry attempts
@@ -284,7 +297,7 @@ export const DeployAnnotation = Annotation.Root({
   // Retry tracking for fix loop
   retryCount: Annotation<number>({
     default: () => 0,
-    reducer: (current, next) => next,  // Explicit increment only
+    reducer: (current, next) => next, // Explicit increment only
   }),
 
   // Task tracking - ALL state lives here
@@ -302,6 +315,7 @@ export const DeployAnnotation = Annotation.Root({
 ```
 
 **Removed fields** (now tracked via `tasks[]`):
+
 - ~~`instrumentationComplete`~~
 - ~~`instrumentedFiles`~~
 - ~~`websiteDeployStatus`~~
@@ -318,7 +332,7 @@ export const DeployAnnotation = Annotation.Root({
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { DeployAnnotation } from "@annotation";
 import {
-  instrumentationNode,
+  analyticsNode,
   deployWebsiteNode,
   runtimeValidationNode,
   fixWithCodingAgentNode,
@@ -327,10 +341,10 @@ import {
 
 // Helper to check task status
 const getTaskStatus = (state: typeof DeployAnnotation.State, name: string) =>
-  state.tasks.find(t => t.name === name)?.status;
+  state.tasks.find((t) => t.name === name)?.status;
 
 export const deployGraph = new StateGraph(DeployAnnotation)
-  .addNode("instrumentation", instrumentationNode)
+  .addNode("instrumentation", analyticsNode)
   .addNode("deployWebsite", deployWebsiteNode)
   .addNode("runtimeValidation", runtimeValidationNode)
   .addNode("fixWithCodingAgent", fixWithCodingAgentNode)
@@ -338,7 +352,7 @@ export const deployGraph = new StateGraph(DeployAnnotation)
 
   // Start: check flags, exit early if nothing to deploy
   .addConditionalEdges(START, (state) => {
-    if (!state.deployWebsite && !state.deployGoogleAds) return END;  // No-op
+    if (!state.deployWebsite && !state.deployGoogleAds) return END; // No-op
     if (state.deployWebsite) return "instrumentation";
     return "deployCampaign";
   })
@@ -375,6 +389,7 @@ export const deployGraph = new StateGraph(DeployAnnotation)
 **Principle:** Partial failures are surfaced via the Tasks[] API, not hidden.
 
 **Frontend visibility:**
+
 - Tasks[] is exposed via API endpoint
 - Frontend polls/subscribes to task status
 - Each task shows: pending → running → completed/failed
@@ -382,12 +397,12 @@ export const deployGraph = new StateGraph(DeployAnnotation)
 
 **Examples:**
 
-| Scenario | Task States | User Experience |
-|----------|-------------|-----------------|
-| Full success | All completed | "Deploy complete!" |
-| Validation fails, fix succeeds | runtime_validation: failed, code_fix: completed, runtime_validation: completed | "Fixed 1 error, deployed" |
-| Validation fails after retries | runtime_validation: failed (persists) | "Deployed with warnings" + error details |
-| Campaign fails | website_deploy: completed, campaign_deploy: failed | "Website live, ads failed" + error |
+| Scenario                       | Task States                                                                    | User Experience                          |
+| ------------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------- |
+| Full success                   | All completed                                                                  | "Deploy complete!"                       |
+| Validation fails, fix succeeds | runtime_validation: failed, code_fix: completed, runtime_validation: completed | "Fixed 1 error, deployed"                |
+| Validation fails after retries | runtime_validation: failed (persists)                                          | "Deployed with warnings" + error details |
+| Campaign fails                 | website_deploy: completed, campaign_deploy: failed                             | "Website live, ads failed" + error       |
 
 **No silent failures:** If a task fails, the user sees it. The graph proceeds (to avoid blocking), but the failure is recorded.
 
@@ -395,24 +410,25 @@ export const deployGraph = new StateGraph(DeployAnnotation)
 
 ## Files to Create/Modify
 
-| File | Action | Description |
-|------|--------|-------------|
-| `langgraph_app/app/graphs/deploy.ts` | CREATE | Unified deploy graph definition |
-| `langgraph_app/app/annotation/deployAnnotation.ts` | CREATE | State annotation with Task-based pattern |
-| `langgraph_app/app/nodes/deploy/instrumentationNode.ts` | CREATE | LLM + deterministic inject |
-| `langgraph_app/app/nodes/deploy/deployWebsiteNode.ts` | CREATE | Invoke WebsiteDeploy Rails job |
-| `langgraph_app/app/nodes/deploy/runtimeValidationNode.ts` | CREATE | Playwright validation |
-| `langgraph_app/app/nodes/deploy/fixWithCodingAgentNode.ts` | CREATE | Invoke codingAgentGraph subgraph |
-| `langgraph_app/app/nodes/deploy/deployCampaignNode.ts` | MOVE | From launch/ to deploy/ |
-| `langgraph_app/app/nodes/deploy/index.ts` | CREATE | Export all nodes |
-| `langgraph_app/app/graphs/launch.ts` | DELETE | Replaced by deploy.ts |
-| `langgraph_app/app/nodes/launch/` | DELETE | Replaced by deploy/ |
+| File                                                       | Action | Description                              |
+| ---------------------------------------------------------- | ------ | ---------------------------------------- |
+| `langgraph_app/app/graphs/deploy.ts`                       | CREATE | Unified deploy graph definition          |
+| `langgraph_app/app/annotation/deployAnnotation.ts`         | CREATE | State annotation with Task-based pattern |
+| `langgraph_app/app/nodes/deploy/analyticsNode.ts`          | CREATE | LLM + deterministic inject               |
+| `langgraph_app/app/nodes/deploy/deployWebsiteNode.ts`      | CREATE | Invoke WebsiteDeploy Rails job           |
+| `langgraph_app/app/nodes/deploy/runtimeValidationNode.ts`  | CREATE | Playwright validation                    |
+| `langgraph_app/app/nodes/deploy/fixWithCodingAgentNode.ts` | CREATE | Invoke codingAgentGraph subgraph         |
+| `langgraph_app/app/nodes/deploy/deployCampaignNode.ts`     | MOVE   | From launch/ to deploy/                  |
+| `langgraph_app/app/nodes/deploy/index.ts`                  | CREATE | Export all nodes                         |
+| `langgraph_app/app/graphs/launch.ts`                       | DELETE | Replaced by deploy.ts                    |
+| `langgraph_app/app/nodes/launch/`                          | DELETE | Replaced by deploy/                      |
 
 ---
 
 ## Dependencies
 
 **Existing infrastructure to reuse:**
+
 - `WebsiteRunner` - Dev server for validation
 - `BrowserErrorCapture` - Playwright console capture
 - `ErrorExporter` - Orchestrates validation
@@ -421,6 +437,7 @@ export const deployGraph = new StateGraph(DeployAnnotation)
 - `codingAgentGraph` - Invoked as subgraph for fixes
 
 **New services needed:**
+
 - `InstrumentationService` - LLM semantic analysis + deterministic inject
 
 ---

@@ -2,9 +2,9 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { DeployGraphState } from "@annotation";
 import { JobRunAPIService } from "@services";
 import { NodeMiddleware } from "@middleware";
-import { Task } from "@types";
+import { Deploy, Task } from "@types";
 
-const TASK_NAME = "CampaignDeploy";
+const TASK_NAME: Deploy.TaskName = "DeployingCampaign";
 
 /**
  * Deploy Campaign Node (Idempotent Pattern)
@@ -74,7 +74,7 @@ export const deployCampaignNode = NodeMiddleware.use(
     });
 
     return {
-      tasks: [...state.tasks, Task.createTask(TASK_NAME, jobRun.id)],
+      tasks: [...state.tasks, Deploy.createTask(TASK_NAME, jobRun.id)],
       status: "pending",
     };
   }
