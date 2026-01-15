@@ -54,11 +54,16 @@ module ProjectConcerns
       }.merge!(core_json)
     end
 
-    def to_launch_json
+    def to_deploy_json(deploy)
       project = Project.with_launch_relations.find_by(id: id)
 
       to_ad_campaign_json.merge!({
-        deployment: project.website.respond_to?(:deployment) ? project.website&.deployment&.as_json : nil
+        deploy: {
+          id: deploy.id,
+          status: deploy.status,
+          current_step: deploy.current_step,
+          langgraph_thread_id: deploy.langgraph_thread_id
+        }
       })
     end
 

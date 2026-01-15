@@ -15,10 +15,11 @@ interface JobRunCallbackPayload {
 export const jobRunCallbackRoutes = new Hono();
 
 // Lazy initialization to avoid circular deps
+// Uses shared checkpointer from graphParams for consistency with deploy routes
 let _graph: ReturnType<typeof deployGraph.compile> | null = null;
 function getGraph() {
   if (!_graph) {
-    _graph = deployGraph.compile({ ...graphParams });
+    _graph = deployGraph.compile({ ...graphParams, name: "deploy" });
   }
   return _graph;
 }

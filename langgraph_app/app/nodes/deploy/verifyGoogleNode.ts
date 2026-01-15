@@ -1,6 +1,6 @@
 import { type DeployGraphState, withPhases } from "@annotation";
-import { JobRunAPIService, DeployAPIService } from "@rails_api";
-import { GoogleAPIService } from "@services";
+import { JobRunAPIService } from "@rails_api";
+import { GoogleAPIService, DeployService } from "@services";
 import { Deploy, Task } from "@types";
 
 const TASK_NAME: Deploy.TaskName = "VerifyingGoogle";
@@ -41,10 +41,9 @@ export const verifyGoogleNode = async (
   // 4. Task running with jobId? Waiting for polling to complete
   //    Touch the deploy to indicate user is still active (for batch scheduler)
   if (task?.status === "running" && task.jobId) {
-    if (state.jwt && state.deployId) {
-      const deployApi = new DeployAPIService({ jwt: state.jwt });
-      // Fire-and-forget: don't wait for response, don't fail if it errors
-      deployApi.touch(state.deployId).catch(() => {});
+    if (state.deployId) {
+      // Fire-and-forget: write directly to DB, don't wait or fail if it errors
+      DeployService.touch(state.deployId).catch(() => {});
     }
     return {};
   }

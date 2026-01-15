@@ -14,11 +14,7 @@ authenticated :user do
         end
       end
 
-      scope :launch do
-        WorkflowConfig.substeps_for("launch", "launch").each do |substep|
-          get substep, to: "projects#launch_#{substep}", as: "launch_#{substep}"
-        end
-      end
+      get :deploy
     end
   end
 end

@@ -70,16 +70,9 @@
         ]
       },
       {
-        "name": "launch",
-        "label": "Launch",
-        "order": 4,
-        "steps": [
-          {
-            "name": "deployment",
-            "label": "Deployment",
-            "order": 1
-          }
-        ]
+        "name": "deploy",
+        "label": "Deploy",
+        "order": 4
       }
     ]
   }
