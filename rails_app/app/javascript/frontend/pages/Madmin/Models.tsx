@@ -1,9 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Switch } from "@components/ui/switch";
 import { Input } from "@components/ui/input";
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
-import { X, ChevronUp, ChevronDown } from "lucide-react";
+import { X, Plus, GripVertical, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { cn } from "@lib/utils";
+import { Reorder } from "framer-motion";
+import { useDebouncedCallback } from "use-debounce";
 
 interface ModelConfig {
   id: number;
@@ -38,6 +40,90 @@ interface Props {
   modelPreferences: ModelPreference[];
 }
 
+// Debounced input component for text/number fields
+function DebouncedInput({
+  value,
+  onChange,
+  type = "text",
+  ...props
+}: {
+  value: string | number | null;
+  onChange: (value: string) => void;
+  type?: "text" | "number";
+} & Omit<React.ComponentProps<typeof Input>, "value" | "onChange">) {
+  const [localValue, setLocalValue] = useState(value ?? "");
+
+  const debouncedOnChange = useDebouncedCallback((val: string) => {
+    onChange(val);
+  }, 500);
+
+  useEffect(() => {
+    setLocalValue(value ?? "");
+  }, [value]);
+
+  return (
+    <Input
+      {...props}
+      type={type}
+      value={localValue}
+      onChange={(e) => {
+        setLocalValue(e.target.value);
+        debouncedOnChange(e.target.value);
+      }}
+    />
+  );
+}
+
+// Draggable model badge component
+function DraggableModelBadge({
+  model,
+  index,
+  isDisabled,
+  onRemove,
+  saving,
+}: {
+  model: string;
+  index: number;
+  isDisabled: boolean;
+  onRemove: () => void;
+  saving: boolean;
+}) {
+  return (
+    <Reorder.Item
+      value={model}
+      className={cn(
+        "flex items-center gap-1 rounded-md px-2 py-1 select-none cursor-grab active:cursor-grabbing",
+        isDisabled ? "bg-muted/50 opacity-50" : "bg-muted"
+      )}
+    >
+      <GripVertical className="h-3 w-3 text-muted-foreground" />
+      <span className="text-xs text-muted-foreground">{index + 1}.</span>
+      <span
+        className={cn("text-sm font-mono", isDisabled && "line-through text-muted-foreground")}
+      >
+        {model}
+      </span>
+      {isDisabled && (
+        <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1 text-amber-600 border-amber-600">
+          off
+        </Badge>
+      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-5 w-5 text-destructive hover:text-destructive ml-1"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        disabled={saving}
+      >
+        <X className="h-3 w-3" />
+      </Button>
+    </Reorder.Item>
+  );
+}
+
 function ModelsIndex({
   modelConfigs: initialConfigs,
   modelPreferences: initialPreferences,
@@ -48,6 +134,15 @@ function ModelsIndex({
   const [savingPrefs, setSavingPrefs] = useState<Record<number, boolean>>({});
   const [configErrors, setConfigErrors] = useState<Record<number, string[]>>({});
   const [prefErrors, setPrefErrors] = useState<Record<number, string[]>>({});
+
+  // New model form state
+  const [newModelKey, setNewModelKey] = useState("");
+  const [newModelCard, setNewModelCard] = useState("");
+  const [creatingModel, setCreatingModel] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  // Build a set of disabled model keys for quick lookup
+  const disabledModels = new Set(configs.filter((c) => !c.enabled).map((c) => c.modelKey));
 
   // Model Config handlers
   const updateConfig = useCallback(
@@ -131,6 +226,11 @@ function ModelsIndex({
     updateConfig(id, "enabled", enabled);
   };
 
+  const handleTextChange = (id: number, field: string, value: string) => {
+    const finalValue = value === "" ? null : value;
+    updateConfig(id, field, finalValue);
+  };
+
   const handleNumberChange = (id: number, field: string, value: string) => {
     const numValue = value === "" ? null : Number(value);
     updateConfig(id, field, numValue);
@@ -148,12 +248,84 @@ function ModelsIndex({
     }
   };
 
-  const moveModel = (pref: ModelPreference, index: number, direction: -1 | 1) => {
-    const newKeys = [...pref.modelKeys];
-    const newIndex = index + direction;
-    if (newIndex >= 0 && newIndex < newKeys.length) {
-      [newKeys[index], newKeys[newIndex]] = [newKeys[newIndex], newKeys[index]];
-      updatePreference(pref.id, newKeys);
+  const handleReorder = (pref: ModelPreference, newKeys: string[]) => {
+    updatePreference(pref.id, newKeys);
+  };
+
+  // Create new model
+  const createModel = async () => {
+    if (!newModelKey.trim()) {
+      setCreateError("Model key is required");
+      return;
+    }
+
+    setCreatingModel(true);
+    setCreateError(null);
+
+    try {
+      const response = await fetch("/admin/models/configs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token":
+            document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || "",
+        },
+        body: JSON.stringify({
+          model_config: {
+            model_key: newModelKey.trim().toLowerCase(),
+            model_card: newModelCard.trim() || null,
+            enabled: true,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setCreateError(data.errors?.join(", ") || "Failed to create model");
+      } else {
+        const created = await response.json();
+        setConfigs((prev) => [...prev, created].sort((a, b) => a.modelKey.localeCompare(b.modelKey)));
+        setNewModelKey("");
+        setNewModelCard("");
+        setShowNewModelForm(false);
+      }
+    } catch {
+      setCreateError("Network error");
+    } finally {
+      setCreatingModel(false);
+    }
+  };
+
+  // Delete model
+  const deleteModel = async (id: number) => {
+    const config = configs.find((c) => c.id === id);
+    if (!config) return;
+
+    if (!confirm(`Are you sure you want to delete "${config.modelKey}"? This cannot be undone.`)) {
+      return;
+    }
+
+    setSavingConfigs((prev) => ({ ...prev, [id]: true }));
+
+    try {
+      const response = await fetch(`/admin/models/configs/${id}`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token":
+            document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || "",
+        },
+      });
+
+      if (response.ok) {
+        setConfigs((prev) => prev.filter((c) => c.id !== id));
+      } else {
+        const data = await response.json();
+        setConfigErrors((prev) => ({ ...prev, [id]: data.errors || ["Delete failed"] }));
+      }
+    } catch {
+      setConfigErrors((prev) => ({ ...prev, [id]: ["Network error"] }));
+    } finally {
+      setSavingConfigs((prev) => ({ ...prev, [id]: false }));
     }
   };
 
@@ -187,10 +359,38 @@ function ModelsIndex({
     <div className="p-6 space-y-12">
       {/* Model Configs Section */}
       <section>
-        <h1 className="text-2xl font-bold mb-2">Model Configuration</h1>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-2xl font-bold">Model Configuration</h1>
+        </div>
         <p className="text-muted-foreground mb-6">
           Configure available models and their settings. Changes take effect within 5 minutes.
         </p>
+
+        {/* New Model Form - inline row */}
+        <div className="mb-4 flex items-center gap-3">
+          <Input
+            value={newModelKey}
+            onChange={(e) => setNewModelKey(e.target.value)}
+            placeholder="Model key"
+            disabled={creatingModel}
+            className="w-36 focus:ring-2 focus:ring-primary focus:border-primary"
+          />
+          <Input
+            value={newModelCard}
+            onChange={(e) => setNewModelCard(e.target.value)}
+            placeholder="API model card"
+            disabled={creatingModel}
+            className="w-64 font-mono text-sm focus:ring-2 focus:ring-primary focus:border-primary"
+          />
+          <Button
+            onClick={createModel}
+            disabled={creatingModel}
+            className="!bg-primary !border-primary !text-primary-foreground hover:!bg-primary/90 !px-4 !py-2 !h-auto"
+          >
+            Add Model
+          </Button>
+          {createError && <span className="text-sm text-destructive">{createError}</span>}
+        </div>
 
         <div className="rounded-lg border bg-card overflow-x-auto">
           <table className="w-full">
@@ -202,6 +402,7 @@ function ModelsIndex({
                 <th className="text-center py-3 px-4 font-medium">Max Usage %</th>
                 <th className="text-center py-3 px-4 font-medium">Cost In ($/1M)</th>
                 <th className="text-center py-3 px-4 font-medium">Cost Out ($/1M)</th>
+                <th className="text-center py-3 px-4 font-medium w-16"></th>
               </tr>
             </thead>
             <tbody>
@@ -215,7 +416,9 @@ function ModelsIndex({
                   )}
                 >
                   <td className="py-3 px-4">
-                    <div className="font-medium capitalize">{config.modelKey}</div>
+                    <div className={cn("font-medium capitalize", !config.enabled && "text-muted-foreground")}>
+                      {config.modelKey}
+                    </div>
                     {configErrors[config.id]?.length > 0 && (
                       <div className="text-sm text-destructive mt-1">
                         {configErrors[config.id].join(", ")}
@@ -223,10 +426,10 @@ function ModelsIndex({
                     )}
                   </td>
                   <td className="py-3 px-4">
-                    <Input
+                    <DebouncedInput
                       type="text"
                       value={config.modelCard ?? ""}
-                      onChange={(e) => updateConfig(config.id, "modelCard", e.target.value || null)}
+                      onChange={(value) => handleTextChange(config.id, "modelCard", value)}
                       disabled={savingConfigs[config.id]}
                       className="w-64 text-sm font-mono"
                       placeholder="e.g. claude-opus-4-5"
@@ -240,44 +443,48 @@ function ModelsIndex({
                     />
                   </td>
                   <td className="py-3 px-4">
-                    <Input
+                    <DebouncedInput
                       type="number"
                       min={0}
                       max={100}
                       value={config.maxUsagePercent ?? ""}
-                      onChange={(e) =>
-                        handleNumberChange(config.id, "maxUsagePercent", e.target.value)
-                      }
-                      onBlur={(e) =>
-                        handleNumberChange(config.id, "maxUsagePercent", e.target.value)
-                      }
+                      onChange={(value) => handleNumberChange(config.id, "maxUsagePercent", value)}
                       disabled={savingConfigs[config.id]}
                       className="w-20 text-center mx-auto"
                     />
                   </td>
                   <td className="py-3 px-4">
-                    <Input
+                    <DebouncedInput
                       type="number"
                       step="0.01"
                       min={0}
                       value={config.costIn ?? ""}
-                      onChange={(e) => handleNumberChange(config.id, "costIn", e.target.value)}
-                      onBlur={(e) => handleNumberChange(config.id, "costIn", e.target.value)}
+                      onChange={(value) => handleNumberChange(config.id, "costIn", value)}
                       disabled={savingConfigs[config.id]}
                       className="w-24 text-center mx-auto"
                     />
                   </td>
                   <td className="py-3 px-4">
-                    <Input
+                    <DebouncedInput
                       type="number"
                       step="0.01"
                       min={0}
                       value={config.costOut ?? ""}
-                      onChange={(e) => handleNumberChange(config.id, "costOut", e.target.value)}
-                      onBlur={(e) => handleNumberChange(config.id, "costOut", e.target.value)}
+                      onChange={(value) => handleNumberChange(config.id, "costOut", value)}
                       disabled={savingConfigs[config.id]}
                       className="w-24 text-center mx-auto"
                     />
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteModel(config.id)}
+                      disabled={savingConfigs[config.id]}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -298,7 +505,7 @@ function ModelsIndex({
         <h2 className="text-xl font-bold mb-2">Model Preferences</h2>
         <p className="text-muted-foreground mb-6">
           Configure which models to use for each cost/speed/skill combination. Models are tried in
-          order from left to right.
+          order from left to right. Drag models to reorder. Disabled models are shown greyed out.
         </p>
 
         <div className="space-y-8">
@@ -342,55 +549,28 @@ function ModelsIndex({
                             )}
                           </td>
                           <td className="py-3 px-4">
-                            <div className="flex flex-wrap gap-2">
+                            <Reorder.Group
+                              axis="x"
+                              values={pref.modelKeys}
+                              onReorder={(newKeys) => handleReorder(pref, newKeys)}
+                              className="flex flex-wrap gap-2"
+                            >
                               {pref.modelKeys.map((model, index) => (
-                                <div
-                                  key={`${pref.id}-${model}-${index}`}
-                                  className="flex items-center gap-1 bg-muted rounded-md px-2 py-1"
-                                >
-                                  <span className="text-xs text-muted-foreground mr-1">
-                                    {index + 1}.
-                                  </span>
-                                  <span className="text-sm font-mono">{model}</span>
-                                  <div className="flex items-center gap-0.5 ml-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-5 w-5"
-                                      onClick={() => moveModel(pref, index, -1)}
-                                      disabled={index === 0 || savingPrefs[pref.id]}
-                                    >
-                                      <ChevronUp className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-5 w-5"
-                                      onClick={() => moveModel(pref, index, 1)}
-                                      disabled={
-                                        index === pref.modelKeys.length - 1 || savingPrefs[pref.id]
-                                      }
-                                    >
-                                      <ChevronDown className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-5 w-5 text-destructive hover:text-destructive"
-                                      onClick={() => removeModel(pref, index)}
-                                      disabled={savingPrefs[pref.id]}
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </div>
+                                <DraggableModelBadge
+                                  key={model}
+                                  model={model}
+                                  index={index}
+                                  isDisabled={disabledModels.has(model)}
+                                  onRemove={() => removeModel(pref, index)}
+                                  saving={savingPrefs[pref.id]}
+                                />
                               ))}
-                              {pref.modelKeys.length === 0 && (
-                                <span className="text-muted-foreground text-sm italic">
-                                  No models configured
-                                </span>
-                              )}
-                            </div>
+                            </Reorder.Group>
+                            {pref.modelKeys.length === 0 && (
+                              <span className="text-muted-foreground text-sm italic">
+                                No models configured
+                              </span>
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             <Select
@@ -404,8 +584,13 @@ function ModelsIndex({
                                 {availableModels
                                   .filter((m) => !pref.modelKeys.includes(m))
                                   .map((model) => (
-                                    <SelectItem key={model} value={model}>
+                                    <SelectItem
+                                      key={model}
+                                      value={model}
+                                      className={cn(disabledModels.has(model) && "opacity-50")}
+                                    >
                                       {model}
+                                      {disabledModels.has(model) && " (disabled)"}
                                     </SelectItem>
                                   ))}
                               </SelectContent>

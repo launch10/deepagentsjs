@@ -19,6 +19,7 @@ export const TaskNames = [
   "VerifyingGoogle",
   "CheckingBilling",
   "DeployingCampaign",
+  "EnablingCampaign",
   // Special: These two tasks merge into "CheckingForBugs" phase
   "ValidateLinks",
   "RuntimeValidation",
@@ -36,6 +37,7 @@ export const TaskDescriptionMap: Record<TaskName, string> = {
   VerifyingGoogle: "Verifying Google Account",
   CheckingBilling: "Checking Payment Status",
   DeployingCampaign: "Syncing Campaign",
+  EnablingCampaign: "Enabling Campaign",
   // Special: merge into "CheckingForBugs" phase
   ValidateLinks: "Testing Links",
   RuntimeValidation: "Checking for Runtime Errors",

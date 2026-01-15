@@ -47,6 +47,7 @@ namespace :api, defaults: {format: :json} do
     scope :google do
       get "connection_status", to: "google#connection_status"
       get "invite_status", to: "google#invite_status"
+      get "payment_status", to: "google#payment_status"
     end
 
     scope "projects/:project_uuid" do

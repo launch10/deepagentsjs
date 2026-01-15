@@ -140,4 +140,77 @@ RSpec.describe "Google API", type: :request do
       end
     end
   end
+
+  path "/api/v1/google/payment_status" do
+    get "Returns Google Ads payment/billing status" do
+      tags "Google"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
+
+      response "200", "returns payment status when no ads account exists" do
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+
+          expect(data["has_payment"]).to be false
+          expect(data["status"]).to eq("none")
+        end
+      end
+
+      response "200", "returns payment status when ads account exists but no billing" do
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+
+        before do
+          create(:ads_account, account: account, platform: "google",
+            platform_settings: { google: { customer_id: "1234567890" } })
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+
+          expect(data["has_payment"]).to be false
+          expect(data["status"]).to eq("pending")
+        end
+      end
+
+      response "200", "returns payment status when billing is approved" do
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+
+        before do
+          create(:ads_account, account: account, platform: "google",
+            platform_settings: {
+              google: {
+                customer_id: "1234567890",
+                billing_status: "approved"
+              }
+            })
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+
+          expect(data["has_payment"]).to be true
+          expect(data["status"]).to eq("approved")
+        end
+      end
+
+      response "401", "unauthorized" do
+        let(:Authorization) { nil }
+
+        run_test! do |response|
+          expect(response.code).to eq("401")
+        end
+      end
+    end
+  end
 end

@@ -53,10 +53,16 @@ const MODEL_PROVIDERS: Record<string, LLMProvider> = {
  */
 class LLMService {
   private mode: "test" | "regular" = "regular";
+  private testConfig: ModelConfigurationResponse | null = null;
 
   // ============ Config Fetching ============
 
   private async fetchConfig(): Promise<ModelConfigurationResponse> {
+    // In test mode with custom config, return it directly (bypass cache and API)
+    if (this.testConfig) {
+      return this.testConfig;
+    }
+
     return cache.fetch(
       CACHE_KEY,
       async () => {
@@ -253,6 +259,77 @@ class LLMService {
   }
 
   /**
+   * Get the model key that would be selected for the given parameters.
+   * Useful for testing to verify which model is selected without needing API keys.
+   * When testConfig is set, skips API key validation.
+   */
+  async getModelKey(
+    skill: LLMSkill,
+    speed: LLMSpeed,
+    cost: LLMCost,
+    usagePercent: number = 0
+  ): Promise<string> {
+    const config = await this.fetchConfig();
+    const modelKeys = config.preferences[cost]?.[speed]?.[skill] ?? [];
+    const skipApiKeyCheck = this.testConfig !== null;
+
+    for (const key of modelKeys) {
+      const modelConfig = config.models[key];
+      if (!modelConfig?.enabled) continue;
+      if (usagePercent > (modelConfig.maxUsagePercent ?? 100)) continue;
+
+      // Check if this model could be created (has valid provider config)
+      const provider = modelConfig.provider ?? MODEL_PROVIDERS[key];
+      if (!provider) continue;
+
+      const providerConfig = PROVIDERS[provider];
+      if (!providerConfig) continue;
+
+      // For API providers, we need a valid API key (unless in test mode with test config)
+      if (!skipApiKeyCheck && provider !== "ollama" && !providerConfig.apiKey) continue;
+
+      return key;
+    }
+
+    throw new Error(`No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage`);
+  }
+
+  /**
+   * Get all available model keys for the given parameters.
+   * Useful for testing fallback chains.
+   * When testConfig is set, skips API key validation.
+   */
+  async getModelKeys(
+    skill: LLMSkill,
+    speed: LLMSpeed,
+    cost: LLMCost,
+    usagePercent: number = 0
+  ): Promise<string[]> {
+    const config = await this.fetchConfig();
+    const modelKeys = config.preferences[cost]?.[speed]?.[skill] ?? [];
+    const availableKeys: string[] = [];
+    const skipApiKeyCheck = this.testConfig !== null;
+
+    for (const key of modelKeys) {
+      const modelConfig = config.models[key];
+      if (!modelConfig?.enabled) continue;
+      if (usagePercent > (modelConfig.maxUsagePercent ?? 100)) continue;
+
+      const provider = modelConfig.provider ?? MODEL_PROVIDERS[key];
+      if (!provider) continue;
+
+      const providerConfig = PROVIDERS[provider];
+      if (!providerConfig) continue;
+
+      if (!skipApiKeyCheck && provider !== "ollama" && !providerConfig.apiKey) continue;
+
+      availableKeys.push(key);
+    }
+
+    return availableKeys;
+  }
+
+  /**
    * Get all available models for fallback chains.
    * Returns models in priority order (first is primary).
    */
@@ -298,8 +375,27 @@ class LLMService {
     }
   }
 
+  /**
+   * Set a custom configuration for testing. Bypasses cache and API.
+   * Only callable in test environment.
+   */
+  setConfigForTesting(config: ModelConfigurationResponse) {
+    if (env.NODE_ENV !== "test") {
+      throw new Error("setConfigForTesting() can only be called in test environment");
+    }
+    this.testConfig = config;
+  }
+
+  /**
+   * Clear the test configuration.
+   */
+  clearTestConfig() {
+    this.testConfig = null;
+  }
+
   reset() {
     this.mode = "regular";
+    this.testConfig = null;
   }
 
   useTest() {

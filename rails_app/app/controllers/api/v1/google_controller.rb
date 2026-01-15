@@ -18,4 +18,16 @@ class API::V1::GoogleController < API::BaseController
       email: invitation&.email_address
     }
   end
+
+  # GET /api/v1/google/payment_status
+  # Returns whether Google Ads has a payment method configured
+  def payment_status
+    ads_account = current_account.ads_account
+    return render json: { has_payment: false, status: "none" } unless ads_account
+
+    render json: {
+      has_payment: ads_account.google_billing_enabled?,
+      status: ads_account.google_billing_status || "pending"
+    }
+  end
 end

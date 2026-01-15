@@ -34,7 +34,7 @@ class JobRun < ApplicationRecord
   belongs_to :deploy, optional: true
 
   STATUSES = %w[pending running completed failed].freeze
-  ALLOWED_JOBS = %w[CampaignDeploy WebsiteDeploy GoogleOAuthConnect GoogleAdsInvite].freeze
+  ALLOWED_JOBS = %w[CampaignDeploy WebsiteDeploy GoogleOAuthConnect GoogleAdsInvite GoogleAdsPaymentCheck CampaignEnable].freeze
 
   validates :job_class, presence: true, inclusion: { in: ALLOWED_JOBS }
   validates :status, presence: true, inclusion: { in: STATUSES }

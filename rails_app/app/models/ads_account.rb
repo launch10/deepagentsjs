@@ -43,10 +43,15 @@ class AdsAccount < ApplicationRecord
   platform_setting :google, :conversion_action_resource_name
   platform_setting :google, :conversion_id      # Full conversion ID with AW- prefix (e.g., "AW-123456789")
   platform_setting :google, :conversion_label   # Conversion label from tag_snippets (e.g., "abc123XYZ")
+  platform_setting :google, :billing_status     # Billing setup status: pending, approved, cancelled
 
   def google_send_to
     return nil unless google_conversion_id.present? && google_conversion_label.present?
     "#{google_conversion_id}/#{google_conversion_label}"
+  end
+
+  def google_billing_enabled?
+    google_billing_status == "approved"
   end
 
   def google_sync

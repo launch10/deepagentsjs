@@ -4,7 +4,7 @@ module Madmin
       @model_configs = ModelConfig.order(:model_key)
       @model_preferences = ModelPreference.order(:cost_tier, :speed_tier, :skill)
 
-      render inertia: "Madmin/Models/Index",
+      render inertia: "Madmin/Models",
         props: {
           modelConfigs: @model_configs.map { |c| serialize_config(c) },
           modelPreferences: @model_preferences.map { |p| serialize_preference(p) }
@@ -29,10 +29,31 @@ module Madmin
       end
     end
 
+    def create_config
+      config = ModelConfig.new(create_config_params)
+      if config.save
+        render json: serialize_config(config), status: :created
+      else
+        render json: {errors: config.errors.full_messages}, status: :unprocessable_entity
+      end
+    end
+
+    def destroy_config
+      config = ModelConfig.find(params[:id])
+      config.destroy!
+      head :no_content
+    rescue ActiveRecord::RecordNotDestroyed => e
+      render json: {errors: [e.message]}, status: :unprocessable_entity
+    end
+
     private
 
     def config_params
       params.require(:model_config).permit(:enabled, :max_usage_percent, :cost_in, :cost_out, :model_card)
+    end
+
+    def create_config_params
+      params.require(:model_config).permit(:model_key, :model_card, :enabled, :max_usage_percent, :cost_in, :cost_out)
     end
 
     def preference_params

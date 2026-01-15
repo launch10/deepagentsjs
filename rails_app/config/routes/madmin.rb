@@ -2,7 +2,9 @@ namespace :madmin, path: :admin do
   # Unified model configuration page
   resources :models, only: [:index] do
     collection do
+      post "configs", to: "models#create_config", as: :create_config
       patch "configs/:id", to: "models#update_config", as: :config
+      delete "configs/:id", to: "models#destroy_config", as: :destroy_config
       patch "preferences/:id", to: "models#update_preference", as: :preference
     end
   end
