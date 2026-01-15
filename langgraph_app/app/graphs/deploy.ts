@@ -159,8 +159,8 @@ export const deployGraph = new StateGraph(DeployAnnotation)
       return "checkGoogleConnect";
     }
 
-    // Website-only deploy: skip to validation
-    return "enqueueValidateLinks";
+    // Website-only deploy: start with analytics
+    return "enqueueAnalytics";
   })
 
   // Routing node for Google Connect
@@ -180,11 +180,19 @@ export const deployGraph = new StateGraph(DeployAnnotation)
   // Google Verify Flow [campaign]
   // --------------------------------------------------------------------------
   .addConditionalEdges("checkGoogleVerify", shouldSkipGoogleVerify, {
-    skipGoogleVerify: "enqueueValidateLinks", // Proceed to website validation
+    skipGoogleVerify: "enqueueAnalytics", // Proceed to analytics
     enqueueGoogleVerify: "enqueueGoogleVerify",
   })
   .addEdge("enqueueGoogleVerify", "verifyGoogle")
-  .addEdge("verifyGoogle", "enqueueValidateLinks")
+  .addEdge("verifyGoogle", "enqueueAnalytics")
+
+  // --------------------------------------------------------------------------
+  // Website Preparation [all] (analytics → seo → validation → deploy)
+  // --------------------------------------------------------------------------
+  .addEdge("enqueueAnalytics", "analytics")
+  .addEdge("analytics", "enqueueSEOOptimization")
+  .addEdge("enqueueSEOOptimization", "seoOptimization")
+  .addEdge("seoOptimization", "enqueueValidateLinks")
 
   // --------------------------------------------------------------------------
   // Website Validation Flow [all] (validate → runtime → bugfix loop)
@@ -202,11 +210,11 @@ export const deployGraph = new StateGraph(DeployAnnotation)
 
   .addEdge("enqueueRuntimeValidation", "runtimeValidation")
 
-  // Runtime validation routing: pass → analytics, fail → bugfix (with retry limit)
+  // Runtime validation routing: pass → deploy, fail → bugfix (with retry limit)
   .addConditionalEdges("runtimeValidation", (state: DeployGraphState) => {
     const task = Task.findTask(state.tasks, "RuntimeValidation");
     if (task?.status === "completed") {
-      return "enqueueAnalytics";
+      return "enqueueDeploy";
     }
     const retryCount = task?.retryCount || 0;
     if (retryCount >= MAX_RETRY_COUNT) {
@@ -220,12 +228,8 @@ export const deployGraph = new StateGraph(DeployAnnotation)
   .addEdge("bugFix", "validateLinks")
 
   // --------------------------------------------------------------------------
-  // Website Preparation [all]
+  // Website Deploy [all]
   // --------------------------------------------------------------------------
-  .addEdge("enqueueAnalytics", "analytics")
-  .addEdge("analytics", "enqueueSEOOptimization")
-  .addEdge("enqueueSEOOptimization", "seoOptimization")
-  .addEdge("seoOptimization", "enqueueDeploy")
   .addEdge("enqueueDeploy", "deployWebsite")
 
   // --------------------------------------------------------------------------
