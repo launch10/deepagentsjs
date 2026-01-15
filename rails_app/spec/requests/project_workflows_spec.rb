@@ -240,7 +240,7 @@ RSpec.describe "Project Workflows API", type: :request do
         let(:id) { workflow1_owned.id }
 
         before do
-          workflow1_owned.update(step: "launch", substep: "deployment")
+          workflow1_owned.update(step: "deploy", substep: nil)
         end
 
         run_test! do |response|
@@ -248,7 +248,7 @@ RSpec.describe "Project Workflows API", type: :request do
           expect(data["errors"]).to include("Already at final step")
 
           workflow1_owned.reload
-          expect(workflow1_owned.step).to eq("launch")
+          expect(workflow1_owned.step).to eq("deploy")
         end
       end
 

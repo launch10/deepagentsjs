@@ -18,10 +18,18 @@ RSpec.describe Users::OmniauthCallbacksController, type: :controller do
         auth: { "info" => { "email" => "test@gmail.com" } })
     end
 
-    context "when thread_id is present in session" do
+    context "when active deploy with pending job run exists" do
+      let(:project) { create(:project, account: account) }
+      let!(:deploy) do
+        create(:deploy,
+          project: project,
+          status: "running",
+          user_active_at: 1.minute.ago)
+      end
       let!(:job_run) do
         create(:job_run,
           account: account,
+          deploy: deploy,
           job_class: "GoogleOAuthConnect",
           status: "running",
           langgraph_thread_id: "thread_123")
@@ -29,7 +37,6 @@ RSpec.describe Users::OmniauthCallbacksController, type: :controller do
 
       before do
         sign_in user
-        session[:langgraph_thread_id] = "thread_123"
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")
       end
@@ -51,17 +58,9 @@ RSpec.describe Users::OmniauthCallbacksController, type: :controller do
         expect(job_run.status).to eq("completed")
         expect(job_run.result_data).to eq({ "google_email" => "test@gmail.com" })
       end
-
-      it "removes thread_id from session" do
-        allow(LanggraphCallbackWorker).to receive(:perform_async)
-
-        controller.send(:google_oauth2_connected, connected_account)
-
-        expect(session[:langgraph_thread_id]).to be_nil
-      end
     end
 
-    context "when thread_id is not present in session" do
+    context "when no active deploy exists" do
       let!(:job_run) do
         create(:job_run,
           account: account,
@@ -72,31 +71,27 @@ RSpec.describe Users::OmniauthCallbacksController, type: :controller do
 
       before do
         sign_in user
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")
       end
 
-      it "does not complete any job run" do
-        expect(LanggraphCallbackWorker).not_to receive(:perform_async)
+      it "falls back to account-level job run lookup and completes it" do
+        expect(LanggraphCallbackWorker).to receive(:perform_async)
 
         controller.send(:google_oauth2_connected, connected_account)
 
         job_run.reload
-        expect(job_run.status).to eq("running")
+        expect(job_run.status).to eq("completed")
       end
     end
 
     context "when no matching job run exists" do
       before do
         sign_in user
-        session[:langgraph_thread_id] = "thread_nonexistent"
       end
 
       it "does not raise an error" do
         expect { controller.send(:google_oauth2_connected, connected_account) }.not_to raise_error
-      end
-
-      it "removes thread_id from session" do
-        controller.send(:google_oauth2_connected, connected_account)
-        expect(session[:langgraph_thread_id]).to be_nil
       end
     end
 
@@ -111,7 +106,6 @@ RSpec.describe Users::OmniauthCallbacksController, type: :controller do
 
       before do
         sign_in user
-        session[:langgraph_thread_id] = "thread_123"
       end
 
       it "does not update the already completed job run" do
@@ -135,7 +129,6 @@ RSpec.describe Users::OmniauthCallbacksController, type: :controller do
 
       before do
         sign_in user
-        session[:langgraph_thread_id] = "thread_123"
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")
       end
@@ -158,17 +151,11 @@ RSpec.describe Users::OmniauthCallbacksController, type: :controller do
 
       before do
         sign_in user
-        session[:langgraph_thread_id] = "thread_123"
         allow(orphan_user).to receive(:owned_account).and_return(nil)
       end
 
       it "does not raise an error" do
         expect { controller.send(:google_oauth2_connected, orphan_connected_account) }.not_to raise_error
-      end
-
-      it "removes thread_id from session" do
-        controller.send(:google_oauth2_connected, orphan_connected_account)
-        expect(session[:langgraph_thread_id]).to be_nil
       end
     end
   end

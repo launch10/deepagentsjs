@@ -39,7 +39,7 @@ RSpec.describe GoogleAds::SendInviteWorker, type: :worker do
         allow(job_run).to receive(:start!)
 
         expect(account).to receive(:create_ads_account!).with(platform: "google")
-        expect(GoogleAds::PollInviteAcceptanceWorker).to receive(:perform_in).with(30.seconds, job_run.id, attempts: 0)
+        expect(GoogleAds::PollInviteAcceptanceWorker).to receive(:perform_async).with(job_run.id)
 
         described_class.new.perform(job_run.id)
       end
@@ -56,7 +56,7 @@ RSpec.describe GoogleAds::SendInviteWorker, type: :worker do
 
       it "syncs the ads_account before sending invite" do
         expect_any_instance_of(AdsAccount).to receive(:google_sync)
-        expect(GoogleAds::PollInviteAcceptanceWorker).to receive(:perform_in)
+        expect(GoogleAds::PollInviteAcceptanceWorker).to receive(:perform_async)
 
         described_class.new.perform(job_run.id)
       end
@@ -71,7 +71,7 @@ RSpec.describe GoogleAds::SendInviteWorker, type: :worker do
       end
 
       it "marks the job_run as running" do
-        expect(GoogleAds::PollInviteAcceptanceWorker).to receive(:perform_in)
+        expect(GoogleAds::PollInviteAcceptanceWorker).to receive(:perform_async)
 
         described_class.new.perform(job_run.id)
 
@@ -82,14 +82,14 @@ RSpec.describe GoogleAds::SendInviteWorker, type: :worker do
 
       it "sends the Google Ads invitation email" do
         expect_any_instance_of(AdsAccount).to receive(:send_google_ads_invitation_email)
-        expect(GoogleAds::PollInviteAcceptanceWorker).to receive(:perform_in)
+        expect(GoogleAds::PollInviteAcceptanceWorker).to receive(:perform_async)
 
         described_class.new.perform(job_run.id)
       end
 
-      it "enqueues the poll worker for 30 seconds later" do
-        expect(GoogleAds::PollInviteAcceptanceWorker).to receive(:perform_in)
-          .with(30.seconds, job_run.id, attempts: 0)
+      it "enqueues the poll worker immediately" do
+        expect(GoogleAds::PollInviteAcceptanceWorker).to receive(:perform_async)
+          .with(job_run.id)
 
         described_class.new.perform(job_run.id)
       end

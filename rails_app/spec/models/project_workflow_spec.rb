@@ -84,16 +84,8 @@ RSpec.describe ProjectWorkflow, type: :model do
       expect(workflow.reload.substep).to eq("review")
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("launch")
-      expect(workflow.reload.substep).to eq("settings")
-
-      workflow.next_step!
-      expect(workflow.reload.step).to eq("launch")
-      expect(workflow.reload.substep).to eq("review")
-
-      workflow.next_step!
-      expect(workflow.reload.step).to eq("launch")
-      expect(workflow.reload.substep).to eq("deployment")
+      expect(workflow.reload.step).to eq("deploy")
+      expect(workflow.reload.substep).to be_nil
 
       workflow.next_step!
       expect(workflow.reload).to be_completed
@@ -180,15 +172,15 @@ RSpec.describe ProjectWorkflow, type: :model do
       end
 
       it "returns the next step from ad_campaign" do
-        workflow.update(step: "ad_campaign", substep: "launch")
-        expect(WorkflowConfig.next_step("launch", "ad_campaign")).to eq("launch")
+        workflow.update(step: "ad_campaign", substep: "review")
+        expect(WorkflowConfig.next_step("launch", "ad_campaign")).to eq("deploy")
       end
     end
 
     context "when at the last step" do
       it "returns nil when at the final step" do
-        workflow.update(step: "launch", substep: "deployment")
-        expect(WorkflowConfig.next_step("launch", "launch")).to be_nil
+        workflow.update(step: "deploy", substep: nil)
+        expect(WorkflowConfig.next_step("launch", "deploy")).to be_nil
       end
     end
 
@@ -198,9 +190,9 @@ RSpec.describe ProjectWorkflow, type: :model do
         expect(substeps).to eq(["content", "highlights", "keywords", "settings", "launch", "review"])
       end
 
-      it "returns all substeps for launch step" do
-        substeps = WorkflowConfig.substeps_for("launch", "launch")
-        expect(substeps).to eq(["settings", "review", "deployment"])
+      it "returns empty array for deploy step" do
+        substeps = WorkflowConfig.substeps_for("launch", "deploy")
+        expect(substeps).to eq([])
       end
 
       it "returns empty array for steps without substeps" do
@@ -244,7 +236,7 @@ RSpec.describe ProjectWorkflow, type: :model do
     it "includes available steps" do
       json = workflow.as_json
 
-      expect(json[:available_steps]).to eq(%w[brainstorm website ad_campaign launch])
+      expect(json[:available_steps]).to eq(%w[brainstorm website ad_campaign deploy])
     end
   end
 
@@ -268,7 +260,7 @@ RSpec.describe ProjectWorkflow, type: :model do
       workflow.update(step: "ad_campaign")
       expect(workflow.send(:calculate_progress)).to eq(50)
 
-      workflow.update(step: "launch")
+      workflow.update(step: "deploy")
       expect(workflow.send(:calculate_progress)).to eq(75)
     end
   end
