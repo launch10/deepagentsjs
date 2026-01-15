@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { WebsiteGraphState } from "@annotation";
 import { MemorySaver } from "@langchain/langgraph";
 import { testGraph } from "@support";
 import { deployGraph as uncompiledGraph } from "@graphs";
@@ -40,6 +41,16 @@ const mockGoogleAPIService = vi.mocked(GoogleAPIService);
 const mockJobRunAPIService = vi.mocked(JobRunAPIService);
 
 const deployGraph = uncompiledGraph.compile({ ...graphParams, name: "deploy" });
+
+// Clean up test files after each test
+const TEST_WEBSITE_ID = 1;
+afterEach(async () => {
+  const backend = await getCodingAgentBackend({
+    websiteId: TEST_WEBSITE_ID,
+    jwt: "test-jwt",
+  } as WebsiteGraphState);
+  await backend.cleanup();
+});
 
 /**
  * =============================================================================
