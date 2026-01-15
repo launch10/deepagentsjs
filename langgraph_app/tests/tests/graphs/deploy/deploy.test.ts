@@ -81,7 +81,7 @@ describe.skip("Deploy Graph", () => {
 
       expect(result.state.status).toBe("pending");
       expect(result.state.tasks).toHaveLength(1);
-      expect(result.state.tasks[0]!.name).toBe("LaunchingCampaign");
+      expect(result.state.tasks[0]!.name).toBe("DeployingCampaign");
       expect(result.state.tasks[0]!.status).toBe("pending");
       expect(result.state.tasks[0]!.jobId).toBe(123);
     });
@@ -90,7 +90,7 @@ describe.skip("Deploy Graph", () => {
   describe("When task is pending/running (waiting for webhook)", () => {
     it("returns no-op when task is pending", async () => {
       const existingTask: Deploy.Task = {
-        ...Deploy.createTask("LaunchingCampaign", 123),
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "pending",
       };
 
@@ -113,7 +113,7 @@ describe.skip("Deploy Graph", () => {
 
     it("returns no-op when task is running but no result yet", async () => {
       const existingTask: Deploy.Task = {
-        ...Deploy.createTask("LaunchingCampaign", 123),
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "running",
       };
 
@@ -137,7 +137,7 @@ describe.skip("Deploy Graph", () => {
   describe("When webhook delivers result", () => {
     it("processes completed result and marks task as completed", async () => {
       const taskWithResult: Deploy.Task = {
-        ...Deploy.createTask("LaunchingCampaign", 123),
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "running",
         result: {
           campaign_id: 456,
@@ -169,7 +169,7 @@ describe.skip("Deploy Graph", () => {
 
     it("processes failed result and marks task as failed", async () => {
       const taskWithError: Deploy.Task = {
-        ...Deploy.createTask("LaunchingCampaign", 123),
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "running",
         error: "API rate limit exceeded",
       };
@@ -198,7 +198,7 @@ describe.skip("Deploy Graph", () => {
   describe("Idempotency (already completed/failed)", () => {
     it("returns no-op when task is already completed", async () => {
       const completedTask: Deploy.Task = {
-        ...Deploy.createTask("LaunchingCampaign", 123),
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "completed",
       };
 
@@ -221,7 +221,7 @@ describe.skip("Deploy Graph", () => {
 
     it("returns no-op when task is already failed", async () => {
       const failedTask: Deploy.Task = {
-        ...Deploy.createTask("LaunchingCampaign", 123),
+        ...Deploy.createTask("DeployingCampaign", 123),
         status: "failed",
         error: "Some error",
       };
@@ -310,7 +310,7 @@ describe.skip("Deploy Graph", () => {
 
       expect(firstResult.status).toBe("pending");
       expect(firstResult.tasks).toHaveLength(1);
-      expect(firstResult.tasks[0]!.name).toBe("LaunchingCampaign");
+      expect(firstResult.tasks[0]!.name).toBe("DeployingCampaign");
       expect(firstResult.tasks[0]!.status).toBe("pending");
       expect(firstResult.tasks[0]!.jobId).toBe(123);
 

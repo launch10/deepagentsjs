@@ -54,7 +54,7 @@ Already exists:
 
 ✅ Favicon generation for is_logo: true uploads (32x32 ICO via CarrierWave)
 ✅ Query APIs for logos (findLogos(), is_logo filter)
-✅ Coding agent pattern in instrumentationNode
+✅ Coding agent pattern in analyticsNode
 ✅ Placeholder OG tags in template
 
 Verification

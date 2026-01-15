@@ -8,7 +8,7 @@ import { Deploy } from "@types";
 import { graphParams } from "@core";
 import { DatabaseSnapshotter } from "@rails_api";
 import { websiteFiles, and, eq, db } from "@db";
-import { getCodingAgentBackend } from "@nodes";
+import { getCodingAgentBackend, analyticsNode } from "@nodes";
 
 const deployWebsiteGraph = uncompiledGraph.compile({ ...graphParams, name: "deployWebsite" });
 
@@ -222,6 +222,98 @@ describe("SEO Optimization - Meta Tags Generation", () => {
     if (seoTask?.status === "failed" && seoTask.error) {
       console.log("SEO task error:", seoTask.error);
     }
+  });
+});
+
+/**
+ * =============================================================================
+ * INSTRUMENTATION TESTS
+ * =============================================================================
+ * These tests verify the instrumentation node properly adds L10.createLead()
+ * to landing pages for lead capture tracking.
+ *
+ * USER OUTCOME: Lead capture works correctly after deployment because
+ * instrumentation adds the necessary L10.createLead() calls.
+ */
+describe("AddingAnalytics - Lead capture setup", () => {
+  beforeEach(async () => {
+    // Use a snapshot that doesn't have analytics
+    await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+  });
+
+  it.only("adds L10.createLead() instrumentation to landing pages", async () => {
+    // Verify the actual USER OUTCOME: L10.createLead is now in the codebase
+    // Check all website files for the instrumentation
+    const filesBeforeRunning = await db
+      .select()
+      .from(websiteFiles)
+      .where(eq(websiteFiles.websiteId, 1))
+      .execute();
+
+    // At least one file should contain L10.createLead for lead capture
+    const hasAnalyticsBeforeRunning = filesBeforeRunning.some(
+      (file) => file.content?.includes("L10.createLead") || file.content?.includes("createLead")
+    );
+
+    expect(hasAnalyticsBeforeRunning).toBe(false);
+
+    // Run just the analytics node in isolation - no need to run the full graph
+    const result = await testGraph<DeployGraphState>()
+      .withState({
+        jwt: "test-jwt",
+        threadId: "thread_123" as ThreadIDType,
+        websiteId: 1,
+        deploy: { website: true },
+        tasks: [Deploy.createTask("AddingAnalytics")],
+      })
+      .runNode(analyticsNode)
+      .execute();
+
+    // Verify the instrumentation task completed
+    const analyticsTask = result.state.tasks.find((t) => t.name === "AddingAnalytics");
+    expect(analyticsTask).toBeDefined();
+    expect(analyticsTask?.status).toBe("completed");
+
+    // Verify the actual USER OUTCOME: L10.createLead is now in the codebase
+    // Check all website files for the instrumentation
+    const allFiles = await db
+      .select()
+      .from(websiteFiles)
+      .where(eq(websiteFiles.websiteId, 1))
+      .execute();
+
+    // At least one file should contain L10.createLead for lead capture
+    const hasAddingAnalytics = allFiles.some(
+      (file) => file.content?.includes("L10.createLead") || file.content?.includes("createLead")
+    );
+
+    expect(hasAddingAnalytics).toBe(true);
+
+    // Cleanup the coding agent backend
+    const backend = await getCodingAgentBackend({
+      websiteId: 1,
+      jwt: "test-jwt",
+    } as any);
+    await backend.cleanup();
+  });
+
+  it("marks instrumentation task as completed when already instrumented", async () => {
+    // When a website already has instrumentation, the node should just confirm
+    const result = await testGraph<DeployGraphState>()
+      .withGraph(deployWebsiteGraph)
+      .withState({
+        jwt: "test-jwt",
+        threadId: "thread_123" as ThreadIDType,
+        websiteId: 1,
+        deploy: { website: true },
+        tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
+      })
+      .stopAfter("runtimeValidation")
+      .execute();
+
+    // Should proceed without re-running instrumentation
+    const instrumentationTask = result.state.tasks.find((t) => t.name === "AddingAnalytics");
+    expect(instrumentationTask?.status).toBe("completed");
   });
 });
 
@@ -511,7 +603,7 @@ describe("Phase Computation", () => {
   });
 });
 
-describe.skip("DeployWebsiteGraph", () => {
+describe("DeployWebsiteGraph", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -590,83 +682,6 @@ describe.skip("DeployWebsiteGraph", () => {
       // Should exit without modifying - waiting for webhook
       expect(result.state.tasks).toHaveLength(1);
       expect(result.state.tasks[0]!.status).toBe("running");
-    });
-  });
-
-  /**
-   * =============================================================================
-   * INSTRUMENTATION TESTS
-   * =============================================================================
-   * These tests verify the instrumentation node properly adds L10.createLead()
-   * to landing pages for lead capture tracking.
-   *
-   * USER OUTCOME: Lead capture works correctly after deployment because
-   * instrumentation adds the necessary L10.createLead() calls.
-   */
-  describe("AddingAnalytics - Lead capture setup", () => {
-    // TODO: These tests hit real AI APIs - need recorded responses
-    it("adds L10.createLead() instrumentation to landing pages", async () => {
-      // Use a snapshot that has a website without instrumentation
-      await DatabaseSnapshotter.restoreSnapshot("website_with_import_errors");
-
-      console.log(`running graph`);
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployWebsiteGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          websiteId: 1,
-          deploy: { website: true },
-          tasks: [],
-        })
-        .stopAfter("instrumentation")
-        .execute();
-
-      // Verify the instrumentation task completed
-      const instrumentationTask = result.state.tasks.find((t) => t.name === "AddingAnalytics");
-      expect(instrumentationTask).toBeDefined();
-      expect(instrumentationTask?.status).toBe("completed");
-
-      // Verify the actual USER OUTCOME: L10.createLead is now in the codebase
-      // Check all website files for the instrumentation
-      const allFiles = await db
-        .select()
-        .from(websiteFiles)
-        .where(eq(websiteFiles.websiteId, 1))
-        .execute();
-
-      // At least one file should contain L10.createLead for lead capture
-      const hasAddingAnalytics = allFiles.some(
-        (file) => file.content?.includes("L10.createLead") || file.content?.includes("createLead")
-      );
-
-      expect(hasAddingAnalytics).toBe(true);
-
-      // Cleanup the coding agent backend
-      const backend = await getCodingAgentBackend({
-        websiteId: 1,
-        jwt: "test-jwt",
-      } as any);
-      await backend.cleanup();
-    });
-
-    it("marks instrumentation task as completed when already instrumented", async () => {
-      // When a website already has instrumentation, the node should just confirm
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployWebsiteGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          websiteId: 1,
-          deploy: { website: true },
-          tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
-        })
-        .stopAfter("runtimeValidation")
-        .execute();
-
-      // Should proceed without re-running instrumentation
-      const instrumentationTask = result.state.tasks.find((t) => t.name === "AddingAnalytics");
-      expect(instrumentationTask?.status).toBe("completed");
     });
   });
 

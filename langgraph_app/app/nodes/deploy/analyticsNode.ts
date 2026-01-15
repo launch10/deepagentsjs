@@ -39,7 +39,7 @@ const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunna
  * Does NOT inject code - the coding agent is responsible for using the correct patterns.
  * This node just verifies compliance before deploy.
  */
-export const instrumentationNode = NodeMiddleware.use(
+export const analyticsNode = NodeMiddleware.use(
   {},
   async (
     state: DeployGraphState,
@@ -65,14 +65,24 @@ export const instrumentationNode = NodeMiddleware.use(
         },
         systemPrompt
       );
-      const result = await agent.invoke({
-        messages: [
-          {
-            role: "user",
-            content: `Verify that the landing page uses L10.createLead() for lead capture.`,
-          },
-        ],
-      });
+      const result = await agent.invoke(
+        {
+          messages: [
+            {
+              role: "user",
+              content: `Verify that the landing page uses L10.createLead() for lead capture. 
+            1. First, query all available components
+            2. Then, narrow down to files likely to require instrumentation (e.g. Hero, Pricing, CTA)
+            3. Check these components, and add instrumentation if necessary
+            `,
+            },
+          ],
+        },
+        {
+          ...config,
+          recursionLimit: 75,
+        }
+      );
       return {
         tasks: [
           {

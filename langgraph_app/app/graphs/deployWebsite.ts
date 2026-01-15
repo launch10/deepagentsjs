@@ -1,7 +1,7 @@
 import { StateGraph, END, START, type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import {
-  instrumentationNode,
+  analyticsNode,
   seoOptimizationNode,
   deployWebsiteNode,
   runtimeValidationNode,
@@ -18,7 +18,7 @@ const MAX_RETRY_COUNT = 2;
  *
  * Orchestrates website deployment to Cloudflare.
  *
- * 1) Ensure instrumentation is up to date
+ * 1) Ensure analytics is up to date
  * 2) Optimize SEO meta tags
  * 3) Validate links (static analysis)
  * 4) Validate website (runtime with Playwright)
@@ -27,7 +27,7 @@ const MAX_RETRY_COUNT = 2;
  */
 export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
   // Enqueue nodes (lightweight, checkpoint state before work)
-  .addNode("enqueueInstrumentation", createEnqueueNode("AddingAnalytics"))
+  .addNode("enqueueAnalytics", createEnqueueNode("AddingAnalytics"))
   .addNode("enqueueSEOOptimization", createEnqueueNode("OptimizingSEO"))
   .addNode("enqueueValidateLinks", createEnqueueNode("ValidateLinks"))
   .addNode("enqueueRuntimeValidation", createEnqueueNode("RuntimeValidation"))
@@ -35,25 +35,27 @@ export const deployWebsiteGraph = new StateGraph(DeployAnnotation)
   .addNode("enqueueDeploy", createEnqueueNode("DeployingWebsite"))
 
   // Work nodes
-  .addNode("instrumentation", instrumentationNode)
+  .addNode("analytics", analyticsNode)
   .addNode("seoOptimization", seoOptimizationNode)
   .addNode("validateLinks", validateLinksNode)
   .addNode("runtimeValidation", runtimeValidationNode)
   .addNode("bugFixNode", bugFixNode)
   .addNode("deployWebsite", deployWebsiteNode)
 
-  // START → enqueue → work
+  // START → enqueue → work (analytics and SEO run in parallel)
   .addConditionalEdges(START, (state) => {
     const websiteDeployTask = Task.findTask(state.tasks, "DeployingWebsite");
     // If we've created the website deploy task AT ALL, that means we're already in progress or finished
     if (websiteDeployTask) {
-      return END;
+      return [];
     }
-    return "enqueueInstrumentation";
+    // Run analytics and SEO optimization in parallel
+    return ["enqueueAnalytics", "enqueueSEOOptimization"];
   })
-  .addEdge("enqueueInstrumentation", "instrumentation")
-  .addEdge("instrumentation", "enqueueSEOOptimization")
+  .addEdge("enqueueAnalytics", "analytics")
   .addEdge("enqueueSEOOptimization", "seoOptimization")
+  // Both parallel branches converge on validateLinks
+  .addEdge("analytics", "enqueueValidateLinks")
   .addEdge("seoOptimization", "enqueueValidateLinks")
   .addEdge("enqueueValidateLinks", "validateLinks")
 

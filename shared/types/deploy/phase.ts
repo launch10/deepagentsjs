@@ -32,7 +32,7 @@ export const PhaseNames = [
   "CheckingBilling",
 
   // Campaign deployment (1:1)
-  "LaunchingCampaign",
+  "DeployingCampaign",
 ] as const;
 export type PhaseName = (typeof PhaseNames)[number];
 
@@ -45,7 +45,7 @@ export const PhaseDescriptionMap: Record<PhaseName, string> = {
   ConnectingGoogle: "Signing into Google",
   VerifyingGoogle: "Verifying Google Account",
   CheckingBilling: "Checking Payment Status",
-  LaunchingCampaign: "Syncing Campaign",
+  DeployingCampaign: "Syncing Campaign",
 } as const;
 
 /**
@@ -63,7 +63,7 @@ export const PhaseTaskMap: Record<PhaseName, TaskName[]> = {
   ConnectingGoogle: ["ConnectingGoogle"],
   VerifyingGoogle: ["VerifyingGoogle"],
   CheckingBilling: ["CheckingBilling"],
-  LaunchingCampaign: ["LaunchingCampaign"],
+  DeployingCampaign: ["DeployingCampaign"],
   // Merged phase: two tasks combine into one phase
   CheckingForBugs: ["ValidateLinks", "RuntimeValidation"],
 } as const;

@@ -3,11 +3,13 @@
 ## Core Principle
 
 **LangGraph = Orchestrators (Smart)**
+
 - Handle semantic understanding, decision-making, validation
 - Invoke Rails jobs and wait for completion
 - Retry on failure with intelligent fixes
 
 **Rails = Workers (Dumb)**
+
 - Execute jobs: build, upload, sync
 - No decision-making, just execution
 - Report success/failure back to LangGraph
@@ -34,7 +36,7 @@
 │  Boolean flags: deployWebsite, deployGoogleAds              │
 │                                                             │
 │  Nodes:                                                     │
-│  ├── instrumentationNode (if deployWebsite)                 │
+│  ├── analyticsNode (if deployWebsite)                 │
 │  ├── deployWebsiteNode (if deployWebsite)                   │
 │  ├── runtimeValidationNode (if deployWebsite)               │
 │  ├── fixWithCodingAgentNode (on validation failure)         │
@@ -49,15 +51,18 @@
 **Location:** `langgraph_app/app/graphs/codingAgent.ts`
 
 **Responsibilities:**
+
 - Load context (images, theme, icons, signup_token)
 - Generate landing page code
 - Layer 1 validation (static, in-loop)
 - Does NOT think about analytics/tracking
 
 **Tools:**
+
 - SearchIconsTool (Lucide icon semantic search)
 
 **Validation:**
+
 - Layer 1: Static checks (TypeScript, links, imports)
 - Retry loop with max 2 retries
 
@@ -70,22 +75,24 @@
 **Location:** `langgraph_app/app/graphs/deploy.ts`
 
 **State Flags:**
+
 ```typescript
-deployWebsite: boolean    // default: true
-deployGoogleAds: boolean  // default: false
+deployWebsite: boolean; // default: true
+deployGoogleAds: boolean; // default: false
 ```
 
 **Flow:**
+
 ```
 START
     ↓
-instrumentationNode (if deployWebsite)
+analyticsNode (if deployWebsite)
     ↓
 deployWebsiteNode (if deployWebsite)
     ↓
 runtimeValidationNode (if deployWebsite)
     ↓  (if errors && retryCount < 2)
-    └──→ fixWithCodingAgentNode → instrumentationNode
+    └──→ fixWithCodingAgentNode → analyticsNode
     ↓
 deployCampaignNode (if deployGoogleAds)
     ↓
@@ -93,7 +100,8 @@ END
 ```
 
 **Responsibilities:**
-1. **instrumentationNode** - Pre-deploy instrumentation (LLM semantic analysis)
+
+1. **analyticsNode** - Pre-deploy instrumentation (LLM semantic analysis)
    - Inject L10_CONFIG, VITE_SIGNUP_TOKEN, gtag
    - Add L10.conversion() calls to forms
 2. **deployWebsiteNode** - Invoke WebsiteDeploy Rails job
@@ -102,11 +110,13 @@ END
 5. **deployCampaignNode** - Invoke CampaignDeploy Rails job
 
 **Invokes:**
+
 - `WebsiteDeploy` Rails job (build, upload)
 - `CampaignDeploy` Rails job (sync to Google Ads API)
 - `codingAgentGraph` for fixes
 
 **Validation:**
+
 - Layer 2: Runtime checks via Playwright
 - Fix loop with max 2 retries
 
@@ -121,6 +131,7 @@ END
 **Concerns:** `Buildable`, `Deployable`
 
 **Does:**
+
 - `pnpm build`
 - Upload to R2
 - Hotswap to live
@@ -134,6 +145,7 @@ END
 **Location:** `rails_app/app/models/campaign_deploy.rb`
 
 **Steps:**
+
 - sync_budget
 - create_campaign
 - create_geo_targeting
@@ -175,7 +187,7 @@ User Request
 │                      deployGraph                            │
 │            (deployWebsite: true, deployGoogleAds: ?)        │
 │                                                             │
-│  1. instrumentationNode                                     │
+│  1. analyticsNode                                     │
 │     - Inject L10_CONFIG, VITE_SIGNUP_TOKEN, gtag            │
 │     - Add L10.conversion() to forms                         │
 │  2. deployWebsiteNode                                       │
@@ -206,7 +218,7 @@ fixWithCodingAgentNode invokes codingAgentGraph with error context
     ↓
 codingAgentGraph fixes the code
     ↓
-deployGraph retries from instrumentationNode
+deployGraph retries from analyticsNode
 ```
 
 This pattern follows the principle: **LangGraph orchestrates, Rails executes.**

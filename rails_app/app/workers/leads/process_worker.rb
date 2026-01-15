@@ -10,26 +10,30 @@ module Leads
       [1, 5, 30, 120, 300][count] || 300
     end
 
-    def perform(account_id, website_id, email, name = nil, visit_id = nil, visitor_token = nil, gclid = nil, conversion_value = nil, conversion_currency = nil,
-      utm_source = nil, utm_medium = nil, utm_campaign = nil, utm_content = nil, utm_term = nil)
+    # Options hash keys:
+    #   email (required), name, visit_id, visitor_token, gclid,
+    #   conversion_value, conversion_currency,
+    #   utm_source, utm_medium, utm_campaign, utm_content, utm_term
+    def perform(account_id, website_id, options = {})
+      options = options.symbolize_keys
       account = Account.find(account_id)
       website = Website.find(website_id)
-      visit = visit_id.present? ? Ahoy::Visit.find_by(id: visit_id) : nil
+      visit = options[:visit_id].present? ? Ahoy::Visit.find_by(id: options[:visit_id]) : nil
 
       ActiveRecord::Base.transaction do
         result = Lead.find_or_create_for_signup(
           account: account,
           website: website,
-          email: email,
-          name: name,
+          email: options[:email],
+          name: options[:name],
           visit: visit,
-          visitor_token: visitor_token,
-          gclid: gclid,
-          utm_source: utm_source,
-          utm_medium: utm_medium,
-          utm_campaign: utm_campaign,
-          utm_content: utm_content,
-          utm_term: utm_term
+          visitor_token: options[:visitor_token],
+          gclid: options[:gclid],
+          utm_source: options[:utm_source],
+          utm_medium: options[:utm_medium],
+          utm_campaign: options[:utm_campaign],
+          utm_content: options[:utm_content],
+          utm_term: options[:utm_term]
         )
 
         # Create conversion event in Ahoy for analytics (only for new conversions)
@@ -40,9 +44,9 @@ module Leads
           }
 
           # Include value and currency if provided
-          if conversion_value.present?
-            properties[:value] = conversion_value
-            properties[:currency] = conversion_currency.presence || "USD"
+          if options[:conversion_value].present?
+            properties[:value] = options[:conversion_value]
+            properties[:currency] = options[:conversion_currency].presence || "USD"
           end
 
           visit.events.create!(

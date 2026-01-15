@@ -43,8 +43,8 @@ describe("DeployCampaignGraph - Skippable Tasks", () => {
       const googleConnectTask = result.state.tasks.find((t) => t.name === "ConnectingGoogle");
       expect(googleConnectTask).toBeUndefined();
 
-      // Should have LaunchingCampaign task (went straight to deploy)
-      const deployTask = result.state.tasks.find((t) => t.name === "LaunchingCampaign");
+      // Should have DeployingCampaign task (went straight to deploy)
+      const deployTask = result.state.tasks.find((t) => t.name === "DeployingCampaign");
       expect(deployTask).toBeDefined();
       expect(deployTask?.status).toBe("running");
     });
@@ -84,9 +84,9 @@ describe("DeployCampaignGraph - Skippable Tasks", () => {
         .stopAfter("enqueueDeployCampaign")
         .execute();
 
-      // Should have both ConnectingGoogle and LaunchingCampaign tasks
+      // Should have both ConnectingGoogle and DeployingCampaign tasks
       const googleTask = result.state.tasks.find((t) => t.name === "ConnectingGoogle");
-      const deployTask = result.state.tasks.find((t) => t.name === "LaunchingCampaign");
+      const deployTask = result.state.tasks.find((t) => t.name === "DeployingCampaign");
 
       expect(googleTask?.status).toBe("completed");
       expect(deployTask?.status).toBe("running");
@@ -147,8 +147,8 @@ describe("DeployCampaignGraph - Skippable Tasks", () => {
         expect(googlePhase.progress).toBe(0);
       }
 
-      // LaunchingCampaign phase should be running
-      const deployPhase = result.state.phases.find((p) => p.name === "LaunchingCampaign");
+      // DeployingCampaign phase should be running
+      const deployPhase = result.state.phases.find((p) => p.name === "DeployingCampaign");
       expect(deployPhase?.status).toBe("running");
     });
   });

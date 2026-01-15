@@ -33,18 +33,20 @@ class API::V1::LeadsController < ActionController::API
     Leads::ProcessWorker.perform_async(
       account.id,
       website.id,
-      email,
-      lead_params[:name],
-      visit&.id,
-      params[:visitor_token],
-      params[:gclid],
-      params[:conversion_value]&.to_f,
-      params[:conversion_currency],
-      params[:utm_source],
-      params[:utm_medium],
-      params[:utm_campaign],
-      params[:utm_content],
-      params[:utm_term]
+      {
+        email: email,
+        name: lead_params[:name],
+        visit_id: visit&.id,
+        visitor_token: params[:visitor_token],
+        gclid: params[:gclid],
+        conversion_value: params[:conversion_value]&.to_f,
+        conversion_currency: params[:conversion_currency],
+        utm_source: params[:utm_source],
+        utm_medium: params[:utm_medium],
+        utm_campaign: params[:utm_campaign],
+        utm_content: params[:utm_content],
+        utm_term: params[:utm_term]
+      }.compact
     )
 
     # Return immediately - processing happens in background

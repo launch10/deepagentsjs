@@ -29,7 +29,7 @@ export const deployCampaignGraph = new StateGraph(DeployAnnotation)
   .addNode("googleConnect", googleConnectNode)
 
   // Campaign deploy nodes
-  .addNode("enqueueDeployCampaign", createEnqueueNode("LaunchingCampaign"))
+  .addNode("enqueueDeployCampaign", createEnqueueNode("DeployingCampaign"))
   .addNode("deployCampaign", deployCampaignNode)
 
   // START: Check if Google is already connected

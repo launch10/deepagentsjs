@@ -229,4 +229,30 @@ test.describe("Real Tracking Library E2E", () => {
     expect(lead.utm_medium).toBe("cpc");
     expect(lead.utm_campaign).toBe("combo_test");
   });
+
+  test("new tab creates new visit but preserves visitor identity", async ({ context }) => {
+    // First tab - establish visitor and visit tokens
+    const page1 = await context.newPage();
+    await page1.goto(TrackingHelper.getTestPageUrl());
+    await page1.waitForTimeout(1500);
+
+    const visitor1 = await page1.evaluate(() => localStorage.getItem("l10_visitor"));
+    const visit1 = await page1.evaluate(() => sessionStorage.getItem("l10_visit"));
+
+    // Second tab - simulates user opening new tab (same browser session)
+    // sessionStorage is per-tab, localStorage is shared across tabs
+    const page2 = await context.newPage();
+    await page2.goto(TrackingHelper.getTestPageUrl());
+    await page2.waitForTimeout(1500);
+
+    const visitor2 = await page2.evaluate(() => localStorage.getItem("l10_visitor"));
+    const visit2 = await page2.evaluate(() => sessionStorage.getItem("l10_visit"));
+
+    // Same visitor (localStorage shared), different visit (sessionStorage per-tab)
+    expect(visitor2).toBe(visitor1);
+    expect(visit2).not.toBe(visit1);
+
+    await page1.close();
+    await page2.close();
+  });
 });

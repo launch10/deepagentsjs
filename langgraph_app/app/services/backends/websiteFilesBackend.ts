@@ -209,6 +209,36 @@ export class WebsiteFilesBackend implements BackendProtocol {
     return RedisLock.withLock(lockKey, async () => {
       const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
       if (fsResult.error) {
+        // Enhanced error logging for debugging edit failures (using console.log for vitest stdout)
+        console.log(`\n${"=".repeat(80)}`);
+        console.log(`EDIT FAILED: ${filePath}`);
+        console.log(`Error: ${fsResult.error}`);
+        console.log(`${"=".repeat(80)}`);
+        console.log(`Old string being searched (${oldString.length} chars):`);
+        console.log(`---BEGIN OLD STRING---`);
+        console.log(oldString);
+        console.log(`---END OLD STRING---`);
+
+        // Try to read current file content to help debug
+        try {
+          const currentContent = await this.fs.read(filePath, 0, 5000);
+          console.log(`\nCurrent file content (first 5000 chars):`);
+          console.log(`---BEGIN FILE CONTENT---`);
+          console.log(currentContent);
+          console.log(`---END FILE CONTENT---`);
+
+          // Check if it's a whitespace/newline issue
+          const oldStringNormalized = oldString.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
+          const contentNormalized = currentContent.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
+          if (contentNormalized.includes(oldStringNormalized)) {
+            console.log(`\n⚠️  WHITESPACE MISMATCH DETECTED!`);
+            console.log(`The content exists but whitespace differs.`);
+          }
+        } catch (readError) {
+          console.log(`Could not read file for debugging: ${readError}`);
+        }
+        console.log(`${"=".repeat(80)}\n`);
+
         return fsResult;
       }
 

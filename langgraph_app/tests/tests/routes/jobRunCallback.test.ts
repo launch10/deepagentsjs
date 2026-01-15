@@ -40,7 +40,7 @@ describe("jobRunCallback webhook route (tasks pattern)", () => {
   };
 
   const existingTask: Deploy.Task = {
-    ...Deploy.createTask("LaunchingCampaign", 123),
+    ...Deploy.createTask("DeployingCampaign", 123),
     status: "pending",
   };
 

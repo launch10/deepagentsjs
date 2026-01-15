@@ -1,4 +1,4 @@
-export * from "./instrumentationNode";
+export * from "./analyticsNode";
 export * from "./seoOptimizationNode";
 export * from "./deployWebsiteNode";
 export * from "./runtimeValidationNode";

@@ -4,7 +4,7 @@ import { JobRunAPIService } from "@services";
 import { NodeMiddleware } from "@middleware";
 import { Deploy, Task } from "@types";
 
-const TASK_NAME: Deploy.TaskName = "LaunchingCampaign";
+const TASK_NAME: Deploy.TaskName = "DeployingCampaign";
 
 /**
  * Deploy Campaign Node (Idempotent Pattern)

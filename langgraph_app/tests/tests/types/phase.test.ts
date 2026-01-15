@@ -174,7 +174,7 @@ describe("Phase", () => {
    * - ConnectingGoogle → task "ConnectingGoogle"
    * - VerifyingGoogle → task "VerifyingGoogle"
    * - CheckingBilling → task "CheckingBilling"
-   * - LaunchingCampaign → task "LaunchingCampaign"
+   * - DeployingCampaign → task "DeployingCampaign"
    * - CheckingForBugs → tasks "ValidateLinks" + "RuntimeValidation" (only merged phase)
    */
   describe("createPhase", () => {
@@ -267,7 +267,7 @@ describe("Phase", () => {
         "ConnectingGoogle",
         "VerifyingGoogle",
         "CheckingBilling",
-        "LaunchingCampaign",
+        "DeployingCampaign",
       ]);
     });
 
@@ -311,7 +311,7 @@ describe("Phase", () => {
 
     it("returns undefined when phase not found", () => {
       const phases = Deploy.computePhases([], ["AddingAnalytics"]);
-      const found = Deploy.findPhase(phases, "LaunchingCampaign");
+      const found = Deploy.findPhase(phases, "DeployingCampaign");
 
       expect(found).toBeUndefined();
     });
