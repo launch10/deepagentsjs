@@ -4,190 +4,51 @@
 
 Test the Deploy flow end-to-end with mocked Google Ads API calls. Workers run their full code path - only the Google API responses are mocked.
 
-## Key Constraint: Cross-Process State
-
-Playwright → Rails (process A) → Sidekiq (process B). Mock state must be shared across processes, so we use **Redis** - not in-memory storage.
-
 ## Architecture
 
+With `SIDEKIQ_INLINE=true`, everything runs in a single Rails process:
+
 ```
-Test sets mock state via HTTP → Redis stores state
-Test triggers worker via HTTP → Worker runs synchronously (SIDEKIQ_INLINE=true)
-Worker calls GoogleAds.client → Returns TestClient when mocks enabled
-TestClient.search() → Checks Redis for mock state → Returns appropriate response
-Worker updates models → Fires webhook → Frontend polls and updates
+Playwright calls Rails via HTTP
+  → Rails handles request
+  → Worker runs synchronously (inline)
+  → Worker calls GoogleAds.client
+  → Returns mock client (in-process state)
+  → Worker updates models
+  → Response returns to Playwright
 ```
+
+**No Redis needed.** Mock state lives in the Rails process via module-level accessor.
 
 **Stubbing at API client level** exercises the real service code that parses responses and updates models.
 
 ## Files to Create
 
-### 1. `spec/support/schemas/e2e_schemas.rb`
+### 1. `lib/testing/google_ads_responses.rb`
 
-```ruby
-# frozen_string_literal: true
-
-module APISchemas
-  module E2e
-    def self.status_response
-      {
-        type: :object,
-        properties: {
-          status: { type: :string, example: "ok" }
-        },
-        required: ["status"]
-      }
-    end
-
-    def self.error_response
-      {
-        type: :object,
-        properties: {
-          error: { type: :string, example: "Worker not allowed" }
-        },
-        required: ["error"]
-      }
-    end
-
-    def self.set_mock_params
-      {
-        type: :object,
-        properties: {
-          key: { type: :string, example: "invite_status" },
-          value: { type: :string, example: "accepted" }
-        },
-        required: %w[key value]
-      }
-    end
-
-    def self.trigger_worker_params
-      {
-        type: :object,
-        properties: {
-          worker: { type: :string, example: "GoogleAds::PollActiveInvitesWorker" },
-          args: { type: :array, items: { type: :string }, nullable: true }
-        },
-        required: ["worker"]
-      }
-    end
-  end
-end
-```
-
-### 2. `spec/requests/test/e2e_spec.rb`
-
-```ruby
-require "swagger_helper"
-
-RSpec.describe "Test E2E API", type: :request do
-  before { allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("test")) }
-
-  path "/test/e2e/enable_mocks" do
-    post "Enables E2E mock mode" do
-      tags "Test E2E"
-      produces "application/json"
-
-      response "200", "mocks enabled" do
-        schema APISchemas::E2e.status_response
-        run_test!
-      end
-    end
-  end
-
-  path "/test/e2e/set_mock" do
-    post "Sets a mock value" do
-      tags "Test E2E"
-      consumes "application/json"
-      produces "application/json"
-      parameter name: :params, in: :body, schema: APISchemas::E2e.set_mock_params
-
-      response "200", "mock value set" do
-        schema APISchemas::E2e.status_response
-        let(:params) { { key: "invite_status", value: "pending" } }
-        run_test!
-      end
-    end
-  end
-
-  path "/test/e2e/trigger_worker" do
-    post "Triggers a worker synchronously" do
-      tags "Test E2E"
-      consumes "application/json"
-      produces "application/json"
-      parameter name: :params, in: :body, schema: APISchemas::E2e.trigger_worker_params
-
-      response "200", "worker triggered" do
-        schema APISchemas::E2e.status_response
-        let(:params) { { worker: "GoogleAds::PollActiveInvitesWorker" } }
-
-        before do
-          # Enable mocks first so worker doesn't hit real API
-          Sidekiq.redis { |c| c.set("e2e_mock:enabled", "true") }
-        end
-
-        run_test!
-      end
-
-      response "403", "worker not allowed" do
-        schema APISchemas::E2e.error_response
-        let(:params) { { worker: "SomeOtherWorker" } }
-        run_test!
-      end
-    end
-  end
-
-  path "/test/e2e/reset" do
-    delete "Clears all mock state" do
-      tags "Test E2E"
-      produces "application/json"
-
-      response "200", "mocks cleared" do
-        schema APISchemas::E2e.status_response
-        run_test!
-      end
-    end
-  end
-end
-```
-
-### 3. `lib/testing/google_ads_test_client.rb`
+Shared response factories used by both E2E mocks and RSpec tests.
 
 ```ruby
 module Testing
-  class GoogleAdsTestClient
-    # Only add chain methods when tests actually need them
-    def service = self
-    def google_ads = self
-
-    def search(customer_id:, query:)
-      status = redis_get(:invite_status)&.to_sym
-
-      if query.include?("customer_user_access") && !query.include?("invitation")
-        status == :accepted ? [user_access_response] : []
-      elsif query.include?("customer_user_access_invitation")
-        status && status != :accepted ? [invitation_response(status)] : []
-      else
-        []
-      end
+  module GoogleAdsResponses
+    def self.invitation_row(status:, email: "test@launch10.ai")
+      OpenStruct.new(
+        customer_user_access_invitation: OpenStruct.new(
+          resource_name: "customers/123/customerUserAccessInvitations/456",
+          email_address: email,
+          access_role: :ADMIN,
+          invitation_status: status.to_s.upcase.to_sym,
+          creation_date_time: Time.current.iso8601
+        ),
+        customer_user_access: nil
+      )
     end
 
-    def mutate_customer_user_access_invitation(customer_id:, operation:)
-      OpenStruct.new(result: OpenStruct.new(
-        resource_name: "customers/#{customer_id}/customerUserAccessInvitations/#{rand(10000)}"
-      ))
-    end
-
-    private
-
-    def redis_get(key)
-      Sidekiq.redis { |c| c.get("e2e_mock:#{key}") }
-    end
-
-    def user_access_response
+    def self.user_access_row(email: "test@launch10.ai")
       OpenStruct.new(
         customer_user_access: OpenStruct.new(
-          resource_name: "customers/123/customerUserAccess/456",
-          email_address: "test@launch10.ai",
+          resource_name: "customers/123/customerUserAccess/789",
+          email_address: email,
           access_role: :ADMIN,
           access_creation_date_time: Time.current.iso8601
         ),
@@ -195,15 +56,10 @@ module Testing
       )
     end
 
-    def invitation_response(status)
+    def self.mutate_invitation_response(customer_id:)
       OpenStruct.new(
-        customer_user_access: nil,
-        customer_user_access_invitation: OpenStruct.new(
-          resource_name: "customers/123/customerUserAccessInvitations/789",
-          email_address: "test@launch10.ai",
-          access_role: :ADMIN,
-          invitation_status: status.to_s.upcase.to_sym,
-          creation_date_time: Time.current.iso8601
+        result: OpenStruct.new(
+          resource_name: "customers/#{customer_id}/customerUserAccessInvitations/#{rand(10000)}"
         )
       )
     end
@@ -211,141 +67,155 @@ module Testing
 end
 ```
 
-### 4. `app/controllers/test/e2e_controller.rb`
+### 2. `lib/testing/e2e_google_ads_client.rb`
 
-No separate mock store class - Redis calls inlined directly. With `SIDEKIQ_INLINE=true`, `perform_async` runs synchronously - no completion tracking needed.
+Mock client that reads state from instance variable (set via controller).
 
 ```ruby
-class Test::E2eController < Test::TestController
-  REDIS_PREFIX = "e2e_mock"
+module Testing
+  class E2eGoogleAdsClient
+    attr_accessor :invite_status
 
-  ALLOWED_WORKERS = %w[
-    GoogleAds::PollActiveInvitesWorker
-    GoogleAds::PollInviteAcceptanceWorker
-    GoogleAds::SendInviteWorker
-  ].freeze
+    def service
+      E2eService.new(self)
+    end
 
-  before_action :ensure_test_environment!
+    class E2eService
+      def initialize(client)
+        @client = client
+      end
 
-  # POST /test/e2e/enable_mocks
-  def enable_mocks
-    redis_set(:enabled, "true")
-    render json: { status: "ok" }
-  end
+      def google_ads
+        E2eGoogleAdsService.new(@client)
+      end
 
-  # POST /test/e2e/set_mock
-  def set_mock
-    redis_set(params[:key], params[:value])
-    render json: { status: "ok" }
-  end
+      def customer_user_access_invitation
+        E2eInvitationService.new(@client)
+      end
+    end
 
-  # POST /test/e2e/trigger_worker
-  # With SIDEKIQ_INLINE=true, this runs synchronously and returns when done
-  def trigger_worker
-    worker = params[:worker]
-    return render json: { error: "Worker not allowed" }, status: :forbidden unless ALLOWED_WORKERS.include?(worker)
+    class E2eGoogleAdsService
+      def initialize(client)
+        @client = client
+      end
 
-    args = params[:args].present? ? Array(params[:args]) : []
-    worker.constantize.perform_async(*args)
+      def search(customer_id:, query:)
+        status = @client.invite_status
 
-    render json: { status: "ok" }
-  end
+        if query.include?("customer_user_access") && !query.include?("invitation")
+          status == "accepted" ? [GoogleAdsResponses.user_access_row] : []
+        elsif query.include?("customer_user_access_invitation")
+          status && status != "accepted" ? [GoogleAdsResponses.invitation_row(status: status)] : []
+        else
+          []
+        end
+      end
+    end
 
-  # DELETE /test/e2e/reset
-  def reset
-    clear_mock_keys
-    render json: { status: "ok" }
-  end
+    class E2eInvitationService
+      def initialize(client)
+        @client = client
+      end
 
-  # Check if mocks are enabled (called by GoogleAds.client)
-  def self.mocks_enabled?
-    return false unless Rails.env.test?
-    Sidekiq.redis { |c| c.get("#{REDIS_PREFIX}:enabled") } == "true"
-  rescue Redis::BaseConnectionError
-    false
-  end
+      def mutate_customer_user_access_invitation(customer_id:, operation:)
+        GoogleAdsResponses.mutate_invitation_response(customer_id: customer_id)
+      end
+    end
 
-  private
+    # Stub resource/operation builders (only add methods as needed)
+    def resource
+      E2eResourceBuilder.new
+    end
 
-  def ensure_test_environment!
-    head :not_found unless Rails.env.test?
-  end
+    def operation
+      E2eOperationBuilder.new
+    end
 
-  def redis_set(key, value)
-    Sidekiq.redis { |c| c.set("#{REDIS_PREFIX}:#{key}", value.to_s) }
-  end
+    class E2eResourceBuilder
+      def customer_user_access_invitation
+        invitation = OpenStruct.new
+        yield invitation if block_given?
+        invitation
+      end
+    end
 
-  def clear_mock_keys
-    Sidekiq.redis do |c|
-      cursor = "0"
-      loop do
-        cursor, keys = c.scan(cursor, match: "#{REDIS_PREFIX}:*", count: 100)
-        c.del(*keys) if keys.any?
-        break if cursor == "0"
+    class E2eOperationBuilder
+      def create_resource
+        E2eCreateResource.new
+      end
+    end
+
+    class E2eCreateResource
+      def customer_user_access_invitation(invitation)
+        invitation
       end
     end
   end
 end
 ```
 
-### 5. Routes in `config/routes.rb` (test-only)
+### 3. `app/controllers/test/e2e_controller.rb`
+
+Simple controller - just two endpoints.
 
 ```ruby
-# Test-only routes - NOT in dev.rb
-if Rails.env.test?
-  namespace :test do
-    post "e2e/enable_mocks", to: "e2e#enable_mocks"
-    post "e2e/set_mock", to: "e2e#set_mock"
-    post "e2e/trigger_worker", to: "e2e#trigger_worker"
-    delete "e2e/reset", to: "e2e#reset"
+class Test::E2eController < Test::TestController
+  # POST /test/e2e/set_invite_status
+  def set_invite_status
+    GoogleAds.e2e_mock_client ||= Testing::E2eGoogleAdsClient.new
+    GoogleAds.e2e_mock_client.invite_status = params[:status]
+    render json: { status: "ok" }
+  end
+
+  # DELETE /test/e2e/reset
+  def reset
+    GoogleAds.e2e_mock_client = nil
+    render json: { status: "ok" }
   end
 end
 ```
 
-### 6. `e2e/fixtures/e2e-mocks.ts`
+### 4. Routes in `config/routes/dev.rb`
+
+Add to existing dev routes (loaded when `Rails.env.local?` which includes test).
+
+```ruby
+namespace :test do
+  # ... existing database routes ...
+
+  post "e2e/set_invite_status", to: "e2e#set_invite_status"
+  delete "e2e/reset", to: "e2e#reset"
+end
+```
+
+### 5. `e2e/fixtures/e2e-mocks.ts`
+
+Minimal TypeScript helper.
 
 ```typescript
 import { e2eConfig } from "../config";
 
 const BASE_URL = e2eConfig.railsBaseUrl;
 
-async function post(path: string, body: Record<string, unknown> = {}) {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    throw new Error(`E2E request failed: ${response.status} ${await response.text()}`);
-  }
-  return response.json();
-}
-
 export const E2EMocks = {
-  async enable() {
-    await post("/test/e2e/enable_mocks");
+  async setInviteStatus(status: "pending" | "accepted" | "declined" | "expired") {
+    const response = await fetch(`${BASE_URL}/test/e2e/set_invite_status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to set invite status: ${response.status}`);
+    }
   },
 
   async reset() {
     await fetch(`${BASE_URL}/test/e2e/reset`, { method: "DELETE" });
   },
-
-  async setInviteStatus(status: "pending" | "accepted" | "declined" | "expired") {
-    await post("/test/e2e/set_mock", { key: "invite_status", value: status });
-  },
-
-  // With SIDEKIQ_INLINE=true, this returns when worker completes
-  async triggerWorker(worker: string) {
-    await post("/test/e2e/trigger_worker", { worker });
-  },
-
-  async pollInvites() {
-    await this.triggerWorker("GoogleAds::PollActiveInvitesWorker");
-  },
 };
 ```
 
-### 7. Snapshot Builder: `spec/snapshot_builders/deploy_step.rb`
+### 6. Snapshot Builder: `spec/snapshot_builders/deploy_step.rb`
 
 ```ruby
 class DeployStep < BaseBuilder
@@ -380,20 +250,27 @@ end
 
 ### 1. `app/services/google_ads.rb`
 
+Add module-level accessor for E2E mock client.
+
 ```ruby
-def client
-  if Test::E2eController.mocks_enabled?
-    require_relative "../../lib/testing/google_ads_test_client" unless defined?(Testing::GoogleAdsTestClient)
-    return Testing::GoogleAdsTestClient.new
+module GoogleAds
+  class << self
+    attr_accessor :e2e_mock_client
   end
 
-  @client ||= Google::Ads::GoogleAds::GoogleAdsClient.new do |c|
-    # ... existing config
+  def self.client
+    return e2e_mock_client if e2e_mock_client.present?
+
+    @client ||= Google::Ads::GoogleAds::GoogleAdsClient.new do |c|
+      # ... existing config
+    end
   end
 end
 ```
 
 ### 2. `schedule.rb`
+
+Disable scheduled jobs in test environment.
 
 ```ruby
 return if Rails.env.test?
@@ -408,8 +285,7 @@ end
 ```
 1. beforeEach:
    - DatabaseSnapshotter.restoreSnapshot("deploy_step")
-   - E2EMocks.reset()      # Clear stale state FIRST
-   - E2EMocks.enable()     # Then enable
+   - E2EMocks.reset()  # Clear any stale mock state
 
 2. Test sets initial mock state:
    - E2EMocks.setInviteStatus("pending")
@@ -418,7 +294,7 @@ end
 
 4. Simulate invite acceptance:
    - E2EMocks.setInviteStatus("accepted")
-   - E2EMocks.pollInvites()  # Runs synchronously (SIDEKIQ_INLINE=true)
+   - (Worker polls automatically via Zhong, or test triggers action)
 
 5. Assert UI shows accepted state
 
@@ -426,7 +302,7 @@ end
    - E2EMocks.reset()
 ```
 
-## First Test: `e2e/deploy/deploy-website-only.spec.ts`
+## First Test: `e2e/deploy/deploy-invite-flow.spec.ts`
 
 ```typescript
 import { test, expect } from "@playwright/test";
@@ -434,11 +310,10 @@ import { DatabaseSnapshotter } from "../fixtures/database";
 import { E2EMocks } from "../fixtures/e2e-mocks";
 import { loginUser } from "../fixtures/auth";
 
-test.describe("Deploy - Website Only", () => {
+test.describe("Deploy - Google Ads Invite Flow", () => {
   test.beforeEach(async ({ page }) => {
     await DatabaseSnapshotter.restoreSnapshot("deploy_step");
     await E2EMocks.reset();
-    await E2EMocks.enable();
     await loginUser(page);
   });
 
@@ -446,26 +321,56 @@ test.describe("Deploy - Website Only", () => {
     await E2EMocks.reset();
   });
 
+  test("shows pending state then accepted state", async ({ page }) => {
+    // Start with pending invite
+    await E2EMocks.setInviteStatus("pending");
+
+    const project = await DatabaseSnapshotter.getFirstProject();
+    await page.goto(`/projects/${project.uuid}/deploy`);
+
+    // Should show waiting for invite
+    await expect(page.getByText(/waiting|pending/i)).toBeVisible();
+
+    // Simulate user accepting invite in Google Ads
+    await E2EMocks.setInviteStatus("accepted");
+
+    // Trigger a poll (or wait for automatic poll)
+    // The UI should update to show accepted
+    await expect(page.getByText(/accepted|connected/i)).toBeVisible({ timeout: 10000 });
+  });
+
   test("deploys website without Google Ads", async ({ page }) => {
     const project = await DatabaseSnapshotter.getFirstProject();
     await page.goto(`/projects/${project.uuid}/deploy`);
 
     await expect(page.getByText("Deploy Your Campaign")).toBeVisible();
-    await expect(page.getByText("deployed successfully")).toBeVisible({ timeout: 30000 });
+    // Website-only deploy should work without mocking Google Ads
+    await expect(page.getByText(/deployed successfully/i)).toBeVisible({ timeout: 30000 });
   });
 });
 ```
 
 ## Implementation Order
 
-1. `spec/support/schemas/e2e_schemas.rb` (API schemas)
-2. `spec/requests/test/e2e_spec.rb` (rswag spec)
-3. `lib/testing/google_ads_test_client.rb`
-4. `app/controllers/test/e2e_controller.rb`
-5. Add routes to `config/routes.rb` (inside `if Rails.env.test?`)
-6. Modify `app/services/google_ads.rb`
-7. Modify `schedule.rb`
-8. `e2e/fixtures/e2e-mocks.ts`
-9. `spec/snapshot_builders/deploy_step.rb` + generate snapshot
-10. Run `rake rswag:specs:swaggerize` to generate OpenAPI spec
-11. Write first E2E test
+1. `lib/testing/google_ads_responses.rb` (shared response factories)
+2. `lib/testing/e2e_google_ads_client.rb` (mock client)
+3. `app/controllers/test/e2e_controller.rb`
+4. Add routes to `config/routes/dev.rb`
+5. Modify `app/services/google_ads.rb` (add accessor)
+6. Modify `schedule.rb` (disable in test)
+7. `e2e/fixtures/e2e-mocks.ts`
+8. `spec/snapshot_builders/deploy_step.rb` + generate snapshot
+9. Write first E2E test
+
+## Key Simplifications from Original Plan
+
+| Removed | Reason |
+|---------|--------|
+| Redis for mock state | In-process state works with single Rails process |
+| `enable_mocks` endpoint | Implicit: if mock client is set, use it |
+| `trigger_worker` endpoint | SIDEKIQ_INLINE runs workers synchronously |
+| rswag specs + schemas | Internal test endpoints don't need API docs |
+| Generic `set_mock(key, value)` | Purpose-specific `set_invite_status` is clearer |
+| `ALLOWED_WORKERS` whitelist | No longer triggering workers via HTTP |
+
+Total: ~60% less code than original plan.
