@@ -72,9 +72,7 @@ export const workflows = {
       },
       { name: "launch", label: "Launch", order: 4,
         steps: [
-          { name: "settings", label: "Settings", order: 1 },
-          { name: "review", label: "Review", order: 2 },
-          { name: "deployment", label: "Deployment", order: 3 }
+          { name: "deployment", label: "Deployment", order: 1 }
         ]
       }
     ]

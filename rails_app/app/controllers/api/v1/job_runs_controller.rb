@@ -44,6 +44,10 @@ class API::V1::JobRunsController < API::BaseController
       CampaignDeploy.deploy(resources[:campaign], job_run_id: job_run.id)
     when "WebsiteDeploy"
       resources[:website].deploy_async(job_run_id: job_run.id)
+    when "GoogleOAuthConnect"
+      # No worker dispatch - OAuth callback completes this job
+    when "GoogleAdsInvite"
+      GoogleAds::SendInviteWorker.perform_async(job_run.id)
     end
   end
 
@@ -53,6 +57,9 @@ class API::V1::JobRunsController < API::BaseController
       params.require(:arguments).permit(:campaign_id)
     when "WebsiteDeploy"
       params.require(:arguments).permit(:website_id)
+    when "GoogleOAuthConnect", "GoogleAdsInvite"
+      # These jobs don't require arguments - account context comes from current_account
+      ActionController::Parameters.new({}).permit
     else
       ActionController::Parameters.new({}).permit
     end.to_h

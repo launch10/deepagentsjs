@@ -19,8 +19,9 @@
  * @see /plans/langgraph-rails-pattern.md for full pattern documentation
  */
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useDeployStatus } from "@hooks/useDeployStatus";
+import { PhaseProgress, type Phase } from "@components/deploy";
 
 // Placeholder types - replace with actual LaunchGraphState when integrating
 interface DeployState {
@@ -28,6 +29,8 @@ interface DeployState {
   deployResult?: Record<string, unknown>;
   error?: { message: string; node: string };
   campaignId?: number;
+  /** Phases from the deploy graph state */
+  phases?: Phase[];
 }
 
 interface CampaignDeployProps {
@@ -69,6 +72,9 @@ export default function CampaignDeploy({ state, isStreaming, sendMessage }: Camp
           Deploying campaign...
           {isPolling && <span className="text-base-400 text-sm ml-2">(checking status)</span>}
         </p>
+        {state.phases && state.phases.length > 0 && (
+          <PhaseProgress phases={state.phases} showOnlyActive className="w-full max-w-sm mt-4" />
+        )}
       </div>
     );
   }
@@ -77,7 +83,12 @@ export default function CampaignDeploy({ state, isStreaming, sendMessage }: Camp
     return (
       <div className="flex flex-col items-center justify-center p-8 space-y-4">
         <div className="rounded-full h-12 w-12 bg-green-100 flex items-center justify-center">
-          <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg
+            className="h-6 w-6 text-green-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
@@ -95,8 +106,18 @@ export default function CampaignDeploy({ state, isStreaming, sendMessage }: Camp
     return (
       <div className="flex flex-col items-center justify-center p-8 space-y-4">
         <div className="rounded-full h-12 w-12 bg-red-100 flex items-center justify-center">
-          <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <svg
+            className="h-6 w-6 text-red-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </div>
         <p className="text-red-700 font-medium">Deploy failed</p>

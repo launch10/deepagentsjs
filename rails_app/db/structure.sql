@@ -1836,6 +1836,44 @@ ALTER SEQUENCE public.deploy_files_id_seq OWNED BY public.deploy_files.id;
 
 
 --
+-- Name: deploys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.deploys (
+    id bigint NOT NULL,
+    project_id bigint NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    current_step character varying,
+    is_live boolean DEFAULT false,
+    stacktrace text,
+    langgraph_thread_id character varying,
+    website_deploy_id bigint,
+    campaign_deploy_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: deploys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.deploys_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: deploys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.deploys_id_seq OWNED BY public.deploys.id;
+
+
+--
 -- Name: document_chunks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4234,6 +4272,13 @@ ALTER TABLE ONLY public.deploy_files ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: deploys id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys ALTER COLUMN id SET DEFAULT nextval('public.deploys_id_seq'::regclass);
+
+
+--
 -- Name: document_chunks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5003,6 +5048,14 @@ ALTER TABLE ONLY public.connected_accounts
 
 ALTER TABLE ONLY public.deploy_files
     ADD CONSTRAINT deploy_files_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: deploys deploys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT deploys_pkey PRIMARY KEY (id);
 
 
 --
@@ -6343,6 +6396,13 @@ CREATE INDEX idx_document_chunks_embedding ON public.document_chunks USING ivffl
 
 
 --
+-- Name: idx_fallback_chains_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_fallback_chains_unique ON public.model_fallback_chains USING btree (cost_tier, speed_tier, skill);
+
+
+--
 -- Name: idx_icon_embeddings_text; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7488,6 +7548,62 @@ CREATE INDEX index_deploy_files_on_deploy_id ON public.deploy_files USING btree 
 --
 
 CREATE INDEX index_deploy_files_on_website_file_id ON public.deploy_files USING btree (website_file_id);
+
+
+--
+-- Name: index_deploys_on_campaign_deploy_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_campaign_deploy_id ON public.deploys USING btree (campaign_deploy_id);
+
+
+--
+-- Name: index_deploys_on_is_live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_is_live ON public.deploys USING btree (is_live);
+
+
+--
+-- Name: index_deploys_on_langgraph_thread_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_langgraph_thread_id ON public.deploys USING btree (langgraph_thread_id);
+
+
+--
+-- Name: index_deploys_on_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_project_id ON public.deploys USING btree (project_id);
+
+
+--
+-- Name: index_deploys_on_project_id_and_is_live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_project_id_and_is_live ON public.deploys USING btree (project_id, is_live);
+
+
+--
+-- Name: index_deploys_on_project_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_project_id_and_status ON public.deploys USING btree (project_id, status);
+
+
+--
+-- Name: index_deploys_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_status ON public.deploys USING btree (status);
+
+
+--
+-- Name: index_deploys_on_website_deploy_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_website_deploy_id ON public.deploys USING btree (website_deploy_id);
 
 
 --
@@ -9799,12 +9915,16 @@ ALTER INDEX public.index_user_request_counts_on_user_month ATTACH PARTITION publ
 
 CREATE TRIGGER run_insert_notify AFTER INSERT ON public.runs FOR EACH ROW EXECUTE FUNCTION public.notify_new_run();
 
+ALTER TABLE public.runs DISABLE TRIGGER run_insert_notify;
+
 
 --
 -- Name: template_files tsvector_update_template_files; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER tsvector_update_template_files BEFORE INSERT OR UPDATE OF content, path ON public.template_files FOR EACH ROW EXECUTE FUNCTION public.update_content_tsv();
+
+ALTER TABLE public.template_files DISABLE TRIGGER tsvector_update_template_files;
 
 
 --
@@ -9813,12 +9933,16 @@ CREATE TRIGGER tsvector_update_template_files BEFORE INSERT OR UPDATE OF content
 
 CREATE TRIGGER tsvector_update_website_files BEFORE INSERT OR UPDATE OF content, path ON public.website_files FOR EACH ROW EXECUTE FUNCTION public.update_content_tsv();
 
+ALTER TABLE public.website_files DISABLE TRIGGER tsvector_update_website_files;
+
 
 --
 -- Name: store update_store_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER update_store_updated_at BEFORE UPDATE ON public.store FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+ALTER TABLE public.store DISABLE TRIGGER update_store_updated_at;
 
 
 --
@@ -9827,6 +9951,14 @@ CREATE TRIGGER update_store_updated_at BEFORE UPDATE ON public.store FOR EACH RO
 
 ALTER TABLE ONLY public.account_invitations
     ADD CONSTRAINT fk_rails_04a176d6ed FOREIGN KEY (invited_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: deploys fk_rails_0773f47ab4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT fk_rails_0773f47ab4 FOREIGN KEY (campaign_deploy_id) REFERENCES public.campaign_deploys(id);
 
 
 --
@@ -9918,6 +10050,14 @@ ALTER TABLE ONLY public.pay_subscriptions
 
 
 --
+-- Name: deploys fk_rails_c721010c48; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT fk_rails_c721010c48 FOREIGN KEY (website_deploy_id) REFERENCES public.website_deploys(id);
+
+
+--
 -- Name: pay_payment_methods fk_rails_c78c6cb84d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9931,6 +10071,14 @@ ALTER TABLE ONLY public.pay_payment_methods
 
 ALTER TABLE ONLY public.account_users
     ADD CONSTRAINT fk_rails_c96445f213 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: deploys fk_rails_eeb0884eb6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT fk_rails_eeb0884eb6 FOREIGN KEY (project_id) REFERENCES public.projects(id);
 
 
 --

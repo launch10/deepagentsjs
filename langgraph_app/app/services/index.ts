@@ -9,3 +9,4 @@ export * from "./faq";
 export * from "./backends";
 export * from "./searchIconsService";
 export * from "./websiteExporter";
+export * from "./googleAPIService";

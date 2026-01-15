@@ -241,6 +241,95 @@ RSpec.describe "Job Runs API", type: :request do
     end
   end
 
+  # GoogleOAuthConnect job type tests
+  describe 'GoogleOAuthConnect job' do
+    path '/api/v1/job_runs' do
+      post 'Creates a GoogleOAuthConnect job run' do
+        tags 'Job Runs'
+        consumes 'application/json'
+        produces 'application/json'
+        security [bearer_auth: []]
+        parameter name: :Authorization, in: :header, type: :string, required: false
+        parameter name: 'X-Signature', in: :header, type: :string, required: false
+        parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+        parameter name: :job_run_params, in: :body, schema: APISchemas::JobRun.params_schema
+
+        response '201', 'creates job run without dispatching worker (OAuth is user-initiated)' do
+          schema APISchemas::JobRun.response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "GoogleOAuthConnect",
+              arguments: {},
+              thread_id: "thread_oauth123"
+            }
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['id']).to be_present
+            expect(data['status']).to eq('pending')
+
+            job_run = JobRun.find(data['id'])
+            expect(job_run.job_class).to eq("GoogleOAuthConnect")
+            expect(job_run.langgraph_thread_id).to eq("thread_oauth123")
+          end
+        end
+      end
+    end
+  end
+
+  # GoogleAdsInvite job type tests
+  describe 'GoogleAdsInvite job' do
+    path '/api/v1/job_runs' do
+      post 'Creates a GoogleAdsInvite job run' do
+        tags 'Job Runs'
+        consumes 'application/json'
+        produces 'application/json'
+        security [bearer_auth: []]
+        parameter name: :Authorization, in: :header, type: :string, required: false
+        parameter name: 'X-Signature', in: :header, type: :string, required: false
+        parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+        parameter name: :job_run_params, in: :body, schema: APISchemas::JobRun.params_schema
+
+        response '201', 'creates job run and dispatches SendInviteWorker' do
+          schema APISchemas::JobRun.response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "GoogleAdsInvite",
+              arguments: {},
+              thread_id: "thread_invite123"
+            }
+          end
+
+          before do
+            allow(GoogleAds::SendInviteWorker).to receive(:perform_async)
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['id']).to be_present
+            expect(data['status']).to eq('pending')
+
+            job_run = JobRun.find(data['id'])
+            expect(job_run.job_class).to eq("GoogleAdsInvite")
+            expect(job_run.langgraph_thread_id).to eq("thread_invite123")
+
+            expect(GoogleAds::SendInviteWorker).to have_received(:perform_async)
+              .with(job_run.id)
+          end
+        end
+      end
+    end
+  end
+
   # Cross-account security tests
   describe 'Cross-account security' do
     let!(:other_user) { create(:user) }

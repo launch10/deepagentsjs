@@ -1,4 +1,6 @@
 namespace :madmin, path: :admin do
+  resources :model_configs, only: [:index, :update]
+  resources :model_fallback_chains, only: [:index, :update]
   resource :theme_playground, only: [:show]
 
   if defined?(Sidekiq)

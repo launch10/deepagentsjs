@@ -55,6 +55,9 @@ class Project < ApplicationRecord
   has_many :callouts, through: :campaigns
   has_many :structured_snippets, through: :campaigns
 
+  # Deploy tracking
+  has_many :deploys, dependent: :destroy
+
   def self.with_launch_relations
     Project.includes(
       :brainstorm,
@@ -88,6 +91,18 @@ class Project < ApplicationRecord
 
   def current_chat
     current_workflow.chat
+  end
+
+  # Returns the active deploy for this project.
+  # Prioritizes in-progress deploys, falls back to most recent.
+  def active_deploy
+    deploys.in_progress.order(created_at: :desc).first ||
+      deploys.order(created_at: :desc).first
+  end
+
+  # Returns the most recent live deploy for this project.
+  def live_deploy
+    deploys.live.order(created_at: :desc).first
   end
 
   def open

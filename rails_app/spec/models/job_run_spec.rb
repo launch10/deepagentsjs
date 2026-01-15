@@ -43,6 +43,26 @@ RSpec.describe JobRun, type: :model do
     it { should validate_presence_of(:account) }
   end
 
+  describe "ALLOWED_JOBS" do
+    it "includes GoogleOAuthConnect for Google OAuth HITL flow" do
+      expect(JobRun::ALLOWED_JOBS).to include("GoogleOAuthConnect")
+    end
+
+    it "includes GoogleAdsInvite for Google Ads invite HITL flow" do
+      expect(JobRun::ALLOWED_JOBS).to include("GoogleAdsInvite")
+    end
+
+    it "allows creating job runs with GoogleOAuthConnect" do
+      job_run = build(:job_run, account: account, job_class: "GoogleOAuthConnect")
+      expect(job_run).to be_valid
+    end
+
+    it "allows creating job runs with GoogleAdsInvite" do
+      job_run = build(:job_run, account: account, job_class: "GoogleAdsInvite")
+      expect(job_run).to be_valid
+    end
+  end
+
   describe "scopes" do
     let!(:pending_job) { create(:job_run, account: account, status: "pending") }
     let!(:running_job) { create(:job_run, account: account, status: "running") }

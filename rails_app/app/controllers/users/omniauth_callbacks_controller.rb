@@ -19,6 +19,27 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   #
   # etc...
 
+  # Complete GoogleOAuthConnect job run when user connects Google OAuth.
+  # This is called by Jumpstart's Omniauth::Callbacks module after a successful connection.
+  def google_oauth2_connected(connected_account)
+    thread_id = session.delete(:langgraph_thread_id)
+    return unless thread_id.present?
+
+    # Get account from connected_account's owner (current_account may be nil in OAuth callback)
+    account = connected_account.owner.owned_account
+    return unless account
+
+    job_run = account.job_runs
+      .where(job_class: "GoogleOAuthConnect", status: %w[pending running])
+      .where(langgraph_thread_id: thread_id)
+      .first
+
+    return unless job_run
+
+    job_run.complete!({ google_email: connected_account.email })
+    job_run.notify_langgraph(status: "completed", result: { google_email: connected_account.email })
+  end
+
   # To change the redirect URL after an account is connected, you can override the following methods:
   #
   # After sign up and sign in with OAuth

@@ -1448,7 +1448,7 @@ export interface paths {
                          * @description Job type identifier
                          * @enum {string}
                          */
-                        job_class: "CampaignDeploy" | "WebsiteDeploy";
+                        job_class: "CampaignDeploy" | "WebsiteDeploy" | "GoogleOAuthConnect" | "GoogleAdsInvite";
                         /** @description Arguments to pass to the worker */
                         arguments: {
                             [key: string]: unknown;

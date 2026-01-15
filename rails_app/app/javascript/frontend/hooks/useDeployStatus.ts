@@ -15,8 +15,8 @@ import { useEffect, useRef } from "react";
  *
  * @example
  * ```tsx
- * function CampaignDeploy() {
- *   const { state, status, actions } = useAdsChatLaunch();
+ * function Deploy() {
+ *   const { state, status, actions } = useDeployChat();
  *   const { isPending, isComplete, isFailed, isPolling } = useDeployStatus({
  *     deployStatus: state.deployStatus,
  *     isStreaming: status === "streaming" || status === "submitted",

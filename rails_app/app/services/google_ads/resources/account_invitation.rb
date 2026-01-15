@@ -66,12 +66,17 @@ module GoogleAds
 
         resource_type = remote.accepted? ? :customer_user_access : :customer_user_access_invitation
 
-        Sync::SyncResult.new(
+        result = Sync::SyncResult.new(
           resource_type: resource_type,
           resource_name: remote.resource_name,
           action: status_action(remote),
           comparisons: []
         )
+
+        # Persist status changes to the local record
+        update_record_from_sync_result(result) if result.success?
+
+        result
       end
 
       def sync_result
