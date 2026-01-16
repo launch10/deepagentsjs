@@ -15,13 +15,13 @@ export default function ImpersonationBanner() {
   if (!impersonating || !current_user) return null;
 
   return (
-    <div className="bg-amber-500 text-white px-4 py-2 text-sm flex items-center justify-center gap-4">
+    <div className="bg-red-500 text-white px-4 py-4 text-sm flex items-center justify-center gap-4">
       <span>
         Impersonating <strong>{current_user.name || current_user.email}</strong>
       </span>
       <button
         onClick={() => router.delete(`/admin/users/${current_user.id}/impersonate`)}
-        className="bg-amber-600 hover:bg-amber-700 px-3 py-1 rounded text-xs font-medium transition-colors"
+        className="bg-red-800 hover:bg-red-700 px-3 py-2 rounded text-xs font-medium transition-colors"
       >
         Stop Impersonating
       </button>
