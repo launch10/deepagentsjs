@@ -1,5 +1,7 @@
 module GoogleAds
   class << self
+    attr_accessor :e2e_mock_client
+
     def config
       Rails.application.config.google_ads
     end
@@ -20,6 +22,8 @@ module GoogleAds
     end
 
     def client
+      return e2e_mock_client if e2e_mock_client.present?
+
       @client ||= Google::Ads::GoogleAds::GoogleAdsClient.new do |c|
         c.client_id = config[:client_id]
         c.client_secret = config[:client_secret]

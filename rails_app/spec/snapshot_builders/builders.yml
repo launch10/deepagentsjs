@@ -60,3 +60,8 @@ campaign_complete:
   class: CampaignComplete
   base_snapshot: campaign_review_step
   description: "Creates a complete campaign with favicon, budget, geo targets, schedules, headlines, descriptions, callouts, snippets, ad groups, and keywords"
+
+deploy_step:
+  class: DeployStep
+  base_snapshot: campaign_review_step
+  description: "Ready for deploy with Google OAuth connected and pending deploy created"

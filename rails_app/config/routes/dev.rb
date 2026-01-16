@@ -20,4 +20,7 @@ namespace :test do
   get "tracking/info", to: "tracking#info"
   get "tracking/built", to: "tracking#built"
   get "tracking/built/*path", to: "tracking#built", format: false
+
+  post "e2e/set_invite_status", to: "e2e#set_invite_status"
+  delete "e2e/reset", to: "e2e#reset"
 end

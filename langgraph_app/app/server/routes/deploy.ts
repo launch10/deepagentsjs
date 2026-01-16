@@ -17,7 +17,11 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
   const body = await c.req.json();
 
-  const { threadId, state, deployId, websiteId, campaignId } = body;
+  const { threadId, state } = body;
+  // Support both top-level and state.deploy.* patterns for SDK compatibility
+  const deployId = body.deployId ?? state?.deploy?.deployId;
+  const websiteId = body.websiteId ?? state?.deploy?.websiteId;
+  const campaignId = body.campaignId ?? state?.deploy?.campaignId;
 
   if (!threadId) {
     return c.json({ error: "Missing required field: threadId" }, 400);

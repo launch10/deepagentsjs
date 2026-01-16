@@ -6,6 +6,8 @@ def est_time(time)
   ActiveSupport::TimeZone.new("America/New_York").parse(time).utc
 end
 
+return if Rails.env.test?
+
 Zhong.schedule do
   category "Cloudflare" do
     every(5.minutes, "monitor domains") do
