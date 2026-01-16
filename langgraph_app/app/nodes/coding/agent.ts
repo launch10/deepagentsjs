@@ -110,7 +110,7 @@ export async function createCodingAgent(state: MinimalCodingAgentState, systemPr
   }
 
   const backend = await getCodingAgentBackend(state);
-  const llm = getLLM("coding", "slow", "paid");
+  const llm = await getLLM("coding", "slow", "paid");
   const middlewares = getMiddlewares();
 
   // Build prompt state for async prompt generation
