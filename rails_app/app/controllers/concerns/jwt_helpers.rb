@@ -13,6 +13,7 @@ module JwtHelpers
     return unless current_user
 
     account ||= Current.account
+    return unless account
 
     payload = {
       jti: current_user.jwt_payload["jti"],

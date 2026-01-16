@@ -32,6 +32,18 @@ module InertiaSchemas
     }
   end
 
+  def self.user_schema
+    {
+      type: :object,
+      properties: {
+        id: integer_field,
+        name: string_field,
+        email: string_field
+      },
+      required: %w[id name email]
+    }
+  end
+
   def self.shared_props
     {
       root_path: { type: :string, description: 'Base URL of the application' },
@@ -49,7 +61,10 @@ module InertiaSchemas
         type: :array,
         items: flash_message_schema,
         description: 'Flash messages'
-      }
+      },
+      current_user: nullable(user_schema).merge(description: 'Currently authenticated user'),
+      true_user: nullable(user_schema).merge(description: 'Original admin user when impersonating'),
+      impersonating: boolean_field(description: 'Whether admin is currently impersonating another user')
     }
   end
 
