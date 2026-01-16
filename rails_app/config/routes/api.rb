@@ -34,6 +34,8 @@ namespace :api, defaults: {format: :json} do
     end
 
     resources :geo_target_constants, only: [:index]
+    # Unified model configuration API (models + preferences in one call)
+    get "model_configuration", to: "model_configuration#index"
     resources :domains, only: [:index, :show, :create]
     resources :website_urls, only: [:index, :show, :create, :update]
     resources :job_runs, only: [:create]

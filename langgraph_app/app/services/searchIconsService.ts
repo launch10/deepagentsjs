@@ -148,7 +148,7 @@ export class SearchIconsService {
         const batchItems = await Promise.all(
           batch.map(async ([name, metadata]) => {
             const normalizedName = this.normalizeIconName(name);
-            const llm = getLLM("writing");
+            const llm = await getLLM("writing");
             const prompt = PromptTemplate.fromTemplate(`
             Purpose: Take a lucide-icon name and generate a detailed description for it, which will support semantic querying of the icon.
             Try to imagine words that _could_ be used to describe the icon and words that could be used to query for the icon.

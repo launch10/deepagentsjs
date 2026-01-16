@@ -117,7 +117,7 @@ export const summarizeMessages = async (
       })
     ),
   });
-  const structured = await getLLM().withStructuredOutput(outputSchema).invoke(prompt);
+  const structured = await (await getLLM()).withStructuredOutput(outputSchema).invoke(prompt);
 
   type Output = z.infer<typeof outputSchema>;
   const output: Output["output"] = structured.output;
@@ -222,11 +222,7 @@ export const saveAnswersTool = tool(
     // Model did not provide answers, so summarize the current thread
     if (!args.answers) {
       const currentMessages = getCurrentTaskInput<BrainstormGraphState>(config).messages;
-      const stateUpdates = await summarizeAndSaveAnswers(
-        currentMessages,
-        websiteId,
-        skippedTopics
-      );
+      const stateUpdates = await summarizeAndSaveAnswers(currentMessages, websiteId, skippedTopics);
 
       return new Command({
         update: {

@@ -135,4 +135,36 @@ export class RedisCache<V = unknown> {
   async keys(pattern: string = "*"): Promise<string[]> {
     return this.client.keys(pattern);
   }
+
+  /**
+   * Fetch a value from cache, or compute and store it if not present.
+   * Follows the Rails cache.fetch pattern.
+   *
+   * @param key - Cache key
+   * @param compute - Function to compute the value if not cached
+   * @param ttl - Time to live in seconds (optional)
+   * @returns The cached or computed value
+   */
+  async fetch<T>(key: string, compute: () => Promise<T>, ttl?: number): Promise<T> {
+    // Try to get from cache first
+    const cached = await this.get([key]);
+    if (cached.length > 0 && cached[0]) {
+      return cached[0].value as unknown as T;
+    }
+
+    // Compute the value
+    const value = await compute();
+
+    // Store in cache
+    await this.set([{ key, value: value as unknown as V, ttl }]);
+
+    return value;
+  }
+
+  /**
+   * Delete a specific key from cache
+   */
+  async delete(key: string): Promise<void> {
+    await this.client.del(key);
+  }
 }

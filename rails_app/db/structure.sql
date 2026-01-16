@@ -2434,6 +2434,76 @@ ALTER SEQUENCE public.leads_id_seq OWNED BY public.leads.id;
 
 
 --
+-- Name: model_configs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.model_configs (
+    id bigint NOT NULL,
+    model_key character varying NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    max_usage_percent integer DEFAULT 100,
+    cost_in numeric(10,4),
+    cost_out numeric(10,4),
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    model_card character varying
+);
+
+
+--
+-- Name: model_configs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.model_configs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: model_configs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.model_configs_id_seq OWNED BY public.model_configs.id;
+
+
+--
+-- Name: model_preferences; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.model_preferences (
+    id bigint NOT NULL,
+    cost_tier character varying NOT NULL,
+    speed_tier character varying NOT NULL,
+    skill character varying NOT NULL,
+    model_keys character varying[] DEFAULT '{}'::character varying[] NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: model_preferences_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.model_preferences_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: model_preferences_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.model_preferences_id_seq OWNED BY public.model_preferences.id;
+
+
+--
 -- Name: noticed_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4234,6 +4304,20 @@ ALTER TABLE ONLY public.leads ALTER COLUMN id SET DEFAULT nextval('public.leads_
 
 
 --
+-- Name: model_configs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.model_configs ALTER COLUMN id SET DEFAULT nextval('public.model_configs_id_seq'::regclass);
+
+
+--
+-- Name: model_preferences id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.model_preferences ALTER COLUMN id SET DEFAULT nextval('public.model_preferences_id_seq'::regclass);
+
+
+--
 -- Name: noticed_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5135,6 +5219,22 @@ ALTER TABLE ONLY public.job_runs
 
 ALTER TABLE ONLY public.leads
     ADD CONSTRAINT leads_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: model_configs model_configs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.model_configs
+    ADD CONSTRAINT model_configs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: model_preferences model_preferences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.model_preferences
+    ADD CONSTRAINT model_preferences_pkey PRIMARY KEY (id);
 
 
 --
@@ -6247,6 +6347,13 @@ CREATE INDEX idx_document_chunks_embedding ON public.document_chunks USING ivffl
 --
 
 CREATE INDEX idx_icon_embeddings_text ON public.icon_embeddings USING ivfflat (embedding public.vector_cosine_ops);
+
+
+--
+-- Name: idx_model_preferences_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_model_preferences_unique ON public.model_preferences USING btree (cost_tier, speed_tier, skill);
 
 
 --
@@ -7633,6 +7740,20 @@ CREATE UNIQUE INDEX index_leads_on_account_id_and_email ON public.leads USING bt
 --
 
 CREATE INDEX index_leads_on_email ON public.leads USING btree (email);
+
+
+--
+-- Name: index_model_configs_on_model_card; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_model_configs_on_model_card ON public.model_configs USING btree (model_card);
+
+
+--
+-- Name: index_model_configs_on_model_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_model_configs_on_model_key ON public.model_configs USING btree (model_key);
 
 
 --
@@ -9843,6 +9964,10 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260115181121'),
+('20260115170002'),
+('20260115170001'),
+('20260115160347'),
 ('20260114203730'),
 ('20260113213841'),
 ('20260113211110'),
