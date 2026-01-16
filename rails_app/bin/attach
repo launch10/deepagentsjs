@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Attach to a running service for debugging (e.g., binding.pry)
+# Usage: bin/attach [service]
+#   service: web (default), vite, langgraph, sidekiq, etc.
+
+SERVICE="${1:-web}"
+
+# Auto-detect which environment is running
+if [ -S ".overmind-test.sock" ]; then
+  SOCKET=".overmind-test.sock"
+  ENV="test"
+elif [ -S ".overmind-dev.sock" ]; then
+  SOCKET=".overmind-dev.sock"
+  ENV="dev"
+else
+  echo "No overmind socket found. Is bin/dev or bin/dev-test running?"
+  exit 1
+fi
+
+echo "Attaching to $SERVICE ($ENV mode) — Ctrl+B then D to detach"
+OVERMIND_SOCKET="$SOCKET" overmind connect "$SERVICE"

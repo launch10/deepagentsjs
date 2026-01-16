@@ -3,6 +3,7 @@
 # Table name: websites
 #
 #  id          :bigint           not null, primary key
+#  deleted_at  :datetime
 #  name        :string
 #  created_at  :datetime         not null
 #  updated_at  :datetime         not null
@@ -16,6 +17,7 @@
 #
 #  index_websites_on_account_id   (account_id)
 #  index_websites_on_created_at   (created_at)
+#  index_websites_on_deleted_at   (deleted_at)
 #  index_websites_on_name         (name)
 #  index_websites_on_project_id   (project_id)
 #  index_websites_on_template_id  (template_id)

@@ -1646,7 +1646,8 @@ CREATE TABLE public.websites (
     updated_at timestamp(6) without time zone NOT NULL,
     thread_id character varying,
     template_id bigint,
-    theme_id integer
+    theme_id integer,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -3051,7 +3052,8 @@ CREATE TABLE public.projects (
     account_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    uuid uuid DEFAULT gen_random_uuid() NOT NULL
+    uuid uuid DEFAULT gen_random_uuid() NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -8113,6 +8115,13 @@ CREATE INDEX index_projects_on_created_at ON public.projects USING btree (create
 
 
 --
+-- Name: index_projects_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_projects_on_deleted_at ON public.projects USING btree (deleted_at);
+
+
+--
 -- Name: index_projects_on_name; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8782,6 +8791,13 @@ CREATE INDEX index_websites_on_account_id ON public.websites USING btree (accoun
 --
 
 CREATE INDEX index_websites_on_created_at ON public.websites USING btree (created_at);
+
+
+--
+-- Name: index_websites_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_websites_on_deleted_at ON public.websites USING btree (deleted_at);
 
 
 --

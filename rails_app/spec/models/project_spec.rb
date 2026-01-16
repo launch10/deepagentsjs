@@ -3,6 +3,7 @@
 # Table name: projects
 #
 #  id         :bigint           not null, primary key
+#  deleted_at :datetime
 #  name       :string           not null
 #  uuid       :uuid             not null
 #  created_at :datetime         not null
@@ -16,6 +17,7 @@
 #  index_projects_on_account_id_and_name        (account_id,name) UNIQUE
 #  index_projects_on_account_id_and_updated_at  (account_id,updated_at)
 #  index_projects_on_created_at                 (created_at)
+#  index_projects_on_deleted_at                 (deleted_at)
 #  index_projects_on_name                       (name)
 #  index_projects_on_updated_at                 (updated_at)
 #  index_projects_on_uuid                       (uuid) UNIQUE
