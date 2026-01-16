@@ -26,7 +26,10 @@ class SubscribedController < ApplicationController
       langgraph_path: langgraph_path,
       jwt: cookies[:jwt],
       errors: session.delete(:errors) || {},
-      flash: flash_messages
+      flash: flash_messages,
+      current_user: current_user&.slice(:id, :name, :email),
+      true_user: true_user&.slice(:id, :name, :email),
+      impersonating: current_user && true_user && current_user.id != true_user.id
     }
   end
 
