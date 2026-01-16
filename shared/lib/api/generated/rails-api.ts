@@ -1619,6 +1619,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/model_configuration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieves model configuration
+         * @description Returns all model configurations and preferences. Used by Langgraph to fetch LLM settings.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description HMAC signature for internal API authentication */
+                    "X-Signature": string;
+                    /** @description Unix timestamp for signature verification */
+                    "X-Timestamp": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description model configuration retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Map of model_key to model configuration */
+                            models: {
+                                [key: string]: {
+                                    /** @description Whether this model is enabled */
+                                    enabled: boolean;
+                                    /** @description Maximum usage percentage for this model */
+                                    maxUsagePercent: number;
+                                    /** @description Cost per input token */
+                                    costIn?: number | null;
+                                    /** @description Cost per output token */
+                                    costOut?: number | null;
+                                    /** @description Model card identifier */
+                                    modelCard?: string | null;
+                                };
+                            };
+                            /** @description Nested map of cost_tier -> speed_tier -> skill -> model_keys array */
+                            preferences: {
+                                [key: string]: {
+                                    [key: string]: {
+                                        [key: string]: string[];
+                                    };
+                                };
+                            };
+                            /**
+                             * Format: date-time
+                             * @description Most recent update timestamp across all configs
+                             */
+                            updatedAt?: string | null;
+                        };
+                    };
+                };
+                /** @description unauthorized - timestamp too old */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Error message */
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_uuid}/workflows/{id}": {
         parameters: {
             query?: never;
