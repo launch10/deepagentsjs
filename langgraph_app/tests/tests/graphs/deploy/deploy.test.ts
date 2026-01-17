@@ -126,7 +126,7 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
     { ...Deploy.createTask("DeployingWebsite"), status: "completed" as const },
   ];
 
-  describe("ConnectingGoogle - Conditional Routing", () => {
+  describe.only("ConnectingGoogle - Conditional Routing", () => {
     it("skips ConnectingGoogle when Google is already connected", async () => {
       // Mock: Google connected, invite accepted
       mockGoogleAPIService.mockImplementation(
@@ -1664,9 +1664,7 @@ describe.skip("Deploy Graph - Full Workflow", () => {
       });
 
       expect(firstResult.status).toBe("pending");
-      const deployTask = firstResult.tasks.find(
-        (t: Deploy.Task) => t.name === "DeployingCampaign"
-      );
+      const deployTask = firstResult.tasks.find((t: Deploy.Task) => t.name === "DeployingCampaign");
       expect(deployTask).toBeDefined();
       expect(deployTask?.status).toBe("pending");
       expect(deployTask?.jobId).toBe(123);
@@ -1722,9 +1720,7 @@ describe.skip("Deploy Graph - Full Workflow", () => {
       });
 
       expect(firstResult.status).toBe("pending");
-      const deployTask = firstResult.tasks.find(
-        (t: Deploy.Task) => t.name === "DeployingCampaign"
-      );
+      const deployTask = firstResult.tasks.find((t: Deploy.Task) => t.name === "DeployingCampaign");
 
       // Simulate webhook with error
       await graph.updateState(

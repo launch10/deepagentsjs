@@ -34,16 +34,18 @@ import {
 } from "./shared";
 
 /**
- * Build the complete coding agent system prompt.
- * All sub-prompts follow the async (state, config) pattern for consistency.
+ * Build the static context prompt (cacheable prefix).
+ * Contains all the rich context about design, tools, tracking, etc.
+ * Used by both the main coding agent and subagents.
+ *
+ * This is everything EXCEPT workflow-specific instructions (Create/Edit/BugFix mode).
+ * The parent agent provides task-specific instructions when delegating to subagents.
  */
-export const buildCodingPrompt = async (
+export const buildStaticContextPrompt = async (
   state: CodingPromptState,
   config?: LangGraphRunnableConfig
 ): Promise<string> => {
-  // Fetch all prompt sections in parallel
   const [
-    // STATIC sections (cacheable prefix)
     userGoal,
     role,
     context,
@@ -58,12 +60,7 @@ export const buildCodingPrompt = async (
     fontAndResponsive,
     environment,
     designChecklist,
-    // DYNAMIC sections (cache-busting, must be at end)
-    workflow,
-    startBy,
-    typography,
   ] = await Promise.all([
-    // STATIC sections (cacheable prefix)
     userGoalPrompt(state, config),
     rolePrompt(state, config),
     contextPrompt(state, config),
@@ -78,16 +75,9 @@ export const buildCodingPrompt = async (
     fontAndResponsivePrompt(state, config),
     environmentPrompt(state, config),
     designChecklistPrompt(state, config),
-    // DYNAMIC sections (cache-busting, must be at end)
-    workflowPrompt(state, config),
-    startByPrompt(state, config),
-    typographyPrompt(state, config),
   ]);
 
-  // ==========================================================================
-  // STATIC PREFIX - Cacheable across ALL users, themes, and modes
-  // ==========================================================================
-  const staticPrefix = `
+  return `
 ${userGoal}
 
 ${role}
@@ -118,6 +108,25 @@ ${environment}
 
 ${designChecklist}
 `.trim();
+};
+
+/**
+ * Build the complete coding agent system prompt.
+ * All sub-prompts follow the async (state, config) pattern for consistency.
+ */
+export const buildCodingPrompt = async (
+  state: CodingPromptState,
+  config?: LangGraphRunnableConfig
+): Promise<string> => {
+  // Build static context (shared with subagents)
+  const staticPrefix = await buildStaticContextPrompt(state, config);
+
+  // Build dynamic sections (workflow-specific)
+  const [workflow, startBy, typography] = await Promise.all([
+    workflowPrompt(state, config),
+    startByPrompt(state, config),
+    typographyPrompt(state, config),
+  ]);
 
   // ==========================================================================
   // DYNAMIC SUFFIX - Varies per request (workflow mode + theme typography)

@@ -4,7 +4,7 @@ import { createDeepAgent, createSkillsMiddleware, createSettings } from "deepage
 import { getLLM, getLLMFallbacks } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
-import { copywriterSubAgent, coderSubAgent } from "./subagents";
+import { copywriterSubAgent, buildCoderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
   toolRetryMiddleware,
@@ -127,8 +127,11 @@ export async function createCodingAgent(state: MinimalCodingAgentState, systemPr
     promptState.theme = await getTheme(state);
   }
 
-  // Build prompt - now async
-  const finalSystemPrompt = systemPrompt || (await buildCodingPrompt(promptState));
+  // Build prompt and subagents - now async
+  const [finalSystemPrompt, coderSubAgent] = await Promise.all([
+    systemPrompt ? Promise.resolve(systemPrompt) : buildCodingPrompt(promptState),
+    buildCoderSubAgent(promptState),
+  ]);
   console.log(finalSystemPrompt);
 
   return createDeepAgent({

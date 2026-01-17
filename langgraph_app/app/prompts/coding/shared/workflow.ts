@@ -11,11 +11,10 @@ const createWorkflow = `
 2. **Plan**: Break down into sections (e.g. Hero, Features, Pricing, Social Proof, CTA, Footer) based on page needs
 3. **Draft copy**: Use the copywriter subagent to draft all section copy at once
 4. **Assign images**: Place user-provided images appropriately
-5. **Code**: Create React components in /src/components/
-6. **Assemble**: Create /src/pages/IndexPage.tsx (and optionally PricingPage.tsx)
+5. **Divide and conquer**: Call multiple coder agents in parallel to implement the components, saving each in /src/components/
+6. **Assemble**: Create /src/pages/IndexPage.tsx (and optionally PricingPage.tsx) to assemble the components
 7. **Track**: Implement L10.createLead() based on conversion type (tiered pricing vs. simple waitlist)
 `;
-// 7. **Verify**: Read files back to confirm correctness
 
 const editWorkflow = `
 ## Workflow
@@ -24,10 +23,11 @@ const editWorkflow = `
 2. **Understand**: Read the user's request carefully to understand what changes they want
 3. **Explore**: Use ls and glob to find the relevant files that need to be modified
 4. **Read**: Read the existing code to understand the current implementation
-5. **Plan**: Determine the changes needed to fulfill the request
-6. **Write**: Use write_file for most changes (adding imports + code, restructuring, multiple edits).
+5. **Plan**: Determine the changes needed to fulfill the request.
+6. **Divide and conquer**: Break down the changes into small, manageable tasks. Ideally enqueue multiple coder agents in parallel to handle different files, provided enough context is provided to each agent.
+7. **Write**: Use write_file for most changes (adding imports + code, restructuring, multiple edits).
    Only use edit_file for truly small, single-point changes (fixing a typo, changing one value).
-7. **Verify**: Read the modified files back to confirm the changes are correct
+8. **Verify**: Read the modified files back to confirm the changes are correct
 `;
 
 const bugfixWorkflow = `
