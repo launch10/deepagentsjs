@@ -60,8 +60,7 @@ RSpec.describe "Chats API", type: :request do
             chat_type: "website",
             project: project1,
             account: user1_account,
-            contextable: website1
-          )
+            contextable: website1)
         end
         let(:validate_params) { {thread_id: existing_thread_id} }
 
@@ -86,8 +85,7 @@ RSpec.describe "Chats API", type: :request do
             chat_type: "brainstorm",
             project: project2,
             account: user2_account,
-            contextable: nil
-          )
+            contextable: nil)
         end
         let(:validate_params) { {thread_id: other_thread_id} }
 
@@ -199,8 +197,7 @@ RSpec.describe "Chats API", type: :request do
             chat_type: "website",
             project: project1,
             account: user1_account,
-            contextable: website1
-          )
+            contextable: website1)
         end
         let(:chat_params) do
           {
@@ -230,8 +227,7 @@ RSpec.describe "Chats API", type: :request do
             chat_type: "brainstorm",
             project: project2,
             account: user2_account,
-            contextable: nil
-          )
+            contextable: nil)
         end
         let(:chat_params) do
           {
