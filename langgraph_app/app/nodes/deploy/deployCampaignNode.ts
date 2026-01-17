@@ -73,7 +73,10 @@ async function runDeployCampaign(
   });
 
   return {
-    tasks: [...state.tasks, Deploy.createTask(TASK_NAME, jobRun.id)],
+    tasks: [...state.tasks, { 
+      ...Deploy.createTask(TASK_NAME, jobRun.id), 
+      status: "running" 
+    }],
     status: "pending",
   };
 }
@@ -89,9 +92,13 @@ export const deployCampaignNode = NodeMiddleware.use({}, runDeployCampaign);
 export const deployCampaignTaskRunner: TaskRunner = {
   taskName: TASK_NAME,
 
-  readyToRun: (state: DeployGraphState) => {
+  readyToRun: (state: DeployGraphState): boolean => {
     // Ready when DeployingWebsite is done (or skipped if not deploying website)
-    return isTaskDone(state, "DeployingWebsite");
+    if (Deploy.shouldDeployWebsite(state)) {
+      return isTaskDone(state, "DeployingWebsite");
+    } else {
+      return isTaskDone(state, "VerifyingGoogle");
+    }
   },
 
   shouldSkip: (state: DeployGraphState) => {
@@ -102,7 +109,7 @@ export const deployCampaignTaskRunner: TaskRunner = {
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
     // Blocking when we have a jobId but no result yet
-    console.log(`task is ${task.jobId}`);
+    console.log(`isBlocking: ${task.status === "running" && !!task.jobId && !task.result && !task.error}`);
     return task.status === "running" && !!task.jobId && !task.result && !task.error;
   },
 

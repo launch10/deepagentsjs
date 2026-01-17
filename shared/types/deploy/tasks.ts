@@ -1,4 +1,5 @@
 import * as GenericTask from "../task";
+import type { Instructions, InstructionType } from "./types";
 
 /**
  * Deploy-specific Task Names and Descriptions
@@ -34,14 +35,29 @@ export const TaskNames = [
 export type TaskName = (typeof TaskNames)[number];
 export const TASK_ORDER = TaskNames;
 
-export const findEarlierTasks = (name: TaskName): TaskName[] => {
-  const index = TASK_ORDER.indexOf(name);
-  return TASK_ORDER.slice(0, index);
+const TasksForInstructions: Record<InstructionType, TaskName[]> = {
+  website: ["AddingAnalytics", "OptimizingSEO", "ValidateLinks", "RuntimeValidation", "FixingBugs", "DeployingWebsite"],
+  googleAds: ["ConnectingGoogle", "VerifyingGoogle", "DeployingCampaign", "CheckingBilling", "EnablingCampaign"],
 }
 
-export const findTasksUpToAndIncluding = (name: TaskName): TaskName[] => {
-  const index = TASK_ORDER.indexOf(name);
-  return TASK_ORDER.slice(0, index + 1);
+const findTasksForInstructions = (instructions: Instructions): TaskName[] => {
+  return Object.keys(instructions).map((key) => {
+    if (instructions[key as InstructionType]) {
+      return TasksForInstructions[key as InstructionType];
+    }
+  }).flat() as TaskName[];
+}
+
+export const findEarlierTasks = (name: TaskName, instructions: Instructions): TaskName[] => {
+  const tasks = findTasksForInstructions(instructions);
+  const index = tasks.indexOf(name);
+  return tasks.slice(0, index);
+}
+
+export const findTasksUpToAndIncluding = (name: TaskName, instructions: Instructions): TaskName[] => {
+  const tasks = findTasksForInstructions(instructions);
+  const index = tasks.indexOf(name);
+  return tasks.slice(0, index + 1);
 }
 
 export const TaskDescriptionMap: Record<TaskName, string> = {

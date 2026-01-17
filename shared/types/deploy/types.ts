@@ -1,7 +1,7 @@
-export type Instructions = {
-    website?: boolean;
-    googleAds?: boolean;
-}
+export const InstructionTypes = ["website", "googleAds"] as const;
+export type InstructionType = (typeof InstructionTypes)[number];
+
+export type Instructions = Partial<Record<InstructionType, boolean>>;
 
 export const shouldDeployWebsite = (state: {deploy: Instructions}) => {
     return state.deploy?.website ?? false;

@@ -56,8 +56,8 @@ const mockJobRunAPIService = vi.mocked(JobRunAPIService);
 
 const deployGraph = uncompiledGraph.compile({ ...graphParams, name: "deploy" });
 
-const runningTask = (taskName: Deploy.TaskName) => {
-  const earlierTasks = completeTasksUpTo(taskName);
+const runningTask = (taskName: Deploy.TaskName, instructions: Deploy.Instructions) => {
+  const earlierTasks = completeTasksUpTo(taskName, instructions);
   const runningTask = Deploy.createTask(taskName);
   return [
     ...earlierTasks,
@@ -65,8 +65,8 @@ const runningTask = (taskName: Deploy.TaskName) => {
   ] satisfies Deploy.Task[];
 }
 
-const completeTasksUpTo = (taskName: Deploy.TaskName) => {
-  const earlierTasks = Deploy.findEarlierTasks(taskName);
+const completeTasksUpTo = (taskName: Deploy.TaskName, instructions: Deploy.Instructions) => {
+  const earlierTasks = Deploy.findEarlierTasks(taskName, instructions);
   return earlierTasks.map((t) => ({ ...Deploy.createTask(t), status: "completed" })) satisfies Deploy.Task[];
 }
 
@@ -274,85 +274,131 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
   })
 
   describe("VerifyingGoogle", async () => {
-    it("proceeds to verifyGoogle after ConnectingGoogle completes", async () => {
-      // Mock: Google connected but invite not yet accepted
-      mockGoogleAPIService.mockImplementation(
-        () =>
-          ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: false, status: "sent", email: "user@gmail.com" }),
-          }) as any
-      );
+    describe("When NOT deploying website", async () => {
+      it("proceeds to DeployCampaign after both GoogleConnect and GoogleVerify complete", async () => {
+        // Mock: Google connected, invite accepted
+        mockGoogleAPIService.mockImplementation(
+          () =>
+            ({
+              getConnectionStatus: vi
+                .fn()
+                .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
+              getInviteStatus: vi
+                .fn()
+                .mockResolvedValue({ accepted: false, status: "none" }),
+            }) as any
+        );
 
-      // Start with ConnectingGoogle already completed
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          websiteId: 1,
-          campaignId: undefined,
-          deploy: { googleAds: true },
-          tasks: completeTasksUpTo("VerifyingGoogle"),
-          chatId: 1
+        // With the new flow: Google setup → analytics → seo → validation → deploy → campaign
+        // We need website tasks completed to reach campaign
+        const graph = testGraph<DeployGraphState>()
+          .withGraph(deployGraph)
+          .withState({
+            jwt: "test-jwt",
+            threadId: "thread_123" as ThreadIDType,
+            websiteId: 1,
+            campaignId,
+            deploy: { googleAds: true },
+            tasks: completeTasksUpTo("VerifyingGoogle", { googleAds: true }),
+            chatId: 1,
+          })
+
+        const result = await graph.execute();
+
+        // Should have all tasks
+        const googleConnectTask = result.state.tasks.find((t) => t.name === "ConnectingGoogle");
+        const googleVerifyTask = result.state.tasks.find((t) => t.name === "VerifyingGoogle");
+
+        // const result = await graph.execute();
+        // const googleConnectTask = Task.findTask(result.state.tasks, "ConnectingGoogle");
+
+        await jobRunCallback({
+          job_run_id: googleVerifyTask?.jobId!,
+          thread_id: graph.threadId!,
+          status: "completed",
+          result: { status: "accepted" },
         })
-        .execute();
 
-      // Should have both ConnectingGoogle (completed) and VerifyingGoogle (pending) tasks
-      const googleTask = result.state.tasks.find((t) => t.name === "ConnectingGoogle");
-      const verifyTask = result.state.tasks.find((t) => t.name === "VerifyingGoogle");
+        const updates = (await deployGraph.getState({configurable: {
+          thread_id: graph.threadId,
+        }})).values;
 
-      expect(googleTask?.status).toBe("completed");
-      expect(verifyTask).toBeDefined();
-      expect(verifyTask?.status).toBe("running"); // enqueueTask creates with running status
+        const updatedResult = await deployGraph.invoke(updates, {configurable: {
+          thread_id: graph.threadId,
+        }});
+
+        const updatedGoogleVerifyTask = updatedResult.tasks.find((t) => t.name === "VerifyingGoogle");
+        const deployTask = updatedResult.tasks.find((t) => t.name === "DeployingCampaign");
+
+        expect(updatedGoogleVerifyTask?.status).toBe("completed");
+        expect(deployTask).toBeDefined();
+        expect(deployTask?.status).toBe("running"); // enqueueTask creates with running status
+      });
     });
 
-    it("proceeds to deploy after both GoogleConnect and GoogleVerify complete", async () => {
-      // Mock: Google connected, invite accepted
-      mockGoogleAPIService.mockImplementation(
-        () =>
-          ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-          }) as any
-      );
+    describe("When YES deploying website", async () => {
+      it("proceeds to Analytics after both GoogleConnect and GoogleVerify complete", async () => {
+        // Mock createCodingAgent to skip actual LLM calls - just return immediately
+        const mockAgent = { invoke: vi.fn().mockResolvedValue({ messages: [] }) };
+        const createCodingAgentSpy = vi.spyOn(await import("@nodes"), "createCodingAgent")
+          .mockResolvedValue(mockAgent as any);
 
-      // With the new flow: Google setup → analytics → seo → validation → deploy → campaign
-      // We need website tasks completed to reach campaign
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          websiteId: 1,
-          campaignId: undefined,
-          deploy: { googleAds: true },
-          tasks: [
-            { ...Deploy.createTask("ConnectingGoogle"), status: "completed" },
-            { ...Deploy.createTask("VerifyingGoogle"), status: "completed" },
-          ],
+        // Mock: Google connected, invite accepted
+        mockGoogleAPIService.mockImplementation(
+          () =>
+            ({
+              getConnectionStatus: vi
+                .fn()
+                .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
+              getInviteStatus: vi
+                .fn()
+                .mockResolvedValue({ accepted: false, status: "none" }),
+            }) as any
+        );
+
+        // With the new flow: Google setup → analytics → seo → validation → deploy → campaign
+        // We need website tasks completed to reach campaign
+        const graph = testGraph<DeployGraphState>()
+          .withGraph(deployGraph)
+          .withState({
+            jwt: "test-jwt",
+            threadId: "thread_123" as ThreadIDType,
+            websiteId: 1,
+            campaignId,
+            deploy: { googleAds: true, website: true },
+            tasks: completeTasksUpTo("VerifyingGoogle", { googleAds: true, website: true }),
+            chatId: 1,
+          })
+
+        const result = await graph.execute();
+
+        // Should have all tasks
+        const googleVerifyTask = result.state.tasks.find((t) => t.name === "VerifyingGoogle");
+
+        await jobRunCallback({
+          job_run_id: googleVerifyTask?.jobId!,
+          thread_id: graph.threadId!,
+          status: "completed",
+          result: { status: "accepted" },
         })
-        .stopAfter("enqueueDeployCampaign")
-        .execute();
 
-      // Should have all tasks
-      const googleTask = result.state.tasks.find((t) => t.name === "ConnectingGoogle");
-      const verifyTask = result.state.tasks.find((t) => t.name === "VerifyingGoogle");
-      const deployTask = result.state.tasks.find((t) => t.name === "DeployingCampaign");
+        // Resume graph - let it run through Analytics (mocked)
+        const updatedResult = await deployGraph.invoke(null, {
+          configurable: { thread_id: graph.threadId },
+        });
 
-      expect(googleTask?.status).toBe("completed");
-      expect(verifyTask?.status).toBe("completed");
-      expect(deployTask).toBeDefined();
-      expect(deployTask?.status).toBe("running"); // enqueueTask creates with running status
-    });
+        const updatedGoogleVerifyTask = updatedResult.tasks.find((t) => t.name === "VerifyingGoogle");
+        const analyticsTask = updatedResult.tasks.find((t) => t.name === "AddingAnalytics");
+
+        expect(updatedGoogleVerifyTask?.status).toBe("completed");
+        expect(analyticsTask).toBeDefined();
+        expect(analyticsTask?.status).toBe("completed"); // Should complete since agent is mocked
+
+        // Cleanup
+        createCodingAgentSpy.mockRestore();
+      });
+
+    })
   });
 
   /**

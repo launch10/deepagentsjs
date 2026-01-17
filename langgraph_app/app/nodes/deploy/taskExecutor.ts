@@ -86,7 +86,6 @@ async function runTaskExecutor(
   config?: LangGraphRunnableConfig
 ): Promise<Partial<DeployGraphState>> {
   const nextTask = await findNextTask(state);
-  console.log(`next task is ${nextTask?.taskName}`, nextTask);
 
   // No next task
   if (!nextTask) {
@@ -129,6 +128,7 @@ async function runTaskExecutor(
   // If task doesn't exist or is pending, enqueue it and RETURN
   // (don't run - executor will loop back)
   if (!task || task.status === "pending") {
+    console.log(`Enqueuing ${nextTask.taskName}`);
     const enqueuedTasks = Deploy.enqueueTask(state.tasks, nextTask.taskName);
     const enqueuedTask = enqueuedTasks.find((t) => t.name === nextTask.taskName)!;
     const phaseResult = withPhases({ tasks: state.tasks }, [enqueuedTask]);
@@ -137,6 +137,7 @@ async function runTaskExecutor(
 
   // Task is running - run it
   try {
+    console.log(`Running ${nextTask.taskName}`);
     return await runner.run(state, config);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -161,7 +162,6 @@ export async function taskExecutorRouter(
 
   const nextTask = await findNextTask(state);
 
-  console.log(`next task is ${nextTask?.taskName}`, nextTask);
   if (!nextTask) return "end";
   if (nextTask.blocking) return "wait";
   if (!nextTask.readyToRun && !nextTask.shouldSkip) return "wait";

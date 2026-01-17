@@ -12,4 +12,5 @@ export type CoreGraphState = {
     projectName: string | undefined;
     websiteId: PrimaryKeyType | undefined;
     chatId: PrimaryKeyType | undefined;
+    shouldInterrupt?: (state: any) => boolean;
 }
