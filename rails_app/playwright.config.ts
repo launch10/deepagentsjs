@@ -72,7 +72,7 @@ export default defineConfig({
   webServer: process.env.CI
     ? undefined
     : {
-        command: "bin/dev-test",
+        command: "SIDEKIQ_INLINE=true bin/dev-test",
         url: baseURL,
         reuseExistingServer: true, // Reuse existing server if running
         timeout: 120 * 1000,

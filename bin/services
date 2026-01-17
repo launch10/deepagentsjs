@@ -68,7 +68,7 @@ start_rails() {
     export RAILS_MASTER_KEY=$(cat config/credentials/test.key)
   fi
 
-  RAILS_ENV=$RAILS_ENV bundle exec rails server -p $RAILS_PORT -d --pid tmp/pids/server-${RAILS_PORT}.pid
+  RAILS_ENV=$RAILS_ENV SIDEKIQ_INLINE=${SIDEKIQ_INLINE:-} bundle exec rails server -p $RAILS_PORT -d --pid tmp/pids/server-${RAILS_PORT}.pid
 
   # Wait for it to be ready
   log_info "Waiting for Rails to be ready..."
@@ -255,6 +255,8 @@ dev_mode() {
   export LANGGRAPH_API_URL
   export RAILS_API_URL
   export NODE_ENV
+  # Export SIDEKIQ_INLINE if set by caller (for e2e tests)
+  [[ -n "$SIDEKIQ_INLINE" ]] && export SIDEKIQ_INLINE
 
   # Export VITE URLs for test environment
   if [[ -n "$VITE_LANGGRAPH_API_URL" ]]; then
