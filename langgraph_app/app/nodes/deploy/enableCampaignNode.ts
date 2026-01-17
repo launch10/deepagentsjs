@@ -2,6 +2,7 @@ import { type DeployGraphState, withPhases } from "@annotation";
 import { JobRunAPIService } from "@rails_api";
 import { DeployService } from "@services";
 import { Deploy, Task } from "@types";
+import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 
 const TASK_NAME: Deploy.TaskName = "EnablingCampaign";
 
@@ -85,3 +86,33 @@ export const enableCampaignNode = async (
 
   return withPhases(state, [updatedTask], [TASK_NAME]);
 };
+
+/**
+ * Enable Campaign Task Runner
+ *
+ * Enables the Google Ads campaign for serving.
+ */
+export const enableCampaignTaskRunner: TaskRunner = {
+  taskName: TASK_NAME,
+
+  readyToRun: (state: DeployGraphState) => {
+    // Ready when CheckingBilling is done
+    return isTaskDone(state, "CheckingBilling");
+  },
+
+  shouldSkip: (state: DeployGraphState) => {
+    // Skip if not deploying Google Ads
+    // (executor handles already-completed tasks)
+    return !Deploy.shouldDeployGoogleAds(state);
+  },
+
+  isBlocking: (state: DeployGraphState, task: Task.Task) => {
+    // Blocking when we have a jobId but no result yet
+    return task.status === "running" && !!task.jobId && task.result?.enabled === undefined && !task.error;
+  },
+
+  run: enableCampaignNode,
+};
+
+// Register this task runner
+registerTask(enableCampaignTaskRunner);

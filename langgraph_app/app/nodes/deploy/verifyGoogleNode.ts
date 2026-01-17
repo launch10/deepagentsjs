@@ -2,6 +2,7 @@ import { type DeployGraphState, withPhases } from "@annotation";
 import { JobRunAPIService } from "@rails_api";
 import { GoogleAPIService, DeployService } from "@services";
 import { Deploy, Task } from "@types";
+import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 
 const TASK_NAME: Deploy.TaskName = "VerifyingGoogle";
 
@@ -96,13 +97,8 @@ export const verifyGoogleNode = async (
  * @returns true if invite is accepted (skip the task), false otherwise
  */
 export async function isGoogleVerified(state: DeployGraphState): Promise<boolean> {
-  // 1. If task already completed in state, skip
-  const task = Task.findTask(state.tasks, TASK_NAME);
-  if (task?.status === "completed") {
-    return true;
-  }
-
-  // 2. Check Rails API for actual invite status
+  // Check Rails API for actual invite status
+  // (executor handles task completion state)
   if (!state.jwt) {
     return false;
   }
@@ -130,3 +126,37 @@ export async function shouldSkipGoogleVerify(
   const verified = await isGoogleVerified(state);
   return verified ? "skipGoogleVerify" : "enqueueGoogleVerify";
 }
+
+/**
+ * Verify Google Task Runner
+ *
+ * Handles the Google Ads invite verification flow using fire-and-forget pattern.
+ */
+export const verifyGoogleTaskRunner: TaskRunner = {
+  taskName: TASK_NAME,
+
+  readyToRun: (state: DeployGraphState) => {
+    // Ready when ConnectingGoogle is completed or skipped
+    return isTaskDone(state, "ConnectingGoogle");
+  },
+
+  shouldSkip: async (state: DeployGraphState) => {
+    // Skip if not deploying Google Ads
+    if (!Deploy.shouldDeployGoogleAds(state)) {
+      return true;
+    }
+
+    // Skip if already verified
+    return isGoogleVerified(state);
+  },
+
+  isBlocking: (state: DeployGraphState, task: Task.Task) => {
+    // Blocking when we have a jobId but no result yet
+    return task.status === "running" && !!task.jobId && !task.result?.status && !task.error;
+  },
+
+  run: verifyGoogleNode,
+};
+
+// Register this task runner
+registerTask(verifyGoogleTaskRunner);

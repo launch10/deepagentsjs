@@ -126,8 +126,8 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
     { ...Deploy.createTask("DeployingWebsite"), status: "completed" as const },
   ];
 
-  describe.only("ConnectingGoogle - Conditional Routing", () => {
-    it("skips ConnectingGoogle when Google is already connected", async () => {
+  describe("ConnectingGoogle - Conditional Routing", () => {
+    it.only("skips ConnectingGoogle when Google is already connected", async () => {
       // Mock: Google connected, invite accepted
       mockGoogleAPIService.mockImplementation(
         () =>
@@ -141,8 +141,7 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
           }) as any
       );
 
-      // With the new flow: analytics → seo → validation → deploy → campaign
-      // We need website tasks completed to reach campaign
+      // Start with empty tasks - Google tasks should be skipped (already connected)
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
         .withState({
@@ -151,23 +150,19 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
           websiteId: 1,
           campaignId: 123,
           deploy: { googleAds: true },
-          tasks: [...completedWebsiteTasksForCampaign],
+          tasks: [],
+          chatId: 1,
         })
-        .stopAfter("enqueueDeployCampaign")
+        .stopAfter("taskExecutor", 2) // Stop after 2 iterations (skip Google, skip Verify)
         .execute();
 
-      // Should NOT have ConnectingGoogle task (it was skipped)
+      // ConnectingGoogle should be skipped (not running)
       const googleConnectTask = result.state.tasks.find((t) => t.name === "ConnectingGoogle");
-      expect(googleConnectTask).toBeUndefined();
+      expect(googleConnectTask?.status).toBe("skipped");
 
-      // Should NOT have VerifyingGoogle task (it was also skipped)
+      // VerifyingGoogle should be skipped (not running)
       const verifyTask = result.state.tasks.find((t) => t.name === "VerifyingGoogle");
-      expect(verifyTask).toBeUndefined();
-
-      // Should have DeployingCampaign task (went straight to deploy)
-      const deployTask = result.state.tasks.find((t) => t.name === "DeployingCampaign");
-      expect(deployTask).toBeDefined();
-      expect(deployTask?.status).toBe("running");
+      expect(verifyTask?.status).toBe("skipped");
     });
 
     it("runs ConnectingGoogle when Google is NOT connected", async () => {

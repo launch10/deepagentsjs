@@ -1,12 +1,13 @@
-import type { DeployGraphState } from "@annotation";
+import { type DeployGraphState, withPhases } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
-import { Task } from "@types";
+import { Deploy, Task } from "@types";
 import { createCodingAgent } from "@nodes";
 import { codingToolsPrompt, environmentPrompt } from "@prompts";
 import { ContextAPIService } from "@rails_api";
+import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 
-const TASK_NAME = "OptimizingSEO" as const;
+const TASK_NAME: Deploy.TaskName = "OptimizingSEO";
 
 /**
  * Build system prompt for SEO optimization AI agent
@@ -121,88 +122,111 @@ async function fetchSEOContext(state: DeployGraphState) {
  * Uses the coding agent to intelligently generate SEO copy based on
  * brainstorm data and available images.
  */
-export const seoOptimizationNode = NodeMiddleware.use(
-  {},
-  async (
-    state: DeployGraphState,
-    config: LangGraphRunnableConfig
-  ): Promise<Partial<DeployGraphState>> => {
-    const task = Task.findTask(state.tasks, TASK_NAME);
+async function runSeoOptimization(
+  state: DeployGraphState,
+  config?: LangGraphRunnableConfig
+): Promise<Partial<DeployGraphState>> {
+  const task = Task.findTask(state.tasks, TASK_NAME);
 
-    if (task?.status === "completed") {
-      return {};
-    }
-
-    if (!state.websiteId) {
-      throw new Error("Missing websiteId");
-    }
-
-    try {
-      // Fetch brainstorm and images for context
-      const { brainstorm, images } = await fetchSEOContext(state);
-
-      // Build user message with context
-      let userMessage = `Optimize the index.html file with SEO meta tags.`;
-
-      if (brainstorm) {
-        userMessage += `\n\n## Brainstorm Context:\n`;
-        if (brainstorm.idea) userMessage += `- Idea: ${brainstorm.idea}\n`;
-        if (brainstorm.audience) userMessage += `- Target Audience: ${brainstorm.audience}\n`;
-        if (brainstorm.solution) userMessage += `- Solution: ${brainstorm.solution}\n`;
-        if (brainstorm.socialProof) userMessage += `- Social Proof: ${brainstorm.socialProof}\n`;
-      }
-
-      if (images.length > 0) {
-        userMessage += `\n\n## Available Images:\n`;
-        images.forEach((img, i) => {
-          userMessage += `${i + 1}. ${img.url} ${img.isLogo ? "(logo)" : ""}`;
-          if (img.faviconUrl) {
-            userMessage += ` [favicon: ${img.faviconUrl}]`;
-          }
-          userMessage += `\n`;
-        });
-        userMessage += `\nUse one of these images for og:image and twitter:image.`;
-        userMessage += `\nFor the favicon, use the [favicon: ...] URL if available.`;
-      }
-
-      const systemPrompt = await buildSystemPrompt(state, config);
-
-      const agent = await createCodingAgent(
-        {
-          ...state,
-          isFirstMessage: false,
-        },
-        systemPrompt
-      );
-
-      await agent.invoke({
-        messages: [
-          {
-            role: "user",
-            content: userMessage,
-          },
-        ],
-      });
-
-      return {
-        tasks: [
-          {
-            ...task,
-            status: "completed",
-          } as Task.Task,
-        ],
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return {
-        tasks: [
-          {
-            ...task,
-            status: "failed",
-            error: `Website ${state.websiteId} not found`,
-          } as Task.Task,
-        ],
-      };
-    }
+  if (task?.status === "completed") {
+    return {};
   }
-);
+
+  if (!state.websiteId) {
+    throw new Error("Missing websiteId");
+  }
+
+  try {
+    // Fetch brainstorm and images for context
+    const { brainstorm, images } = await fetchSEOContext(state);
+
+    // Build user message with context
+    let userMessage = `Optimize the index.html file with SEO meta tags.`;
+
+    if (brainstorm) {
+      userMessage += `\n\n## Brainstorm Context:\n`;
+      if (brainstorm.idea) userMessage += `- Idea: ${brainstorm.idea}\n`;
+      if (brainstorm.audience) userMessage += `- Target Audience: ${brainstorm.audience}\n`;
+      if (brainstorm.solution) userMessage += `- Solution: ${brainstorm.solution}\n`;
+      if (brainstorm.socialProof) userMessage += `- Social Proof: ${brainstorm.socialProof}\n`;
+    }
+
+    if (images.length > 0) {
+      userMessage += `\n\n## Available Images:\n`;
+      images.forEach((img, i) => {
+        userMessage += `${i + 1}. ${img.url} ${img.isLogo ? "(logo)" : ""}`;
+        if (img.faviconUrl) {
+          userMessage += ` [favicon: ${img.faviconUrl}]`;
+        }
+        userMessage += `\n`;
+      });
+      userMessage += `\nUse one of these images for og:image and twitter:image.`;
+      userMessage += `\nFor the favicon, use the [favicon: ...] URL if available.`;
+    }
+
+    const systemPrompt = await buildSystemPrompt(state, config!);
+
+    const agent = await createCodingAgent(
+      {
+        ...state,
+        isFirstMessage: false,
+      },
+      systemPrompt
+    );
+
+    await agent.invoke({
+      messages: [
+        {
+          role: "user",
+          content: userMessage,
+        },
+      ],
+    });
+
+    return withPhases(
+      state,
+      [{ ...task, status: "completed" } as Task.Task]
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return withPhases(
+      state,
+      [{ ...task, status: "failed", error: `Website ${state.websiteId} not found` } as Task.Task]
+    );
+  }
+}
+
+/**
+ * SEO Optimization Task Runner
+ */
+export const seoOptimizationTaskRunner: TaskRunner = {
+  taskName: TASK_NAME,
+
+  readyToRun: (state: DeployGraphState) => {
+    // Ready when Google setup is done OR not deploying Google Ads
+    // Can run in parallel with AddingAnalytics
+    if (!Deploy.shouldDeployGoogleAds(state)) {
+      return true;
+    }
+    return isTaskDone(state, "ConnectingGoogle") && isTaskDone(state, "VerifyingGoogle");
+  },
+
+  shouldSkip: (state: DeployGraphState) => {
+    // Skip if not deploying a website
+    if (!state.deploy?.website) {
+      return true;
+    }
+
+    // Skip if already completed
+    const task = Task.findTask(state.tasks, TASK_NAME);
+    return task?.status === "completed";
+  },
+
+  run: runSeoOptimization,
+};
+
+// Register this task runner
+registerTask(seoOptimizationTaskRunner);
+
+// Legacy exports for backwards compatibility
+export const seoOptimizationNode = NodeMiddleware.use({}, runSeoOptimization);

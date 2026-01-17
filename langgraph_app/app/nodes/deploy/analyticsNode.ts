@@ -1,9 +1,9 @@
 import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { NodeMiddleware } from "@middleware";
-import { Task } from "@types";
+import { Deploy, Task } from "@types";
 import { createCodingAgent } from "@nodes";
 import { codingToolsPrompt, trackingPrompt, environmentPrompt } from "@prompts";
+import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 
 const TASK_NAME = "AddingAnalytics" as const;
 
@@ -33,26 +33,45 @@ const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunna
 };
 
 /**
- * Instrumentation Node
+ * Analytics Task Runner
  *
  * Validates that landing pages use L10.createLead() for lead capture.
  * Does NOT inject code - the coding agent is responsible for using the correct patterns.
  * This node just verifies compliance before deploy.
  */
-export const analyticsNode = NodeMiddleware.use(
-  {},
-  async (
+export const analyticsTaskRunner: TaskRunner = {
+  taskName: TASK_NAME,
+
+  readyToRun: (state: DeployGraphState) => {
+    // Ready when Google setup is done OR not deploying Google Ads
+    if (!Deploy.shouldDeployGoogleAds(state)) {
+      return true;
+    }
+    return isTaskDone(state, "VerifyingGoogle");
+  },
+
+  shouldSkip: (state: DeployGraphState) => {
+    // Skip if not deploying a website
+    return !state.deploy?.website;
+  },
+
+  run: async (
     state: DeployGraphState,
-    config: LangGraphRunnableConfig
+    config?: LangGraphRunnableConfig
   ): Promise<Partial<DeployGraphState>> => {
     const task = Task.findTask(state.tasks, TASK_NAME);
 
+    // Already completed - idempotent
     if (task?.status === "completed") {
       return {};
     }
 
     if (!state.websiteId) {
       throw new Error("Missing websiteId");
+    }
+
+    if (!config) {
+      throw new Error("Config is required for analytics task");
     }
 
     try {
@@ -65,12 +84,12 @@ export const analyticsNode = NodeMiddleware.use(
         },
         systemPrompt
       );
-      const result = await agent.invoke(
+      await agent.invoke(
         {
           messages: [
             {
               role: "user",
-              content: `Verify that the landing page uses L10.createLead() for lead capture. 
+              content: `Verify that the landing page uses L10.createLead() for lead capture.
             1. First, query all available components
             2. Then, narrow down to files likely to require instrumentation (e.g. Hero, Pricing, CTA)
             3. Check these components, and add instrumentation if necessary
@@ -103,5 +122,12 @@ export const analyticsNode = NodeMiddleware.use(
         ],
       };
     }
-  }
-);
+  },
+};
+
+// Register this task runner
+registerTask(analyticsTaskRunner);
+
+// Legacy exports for backwards compatibility during migration
+export const analyticsNode = analyticsTaskRunner.run;
+export const shouldSkipAnalytics = analyticsTaskRunner.shouldSkip;

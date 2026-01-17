@@ -350,19 +350,10 @@ describe("isGoogleConnected", () => {
     );
   });
 
-  it("returns true when task is already completed", async () => {
-    const state: Partial<DeployGraphState> = {
-      jwt: "test-jwt",
-      tasks: [{ ...Deploy.createTask("ConnectingGoogle"), status: "completed" } as Task.Task],
-    };
+  // Note: Task completion is now handled by the executor, not isGoogleConnected
+  // The function only checks external state (API call)
 
-    const result = await isGoogleConnected(state as DeployGraphState);
-    expect(result).toBe(true);
-    // Should not call API when task is completed
-    expect(mockGoogleAPIService).not.toHaveBeenCalled();
-  });
-
-  it("calls GoogleAPIService when task is not completed", async () => {
+  it("calls GoogleAPIService to check connection status", async () => {
     const mockGetStatus = vi.fn().mockResolvedValue({ connected: true, email: "user@gmail.com" });
     mockGoogleAPIService.mockImplementation(
       () =>
@@ -496,6 +487,7 @@ describe("shouldSkipGoogleConnect", () => {
     const state: Partial<DeployGraphState> = {
       jwt: "test-jwt",
       tasks: [],
+      deploy: { googleAds: true }, // Must deploy Google Ads to not skip
     };
 
     const result = await shouldSkipGoogleConnect(state as DeployGraphState);
