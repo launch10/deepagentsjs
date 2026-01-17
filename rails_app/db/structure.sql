@@ -1629,7 +1629,8 @@ CREATE TABLE public.website_histories (
     snapshot_id character varying,
     thread_id character varying,
     template_id integer,
-    theme_id integer
+    theme_id integer,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -10122,9 +10123,14 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260117001808'),
+('20260116143258'),
+('20260115181801'),
+('20260115181736'),
 ('20260115181121'),
 ('20260115170002'),
 ('20260115170001'),
+('20260115170000'),
 ('20260115160347'),
 ('20260114203730'),
 ('20260113213841'),

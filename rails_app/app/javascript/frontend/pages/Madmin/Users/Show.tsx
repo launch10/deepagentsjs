@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { Link, router } from "@inertiajs/react";
+import { Link, router, usePage } from "@inertiajs/react";
 import {
   ArrowLeftIcon,
   ShieldCheckIcon,
@@ -50,7 +50,15 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function BooleanBadge({ value, trueLabel = "Yes", falseLabel = "No" }: { value: boolean; trueLabel?: string; falseLabel?: string }) {
+function BooleanBadge({
+  value,
+  trueLabel = "Yes",
+  falseLabel = "No",
+}: {
+  value: boolean;
+  trueLabel?: string;
+  falseLabel?: string;
+}) {
   return value ? (
     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
       <CheckCircleIcon className="w-3 h-3" />
@@ -65,6 +73,11 @@ function BooleanBadge({ value, trueLabel = "Yes", falseLabel = "No" }: { value: 
 }
 
 function UserShow({ user }: UserShowProps) {
+  const { current_user } = usePage<{ props: { current_user?: { id: number } } }>().props as {
+    current_user?: { id: number };
+  };
+  const isSelf = current_user?.id === user.id;
+
   const handleImpersonate = () => {
     router.post(`/admin/users/${user.id}/impersonate`);
   };
@@ -88,22 +101,22 @@ function UserShow({ user }: UserShowProps) {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-3xl font-bold text-foreground">{user.name}</h1>
-                {user.admin && (
-                  <ShieldCheckIcon className="w-6 h-6 text-primary" title="Admin" />
-                )}
+                {user.admin && <ShieldCheckIcon className="w-6 h-6 text-primary" title="Admin" />}
               </div>
               <p className="text-muted-foreground">{user.email}</p>
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <button
-              onClick={handleImpersonate}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Impersonate
-            </button>
-          </div>
+          {!isSelf && (
+            <div className="flex gap-2">
+              <button
+                onClick={handleImpersonate}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Impersonate
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
