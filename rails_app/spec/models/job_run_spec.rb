@@ -13,11 +13,13 @@
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
 #  account_id          :bigint
+#  deploy_id           :bigint
 #  langgraph_thread_id :string
 #
 # Indexes
 #
 #  index_job_runs_on_account_id            (account_id)
+#  index_job_runs_on_deploy_id             (deploy_id)
 #  index_job_runs_on_job_class             (job_class)
 #  index_job_runs_on_job_class_and_status  (job_class,status)
 #  index_job_runs_on_langgraph_thread_id   (langgraph_thread_id)
@@ -41,6 +43,26 @@ RSpec.describe JobRun, type: :model do
     it { should validate_presence_of(:status) }
     it { should validate_inclusion_of(:status).in_array(JobRun::STATUSES) }
     it { should validate_presence_of(:account) }
+  end
+
+  describe "ALLOWED_JOBS" do
+    it "includes GoogleOAuthConnect for Google OAuth HITL flow" do
+      expect(JobRun::ALLOWED_JOBS).to include("GoogleOAuthConnect")
+    end
+
+    it "includes GoogleAdsInvite for Google Ads invite HITL flow" do
+      expect(JobRun::ALLOWED_JOBS).to include("GoogleAdsInvite")
+    end
+
+    it "allows creating job runs with GoogleOAuthConnect" do
+      job_run = build(:job_run, account: account, job_class: "GoogleOAuthConnect")
+      expect(job_run).to be_valid
+    end
+
+    it "allows creating job runs with GoogleAdsInvite" do
+      job_run = build(:job_run, account: account, job_class: "GoogleAdsInvite")
+      expect(job_run).to be_valid
+    end
   end
 
   describe "scopes" do

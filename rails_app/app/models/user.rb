@@ -85,4 +85,8 @@ class User < ApplicationRecord
   def account
     owned_account
   end
+
+  def confirmed?
+    confirmed_at.present?
+  end
 end

@@ -49,13 +49,10 @@ export function parseUrl(): {
     }
   }
 
-  // Match /projects/{uuid}/launch/{substep}
-  const launchMatch = path.match(/^\/projects\/([^/]+)\/launch\/(\w+)$/);
-  if (launchMatch) {
-    const substep = launchMatch[2] as Workflow.LaunchSubstepName;
-    if (Workflow.LaunchSubstepNames.includes(substep)) {
-      return { projectUUID: launchMatch[1], page: "launch", substep };
-    }
+  // Match /projects/{uuid}/deploy (no substeps)
+  const deployMatch = path.match(/^\/projects\/([^/]+)\/deploy$/);
+  if (deployMatch) {
+    return { projectUUID: deployMatch[1], page: "deploy", substep: null };
   }
 
   return { projectUUID: null, page: null, substep: null };
@@ -76,8 +73,8 @@ function buildUrl(
       return `/projects/${projectUUID}/website`;
     case "ad_campaign":
       return `/projects/${projectUUID}/campaigns/${substep}`;
-    case "launch":
-      return `/projects/${projectUUID}/launch/${substep}`;
+    case "deploy":
+      return `/projects/${projectUUID}/deploy`;
   }
 }
 

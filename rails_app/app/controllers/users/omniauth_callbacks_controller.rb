@@ -19,6 +19,47 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   #
   # etc...
 
+  # Complete GoogleOAuthConnect job run when user connects Google OAuth.
+  # This is called by Jumpstart's Omniauth::Callbacks module after a successful connection.
+  #
+  # We find the job run through the active deploy to avoid race conditions when
+  # multiple deploys exist. The flow:
+  # 1. Find the most recently active deploy (user_active_at within last 10 minutes)
+  # 2. Find the pending/running GoogleOAuthConnect job for that deploy
+  def google_oauth2_connected(connected_account)
+    # Get account from connected_account's owner (current_account may be nil in OAuth callback)
+    account = connected_account.owner.owned_account
+    return unless account
+
+    # Find the most recently active deploy across all account projects
+    # This is the deploy the user was working on when they clicked "Connect with Google"
+    active_deploy = Deploy.joins(project: :account)
+      .where(projects: { account_id: account.id })
+      .in_progress
+      .user_recently_active
+      .order(user_active_at: :desc)
+      .first
+
+    # Find job run through deploy if available, fall back to account-level lookup
+    job_run = if active_deploy
+      active_deploy.job_runs
+        .where(job_class: "GoogleOAuthConnect", status: %w[pending running])
+        .order(created_at: :desc)
+        .first
+    else
+      # Legacy fallback: find by account if no active deploy
+      account.job_runs
+        .where(job_class: "GoogleOAuthConnect", status: %w[pending running])
+        .order(created_at: :desc)
+        .first
+    end
+
+    return unless job_run
+
+    job_run.complete!({ google_email: connected_account.email })
+    job_run.notify_langgraph(status: "completed", result: { google_email: connected_account.email })
+  end
+
   # To change the redirect URL after an account is connected, you can override the following methods:
   #
   # After sign up and sign in with OAuth

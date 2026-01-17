@@ -6,3 +6,7 @@ export * from "./validateLinksNode";
 export * from "./bugFixNode";
 export * from "./createEnqueueNode";
 export * from "./googleConnectNode";
+export * from "./verifyGoogleNode";
+export * from "./checkPaymentNode";
+export * from "./enableCampaignNode";
+export * from "./deployCampaignNode";

@@ -6,6 +6,8 @@ def est_time(time)
   ActiveSupport::TimeZone.new("America/New_York").parse(time).utc
 end
 
+return if Rails.env.test?
+
 Zhong.schedule do
   category "Cloudflare" do
     every(5.minutes, "monitor domains") do
@@ -30,6 +32,10 @@ Zhong.schedule do
   category "Google Ads" do
     every(1.day, "ingest geo target constants", at: "03:00") do
       GoogleAds::LocationTargeting::IngestWorker.perform_async
+    end
+
+    every(30.seconds, "poll active invites") do
+      GoogleAds::PollActiveInvitesWorker.perform_async
     end
   end
 end

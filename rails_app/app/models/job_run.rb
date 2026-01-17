@@ -13,11 +13,13 @@
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
 #  account_id          :bigint
+#  deploy_id           :bigint
 #  langgraph_thread_id :string
 #
 # Indexes
 #
 #  index_job_runs_on_account_id            (account_id)
+#  index_job_runs_on_deploy_id             (deploy_id)
 #  index_job_runs_on_job_class             (job_class)
 #  index_job_runs_on_job_class_and_status  (job_class,status)
 #  index_job_runs_on_langgraph_thread_id   (langgraph_thread_id)
@@ -29,9 +31,10 @@
 #
 class JobRun < ApplicationRecord
   belongs_to :account
+  belongs_to :deploy, optional: true
 
   STATUSES = %w[pending running completed failed].freeze
-  ALLOWED_JOBS = %w[CampaignDeploy WebsiteDeploy].freeze
+  ALLOWED_JOBS = %w[CampaignDeploy WebsiteDeploy GoogleOAuthConnect GoogleAdsInvite GoogleAdsPaymentCheck CampaignEnable].freeze
 
   validates :job_class, presence: true, inclusion: { in: ALLOWED_JOBS }
   validates :status, presence: true, inclusion: { in: STATUSES }

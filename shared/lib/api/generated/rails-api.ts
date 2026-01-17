@@ -1130,6 +1130,200 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deploys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a deploy */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        project_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description deploy created increments deploy count */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description project not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deploys/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Deploy ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** Retrieves a deploy */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Deploy ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description deploy found */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot access deploy from different account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Updates a deploy */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Deploy ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        status?: string;
+                        current_step?: string;
+                        is_live?: boolean;
+                        langgraph_thread_id?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description deploy marked as live */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/deploys/{id}/touch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Deploy ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Updates user activity timestamp */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Deploy ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description user activity updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot touch deploy from different account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/domains": {
         parameters: {
             query?: never;
@@ -1420,6 +1614,141 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/google/connection_status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns Google OAuth connection status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns connection status when connected */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/google/invite_status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns Google Ads invite status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns invite status when invite is accepted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/google/payment_status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns Google Ads payment/billing status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns payment status when billing is approved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/job_runs": {
         parameters: {
             query?: never;
@@ -1448,7 +1777,7 @@ export interface paths {
                          * @description Job type identifier
                          * @enum {string}
                          */
-                        job_class: "CampaignDeploy" | "WebsiteDeploy";
+                        job_class: "CampaignDeploy" | "WebsiteDeploy" | "GoogleOAuthConnect" | "GoogleAdsInvite" | "GoogleAdsPaymentCheck" | "CampaignEnable";
                         /** @description Arguments to pass to the worker */
                         arguments: {
                             [key: string]: unknown;
@@ -1459,7 +1788,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description filters unpermitted arguments */
+                /** @description ignores deploy_id from other account (creates job without deploy) */
                 201: {
                     headers: {
                         [name: string]: unknown;

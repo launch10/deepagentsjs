@@ -63,7 +63,7 @@ module GoogleAds
             results << new(keyword).sync
           end
 
-          Sync::CollectionSyncResult.new(results: results)
+          ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
         end
 
         def sync_plan(ad_group)
@@ -84,13 +84,13 @@ module GoogleAds
             operations.concat(new(keyword).sync_plan.operations)
           end
 
-          Sync::Plan.new(operations)
+          ::GoogleAds::Sync::Plan.new(operations)
         end
 
         # Returns a CollectionSyncResult representing the current sync state of all keywords.
         def sync_result(ad_group)
           results = ad_group.keywords.without_deleted.map { |keyword| new(keyword).sync_result }
-          Sync::CollectionSyncResult.new(results: results)
+          ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
         end
       end
 
@@ -155,7 +155,7 @@ module GoogleAds
           operations << { action: :unchanged, record: record }
         end
 
-        Sync::Plan.new(operations)
+        GoogleAds::Sync::Plan.new(operations)
       end
 
       def delete

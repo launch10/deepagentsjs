@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>" class="h-full">
+  <head>
+    <meta charset="utf-8">
+    <meta name="ROBOTS" content="NOODP">
+    <meta name="viewport" content="initial-scale=1">
+    <title>
+      <% if content_for? :title %>
+        <%= yield(:title) %> -
+      <% end %>
+      <%= Madmin.site_name %> Admin
+    </title>
+    <%= csrf_meta_tags %>
+    <%= vite_stylesheet_tag "application" %>
+    <%= vite_react_refresh_tag %>
+    <%= vite_client_tag %>
+    <%= vite_typescript_tag "inertia" %>
+    <%= inertia_ssr_head if defined?(inertia_ssr_head) %>
+    <%= render "javascript" %>
+  </head>
+  <body class="h-full bg-background text-foreground">
+    <%= yield %>
+  </body>
+</html>

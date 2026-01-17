@@ -3,6 +3,7 @@
 # Table name: website_histories
 #
 #  id                 :bigint           not null, primary key
+#  deleted_at         :datetime
 #  history_ended_at   :datetime
 #  history_started_at :datetime         not null
 #  name               :string

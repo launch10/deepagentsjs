@@ -1,0 +1,60 @@
+# == Schema Information
+#
+# Table name: deploys
+#
+#  id                  :bigint           not null, primary key
+#  current_step        :string
+#  is_live             :boolean          default(FALSE)
+#  stacktrace          :text
+#  status              :string           default("pending"), not null
+#  user_active_at      :datetime
+#  created_at          :datetime         not null
+#  updated_at          :datetime         not null
+#  campaign_deploy_id  :bigint
+#  langgraph_thread_id :string
+#  project_id          :bigint           not null
+#  website_deploy_id   :bigint
+#
+# Indexes
+#
+#  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
+#  index_deploys_on_is_live                 (is_live)
+#  index_deploys_on_langgraph_thread_id     (langgraph_thread_id)
+#  index_deploys_on_project_id              (project_id)
+#  index_deploys_on_project_id_and_is_live  (project_id,is_live)
+#  index_deploys_on_project_id_and_status   (project_id,status)
+#  index_deploys_on_status                  (status)
+#  index_deploys_on_website_deploy_id       (website_deploy_id)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (campaign_deploy_id => campaign_deploys.id)
+#  fk_rails_...  (project_id => projects.id)
+#  fk_rails_...  (website_deploy_id => website_deploys.id)
+#
+FactoryBot.define do
+  factory :deploy do
+    association :project
+
+    status { "pending" }
+    current_step { nil }
+    is_live { false }
+
+    trait :running do
+      status { "running" }
+    end
+
+    trait :completed do
+      status { "completed" }
+    end
+
+    trait :failed do
+      status { "failed" }
+    end
+
+    trait :live do
+      is_live { true }
+      status { "completed" }
+    end
+  end
+end

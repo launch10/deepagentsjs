@@ -25,7 +25,7 @@ RSpec.describe GoogleAds::Resources::AdGroup do
 
   describe 'instrumentation' do
     it 'includes Instrumentable' do
-      expect(described_class.ancestors).to include(GoogleAds::Resources::Instrumentable)
+      expect(described_class.ancestors.map(&:name)).to include('GoogleAds::Resources::Instrumentable')
     end
 
     it 'provides instrumentation context with ad_group' do

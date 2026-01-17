@@ -1,12 +1,10 @@
-import { number } from "zod";
-
 export const WorkflowTypes = ["launch"] as const;
 export type WorkflowType = typeof WorkflowTypes[number];
 
 export const StepNames = [
-  "brainstorm", "website", "ad_campaign", "launch",
-  "create", "content", "highlights", "plan", "keywords", "settings", 
-  "review", "deployment"
+  "brainstorm", "website", "ad_campaign", "deploy",
+  "create", "content", "highlights", "plan", "keywords", "settings",
+  "review", "launch"
 ] as const;
 export type StepName = typeof StepNames[number];
 export interface Step {
@@ -19,7 +17,7 @@ export interface Step {
 export type Workflow = { steps: Step[] };
 export type Workflows = Record<WorkflowType, Workflow>;
 
-export const WorkflowPages = ["brainstorm", "website", "ad_campaign", "launch"] as const;
+export const WorkflowPages = ["brainstorm", "website", "ad_campaign", "deploy"] as const;
 export type WorkflowPage = typeof WorkflowPages[number];
 
 export const AdCampaignStepNames = ["create", "plan", "launch"] as const;
@@ -28,10 +26,8 @@ export type AdCampaignStepName = typeof AdCampaignStepNames[number];
 export const AdCampaignSubstepNames = ["content", "highlights", "keywords", "settings", "launch", "review"] as const;
 export type AdCampaignSubstepName = typeof AdCampaignSubstepNames[number];
 
-export const LaunchSubstepNames = ["settings", "review", "deployment"] as const;
-export type LaunchSubstepName = typeof LaunchSubstepNames[number];
-
-export const SubstepNames = [...AdCampaignSubstepNames, "deployment"] as const;
+// Deploy page has no substeps - it's a single step
+export const SubstepNames = [...AdCampaignSubstepNames] as const;
 export type SubstepName = typeof SubstepNames[number];
 
 export const workflows = {
@@ -70,13 +66,7 @@ export const workflows = {
           }
         ]
       },
-      { name: "launch", label: "Launch", order: 4,
-        steps: [
-          { name: "settings", label: "Settings", order: 1 },
-          { name: "review", label: "Review", order: 2 },
-          { name: "deployment", label: "Deployment", order: 3 }
-        ]
-      }
+      { name: "deploy", label: "Deploy", order: 4 }
     ]
   }
 } as const satisfies Workflows;

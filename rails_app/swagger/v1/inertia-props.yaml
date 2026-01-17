@@ -170,63 +170,6 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/CampaignsProps"
-  "/projects/{uuid}/launch/settings":
-    get:
-      summary: Settings page props
-      tags:
-      - Inertia Pages - Launch
-      parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
-      responses:
-        '200':
-          description: Settings page props
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/LaunchProps"
-  "/projects/{uuid}/launch/review":
-    get:
-      summary: Review page props
-      tags:
-      - Inertia Pages - Launch
-      parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
-      responses:
-        '200':
-          description: Review page props
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/LaunchProps"
-  "/projects/{uuid}/launch/deployment":
-    get:
-      summary: Deployment page props
-      tags:
-      - Inertia Pages - Launch
-      parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
-      responses:
-        '200':
-          description: Deployment page props
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/LaunchProps"
 components:
   schemas:
     NewBrainstormProps:

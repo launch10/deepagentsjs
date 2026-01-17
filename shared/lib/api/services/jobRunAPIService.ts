@@ -24,6 +24,8 @@ export interface SimpleCreateJobRunParams {
   jobClass: CreateJobRunRequest["job_class"];
   arguments: Record<string, unknown>;
   threadId: string;
+  /** Optional deploy ID to link this job run with a deploy for user activity tracking */
+  deployId?: number;
 }
 
 // ============================================================================
@@ -45,13 +47,14 @@ export class JobRunAPIService extends RailsAPIBase {
     const client = await this.getClient();
 
     // Convert simple params to API format if needed
-    const body: CreateJobRunRequest =
+    const body: CreateJobRunRequest & { deploy_id?: number } =
       "job_class" in options
         ? options
         : {
             job_class: options.jobClass,
             arguments: options.arguments,
             thread_id: options.threadId,
+            ...(options.deployId && { deploy_id: options.deployId }),
           };
 
     const response = await client.POST("/api/v1/job_runs", {

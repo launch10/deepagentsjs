@@ -6,6 +6,12 @@ import type { PrimaryKeyType, Task, ConsoleError } from "@types";
 export const DeployAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
 
+  // Rails Deploy record ID (for linking job_runs, user activity tracking)
+  deployId: Annotation<PrimaryKeyType | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next ?? current,
+  }),
+
   // Final deploy status for frontend
   status: Annotation<Deploy.Status | undefined>({
     default: () => undefined,

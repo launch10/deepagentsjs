@@ -1629,7 +1629,8 @@ CREATE TABLE public.website_histories (
     snapshot_id character varying,
     thread_id character varying,
     template_id integer,
-    theme_id integer
+    theme_id integer,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -1646,7 +1647,8 @@ CREATE TABLE public.websites (
     updated_at timestamp(6) without time zone NOT NULL,
     thread_id character varying,
     template_id bigint,
-    theme_id integer
+    theme_id integer,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -1833,6 +1835,45 @@ CREATE SEQUENCE public.deploy_files_id_seq
 --
 
 ALTER SEQUENCE public.deploy_files_id_seq OWNED BY public.deploy_files.id;
+
+
+--
+-- Name: deploys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.deploys (
+    id bigint NOT NULL,
+    project_id bigint NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    current_step character varying,
+    is_live boolean DEFAULT false,
+    stacktrace text,
+    langgraph_thread_id character varying,
+    website_deploy_id bigint,
+    campaign_deploy_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    user_active_at timestamp(6) without time zone
+);
+
+
+--
+-- Name: deploys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.deploys_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: deploys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.deploys_id_seq OWNED BY public.deploys.id;
 
 
 --
@@ -2377,7 +2418,8 @@ CREATE TABLE public.job_runs (
     updated_at timestamp(6) without time zone NOT NULL,
     account_id bigint,
     langgraph_thread_id character varying,
-    result_data jsonb DEFAULT '{}'::jsonb
+    result_data jsonb DEFAULT '{}'::jsonb,
+    deploy_id bigint
 );
 
 
@@ -3011,7 +3053,8 @@ CREATE TABLE public.projects (
     account_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    uuid uuid DEFAULT gen_random_uuid() NOT NULL
+    uuid uuid DEFAULT gen_random_uuid() NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -4234,6 +4277,13 @@ ALTER TABLE ONLY public.deploy_files ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: deploys id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys ALTER COLUMN id SET DEFAULT nextval('public.deploys_id_seq'::regclass);
+
+
+--
 -- Name: document_chunks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5003,6 +5053,14 @@ ALTER TABLE ONLY public.connected_accounts
 
 ALTER TABLE ONLY public.deploy_files
     ADD CONSTRAINT deploy_files_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: deploys deploys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT deploys_pkey PRIMARY KEY (id);
 
 
 --
@@ -7491,6 +7549,62 @@ CREATE INDEX index_deploy_files_on_website_file_id ON public.deploy_files USING 
 
 
 --
+-- Name: index_deploys_on_campaign_deploy_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_campaign_deploy_id ON public.deploys USING btree (campaign_deploy_id);
+
+
+--
+-- Name: index_deploys_on_is_live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_is_live ON public.deploys USING btree (is_live);
+
+
+--
+-- Name: index_deploys_on_langgraph_thread_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_langgraph_thread_id ON public.deploys USING btree (langgraph_thread_id);
+
+
+--
+-- Name: index_deploys_on_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_project_id ON public.deploys USING btree (project_id);
+
+
+--
+-- Name: index_deploys_on_project_id_and_is_live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_project_id_and_is_live ON public.deploys USING btree (project_id, is_live);
+
+
+--
+-- Name: index_deploys_on_project_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_project_id_and_status ON public.deploys USING btree (project_id, status);
+
+
+--
+-- Name: index_deploys_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_status ON public.deploys USING btree (status);
+
+
+--
+-- Name: index_deploys_on_website_deploy_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_website_deploy_id ON public.deploys USING btree (website_deploy_id);
+
+
+--
 -- Name: index_document_chunks_on_document_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7691,6 +7805,13 @@ CREATE INDEX index_icon_query_caches_on_use_count ON public.icon_query_caches US
 --
 
 CREATE INDEX index_job_runs_on_account_id ON public.job_runs USING btree (account_id);
+
+
+--
+-- Name: index_job_runs_on_deploy_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_deploy_id ON public.job_runs USING btree (deploy_id);
 
 
 --
@@ -7992,6 +8113,13 @@ CREATE INDEX index_projects_on_account_id_and_updated_at ON public.projects USIN
 --
 
 CREATE INDEX index_projects_on_created_at ON public.projects USING btree (created_at);
+
+
+--
+-- Name: index_projects_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_projects_on_deleted_at ON public.projects USING btree (deleted_at);
 
 
 --
@@ -8664,6 +8792,13 @@ CREATE INDEX index_websites_on_account_id ON public.websites USING btree (accoun
 --
 
 CREATE INDEX index_websites_on_created_at ON public.websites USING btree (created_at);
+
+
+--
+-- Name: index_websites_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_websites_on_deleted_at ON public.websites USING btree (deleted_at);
 
 
 --
@@ -9830,6 +9965,14 @@ ALTER TABLE ONLY public.account_invitations
 
 
 --
+-- Name: deploys fk_rails_0773f47ab4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT fk_rails_0773f47ab4 FOREIGN KEY (campaign_deploy_id) REFERENCES public.campaign_deploys(id);
+
+
+--
 -- Name: ads_account_invitations fk_rails_1d7b1920c0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9918,6 +10061,14 @@ ALTER TABLE ONLY public.pay_subscriptions
 
 
 --
+-- Name: deploys fk_rails_c721010c48; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT fk_rails_c721010c48 FOREIGN KEY (website_deploy_id) REFERENCES public.website_deploys(id);
+
+
+--
 -- Name: pay_payment_methods fk_rails_c78c6cb84d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9931,6 +10082,14 @@ ALTER TABLE ONLY public.pay_payment_methods
 
 ALTER TABLE ONLY public.account_users
     ADD CONSTRAINT fk_rails_c96445f213 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: deploys fk_rails_eeb0884eb6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT fk_rails_eeb0884eb6 FOREIGN KEY (project_id) REFERENCES public.projects(id);
 
 
 --
@@ -9964,9 +10123,14 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260117001808'),
+('20260116143258'),
+('20260115181801'),
+('20260115181736'),
 ('20260115181121'),
 ('20260115170002'),
 ('20260115170001'),
+('20260115170000'),
 ('20260115160347'),
 ('20260114203730'),
 ('20260113213841'),

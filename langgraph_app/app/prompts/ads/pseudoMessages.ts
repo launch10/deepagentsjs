@@ -9,19 +9,19 @@ import {
 } from "@utils";
 
 const PAGE_NAMES: Record<Ads.StageName, string> = {
-  "content": "the headlines and descriptions page",
-  "highlights": "the callouts and structured snippets page",
-  "keywords": "the keywords page",
-  "settings": "the campaign settings page",
-  "launch": "the review page",
-  "review": "the review page",
-  "deployment": "the deployment page",
+  content: "the headlines and descriptions page",
+  highlights: "the callouts and structured snippets page",
+  keywords: "the keywords page",
+  settings: "the campaign settings page",
+  launch: "the review page",
+  review: "the review page",
 };
 
 export const PseudoMessages = {
   BEGIN: "Generate the assets now.",
   REFRESH: (asset: string) => `Generate new ${asset} now.`,
-  PAGE_SWITCH: (stage: Ads.StageName) => `User switched to ${PAGE_NAMES[stage]}. Focus on these assets now.`,
+  PAGE_SWITCH: (stage: Ads.StageName) =>
+    `User switched to ${PAGE_NAMES[stage]}. Focus on these assets now.`,
 } as const;
 
 // Re-export the shared utility for backwards compatibility
@@ -33,9 +33,7 @@ export const lastMessageIsAIMessage = (state: AdsGraphState): boolean => {
 };
 
 export const didSwitchPage = (state: AdsGraphState): boolean => {
-  return !!state.previousStage &&
-         !!state.stage &&
-         state.previousStage !== state.stage;
+  return !!state.previousStage && !!state.stage && state.previousStage !== state.stage;
 };
 
 export const needsPseudoMessage = (state: AdsGraphState): boolean => {

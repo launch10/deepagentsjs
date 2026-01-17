@@ -10,7 +10,8 @@ class API::V1::JobRunsController < API::BaseController
     job_run = current_account.job_runs.create!(
       job_class: params[:job_class],
       job_args: permitted_job_args,
-      langgraph_thread_id: params[:thread_id]
+      langgraph_thread_id: params[:thread_id],
+      deploy_id: find_deploy_id
     )
 
     # Dispatch job after record is committed to avoid processing non-existent job_runs
@@ -44,7 +45,22 @@ class API::V1::JobRunsController < API::BaseController
       CampaignDeploy.deploy(resources[:campaign], job_run_id: job_run.id)
     when "WebsiteDeploy"
       resources[:website].deploy_async(job_run_id: job_run.id)
+    when "GoogleOAuthConnect"
+      # No worker dispatch - OAuth callback completes this job
+    when "GoogleAdsInvite"
+      GoogleAds::SendInviteWorker.perform_async(job_run.id)
     end
+  end
+
+  def find_deploy_id
+    return nil unless params[:deploy_id].present?
+
+    # Validate deploy belongs to current account
+    deploy = Deploy.joins(:project).find_by(
+      id: params[:deploy_id],
+      projects: { account_id: current_account.id }
+    )
+    deploy&.id
   end
 
   def permitted_job_args
@@ -53,6 +69,9 @@ class API::V1::JobRunsController < API::BaseController
       params.require(:arguments).permit(:campaign_id)
     when "WebsiteDeploy"
       params.require(:arguments).permit(:website_id)
+    when "GoogleOAuthConnect", "GoogleAdsInvite"
+      # These jobs don't require arguments - account context comes from current_account
+      ActionController::Parameters.new({}).permit
     else
       ActionController::Parameters.new({}).permit
     end.to_h
