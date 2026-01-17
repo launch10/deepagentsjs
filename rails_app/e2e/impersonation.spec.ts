@@ -87,10 +87,9 @@ test.describe("Admin Impersonation", () => {
     await brainstormPage.sendMessage("I want to start a pet grooming business for cats");
 
     // Wait for URL to update with project ID
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+      timeout: 10000,
+    });
 
     // Wait for AI response (ensures project is persisted)
     await brainstormPage.waitForResponse();
@@ -122,7 +121,9 @@ test.describe("Admin Impersonation", () => {
 
     // Verify the original message is there (use data-testid to target user message specifically)
     await expect(
-      page.locator('[data-testid="user-message"]').filter({ hasText: "pet grooming business for cats" })
+      page
+        .locator('[data-testid="user-message"]')
+        .filter({ hasText: "pet grooming business for cats" })
     ).toBeVisible();
   });
 });

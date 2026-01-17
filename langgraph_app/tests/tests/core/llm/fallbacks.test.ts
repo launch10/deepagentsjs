@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getLLM, getLLMFallbacks, LLMManager } from "@core";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { DatabaseSnapshotter } from "@services";
 
 describe("LLM Fallbacks", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
     LLMManager.reset();
   });
 
