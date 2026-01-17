@@ -10,3 +10,4 @@ export * from "./verifyGoogleNode";
 export * from "./checkPaymentNode";
 export * from "./enableCampaignNode";
 export * from "./deployCampaignNode";
+export * from "./createChatNode";

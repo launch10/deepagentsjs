@@ -6,13 +6,15 @@ import {
   db,
   Types as DBTypes,
   websites,
+  chats,
   brainstorms,
   websiteFiles,
   themes,
   websiteUploads,
   eq,
+  and,
 } from "@db";
-import { Website } from "@types";
+import { Website, isAIMessage } from "@types";
 import { websiteGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
 import type { WebsiteGraphState } from "@annotation";
@@ -23,9 +25,54 @@ const websiteGraph = uncompiledGraph.compile({
   name: "website",
 });
 
+const assertMessageContent = async (result: { state: WebsiteGraphState }, websiteId: number) => {
+  // Find the first AI message (the agent's reply)
+  const firstAIMessage = result.state.messages.find(isAIMessage);
+  expect(firstAIMessage).toBeDefined();
+
+  // The AI should reply with text content (not just tool calls)
+  let textContent: string | undefined;
+  if (typeof firstAIMessage?.content === "string") {
+    textContent = firstAIMessage.content;
+  } else if (Array.isArray(firstAIMessage?.content)) {
+    const textBlock = firstAIMessage.content.find((c: any) => c.type === "text");
+    textContent = textBlock?.text as string | undefined;
+  }
+
+  expect(textContent).toBeDefined();
+  expect(textContent!.length).toBeGreaterThan(20); // Should be a real message, not empty
+
+  // The reply should reference something from the brainstorm context
+  // (idea, audience, or solution) to show it's personalized
+  const brainstormResults = await db
+    .select()
+    .from(brainstorms)
+    .where(eq(brainstorms.websiteId, websiteId))
+    .limit(1);
+  const brainstorm = brainstormResults[0];
+  expect(brainstorm).toBeDefined();
+
+  const replyLower = textContent!.toLowerCase();
+  const ideaWords = brainstorm!.idea?.toLowerCase().split(/\s+/) || [];
+  const audienceWords = brainstorm!.audience?.toLowerCase().split(/\s+/) || [];
+
+  // Check if reply contains any significant words from brainstorm
+  // (filtering out common words)
+  const significantWords = [...ideaWords, ...audienceWords]
+    .filter((w) => w.length > 4) // Skip short/common words
+    .slice(0, 10); // Check first 10 significant words
+
+  const containsBrainstormContext = significantWords.some((word) =>
+    replyLower.includes(word)
+  );
+
+  console.log(textContent)
+  expect(containsBrainstormContext).toBe(true);
+}
+
 // describe.sequential
 // temporarily skipping because caching is failing on CI - use this mainly for local testing and debugging speed
-describe.skip("Website Builder", () => {
+describe("Website Builder", () => {
   let websiteId: number;
   let website: DBTypes.WebsiteType;
   let themeColors: string[];
@@ -134,7 +181,20 @@ describe.skip("Website Builder", () => {
       // Expect IndexPage has been edited
       const indexPage = generatedFiles.find((f) => f.path?.includes("IndexPage"));
       expect(indexPage?.content).toBeDefined();
+
+      const chatsResult = await db.select().from(chats).where(
+        and(
+          eq(chats.contextableId, websiteId),
+          eq(chats.contextableType, "Website")
+        )
+      ).limit(1);
+      const chat = chatsResult.at(0);
+      expect(chat).toBeDefined();
+      expect(chat?.threadId).toEqual(result.state.threadId);
+
+      await assertMessageContent(result, websiteId);
+
       await saveExample(websiteId, "scheduling-tool"); // So we can see the result
-    }, 400000);
+    }, 500000);
   });
 });

@@ -11,4 +11,5 @@ export type CoreGraphState = {
     projectId: PrimaryKeyType | undefined;
     projectName: string | undefined;
     websiteId: PrimaryKeyType | undefined;
+    chatId: PrimaryKeyType | undefined;
 }

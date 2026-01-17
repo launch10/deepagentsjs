@@ -39,4 +39,10 @@ export const BaseAnnotation = Annotation.Root({
     default: () => undefined,
     reducer: (current, next) => next,
   }),
+
+  // Chat ID for thread ownership tracking (set by createChat nodes)
+  chatId: Annotation<PrimaryKeyType | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next ?? current,
+  }),
 });

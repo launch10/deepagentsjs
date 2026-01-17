@@ -20,6 +20,11 @@ namespace :api, defaults: {format: :json} do
     resources :templates
     resources :themes, only: [:index, :show, :create]
     resources :brainstorms, param: :thread_id, only: [:show, :create, :update]
+    resources :chats, only: [:create] do
+      collection do
+        post :validate
+      end
+    end
     resources :uploads, only: [:create, :index, :show, :destroy]
 
     resources :websites, only: [] do

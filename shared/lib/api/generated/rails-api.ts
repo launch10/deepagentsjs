@@ -948,6 +948,237 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chats/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validates thread ownership */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Thread ID to validate */
+                        thread_id: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description thread exists and belongs to current account - valid */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Whether the thread is valid for this account */
+                            valid: boolean;
+                            /** @description Whether the thread exists */
+                            exists: boolean;
+                            /** @description Type of chat if exists */
+                            chat_type?: string | null;
+                            /** @description Project ID if exists */
+                            project_id?: number | null;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description thread exists but belongs to different account - invalid */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description missing thread_id */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a chat for thread ownership */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        chat: {
+                            /** @description Thread ID from Langgraph */
+                            thread_id: string;
+                            /**
+                             * @description Type of chat
+                             * @enum {string}
+                             */
+                            chat_type: "brainstorm" | "website" | "ad_campaign" | "deploy";
+                            /** @description Project ID to associate the chat with */
+                            project_id: number;
+                            /**
+                             * @description Polymorphic type of the contextable record
+                             * @enum {string}
+                             */
+                            contextable_type: "Brainstorm" | "Website" | "Campaign" | "Deploy";
+                            /** @description ID of the contextable record */
+                            contextable_id: number;
+                            /** @description Optional name for the chat */
+                            name?: string;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description chat already exists for same account - returns existing */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * Format: uuid
+                             * @description UUID identifier
+                             */
+                            thread_id: string;
+                            /** @description Type of chat (brainstorm, website, ad_campaign, deploy) */
+                            chat_type: string;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /** @description Chat name */
+                            name?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description chat created for deploy type */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * Format: uuid
+                             * @description UUID identifier
+                             */
+                            thread_id: string;
+                            /** @description Type of chat (brainstorm, website, ad_campaign, deploy) */
+                            chat_type: string;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /** @description Chat name */
+                            name?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description thread already exists for different account */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description project not found or belongs to different account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description missing required fields */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/websites/{website_id}/context": {
         parameters: {
             query?: never;

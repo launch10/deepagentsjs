@@ -67,6 +67,7 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
 
     this.initialState = {
       jwt: "test-jwt",
+      threadId: this.threadId,
       accountId: 1,
       error: undefined,
       messages: [] as BaseMessage[],

@@ -17,6 +17,7 @@ import {
   shouldCheckPayment,
   enableCampaignNode,
   deployCampaignNode,
+  createChatNode,
 } from "@nodes";
 
 /**
@@ -35,64 +36,122 @@ const MAX_RETRY_COUNT = 2;
  * - [campaign]: Only runs when deploying Google Ads campaigns
  *
  * Flow:
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ START                                                                   │
- * │   │                                                                     │
- * │   ▼                                                                     │
- * │ [shouldDeployGoogleAds?]──────────────────────────┐                     │
- * │   │ YES                                           │ NO                  │
- * │   ▼                                               │                     │
- * │ googleConnect (OAuth popup) [campaign]            │                     │
- * │   │                                               │                     │
- * │   ▼                                               │                     │
- * │ setupGoogleAds (verifyGoogle) [campaign]          │                     │
- * │   │ (creates account + conversion action          │                     │
- * │   │  + sends invite + waits for accept)           │                     │
- * │   │                                               │                     │
- * │   └───────────────────────────────────────────────┘                     │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │         websiteValidation [all]                                         │
- * │         ┌─────────────────────────┐                                     │
- * │         │ validateLinks           │                                     │
- * │         │     │                   │                                     │
- * │         │     ↓                   │                                     │
- * │         │ runtimeValidation       │                                     │
- * │         │     │     │             │                                     │
- * │         │     │  bugFix ←─────────│ (retry loop, max 2)                 │
- * │         │     ↓                   │                                     │
- * │         └─────────────────────────┘                                     │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │              analytics [all]                                            │
- * │         (L10.createLead instrumentation)                                │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │           seoOptimization [all]                                         │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │            deployWebsite [all]                                          │
- * │      (build! injects google_send_to)                                    │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │       [shouldDeployGoogleAds?]                                          │
- * │         │ YES              │ NO                                         │
- * │         ▼                  │                                            │
- * │   createCampaign [campaign]│                                            │
- * │   (keywords, ads, budget)  │                                            │
- * │         │                  │                                            │
- * │         ▼                  │                                            │
- * │   checkPayment [campaign]  │                                            │
- * │         │                  │                                            │
- * │         ▼                  │                                            │
- * │   enableCampaign [campaign]│                                            │
- * │   (blocked if no payment)  │                                            │
- * │         │                  │                                            │
- * │         └──────────────────┘                                            │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │                  END                                                    │
- * └─────────────────────────────────────────────────────────────────────────┘
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ START                                                                    │
+ * │   │                                                                      │
+ * │   ▼                                                                      │
+ * │ createChat (thread ownership validation)                                 │
+ * │   │                                                                      │
+ * │   ├──[nothing to deploy?]──► END                                         │
+ * │   │                                                                      │
+ * │   ├──[shouldDeployGoogleAds?]────────────────────────┐                   │
+ * │   │ YES                                         NO   │                   │
+ * │   ▼                                                  │                   │
+ * │ checkGoogleConnect                                   │                   │
+ * │   │                                                  │                   │
+ * │   ├──[shouldSkipGoogleConnect?]──┐                   │                   │
+ * │   │ NO                      YES  │                   │                   │
+ * │   ▼                              │                   │                   │
+ * │ enqueueGoogleConnect             │                   │                   │
+ * │   │                              │                   │                   │
+ * │   ▼                              │                   │                   │
+ * │ googleConnect (OAuth popup)      │                   │                   │
+ * │   │                              │                   │                   │
+ * │   └──────────►───────────────────┘                   │                   │
+ * │               │                                      │                   │
+ * │               ▼                                      │                   │
+ * │         checkGoogleVerify                            │                   │
+ * │               │                                      │                   │
+ * │   ┌──[shouldSkipGoogleVerify?]───┐                   │                   │
+ * │   │ NO                      YES  │                   │                   │
+ * │   ▼                              │                   │                   │
+ * │ enqueueGoogleVerify              │                   │                   │
+ * │   │                              │                   │                   │
+ * │   ▼                              │                   │                   │
+ * │ verifyGoogle (account setup)     │                   │                   │
+ * │   │                              │                   │                   │
+ * │   └──────────►───────────────────┴───────────────────┘                   │
+ * │                                  │                                       │
+ * │                                  ▼                                       │
+ * │                          enqueueAnalytics                                │
+ * │                                  │                                       │
+ * │                                  ▼                                       │
+ * │                             analytics [all]                              │
+ * │                    (L10.createLead instrumentation)                      │
+ * │                                  │                                       │
+ * │                                  ▼                                       │
+ * │                       enqueueSEOOptimization                             │
+ * │                                  │                                       │
+ * │                                  ▼                                       │
+ * │                         seoOptimization [all]                            │
+ * │                                  │                                       │
+ * │                                  ▼                                       │
+ * │                        enqueueValidateLinks                              │
+ * │                                  │                                       │
+ * │       ┌──────────────────────────┼───────────────────────────┐           │
+ * │       │                          ▼                           │           │
+ * │       │                   validateLinks [all]                │           │
+ * │       │                          │                           │           │
+ * │       │        ┌──[completed?]───┴───[failed?]───┐           │           │
+ * │       │        │ YES                        NO   │           │           │
+ * │       │        ▼                                 ▼           │           │
+ * │       │  enqueueRuntimeValidation          enqueueBugFix     │           │
+ * │       │        │                                 │           │           │
+ * │       │        ▼                                 ▼           │           │
+ * │       │  runtimeValidation [all]              bugFix ────────┘           │
+ * │       │        │                         (loops back to validateLinks)   │
+ * │       │        │                                                         │
+ * │       │        ├──[completed?]──► enqueueDeploy                          │
+ * │       │        │                                                         │
+ * │       │        ├──[retryCount >= 2?]──► END                              │
+ * │       │        │                                                         │
+ * │       │        └──► enqueueBugFix ─► bugFix ─► validateLinks             │
+ * │       └──────────────────────────────────────────────────────────────────│
+ * │                                  │                                       │
+ * │                                  ▼                                       │
+ * │                            enqueueDeploy                                 │
+ * │                                  │                                       │
+ * │                                  ▼                                       │
+ * │                           deployWebsite [all]                            │
+ * │                     (build! injects google_send_to)                      │
+ * │                                  │                                       │
+ * │              ┌──[failed or not completed?]──► END                        │
+ * │              │                                                           │
+ * │              ├──[shouldDeployGoogleAds?]─────────┐                       │
+ * │              │ YES                          NO   │                       │
+ * │              ▼                                   ▼                       │
+ * │      enqueueDeployCampaign                      END                      │
+ * │              │                                                           │
+ * │              ▼                                                           │
+ * │       deployCampaign [campaign]                                          │
+ * │       (keywords, ads, budget)                                            │
+ * │              │                                                           │
+ * │   ┌──[failed or not completed?]──► END                                   │
+ * │   │                                                                      │
+ * │   ▼                                                                      │
+ * │ checkPaymentOrSkip                                                       │
+ * │   │                                                                      │
+ * │   ├──[shouldCheckPayment?]───────┐                                       │
+ * │   │ YES                     NO   │                                       │
+ * │   ▼                              │                                       │
+ * │ enqueueCheckPayment              │                                       │
+ * │   │                              │                                       │
+ * │   ▼                              │                                       │
+ * │ checkPayment [campaign]          │                                       │
+ * │   │                              │                                       │
+ * │   ├──[failed or not completed?]──► END                                   │
+ * │   │                              │                                       │
+ * │   └──────────►───────────────────┘                                       │
+ * │                                  │                                       │
+ * │                                  ▼                                       │
+ * │                       enqueueEnableCampaign                              │
+ * │                                  │                                       │
+ * │                                  ▼                                       │
+ * │                        enableCampaign [campaign]                         │
+ * │                                  │                                       │
+ * │                                  ▼                                       │
+ * │                                 END                                      │
+ * └──────────────────────────────────────────────────────────────────────────┘
  *
  * Key Dependency: Google setup MUST complete before deployWebsite
  * because buildable.rb reads conversion action info (google_send_to)
@@ -104,6 +163,11 @@ const MAX_RETRY_COUNT = 2;
 // ==============================================================================
 
 export const deployGraph = new StateGraph(DeployAnnotation)
+  // --------------------------------------------------------------------------
+  // Security: Create Chat for thread ownership validation
+  // --------------------------------------------------------------------------
+  .addNode("createChat", createChatNode)
+
   // --------------------------------------------------------------------------
   // Google Setup Nodes [campaign]
   // --------------------------------------------------------------------------
@@ -148,9 +212,11 @@ export const deployGraph = new StateGraph(DeployAnnotation)
   // ==========================================================================
 
   // --------------------------------------------------------------------------
-  // START: Branch based on whether we're deploying Google Ads
+  // START: Create Chat for thread ownership, then branch based on deploy type
   // --------------------------------------------------------------------------
-  .addConditionalEdges(START, (state: DeployGraphState) => {
+  .addEdge(START, "createChat")
+
+  .addConditionalEdges("createChat", (state: DeployGraphState) => {
     // Exit early if nothing to deploy
     if (!Deploy.shouldDeployAnything(state)) return END;
 

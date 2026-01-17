@@ -1,9 +1,10 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { WebsiteAnnotation, type WebsiteGraphState } from "@annotation";
-import { buildContext, websiteBuilderNode, cleanupFilesystemNode, syncFilesNode } from "@nodes";
+import { createChat, buildContext, websiteBuilderNode, cleanupFilesystemNode, syncFilesNode } from "@nodes";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 
 export const websiteGraph = new StateGraph(WebsiteAnnotation)
+  .addNode("createChat", createChat)
   .addNode("buildContext", buildContext)
   .addNode("websiteBuilder", websiteBuilderNode)
   .addNode("cleanupFilesystem", cleanupFilesystemNode)
@@ -14,7 +15,8 @@ export const websiteGraph = new StateGraph(WebsiteAnnotation)
     };
   })
 
-  .addEdge(START, "buildContext")
+  .addEdge(START, "createChat")
+  .addEdge("createChat", "buildContext")
   .addEdge("buildContext", "websiteBuilder")
   .addEdge("websiteBuilder", "cleanupFilesystem")
   .addEdge("cleanupFilesystem", "syncFiles")

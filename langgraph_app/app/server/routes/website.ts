@@ -1,35 +1,30 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
 import { validateThreadOrError } from "../middleware/threadValidation";
-import { deployGraph } from "@graphs";
+import { websiteGraph } from "@graphs";
 import { graphParams } from "@core";
-import { DeployService } from "@services";
 
 type Variables = {
   auth: AuthContext;
 };
 
-export const deployRoutes = new Hono<{ Variables: Variables }>();
+export const websiteRoutes = new Hono<{ Variables: Variables }>();
 
-// Use shared checkpointer to avoid race conditions with webhook handler
-const graph = deployGraph.compile({ ...graphParams, name: "deploy" });
+const graph = websiteGraph.compile({ ...graphParams, name: "website" });
 
-deployRoutes.post("/stream", authMiddleware, async (c) => {
+websiteRoutes.post("/stream", authMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
   const body = await c.req.json();
 
   const { threadId, state } = body;
-  // Support both top-level and state.deploy.* patterns for SDK compatibility
-  const deployId = body.deployId ?? state?.deploy?.deployId;
-  const websiteId = body.websiteId ?? state?.deploy?.websiteId;
-  const campaignId = body.campaignId ?? state?.deploy?.campaignId;
+  const websiteId = body.websiteId ?? state?.websiteId;
 
   if (!threadId) {
     return c.json({ error: "Missing required field: threadId" }, 400);
   }
 
-  if (!deployId) {
-    return c.json({ error: "Missing required field: deployId" }, 400);
+  if (!websiteId) {
+    return c.json({ error: "Missing required field: websiteId" }, 400);
   }
 
   // Validate thread ownership before processing
@@ -37,19 +32,11 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
   if (validationError) return validationError;
 
   try {
-    // CRITICAL: Persist threadId to database FIRST, before starting the stream.
-    // This ensures the frontend can reconnect to the same thread after a page refresh.
-    await DeployService.saveThreadId(deployId, threadId);
-
     // Build initial state from request
     const initialState = {
       threadId,
       jwt: auth.jwt,
-      deployId,
       websiteId,
-      campaignId,
-      // Default deploy instructions - deploy both if not specified
-      deploy: state?.deploy ?? { website: true, googleAds: true },
       ...state,
     };
 
@@ -85,12 +72,12 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
       },
     });
   } catch (error) {
-    console.error("Deploy stream error:", error);
+    console.error("Website stream error:", error);
     return c.json({ error: "Stream failed", details: String(error) }, 500);
   }
 });
 
-deployRoutes.get("/stream", authMiddleware, async (c) => {
+websiteRoutes.get("/stream", authMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
   const threadId = c.req.query("threadId");
 
@@ -111,10 +98,10 @@ deployRoutes.get("/stream", authMiddleware, async (c) => {
   }
 });
 
-deployRoutes.get("/health", (c) => {
+websiteRoutes.get("/health", (c) => {
   return c.json({
     status: "ok",
-    graph: "deploy",
+    graph: "website",
     timestamp: new Date().toISOString(),
   });
 });

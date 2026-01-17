@@ -209,6 +209,39 @@ components:
             - type
             - message
           description: Flash messages
+        current_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Currently authenticated user
+        true_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Original admin user when impersonating
+        impersonating:
+          type: boolean
+          description: Whether admin is currently impersonating another user
         thread_id:
           type: 'null'
           description: Langgraph thread ID for the conversation
@@ -262,6 +295,39 @@ components:
             - type
             - message
           description: Flash messages
+        current_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Currently authenticated user
+        true_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Original admin user when impersonating
+        impersonating:
+          type: boolean
+          description: Whether admin is currently impersonating another user
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation
@@ -379,6 +445,39 @@ components:
             - type
             - message
           description: Flash messages
+        current_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Currently authenticated user
+        true_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Original admin user when impersonating
+        impersonating:
+          type: boolean
+          description: Whether admin is currently impersonating another user
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation
@@ -469,6 +568,39 @@ components:
             - type
             - message
           description: Flash messages
+        current_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Currently authenticated user
+        true_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Original admin user when impersonating
+        impersonating:
+          type: boolean
+          description: Whether admin is currently impersonating another user
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation
@@ -729,6 +861,39 @@ components:
             - type
             - message
           description: Flash messages
+        current_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Currently authenticated user
+        true_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Original admin user when impersonating
+        impersonating:
+          type: boolean
+          description: Whether admin is currently impersonating another user
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation

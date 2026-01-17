@@ -7,6 +7,7 @@ import { adsRoutes } from "./app/server/routes/ads";
 import { brainstormRoutes } from "./app/server/routes/brainstorm";
 import { deployRoutes } from "./app/server/routes/deploy";
 import { documentsRoutes } from "./app/server/routes/documents";
+import { websiteRoutes } from "./app/server/routes/website";
 import { jobRunCallbackRoutes } from "./app/server/routes/webhooks/jobRunCallback";
 import { errorHandler } from "./app/server/middleware/errorHandler";
 import { env } from "./app/core/env";
@@ -42,6 +43,7 @@ app.route("/api/ads", adsRoutes);
 app.route("/api/brainstorm", brainstormRoutes);
 app.route("/api/deploy", deployRoutes);
 app.route("/api/documents", documentsRoutes);
+app.route("/api/website", websiteRoutes);
 app.route("/", jobRunCallbackRoutes);
 
 app.onError(errorHandler);
