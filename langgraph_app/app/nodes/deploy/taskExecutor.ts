@@ -2,6 +2,7 @@ import { type DeployGraphState, withPhases } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { Deploy, Task } from "@types";
 import { TASK_ORDER, getTaskRunner } from "./taskRunner";
+import { NodeMiddleware } from "@middleware";
 
 type NextTask = {
   taskName: Deploy.TaskName;
@@ -78,16 +79,17 @@ function allTasksComplete(state: DeployGraphState): boolean {
 }
 
 /**
- * Task Executor Node
+ * Task Executor Node - Raw Function
  */
-export async function taskExecutorNode(
+async function runTaskExecutor(
   state: DeployGraphState,
   config?: LangGraphRunnableConfig
 ): Promise<Partial<DeployGraphState>> {
-  const next = await findNextTask(state);
+  const nextTask = await findNextTask(state);
+  console.log(`next task is ${nextTask?.taskName}`, nextTask);
 
   // No next task
-  if (!next) {
+  if (!nextTask) {
     if (allTasksComplete(state)) {
       return { status: "completed" };
     }
@@ -104,31 +106,31 @@ export async function taskExecutorNode(
   }
 
   // Blocking - wait for webhook
-  if (next.blocking) {
+  if (nextTask.blocking) {
     return {};
   }
 
   // Should skip - mark as skipped
-  if (next.shouldSkip) {
+  if (nextTask.shouldSkip) {
     return {
-      tasks: [{ ...Deploy.createTask(next.taskName), status: "skipped" }],
+      tasks: [{ ...Deploy.createTask(nextTask.taskName), status: "skipped" }],
     };
   }
 
   // Not ready - wait for dependencies
-  if (!next.readyToRun) {
+  if (!nextTask.readyToRun) {
     return {};
   }
 
   // Task is ready to run
-  const runner = getTaskRunner(next.taskName)!;
-  const task = Task.findTask(state.tasks, next.taskName);
+  const runner = getTaskRunner(nextTask.taskName)!;
+  const task = Task.findTask(state.tasks, nextTask.taskName);
 
   // If task doesn't exist or is pending, enqueue it and RETURN
   // (don't run - executor will loop back)
   if (!task || task.status === "pending") {
-    const enqueuedTasks = Deploy.enqueueTask(state.tasks, next.taskName);
-    const enqueuedTask = enqueuedTasks.find((t) => t.name === next.taskName)!;
+    const enqueuedTasks = Deploy.enqueueTask(state.tasks, nextTask.taskName);
+    const enqueuedTask = enqueuedTasks.find((t) => t.name === nextTask.taskName)!;
     const phaseResult = withPhases({ tasks: state.tasks }, [enqueuedTask]);
     return { tasks: [enqueuedTask], phases: phaseResult.phases };
   }
@@ -146,17 +148,23 @@ export async function taskExecutorNode(
   }
 }
 
+// Export with middleware (enables test interrupt)
+export const taskExecutorNode = NodeMiddleware.use(runTaskExecutor);
+
 /**
  * Router: continue, wait, or end
  */
 export async function taskExecutorRouter(
   state: DeployGraphState
 ): Promise<"continue" | "wait" | "end"> {
-  const next = await findNextTask(state);
+  if (state.error) return "end";
 
-  if (!next) return "end";
-  if (next.blocking) return "wait";
-  if (!next.readyToRun && !next.shouldSkip) return "wait";
+  const nextTask = await findNextTask(state);
+
+  console.log(`next task is ${nextTask?.taskName}`, nextTask);
+  if (!nextTask) return "end";
+  if (nextTask.blocking) return "wait";
+  if (!nextTask.readyToRun && !nextTask.shouldSkip) return "wait";
 
   return "continue";
 }

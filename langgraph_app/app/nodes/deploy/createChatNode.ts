@@ -1,5 +1,6 @@
 import type { DeployGraphState } from "@annotation";
 import { createChatNodeFactory } from "../core";
+import { NodeMiddleware } from "@middleware";
 
 /**
  * Create a Chat record at the start of the deploy graph.
@@ -10,8 +11,8 @@ import { createChatNodeFactory } from "../core";
  * If a Chat already exists for this thread (e.g., on reconnection),
  * the existing chat will be returned and its ID stored in state.
  */
-export const createChatNode = createChatNodeFactory<DeployGraphState>({
+export const createChatNode = NodeMiddleware.use({}, createChatNodeFactory<DeployGraphState>({
   chatType: "deploy",
   contextableType: "Deploy",
   getContextableId: (state) => state.deployId,
-});
+}));

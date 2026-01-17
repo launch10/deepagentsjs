@@ -48,7 +48,7 @@ async function runDeployCampaign(
   }
 
   // 4. Task already pending/running? Just waiting, no-op
-  if (task?.status === "pending" || task?.status === "running") {
+  if (task?.jobId) {
     return {};
   }
 
@@ -102,6 +102,7 @@ export const deployCampaignTaskRunner: TaskRunner = {
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
     // Blocking when we have a jobId but no result yet
+    console.log(`task is ${task.jobId}`);
     return task.status === "running" && !!task.jobId && !task.result && !task.error;
   },
 

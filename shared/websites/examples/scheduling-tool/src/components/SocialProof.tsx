@@ -1,114 +1,81 @@
-import React from 'react';
-import { Quote, TrendingUp, Clock, Users } from 'lucide-react';
+import { Quote } from 'lucide-react';
 
 export function SocialProof() {
-  const testimonials = [
+  const stats = [
     {
-      quote: "We went from spending 2 hours a week on scheduling to literally 15 minutes. It's like having a personal assistant for the entire team.",
-      author: 'Sarah Chen',
-      role: 'Head of Operations',
-      company: 'TechCorp',
-      color: 'border-[#2A9D8F]',
+      number: '2,000+',
+      label: 'Distributed Teams',
     },
     {
-      quote: "As an engineering manager with a team across 5 time zones, this tool is a lifesaver. No more mental math or accidentally scheduling 3am meetings.",
-      author: 'Marcus Rodriguez',
-      role: 'Engineering Manager',
-      company: 'CloudScale',
-      color: 'border-[#F4A261]',
+      number: '80%',
+      label: 'Less Coordination Time',
     },
     {
-      quote: "The one-click rescheduling is a game-changer. Plans change constantly in product development, and this keeps us agile without the coordination headache.",
-      author: 'Priya Patel',
-      role: 'Product Lead',
-      company: 'InnovateLabs',
-      color: 'border-[#E76F51]',
+      number: '15 hrs',
+      label: 'Saved Per Week',
     },
   ];
 
-  const stats = [
+  const testimonials = [
     {
-      icon: TrendingUp,
-      value: '80%',
-      label: 'Less time coordinating',
-      color: 'text-[#2A9D8F]',
-      bgColor: 'bg-[#2A9D8F]/10',
+      quote:
+        "We went from spending 15+ hours a week on scheduling coordination to basically zero. It's like having a personal assistant for the entire team. Game-changer for our remote-first company.",
+      name: 'Sarah Chen',
+      role: 'Head of Operations',
+      company: 'TechCorp',
     },
     {
-      icon: Clock,
-      value: '15 hrs',
-      label: 'Saved per week',
-      color: 'text-[#F4A261]',
-      bgColor: 'bg-[#F4A261]/10',
-    },
-    {
-      icon: Users,
-      value: '2,000+',
-      label: 'Distributed teams',
-      color: 'text-[#E76F51]',
-      bgColor: 'bg-[#E76F51]/10',
+      quote:
+        "Our team spans 8 timezones. Before this tool, scheduling was a nightmare. Now it's automatic. We've cut our time-to-meeting by 80% and our team is actually happy about scheduling again.",
+      name: 'Marcus Rodriguez',
+      role: 'Engineering Manager',
+      company: 'GlobalDev Solutions',
     },
   ];
 
   return (
-    <section className="py-20 md:py-24 lg:py-28 bg-background">
+    <section className="py-16 md:py-20 lg:py-24 bg-background">
       <div className="container mx-auto px-4 md:px-6">
-        {/* Stats */}
-        <div className="grid md:grid-cols-3 gap-8 mb-20">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <div
-                key={index}
-                className="text-center space-y-4 animate-zoom-in"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className={`inline-flex items-center justify-center w-16 h-16 ${stat.bgColor} rounded-2xl mx-auto`}>
-                  <Icon className={`w-8 h-8 ${stat.color}`} />
-                </div>
-                <div className="text-4xl md:text-5xl font-bold text-foreground">
-                  {stat.value}
-                </div>
-                <div className="text-lg text-muted-foreground">
-                  {stat.label}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* Section Headline */}
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center mb-12">
+          Trusted by 2,000+ Distributed Teams Worldwide
+        </h2>
 
-        {/* Section header */}
-        <div className="text-center mb-16 space-y-4">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground">
-            Loved by Teams Worldwide
-          </h2>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Join thousands of distributed teams who've reclaimed their time
-          </p>
+        {/* Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+          {stats.map((stat, index) => (
+            <div
+              key={index}
+              className="bg-primary text-primary-foreground rounded-xl p-6 text-center transition-all duration-200 hover:scale-105 hover:shadow-lg"
+            >
+              <div className="text-4xl md:text-5xl font-bold mb-2">
+                {stat.number}
+              </div>
+              <div className="text-sm md:text-base opacity-90">
+                {stat.label}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Testimonials */}
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
           {testimonials.map((testimonial, index) => (
             <div
               key={index}
-              className={`group bg-card rounded-3xl p-8 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border-l-4 ${testimonial.color} animate-slide-up`}
-              style={{ animationDelay: `${index * 100}ms` }}
+              className="bg-card rounded-2xl p-8 shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
             >
-              <Quote className="w-10 h-10 text-muted/30 mb-6" />
-              <p className="text-card-foreground leading-relaxed mb-6 italic">
+              <Quote className="w-10 h-10 text-primary mb-4 opacity-50" />
+              <p className="text-lg mb-6 italic text-card-foreground">
                 "{testimonial.quote}"
               </p>
-              <div className="border-t border-border pt-6">
-                <p className="font-semibold text-card-foreground">
-                  {testimonial.author}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {testimonial.role}
-                </p>
-                <p className="text-sm text-muted-foreground font-medium mt-1">
-                  {testimonial.company}
-                </p>
+              <div>
+                <div className="font-semibold text-card-foreground">
+                  {testimonial.name}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {testimonial.role} • {testimonial.company}
+                </div>
               </div>
             </div>
           ))}

@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Rocket, Check } from 'lucide-react';
 import { L10 } from '@/lib/tracking';
+import { Rocket, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export function FinalCTA() {
   const [email, setEmail] = useState('');
@@ -11,7 +9,12 @@ export function FinalCTA() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    
+    if (!email || !email.includes('@')) {
+      setErrorMessage('Please enter a valid email address');
+      setStatus('error');
+      return;
+    }
 
     setStatus('loading');
     setErrorMessage('');
@@ -27,81 +30,92 @@ export function FinalCTA() {
   };
 
   return (
-    <section id="cta-form" className="py-20 md:py-24 lg:py-32 bg-primary text-primary-foreground relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden opacity-20">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-[#E9C46A] rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#F4A261] rounded-full blur-3xl" />
+    <section className="relative bg-primary text-primary-foreground py-20 md:py-24 lg:py-28 overflow-hidden">
+      {/* Decorative gradient orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
       <div className="container mx-auto px-4 md:px-6 relative z-10">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#E9C46A]/20 rounded-full text-sm font-medium text-[#E9C46A] backdrop-blur-sm mb-8 animate-bounce">
-            <Rocket className="w-4 h-4" />
-            <span>Limited time: Get started free</span>
+          {/* Icon */}
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-secondary/20 rounded-2xl mb-6">
+            <Rocket className="w-8 h-8 text-secondary-foreground" />
           </div>
 
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-[#FAFAFA] animate-fade-in">
-            Stop Wasting Time on Scheduling. Start in 2 Minutes.
+          {/* Headline */}
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
+            Join 2,000+ Teams Who've Ditched Scheduling Chaos
           </h2>
 
-          <p className="text-lg md:text-xl text-[#E9C46A] mb-12 max-w-2xl mx-auto">
-            Join the 2,000+ distributed teams who've already eliminated the back-and-forth. Your first perfectly scheduled meeting is 2 minutes away.
+          {/* Subheadline */}
+          <p className="text-lg md:text-xl opacity-90 mb-8">
+            Start your free trial today. No credit card required. Set up in under 5 minutes. Your team will thank you.
           </p>
 
+          {/* Email capture form */}
           {status === 'success' ? (
-            <div className="max-w-md mx-auto p-8 bg-[#2A9D8F]/20 border-2 border-[#2A9D8F] rounded-3xl backdrop-blur-sm animate-zoom-in">
-              <div className="w-16 h-16 bg-[#2A9D8F] rounded-full flex items-center justify-center mx-auto mb-4">
-                <Check className="w-8 h-8 text-white" />
+            <div className="bg-secondary/20 backdrop-blur-sm rounded-2xl p-8 max-w-md mx-auto">
+              <div className="flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-12 h-12 text-secondary-foreground" />
               </div>
-              <p className="text-[#FAFAFA] font-bold text-xl mb-2">Welcome aboard! 🎉</p>
-              <p className="text-[#E9C46A]">Check your inbox for next steps to start scheduling smarter.</p>
+              <h3 className="text-2xl font-bold mb-2">You're all set!</h3>
+              <p className="opacity-90">
+                Check your inbox for next steps. We'll have you up and running in minutes.
+              </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4 animate-slide-up">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Input
+            <form onSubmit={handleSubmit} className="max-w-md mx-auto">
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <input
                   type="email"
-                  placeholder="Enter your work email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 h-14 bg-background/90 backdrop-blur-sm border-[#E9C46A]/30 focus:border-[#E9C46A] text-foreground placeholder:text-muted-foreground text-lg"
+                  placeholder="Enter your work email"
                   disabled={status === 'loading'}
+                  className="flex-1 px-6 py-4 rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-secondary disabled:opacity-50 transition-all"
                   required
                 />
-                <Button
+                <button
                   type="submit"
-                  size="lg"
-                  className="h-14 px-8 bg-[#E9C46A] text-[#0A0A0A] hover:bg-[#F4A261] hover:scale-105 transition-all duration-200 font-bold text-lg"
                   disabled={status === 'loading'}
+                  className="group bg-secondary text-secondary-foreground px-8 py-4 rounded-xl font-semibold hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2 whitespace-nowrap"
                 >
-                  {status === 'loading' ? 'Processing...' : 'Get Started Free'}
-                </Button>
+                  {status === 'loading' ? (
+                    'Starting...'
+                  ) : (
+                    <>
+                      Start Free Trial
+                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </button>
               </div>
-              {status === 'error' && (
-                <p className="text-sm text-[#E76F51] bg-[#E76F51]/10 px-4 py-2 rounded-lg">{errorMessage}</p>
+
+              {status === 'error' && errorMessage && (
+                <p className="text-sm text-red-300 bg-red-500/20 px-4 py-2 rounded-lg">
+                  {errorMessage}
+                </p>
               )}
-              <p className="text-sm text-[#E9C46A]/80">
-                14-day free trial • No credit card required • Cancel anytime
-              </p>
+
+              {/* Trust badges */}
+              <div className="flex items-center justify-center gap-6 text-sm opacity-75 mt-6">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>No credit card</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>5-min setup</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Cancel anytime</span>
+                </div>
+              </div>
             </form>
           )}
-
-          {/* Trust signals */}
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-[#E9C46A]/80">
-            <div className="flex items-center gap-2">
-              <Check className="w-5 h-5" />
-              <span className="text-sm">Free 14-day trial</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-5 h-5" />
-              <span className="text-sm">No credit card needed</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-5 h-5" />
-              <span className="text-sm">Setup in 2 minutes</span>
-            </div>
-          </div>
         </div>
       </div>
     </section>

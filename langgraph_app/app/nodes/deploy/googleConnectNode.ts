@@ -114,10 +114,3 @@ registerTask(googleConnectTaskRunner);
 
 // Legacy exports for backwards compatibility
 export const googleConnectNode = googleConnectTaskRunner.run;
-
-export async function shouldSkipGoogleConnect(
-  state: DeployGraphState
-): Promise<"skipGoogleConnect" | "enqueueGoogleConnect"> {
-  const shouldSkip = await googleConnectTaskRunner.shouldSkip(state);
-  return shouldSkip ? "skipGoogleConnect" : "enqueueGoogleConnect";
-}

@@ -101,28 +101,7 @@ export interface TaskRunner {
  * - Website tasks run for all deploys
  * - Campaign tasks only run when deploying Google Ads
  */
-export const TASK_ORDER: Deploy.TaskName[] = [
-  // Google Setup (campaign only, skippable if already connected/verified)
-  "ConnectingGoogle",
-  "VerifyingGoogle",
-
-  // Website Preparation (can run in parallel once Google is done)
-  "AddingAnalytics",
-  "OptimizingSEO",
-
-  // Validation
-  "ValidateLinks",
-  "RuntimeValidation",
-  "FixingBugs", // Only runs when validation fails
-
-  // Deploy
-  "DeployingWebsite",
-
-  // Campaign (only when deploying Google Ads)
-  "DeployingCampaign",
-  "CheckingBilling",
-  "EnablingCampaign",
-];
+export const TASK_ORDER = Deploy.TASK_ORDER;
 
 /**
  * Helper: Is task completed or skipped?

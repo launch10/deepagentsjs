@@ -81,22 +81,16 @@ export function createChatNodeFactory<TState extends CoreGraphState>(
     // At this point, all required fields are validated to exist
     const chatsAPI = new ChatsAPIService({ jwt: state.jwt! });
 
-    try {
-      const chat = await chatsAPI.create({
-        chat: {
-          thread_id: state.threadId!,
-          chat_type: chatType,
-          project_id: state.projectId!,
-          contextable_type: contextableType,
-          contextable_id: contextableId!,
-        },
-      });
+    const chat = await chatsAPI.create({
+      chat: {
+        thread_id: state.threadId!,
+        chat_type: chatType,
+        project_id: state.projectId!,
+        contextable_type: contextableType,
+        contextable_id: contextableId!,
+      },
+    });
 
-      return { chatId: chat.id } as Partial<TState>;
-    } catch (error) {
-      // Log but don't fail - the validation middleware will catch invalid threads
-      console.error(`Failed to create ${chatType} chat:`, error);
-      return {} as Partial<TState>;
-    }
+    return { chatId: chat.id } as Partial<TState>;
   };
 }

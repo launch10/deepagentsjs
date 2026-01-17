@@ -56,6 +56,7 @@ export const withNotifications = <TState extends CoreGraphState>(
       notify("NOTIFY_TASK_COMPLETE", config, task);
       return result;
     } catch (error) {
+      debugger;
       notify("NOTIFY_TASK_ERROR", config, task);
       throw error;
     }

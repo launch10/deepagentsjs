@@ -2,6 +2,7 @@ class API::V1::GoogleController < API::BaseController
   # GET /api/v1/google/connection_status
   # Returns whether account has connected Google OAuth
   def connection_status
+    binding.pry
     render json: {
       connected: current_account.has_google_connected_account?,
       email: current_account.google_email_address

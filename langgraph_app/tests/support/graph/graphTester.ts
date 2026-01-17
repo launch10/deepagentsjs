@@ -52,7 +52,7 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
   private graph: CompiledGraph | undefined;
   private websiteName?: string; // Store project name for deferred loading
   private scenario?: string;
-  private threadId?: string;
+  threadId?: string;
   private chatType?: string;
   private nodeFunction?: NodeFunction<TGraphState>;
 

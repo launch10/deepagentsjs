@@ -5,10 +5,11 @@ import { testGraph } from "@support";
 import { deployGraph as uncompiledGraph } from "@graphs";
 import type { DeployGraphState } from "@annotation";
 import type { ThreadIDType } from "@types";
-import { Deploy } from "@types";
+import { Deploy, Task } from "@types";
 import { graphParams } from "@core";
 import { DatabaseSnapshotter } from "@rails_api";
-import { websiteFiles, and, eq, db } from "@db";
+import { websiteFiles, campaigns, and, eq, db } from "@db";
+import { jobRunCallback } from "@server/routes/webhooks/jobRunCallback";
 import {
   getCodingAgentBackend,
   analyticsNode,
@@ -55,14 +56,32 @@ const mockJobRunAPIService = vi.mocked(JobRunAPIService);
 
 const deployGraph = uncompiledGraph.compile({ ...graphParams, name: "deploy" });
 
-// Clean up test files after each test
+const runningTask = (taskName: Deploy.TaskName) => {
+  const earlierTasks = completeTasksUpTo(taskName);
+  const runningTask = Deploy.createTask(taskName);
+  return [
+    ...earlierTasks,
+    { ...runningTask, status: "running" },
+  ] satisfies Deploy.Task[];
+}
+
+const completeTasksUpTo = (taskName: Deploy.TaskName) => {
+  const earlierTasks = Deploy.findEarlierTasks(taskName);
+  return earlierTasks.map((t) => ({ ...Deploy.createTask(t), status: "completed" })) satisfies Deploy.Task[];
+}
+
+// Clean up test files after each test (if website exists)
 const TEST_WEBSITE_ID = 1;
 afterEach(async () => {
-  const backend = await getCodingAgentBackend({
-    websiteId: TEST_WEBSITE_ID,
-    jwt: "test-jwt",
-  } as WebsiteGraphState);
-  await backend.cleanup();
+  try {
+    const backend = await getCodingAgentBackend({
+      websiteId: TEST_WEBSITE_ID,
+      jwt: "test-jwt",
+    } as WebsiteGraphState);
+    await backend.cleanup();
+  } catch {
+    // Website doesn't exist, nothing to clean up
+  }
 });
 
 /**
@@ -92,8 +111,13 @@ afterEach(async () => {
  * The key principle: "Never enqueue what you won't run"
  */
 describe("Deploy Graph - Campaign Skippable Tasks", () => {
-  beforeEach(() => {
+  let campaignId: number | undefined;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+
+    await DatabaseSnapshotter.restoreSnapshot("campaign_complete");
+    campaignId = (await db.select().from(campaigns).limit(1).execute())[0]?.id;
 
     // Default: Google connected, invite accepted
     mockGoogleAPIService.mockImplementation(
@@ -117,17 +141,8 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
     );
   });
 
-  // Helper: Completed website tasks needed before campaign flow
-  const completedWebsiteTasksForCampaign = [
-    { ...Deploy.createTask("AddingAnalytics"), status: "completed" as const },
-    { ...Deploy.createTask("OptimizingSEO"), status: "completed" as const },
-    { ...Deploy.createTask("ValidateLinks"), status: "completed" as const },
-    { ...Deploy.createTask("RuntimeValidation"), status: "completed" as const },
-    { ...Deploy.createTask("DeployingWebsite"), status: "completed" as const },
-  ];
-
-  describe("ConnectingGoogle - Conditional Routing", () => {
-    it.only("skips ConnectingGoogle when Google is already connected", async () => {
+  describe("ConnectingGoogle", () => {
+    it("skips ConnectingGoogle when Google is already connected", async () => {
       // Mock: Google connected, invite accepted
       mockGoogleAPIService.mockImplementation(
         () =>
@@ -141,7 +156,6 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
           }) as any
       );
 
-      // Start with empty tasks - Google tasks should be skipped (already connected)
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
         .withState({
@@ -153,49 +167,113 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
           tasks: [],
           chatId: 1,
         })
-        .stopAfter("taskExecutor", 2) // Stop after 2 iterations (skip Google, skip Verify)
+        // .stopWhen((s) => Task.findTask(s.tasks, "VerifyingGoogle")?.status === "skipped")
         .execute();
 
-      // ConnectingGoogle should be skipped (not running)
-      const googleConnectTask = result.state.tasks.find((t) => t.name === "ConnectingGoogle");
+      // Both Google tasks should be skipped
+      const googleConnectTask = Task.findTask(result.state.tasks, "ConnectingGoogle");
       expect(googleConnectTask?.status).toBe("skipped");
-
-      // VerifyingGoogle should be skipped (not running)
-      const verifyTask = result.state.tasks.find((t) => t.name === "VerifyingGoogle");
-      expect(verifyTask?.status).toBe("skipped");
     });
 
-    it("runs ConnectingGoogle when Google is NOT connected", async () => {
-      // Mock: Google NOT connected
-      mockGoogleAPIService.mockImplementation(
-        () =>
-          ({
-            getConnectionStatus: vi.fn().mockResolvedValue({ connected: false, email: null }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: false, status: "none", email: null }),
-          }) as any
-      );
+    describe("When google account not already connected", () => {
+      beforeEach(() => {
+        // Mock: Google NOT connected
+        mockGoogleAPIService.mockImplementation(
+          () =>
+            ({
+              getConnectionStatus: vi.fn().mockResolvedValue({ connected: false, email: null }),
+              getInviteStatus: vi
+                .fn()
+                .mockResolvedValue({ accepted: false, status: "none", email: null }),
+            }) as any
+        );
+      });
 
+      it("runs ConnectingGoogle when Google is NOT connected", async () => {
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
-          campaignId: undefined,
+          campaignId: 123,
           deploy: { googleAds: true },
           tasks: [],
+          chatId: 1,
         })
-        .stopAfter("enqueueGoogleConnect")
         .execute();
 
-      // Should have ConnectingGoogle task created by enqueue node
-      const googleConnectTask = result.state.tasks.find((t) => t.name === "ConnectingGoogle");
+      // Should have ConnectingGoogle task with running status
+      const googleConnectTask = Task.findTask(result.state.tasks, "ConnectingGoogle");
       expect(googleConnectTask).toBeDefined();
-      expect(googleConnectTask?.status).toBe("running"); // enqueueTask creates with running status
-    });
+      expect(googleConnectTask?.status).toBe("running");
+      expect(result.state.tasks.length).toBe(1); // this is a blocking action, it will not have run other tasks...
+      });
 
+      it("continues to wait when already running ConnectingGoogle", async () => {
+        const result = await testGraph<DeployGraphState>()
+          .withGraph(deployGraph)
+          .withState({
+            jwt: "test-jwt",
+            threadId: "thread_123" as ThreadIDType,
+            websiteId: 1,
+            campaignId: 123,
+            deploy: { googleAds: true },
+            tasks: runningTask("ConnectingGoogle"),
+            chatId: 1,
+          })
+          .execute();
+
+        // Should have ConnectingGoogle task with running status
+        const googleConnectTask = Task.findTask(result.state.tasks, "ConnectingGoogle");
+        expect(googleConnectTask).toBeDefined();
+        expect(googleConnectTask?.status).toBe("running");
+        expect(result.state.tasks.length).toBe(1); // this is a blocking action, it will not have run other tasks...
+      });
+
+      it("continues to next step after receving job callback", async () => {
+        const graph = testGraph<DeployGraphState>()
+          .withGraph(deployGraph)
+          .withState({
+            jwt: "test-jwt",
+            threadId: "thread_123" as ThreadIDType,
+            websiteId: 1,
+            campaignId,
+            deploy: { googleAds: true },
+            tasks: [],
+            chatId: 1,
+          })
+        const result = await graph.execute();
+        const googleConnectTask = Task.findTask(result.state.tasks, "ConnectingGoogle");
+
+        await jobRunCallback({
+          job_run_id: googleConnectTask?.jobId!,
+          thread_id: graph.threadId!,
+          status: "completed",
+          result: { google_email: "test@gmail.com" },
+        })
+
+        const updates = (await deployGraph.getState({configurable: {
+          thread_id: graph.threadId,
+        }})).values;
+
+        const updatedResult = await deployGraph.invoke(updates, {configurable: {
+          thread_id: graph.threadId,
+        }});
+
+        const updatedGoogleConnectTask = Task.findTask(updatedResult.tasks, "ConnectingGoogle");
+        const verifyingGoogleTask = Task.findTask(updatedResult.tasks, "VerifyingGoogle");
+
+        // Should have ConnectingGoogle task with running status
+        expect(updatedGoogleConnectTask).toBeDefined();
+        expect(updatedGoogleConnectTask?.status).toBe("completed");
+        expect(updatedResult.tasks.length).toBe(2); // this is a blocking action, it will not have run other tasks...
+        expect(verifyingGoogleTask?.status).toBe("running");
+      });
+    });
+  })
+
+  describe("VerifyingGoogle", async () => {
     it("proceeds to verifyGoogle after ConnectingGoogle completes", async () => {
       // Mock: Google connected but invite not yet accepted
       mockGoogleAPIService.mockImplementation(
@@ -219,9 +297,9 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
           websiteId: 1,
           campaignId: undefined,
           deploy: { googleAds: true },
-          tasks: [{ ...Deploy.createTask("ConnectingGoogle"), status: "completed" }],
+          tasks: completeTasksUpTo("VerifyingGoogle"),
+          chatId: 1
         })
-        .stopAfter("enqueueGoogleVerify")
         .execute();
 
       // Should have both ConnectingGoogle (completed) and VerifyingGoogle (pending) tasks
@@ -260,7 +338,6 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
           tasks: [
             { ...Deploy.createTask("ConnectingGoogle"), status: "completed" },
             { ...Deploy.createTask("VerifyingGoogle"), status: "completed" },
-            ...completedWebsiteTasksForCampaign,
           ],
         })
         .stopAfter("enqueueDeployCampaign")
@@ -385,9 +462,12 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
  * instrumentation adds the necessary L10.createLead() calls.
  */
 describe("AddingAnalytics - Lead capture setup", () => {
+  let campaignId: number | undefined;
+
   beforeEach(async () => {
     // Use a snapshot that doesn't have analytics
     await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+    campaignId = (await db.select().from(campaigns).limit(1).execute())[0]?.id;
   });
 
   it("adds L10.createLead() instrumentation to landing pages", async () => {

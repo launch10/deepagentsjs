@@ -10,22 +10,39 @@ import * as GenericTask from "../task";
  */
 
 export const TaskNames = [
-  // 1:1 with phases (same name)
-  "AddingAnalytics",
-  "OptimizingSEO",
-  "FixingBugs",
-  "DeployingWebsite",
+  // Google Setup (campaign only, skippable if already connected/verified)
   "ConnectingGoogle",
   "VerifyingGoogle",
-  "CheckingBilling",
-  "DeployingCampaign",
-  "EnablingCampaign",
-  // Special: These two tasks merge into "CheckingForBugs" phase
+
+  // Website Preparation (can run in parallel once Google is done)
+  "AddingAnalytics",
+  "OptimizingSEO",
+
+  // Validation
   "ValidateLinks",
   "RuntimeValidation",
-] as const;
+  "FixingBugs", // Only runs when validation fails
 
+  // Deploy
+  "DeployingWebsite",
+
+  // Campaign (only when deploying Google Ads)
+  "DeployingCampaign",
+  "CheckingBilling",
+  "EnablingCampaign",
+] as const;
 export type TaskName = (typeof TaskNames)[number];
+export const TASK_ORDER = TaskNames;
+
+export const findEarlierTasks = (name: TaskName): TaskName[] => {
+  const index = TASK_ORDER.indexOf(name);
+  return TASK_ORDER.slice(0, index);
+}
+
+export const findTasksUpToAndIncluding = (name: TaskName): TaskName[] => {
+  const index = TASK_ORDER.indexOf(name);
+  return TASK_ORDER.slice(0, index + 1);
+}
 
 export const TaskDescriptionMap: Record<TaskName, string> = {
   // 1:1 with phases (use phase descriptions)
