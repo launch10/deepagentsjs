@@ -399,14 +399,14 @@ describe("Node Core", () => {
         const node2 = NodeMiddleware.use(
           {},
           async (state: any, config: LangGraphRunnableConfig) => {
-            return { completed: [...state.completed, "node2"] };
+            return { completed: ["node2"] };
           }
         );
 
         const node3 = NodeMiddleware.use(
           {},
           async (state: any, config: LangGraphRunnableConfig) => {
-            return { completed: [...state.completed, "node3"] };
+            return { completed: ["node3"] };
           }
         );
 
@@ -448,7 +448,7 @@ describe("Node Core", () => {
         const node2 = NodeMiddleware.use(
           {},
           async (state: any, config: LangGraphRunnableConfig) => {
-            return { steps: [...state.steps, "step2"] };
+            return { steps: ["step2"] };
           }
         );
 
