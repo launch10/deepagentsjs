@@ -66,7 +66,7 @@ module GoogleAds
 
         resource_type = remote.accepted? ? :customer_user_access : :customer_user_access_invitation
 
-        result = Sync::SyncResult.new(
+        result = GoogleAds::Sync::SyncResult.new(
           resource_type: resource_type,
           resource_name: remote.resource_name,
           action: status_action(remote),
@@ -84,7 +84,7 @@ module GoogleAds
 
         resource_type = remote_resource.accepted? ? :customer_user_access : :customer_user_access_invitation
 
-        Sync::SyncResult.new(
+        GoogleAds::Sync::SyncResult.new(
           resource_type: resource_type,
           resource_name: remote_resource.resource_name,
           action: :unchanged,
@@ -195,7 +195,7 @@ module GoogleAds
           operation: operation
         )
 
-        result = Sync::SyncResult.new(
+        result = GoogleAds::Sync::SyncResult.new(
           resource_type: :customer_user_access_invitation,
           resource_name: response.result.resource_name,
           action: :created,
@@ -225,7 +225,7 @@ module GoogleAds
       end
 
       def not_found_result(resource_type)
-        Sync::SyncResult.new(
+        GoogleAds::Sync::SyncResult.new(
           resource_type: resource_type,
           resource_name: nil,
           action: :not_found,

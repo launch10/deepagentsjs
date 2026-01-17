@@ -157,7 +157,7 @@ module GoogleAds
             results << new(schedule).sync
           end
 
-          Sync::CollectionSyncResult.new(results: results)
+          ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
         end
 
         # Dry-run planning for all ad_schedules in a campaign
@@ -185,7 +185,7 @@ module GoogleAds
             operations.concat(record_plan.operations)
           end
 
-          Sync::Plan.new(operations)
+          ::GoogleAds::Sync::Plan.new(operations)
         end
       end
 

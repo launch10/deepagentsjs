@@ -15,7 +15,7 @@ module GoogleAds
       ads_account.send_google_ads_invitation_email
 
       # Poll immediately for faster feedback, batch scheduler serves as backup
-      PollInviteAcceptanceWorker.perform_async(job_run_id)
+      GoogleAds::PollInviteAcceptanceWorker.perform_async(job_run_id)
     rescue => e
       job_run.fail!(e)
       job_run.notify_langgraph(status: "failed", error: e.message)

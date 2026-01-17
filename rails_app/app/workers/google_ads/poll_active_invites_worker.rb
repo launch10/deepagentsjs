@@ -29,7 +29,7 @@ module GoogleAds
         job_run = deploy.job_runs.running.find_by(job_class: "GoogleAdsInvite")
         next unless job_run
 
-        PollInviteAcceptanceWorker.perform_async(job_run.id)
+        GoogleAds::PollInviteAcceptanceWorker.perform_async(job_run.id)
       end
     end
 

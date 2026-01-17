@@ -42,17 +42,17 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
 
     # Find job run through deploy if available, fall back to account-level lookup
     job_run = if active_deploy
-                active_deploy.job_runs
-                  .where(job_class: "GoogleOAuthConnect", status: %w[pending running])
-                  .order(created_at: :desc)
-                  .first
-              else
-                # Legacy fallback: find by account if no active deploy
-                account.job_runs
-                  .where(job_class: "GoogleOAuthConnect", status: %w[pending running])
-                  .order(created_at: :desc)
-                  .first
-              end
+      active_deploy.job_runs
+        .where(job_class: "GoogleOAuthConnect", status: %w[pending running])
+        .order(created_at: :desc)
+        .first
+    else
+      # Legacy fallback: find by account if no active deploy
+      account.job_runs
+        .where(job_class: "GoogleOAuthConnect", status: %w[pending running])
+        .order(created_at: :desc)
+        .first
+    end
 
     return unless job_run
 

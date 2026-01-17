@@ -746,7 +746,7 @@ RSpec.describe GoogleAds::Resources::StructuredSnippet do
 
     describe "#google_syncer" do
       it "returns the resource instance" do
-        expect(structured_snippet.google_syncer).to be_a(described_class)
+        expect(structured_snippet.google_syncer.class.name).to eq(described_class.name)
       end
     end
   end

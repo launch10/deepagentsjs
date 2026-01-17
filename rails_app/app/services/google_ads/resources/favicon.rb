@@ -45,7 +45,7 @@ module GoogleAds
           operations << { action: :link_to_campaign, record: record, field_type: :BUSINESS_LOGO }
         end
 
-        Sync::Plan.new(operations)
+        GoogleAds::Sync::Plan.new(operations)
       end
 
       def delete

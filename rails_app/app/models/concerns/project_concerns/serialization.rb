@@ -55,7 +55,7 @@ module ProjectConcerns
     end
 
     def to_deploy_json(deploy)
-      project = Project.with_launch_relations.find_by(id: id)
+      Project.with_launch_relations.find_by(id: id)
 
       to_ad_campaign_json.merge!({
         deploy: {

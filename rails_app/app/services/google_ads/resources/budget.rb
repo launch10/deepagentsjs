@@ -58,7 +58,7 @@ module GoogleAds
           budget = campaign.budget
           results << new(budget).sync if budget && !budget.deleted?
 
-          Sync::CollectionSyncResult.new(results: results)
+          ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
         end
 
         def sync_plan(campaign)
@@ -79,7 +79,7 @@ module GoogleAds
             operations.concat(new(budget).sync_plan.operations)
           end
 
-          Sync::Plan.new(operations)
+          ::GoogleAds::Sync::Plan.new(operations)
         end
       end
 
@@ -138,7 +138,7 @@ module GoogleAds
           operations << { action: :unchanged, record: record }
         end
 
-        Sync::Plan.new(operations)
+        GoogleAds::Sync::Plan.new(operations)
       end
 
       def delete
