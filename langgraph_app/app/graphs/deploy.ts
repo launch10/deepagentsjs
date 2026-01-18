@@ -3,6 +3,7 @@ import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import { Deploy } from "@types";
 import {
   createChatNode,
+  initPhasesNode,
   taskExecutorNode,
   taskExecutorRouter,
 } from "@nodes";
@@ -58,6 +59,11 @@ export const deployGraph = new StateGraph(DeployAnnotation)
   .addNode("createChat", createChatNode)
 
   // --------------------------------------------------------------------------
+  // Init Phases: Compute phases from any pre-existing tasks (for tests)
+  // --------------------------------------------------------------------------
+  .addNode("initPhases", initPhasesNode)
+
+  // --------------------------------------------------------------------------
   // Task Executor: Processes all tasks in order
   // --------------------------------------------------------------------------
   .addNode("taskExecutor", taskExecutorNode)
@@ -69,12 +75,15 @@ export const deployGraph = new StateGraph(DeployAnnotation)
   // Start with chat validation
   .addEdge(START, "createChat")
 
-  // After chat validation, either end or start task execution
+  // After chat validation, either end or initialize phases
   .addConditionalEdges("createChat", (state: DeployGraphState) => {
     // Exit early if nothing to deploy
     if (!Deploy.shouldDeployAnything(state)) return END;
-    return "taskExecutor";
+    return "initPhases";
   })
+
+  // After init phases, proceed to task executor
+  .addEdge("initPhases", "taskExecutor")
 
   // Task executor routing: continue, wait, or end
   .addConditionalEdges("taskExecutor", taskExecutorRouter, {

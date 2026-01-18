@@ -8,7 +8,7 @@ import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 const TASK_NAME: Deploy.TaskName = "RuntimeValidation";
 
 /**
- * Runtime Validation - Raw Function
+ * Runtime Validation
  *
  * Uses Playwright to validate the website before deployment:
  * 1. Starts dev server using WebsiteRunner
@@ -89,13 +89,12 @@ export const runtimeValidationTaskRunner: TaskRunner = {
 
   shouldSkip: (state: DeployGraphState) => {
     // Skip if not deploying a website
-    if (!state.deploy?.website) {
+    if (!Deploy.shouldDeployWebsite(state)) {
       return true;
     }
 
-    // Skip if already completed
-    const task = Task.findTask(state.tasks, TASK_NAME);
-    return task?.status === "completed";
+    const task = Task.findTask(state.tasks, "ValidateLinks");
+    return task?.status === "failed"; // skip straight to FixBugs if ValidateLinks failed 
   },
 
   run: runRuntimeValidation,

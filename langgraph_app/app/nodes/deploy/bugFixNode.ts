@@ -20,12 +20,15 @@ async function runBugFix(
   config?: LangGraphRunnableConfig
 ): Promise<Partial<DeployGraphState>> {
   // Get validation errors from runtime_validation task
+  const linksTask = Task.findTask(state.tasks, "ValidateLinks");
   const validationTask = Task.findTask(state.tasks, "RuntimeValidation");
-  if (!validationTask) {
+  const failedTask = [linksTask, validationTask].find((t) => t?.status === "failed");
+
+  if (!failedTask) {
     return {};
   }
 
-  if (validationTask.status !== "failed") {
+  if (failedTask.status !== "failed") {
     return {};
   }
 
@@ -33,18 +36,18 @@ async function runBugFix(
     throw new Error("websiteId and jwt are required");
   }
 
-  if (!validationTask.error) {
+  if (!failedTask.error) {
     throw new Error("Validation error is required");
   }
 
-  const task = Task.findTask(state.tasks, TASK_NAME);
+  const fixTask = Task.findTask(state.tasks, TASK_NAME);
 
   // Build prompt with errors in state for consistent async pattern
   // Bug fixes are always edits (isFirstMessage: false) with errors present
   const promptState = {
     websiteId: state.websiteId,
     jwt: state.jwt,
-    errors: validationTask.error,
+    errors: failedTask.error,
     isFirstMessage: false,
   };
   const systemPrompt = await buildBugFixPrompt(promptState, config);
@@ -68,11 +71,11 @@ async function runBugFix(
     return {
       tasks: [
         {
-          ...validationTask,
-          retryCount: validationTask.retryCount + 1,
+          ...failedTask,
+          retryCount: failedTask.retryCount + 1,
         } as Task.Task,
         {
-          ...task,
+          ...fixTask,
           status: "completed",
         } as Task.Task,
       ],
@@ -84,11 +87,11 @@ async function runBugFix(
     return {
       tasks: [
         {
-          ...validationTask,
-          retryCount: validationTask.retryCount + 1,
+          ...failedTask,
+          retryCount: failedTask.retryCount + 1,
         } as Task.Task,
         {
-          ...task,
+          ...fixTask,
           status: "failed",
           error: errorMessage,
         } as Task.Task,

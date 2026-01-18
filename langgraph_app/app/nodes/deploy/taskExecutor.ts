@@ -11,12 +11,25 @@ type NextTask = {
   readyToRun: boolean;
 };
 
+const getFailedTask = (state: Partial<DeployGraphState>): Deploy.Task | undefined => {
+  return state.tasks?.find((t) => {
+    const runner = getTaskRunner(t.name as Deploy.TaskName);
+    return t.status === "failed" && !runner?.isFailureRecoverable;
+  });
+};
+
+const anyTaskFailed = (state: Partial<DeployGraphState>): boolean => {
+  return getFailedTask(state) !== undefined;
+};
+
 /**
  * Find the next task to process.
  * Returns null if all tasks are done or we hit a fatal failure.
  */
 async function findNextTask(state: DeployGraphState): Promise<NextTask | null> {
-  for (const taskName of TASK_ORDER) {
+  const tasks = Deploy.findTasks(state.deploy); // Returns tasks based on instructions, in order of execution
+
+  for (const taskName of tasks) {
     const task = Task.findTask(state.tasks, taskName);
     const runner = getTaskRunner(taskName);
     if (!runner) continue;
@@ -89,6 +102,7 @@ async function runTaskExecutor(
 
   // No next task
   if (!nextTask) {
+    console.log(`No next task`);
     if (allTasksComplete(state)) {
       return { status: "completed" };
     }
@@ -99,6 +113,7 @@ async function runTaskExecutor(
       return !runner?.isFailureRecoverable;
     });
     return {
+      ...withPhases(state, []),
       status: "failed",
       error: { message: failedTask?.error ?? "Task failed", node: failedTask?.name ?? "unknown" },
     };
@@ -106,11 +121,13 @@ async function runTaskExecutor(
 
   // Blocking - wait for webhook
   if (nextTask.blocking) {
+    console.log(`Blocking ${nextTask.taskName}`);
     return {};
   }
 
   // Should skip - mark as skipped
   if (nextTask.shouldSkip) {
+    console.log(`Skipping ${nextTask.taskName}`);
     return {
       tasks: [{ ...Deploy.createTask(nextTask.taskName), status: "skipped" }],
     };
@@ -141,11 +158,26 @@ async function runTaskExecutor(
   // Task is running - run it
   try {
     console.log(`Running ${nextTask.taskName}`);
-    return await runner.run(state, config);
+    const partialGraphState = await runner.run(state, config);
+    if (anyTaskFailed(partialGraphState)) {
+      const failedTask = getFailedTask(partialGraphState)
+      const runner = getTaskRunner(failedTask?.name as Deploy.TaskName);
+      if (!runner?.isFailureRecoverable) {
+        const failedTaskUpdate = { ...failedTask, status: "failed" } as Deploy.Task;
+        return {
+          ...withPhases(state, [failedTaskUpdate]),
+          status: "failed",
+          error: { message: failedTask?.error ?? "Task failed", node: failedTask?.name ?? "unknown" },
+        };
+      }
+      return partialGraphState;
+    }
+    return partialGraphState;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const failedTaskUpdate = { ...task, status: "failed", error: errorMessage } as Deploy.Task;
     return {
-      tasks: [{ ...task, status: "failed", error: errorMessage }],
+      ...withPhases(state, [failedTaskUpdate]),
       status: "failed",
       error: { message: errorMessage, node: "taskExecutor" },
     };
@@ -164,11 +196,19 @@ export async function taskExecutorRouter(
   if (state.error) return "end";
 
   const nextTask = await findNextTask(state);
-  console.log("nextTask", nextTask);
 
-  if (!nextTask) return "end";
-  if (nextTask.blocking) return "wait";
-  if (!nextTask.readyToRun && !nextTask.shouldSkip) return "wait";
+  if (!nextTask) {
+    console.log(`No next task`);
+    return "end";
+  }
+  if (nextTask.blocking) {
+    console.log(`Blocking ${nextTask.taskName}`);
+    return "wait";
+  }
+  if (!nextTask.readyToRun && !nextTask.shouldSkip) {
+    console.log(`Not ready to run ${nextTask.taskName}`);
+    return "wait";
+  }
 
   return "continue";
 }

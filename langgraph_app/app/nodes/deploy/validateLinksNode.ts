@@ -1,90 +1,22 @@
-import { type DeployGraphState, withPhases } from "@annotation";
+import { type DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { db, codeFiles, eq } from "@db";
 import { Deploy, Task } from "@types";
 import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
+import { validateLinks } from "@utils";
 
 const TASK_NAME: Deploy.TaskName = "ValidateLinks";
 
-export interface ValidationError {
-  file: string;
-  message: string;
-}
-
-export type LinkType = "anchor" | "route" | "skip";
-
-export function getLinkType(href: string): LinkType {
-  if (href.startsWith("#")) return "anchor";
-  if (href.startsWith("http") || href.startsWith("mailto:") || href.startsWith("tel:"))
-    return "skip";
-  return "route";
-}
-
-export function collectAnchors(files: { path: string; content: string }[]): Set<string> {
-  const anchors = new Set<string>();
-  for (const file of files) {
-    const matches = file.content.matchAll(/id=["']([^"']+)["']/g);
-    for (const match of matches) {
-      const id = match[1];
-      if (id) anchors.add(id);
-    }
-  }
-  return anchors;
-}
-
-export function parseRoutes(files: { path: string; content: string }[]): Set<string> {
-  const appFile = files.find((f) => f.path.endsWith("App.tsx"));
-  if (!appFile) return new Set(["/"]);
-
-  const routes = new Set<string>(["/"]);
-  const matches = appFile.content.matchAll(/<Route\s+path=["']([^"']+)["']/g);
-  for (const match of matches) {
-    const path = match[1];
-    if (path && path !== "*") {
-      routes.add(path.replace(/\/$/, "") || "/");
-    }
-  }
-  return routes;
-}
-
-export function validateLinks(files: { path: string; content: string }[]): ValidationError[] {
-  const errors: ValidationError[] = [];
-  const anchors = collectAnchors(files);
-  const routes = parseRoutes(files);
-
-  for (const file of files) {
-    const matches = file.content.matchAll(/href=["']([^"']+)["']/g);
-
-    for (const match of matches) {
-      const href = match[1];
-      if (!href) continue;
-
-      const linkType = getLinkType(href);
-
-      if (linkType === "anchor") {
-        const id = href.slice(1);
-        if (!anchors.has(id)) {
-          errors.push({
-            file: file.path,
-            message: `Broken anchor: ${href} - no element with id="${id}"`,
-          });
-        }
-      } else if (linkType === "route") {
-        const [pathPart] = href.split(/[?#]/);
-        const normalized = (pathPart || "").replace(/\/$/, "") || "/";
-        if (!routes.has(normalized)) {
-          errors.push({
-            file: file.path,
-            message: `No route for: ${href} - add <Route path="${normalized}"> to App.tsx`,
-          });
-        }
-      }
-    }
-  }
-
-  return errors;
-}
+// Re-export for backwards compatibility with tests
+export {
+  validateLinks,
+  getLinkType,
+  collectAnchors,
+  parseRoutes,
+  type ValidationError,
+  type LinkType,
+} from "@utils";
 
 /**
  * Validate Links - Raw Function (Deploy Graph)
