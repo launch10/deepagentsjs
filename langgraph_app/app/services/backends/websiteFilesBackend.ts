@@ -16,6 +16,25 @@ import _ from "lodash";
 import micromatch from "micromatch";
 import { WebsiteFilesAPIService } from "@rails_api";
 import { RedisLock } from "@ext";
+import { appendFileSync, mkdirSync } from "fs";
+
+// Debug file logger for tracing read/write/edit operations
+const DEBUG_LOG_PATH = "/tmp/website_files_backend.log";
+
+function debugLog(websiteId: number | undefined, operation: string, details: Record<string, unknown>) {
+  try {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      timestamp,
+      websiteId,
+      operation,
+      ...details,
+    };
+    appendFileSync(DEBUG_LOG_PATH, JSON.stringify(logEntry) + "\n");
+  } catch (e) {
+    // Ignore logging errors
+  }
+}
 
 export interface CreateBackendParams {
   website: DBTypes.WebsiteType;
@@ -63,6 +82,8 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async hydrate(): Promise<void> {
+    debugLog(this.website.id, "HYDRATE_START", { rootDir: this.rootDir });
+
     const files = await this.database
       .select({
         path: codeFiles.path,
@@ -70,6 +91,11 @@ export class WebsiteFilesBackend implements BackendProtocol {
       })
       .from(codeFiles)
       .where(eq(codeFiles.websiteId, this.getWebsiteId()));
+
+    debugLog(this.website.id, "HYDRATE_FILES_LOADED", {
+      fileCount: files.length,
+      paths: files.map(f => f.path)
+    });
 
     await this.cleanup();
 
@@ -80,6 +106,8 @@ export class WebsiteFilesBackend implements BackendProtocol {
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, file.content);
     }
+
+    debugLog(this.website.id, "HYDRATE_COMPLETE", { fileCount: files.length });
   }
 
   async cleanup(): Promise<void> {
@@ -93,7 +121,35 @@ export class WebsiteFilesBackend implements BackendProtocol {
 
   async read(filePath: string, offset: number = 0, limit: number = 2000): Promise<string> {
     console.log("read", filePath, offset, limit);
-    return this.fs.read(filePath, offset, limit);
+
+    // Return raw content without line numbers to avoid confusing the agent
+    // The default fs.read() adds line numbers which can cause issues when
+    // agents try to match content for edits or writes
+    const fileData = await this.fs.readRaw(filePath);
+    const rawContent = Array.isArray(fileData.content)
+      ? fileData.content.join("\n")
+      : String(fileData.content);
+
+    // Apply offset and limit (in lines)
+    const lines = rawContent.split("\n");
+    const startIdx = offset;
+    const endIdx = Math.min(startIdx + limit, lines.length);
+
+    if (startIdx >= lines.length) {
+      return `Error: Line offset ${offset} exceeds file length (${lines.length} lines)`;
+    }
+
+    const content = lines.slice(startIdx, endIdx).join("\n");
+
+    debugLog(this.website.id, "READ", {
+      filePath,
+      offset,
+      limit,
+      contentLength: content.length,
+      contentHash: Buffer.from(content).toString("base64").slice(0, 20),
+      contentPreview: content.slice(0, 200).replace(/\n/g, "\\n"),
+    });
+    return content;
   }
 
   async readRaw(filePath: string): Promise<FileData> {
@@ -181,8 +237,55 @@ export class WebsiteFilesBackend implements BackendProtocol {
   async write(filePath: string, content: string): Promise<WriteResult> {
     console.log("write", filePath, content);
     const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
+
+    debugLog(this.website.id, "WRITE_START", {
+      filePath,
+      contentLength: content.length,
+      contentHash: Buffer.from(content).toString("base64").slice(0, 20),
+      contentPreview: content.slice(0, 200).replace(/\n/g, "\\n"),
+    });
+
     return RedisLock.withLock(lockKey, async () => {
-      const fsResult = await this.fs.write(filePath, content);
+      debugLog(this.website.id, "WRITE_LOCK_ACQUIRED", { filePath });
+
+      // Try to write first (for new files)
+      let fsResult = await this.fs.write(filePath, content);
+
+      // If file already exists, replace its entire content via edit
+      if (fsResult.error?.includes("already exists")) {
+        debugLog(this.website.id, "WRITE_FILE_EXISTS_REPLACING", { filePath });
+
+        // Read current content to replace it entirely
+        try {
+          const fileData = await this.fs.readRaw(filePath);
+          // FileData.content is string[] (array of lines)
+          const currentContent = Array.isArray(fileData.content)
+            ? fileData.content.join("\n")
+            : String(fileData.content);
+
+          // Replace entire content
+          const editResult = await this.fs.edit(filePath, currentContent, content, false);
+          if (editResult.error) {
+            debugLog(this.website.id, "WRITE_REPLACE_FAILED", {
+              filePath,
+              error: editResult.error,
+            });
+            return { error: editResult.error };
+          }
+
+          fsResult = { path: filePath, filesUpdate: null };
+        } catch (e) {
+          const errorMsg = e instanceof Error ? e.message : String(e);
+          debugLog(this.website.id, "WRITE_REPLACE_ERROR", { filePath, error: errorMsg });
+          return { error: errorMsg };
+        }
+      }
+
+      debugLog(this.website.id, "WRITE_FS_COMPLETE", {
+        filePath,
+        error: fsResult.error ?? null,
+      });
+
       if (fsResult.error) return fsResult;
 
       const service = new WebsiteFilesAPIService({ jwt: this.jwt });
@@ -190,6 +293,8 @@ export class WebsiteFilesBackend implements BackendProtocol {
         id: this.getWebsiteId(),
         files: [{ path: filePath, content }],
       });
+
+      debugLog(this.website.id, "WRITE_API_COMPLETE", { filePath });
 
       return {
         path: filePath,
@@ -205,8 +310,20 @@ export class WebsiteFilesBackend implements BackendProtocol {
     replaceAll: boolean = false
   ): Promise<EditResult> {
     console.log("edit", filePath, oldString, newString, replaceAll);
+
+    debugLog(this.website.id, "EDIT_START", {
+      filePath,
+      oldStringLength: oldString.length,
+      newStringLength: newString.length,
+      oldStringPreview: oldString.slice(0, 100).replace(/\n/g, "\\n"),
+      newStringPreview: newString.slice(0, 100).replace(/\n/g, "\\n"),
+      replaceAll,
+    });
+
     const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
     return RedisLock.withLock(lockKey, async () => {
+      debugLog(this.website.id, "EDIT_LOCK_ACQUIRED", { filePath });
+
       const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
       if (fsResult.error) {
         // Enhanced error logging for debugging edit failures (using console.log for vitest stdout)
@@ -239,8 +356,18 @@ export class WebsiteFilesBackend implements BackendProtocol {
         }
         console.log(`${"=".repeat(80)}\n`);
 
+        debugLog(this.website.id, "EDIT_FS_FAILED", {
+          filePath,
+          error: fsResult.error,
+        });
+
         return fsResult;
       }
+
+      debugLog(this.website.id, "EDIT_FS_COMPLETE", {
+        filePath,
+        occurrences: fsResult.occurrences,
+      });
 
       const service = new WebsiteFilesAPIService({ jwt: this.jwt });
       await service.edit({
@@ -250,6 +377,8 @@ export class WebsiteFilesBackend implements BackendProtocol {
         newString,
         replaceAll,
       });
+
+      debugLog(this.website.id, "EDIT_API_COMPLETE", { filePath });
 
       return {
         path: filePath,

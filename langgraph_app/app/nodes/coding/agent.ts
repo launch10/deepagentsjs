@@ -102,14 +102,18 @@ const getTheme = async (
   return undefined;
 };
 
-export async function createCodingAgent(state: MinimalCodingAgentState, systemPrompt?: string) {
+export async function createCodingAgent(
+  state: MinimalCodingAgentState,
+  systemPrompt?: string,
+  existingBackend?: WebsiteFilesBackend
+) {
   if (state.isFirstMessage === undefined) {
     throw new Error(
       "isFirstMessage is required - explicitly set to true (create) or false (edit/bugfix)"
     );
   }
 
-  const backend = await getCodingAgentBackend(state);
+  const backend = existingBackend ?? await getCodingAgentBackend(state);
   const llm = await getLLM("coding", "slow", "paid");
   const middlewares = getMiddlewares();
 

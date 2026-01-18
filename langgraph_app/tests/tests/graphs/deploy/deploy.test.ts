@@ -391,7 +391,7 @@ describe.sequential("Deploy Graph Tests", () => {
    * USER OUTCOME: Lead capture works correctly after deployment because
    * instrumentation adds the necessary L10.createLead() calls.
    */
-  describe.only("AddingAnalytics", () => {
+  describe("AddingAnalytics", () => {
     let campaignId: number | undefined;
 
     beforeEach(async () => {
@@ -809,8 +809,12 @@ describe.sequential("Deploy Graph Tests", () => {
     });
 
     describe("Idempotency - doesn't deploy if website is already deploying", () => {
-      it("returns early if website is already deploying", async () => {
-        const result = await testGraph<DeployGraphState>()
+      it("calls API on first pass, skips on second pass", async () => {
+        const mockCreate = vi.fn().mockResolvedValue({ id: 123, status: "pending" });
+        mockJobRunAPIService.mockImplementation(() => ({ create: mockCreate }) as any);
+
+        // First pass: task is running, no jobId → should call API
+        const firstResult = await testGraph<DeployGraphState>()
           .withGraph(deployGraph)
           .withState({
             jwt: "test-jwt",
@@ -824,11 +828,36 @@ describe.sequential("Deploy Graph Tests", () => {
           })
           .execute();
 
-        const deployingWebsiteTask = result.state.tasks.find((t) => t.name === "DeployingWebsite");
-        expect(deployingWebsiteTask?.status).toBe("running");
+        // Verify API was called
+        expect(mockCreate).toHaveBeenCalledTimes(1);
+
+        // Verify task now has jobId
+        const taskAfterFirst = firstResult.state.tasks.find((t) => t.name === "DeployingWebsite");
+        expect(taskAfterFirst?.jobId).toBe(123);
+
+        // Second pass: same state but with jobId → should NOT call API
+        mockCreate.mockClear();
+
+        const secondResult = await testGraph<DeployGraphState>()
+          .withGraph(deployGraph)
+          .withState({
+            ...firstResult.state, // Use state from first pass (has jobId)
+          })
+          .execute();
+
+        // Verify API was NOT called again
+        expect(mockCreate).not.toHaveBeenCalled();
+
+        // Task should still be running (waiting for webhook)
+        const taskAfterSecond = secondResult.state.tasks.find((t) => t.name === "DeployingWebsite");
+        expect(taskAfterSecond?.status).toBe("running");
+        expect(taskAfterSecond?.jobId).toBe(123);
       });
 
       it("exits immediately if DeployingWebsite task is completed", async () => {
+        const mockCreate = vi.fn().mockResolvedValue({ id: 123, status: "pending" });
+        mockJobRunAPIService.mockImplementation(() => ({ create: mockCreate }) as any);
+
         const completedTask: Deploy.Task = {
           ...Deploy.createTask("DeployingWebsite"),
           status: "completed",
@@ -849,29 +878,7 @@ describe.sequential("Deploy Graph Tests", () => {
 
         expect(result.state.tasks).toHaveLength(1);
         expect(result.state.tasks[0]!.status).toBe("completed");
-      });
-
-      it("exits immediately if DeployingWebsite task is running (waiting for webhook)", async () => {
-        const runningTask: Deploy.Task = {
-          ...Deploy.createTask("DeployingWebsite", 456),
-          status: "running",
-        };
-
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: [runningTask],
-            chatId: 1
-          })
-          .execute();
-
-        // Should exit without modifying - waiting for webhook
-        expect(result.state.tasks).toHaveLength(1);
-        expect(result.state.tasks[0]!.status).toBe("running");
+        expect(mockCreate).not.toHaveBeenCalled();
       });
     });
 
