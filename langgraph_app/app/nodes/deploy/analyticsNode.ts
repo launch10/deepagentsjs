@@ -6,6 +6,7 @@ import type { WebsiteFilesBackend } from "@services";
 import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 import { db, websiteFiles, eq, and, like } from "@db";
 import { trackingPrompt } from "@prompts";
+import { NodeMiddleware } from "@middleware";
 
 const TASK_NAME = "AddingAnalytics" as const;
 
@@ -94,7 +95,7 @@ async function instrumentFile(
       ],
     },
     {
-      recursionLimit: 25,
+      recursionLimit: 75,
       configurable: {
         thread_id: threadId,
       },
@@ -204,6 +205,7 @@ export const analyticsTaskRunner: TaskRunner = {
       const result = await instrumentAnalytics(state, config);
       console.log(`[Analytics] Task completed with result: ${result}`);
 
+      debugger;
       return {
         tasks: [
           {
@@ -217,6 +219,7 @@ export const analyticsTaskRunner: TaskRunner = {
         error instanceof Error ? error.message : String(error);
       console.error(`[Analytics] Task failed:`, errorMessage);
 
+      debugger;
       return {
         tasks: [
           {
@@ -232,5 +235,5 @@ export const analyticsTaskRunner: TaskRunner = {
 
 registerTask(analyticsTaskRunner);
 
-export const analyticsNode = analyticsTaskRunner.run;
+export const analyticsNode = NodeMiddleware.use({}, analyticsTaskRunner.run);
 export const shouldSkipAnalytics = analyticsTaskRunner.shouldSkip;

@@ -6,8 +6,71 @@ import { createCodingAgent } from "@nodes";
 import { codingToolsPrompt, environmentPrompt } from "@prompts";
 import { ContextAPIService } from "@rails_api";
 import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
+import { db, websiteFiles, eq, and } from "@db";
 
 const TASK_NAME: Deploy.TaskName = "OptimizingSEO";
+
+/**
+ * Check if index.html already has sufficient SEO optimization
+ * Returns true if we can skip the agent
+ */
+async function isSEOAlreadyDone(state: DeployGraphState): Promise<boolean> {
+  const content = await getIndexHtmlContent(state.websiteId!);
+
+  if (!content) {
+    return false;
+  }
+
+  // Check for key SEO elements
+  const hasTitle = /<title>[^<]+<\/title>/.test(content);
+  const hasMetaDescription = /<meta\s+name=["']description["'][^>]*content=["'][^"']+["']/.test(content) ||
+    /<meta\s+content=["'][^"']+["'][^>]*name=["']description["']/.test(content);
+  const hasOgTitle = /property=["']og:title["']/.test(content);
+  const hasOgDescription = /property=["']og:description["']/.test(content);
+  const hasOgImage = /property=["']og:image["']/.test(content);
+  const hasTwitterCard = /name=["']twitter:card["']/.test(content);
+  const hasFavicon = /rel=["']icon["']/.test(content) || /rel=["']shortcut icon["']/.test(content);
+
+  // Count how many are present
+  const checks = [
+    hasTitle,
+    hasMetaDescription,
+    hasOgTitle,
+    hasOgDescription,
+    hasOgImage,
+    hasTwitterCard,
+    hasFavicon,
+  ];
+  const presentCount = checks.filter(Boolean).length;
+
+  // Consider SEO done if at least 5 of 7 key elements are present
+  // (og:image and favicon may legitimately be missing if no images uploaded)
+  const isDone = presentCount >= 5;
+
+  if (isDone) {
+    console.log(`[SEO] Already optimized (${presentCount}/7 elements present)`);
+  }
+
+  return isDone;
+}
+
+/**
+ * Fetch index.html content from database
+ */
+async function getIndexHtmlContent(websiteId: number): Promise<string | null> {
+  const result = await db
+    .select({ content: websiteFiles.content })
+    .from(websiteFiles)
+    .where(
+      and(
+        eq(websiteFiles.websiteId, websiteId),
+        eq(websiteFiles.path, "index.html")
+      )
+    )
+    .limit(1);
+
+  return result[0]?.content ?? null;
+}
 
 /**
  * Build system prompt for SEO optimization AI agent
@@ -113,6 +176,36 @@ async function fetchSEOContext(state: DeployGraphState) {
   }
 }
 
+const buildUserMessage = async (state: DeployGraphState) => {
+  // Fetch brainstorm and images for context
+  const { brainstorm, images } = await fetchSEOContext(state);
+
+  // Build user message with context
+  let userMessage = `Optimize the index.html file with SEO meta tags.`;
+
+  if (brainstorm) {
+    userMessage += `\n\n## Brainstorm Context:\n`;
+    if (brainstorm.idea) userMessage += `- Idea: ${brainstorm.idea}\n`;
+    if (brainstorm.audience) userMessage += `- Target Audience: ${brainstorm.audience}\n`;
+    if (brainstorm.solution) userMessage += `- Solution: ${brainstorm.solution}\n`;
+    if (brainstorm.socialProof) userMessage += `- Social Proof: ${brainstorm.socialProof}\n`;
+  }
+
+  if (images.length > 0) {
+    userMessage += `\n\n## Available Images:\n`;
+    images.forEach((img, i) => {
+      userMessage += `${i + 1}. ${img.url} ${img.isLogo ? "(logo)" : ""}`;
+      if (img.faviconUrl) {
+        userMessage += ` [favicon: ${img.faviconUrl}]`;
+      }
+      userMessage += `\n`;
+    });
+    userMessage += `\nUse one of these images for og:image and twitter:image.`;
+    userMessage += `\nFor the favicon, use the [favicon: ...] URL if available.`;
+  }
+  return userMessage;
+}
+
 /**
  * SEO Optimization Node
  *
@@ -137,31 +230,13 @@ async function runSeoOptimization(
   }
 
   try {
-    // Fetch brainstorm and images for context
-    const { brainstorm, images } = await fetchSEOContext(state);
-
-    // Build user message with context
-    let userMessage = `Optimize the index.html file with SEO meta tags.`;
-
-    if (brainstorm) {
-      userMessage += `\n\n## Brainstorm Context:\n`;
-      if (brainstorm.idea) userMessage += `- Idea: ${brainstorm.idea}\n`;
-      if (brainstorm.audience) userMessage += `- Target Audience: ${brainstorm.audience}\n`;
-      if (brainstorm.solution) userMessage += `- Solution: ${brainstorm.solution}\n`;
-      if (brainstorm.socialProof) userMessage += `- Social Proof: ${brainstorm.socialProof}\n`;
-    }
-
-    if (images.length > 0) {
-      userMessage += `\n\n## Available Images:\n`;
-      images.forEach((img, i) => {
-        userMessage += `${i + 1}. ${img.url} ${img.isLogo ? "(logo)" : ""}`;
-        if (img.faviconUrl) {
-          userMessage += ` [favicon: ${img.faviconUrl}]`;
-        }
-        userMessage += `\n`;
-      });
-      userMessage += `\nUse one of these images for og:image and twitter:image.`;
-      userMessage += `\nFor the favicon, use the [favicon: ...] URL if available.`;
+    // Check if SEO is already done - skip the agent if so
+    if (await isSEOAlreadyDone(state)) {
+      console.log("[SEO] Skipping agent - index.html already has sufficient SEO optimization");
+      return withPhases(
+        state,
+        [{ ...task, status: "completed" } as Task.Task]
+      );
     }
 
     const systemPrompt = await buildSystemPrompt(state, config!);
@@ -173,6 +248,8 @@ async function runSeoOptimization(
       },
       systemPrompt
     );
+
+    const userMessage = await buildUserMessage(state);
 
     await agent.invoke({
       messages: [

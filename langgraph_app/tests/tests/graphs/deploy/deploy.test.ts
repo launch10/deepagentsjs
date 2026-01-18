@@ -455,7 +455,7 @@ describe.sequential("Deploy Graph Tests", () => {
         jwt: "test-jwt",
       } as any);
       await backend.cleanup();
-    }, 400000);
+    });
   });
 
   /**
@@ -470,6 +470,70 @@ describe.sequential("Deploy Graph Tests", () => {
   describe("SEO Optimization", () => {
     beforeEach(() => {
       vi.clearAllMocks();
+    });
+
+    /**
+     * Test that SEO optimization skips the agent when index.html already has
+     * sufficient SEO meta tags.
+     */
+    it("skips agent when SEO is already done", async () => {
+      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+
+      // Add SEO meta tags to index.html so it's already optimized
+      const existingIndexHtml = await db
+        .select()
+        .from(websiteFiles)
+        .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "index.html")))
+        .execute()
+        .then((files) => files.at(-1));
+
+      // Inject SEO meta tags into the existing index.html
+      const seoTags = `
+    <title>Test Landing Page</title>
+    <meta name="description" content="This is a test landing page with great content">
+    <meta property="og:title" content="Test Landing Page">
+    <meta property="og:description" content="This is a test landing page">
+    <meta property="og:image" content="https://example.com/image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" href="https://example.com/favicon.ico">
+`;
+      const updatedContent = existingIndexHtml?.content?.replace(
+        "<head>",
+        `<head>${seoTags}`
+      );
+
+      await db
+        .update(websiteFiles)
+        .set({ content: updatedContent })
+        .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "index.html")))
+        .execute();
+
+      // Spy on createCodingAgent to verify it's NOT called
+      const createCodingAgentSpy = vi.spyOn(await import("@nodes"), "createCodingAgent");
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: Deploy.withTasks({ website: true }, { OptimizingSEO: "pending" }, { after: "completed" }),
+          chatId: 1
+        })
+        .stopAfter("seoOptimization")
+        .execute();
+
+      // Verify the SEO task completed
+      const seoTask = result.state.tasks.find((t) => t.name === "OptimizingSEO");
+      expect(seoTask).toBeDefined();
+      expect(seoTask?.status).toBe("completed");
+
+      // Verify the agent was NOT called (skipped due to already done)
+      expect(createCodingAgentSpy).not.toHaveBeenCalled();
+
+      // Cleanup
+      createCodingAgentSpy.mockRestore();
     });
 
     /**
