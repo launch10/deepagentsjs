@@ -132,7 +132,10 @@ async function runTaskExecutor(
     const enqueuedTasks = Deploy.enqueueTask(state.tasks, nextTask.taskName);
     const enqueuedTask = enqueuedTasks.find((t) => t.name === nextTask.taskName)!;
     const phaseResult = withPhases({ tasks: state.tasks }, [enqueuedTask]);
-    return { tasks: [enqueuedTask], phases: phaseResult.phases };
+    return { tasks: [{
+      ...enqueuedTask,
+      status: "running"
+    }], phases: phaseResult.phases };
   }
 
   // Task is running - run it
@@ -161,6 +164,7 @@ export async function taskExecutorRouter(
   if (state.error) return "end";
 
   const nextTask = await findNextTask(state);
+  console.log("nextTask", nextTask);
 
   if (!nextTask) return "end";
   if (nextTask.blocking) return "wait";

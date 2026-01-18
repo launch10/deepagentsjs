@@ -90,9 +90,10 @@ export const analyticsTaskRunner: TaskRunner = {
             {
               role: "user",
               content: `Verify that the landing page uses L10.createLead() for lead capture.
-            1. First, query all available components
-            2. Then, narrow down to files likely to require instrumentation (e.g. Hero, Pricing, CTA)
-            3. Check these components, and add instrumentation if necessary
+                1. First, query all available components
+                2. Then, narrow down to files likely to require instrumentation (e.g. Hero, Pricing, CTA)
+                3. Check these components, and add instrumentation if necessary
+                4. You can use the coder subagent to check/instrument many files in parallel
             `,
             },
           ],

@@ -48,6 +48,10 @@ const findTasksForInstructions = (instructions: Instructions): TaskName[] => {
   }).flat() as TaskName[];
 }
 
+export const findTasks = (instructions: Instructions): TaskName[] => {
+  return findTasksForInstructions(instructions);
+}
+
 export const findEarlierTasks = (name: TaskName, instructions: Instructions): TaskName[] => {
   const tasks = findTasksForInstructions(instructions);
   const index = tasks.indexOf(name);

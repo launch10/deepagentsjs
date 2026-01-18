@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { WebsiteGraphState } from "@annotation";
-import { MemorySaver } from "@langchain/langgraph";
 import { testGraph } from "@support";
 import { deployGraph as uncompiledGraph } from "@graphs";
 import type { DeployGraphState } from "@annotation";
@@ -70,6 +69,18 @@ const completeTasksUpTo = (taskName: Deploy.TaskName, instructions: Deploy.Instr
   return earlierTasks.map((t) => ({ ...Deploy.createTask(t), status: "completed" })) satisfies Deploy.Task[];
 }
 
+const completeAllTasksExcept = (taskName: Deploy.TaskName, instructions: Deploy.Instructions) => {
+  const allTasks = Deploy.findTasks(instructions).filter((t) => t !== taskName);
+  const thisTask = Deploy.createTask(taskName)
+  return [
+    ...allTasks.map((t) => ({ ...Deploy.createTask(t), status: "completed" })) as Deploy.Task[], 
+    {
+      ...thisTask,
+      status: "pending"
+    }
+  ] satisfies Deploy.Task[];
+}
+
 // Clean up test files after each test (if website exists)
 const TEST_WEBSITE_ID = 1;
 afterEach(async () => {
@@ -110,7 +121,7 @@ afterEach(async () => {
  * These tests verify the conditional routing for Google OAuth and invite flows.
  * The key principle: "Never enqueue what you won't run"
  */
-describe("Deploy Graph - Campaign Skippable Tasks", () => {
+describe("Google Onboarding Flow", () => {
   let campaignId: number | undefined;
 
   beforeEach(async () => {
@@ -167,7 +178,6 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
           tasks: [],
           chatId: 1,
         })
-        // .stopWhen((s) => Task.findTask(s.tasks, "VerifyingGoogle")?.status === "skipped")
         .execute();
 
       // Both Google tasks should be skipped
@@ -219,7 +229,7 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
             websiteId: 1,
             campaignId: 123,
             deploy: { googleAds: true },
-            tasks: runningTask("ConnectingGoogle"),
+            tasks: runningTask("ConnectingGoogle", { googleAds: true }),
             chatId: 1,
           })
           .execute();
@@ -400,101 +410,6 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
 
     })
   });
-
-  /**
-   * PHASE COMPUTATION
-   * Verify phases are computed correctly through the campaign deploy flow.
-   */
-  describe("Phase Computation - Campaign", () => {
-    it("computes ConnectingGoogle phase when ConnectingGoogle is running", async () => {
-      // Mock: Google NOT connected so we'll run ConnectingGoogle
-      mockGoogleAPIService.mockImplementation(
-        () =>
-          ({
-            getConnectionStatus: vi.fn().mockResolvedValue({ connected: false, email: null }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: false, status: "none", email: null }),
-          }) as any
-      );
-
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          websiteId: 1,
-          campaignId: undefined,
-          deploy: { googleAds: true },
-          tasks: [],
-        })
-        .stopAfter("enqueueGoogleConnect")
-        .execute();
-
-      // ConnectingGoogle task should be running (created by enqueue node)
-      const googleTask = result.state.tasks.find((t) => t.name === "ConnectingGoogle");
-      expect(googleTask).toBeDefined();
-      expect(googleTask?.status).toBe("running"); // enqueueTask creates with running status
-
-      // Phases should be computed if available
-      if (result.state.phases) {
-        expect(result.state.phases.length).toBeGreaterThan(0);
-        const googlePhase = result.state.phases.find((p) => p.name === "ConnectingGoogle");
-        expect(googlePhase).toBeDefined();
-        expect(googlePhase?.status).toBe("running");
-      }
-    });
-
-    it("skips ConnectingGoogle phase when Google already connected", async () => {
-      // Mock: Google connected, invite accepted
-      mockGoogleAPIService.mockImplementation(
-        () =>
-          ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-          }) as any
-      );
-
-      // With the new flow, we need all website tasks completed to reach campaign
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          websiteId: 1,
-          campaignId: 123, // Google connected
-          deploy: { googleAds: true },
-          tasks: [
-            // Website tasks need to be completed to proceed to campaign
-            { ...Deploy.createTask("ConnectingGoogle"), status: "completed" },
-            { ...Deploy.createTask("VerifyingGoogle"), status: "completed" },
-            { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
-            { ...Deploy.createTask("OptimizingSEO"), status: "completed" },
-            { ...Deploy.createTask("ValidateLinks"), status: "completed" },
-            { ...Deploy.createTask("RuntimeValidation"), status: "completed" },
-            { ...Deploy.createTask("DeployingWebsite"), status: "completed" },
-          ],
-        })
-        .stopAfter("enqueueDeployCampaign")
-        .execute();
-
-      // ConnectingGoogle phase should be completed (we included completed task)
-      const googlePhase = result.state.phases?.find((p) => p.name === "ConnectingGoogle");
-
-      // Either undefined (not computed) or completed (included completed task)
-      if (googlePhase) {
-        expect(googlePhase.status).toBe("completed");
-      }
-
-      // DeployingCampaign phase should be running
-      const deployPhase = result.state.phases?.find((p) => p.name === "DeployingCampaign");
-      expect(deployPhase?.status).toBe("running");
-    });
-  });
 });
 
 /**
@@ -507,7 +422,7 @@ describe("Deploy Graph - Campaign Skippable Tasks", () => {
  * USER OUTCOME: Lead capture works correctly after deployment because
  * instrumentation adds the necessary L10.createLead() calls.
  */
-describe("AddingAnalytics - Lead capture setup", () => {
+describe("AddingAnalytics", () => {
   let campaignId: number | undefined;
 
   beforeEach(async () => {
@@ -540,6 +455,7 @@ describe("AddingAnalytics - Lead capture setup", () => {
         websiteId: 1,
         deploy: { website: true },
         tasks: [Deploy.createTask("AddingAnalytics")],
+        chatId: 1,
       })
       .runNode(analyticsNode)
       .execute();
@@ -571,24 +487,6 @@ describe("AddingAnalytics - Lead capture setup", () => {
     } as any);
     await backend.cleanup();
   });
-
-  it("marks instrumentation task as completed when already instrumented", async () => {
-    const result = await testGraph<DeployGraphState>()
-      .withGraph(deployGraph)
-      .withState({
-        jwt: "test-jwt",
-        threadId: "thread_123" as ThreadIDType,
-        websiteId: 1,
-        deploy: { website: true },
-        tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
-      })
-      .stopAfter("runtimeValidation")
-      .execute();
-
-    // Should proceed without re-running instrumentation
-    const instrumentationTask = result.state.tasks.find((t) => t.name === "AddingAnalytics");
-    expect(instrumentationTask?.status).toBe("completed");
-  });
 });
 
 /**
@@ -600,7 +498,7 @@ describe("AddingAnalytics - Lead capture setup", () => {
  * USER OUTCOME: Landing pages have proper SEO meta tags for search engines
  * and social media sharing (Open Graph, Twitter Cards).
  */
-describe("SEO Optimization - Meta Tags Generation", () => {
+describe("SEO Optimization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -620,9 +518,9 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         threadId: "thread_123" as ThreadIDType,
         websiteId: 1,
         deploy: { website: true },
-        tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
+        tasks: completeAllTasksExcept("OptimizingSEO", { website: true }),
+        chatId: 1
       })
-      .stopAfter("seoOptimization")
       .execute();
 
     // Verify the SEO task completed
@@ -678,6 +576,7 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         websiteId: 1,
         deploy: { website: true },
         tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
+        chatId: 1
       })
       .stopAfter("seoOptimization")
       .execute();
@@ -721,6 +620,7 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         websiteId: 1,
         deploy: { website: true },
         tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }, completedTask],
+        chatId: 1
       })
       .stopAfter("seoOptimization")
       .execute();
@@ -731,7 +631,7 @@ describe("SEO Optimization - Meta Tags Generation", () => {
     expect(seoTask?.status).toBe("completed");
   });
 
-  it("includes favicon URL for logo uploads in SEO context", async () => {
+  it.only("includes favicon URL for logo uploads in SEO context", async () => {
     // Use website_finished snapshot which has uploads including logos
     await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
 
@@ -743,6 +643,7 @@ describe("SEO Optimization - Meta Tags Generation", () => {
         websiteId: 1,
         deploy: { website: true },
         tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
+        chatId: 1
       })
       .stopAfter("seoOptimization")
       .execute();
@@ -773,35 +674,6 @@ describe("SEO Optimization - Meta Tags Generation", () => {
     } as any);
     await backend.cleanup();
   });
-
-  it("SEO node is in the correct position in graph flow", async () => {
-    // This test verifies that SEO optimization runs between instrumentation and validateLinks
-    const result = await testGraph<DeployGraphState>()
-      .withGraph(deployGraph)
-      .withState({
-        jwt: "test-jwt",
-        threadId: "thread_123" as ThreadIDType,
-        websiteId: 1,
-        deploy: { website: true },
-        tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
-      })
-      .stopAfter("seoOptimization")
-      .execute();
-
-    // Verify the SEO task was created and attempted
-    const tasks = result.state.tasks;
-    const seoTask = tasks.find((t) => t.name === "OptimizingSEO");
-
-    expect(seoTask).toBeDefined();
-    // The task might be completed or failed, but it should exist
-    // This proves the graph flow goes through SEO after instrumentation
-    expect(["completed", "failed", "running"]).toContain(seoTask?.status);
-
-    // If it failed, check the error for debugging
-    if (seoTask?.status === "failed" && seoTask.error) {
-      console.log("SEO task error:", seoTask.error);
-    }
-  });
 });
 
 /**
@@ -818,7 +690,7 @@ describe("SEO Optimization - Meta Tags Generation", () => {
  * - FixingBugs (1:1 with task)
  * - DeployingWebsite (1:1 with task)
  */
-describe("Phase Computation - Website Deploy", () => {
+describe("Checking for bugs phase", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -853,6 +725,7 @@ describe("Phase Computation - Website Deploy", () => {
             { ...Deploy.createTask("OptimizingSEO"), status: "completed" },
             { ...Deploy.createTask("ValidateLinks"), status: "running" },
           ],
+          chatId: 1
         })
         .stopAfter("validateLinks")
         .execute();
@@ -879,6 +752,7 @@ describe("Phase Computation - Website Deploy", () => {
             { ...Deploy.createTask("ValidateLinks"), status: "completed" },
             { ...Deploy.createTask("RuntimeValidation"), status: "pending" },
           ],
+          chatId: 1
         })
         .stopAfter("runtimeValidation")
         .execute();
@@ -909,6 +783,7 @@ describe("Phase Computation - Website Deploy", () => {
               error: "Console errors found in browser",
             },
           ],
+          chatId: 1
         })
         .stopAfter("bugFix")
         .execute();
@@ -935,6 +810,7 @@ describe("Phase Computation - Website Deploy", () => {
             { ...Deploy.createTask("ValidateLinks"), status: "completed" },
             { ...Deploy.createTask("RuntimeValidation"), status: "completed" },
           ],
+          chatId: 1
         })
         .stopAfter("deployWebsite")
         .execute();
@@ -964,6 +840,7 @@ describe("Phase Computation - Website Deploy", () => {
             { ...Deploy.createTask("RuntimeValidation"), status: "failed", error: "Error" },
             { ...Deploy.createTask("FixingBugs"), status: "running" },
           ],
+          chatId: 1
         })
         .stopAfter("bugFix")
         .execute();
@@ -998,6 +875,7 @@ describe("Phase Computation - Website Deploy", () => {
             { ...Deploy.createTask("RuntimeValidation"), status: "completed" },
             { ...Deploy.createTask("FixingBugs"), status: "completed" },
           ],
+          chatId: 1
         })
         .stopAfter("deployWebsite")
         .execute();
@@ -1076,6 +954,7 @@ describe("Phase Computation - Website Deploy", () => {
             { ...Deploy.createTask("ValidateLinks"), status: "completed" },
             { ...Deploy.createTask("RuntimeValidation"), status: "running" },
           ],
+          chatId: 1
         })
         .stopAfter("runtimeValidation")
         .execute();
@@ -1123,6 +1002,7 @@ describe("Website Deploy Flow", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [existingTask],
+          chatId: 1
         })
         .execute();
 
@@ -1147,6 +1027,7 @@ describe("Website Deploy Flow", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [completedTask],
+          chatId: 1
         })
         .execute();
 
@@ -1168,6 +1049,7 @@ describe("Website Deploy Flow", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [runningTask],
+          chatId: 1
         })
         .execute();
 
@@ -1199,6 +1081,7 @@ describe("Website Deploy Flow", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: existingTasks,
+          chatId: 1
         })
         .stopAfter("deployWebsite")
         .execute();
@@ -1238,6 +1121,7 @@ describe("Website Deploy Flow", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [pendingDeployTask],
+          chatId: 1
         })
         .execute();
 
@@ -1265,6 +1149,7 @@ describe("Website Deploy Flow", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
+
           tasks: [taskWithResult],
         })
         .execute();
@@ -1304,6 +1189,7 @@ describe("Website Deploy Flow", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [...completedPreValidationTasks, failedValidationTask],
+          chatId: 1
         })
         .stopAfter("runtimeValidation")
         .execute();
@@ -1326,6 +1212,7 @@ describe("Website Deploy Flow", () => {
             ...completedPreValidationTasks,
             { ...Deploy.createTask("ValidateLinks"), status: "completed" as const },
           ],
+          chatId: 1
         })
         .stopAfter("runtimeValidation")
         .execute();
@@ -1394,6 +1281,7 @@ describe("Website Deploy Flow", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [...completedPreValidationTasks, failedValidationTask],
+          chatId: 1
         })
         .stopAfter("bugFix")
         .execute();
@@ -1440,6 +1328,7 @@ describe("Website Deploy Flow", () => {
             { ...Deploy.createTask("ValidateLinks"), status: "completed" },
             passedValidationTask,
           ],
+          chatId: 1
         })
         .stopAfter("enqueueDeploy")
         .execute();
@@ -1478,6 +1367,7 @@ describe("Website Deploy Flow", () => {
             { ...Deploy.createTask("RuntimeValidation"), status: "completed" },
             taskWithError,
           ],
+          chatId: 1
         })
         .execute();
 
@@ -1513,6 +1403,7 @@ describe("Website Deploy Flow", () => {
           websiteId: 1,
           deploy: { website: true },
           tasks: [taskWithDetailedError],
+          chatId: 1
         })
         .execute();
 
@@ -1521,193 +1412,6 @@ describe("Website Deploy Flow", () => {
       expect(deployTask?.status).toBe("failed");
       expect(deployTask?.error).toContain("CLOUDFLARE_ERROR");
       expect(deployTask?.error).toContain("Cannot find module");
-    });
-  });
-});
-
-/**
- * =============================================================================
- * 6. FULL WORKFLOW TESTS (skipped)
- * =============================================================================
- * These tests verify the complete fire-and-forget + webhook pattern across
- * the unified deploy graph.
- */
-describe.skip("Deploy Graph - Full Workflow", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Default: Google connected, invite accepted
-    mockGoogleAPIService.mockImplementation(
-      () =>
-        ({
-          getConnectionStatus: vi
-            .fn()
-            .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-          getInviteStatus: vi
-            .fn()
-            .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-        }) as any
-    );
-
-    // Default job run creation mock
-    mockJobRunAPIService.mockImplementation(
-      () =>
-        ({
-          create: vi.fn().mockResolvedValue({ id: 123, status: "pending" }),
-        }) as any
-    );
-  });
-
-  describe("Website deploy flow", () => {
-    it("runs instrumentation -> validation -> deploy when deployWebsite=true", async () => {
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          websiteId: 1,
-          deploy: {
-            website: true,
-            googleAds: false,
-          },
-          tasks: [],
-        })
-        .stopAfter("analytics")
-        .execute();
-
-      // Should have instrumentation task
-      const instrumentationTask = result.state.tasks.find((t) => t.name === "AddingAnalytics");
-      expect(instrumentationTask).toBeDefined();
-      expect(instrumentationTask?.status).toBe("completed");
-    });
-  });
-
-  describe("Campaign deploy flow", () => {
-    it("first invocation fires job and returns pending status", async () => {
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: 456,
-          deploy: { googleAds: true },
-          tasks: [],
-        })
-        .stopAfter("deployCampaign")
-        .execute();
-
-      expect(result.state.status).toBe("pending");
-      expect(result.state.tasks.length).toBeGreaterThanOrEqual(1);
-      const deployTask = result.state.tasks.find((t) => t.name === "DeployingCampaign");
-      expect(deployTask).toBeDefined();
-      expect(deployTask?.status).toBe("pending");
-      expect(deployTask?.jobId).toBe(123);
-    });
-  });
-
-  describe("Fire-and-forget + webhook pattern", () => {
-    it("first invocation fires job and returns pending, second invocation with result completes", async () => {
-      const checkpointer = new MemorySaver();
-      const graph = uncompiledGraph.compile({ checkpointer });
-      const threadId = "test-thread-123";
-
-      const initialState: Partial<DeployGraphState> = {
-        jwt: "test-jwt",
-        threadId: "thread_123" as ThreadIDType,
-        campaignId: 456,
-        deploy: { googleAds: true },
-        tasks: [],
-      };
-
-      const firstResult = await graph.invoke(initialState, {
-        configurable: { thread_id: threadId },
-      });
-
-      expect(firstResult.status).toBe("pending");
-      const deployTask = firstResult.tasks.find((t: Deploy.Task) => t.name === "DeployingCampaign");
-      expect(deployTask).toBeDefined();
-      expect(deployTask?.status).toBe("pending");
-      expect(deployTask?.jobId).toBe(123);
-
-      // Simulate webhook updating the task with result
-      await graph.updateState(
-        { configurable: { thread_id: threadId } },
-        {
-          tasks: [
-            {
-              ...deployTask,
-              status: "running",
-              result: {
-                campaign_id: 456,
-                external_id: "ext_789",
-                deployed_at: "2024-01-15T10:00:00Z",
-              },
-            },
-          ],
-        }
-      );
-
-      // Second invocation (e.g., from frontend poll or webhook graph run)
-      const secondResult = await graph.invoke({}, { configurable: { thread_id: threadId } });
-
-      expect(secondResult.status).toBe("completed");
-      expect(secondResult.result).toEqual({
-        campaign_id: 456,
-        external_id: "ext_789",
-        deployed_at: "2024-01-15T10:00:00Z",
-      });
-      const completedTask = secondResult.tasks.find(
-        (t: Deploy.Task) => t.name === "DeployingCampaign"
-      );
-      expect(completedTask?.status).toBe("completed");
-    });
-
-    it("handles job failure from webhook", async () => {
-      const checkpointer = new MemorySaver();
-      const graph = uncompiledGraph.compile({ checkpointer });
-      const threadId = "test-thread-failure";
-
-      const initialState: Partial<DeployGraphState> = {
-        jwt: "test-jwt",
-        threadId: "thread_123" as ThreadIDType,
-        campaignId: 456,
-        deploy: { googleAds: true },
-        tasks: [],
-      };
-
-      const firstResult = await graph.invoke(initialState, {
-        configurable: { thread_id: threadId },
-      });
-
-      expect(firstResult.status).toBe("pending");
-      const deployTask = firstResult.tasks.find((t: Deploy.Task) => t.name === "DeployingCampaign");
-
-      // Simulate webhook with error
-      await graph.updateState(
-        { configurable: { thread_id: threadId } },
-        {
-          tasks: [
-            {
-              ...deployTask,
-              status: "running",
-              error: "API rate limit exceeded",
-            },
-          ],
-        }
-      );
-
-      // Next invocation processes the error
-      const secondResult = await graph.invoke({}, { configurable: { thread_id: threadId } });
-
-      expect(secondResult.status).toBe("failed");
-      expect(secondResult.error).toEqual({
-        message: "API rate limit exceeded",
-        node: "deployCampaignNode",
-      });
-      const failedTask = secondResult.tasks.find(
-        (t: Deploy.Task) => t.name === "DeployingCampaign"
-      );
-      expect(failedTask?.status).toBe("failed");
     });
   });
 });

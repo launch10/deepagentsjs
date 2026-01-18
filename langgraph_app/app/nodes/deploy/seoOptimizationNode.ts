@@ -205,21 +205,11 @@ export const seoOptimizationTaskRunner: TaskRunner = {
   readyToRun: (state: DeployGraphState) => {
     // Ready when Google setup is done OR not deploying Google Ads
     // Can run in parallel with AddingAnalytics
-    if (!Deploy.shouldDeployGoogleAds(state)) {
-      return true;
-    }
     return isTaskDone(state, "ConnectingGoogle") && isTaskDone(state, "VerifyingGoogle");
   },
 
   shouldSkip: (state: DeployGraphState) => {
-    // Skip if not deploying a website
-    if (!state.deploy?.website) {
-      return true;
-    }
-
-    // Skip if already completed
-    const task = Task.findTask(state.tasks, TASK_NAME);
-    return task?.status === "completed";
+    return !Deploy.shouldDeployWebsite(state)
   },
 
   run: runSeoOptimization,
