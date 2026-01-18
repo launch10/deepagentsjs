@@ -1,9 +1,9 @@
-import { type DeployGraphState, withPhases } from "@annotation";
+import { type DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { ErrorExporter } from "@services";
 import { Deploy, Task } from "@types";
-import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
+import { type TaskRunner, registerTask, isTaskDone, isTaskFailed } from "./taskRunner";
 
 const TASK_NAME: Deploy.TaskName = "RuntimeValidation";
 
@@ -81,10 +81,7 @@ export const runtimeValidationTaskRunner: TaskRunner = {
   isFailureRecoverable: true,
 
   readyToRun: (state: DeployGraphState) => {
-    // Ready when ValidateLinks is done (completed, not just skipped)
-    // We need static validation to pass before runtime validation
-    const task = Task.findTask(state.tasks, "ValidateLinks");
-    return task?.status === "completed" || task?.status === "skipped";
+    return isTaskDone(state, "ValidateLinks");
   },
 
   shouldSkip: (state: DeployGraphState) => {
@@ -93,8 +90,7 @@ export const runtimeValidationTaskRunner: TaskRunner = {
       return true;
     }
 
-    const task = Task.findTask(state.tasks, "ValidateLinks");
-    return task?.status === "failed"; // skip straight to FixBugs if ValidateLinks failed 
+    return isTaskFailed(state, "ValidateLinks"); // jump straight to FixBugs if ValidateLinks failed
   },
 
   run: runRuntimeValidation,

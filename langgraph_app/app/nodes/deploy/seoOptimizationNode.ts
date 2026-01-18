@@ -203,9 +203,7 @@ export const seoOptimizationTaskRunner: TaskRunner = {
   taskName: TASK_NAME,
 
   readyToRun: (state: DeployGraphState) => {
-    // Ready when Google setup is done OR not deploying Google Ads
-    // Can run in parallel with AddingAnalytics
-    return isTaskDone(state, "ConnectingGoogle") && isTaskDone(state, "VerifyingGoogle");
+    return isTaskDone(state, "VerifyingGoogle");
   },
 
   shouldSkip: (state: DeployGraphState) => {

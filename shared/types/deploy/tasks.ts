@@ -48,6 +48,10 @@ const findTasksForInstructions = (instructions: Instructions): TaskName[] => {
   }).flat() as TaskName[];
 }
 
+export const isTaskRequired = (instructions: Instructions, taskName: TaskName): boolean => {
+  return findTasksForInstructions(instructions).includes(taskName);
+}
+
 export const findTasks = (instructions: Instructions): TaskName[] => {
   return findTasksForInstructions(instructions).sort((a, b) => TASK_ORDER.indexOf(a) - TASK_ORDER.indexOf(b));
 }

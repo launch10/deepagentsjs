@@ -26,9 +26,16 @@ const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunna
 
     ${environment}
 
+    # Task: 
     The landing page should already be properly instrumented.
       1. If it is, simply reply: CONFIRMED.
       2. If it is not, add the instrumentation and reply: FIXED.
+
+    # Workflow:
+    1. First, query all available components in src/components - not in src/components/ui (these are just base ShadCN components)
+    2. Then, narrow down to files likely to require instrumentation (e.g. Hero, Pricing, CTA)
+    3. Assign each file to a coder subagent in parallel to instrument.
+    4. Trust your subagents to do their job quickly. Prioritize speed.
   `;
 };
 
@@ -89,12 +96,7 @@ export const analyticsTaskRunner: TaskRunner = {
           messages: [
             {
               role: "user",
-              content: `Verify that the landing page uses L10.createLead() for lead capture.
-                1. First, query all available components
-                2. Then, narrow down to files likely to require instrumentation (e.g. Hero, Pricing, CTA)
-                3. Check these components, and add instrumentation if necessary
-                4. You can use the coder subagent to check/instrument many files in parallel
-            `,
+              content: `Ensure the landing page is instrumented`,
             },
           ],
         },

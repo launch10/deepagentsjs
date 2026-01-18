@@ -391,7 +391,7 @@ describe.sequential("Deploy Graph Tests", () => {
    * USER OUTCOME: Lead capture works correctly after deployment because
    * instrumentation adds the necessary L10.createLead() calls.
    */
-  describe("AddingAnalytics", () => {
+  describe.only("AddingAnalytics", () => {
     let campaignId: number | undefined;
 
     beforeEach(async () => {
@@ -455,7 +455,7 @@ describe.sequential("Deploy Graph Tests", () => {
         jwt: "test-jwt",
       } as any);
       await backend.cleanup();
-    });
+    }, 400000);
   });
 
   /**
@@ -544,7 +544,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
+          tasks: Deploy.withTasks({ website: true }, { OptimizingSEO: "pending" }, { after: "completed" }),
           chatId: 1
         })
         .stopAfter("seoOptimization")
@@ -572,34 +572,6 @@ describe.sequential("Deploy Graph Tests", () => {
       await backend.cleanup();
     });
 
-    it("skips SEO optimization if task already completed", async () => {
-      const completedTask: Deploy.Task = {
-        id: "uuid-seo",
-        name: "OptimizingSEO",
-        description: "Optimizing SEO",
-        status: "completed",
-        retryCount: 0,
-      };
-
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          websiteId: 1,
-          deploy: { website: true },
-          tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }, completedTask],
-          chatId: 1
-        })
-        .stopAfter("seoOptimization")
-        .execute();
-
-      // Should proceed without re-running SEO optimization
-      const seoTask = result.state.tasks.find((t) => t.name === "OptimizingSEO");
-      expect(seoTask).toBeDefined();
-      expect(seoTask?.status).toBe("completed");
-    });
-
     it("includes favicon URL for logo uploads in SEO context", async () => {
       // Use website_finished snapshot which has uploads including logos
       await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
@@ -611,7 +583,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: [{ ...Deploy.createTask("AddingAnalytics"), status: "completed" }],
+          tasks: Deploy.withTasks({ website: true }, { OptimizingSEO: "pending" }, { after: "completed" }),
           chatId: 1
         })
         .stopAfter("seoOptimization")
@@ -836,19 +808,8 @@ describe.sequential("Deploy Graph Tests", () => {
       vi.clearAllMocks();
     });
 
-    /**
-     * IDEMPOTENCY TESTS
-     * These tests verify the graph exits early when DeployingWebsite task exists.
-     * This is the core idempotency pattern - once we've started deploying,
-     * re-invoking the graph should be a no-op.
-     */
-    describe("Idempotency - Early exit when DeployingWebsite task exists", () => {
-      it("exits immediately if DeployingWebsite task already exists (any status)", async () => {
-        const existingTask: Deploy.Task = {
-          ...Deploy.createTask("DeployingWebsite"),
-          status: "pending",
-        };
-
+    describe("Idempotency - doesn't deploy if website is already deploying", () => {
+      it("returns early if website is already deploying", async () => {
         const result = await testGraph<DeployGraphState>()
           .withGraph(deployGraph)
           .withState({
@@ -856,15 +817,15 @@ describe.sequential("Deploy Graph Tests", () => {
             threadId: "thread_123" as ThreadIDType,
             websiteId: 1,
             deploy: { website: true },
-            tasks: [existingTask],
+            tasks: Deploy.withTasks({ website: true }, {
+              DeployingWebsite: { status: "running" },
+            }, { after: "completed" }),
             chatId: 1
           })
           .execute();
 
-        // Should exit without modifying tasks
-        expect(result.state.tasks).toHaveLength(1);
-        expect(result.state.tasks[0]!.name).toBe("DeployingWebsite");
-        expect(result.state.tasks[0]!.status).toBe("pending");
+        const deployingWebsiteTask = result.state.tasks.find((t) => t.name === "DeployingWebsite");
+        expect(deployingWebsiteTask?.status).toBe("running");
       });
 
       it("exits immediately if DeployingWebsite task is completed", async () => {

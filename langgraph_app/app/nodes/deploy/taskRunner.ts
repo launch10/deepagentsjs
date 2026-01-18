@@ -110,6 +110,9 @@ export const TASK_ORDER = Deploy.TASK_ORDER;
  * Used for checking if dependencies are satisfied.
  */
 export function isTaskDone(state: DeployGraphState, taskName: Deploy.TaskName): boolean {
+  if (!Deploy.isTaskRequired(state.deploy, taskName)) {
+    return true;
+  }
   const task = Task.findTask(state.tasks, taskName);
   return !!task && (task.status === "completed" || task.status === "skipped");
 }
