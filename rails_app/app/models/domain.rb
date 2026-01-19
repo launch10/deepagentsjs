@@ -34,6 +34,8 @@ class Domain < ApplicationRecord
   include DomainConcerns::NormalizeDomain
   include DomainConcerns::Serialization
 
+  acts_as_tenant :account
+
   belongs_to :website, optional: true
   belongs_to :account
   has_many :domain_request_counts, dependent: :destroy

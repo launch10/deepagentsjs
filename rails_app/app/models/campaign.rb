@@ -50,6 +50,7 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::GoogleSyncable
 
   acts_as_paranoid
+  acts_as_tenant :account
 
   belongs_to :account
   delegate :google_ads_account, to: :account

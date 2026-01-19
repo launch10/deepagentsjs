@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { DeployGraphState } from "@annotation";
-import { Deploy, type Task, type ThreadIDType } from "@types";
+import { Deploy, type LangGraphRunnableConfig, type Task, type ThreadIDType } from "@types";
 
 // Mock modules BEFORE importing them
 vi.mock("@rails_api", async () => {
@@ -23,8 +23,8 @@ vi.mock("@services", async () => {
 import {
   googleConnectNode,
   isGoogleConnected,
-  shouldSkipGoogleConnect,
-} from "../../../../app/nodes/deploy/googleConnectNode";
+  googleConnectTaskRunner as taskRunner
+} from "@nodes";
 import { JobRunAPIService } from "@rails_api";
 import { GoogleAPIService } from "@services";
 
@@ -350,19 +350,10 @@ describe("isGoogleConnected", () => {
     );
   });
 
-  it("returns true when task is already completed", async () => {
-    const state: Partial<DeployGraphState> = {
-      jwt: "test-jwt",
-      tasks: [{ ...Deploy.createTask("ConnectingGoogle"), status: "completed" } as Task.Task],
-    };
+  // Note: Task completion is now handled by the executor, not isGoogleConnected
+  // The function only checks external state (API call)
 
-    const result = await isGoogleConnected(state as DeployGraphState);
-    expect(result).toBe(true);
-    // Should not call API when task is completed
-    expect(mockGoogleAPIService).not.toHaveBeenCalled();
-  });
-
-  it("calls GoogleAPIService when task is not completed", async () => {
+  it("calls GoogleAPIService to check connection status", async () => {
     const mockGetStatus = vi.fn().mockResolvedValue({ connected: true, email: "user@gmail.com" });
     mockGoogleAPIService.mockImplementation(
       () =>
@@ -480,7 +471,7 @@ describe("shouldSkipGoogleConnect", () => {
       tasks: [],
     };
 
-    const result = await shouldSkipGoogleConnect(state as DeployGraphState);
+    const result = await taskRunner.shouldSkip(state as DeployGraphState);
     expect(result).toBe("skipGoogleConnect");
   });
 
@@ -496,9 +487,10 @@ describe("shouldSkipGoogleConnect", () => {
     const state: Partial<DeployGraphState> = {
       jwt: "test-jwt",
       tasks: [],
+      deploy: { googleAds: true }, // Must deploy Google Ads to not skip
     };
 
-    const result = await shouldSkipGoogleConnect(state as DeployGraphState);
+    const result = await taskRunner.shouldSkip(state as DeployGraphState);
     expect(result).toBe("enqueueGoogleConnect");
   });
 });

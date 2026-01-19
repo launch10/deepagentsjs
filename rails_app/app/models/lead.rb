@@ -17,6 +17,8 @@
 #
 
 class Lead < ApplicationRecord
+  acts_as_tenant :account
+
   belongs_to :account
   has_many :website_leads, dependent: :destroy
   has_many :websites, through: :website_leads

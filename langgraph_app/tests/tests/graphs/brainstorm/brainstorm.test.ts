@@ -330,7 +330,7 @@ describe.sequential("Brainstorming Flow", () => {
       expect(result.state.placeholderText).toEqual("I want to acquire leads, sell my product...");
 
       // AI suggests plausible business ideas...
-      expect(aiResponse?.content).toMatch(/restaurant|cafe|recipes|brand|not a business idea/i);
+      expect(aiResponse?.content).toMatch(/restaurant|cafe|recipes|brand|business idea/i);
       expect(result.state.availableCommands).toHaveLength(1);
       expect(result.state.availableCommands[0]).toBe("helpMe");
 

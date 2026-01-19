@@ -36,6 +36,7 @@ class Deploy < ApplicationRecord
   STATUS = %w[pending running completed failed].freeze
 
   belongs_to :project
+  has_one :website, through: :project
   belongs_to :website_deploy, class_name: "WebsiteDeploy", optional: true
   belongs_to :campaign_deploy, optional: true
   has_many :job_runs, dependent: :nullify

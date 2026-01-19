@@ -257,7 +257,7 @@ describe("Phase", () => {
 
       const phases = Deploy.computePhases(tasks);
 
-      expect(phases).toHaveLength(9); // All defined phases
+      expect(phases).toHaveLength(10); // All defined phases
       expect(phases.map((p) => p.name)).toEqual([
         "AddingAnalytics",
         "OptimizingSEO",
@@ -268,6 +268,7 @@ describe("Phase", () => {
         "VerifyingGoogle",
         "CheckingBilling",
         "DeployingCampaign",
+        "EnablingCampaign",
       ]);
     });
 
@@ -512,7 +513,7 @@ describe("Phase", () => {
       ]);
 
       expect(result.tasks).toHaveLength(1); // Only the update
-      expect(result.phases).toHaveLength(9); // All phases computed
+      expect(result.phases).toHaveLength(10); // All phases computed
 
       const analyticsPhase = result.phases.find((p) => p.name === "AddingAnalytics");
       expect(analyticsPhase?.status).toBe("completed");

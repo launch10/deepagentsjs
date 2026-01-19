@@ -127,13 +127,13 @@ jobs:
             - rails-gems-v1-
       - restore_cache:
           keys:
-            - langgraph-deps-v1-{{ checksum "pnpm-lock.yaml" }}
+            - langgraph-deps-v1-{{ checksum "../pnpm-lock.yaml" }}
             - langgraph-deps-v1-
       - run:
           name: Install langgraph dependencies
           command: pnpm install --frozen-lockfile
       - save_cache:
-          key: langgraph-deps-v1-{{ checksum "pnpm-lock.yaml" }}
+          key: langgraph-deps-v1-{{ checksum "../pnpm-lock.yaml" }}
           paths:
             - node_modules
             - ~/.pnpm-store

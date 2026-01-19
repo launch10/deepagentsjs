@@ -11,9 +11,10 @@ module APISchemas
           maxUsagePercent: {type: :integer, description: "Maximum usage percentage for this model"},
           costIn: {type: :number, nullable: true, description: "Cost per input token"},
           costOut: {type: :number, nullable: true, description: "Cost per output token"},
-          modelCard: {type: :string, nullable: true, description: "Model card identifier"}
+          modelCard: {type: :string, nullable: true, description: "Model card identifier"},
+          priceTier: {type: :integer, description: "Price tier (1=premium, 5=cheap) based on weighted effective cost"}
         },
-        required: %w[enabled maxUsagePercent]
+        required: %w[enabled maxUsagePercent priceTier]
       }
     end
 

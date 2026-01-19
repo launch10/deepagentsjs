@@ -1,133 +1,143 @@
 import React, { useState } from 'react';
+import { L10 } from '@/lib/tracking';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar, Clock, Zap } from 'lucide-react';
-import { L10 } from '@/lib/tracking';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
 
 export function Hero() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [error, setError] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    
+    if (!email || !email.includes('@')) {
+      setErrorMessage('Please enter a valid email address');
+      setStatus('error');
+      return;
+    }
 
     setStatus('loading');
-    setError('');
+    setErrorMessage('');
 
     try {
       await L10.createLead(email);
       setStatus('success');
       setEmail('');
-    } catch (err) {
+    } catch (error) {
       setStatus('error');
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setErrorMessage(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
     }
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center bg-primary text-primary-foreground overflow-hidden pt-20">
-      {/* Atmospheric background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-[#E9C46A]/20 rounded-full blur-3xl animate-pulse-subtle" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#F4A261]/20 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#2A9D8F]/10 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '2s' }} />
+    <section 
+      id="signup" 
+      className="relative bg-primary text-primary-foreground overflow-hidden py-20 md:py-24 lg:py-32"
+    >
+      {/* Atmospheric gradient orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/20 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/20 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-primary-foreground/5 rounded-full blur-2xl"></div>
       </div>
 
       <div className="container mx-auto px-4 md:px-6 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Left column - Copy */}
-          <div className="text-center lg:text-left space-y-8 animate-fade-in">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#E9C46A]/20 rounded-full text-sm font-medium text-[#E9C46A] backdrop-blur-sm">
-              <Zap className="w-4 h-4" />
-              <span>Join 2,000+ distributed teams</span>
+        <div className="grid lg:grid-cols-5 gap-12 lg:gap-16 items-center">
+          {/* Left column - Content (60%) */}
+          <div className="lg:col-span-3 space-y-8">
+            <div className="space-y-6">
+              <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight tracking-tight">
+                Stop Playing Timezone Tetris. Start Meeting Smarter.
+              </h1>
+              <p className="text-lg md:text-xl text-primary-foreground/90 max-w-2xl leading-relaxed">
+                The scheduling tool that instantly finds meeting times that work for your entire distributed team—no more endless back-and-forth.
+              </p>
             </div>
 
-            <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight text-[#FAFAFA]">
-              Stop Playing Calendar Tetris Across Time Zones
-            </h1>
-
-            <p className="text-lg md:text-xl text-[#E9C46A] max-w-2xl">
-              The scheduling tool that instantly finds meeting times everyone can actually attend—no more endless Slack threads asking "when works for you?"
-            </p>
-
             {/* Email capture form */}
-            <div className="max-w-md mx-auto lg:mx-0">
-              {status === 'success' ? (
-                <div className="p-6 bg-[#2A9D8F]/20 border border-[#2A9D8F] rounded-2xl backdrop-blur-sm animate-zoom-in">
-                  <p className="text-[#FAFAFA] font-semibold text-lg mb-2">🎉 You're on the list!</p>
-                  <p className="text-[#E9C46A]">We'll send you an invite to start scheduling smarter.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Input
-                      type="email"
-                      placeholder="Enter your work email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="flex-1 h-12 bg-background/90 backdrop-blur-sm border-[#E9C46A]/30 focus:border-[#E9C46A] text-foreground placeholder:text-muted-foreground"
-                      disabled={status === 'loading'}
-                      required
-                    />
-                    <Button
-                      type="submit"
-                      size="lg"
-                      className="h-12 px-8 bg-[#E9C46A] text-[#0A0A0A] hover:bg-[#F4A261] hover:scale-105 transition-all duration-200 font-semibold"
-                      disabled={status === 'loading'}
-                    >
-                      {status === 'loading' ? 'Starting...' : 'Start Scheduling Smarter'}
-                    </Button>
+            {status === 'success' ? (
+              <div className="bg-secondary/20 backdrop-blur-sm border border-secondary-foreground/20 rounded-2xl p-6 max-w-md">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="w-6 h-6 text-secondary flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-lg mb-1">You're on the list!</h3>
+                    <p className="text-primary-foreground/80 text-sm">
+                      We'll send you early access details soon. Get ready to reclaim your time.
+                    </p>
                   </div>
-                  {status === 'error' && (
-                    <p className="text-sm text-[#E76F51]">{errorMessage}</p>
-                  )}
-                  <p className="text-sm text-[#E9C46A]/80">
-                    Free 14-day trial • No credit card required • Setup in 2 minutes
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={status === 'loading'}
+                    className="flex-1 h-12 bg-background/95 backdrop-blur-sm text-foreground border-primary-foreground/20 placeholder:text-muted-foreground focus:border-secondary focus:ring-secondary"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={status === 'loading'}
+                    className="h-12 px-8 bg-secondary text-secondary-foreground hover:bg-secondary/90 hover:scale-105 transition-all duration-200 font-semibold group"
+                  >
+                    {status === 'loading' ? (
+                      'Joining...'
+                    ) : (
+                      <>
+                        Get Started Free
+                        <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {status === 'error' && errorMessage && (
+                  <p className="text-sm text-red-300 bg-red-500/10 border border-red-400/20 rounded-lg px-4 py-2">
+                    {errorMessage}
                   </p>
                 )}
-                <p className="text-sm text-primary-foreground/70">
-                  Free 14-day trial • No credit card required • 2-minute setup
+                <p className="text-xs text-primary-foreground/60">
+                  No credit card required. Free forever for small teams.
                 </p>
               </form>
             )}
-
-            {/* Trust indicators */}
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 pt-4">
-              <div className="flex items-center gap-2 text-[#E9C46A]">
-                <Calendar className="w-5 h-5" />
-                <span className="text-sm font-medium">Works with all calendars</span>
-              </div>
-              <div className="flex items-center gap-2 text-[#E9C46A]">
-                <Clock className="w-5 h-5" />
-                <span className="text-sm font-medium">Smart time zone detection</span>
-              </div>
-            </div>
           </div>
 
-          {/* Right column - Visual */}
-          <div className="relative hidden lg:block animate-float">
+          {/* Right column - Hero image (40%) */}
+          <div className="lg:col-span-2">
             <div className="relative">
+              {/* Glow effect behind image */}
+              <div className="absolute inset-0 bg-secondary/30 rounded-3xl blur-2xl transform scale-95"></div>
+              
+              {/* Hero image with floating animation */}
               <img
                 src="https://dev-uploads.launch10.ai/uploads/024dfc6c-335d-4f11-883b-f8e241f91744.png"
-                alt="Scheduling dashboard showing automatic time zone coordination"
-                className="w-full h-auto"
+                alt="Scheduling tool interface showing timezone coordination"
+                className="relative rounded-2xl shadow-2xl w-full h-auto animate-float"
               />
-              {/* Decorative elements */}
-              <div className="absolute -top-6 -right-6 w-24 h-24 bg-[#E9C46A] rounded-2xl rotate-12 opacity-20 blur-xl" />
-              <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-[#F4A261] rounded-2xl -rotate-12 opacity-20 blur-xl" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-        <div className="w-6 h-10 border-2 border-[#E9C46A]/50 rounded-full flex items-start justify-center p-2">
-          <div className="w-1.5 h-3 bg-[#E9C46A]/50 rounded-full" />
-        </div>
-      </div>
+      {/* Custom floating animation */}
+      <style>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-20px);
+          }
+        }
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+      `}</style>
     </section>
   );
 }

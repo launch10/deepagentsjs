@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
+import { validateThreadOrError } from "../middleware/threadValidation";
 import { deployGraph } from "@graphs";
 import { graphParams } from "@core";
 import { DeployService } from "@services";
@@ -30,6 +31,10 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
   if (!deployId) {
     return c.json({ error: "Missing required field: deployId" }, 400);
   }
+
+  // Validate thread ownership before processing
+  const validationError = await validateThreadOrError(c, threadId, auth);
+  if (validationError) return validationError;
 
   try {
     // CRITICAL: Persist threadId to database FIRST, before starting the stream.
@@ -86,11 +91,16 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
 });
 
 deployRoutes.get("/stream", authMiddleware, async (c) => {
+  const auth = c.get("auth") as AuthContext;
   const threadId = c.req.query("threadId");
 
   if (!threadId) {
     return c.json({ error: "Missing threadId" }, 400);
   }
+
+  // Validate thread ownership before processing
+  const validationError = await validateThreadOrError(c, threadId, auth);
+  if (validationError) return validationError;
 
   try {
     const state = await graph.getState({ configurable: { thread_id: threadId } });

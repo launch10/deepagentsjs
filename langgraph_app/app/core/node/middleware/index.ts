@@ -8,6 +8,6 @@ export const NodeMiddleware = new NodeMiddlewareFactory()
   .addMiddleware("context", withContext) // Add node name, graph name, etc
   .addMiddleware("notifications", withNotifications) // Notify frontend which node is running
   .addMiddleware("error", withErrorHandling) // Error reporting, logging, etc
-  .addMiddleware("polly", withPolly); // Hit polly cache before node cache
+  .addMiddleware("polly", withPolly) // Hit polly cache before node cache
 
 export { getNodeContext, NodeMiddlewareFactory };

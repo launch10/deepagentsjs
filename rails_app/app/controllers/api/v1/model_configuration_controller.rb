@@ -1,8 +1,8 @@
 class API::V1::ModelConfigurationController < API::BaseController
   # This endpoint is called by Langgraph to fetch all model configuration.
-  # It requires internal API signature verification but not user authentication.
+  # It requires internal service call signature verification but not user authentication.
   skip_before_action :require_api_authentication
-  before_action :verify_internal_api_request
+  before_action :verify_internal_service_call
 
   # GET /api/v1/model_configuration
   # Returns both model configs and model preferences in a single response
@@ -13,7 +13,8 @@ class API::V1::ModelConfigurationController < API::BaseController
         maxUsagePercent: c.max_usage_percent,
         costIn: c.cost_in&.to_f,
         costOut: c.cost_out&.to_f,
-        modelCard: c.model_card
+        modelCard: c.model_card,
+        priceTier: c.price_tier
       }
     end
 
@@ -25,42 +26,5 @@ class API::V1::ModelConfigurationController < API::BaseController
         ModelPreference.maximum(:updated_at)
       ].compact.max
     }
-  end
-
-  private
-
-  def verify_internal_api_request
-    signature = request.headers["X-Signature"]
-    timestamp = request.headers["X-Timestamp"]
-
-    unless signature.present? && timestamp.present?
-      render json: {error: "Missing signature or timestamp"}, status: :unauthorized
-      return
-    end
-
-    timestamp_int = timestamp.to_i
-    if Time.at(timestamp_int) < 5.minutes.ago
-      render json: {error: "Request timestamp too old"}, status: :unauthorized
-      return
-    end
-
-    if Time.at(timestamp_int) > 1.minute.from_now
-      render json: {error: "Request timestamp in future"}, status: :unauthorized
-      return
-    end
-
-    expected_signature = generate_internal_api_signature(timestamp)
-
-    unless ActiveSupport::SecurityUtils.secure_compare(signature, expected_signature)
-      render json: {error: "Invalid signature"}, status: :unauthorized
-      return
-    end
-
-    true
-  end
-
-  def generate_internal_api_signature(timestamp)
-    secret = Rails.application.credentials.devise_jwt_secret_key!
-    OpenSSL::HMAC.hexdigest("SHA256", secret, timestamp.to_s)
   end
 end

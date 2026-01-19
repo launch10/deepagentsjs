@@ -1232,6 +1232,234 @@ paths:
                           type: string
                       description: Object with field paths as keys and arrays of error
                         messages as values
+  "/api/v1/chats/validate":
+    post:
+      summary: Validates thread ownership
+      tags:
+      - Chats
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: thread exists and belongs to current account - valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether the thread is valid for this account
+                  exists:
+                    type: boolean
+                    description: Whether the thread exists
+                  chat_type:
+                    type: string
+                    nullable: true
+                    description: Type of chat if exists
+                  project_id:
+                    type: integer
+                    nullable: true
+                    description: Project ID if exists
+                required:
+                - valid
+                - exists
+        '403':
+          description: thread exists but belongs to different account - invalid
+        '422':
+          description: missing thread_id
+        '401':
+          description: unauthorized - missing token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                thread_id:
+                  type: string
+                  description: Thread ID to validate
+              required:
+              - thread_id
+  "/api/v1/chats":
+    post:
+      summary: Creates a chat for thread ownership
+      tags:
+      - Chats
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '201':
+          description: chat created for deploy type
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  thread_id:
+                    type: string
+                    format: uuid
+                    description: UUID identifier
+                  chat_type:
+                    type: string
+                    description: Type of chat (brainstorm, website, ad_campaign, deploy)
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    nullable: true
+                    description: Chat name
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - thread_id
+                - chat_type
+                - project_id
+                - account_id
+                - created_at
+                - updated_at
+        '200':
+          description: chat already exists for same account - returns existing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  thread_id:
+                    type: string
+                    format: uuid
+                    description: UUID identifier
+                  chat_type:
+                    type: string
+                    description: Type of chat (brainstorm, website, ad_campaign, deploy)
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  name:
+                    type: string
+                    nullable: true
+                    description: Chat name
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - thread_id
+                - chat_type
+                - project_id
+                - account_id
+                - created_at
+                - updated_at
+        '403':
+          description: thread already exists for different account
+        '404':
+          description: project not found or belongs to different account
+        '422':
+          description: missing required fields
+        '401':
+          description: unauthorized - missing token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chat:
+                  type: object
+                  properties:
+                    thread_id:
+                      type: string
+                      description: Thread ID from Langgraph
+                    chat_type:
+                      type: string
+                      enum:
+                      - brainstorm
+                      - website
+                      - ad_campaign
+                      - deploy
+                      description: Type of chat
+                    project_id:
+                      type: integer
+                      description: Project ID to associate the chat with
+                    contextable_type:
+                      type: string
+                      enum:
+                      - Brainstorm
+                      - Website
+                      - Campaign
+                      - Deploy
+                      description: Polymorphic type of the contextable record
+                    contextable_id:
+                      type: integer
+                      description: ID of the contextable record
+                    name:
+                      type: string
+                      description: Optional name for the chat
+                  required:
+                  - thread_id
+                  - chat_type
+                  - project_id
+                  - contextable_type
+                  - contextable_id
+              required:
+              - chat
   "/api/v1/websites/{website_id}/context":
     get:
       summary: Retrieves context for a website
@@ -2275,24 +2503,24 @@ paths:
     get:
       summary: Retrieves model configuration
       tags:
-        - Model Configuration
+      - Model Configuration
       description: Returns all model configurations and preferences. Used by Langgraph
         to fetch LLM settings.
       parameters:
-        - name: X-Signature
-          in: header
-          required: true
-          description: HMAC signature for internal API authentication
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: true
-          description: Unix timestamp for signature verification
-          schema:
-            type: string
+      - name: X-Signature
+        in: header
+        required: true
+        description: HMAC signature for internal API authentication
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: true
+        description: Unix timestamp for signature verification
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: model configuration retrieved successfully
           content:
             application/json:
@@ -2324,8 +2552,8 @@ paths:
                           nullable: true
                           description: Model card identifier
                       required:
-                        - enabled
-                        - maxUsagePercent
+                      - enabled
+                      - maxUsagePercent
                   preferences:
                     type: object
                     description: Nested map of cost_tier -> speed_tier -> skill ->
@@ -2344,9 +2572,9 @@ paths:
                     nullable: true
                     description: Most recent update timestamp across all configs
                 required:
-                  - models
-                  - preferences
-        "401":
+                - models
+                - preferences
+        '401':
           description: unauthorized - timestamp too old
           content:
             application/json:
@@ -2357,7 +2585,7 @@ paths:
                     type: string
                     description: Error message
                 required:
-                  - error
+                - error
   "/api/v1/projects/{project_uuid}/workflows/{id}":
     parameters:
     - name: project_uuid

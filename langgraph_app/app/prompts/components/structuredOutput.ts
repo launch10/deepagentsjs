@@ -15,6 +15,7 @@ export const structuredOutputPrompt = async ({
   const parser = StructuredOutputParser.fromZodSchema(schemaWithoutForeignKeys(schema));
   return renderPrompt(`
     <${tag}>
+      Please clearly begin structured output with \`\`\`json and end with \`\`\`. (Wrap in json fence backticks)
       ${parser.getFormatInstructions()}
     </${tag}>
   `);

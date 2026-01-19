@@ -6,4 +6,4 @@ export {
   isAvailabilityError,
 } from "./unavailableModelFallbackMiddleware";
 
-export type { LLMSkill, LLMSpeed, LLMCost, ModelConfigData } from "./types";
+export type { LLMSkill, LLMSpeed, LLMCost, LLMOptions, ModelConfigData } from "./types";

@@ -33,6 +33,7 @@ class Website < ApplicationRecord
   include WebsiteConcerns::ThemeCssInjection
   historiographer_mode :snapshot_only
   acts_as_paranoid
+  acts_as_tenant :account
 
   belongs_to :project
   has_one :brainstorm

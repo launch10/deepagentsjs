@@ -77,7 +77,7 @@ Example usage:
   > const service = new services.PlanComponentService()
   > await service.execute(mock)
   
-  > const llm = core.getLLM(core."planning")
+  > const llm = await core.getLLM({ skill: "planning" })
   > await llm.invoke("Hello!")
 
 Type .exit to quit
@@ -96,7 +96,7 @@ Common Tasks:
    const result = await service.execute(mockInput)
 
 2. Test LLM:
-   const llm = getLLM("writing", "fast")
+   const llm = await getLLM({ skill: "writing", speed: "fast" })
    const response = await llm.invoke("Test prompt")
 
 3. Work with types:

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
+import { validateThreadOrError } from "../middleware/threadValidation";
 import { brainstormGraph } from "@graphs";
 import { graphParams } from "@core";
 import { Brainstorm } from "@types";
@@ -15,7 +16,6 @@ const graph = brainstormGraph.compile({ ...graphParams, name: "brainstorm" });
 const BrainstormAPI = BrainstormBridge.bind(graph);
 
 brainstormRoutes.post("/stream", authMiddleware, async (c) => {
-  // TODO: Ensure user has access to threadId in auth middleware
   const auth = c.get("auth") as AuthContext;
   const body = await c.req.json();
 
@@ -24,6 +24,11 @@ brainstormRoutes.post("/stream", authMiddleware, async (c) => {
   if (!messages || !threadId) {
     return c.json({ error: "Missing required fields: messages, threadId" }, 400);
   }
+
+  // Validate thread ownership before processing
+  const validationError = await validateThreadOrError(c, threadId, auth);
+  if (validationError) return validationError;
+
   let stateObj = state || {};
 
   return BrainstormAPI.stream({
@@ -44,6 +49,10 @@ brainstormRoutes.get("/stream", authMiddleware, async (c) => {
   if (!threadId) {
     return c.json({ error: "Missing threadId" }, 400);
   }
+
+  // Validate thread ownership before processing
+  const validationError = await validateThreadOrError(c, threadId, auth);
+  if (validationError) return validationError;
 
   return BrainstormAPI.loadHistory(threadId);
 });

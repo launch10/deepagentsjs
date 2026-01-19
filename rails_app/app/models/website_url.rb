@@ -26,6 +26,8 @@
 class WebsiteUrl < ApplicationRecord
   include Atlas::WebsiteUrl
 
+  acts_as_tenant :account
+
   belongs_to :website
   belongs_to :domain
   belongs_to :account

@@ -371,19 +371,10 @@ describe("isGoogleVerified", () => {
     );
   });
 
-  it("returns true when task is already completed", async () => {
-    const state: Partial<DeployGraphState> = {
-      jwt: "test-jwt",
-      tasks: [{ ...Deploy.createTask("VerifyingGoogle"), status: "completed" } as Task.Task],
-    };
+  // Note: Task completion is now handled by the executor, not isGoogleVerified
+  // The function only checks external state (API call)
 
-    const result = await isGoogleVerified(state as DeployGraphState);
-    expect(result).toBe(true);
-    // Should not call API when task is completed
-    expect(mockGoogleAPIService).not.toHaveBeenCalled();
-  });
-
-  it("calls GoogleAPIService when task is not completed", async () => {
+  it("calls GoogleAPIService to check invite status", async () => {
     const mockGetStatus = vi
       .fn()
       .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" });

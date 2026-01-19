@@ -3,8 +3,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { deployGraph } from "@graphs";
 import { graphParams, env } from "@core";
 import { Task } from "@types";
-
-interface JobRunCallbackPayload {
+export interface JobRunCallbackPayload {
   job_run_id: number;
   thread_id: string;
   status: "completed" | "failed";
@@ -24,6 +23,44 @@ function getGraph() {
   return _graph;
 }
 
+export const jobRunCallback = async (payload: JobRunCallbackPayload): Promise<boolean> => {
+  const graph = getGraph();
+
+  // Get current state to find the task by jobId
+  const currentState = await graph.getState({
+    configurable: { thread_id: payload.thread_id },
+  });
+
+  if (!currentState?.values) {
+    console.error(`[jobRunCallback] Thread ${payload.thread_id} not found`);
+    return false
+  }
+
+  const tasks: Task.Task[] = currentState.values.tasks || [];
+  const task = tasks.find((t) => t.jobId === payload.job_run_id);
+
+  if (!task) {
+    console.error(`[jobRunCallback] Task with jobId ${payload.job_run_id} not found`);
+    return false;
+  }
+
+  // Update the task with result/error
+  // Note: updateState RUNS the graph - this is intentional!
+  // The idempotent node will process the result
+  const updatedTasks = Task.updateTask(tasks, task.name, {
+    status: "running", // Keep running until node processes it
+    result: payload.status === "completed" ? payload.result : undefined,
+    error: payload.status === "failed" ? payload.error : undefined,
+  });
+
+  await graph.updateState(
+    { configurable: { thread_id: payload.thread_id } },
+    { tasks: updatedTasks }
+  );
+
+  return true;
+}
+
 jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
   const signature = c.req.header("X-Signature");
   const body = await c.req.text();
@@ -35,41 +72,13 @@ jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
   const payload: JobRunCallbackPayload = JSON.parse(body);
 
   try {
-    const graph = getGraph();
+    const success = await jobRunCallback(payload);
 
-    // Get current state to find the task by jobId
-    const currentState = await graph.getState({
-      configurable: { thread_id: payload.thread_id },
-    });
-
-    if (!currentState?.values) {
-      console.error(`[jobRunCallback] Thread ${payload.thread_id} not found`);
-      return c.json({ error: "Thread not found" }, 404);
+    if (!success) {
+      return c.json({ error: "Failed to update state" }, 404);
     }
 
-    const tasks: Task.Task[] = currentState.values.tasks || [];
-    const task = tasks.find((t) => t.jobId === payload.job_run_id);
-
-    if (!task) {
-      console.error(`[jobRunCallback] Task with jobId ${payload.job_run_id} not found`);
-      return c.json({ error: "Task not found" }, 404);
-    }
-
-    // Update the task with result/error
-    // Note: updateState RUNS the graph - this is intentional!
-    // The idempotent node will process the result
-    const updatedTasks = Task.updateTask(tasks, task.name, {
-      status: "running", // Keep running until node processes it
-      result: payload.status === "completed" ? payload.result : undefined,
-      error: payload.status === "failed" ? payload.error : undefined,
-    });
-
-    await graph.updateState(
-      { configurable: { thread_id: payload.thread_id } },
-      { tasks: updatedTasks }
-    );
-
-    return c.json({ success: true });
+    return c.json({ success });
   } catch (error) {
     console.error("[jobRunCallback] Failed to update state:", error);
     return c.json({ error: "Failed to update state" }, 500);

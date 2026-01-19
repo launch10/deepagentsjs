@@ -1,301 +1,93 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { DeployAnnotation, type DeployGraphState } from "@annotation";
-import { Deploy, Task } from "@types";
+import { Deploy } from "@types";
 import {
-  analyticsNode,
-  seoOptimizationNode,
-  deployWebsiteNode,
-  runtimeValidationNode,
-  validateLinksNode,
-  bugFixNode,
-  createEnqueueNode,
-  googleConnectNode,
-  shouldSkipGoogleConnect,
-  verifyGoogleNode,
-  shouldSkipGoogleVerify,
-  checkPaymentNode,
-  shouldCheckPayment,
-  enableCampaignNode,
-  deployCampaignNode,
+  createChatNode,
+  initPhasesNode,
+  taskExecutorNode,
+  taskExecutorRouter,
 } from "@nodes";
 
 /**
- * Maximum retry count for bug fix loop
- */
-const MAX_RETRY_COUNT = 2;
-
-/**
- * Deploy Graph (Flat Architecture with Tagged Steps)
+ * Deploy Graph V2 - Task-Based Architecture
  *
- * All deploy tasks in a single flat graph with conditional routing based on
- * state.deploy.website and state.deploy.googleAds flags.
- *
- * Step Tags:
- * - [all]: Runs for all deploy types
- * - [campaign]: Only runs when deploying Google Ads campaigns
+ * This dramatically simplified graph replaces the complex conditional routing
+ * with a single task executor that loops through tasks in order.
  *
  * Flow:
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ START                                                                   │
- * │   │                                                                     │
- * │   ▼                                                                     │
- * │ [shouldDeployGoogleAds?]──────────────────────────┐                     │
- * │   │ YES                                           │ NO                  │
- * │   ▼                                               │                     │
- * │ googleConnect (OAuth popup) [campaign]            │                     │
- * │   │                                               │                     │
- * │   ▼                                               │                     │
- * │ setupGoogleAds (verifyGoogle) [campaign]          │                     │
- * │   │ (creates account + conversion action          │                     │
- * │   │  + sends invite + waits for accept)           │                     │
- * │   │                                               │                     │
- * │   └───────────────────────────────────────────────┘                     │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │         websiteValidation [all]                                         │
- * │         ┌─────────────────────────┐                                     │
- * │         │ validateLinks           │                                     │
- * │         │     │                   │                                     │
- * │         │     ↓                   │                                     │
- * │         │ runtimeValidation       │                                     │
- * │         │     │     │             │                                     │
- * │         │     │  bugFix ←─────────│ (retry loop, max 2)                 │
- * │         │     ↓                   │                                     │
- * │         └─────────────────────────┘                                     │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │              analytics [all]                                            │
- * │         (L10.createLead instrumentation)                                │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │           seoOptimization [all]                                         │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │            deployWebsite [all]                                          │
- * │      (build! injects google_send_to)                                    │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │       [shouldDeployGoogleAds?]                                          │
- * │         │ YES              │ NO                                         │
- * │         ▼                  │                                            │
- * │   createCampaign [campaign]│                                            │
- * │   (keywords, ads, budget)  │                                            │
- * │         │                  │                                            │
- * │         ▼                  │                                            │
- * │   checkPayment [campaign]  │                                            │
- * │         │                  │                                            │
- * │         ▼                  │                                            │
- * │   enableCampaign [campaign]│                                            │
- * │   (blocked if no payment)  │                                            │
- * │         │                  │                                            │
- * │         └──────────────────┘                                            │
- * │                   │                                                     │
- * │                   ▼                                                     │
- * │                  END                                                    │
- * └─────────────────────────────────────────────────────────────────────────┘
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ START                                                                    │
+ * │   │                                                                      │
+ * │   ▼                                                                      │
+ * │ createChat (thread ownership validation)                                 │
+ * │   │                                                                      │
+ * │   ├──[nothing to deploy?]──► END                                         │
+ * │   │                                                                      │
+ * │   ▼                                                                      │
+ * │ taskExecutor ◄────────────────────────────────────────────┐              │
+ * │   │                                                       │              │
+ * │   ├──[continue]───────────────────────────────────────────┘              │
+ * │   │                                                                      │
+ * │   ├──[wait]──► END (waiting for webhook)                                 │
+ * │   │                                                                      │
+ * │   └──[end]──► END (all tasks complete or error)                          │
+ * └──────────────────────────────────────────────────────────────────────────┘
  *
- * Key Dependency: Google setup MUST complete before deployWebsite
- * because buildable.rb reads conversion action info (google_send_to)
- * from AdsAccount during the build phase.
+ * The taskExecutor processes tasks in order (defined in TASK_ORDER):
+ * 1. ConnectingGoogle (campaign, skippable)
+ * 2. VerifyingGoogle (campaign, skippable)
+ * 3. AddingAnalytics (all, skippable if no website)
+ * 4. OptimizingSEO (all)
+ * 5. ValidateLinks (all)
+ * 6. RuntimeValidation (all)
+ * 7. FixingBugs (only when validation fails)
+ * 8. DeployingWebsite (all)
+ * 9. DeployingCampaign (campaign)
+ * 10. CheckingBilling (campaign, skippable if already verified)
+ * 11. EnablingCampaign (campaign)
+ *
+ * Each task defines:
+ * - shouldSkip: Whether to skip this task entirely
+ * - isBlocking: Whether to wait for external completion (webhook)
+ * - run: The actual task logic
  */
-
-// ==============================================================================
-// GRAPH DEFINITION
-// ==============================================================================
 
 export const deployGraph = new StateGraph(DeployAnnotation)
   // --------------------------------------------------------------------------
-  // Google Setup Nodes [campaign]
+  // Security: Create Chat for thread ownership validation
   // --------------------------------------------------------------------------
-  .addNode("enqueueGoogleConnect", createEnqueueNode("ConnectingGoogle"))
-  .addNode("googleConnect", googleConnectNode)
-  .addNode("checkGoogleVerify", async () => ({})) // Pass-through for routing
-  .addNode("enqueueGoogleVerify", createEnqueueNode("VerifyingGoogle"))
-  .addNode("verifyGoogle", verifyGoogleNode)
+  .addNode("createChat", createChatNode)
 
   // --------------------------------------------------------------------------
-  // Website Validation Nodes [all] (mini-loop for validate → bugfix → retry)
+  // Init Phases: Compute phases from any pre-existing tasks (for tests)
   // --------------------------------------------------------------------------
-  .addNode("enqueueValidateLinks", createEnqueueNode("ValidateLinks"))
-  .addNode("validateLinks", validateLinksNode)
-  .addNode("enqueueRuntimeValidation", createEnqueueNode("RuntimeValidation"))
-  .addNode("runtimeValidation", runtimeValidationNode)
-  .addNode("enqueueBugFix", createEnqueueNode("FixingBugs"))
-  .addNode("bugFix", bugFixNode)
+  .addNode("initPhases", initPhasesNode)
 
   // --------------------------------------------------------------------------
-  // Website Preparation & Deploy Nodes [all]
+  // Task Executor: Processes all tasks in order
   // --------------------------------------------------------------------------
-  .addNode("enqueueAnalytics", createEnqueueNode("AddingAnalytics"))
-  .addNode("analytics", analyticsNode)
-  .addNode("enqueueSEOOptimization", createEnqueueNode("OptimizingSEO"))
-  .addNode("seoOptimization", seoOptimizationNode)
-  .addNode("enqueueDeploy", createEnqueueNode("DeployingWebsite"))
-  .addNode("deployWebsite", deployWebsiteNode)
-
-  // --------------------------------------------------------------------------
-  // Campaign Nodes [campaign]
-  // --------------------------------------------------------------------------
-  .addNode("enqueueDeployCampaign", createEnqueueNode("DeployingCampaign"))
-  .addNode("deployCampaign", deployCampaignNode)
-  .addNode("enqueueCheckPayment", createEnqueueNode("CheckingBilling"))
-  .addNode("checkPayment", checkPaymentNode)
-  .addNode("enqueueEnableCampaign", createEnqueueNode("EnablingCampaign"))
-  .addNode("enableCampaign", enableCampaignNode)
+  .addNode("taskExecutor", taskExecutorNode)
 
   // ==========================================================================
   // ROUTING
   // ==========================================================================
 
-  // --------------------------------------------------------------------------
-  // START: Branch based on whether we're deploying Google Ads
-  // --------------------------------------------------------------------------
-  .addConditionalEdges(START, (state: DeployGraphState) => {
+  // Start with chat validation
+  .addEdge(START, "createChat")
+
+  // After chat validation, either end or initialize phases
+  .addConditionalEdges("createChat", (state: DeployGraphState) => {
     // Exit early if nothing to deploy
     if (!Deploy.shouldDeployAnything(state)) return END;
-
-    // If deploying Google Ads, start with Google Connect flow
-    if (Deploy.shouldDeployGoogleAds(state)) {
-      return "checkGoogleConnect";
-    }
-
-    // Website-only deploy: start with analytics
-    return "enqueueAnalytics";
+    return "initPhases";
   })
 
-  // Routing node for Google Connect
-  .addNode("checkGoogleConnect", async () => ({}))
-  .addConditionalEdges("checkGoogleConnect", shouldSkipGoogleConnect, {
-    skipGoogleConnect: "checkGoogleVerify",
-    enqueueGoogleConnect: "enqueueGoogleConnect",
-  })
+  // After init phases, proceed to task executor
+  .addEdge("initPhases", "taskExecutor")
 
-  // --------------------------------------------------------------------------
-  // Google Connect Flow [campaign]
-  // --------------------------------------------------------------------------
-  .addEdge("enqueueGoogleConnect", "googleConnect")
-  .addEdge("googleConnect", "checkGoogleVerify")
-
-  // --------------------------------------------------------------------------
-  // Google Verify Flow [campaign]
-  // --------------------------------------------------------------------------
-  .addConditionalEdges("checkGoogleVerify", shouldSkipGoogleVerify, {
-    skipGoogleVerify: "enqueueAnalytics", // Proceed to analytics
-    enqueueGoogleVerify: "enqueueGoogleVerify",
-  })
-  .addEdge("enqueueGoogleVerify", "verifyGoogle")
-  .addEdge("verifyGoogle", "enqueueAnalytics")
-
-  // --------------------------------------------------------------------------
-  // Website Preparation [all] (analytics → seo → validation → deploy)
-  // --------------------------------------------------------------------------
-  .addEdge("enqueueAnalytics", "analytics")
-  .addEdge("analytics", "enqueueSEOOptimization")
-  .addEdge("enqueueSEOOptimization", "seoOptimization")
-  .addEdge("seoOptimization", "enqueueValidateLinks")
-
-  // --------------------------------------------------------------------------
-  // Website Validation Flow [all] (validate → runtime → bugfix loop)
-  // --------------------------------------------------------------------------
-  .addEdge("enqueueValidateLinks", "validateLinks")
-
-  // Link validation routing
-  .addConditionalEdges("validateLinks", (state: DeployGraphState) => {
-    const task = Task.findTask(state.tasks, "ValidateLinks");
-    if (task?.status === "completed") {
-      return "enqueueRuntimeValidation";
-    }
-    return "enqueueBugFix";
-  })
-
-  .addEdge("enqueueRuntimeValidation", "runtimeValidation")
-
-  // Runtime validation routing: pass → deploy, fail → bugfix (with retry limit)
-  .addConditionalEdges("runtimeValidation", (state: DeployGraphState) => {
-    const task = Task.findTask(state.tasks, "RuntimeValidation");
-    if (task?.status === "completed") {
-      return "enqueueDeploy";
-    }
-    const retryCount = task?.retryCount || 0;
-    if (retryCount >= MAX_RETRY_COUNT) {
-      return END; // Max retries reached, exit
-    }
-    return "enqueueBugFix";
-  })
-
-  // Bug fix loops back to validateLinks
-  .addEdge("enqueueBugFix", "bugFix")
-  .addEdge("bugFix", "validateLinks")
-
-  // --------------------------------------------------------------------------
-  // Website Deploy [all]
-  // --------------------------------------------------------------------------
-  .addEdge("enqueueDeploy", "deployWebsite")
-
-  // --------------------------------------------------------------------------
-  // After Website Deploy: Check if we should proceed to Campaign [campaign]
-  // --------------------------------------------------------------------------
-  .addConditionalEdges("deployWebsite", (state: DeployGraphState) => {
-    const websiteTask = Task.findTask(state.tasks, "DeployingWebsite");
-
-    // If website deploy failed, don't proceed to campaign
-    if (websiteTask?.status === "failed") return END;
-
-    // If website deploy not yet completed, exit (waiting for webhook)
-    if (websiteTask?.status !== "completed") return END;
-
-    // Website completed - proceed to campaign if needed
-    if (Deploy.shouldDeployGoogleAds(state)) {
-      return "enqueueDeployCampaign";
-    }
-
-    return END;
-  })
-
-  // --------------------------------------------------------------------------
-  // Campaign Deploy Flow [campaign]
-  // --------------------------------------------------------------------------
-  .addEdge("enqueueDeployCampaign", "deployCampaign")
-
-  // After campaign is created, check payment before enabling
-  .addConditionalEdges("deployCampaign", (state: DeployGraphState) => {
-    const task = Task.findTask(state.tasks, "DeployingCampaign");
-
-    // If campaign deploy failed, exit
-    if (task?.status === "failed") return END;
-
-    // If campaign deploy not yet completed, exit (waiting for webhook)
-    if (task?.status !== "completed") return END;
-
-    // Campaign created - check payment
-    return "checkPaymentOrSkip";
-  })
-
-  // Routing node for payment check
-  .addNode("checkPaymentOrSkip", async () => ({}))
-  .addConditionalEdges("checkPaymentOrSkip", shouldCheckPayment, {
-    skipCheckPayment: "enqueueEnableCampaign",
-    checkPayment: "enqueueCheckPayment",
-  })
-
-  .addEdge("enqueueCheckPayment", "checkPayment")
-
-  // After payment check, enable campaign
-  .addConditionalEdges("checkPayment", (state: DeployGraphState) => {
-    const task = Task.findTask(state.tasks, "CheckingBilling");
-
-    // If payment check failed, exit
-    if (task?.status === "failed") return END;
-
-    // If payment check not yet completed, exit (waiting for webhook)
-    if (task?.status !== "completed") return END;
-
-    // Payment verified - enable campaign
-    return "enqueueEnableCampaign";
-  })
-
-  // --------------------------------------------------------------------------
-  // Enable Campaign [campaign]
-  // --------------------------------------------------------------------------
-  .addEdge("enqueueEnableCampaign", "enableCampaign")
-  .addEdge("enableCampaign", END);
+  // Task executor routing: continue, wait, or end
+  .addConditionalEdges("taskExecutor", taskExecutorRouter, {
+    continue: "taskExecutor", // Loop back for next task
+    wait: END, // Exit, waiting for webhook
+    end: END, // All done
+  });

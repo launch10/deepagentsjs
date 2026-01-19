@@ -7,25 +7,27 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
 const createWorkflow = `
 ## Workflow
-1. **Plan**: Break down into sections (e.g. Hero, Features, Pricing, Social Proof, CTA, Footer) based on page needs
-2. **Draft copy**: Use the copywriter subagent to draft all section copy at once
-3. **Assign images**: Place user-provided images appropriately
-4. **Code**: Create React components in /src/components/
-5. **Assemble**: Create /src/pages/IndexPage.tsx (and optionally PricingPage.tsx)
-6. **Track**: Implement L10.createLead() based on conversion type (tiered pricing vs. simple waitlist)
+1. **Greet**: Start with a brief, personalized message acknowledging what you're about to build. Reference the user's idea or audience from the brainstorm to show you understand their vision (1-2 sentences max).
+2. **Plan**: Break down into sections (e.g. Hero, Features, Pricing, Social Proof, CTA, Footer) based on page needs
+3. **Draft copy**: Use the copywriter subagent to draft all section copy at once
+4. **Assign images**: Place user-provided images appropriately
+5. **Divide and conquer**: Call multiple coder agents in parallel to implement the components, saving each in /src/components/
+6. **Assemble**: Create /src/pages/IndexPage.tsx (and optionally PricingPage.tsx) to assemble the components
+7. **Track**: Implement L10.createLead() based on conversion type (tiered pricing vs. simple waitlist)
 `;
-// 7. **Verify**: Read files back to confirm correctness
 
 const editWorkflow = `
 ## Workflow
 
-1. **Understand**: Read the user's request carefully to understand what changes they want
-2. **Explore**: Use ls and glob to find the relevant files that need to be modified
-3. **Read**: Read the existing code to understand the current implementation
-4. **Plan**: Determine the changes needed to fulfill the request
-5. **Write**: Use write_file for most changes (adding imports + code, restructuring, multiple edits).
+1. **Acknowledge**: Briefly confirm what you're about to do (1 sentence). Show you understood the request.
+2. **Understand**: Read the user's request carefully to understand what changes they want
+3. **Explore**: Use ls and glob to find the relevant files that need to be modified
+4. **Read**: Read the existing code to understand the current implementation
+5. **Plan**: Determine the changes needed to fulfill the request.
+6. **Divide and conquer**: Break down the changes into small, manageable tasks. Ideally enqueue multiple coder agents in parallel to handle different files, provided enough context is provided to each agent.
+7. **Write**: Use write_file for most changes (adding imports + code, restructuring, multiple edits).
    Only use edit_file for truly small, single-point changes (fixing a typo, changing one value).
-6. **Verify**: Read the modified files back to confirm the changes are correct
+8. **Verify**: Read the modified files back to confirm the changes are correct
 `;
 
 const bugfixWorkflow = `
@@ -80,8 +82,8 @@ export const startByPrompt: CodingPromptFn = async (
   if (workflow === "BugFix") {
     return `Start by carefully reading the error messages to understand what went wrong.`;
   } else if (workflow === "Create") {
-    return `Start by exploring the existing template structure with ls and glob, then create the landing page sections.`;
+    return `Start by greeting the user with a personalized message about their landing page (reference their idea or audience), then explore the template structure and create the sections.`;
   } else {
-    return `Start by exploring the existing website with ls and glob, then make the requested changes.`;
+    return `Start by acknowledging what the user wants, then explore the existing website with ls and glob to make the requested changes.`;
   }
 };

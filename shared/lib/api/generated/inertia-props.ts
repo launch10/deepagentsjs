@@ -373,6 +373,20 @@ export interface components {
                 type: "success" | "error" | "info";
                 message: string;
             }[];
+            /** @description Currently authenticated user */
+            current_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Original admin user when impersonating */
+            true_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Whether admin is currently impersonating another user */
+            impersonating?: boolean;
             /** @description Langgraph thread ID for the conversation */
             thread_id: null;
             project?: {
@@ -397,6 +411,20 @@ export interface components {
                 type: "success" | "error" | "info";
                 message: string;
             }[];
+            /** @description Currently authenticated user */
+            current_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Original admin user when impersonating */
+            true_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Whether admin is currently impersonating another user */
+            impersonating?: boolean;
             /** @description Langgraph thread ID for the conversation */
             thread_id: string | null;
             project?: {
@@ -447,6 +475,20 @@ export interface components {
                 type: "success" | "error" | "info";
                 message: string;
             }[];
+            /** @description Currently authenticated user */
+            current_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Original admin user when impersonating */
+            true_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Whether admin is currently impersonating another user */
+            impersonating?: boolean;
             /** @description Langgraph thread ID for the conversation */
             thread_id?: string | null;
             project?: {
@@ -487,6 +529,20 @@ export interface components {
                 type: "success" | "error" | "info";
                 message: string;
             }[];
+            /** @description Currently authenticated user */
+            current_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Original admin user when impersonating */
+            true_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Whether admin is currently impersonating another user */
+            impersonating?: boolean;
             /** @description Langgraph thread ID for the conversation */
             thread_id?: string | null;
             project?: {
@@ -590,6 +646,20 @@ export interface components {
                 type: "success" | "error" | "info";
                 message: string;
             }[];
+            /** @description Currently authenticated user */
+            current_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Original admin user when impersonating */
+            true_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Whether admin is currently impersonating another user */
+            impersonating?: boolean;
             /** @description Langgraph thread ID for the conversation */
             thread_id?: string | null;
             project?: {

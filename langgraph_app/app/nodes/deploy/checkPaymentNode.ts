@@ -94,13 +94,8 @@ export const checkPaymentNode = async (
  * @returns true if payment is verified (skip the task), false otherwise
  */
 export async function isPaymentVerified(state: DeployGraphState): Promise<boolean> {
-  // 1. If task already completed in state, skip
-  const task = Task.findTask(state.tasks, TASK_NAME);
-  if (task?.status === "completed") {
-    return true;
-  }
-
-  // 2. Check Rails API for actual payment status
+  // Check Rails API for actual payment status
+  // (executor handles task completion state)
   if (!state.jwt) {
     return false;
   }
@@ -128,3 +123,39 @@ export async function shouldCheckPayment(
   const verified = await isPaymentVerified(state);
   return verified ? "skipCheckPayment" : "checkPayment";
 }
+
+import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
+
+/**
+ * Check Payment Task Runner
+ *
+ * Handles the Google Ads payment/billing verification flow.
+ */
+export const checkPaymentTaskRunner: TaskRunner = {
+  taskName: TASK_NAME,
+
+  readyToRun: (state: DeployGraphState) => {
+    // Ready when DeployingCampaign is done
+    return isTaskDone(state, "DeployingCampaign");
+  },
+
+  shouldSkip: async (state: DeployGraphState) => {
+    // Skip if not deploying Google Ads
+    if (!Deploy.shouldDeployGoogleAds(state)) {
+      return true;
+    }
+
+    // Skip if already verified
+    return isPaymentVerified(state);
+  },
+
+  isBlocking: (state: DeployGraphState, task: Task.Task) => {
+    // Blocking when we have a jobId but no result yet
+    return task.status === "running" && !!task.jobId && task.result?.has_payment === undefined && !task.error;
+  },
+
+  run: checkPaymentNode,
+};
+
+// Register this task runner
+registerTask(checkPaymentTaskRunner);

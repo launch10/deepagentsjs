@@ -55,7 +55,7 @@ export const brainstormAgent = NodeMiddleware.use(
       throw new Error("websiteId is required");
     }
 
-    const llm = (await getLLM()).withConfig({ tags: ["notify"] });
+    const llm = (await getLLM({maxTier: 3})).withConfig({ tags: ["notify"] });
     const tools = [saveAnswersTool, finishedTool, queryUploadsTool];
 
     const agent = await createAgent({

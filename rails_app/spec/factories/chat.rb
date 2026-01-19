@@ -5,8 +5,8 @@ FactoryBot.define do
     name { Faker::Name.name }
     chat_type { 'brainstorm' }
     thread_id { SecureRandom.uuid }
-    project_id { 1 }
-    account_id { 1 }
-    contextable { association(:brainstorm) }
+    association :project
+    association :account
+    contextable { nil }  # Optional - set explicitly when needed
   end
 end

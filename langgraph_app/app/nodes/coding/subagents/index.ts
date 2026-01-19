@@ -1,2 +1,2 @@
-export * from "./copywriter";
-export * from "./coder";
+export { copywriterSubAgent } from "./copywriter";
+export { buildCoderSubAgent } from "./coder";

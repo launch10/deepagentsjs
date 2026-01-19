@@ -14,6 +14,7 @@ export interface ModelConfig {
   costOut: number | null;
   modelCard: string | null;
   provider: LLMProvider | null;
+  priceTier: number; // 1=premium, 5=cheap
 }
 
 // Full config response from Rails API
@@ -25,3 +26,12 @@ export interface ModelConfigurationResponse {
 
 // Backwards compatibility alias
 export type ModelConfigData = ModelConfig;
+
+// Options for getLLM and getLLMFallbacks
+export interface LLMOptions {
+  skill?: LLMSkill;
+  speed?: LLMSpeed;
+  cost?: LLMCost;
+  usagePercent?: number;
+  maxTier?: number;
+}

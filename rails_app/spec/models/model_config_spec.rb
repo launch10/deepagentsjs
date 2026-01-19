@@ -117,4 +117,76 @@ RSpec.describe ModelConfig, type: :model do
       expect(config).to be_valid
     end
   end
+
+  describe '#effective_cost' do
+    it 'calculates weighted effective cost with OUTPUT_WEIGHT' do
+      # effective_cost = cost_in + (cost_out * OUTPUT_WEIGHT)
+      # OUTPUT_WEIGHT = 4
+      config = build(:model_config, cost_in: 5.0, cost_out: 25.0)
+      # 5.0 + (25.0 * 4) = 5 + 100 = 105
+      expect(config.effective_cost).to eq(105.0)
+    end
+
+    it 'handles nil costs as zero' do
+      config = build(:model_config, cost_in: nil, cost_out: nil)
+      expect(config.effective_cost).to eq(0.0)
+    end
+
+    it 'handles mixed nil and present costs' do
+      config = build(:model_config, cost_in: 3.0, cost_out: nil)
+      expect(config.effective_cost).to eq(3.0)
+
+      config = build(:model_config, cost_in: nil, cost_out: 15.0)
+      expect(config.effective_cost).to eq(60.0) # 0 + (15 * 4)
+    end
+  end
+
+  describe '#price_tier' do
+    # Tier thresholds: 1 >= 100, 2 >= 40, 3 >= 15, 4 >= 5, 5 < 5
+
+    it 'returns tier 1 for premium models (effective cost >= 100)' do
+      # Opus-like: 15 in, 75 out = 15 + (75 * 4) = 15 + 300 = 315
+      config = build(:model_config, cost_in: 15.0, cost_out: 75.0)
+      expect(config.price_tier).to eq(1)
+    end
+
+    it 'returns tier 2 for high-end models (effective cost 40-100)' do
+      # Sonnet-like: 3 in, 15 out = 3 + (15 * 4) = 3 + 60 = 63
+      config = build(:model_config, cost_in: 3.0, cost_out: 15.0)
+      expect(config.price_tier).to eq(2)
+    end
+
+    it 'returns tier 3 for mid-tier models (effective cost 15-40)' do
+      # Haiku-like: 1 in, 5 out = 1 + (5 * 4) = 1 + 20 = 21
+      config = build(:model_config, cost_in: 1.0, cost_out: 5.0)
+      expect(config.price_tier).to eq(3)
+    end
+
+    it 'returns tier 4 for budget models (effective cost 5-15)' do
+      # gpt5_mini-like: 0.25 in, 2 out = 0.25 + (2 * 4) = 0.25 + 8 = 8.25
+      config = build(:model_config, cost_in: 0.25, cost_out: 2.0)
+      expect(config.price_tier).to eq(4)
+    end
+
+    it 'returns tier 5 for cheap models (effective cost < 5)' do
+      # Very cheap: 0.1 in, 0.5 out = 0.1 + (0.5 * 4) = 0.1 + 2 = 2.1
+      config = build(:model_config, cost_in: 0.1, cost_out: 0.5)
+      expect(config.price_tier).to eq(5)
+    end
+
+    it 'returns tier 5 for free models (nil costs)' do
+      config = build(:model_config, cost_in: nil, cost_out: nil)
+      expect(config.price_tier).to eq(5)
+    end
+
+    it 'handles boundary values correctly' do
+      # Exactly at tier 1 boundary (100)
+      config = build(:model_config, cost_in: 0, cost_out: 25.0) # 0 + (25 * 4) = 100
+      expect(config.price_tier).to eq(1)
+
+      # Just below tier 1 boundary
+      config = build(:model_config, cost_in: 0, cost_out: 24.9) # 0 + (24.9 * 4) = 99.6
+      expect(config.price_tier).to eq(2)
+    end
+  end
 end

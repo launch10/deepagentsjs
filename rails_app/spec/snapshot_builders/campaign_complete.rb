@@ -11,10 +11,9 @@ class CampaignComplete < BaseBuilder
     account = Account.first
     raise "No account found" unless account
 
-    create_google_connected_account(account)
+    project = account.projects.first
+    project.current_workflow.next_step!
 
-    # We can mark complete at some future point, not sure what this will look like yet
-    # For now, just ensure the account exists
     puts "Campaign complete snapshot built successfully"
   end
 

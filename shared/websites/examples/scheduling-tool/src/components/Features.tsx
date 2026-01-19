@@ -1,75 +1,64 @@
-import React from 'react';
-import { Globe, Layers, Zap, MousePointer, Plug } from 'lucide-react';
-
-const features = [
-  {
-    icon: Globe,
-    title: "Smart Time Zone Detection",
-    description: "Automatically converts and displays meeting times in each participant's local time zone. No more mental math or embarrassing no-shows."
-  },
-  {
-    icon: Layers,
-    title: "Team Availability Overlay",
-    description: "See everyone's availability at a glance with visual overlays that highlight when your entire team is free—across continents."
-  },
-  {
-    icon: Zap,
-    title: "Instant Optimal Suggestions",
-    description: "Our algorithm considers time zones, working hours, meeting preferences, and calendar conflicts to suggest the best times in seconds, not days."
-  },
-  {
-    icon: MousePointer,
-    title: "One-Click Scheduling",
-    description: "No more back-and-forth. Share a link, team members vote on suggested times, and the meeting auto-schedules when consensus is reached."
-  },
-  {
-    icon: Plug,
-    title: "Integrates With Everything",
-    description: "Works seamlessly with Google Calendar, Outlook, Slack, Microsoft Teams, and Zoom. Fits right into your existing workflow."
-  }
-];
+import { Globe, Clock, Zap, Users, Calendar, Shield } from 'lucide-react';
 
 export function Features() {
-  return (
-    <section id="features" className="py-20 md:py-24 lg:py-32 bg-muted">
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="text-center mb-16 animate-fade-in">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            Everything You Need to Schedule Smarter
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Powerful features that eliminate the scheduling chaos—without the learning curve.
-          </p>
-        </div>
+  const features = [
+    {
+      icon: Globe,
+      title: "Smart Timezone Detection",
+      description: "Automatically converts and displays times in each team member's local timezone. No more mental math or embarrassing 3am meeting invites."
+    },
+    {
+      icon: Clock,
+      title: "Availability Preferences",
+      description: "Set your ideal meeting windows, no-meeting days, and focus time blocks. We'll only suggest times that respect everyone's boundaries."
+    },
+    {
+      icon: Zap,
+      title: "Instant Optimal Time Suggestions",
+      description: "Our algorithm analyzes everyone's calendars and preferences simultaneously, suggesting the best times in seconds—not days."
+    },
+    {
+      icon: Users,
+      title: "Team Scheduling Polls",
+      description: "Need to schedule with external stakeholders? Send a poll with smart time options. They pick what works, and it's automatically added to everyone's calendar."
+    },
+    {
+      icon: Calendar,
+      title: "Two-Way Calendar Sync",
+      description: "Changes sync instantly across all calendars. Reschedule once, and everyone's calendar updates automatically with timezone-accurate details."
+    },
+    {
+      icon: Shield,
+      title: "Privacy-First Design",
+      description: "We only see when you're busy or free—never your meeting details. Your calendar privacy stays intact while coordination gets effortless."
+    }
+  ];
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+  return (
+    <section className="bg-muted py-16 md:py-20 lg:py-24">
+      <div className="container mx-auto px-4 md:px-6">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center mb-16">
+          Built for Teams Who Work Across Continents
+        </h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
               <div
                 key={index}
-                className="bg-card rounded-3xl p-8 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group animate-zoom-in"
-                style={{ animationDelay: `${index * 100}ms` }}
+                className="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg hover:-translate-y-1 transition-all"
               >
-                <div className="w-14 h-14 bg-gradient-to-br from-primary to-primary/70 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <Icon className="w-7 h-7 text-primary-foreground" />
-                </div>
-                <h3 className="text-xl font-bold text-card-foreground mb-3">
+                <Icon className="w-12 h-12 text-primary mb-4" />
+                <h3 className="text-xl font-semibold mb-2">
                   {feature.title}
                 </h3>
-                <p className="text-muted-foreground leading-relaxed">
+                <p className="text-muted-foreground text-sm">
                   {feature.description}
                 </p>
               </div>
             );
           })}
-        </div>
-
-        {/* Additional emphasis */}
-        <div className="mt-16 text-center">
-          <p className="text-muted-foreground text-lg">
-            And that's just the beginning. We're constantly adding features based on what distributed teams actually need.
-          </p>
         </div>
       </div>
     </section>

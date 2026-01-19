@@ -4,7 +4,7 @@ import { createDeepAgent, createSkillsMiddleware, createSettings } from "deepage
 import { getLLM, getLLMFallbacks } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
-import { copywriterSubAgent, coderSubAgent } from "./subagents";
+import { copywriterSubAgent, buildCoderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
   toolRetryMiddleware,
@@ -102,15 +102,19 @@ const getTheme = async (
   return undefined;
 };
 
-export async function createCodingAgent(state: MinimalCodingAgentState, systemPrompt?: string) {
+export async function createCodingAgent(
+  state: MinimalCodingAgentState,
+  systemPrompt?: string,
+  existingBackend?: WebsiteFilesBackend
+) {
   if (state.isFirstMessage === undefined) {
     throw new Error(
       "isFirstMessage is required - explicitly set to true (create) or false (edit/bugfix)"
     );
   }
 
-  const backend = await getCodingAgentBackend(state);
-  const llm = await getLLM("coding", "slow", "paid");
+  const backend = existingBackend ?? await getCodingAgentBackend(state);
+  const llm = await getLLM({ skill: "coding", speed: "slow", cost: "paid" });
   const middlewares = getMiddlewares();
 
   // Build prompt state for async prompt generation
@@ -127,8 +131,11 @@ export async function createCodingAgent(state: MinimalCodingAgentState, systemPr
     promptState.theme = await getTheme(state);
   }
 
-  // Build prompt - now async
-  const finalSystemPrompt = systemPrompt || (await buildCodingPrompt(promptState));
+  // Build prompt and subagents - now async
+  const [finalSystemPrompt, coderSubAgent] = await Promise.all([
+    systemPrompt ? Promise.resolve(systemPrompt) : buildCodingPrompt(promptState),
+    buildCoderSubAgent(promptState),
+  ]);
   console.log(finalSystemPrompt);
 
   return createDeepAgent({

@@ -22,6 +22,8 @@
 class AdsAccount < ApplicationRecord
   include PlatformSettings
 
+  acts_as_tenant :account
+
   belongs_to :account
   has_many :invitations, class_name: "AdsAccountInvitation", dependent: :destroy
   has_many :campaigns

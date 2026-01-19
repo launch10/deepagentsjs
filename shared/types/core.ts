@@ -39,5 +39,5 @@ export type BaseModelType = z.infer<typeof baseModelSchema>;
 
 export type DataType<T extends BaseModelType> = Omit<T, keyof BaseModelType>;
 
-export const Statuses = ["pending", "running", "completed", "failed", "passed"] as const;
+export const Statuses = ["pending", "running", "completed", "failed", "passed", "skipped"] as const;
 export type Status = typeof Statuses[number];

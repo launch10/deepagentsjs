@@ -48,5 +48,14 @@ FactoryBot.define do
       cost_in { 1.0 }
       cost_out { 5.0 }
     end
+
+    trait :haiku3 do
+      model_key { 'haiku3' }
+      model_card { 'claude-3-5-haiku-latest' }
+      enabled { true }
+      max_usage_percent { 100 }
+      cost_in { 0.25 }
+      cost_out { 1.25 }
+    end
   end
 end
