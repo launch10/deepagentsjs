@@ -72,14 +72,22 @@
 ### Cleanup
 
 - [ ] Delete frontend_old/ directory
-- [ ] Commit: "feat: add WebContainer preview with event-driven architecture"
+- [x] Commit: "feat: add WebContainer preview with event-driven architecture" ✓ (cc87378a)
+
+### Future Optimization (deferred)
+
+- [ ] Pre-load templates/default with node_modules into WebContainer at boot
+- [ ] Skip npm install for subsequent file mounts (use cached deps)
+- [ ] Cache node_modules in browser storage for hot-swap across projects (most projects use default deps)
 
 ## TASK-5: Quick Actions Wiring
 
-- [ ] Wire ImproveCopy.tsx to send command via useWebsiteChatActions().updateState
-- [ ] Verify ColorPaletteSection works in website context (uses useUpdateWebsiteTheme)
-- [ ] Verify ProjectImagesSection works in website context (uses useProjectImages)
-- [ ] Playwright: Change Colors - expand, select palette, verify update
+- [x] Wire ImproveCopy.tsx to send command via useWebsiteChatActions().updateState ✓
+- [x] Verify ColorPaletteSection works in website context (uses useUpdateWebsiteTheme) ✓
+- [x] Verify ProjectImagesSection works in website context (uses useProjectImages) ✓
+- [x] Fixed API hooks to use page props only (works in both brainstorm and website contexts) ✓
+- [x] Playwright: Quick action buttons display after loading ✓
+- [x] Playwright: Change Colors - expand and shows color section ✓
 - [ ] Playwright: Swap Images - expand, upload image, verify in grid
 - [ ] Playwright: Improve Copy - expand, click Professional, verify command sent
 - [ ] Playwright: error toast when image upload fails

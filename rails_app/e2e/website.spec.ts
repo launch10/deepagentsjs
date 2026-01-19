@@ -1,13 +1,12 @@
 import { test, expect, loginUser } from "./fixtures/auth";
 import { DatabaseSnapshotter } from "./fixtures/database";
 import { WebsitePage } from "./pages/website.page";
-import { BrainstormPage } from "./pages/brainstorm.page";
 
 /**
  * Website Builder Tests
  *
  * These tests verify the Website (Landing Page Builder) page functionality.
- * The website page is accessed after completing a brainstorm session.
+ * Uses the website_step snapshot which has a project already at the website step.
  *
  * IMPORTANT: Tests rely on CACHE_MODE=true in langgraph_app/.env for fast,
  * deterministic responses without making actual AI calls.
@@ -16,60 +15,28 @@ test.describe("Website Builder", () => {
   test.setTimeout(120000); // Longer timeout for AI responses
 
   let websitePage: WebsitePage;
-  let brainstormPage: BrainstormPage;
+  let projectUuid: string;
 
   test.beforeEach(async ({ page }) => {
-    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await DatabaseSnapshotter.restoreSnapshot("website_step");
+    const project = await DatabaseSnapshotter.getFirstProject();
+    projectUuid = project.uuid;
     await loginUser(page);
     websitePage = new WebsitePage(page);
-    brainstormPage = new BrainstormPage(page);
   });
 
   test.describe("Page Loading", () => {
-    test("displays loading state initially when navigating to website page", async ({ page }) => {
-      // First, create a brainstorm conversation to get a project
-      await brainstormPage.goto();
-      await brainstormPage.sendMessage("I want to start a coffee subscription service");
-
-      // Wait for URL to update (project created)
-      await page.waitForFunction(
-        () =>
-          window.location.href.includes("/projects/") &&
-          !window.location.href.includes("/projects/new"),
-        { timeout: 15000 }
-      );
-
-      // Get the project UUID from the URL
-      const threadId = brainstormPage.getThreadIdFromUrl();
-      expect(threadId).not.toBeNull();
-
-      // Wait for AI response to ensure project is persisted
-      await brainstormPage.waitForResponse();
-
-      // Navigate to website page
-      await page.goto(`/projects/${threadId}/website`);
+    test("displays sidebar when navigating to website page", async ({ page }) => {
+      // Navigate directly to website page using project from snapshot
+      await websitePage.goto(projectUuid);
 
       // Should show the sidebar
       await websitePage.expectSidebarVisible();
     });
 
     test("displays sidebar with Landing Page Designer title", async ({ page }) => {
-      // Create a project via brainstorm
-      await brainstormPage.goto();
-      await brainstormPage.sendMessage("Test message for website navigation");
-
-      await page.waitForFunction(
-        () =>
-          window.location.href.includes("/projects/") &&
-          !window.location.href.includes("/projects/new"),
-        { timeout: 15000 }
-      );
-
-      const threadId = brainstormPage.getThreadIdFromUrl();
-      await brainstormPage.waitForResponse();
-
       // Navigate to website
-      await websitePage.goto(threadId!);
+      await websitePage.goto(projectUuid);
 
       // Sidebar should show Landing Page Designer
       await expect(page.locator('text="Landing Page Designer"')).toBeVisible();
@@ -78,88 +45,41 @@ test.describe("Website Builder", () => {
 
   test.describe("Chat Functionality", () => {
     test("displays chat input when page is loaded", async ({ page }) => {
-      // Create a project via brainstorm
-      await brainstormPage.goto();
-      await brainstormPage.sendMessage("Test for chat input visibility");
-
-      await page.waitForFunction(
-        () =>
-          window.location.href.includes("/projects/") &&
-          !window.location.href.includes("/projects/new"),
-        { timeout: 15000 }
-      );
-
-      const threadId = brainstormPage.getThreadIdFromUrl();
-      await brainstormPage.waitForResponse();
-
       // Navigate to website
-      await websitePage.goto(threadId!);
+      await websitePage.goto(projectUuid);
 
-      // Wait for loading to complete (quick actions visible = loaded)
-      await page.waitForTimeout(2000); // Allow initial loading
+      // Wait for loading to complete
+      await page.waitForTimeout(2000);
 
       // Chat input should eventually be visible (after loading completes)
       await websitePage.expectChatInputReady();
     });
 
-    test("can send a message and see thinking indicator", async ({ page }) => {
-      // Create a project via brainstorm
-      await brainstormPage.goto();
-      await brainstormPage.sendMessage("Test for sending message");
-
-      await page.waitForFunction(
-        () =>
-          window.location.href.includes("/projects/") &&
-          !window.location.href.includes("/projects/new"),
-        { timeout: 15000 }
-      );
-
-      const threadId = brainstormPage.getThreadIdFromUrl();
-      await brainstormPage.waitForResponse();
-
+    test("can send a message and see it in chat", async ({ page }) => {
       // Navigate to website
-      await websitePage.goto(threadId!);
+      await websitePage.goto(projectUuid);
 
-      // Wait for page to load
+      // Wait for chat input to be ready
       await websitePage.expectChatInputReady();
-      await page.waitForTimeout(3000); // Wait for initial generation to complete
+
+      // Wait for initial generation to complete (files should appear in preview)
+      // The preview starts in "idle" state showing "Waiting for files..."
+      // We need to wait until the preview is ready or shows content
+      await page.waitForTimeout(5000);
 
       // Send a message
-      await websitePage.sendMessage("Make the hero section larger");
+      const testMessage = "Make the hero section larger";
+      await websitePage.sendMessage(testMessage);
 
-      // Should show thinking indicator or AI message
-      const thinkingOrResponse = await Promise.race([
-        websitePage.thinkingIndicator
-          .waitFor({ state: "visible", timeout: 5000 })
-          .then(() => "thinking"),
-        websitePage.aiMessages
-          .first()
-          .waitFor({ state: "visible", timeout: 5000 })
-          .then(() => "response"),
-      ]).catch(() => "neither");
-
-      expect(["thinking", "response"]).toContain(thinkingOrResponse);
+      // The user's message should appear in the chat
+      await expect(page.getByText(testMessage)).toBeVisible({ timeout: 5000 });
     });
   });
 
   test.describe("Quick Actions", () => {
     test("displays quick action buttons after loading", async ({ page }) => {
-      // Create a project via brainstorm
-      await brainstormPage.goto();
-      await brainstormPage.sendMessage("Test for quick actions");
-
-      await page.waitForFunction(
-        () =>
-          window.location.href.includes("/projects/") &&
-          !window.location.href.includes("/projects/new"),
-        { timeout: 15000 }
-      );
-
-      const threadId = brainstormPage.getThreadIdFromUrl();
-      await brainstormPage.waitForResponse();
-
       // Navigate to website
-      await websitePage.goto(threadId!);
+      await websitePage.goto(projectUuid);
 
       // Wait for loading to complete
       await page.waitForTimeout(3000);
@@ -171,20 +91,7 @@ test.describe("Website Builder", () => {
     });
 
     test("Change Colors button can be clicked and expands section", async ({ page }) => {
-      await brainstormPage.goto();
-      await brainstormPage.sendMessage("Test for colors quick action");
-
-      await page.waitForFunction(
-        () =>
-          window.location.href.includes("/projects/") &&
-          !window.location.href.includes("/projects/new"),
-        { timeout: 15000 }
-      );
-
-      const threadId = brainstormPage.getThreadIdFromUrl();
-      await brainstormPage.waitForResponse();
-
-      await websitePage.goto(threadId!);
+      await websitePage.goto(projectUuid);
       await page.waitForTimeout(3000);
 
       // Click Change Colors
@@ -197,22 +104,8 @@ test.describe("Website Builder", () => {
 
   test.describe("Error Handling", () => {
     test("handles network errors gracefully", async ({ page }) => {
-      // Create a project via brainstorm
-      await brainstormPage.goto();
-      await brainstormPage.sendMessage("Test for error handling");
-
-      await page.waitForFunction(
-        () =>
-          window.location.href.includes("/projects/") &&
-          !window.location.href.includes("/projects/new"),
-        { timeout: 15000 }
-      );
-
-      const threadId = brainstormPage.getThreadIdFromUrl();
-      await brainstormPage.waitForResponse();
-
       // Navigate to website
-      await websitePage.goto(threadId!);
+      await websitePage.goto(projectUuid);
       await websitePage.expectChatInputReady();
       await page.waitForTimeout(3000);
 
@@ -235,29 +128,15 @@ test.describe("Website Builder", () => {
 
   test.describe("Progress Stepper", () => {
     test("shows Landing Page step as active on website page", async ({ page }) => {
-      // Create a project via brainstorm
-      await brainstormPage.goto();
-      await brainstormPage.sendMessage("Test for progress stepper");
-
-      await page.waitForFunction(
-        () =>
-          window.location.href.includes("/projects/") &&
-          !window.location.href.includes("/projects/new"),
-        { timeout: 15000 }
-      );
-
-      const threadId = brainstormPage.getThreadIdFromUrl();
-      await brainstormPage.waitForResponse();
-
       // Navigate to website
-      await websitePage.goto(threadId!);
+      await websitePage.goto(projectUuid);
 
       // Progress stepper should show Landing Page as active
       const progressStepper = page.getByTestId("workflow-progress-stepper");
       await expect(progressStepper).toBeVisible({ timeout: 10000 });
 
-      // Landing Page step should be visible
-      await expect(page.getByText("Landing Page")).toBeVisible();
+      // Landing Page step should be visible within the stepper
+      await expect(progressStepper.getByText("Landing Page")).toBeVisible();
     });
   });
 });

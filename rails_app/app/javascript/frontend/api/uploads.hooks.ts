@@ -13,7 +13,6 @@ import {
   type CreateUploadResponse,
 } from "@rails_api_base";
 import { useWebsite } from "./websites.hooks";
-import { useBrainstormChatWebsiteId } from "@components/brainstorm/hooks/useBrainstormChat";
 
 // Re-export for backwards compatibility
 export { UploadsAPIService as UploadService } from "@rails_api_base";
@@ -39,15 +38,12 @@ export function useUploadService() {
 }
 
 /**
- * Hook to get website ID - uses chat state (primary) with page props fallback.
+ * Hook to get website ID from page props.
+ * Works on both Brainstorm and Website pages.
  */
 function useWebsiteId(): number | null {
-  const chatWebsiteId = useBrainstormChatWebsiteId();
   const { data: website } = useWebsite();
-  const propsWebsiteId = website?.id ?? null;
-
-  const result = chatWebsiteId ?? propsWebsiteId;
-  return result;
+  return website?.id ?? null;
 }
 
 // ============================================================================
