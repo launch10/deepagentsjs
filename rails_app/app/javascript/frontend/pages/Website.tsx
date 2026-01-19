@@ -1,6 +1,6 @@
 import WebsiteLoader from "@components/website/WebsiteLoader";
 import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
-import PageOverview from "@components/website/page-overview/PageOverview";
+import { WebsitePreview } from "@components/website/preview";
 import { Chat } from "@components/shared/chat/Chat";
 import { useEffect, useRef } from "react";
 import { usePage } from "@inertiajs/react";
@@ -63,15 +63,13 @@ export default function Website() {
         <div>
           <WebsiteSidebar isLoading={isLoading} currentStep={0} />
         </div>
-        <div className="max-w-[948px]">
+        <div className="max-w-[948px] h-[calc(100vh-120px)]">
           {isLoading ? (
-            <div className="border-[#D3D2D0] border rounded-2xl bg-white flex items-center justify-center min-h-screen">
+            <div className="border-[#D3D2D0] border rounded-2xl bg-white flex items-center justify-center h-full">
               <WebsiteLoader steps={websiteLoaderSteps} currentStep={0} />
             </div>
           ) : (
-            <div className="border-[#D3D2D0] border rounded-2xl bg-white flex flex-col px-10 py-7">
-              <PageOverview />
-            </div>
+            <WebsitePreview />
           )}
         </div>
       </main>
