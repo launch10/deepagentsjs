@@ -205,7 +205,6 @@ export const analyticsTaskRunner: TaskRunner = {
       const result = await instrumentAnalytics(state, config);
       console.log(`[Analytics] Task completed with result: ${result}`);
 
-      debugger;
       return {
         tasks: [
           {
@@ -219,7 +218,6 @@ export const analyticsTaskRunner: TaskRunner = {
         error instanceof Error ? error.message : String(error);
       console.error(`[Analytics] Task failed:`, errorMessage);
 
-      debugger;
       return {
         tasks: [
           {
