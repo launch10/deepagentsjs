@@ -1,15 +1,11 @@
-import { Spinner } from "@components/ui/spinner";
-
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import PageOverview from "@components/website/page-overview/PageOverview";
 
 const meta = {
-  title: "UI/Spinner/Default",
-  component: Spinner,
+  title: "Landing Page Builder/Page Overview",
+  component: PageOverview,
   tags: ["autodocs"],
-  parameters: {
-    layout: "centered",
-  },
-} satisfies Meta<typeof Spinner>;
+} satisfies Meta<typeof PageOverview>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
