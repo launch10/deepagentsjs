@@ -4,6 +4,7 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from "@components/ui/input-group";
+import { useChatContext } from "@components/shared/chat/Chat";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowUp, FilePlus } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
@@ -13,11 +14,9 @@ const messageSchema = z.object({ message: z.string().min(1, "Message is required
 
 type WebsiteChatFormType = z.infer<typeof messageSchema>;
 
-export interface WebsiteChatInputProps {
-  onSubmit?: (message: string) => void;
-}
+export default function WebsiteChatInput() {
+  const { sendMessage, isStreaming } = useChatContext();
 
-export default function WebsiteChatInput({ onSubmit }: WebsiteChatInputProps) {
   const {
     control,
     handleSubmit,
@@ -30,7 +29,7 @@ export default function WebsiteChatInput({ onSubmit }: WebsiteChatInputProps) {
   });
 
   const handleFormSubmit = handleSubmit((data) => {
-    onSubmit?.(data.message);
+    sendMessage(data.message);
     reset();
   });
 
@@ -46,11 +45,12 @@ export default function WebsiteChatInput({ onSubmit }: WebsiteChatInputProps) {
               className="min-h-[40px] text-xs"
               {...field}
               aria-invalid={!!fieldState.error}
+              disabled={isStreaming}
             />
           )}
         />
         <InputGroupAddon align="block-end" className="flex justify-between">
-          <InputGroupButton size="icon-sm">
+          <InputGroupButton size="icon-sm" disabled={isStreaming}>
             <FilePlus className="size-4" />
           </InputGroupButton>
           <InputGroupButton
@@ -58,7 +58,7 @@ export default function WebsiteChatInput({ onSubmit }: WebsiteChatInputProps) {
             variant="destructive"
             className="rounded-full bg-secondary-500 size-6"
             type="submit"
-            disabled={!isValid}
+            disabled={!isValid || isStreaming}
           >
             <ArrowUp className="size-4" />
           </InputGroupButton>

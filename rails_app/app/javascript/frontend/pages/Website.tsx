@@ -1,36 +1,80 @@
 import WebsiteLoader from "@components/website/WebsiteLoader";
 import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import PageOverview from "@components/website/page-overview/PageOverview";
-import { useEffect, useState } from "react";
+import { Chat } from "@components/shared/chat/Chat";
+import { useEffect, useRef } from "react";
+import { usePage } from "@inertiajs/react";
+import {
+  useWebsiteChat,
+  useWebsiteChatState,
+  useWebsiteChatIsLoadingHistory,
+  useWebsiteChatActions,
+  useWebsiteSendMessage,
+} from "@hooks/website";
+import type { InertiaProps } from "@shared";
+
+type WebsitePageProps =
+  InertiaProps.paths["/projects/{uuid}/website"]["get"]["responses"]["200"]["content"]["application/json"];
 
 const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
 
-export default function Website() {
-  const [isLoading, setIsLoading] = useState(true);
+/**
+ * Auto-initialize the website generation when the page loads.
+ * Sends command: "create" to langgraph on first load.
+ */
+function useWebsiteInit() {
+  const { website } = usePage<WebsitePageProps>().props;
+  const { updateState } = useWebsiteChatActions();
+  const status = useWebsiteChatState("status");
+  const hasInitialized = useRef(false);
 
-  // TODO: Remove once we have a loading state
   useEffect(() => {
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-  }, []);
+    // Only initialize once, and only if status is pending (no generation started)
+    if (hasInitialized.current) return;
+    if (status !== "pending" && status !== undefined) return;
+    if (!website?.id) return;
+
+    hasInitialized.current = true;
+    updateState({
+      command: "create",
+      websiteId: website.id,
+    });
+  }, [status, website?.id, updateState]);
+}
+
+export default function Website() {
+  const chat = useWebsiteChat();
+  const { sendMessage } = useWebsiteSendMessage();
+  const status = useWebsiteChatState("status");
+  const isLoadingHistory = useWebsiteChatIsLoadingHistory();
+
+  // Auto-init website generation on first load
+  useWebsiteInit();
+
+  // Show loading when:
+  // 1. Loading chat history from server
+  // 2. Status is pending (waiting to start)
+  // 3. Status is running (generation in progress)
+  const isLoading = isLoadingHistory || status === "pending" || status === "running";
 
   return (
-    <main className="mx-auto container max-w-7xl grid grid-cols-[288px_1fr] gap-8 px-8 py-2">
-      <div>
-        <WebsiteSidebar isLoading={isLoading} currentStep={0} />
-      </div>
-      <div className="max-w-[948px]">
-        {isLoading ? (
-          <div className="border-[#D3D2D0] border rounded-2xl bg-white flex items-center justify-center min-h-screen">
-            <WebsiteLoader steps={websiteLoaderSteps} currentStep={0} />
-          </div>
-        ) : (
-          <div className="border-[#D3D2D0] border rounded-2xl bg-white flex flex-col px-10 py-7">
-            <PageOverview />
-          </div>
-        )}
-      </div>
-    </main>
+    <Chat.Root chat={chat} onSubmit={sendMessage}>
+      <main className="mx-auto container max-w-7xl grid grid-cols-[288px_1fr] gap-8 px-8 py-2">
+        <div>
+          <WebsiteSidebar isLoading={isLoading} currentStep={0} />
+        </div>
+        <div className="max-w-[948px]">
+          {isLoading ? (
+            <div className="border-[#D3D2D0] border rounded-2xl bg-white flex items-center justify-center min-h-screen">
+              <WebsiteLoader steps={websiteLoaderSteps} currentStep={0} />
+            </div>
+          ) : (
+            <div className="border-[#D3D2D0] border rounded-2xl bg-white flex flex-col px-10 py-7">
+              <PageOverview />
+            </div>
+          )}
+        </div>
+      </main>
+    </Chat.Root>
   );
 }
