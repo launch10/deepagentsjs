@@ -3,8 +3,8 @@ import { CardHeader, CardTitle, CardDescription } from "@components/ui/card";
 import { Separator } from "@components/ui/separator";
 import { AnimatePresence, motion } from "framer-motion";
 import QuickActionButton from "./QuickActionButton";
-import ColorPalettes from "@components/quick-actions/color-palettes/ColorPalettes";
-import ImagesManager from "@components/quick-actions/images-manager/ImagesManager";
+import { ColorPaletteSection } from "@components/brainstorm/conversation-page/brand-panel/ColorPaletteSection";
+import { ProjectImagesSection } from "@components/brainstorm/conversation-page/brand-panel/ProjectImagesSection";
 import ImproveCopy from "@components/quick-actions/improve-copy/ImproveCopy";
 import { DocumentTextIcon, PhotoIcon, SwatchIcon } from "@heroicons/react/24/solid";
 
@@ -92,9 +92,9 @@ export default function QuickActions() {
   const renderSettingsContent = () => {
     switch (activeAction) {
       case "colors":
-        return <ColorPalettes />;
+        return <ColorPaletteSection />;
       case "images":
-        return <ImagesManager />;
+        return <ProjectImagesSection />;
       case "copy":
         return <ImproveCopy />;
       default:
