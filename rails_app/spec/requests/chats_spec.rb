@@ -142,7 +142,9 @@ RSpec.describe "Chats API", type: :request do
               thread_id: SecureRandom.uuid,
               chat_type: "website",
               project_id: project1.id,
-              name: "My Website Chat"
+              name: "My Website Chat",
+              contextable_type: "Website",
+              contextable_id: website1.id
             }
           }
         end
@@ -167,12 +169,15 @@ RSpec.describe "Chats API", type: :request do
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let!(:deploy1) { create(:deploy, project: project1) }
         let(:chat_params) do
           {
             chat: {
               thread_id: SecureRandom.uuid,
               chat_type: "deploy",
-              project_id: project1.id
+              project_id: project1.id,
+              contextable_type: "Deploy",
+              contextable_id: deploy1.id
             }
           }
         end
@@ -204,7 +209,9 @@ RSpec.describe "Chats API", type: :request do
             chat: {
               thread_id: existing_thread_id,
               chat_type: "website",
-              project_id: project1.id
+              project_id: project1.id,
+              contextable_type: "Website",
+              contextable_id: website1.id
             }
           }
         end
@@ -234,7 +241,9 @@ RSpec.describe "Chats API", type: :request do
             chat: {
               thread_id: other_thread_id,
               chat_type: "website",
-              project_id: project1.id
+              project_id: project1.id,
+              contextable_type: "Website",
+              contextable_id: website1.id
             }
           }
         end
@@ -255,7 +264,9 @@ RSpec.describe "Chats API", type: :request do
             chat: {
               thread_id: SecureRandom.uuid,
               chat_type: "website",
-              project_id: project2.id  # belongs to user2
+              project_id: project2.id,  # belongs to user2
+              contextable_type: "Website",
+              contextable_id: website1.id  # doesn't matter - project check fails first
             }
           }
         end

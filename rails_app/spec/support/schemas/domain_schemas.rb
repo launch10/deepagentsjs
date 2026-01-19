@@ -63,5 +63,49 @@ module APISchemas
         required: ['domain']
       }
     end
+
+    def self.search_params_schema
+      {
+        type: :object,
+        properties: {
+          candidates: {
+            type: :array,
+            items: {type: :string},
+            description: 'Array of domain names to check availability (max 10)'
+          }
+        },
+        required: ['candidates']
+      }
+    end
+
+    def self.search_response
+      {
+        type: :object,
+        properties: {
+          results: {
+            type: :array,
+            items: {
+              type: :object,
+              properties: {
+                domain: {type: :string, description: 'Domain name'},
+                status: {type: :string, enum: ['existing', 'unavailable', 'available'], description: 'Availability status'},
+                existing_id: {type: :integer, nullable: true, description: 'ID of existing domain if owned by current account'}
+              },
+              required: ['domain', 'status']
+            }
+          },
+          platform_subdomain_credits: {
+            type: :object,
+            properties: {
+              limit: {type: :integer, description: 'Maximum platform subdomains allowed'},
+              used: {type: :integer, description: 'Number of platform subdomains used'},
+              remaining: {type: :integer, description: 'Remaining platform subdomains'}
+            },
+            required: ['limit', 'used', 'remaining']
+          }
+        },
+        required: ['results', 'platform_subdomain_credits']
+      }
+    end
   end
 end
