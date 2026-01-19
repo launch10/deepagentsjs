@@ -1,339 +1,162 @@
 import { Website } from "@types";
+import { getSchedulingToolFiles } from "./readExampleFiles";
 
 const now = new Date().toISOString();
 
-// Minor edit version - changed headline and subtitle
-export const schedulingToolMinorEditFiles: Website.FileMap = {
-  "/index.html": {
-    content: `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScheduleFlow - Your Calendar, Your Rules</title>
-    <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-    <nav class="navbar">
-        <div class="container">
-            <div class="logo">ScheduleFlow</div>
-            <div class="nav-links">
-                <a href="#features">Features</a>
-                <a href="#pricing">Pricing</a>
-                <a href="#" class="btn btn-primary">Get Started</a>
-            </div>
-        </div>
-    </nav>
+/**
+ * Minor edit version - changed headline and subtitle in Hero.tsx
+ * Re-uses all other files from the base scheduling tool.
+ */
+export function getSchedulingToolMinorEditFiles(): Website.FileMap {
+  return {
+    ...getSchedulingToolFiles(),
+  "/src/components/Hero.tsx": {
+    content: `import React, { useState } from 'react';
+import { L10 } from '@/lib/tracking';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
 
-    <header class="hero">
-        <div class="container">
-            <h1>Your Calendar, Your Rules</h1>
-            <p class="hero-subtitle">Take control of your schedule. No more double-bookings, no more missed meetings.</p>
-            <div class="hero-cta">
-                <a href="#" class="btn btn-primary btn-lg">Start Free Trial</a>
-                <a href="#" class="btn btn-secondary btn-lg">Watch Demo</a>
-            </div>
-        </div>
-    </header>
+export function Hero() {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
 
-    <section id="features" class="features">
-        <div class="container">
-            <h2>Everything you need to schedule smarter</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">📅</div>
-                    <h3>Calendar Sync</h3>
-                    <p>Automatically syncs with Google Calendar, Outlook, and iCal to show your real availability.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔗</div>
-                    <h3>Custom Booking Links</h3>
-                    <p>Share your personalized link and let clients pick a time that works.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔔</div>
-                    <h3>Smart Reminders</h3>
-                    <p>Automated email and SMS reminders reduce no-shows by 90%.</p>
-                </div>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email || !email.includes('@')) {
+      setErrorMessage('Please enter a valid email address');
+      setStatus('error');
+      return;
+    }
+
+    setStatus('loading');
+    setErrorMessage('');
+
+    try {
+      await L10.createLead(email);
+      setStatus('success');
+      setEmail('');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+    }
+  };
+
+  return (
+    <section
+      id="signup"
+      className="relative bg-primary text-primary-foreground overflow-hidden py-20 md:py-24 lg:py-32"
+    >
+      {/* Atmospheric gradient orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/20 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/20 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-primary-foreground/5 rounded-full blur-2xl"></div>
+      </div>
+
+      <div className="container mx-auto px-4 md:px-6 relative z-10">
+        <div className="grid lg:grid-cols-5 gap-12 lg:gap-16 items-center">
+          {/* Left column - Content (60%) */}
+          <div className="lg:col-span-3 space-y-8">
+            <div className="space-y-6">
+              <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight tracking-tight">
+                Your Calendar, Your Rules. Finally.
+              </h1>
+              <p className="text-lg md:text-xl text-primary-foreground/90 max-w-2xl leading-relaxed">
+                Take control of your schedule and never miss another meeting. Our intelligent scheduling works across all time zones automatically.
+              </p>
             </div>
+
+            {/* Email capture form */}
+            {status === 'success' ? (
+              <div className="bg-secondary/20 backdrop-blur-sm border border-secondary-foreground/20 rounded-2xl p-6 max-w-md">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="w-6 h-6 text-secondary flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-lg mb-1">You're on the list!</h3>
+                    <p className="text-primary-foreground/80 text-sm">
+                      We'll send you early access details soon. Get ready to reclaim your time.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={status === 'loading'}
+                    className="flex-1 h-12 bg-background/95 backdrop-blur-sm text-foreground border-primary-foreground/20 placeholder:text-muted-foreground focus:border-secondary focus:ring-secondary"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={status === 'loading'}
+                    className="h-12 px-8 bg-secondary text-secondary-foreground hover:bg-secondary/90 hover:scale-105 transition-all duration-200 font-semibold group"
+                  >
+                    {status === 'loading' ? (
+                      'Joining...'
+                    ) : (
+                      <>
+                        Get Started Free
+                        <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {status === 'error' && errorMessage && (
+                  <p className="text-sm text-red-300 bg-red-500/10 border border-red-400/20 rounded-lg px-4 py-2">
+                    {errorMessage}
+                  </p>
+                )}
+                <p className="text-xs text-primary-foreground/60">
+                  No credit card required. Free forever for small teams.
+                </p>
+              </form>
+            )}
+          </div>
+
+          {/* Right column - Hero image (40%) */}
+          <div className="lg:col-span-2">
+            <div className="relative">
+              {/* Glow effect behind image */}
+              <div className="absolute inset-0 bg-secondary/30 rounded-3xl blur-2xl transform scale-95"></div>
+
+              {/* Hero image with floating animation */}
+              <img
+                src="https://dev-uploads.launch10.ai/uploads/024dfc6c-335d-4f11-883b-f8e241f91744.png"
+                alt="Scheduling tool interface showing timezone coordination"
+                className="relative rounded-2xl shadow-2xl w-full h-auto animate-float"
+              />
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Custom floating animation */}
+      <style>{\`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-20px);
+          }
+        }
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+      \`}</style>
     </section>
-
-    <section id="pricing" class="pricing">
-        <div class="container">
-            <h2>Simple, transparent pricing</h2>
-            <div class="pricing-grid">
-                <div class="pricing-card">
-                    <h3>Starter</h3>
-                    <div class="price">$0<span>/month</span></div>
-                    <ul>
-                        <li>1 calendar connection</li>
-                        <li>Unlimited bookings</li>
-                        <li>Email reminders</li>
-                    </ul>
-                    <a href="#" class="btn btn-secondary">Get Started</a>
-                </div>
-                <div class="pricing-card featured">
-                    <h3>Pro</h3>
-                    <div class="price">$12<span>/month</span></div>
-                    <ul>
-                        <li>Unlimited calendars</li>
-                        <li>SMS reminders</li>
-                        <li>Team scheduling</li>
-                        <li>Custom branding</li>
-                    </ul>
-                    <a href="#" class="btn btn-primary">Start Free Trial</a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2024 ScheduleFlow. All rights reserved.</p>
-        </div>
-    </footer>
-</body>
-</html>`,
+  );
+}
+`,
     created_at: now,
     modified_at: now,
   },
-  "/styles.css": {
-    content: `* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  };
 }
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-    line-height: 1.6;
-    color: #333;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-}
-
-/* Navbar */
-.navbar {
-    background: white;
-    padding: 1rem 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    position: fixed;
-    width: 100%;
-    top: 0;
-    z-index: 1000;
-}
-
-.navbar .container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #6366f1;
-}
-
-.nav-links {
-    display: flex;
-    gap: 2rem;
-    align-items: center;
-}
-
-.nav-links a {
-    text-decoration: none;
-    color: #666;
-    transition: color 0.3s;
-}
-
-.nav-links a:hover {
-    color: #6366f1;
-}
-
-/* Buttons */
-.btn {
-    display: inline-block;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.3s;
-    cursor: pointer;
-    border: none;
-}
-
-.btn-primary {
-    background: #6366f1;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #4f46e5;
-}
-
-.btn-secondary {
-    background: #f3f4f6;
-    color: #333;
-}
-
-.btn-secondary:hover {
-    background: #e5e7eb;
-}
-
-.btn-lg {
-    padding: 1rem 2rem;
-    font-size: 1.1rem;
-}
-
-/* Hero */
-.hero {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    color: white;
-    padding: 8rem 0 6rem;
-    text-align: center;
-    margin-top: 60px;
-}
-
-.hero h1 {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-}
-
-.hero-subtitle {
-    font-size: 1.25rem;
-    opacity: 0.9;
-    max-width: 600px;
-    margin: 0 auto 2rem;
-}
-
-.hero-cta {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-}
-
-.hero-cta .btn-secondary {
-    background: rgba(255,255,255,0.2);
-    color: white;
-}
-
-.hero-cta .btn-secondary:hover {
-    background: rgba(255,255,255,0.3);
-}
-
-/* Features */
-.features {
-    padding: 5rem 0;
-    background: #f9fafb;
-}
-
-.features h2 {
-    text-align: center;
-    font-size: 2rem;
-    margin-bottom: 3rem;
-}
-
-.features-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
-}
-
-.feature-card {
-    background: white;
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    text-align: center;
-}
-
-.feature-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-}
-
-.feature-card h3 {
-    margin-bottom: 0.5rem;
-    color: #333;
-}
-
-.feature-card p {
-    color: #666;
-}
-
-/* Pricing */
-.pricing {
-    padding: 5rem 0;
-}
-
-.pricing h2 {
-    text-align: center;
-    font-size: 2rem;
-    margin-bottom: 3rem;
-}
-
-.pricing-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 2rem;
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.pricing-card {
-    background: white;
-    padding: 2rem;
-    border-radius: 12px;
-    border: 2px solid #e5e7eb;
-    text-align: center;
-}
-
-.pricing-card.featured {
-    border-color: #6366f1;
-    transform: scale(1.05);
-}
-
-.pricing-card h3 {
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-}
-
-.price {
-    font-size: 3rem;
-    font-weight: bold;
-    color: #6366f1;
-    margin-bottom: 1.5rem;
-}
-
-.price span {
-    font-size: 1rem;
-    color: #666;
-}
-
-.pricing-card ul {
-    list-style: none;
-    margin-bottom: 2rem;
-}
-
-.pricing-card li {
-    padding: 0.5rem 0;
-    color: #666;
-}
-
-/* Footer */
-.footer {
-    background: #1f2937;
-    color: #9ca3af;
-    padding: 2rem 0;
-    text-align: center;
-}`,
-    created_at: now,
-    modified_at: now,
-  },
-};

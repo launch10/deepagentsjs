@@ -10,6 +10,7 @@ import {
   useWebsiteChatIsLoadingHistory,
   useWebsiteChatActions,
   useWebsiteSendMessage,
+  useWebsiteChatIsStreaming,
 } from "@hooks/website";
 import type { InertiaProps } from "@shared";
 
@@ -29,13 +30,14 @@ function useWebsiteInit() {
   const { website, project } = usePage<WebsitePageProps>().props;
   const projectId = project?.id!;
   const { updateState } = useWebsiteChatActions();
-  const status = useWebsiteChatState("status");
-  const hasInitialized = useRef(false);
+  const isStreaming = useWebsiteChatIsStreaming();
+  const chatId = useWebsiteChatState("chatId");
+  const hasInitialized = useRef(!!chatId);
 
   const maybeInit = useEffectEvent(() => {
     // Only initialize once, and only if status is pending (no generation started)
     if (hasInitialized.current) return;
-    if (status !== "pending" && status !== undefined) return;
+    if (isStreaming) return;
     if (!website?.id) return;
 
     hasInitialized.current = true;
@@ -48,7 +50,7 @@ function useWebsiteInit() {
 
   useEffect(() => {
     maybeInit();
-  }, [status, website?.id, projectId]);
+  }, [website?.id, projectId]);
 }
 
 export default function Website() {
@@ -56,15 +58,15 @@ export default function Website() {
   const { sendMessage } = useWebsiteSendMessage();
   const status = useWebsiteChatState("status");
   const isLoadingHistory = useWebsiteChatIsLoadingHistory();
+  const isStreaming = useWebsiteChatIsStreaming();
 
   // Auto-init website generation on first load
   useWebsiteInit();
 
   // Show loading when:
   // 1. Loading chat history from server
-  // 2. Status is pending (waiting to start)
-  // 3. Status is running (generation in progress)
-  const isLoading = isLoadingHistory || status === "pending" || status === "running";
+  // 2. Sending message
+  const isLoading = isLoadingHistory || isStreaming;
 
   return (
     <Chat.Root chat={chat} onSubmit={sendMessage}>

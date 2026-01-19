@@ -2,11 +2,11 @@ import { type WebsiteGraphState } from "@annotation";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { AIMessage } from "@langchain/core/messages";
 import {
-  schedulingToolFiles,
-  schedulingToolMinorEditFiles,
-  schedulingToolProfessionalFiles,
-  schedulingToolFriendlyFiles,
-  schedulingToolShorterFiles,
+  getSchedulingToolFiles,
+  getSchedulingToolMinorEditFiles,
+  getSchedulingToolProfessionalFiles,
+  getSchedulingToolFriendlyFiles,
+  getSchedulingToolShorterFiles,
 } from "@cache";
 import type { Website } from "@types";
 
@@ -22,25 +22,25 @@ function getImproveCopyResponse(style: Website.ImproveCopyStyle | undefined): {
   switch (style) {
     case "professional":
       return {
-        files: schedulingToolProfessionalFiles,
+        files: getSchedulingToolProfessionalFiles(),
         message:
           "I've updated the copy to be more professional with formal language and business-focused messaging.",
       };
     case "friendly":
       return {
-        files: schedulingToolFriendlyFiles,
+        files: getSchedulingToolFriendlyFiles(),
         message:
           "I've made the copy more friendly and approachable with casual language and personality.",
       };
     case "shorter":
       return {
-        files: schedulingToolShorterFiles,
+        files: getSchedulingToolShorterFiles(),
         message: "I've made the copy shorter and more concise - straight to the point.",
       };
     default:
       // Default to professional if no style specified
       return {
-        files: schedulingToolProfessionalFiles,
+        files: getSchedulingToolProfessionalFiles(),
         message: "I've improved the copy to be more professional and polished.",
       };
   }
@@ -65,7 +65,7 @@ export const cacheModeNode = async (
   let aiMessageContent: string;
 
   if (isCreateCommand) {
-    files = schedulingToolFiles;
+    files = getSchedulingToolFiles();
     aiMessageContent =
       "I've created a scheduling tool landing page for you with a hero section, features, and pricing.";
   } else if (isImproveCopyCommand) {
@@ -73,7 +73,7 @@ export const cacheModeNode = async (
     files = response.files;
     aiMessageContent = response.message;
   } else {
-    files = schedulingToolMinorEditFiles;
+    files = getSchedulingToolMinorEditFiles();
     aiMessageContent =
       "I've updated the headline and subtitle on your landing page to be more compelling.";
   }
