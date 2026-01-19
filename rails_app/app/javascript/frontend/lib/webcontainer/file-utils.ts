@@ -58,6 +58,7 @@ export function convertFileMapToFileSystemTree(fileMap: Website.FileMap): FileSy
 
 /**
  * Creates a minimal package.json for running a static HTML site.
+ * Only used as fallback when files don't include their own package.json.
  */
 export function createStaticSitePackageJson(): FileSystemTree {
   return {
@@ -68,7 +69,7 @@ export function createStaticSitePackageJson(): FileSystemTree {
             name: "landing-page",
             version: "1.0.0",
             scripts: {
-              dev: "npx serve -l 3000 .",
+              dev: "npx -y serve -l 3000 .",
             },
             dependencies: {},
           },
@@ -78,6 +79,13 @@ export function createStaticSitePackageJson(): FileSystemTree {
       },
     },
   };
+}
+
+/**
+ * Checks if a FileMap contains a package.json file.
+ */
+export function hasPackageJson(fileMap: Website.FileMap): boolean {
+  return "/package.json" in fileMap || "package.json" in fileMap;
 }
 
 /**

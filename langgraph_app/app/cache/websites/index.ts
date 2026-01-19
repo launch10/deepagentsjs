@@ -1,4 +1,4 @@
-export { schedulingToolFiles } from "./schedulingTool";
+export { schedulingToolFiles } from "./schedulingToolFiles";
 export { schedulingToolMinorEditFiles } from "./schedulingToolMinorEdit";
 export {
   schedulingToolProfessionalFiles,

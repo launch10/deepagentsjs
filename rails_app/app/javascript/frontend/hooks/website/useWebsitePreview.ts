@@ -1,14 +1,38 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { WebContainer } from "@webcontainer/api";
+import type { WebContainer, WebContainerProcess } from "@webcontainer/api";
 import {
   webcontainer,
   convertFileMapToFileSystemTree,
   createStaticSitePackageJson,
   mergeFileSystemTrees,
+  hasPackageJson,
   type WebContainerStatus,
 } from "@lib/webcontainer";
 import { useWebsiteChatState } from "./useWebsiteChat";
 import type { Website } from "@shared";
+
+const DEBUG = true; // Enable console logging for WebContainer output
+
+/**
+ * Pipes process output to console for debugging
+ */
+function pipeToConsole(process: WebContainerProcess, prefix: string) {
+  if (!DEBUG) return;
+
+  process.output.pipeTo(
+    new WritableStream({
+      write(chunk) {
+        // Split by newlines and log each line with prefix
+        const lines = chunk.split("\n");
+        for (const line of lines) {
+          if (line.trim()) {
+            console.log(`[WebContainer:${prefix}]`, line);
+          }
+        }
+      },
+    })
+  );
+}
 
 interface UseWebsitePreviewReturn {
   previewUrl: string | null;
@@ -63,20 +87,47 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
 
         // Convert files to FileSystemTree and mount
         setStatus("mounting");
-        const fileTree = convertFileMapToFileSystemTree(files as Website.FileMap);
-        const packageJson = createStaticSitePackageJson();
-        const mergedTree = mergeFileSystemTrees(fileTree, packageJson);
+        const fileMapTyped = files as Website.FileMap;
+        if (DEBUG) {
+          console.log("[WebContainer] Converting files to FileSystemTree...");
+          console.log("[WebContainer] File count:", Object.keys(fileMapTyped).length);
+          console.log("[WebContainer] Has package.json:", hasPackageJson(fileMapTyped));
+        }
+        const fileTree = convertFileMapToFileSystemTree(fileMapTyped);
+
+        // Only add fallback package.json if files don't include one
+        let mergedTree = fileTree;
+        if (!hasPackageJson(fileMapTyped)) {
+          console.log("[WebContainer] No package.json found, adding static site fallback");
+          const packageJson = createStaticSitePackageJson();
+          mergedTree = mergeFileSystemTrees(fileTree, packageJson);
+        } else {
+          console.log("[WebContainer] Using package.json from files (Vite/React project)");
+        }
+
+        if (DEBUG) {
+          console.log("[WebContainer] Final tree root keys:", Object.keys(mergedTree));
+        }
         await wc.mount(mergedTree);
+        console.log("[WebContainer] Files mounted successfully");
         mountedFilesRef.current = filesKey;
 
         // Only start dev server once
         if (!devServerStartedRef.current) {
           devServerStartedRef.current = true;
 
+          // Log mounted files for debugging
+          if (DEBUG) {
+            console.log("[WebContainer] Mounted files:", Object.keys(files as Website.FileMap));
+          }
+
           // Install dependencies
           setStatus("installing");
+          console.log("[WebContainer] Running npm install...");
           const installProcess = await wc.spawn("npm", ["install"]);
+          pipeToConsole(installProcess, "npm-install");
           const installExitCode = await installProcess.exit;
+          console.log("[WebContainer] npm install exit code:", installExitCode);
 
           if (installExitCode !== 0) {
             throw new Error(`npm install failed with exit code ${installExitCode}`);
@@ -84,10 +135,13 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
 
           // Start dev server
           setStatus("starting");
-          await wc.spawn("npm", ["run", "dev"]);
+          console.log("[WebContainer] Running npm run dev...");
+          const devProcess = await wc.spawn("npm", ["run", "dev"]);
+          pipeToConsole(devProcess, "dev-server");
 
           // Listen for port events
-          wc.on("port", (_port, type, url) => {
+          wc.on("port", (port, type, url) => {
+            console.log(`[WebContainer] Port event: port=${port}, type=${type}, url=${url}`);
             if (type === "open") {
               setPreviewUrl(url);
               setStatus("ready");

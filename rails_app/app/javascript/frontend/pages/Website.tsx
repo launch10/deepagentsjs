@@ -2,7 +2,7 @@ import WebsiteLoader from "@components/website/WebsiteLoader";
 import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
 import { Chat } from "@components/shared/chat/Chat";
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { usePage } from "@inertiajs/react";
 import {
   useWebsiteChat,
@@ -21,6 +21,9 @@ const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
 /**
  * Auto-initialize the website generation when the page loads.
  * Sends command: "create" to langgraph on first load.
+ *
+ * Uses useEffectEvent pattern from useStageInit to avoid
+ * updateState reference changes causing infinite re-renders.
  */
 function useWebsiteInit() {
   const { website, project } = usePage<WebsitePageProps>().props;
@@ -29,7 +32,7 @@ function useWebsiteInit() {
   const status = useWebsiteChatState("status");
   const hasInitialized = useRef(false);
 
-  useEffect(() => {
+  const maybeInit = useEffectEvent(() => {
     // Only initialize once, and only if status is pending (no generation started)
     if (hasInitialized.current) return;
     if (status !== "pending" && status !== undefined) return;
@@ -41,7 +44,11 @@ function useWebsiteInit() {
       websiteId: website.id,
       projectId,
     });
-  }, [status, website?.id, projectId, updateState]);
+  });
+
+  useEffect(() => {
+    maybeInit();
+  }, [status, website?.id, projectId]);
 }
 
 export default function Website() {
