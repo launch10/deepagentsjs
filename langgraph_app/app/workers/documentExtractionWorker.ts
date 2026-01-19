@@ -59,7 +59,7 @@ async function extractQAFromChunk(
   schemaPrompt: string,
   metadata?: Record<string, unknown>
 ): Promise<QAPair[]> {
-  const llm = getLLM("writing", "fast");
+  const llm = await getLLM({ skill: "writing", speed: "fast" });
 
   const prompt = `${QA_EXTRACTION_PROMPT}
 

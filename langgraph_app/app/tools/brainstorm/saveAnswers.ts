@@ -58,8 +58,9 @@ export const summarizeMessages = async (
 ): Promise<Partial<BrainstormGraphState>> => {
   const messageTagger = new MessageTagger(messages);
   const messagesToSave = messageTagger.messagesToSave();
-
-  const topics = Brainstorm.getAllTopics();
+  const topics = Brainstorm.getAllTopics().filter((t) =>
+    Brainstorm.ConversationalTopics.includes(t.name as Brainstorm.ConversationalTopicName)
+  );
 
   // This should maybe be an error?
   if (messagesToSave.length === 0) {
@@ -76,17 +77,25 @@ export const summarizeMessages = async (
     </available_topics>
 
     <task>
-      Read the recent chat history, and summarize their answers,
-      preserving as much information as possible. This will be used to generate 
-      persuasive marketing copy, so be sure to capture all the details.
+      Read the recent chat history, and summarize ONLY the topics that the user
+      has EXPLICITLY and DIRECTLY answered in their messages. Preserve as much
+      information as possible - this will be used to generate persuasive marketing copy.
 
-      If the user has answered MULTIPLE topics well, return an array of objects with the following shape:
+      CRITICAL RULES:
+      1. Only extract a topic if the user has DIRECTLY provided information about it
+      2. Do NOT infer or extrapolate topics from vague or tangential mentions
+      3. Do NOT extract a topic just because it was mentioned in an AI question
+      4. The user must have given a substantive answer about the topic
+      5. If uncertain whether the user answered a topic, do NOT include it
+      6. But be generous with a user's response - if they have made a valid attempt to answer, save it.
+
+      For each topic the user answered well, return an object with:
       {
           topic: string,
           summary: string,
       }
     </task>
-    
+
     ${await chatHistoryPrompt({ messages: messagesToSave })}
 
     <output>
@@ -95,6 +104,9 @@ export const summarizeMessages = async (
           topic: string,
           summary: string,
       }
+
+      Only include topics where the user gave a clear, substantive answer.
+      When in doubt, leave it out - it's better to ask again than to hallucinate an answer.
     </output>
   `;
   const outputSchema = z.object({
@@ -105,7 +117,7 @@ export const summarizeMessages = async (
       })
     ),
   });
-  const structured = await getLLM().withStructuredOutput(outputSchema).invoke(prompt);
+  const structured = await (await getLLM({})).withStructuredOutput(outputSchema).invoke(prompt);
 
   type Output = z.infer<typeof outputSchema>;
   const output: Output["output"] = structured.output;

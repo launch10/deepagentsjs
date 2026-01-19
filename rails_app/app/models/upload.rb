@@ -26,6 +26,8 @@ class Upload < ApplicationRecord
   include UploadConcerns::Creation
   include PlatformSettings
 
+  acts_as_tenant :account
+
   platform_setting :google, :asset_id
 
   def google_sync(campaign:)

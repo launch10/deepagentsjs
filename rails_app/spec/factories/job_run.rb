@@ -29,7 +29,6 @@ FactoryBot.define do
 
     trait :with_langgraph_callback do
       langgraph_thread_id { "thread_#{SecureRandom.hex(8)}" }
-      langgraph_callback_url { "http://localhost:4000/webhooks/job_run_callback" }
     end
   end
 end

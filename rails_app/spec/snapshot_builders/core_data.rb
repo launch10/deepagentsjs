@@ -2,6 +2,8 @@ require_relative "core/plans"
 require_relative "core/templates"
 require_relative "core/themes"
 require_relative "core/faqs"
+require_relative "core/model_configs"
+require_relative "core/model_preferences"
 
 class CoreData < BaseBuilder
   def base_snapshot
@@ -18,6 +20,8 @@ class CoreData < BaseBuilder
     seed_templates
     seed_themes
     seed_faqs
+    seed_model_configs
+    seed_model_preferences
   end
 
   private
@@ -47,5 +51,13 @@ class CoreData < BaseBuilder
 
   def seed_faqs
     Core::FAQs.new.seed
+  end
+
+  def seed_model_configs
+    Core::ModelConfigs.new.seed
+  end
+
+  def seed_model_preferences
+    Core::ModelPreferences.new.seed
   end
 end

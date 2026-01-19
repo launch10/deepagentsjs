@@ -282,7 +282,17 @@ module GoogleAds
         # Update auto_tagging via separate API call (using attrs for transform consistency)
         update_auto_tagging(new_customer_id, attrs[:auto_tagging_enabled])
 
+        # Create conversion action for lead tracking (graceful degradation on failure)
+        sync_conversion_action
+
         GoogleAds::SyncResult.created(:customer, response.resource_name)
+      end
+
+      def sync_conversion_action
+        ConversionAction.new(record).sync
+      rescue => e
+        Rails.logger.warn("[GoogleAds::Resources::Account] Failed to create ConversionAction: #{e.message}")
+        nil
       end
 
       def update_account(remote)

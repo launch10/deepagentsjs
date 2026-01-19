@@ -948,6 +948,613 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chats/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validates thread ownership */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Thread ID to validate */
+                        thread_id: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description thread exists and belongs to current account - valid */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Whether the thread is valid for this account */
+                            valid: boolean;
+                            /** @description Whether the thread exists */
+                            exists: boolean;
+                            /** @description Type of chat if exists */
+                            chat_type?: string | null;
+                            /** @description Project ID if exists */
+                            project_id?: number | null;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description thread exists but belongs to different account - invalid */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description missing thread_id */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a chat for thread ownership */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        chat: {
+                            /** @description Thread ID from Langgraph */
+                            thread_id: string;
+                            /**
+                             * @description Type of chat
+                             * @enum {string}
+                             */
+                            chat_type: "brainstorm" | "website" | "ad_campaign" | "deploy";
+                            /** @description Project ID to associate the chat with */
+                            project_id: number;
+                            /**
+                             * @description Polymorphic type of the contextable record
+                             * @enum {string}
+                             */
+                            contextable_type: "Brainstorm" | "Website" | "Campaign" | "Deploy";
+                            /** @description ID of the contextable record */
+                            contextable_id: number;
+                            /** @description Optional name for the chat */
+                            name?: string;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description chat already exists for same account - returns existing */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * Format: uuid
+                             * @description UUID identifier
+                             */
+                            thread_id: string;
+                            /** @description Type of chat (brainstorm, website, ad_campaign, deploy) */
+                            chat_type: string;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /** @description Chat name */
+                            name?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description chat created for deploy type */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * Format: uuid
+                             * @description UUID identifier
+                             */
+                            thread_id: string;
+                            /** @description Type of chat (brainstorm, website, ad_campaign, deploy) */
+                            chat_type: string;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /** @description Chat name */
+                            name?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description thread already exists for different account */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description project not found or belongs to different account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description missing required fields */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/websites/{website_id}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieves context for a website */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Website ID */
+                    website_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns context without brainstorm when website has none */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            brainstorm?: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description The core idea for the landing page */
+                                idea?: string | null;
+                                /** @description Target audience for the landing page */
+                                audience?: string | null;
+                                /** @description The solution being offered */
+                                solution?: string | null;
+                                /** @description Social proof elements */
+                                social_proof?: string | null;
+                                /** @description Design preferences */
+                                look_and_feel?: string | null;
+                            } | null;
+                            uploads: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Upload UUID */
+                                uuid: string;
+                                /** @description Full size file URL */
+                                url: string;
+                                /** @description Thumbnail URL (images only) */
+                                thumb_url?: string | null;
+                                /** @description Medium size URL (images only) */
+                                medium_url?: string | null;
+                                /** @description Favicon URL (32x32 ICO, logos only) */
+                                favicon_url?: string | null;
+                                /**
+                                 * @description Media type
+                                 * @enum {string}
+                                 */
+                                media_type: "image" | "video" | "document";
+                                /** @description Whether this upload is a logo */
+                                is_logo: boolean;
+                                /** @description Original filename */
+                                filename: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Creation timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Last update timestamp
+                                 */
+                                updated_at: string;
+                            }[];
+                            theme?: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Theme name */
+                                name: string;
+                                /** @description Theme color palette */
+                                colors: string[];
+                                /** @description Typography recommendations per background color */
+                                typography_recommendations?: {
+                                    [key: string]: {
+                                        /** @description Headline color options */
+                                        headlines: {
+                                            /** @description Hex color code */
+                                            color: string;
+                                            /** @description Contrast ratio */
+                                            contrast: number;
+                                            /**
+                                             * @description WCAG compliance level
+                                             * @enum {string}
+                                             */
+                                            level: "AAA" | "AA" | "AA-large" | "fail";
+                                            /** @description Style hint */
+                                            style: string;
+                                            /** @description Additional guidance */
+                                            note?: string | null;
+                                        }[];
+                                        /** @description Subheadline color options */
+                                        subheadlines: {
+                                            /** @description Hex color code */
+                                            color: string;
+                                            /** @description Contrast ratio */
+                                            contrast: number;
+                                            /**
+                                             * @description WCAG compliance level
+                                             * @enum {string}
+                                             */
+                                            level: "AAA" | "AA" | "AA-large" | "fail";
+                                            /** @description Style hint */
+                                            style: string;
+                                            /** @description Additional guidance */
+                                            note?: string | null;
+                                        }[];
+                                        /** @description Body text color options */
+                                        body: {
+                                            /** @description Hex color code */
+                                            color: string;
+                                            /** @description Contrast ratio */
+                                            contrast: number;
+                                            /**
+                                             * @description WCAG compliance level
+                                             * @enum {string}
+                                             */
+                                            level: "AAA" | "AA" | "AA-large" | "fail";
+                                            /** @description Style hint */
+                                            style: string;
+                                            /** @description Additional guidance */
+                                            note?: string | null;
+                                        }[];
+                                        /** @description Accent color options */
+                                        accents: {
+                                            /** @description Hex color code */
+                                            color: string;
+                                            /** @description Contrast ratio */
+                                            contrast: number;
+                                            /**
+                                             * @description WCAG compliance level
+                                             * @enum {string}
+                                             */
+                                            level: "AAA" | "AA" | "AA-large" | "fail";
+                                            /** @description Style hint */
+                                            style: string;
+                                            /** @description Additional guidance */
+                                            note?: string | null;
+                                        }[];
+                                    };
+                                } | null;
+                            } | null;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot access website owned by another account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deploys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a deploy */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        project_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description deploy created increments deploy count */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description project not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deploys/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Deploy ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** Retrieves a deploy */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Deploy ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description deploy found */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot access deploy from different account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Updates a deploy */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Deploy ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        status?: string;
+                        current_step?: string;
+                        is_live?: boolean;
+                        langgraph_thread_id?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description deploy marked as live */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/deploys/{id}/touch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Deploy ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Updates user activity timestamp */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Deploy ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description user activity updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot touch deploy from different account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/domains": {
         parameters: {
             query?: never;
@@ -1238,6 +1845,141 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/google/connection_status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns Google OAuth connection status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns connection status when connected */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/google/invite_status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns Google Ads invite status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns invite status when invite is accepted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/google/payment_status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns Google Ads payment/billing status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns payment status when billing is approved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/job_runs": {
         parameters: {
             query?: never;
@@ -1266,20 +2008,18 @@ export interface paths {
                          * @description Job type identifier
                          * @enum {string}
                          */
-                        job_class: "CampaignDeploy";
+                        job_class: "CampaignDeploy" | "WebsiteDeploy" | "GoogleOAuthConnect" | "GoogleAdsInvite" | "GoogleAdsPaymentCheck" | "CampaignEnable";
                         /** @description Arguments to pass to the worker */
                         arguments: {
                             [key: string]: unknown;
                         };
                         /** @description LangGraph thread ID for callback resumption */
                         thread_id: string;
-                        /** @description URL to receive webhook callback when job completes */
-                        callback_url: string;
                     };
                 };
             };
             responses: {
-                /** @description job run created successfully */
+                /** @description ignores deploy_id from other account (creates job without deploy) */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -1315,7 +2055,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description missing job_class */
+                /** @description does not enqueue job when job_run creation fails */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -1329,6 +2069,195 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Creates a lead signup from a deployed landing page
+         * @description Public endpoint for landing pages to submit email signups.
+         *     This endpoint is called from deployed landing pages and uses a signed token
+         *     for authentication instead of JWT/session auth.
+         *
+         *     **Authentication:**
+         *     - Token passed as query parameter `token`
+         *     - Token is a Rails signup_token generated from the project
+         *     - Token is purpose-scoped to :lead_signup
+         *
+         *     **Processing:**
+         *     - Returns 202 Accepted immediately
+         *     - Lead creation happens asynchronously via background job
+         *     - Email validation happens synchronously (422 returned for invalid emails)
+         *
+         *     **CORS:**
+         *     - Allows requests from any origin
+         *     - Only Content-Type header allowed
+         *     - No credentials/cookies sent
+         */
+        post: {
+            parameters: {
+                query: {
+                    /** @description Signed ID token authenticating the request */
+                    token: string;
+                };
+                header?: {
+                    /** @description Origin of the request (for future CSRF protection via origin validation) */
+                    Origin?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Lead signup data */
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: email
+                         * @description Email address for the lead signup (required)
+                         */
+                        email: string;
+                        /** @description Optional name of the person signing up */
+                        name?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description accepts requests with custom domain Origin */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Indicates the lead was successfully created or updated */
+                            success: boolean;
+                        };
+                    };
+                };
+                /** @description deleted project returns unauthorized (no information leakage) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Authentication error message (e.g., "Invalid token") */
+                            error: string;
+                        };
+                    };
+                };
+                /** @description name too long returns validation error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Validation error messages keyed by field name */
+                            errors: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/model_configuration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieves model configuration
+         * @description Returns all model configurations and preferences. Used by Langgraph to fetch LLM settings.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description HMAC signature for internal API authentication */
+                    "X-Signature": string;
+                    /** @description Unix timestamp for signature verification */
+                    "X-Timestamp": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description model configuration retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Map of model_key to model configuration */
+                            models: {
+                                [key: string]: {
+                                    /** @description Whether this model is enabled */
+                                    enabled: boolean;
+                                    /** @description Maximum usage percentage for this model */
+                                    maxUsagePercent: number;
+                                    /** @description Cost per input token */
+                                    costIn?: number | null;
+                                    /** @description Cost per output token */
+                                    costOut?: number | null;
+                                    /** @description Model card identifier */
+                                    modelCard?: string | null;
+                                };
+                            };
+                            /** @description Nested map of cost_tier -> speed_tier -> skill -> model_keys array */
+                            preferences: {
+                                [key: string]: {
+                                    [key: string]: {
+                                        [key: string]: string[];
+                                    };
+                                };
+                            };
+                            /**
+                             * Format: date-time
+                             * @description Most recent update timestamp across all configs
+                             */
+                            updatedAt?: string | null;
+                        };
+                    };
+                };
+                /** @description unauthorized - timestamp too old */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Error message */
+                            error: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2328,6 +3257,154 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/themes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieves a theme with full details */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Theme ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description theme retrieved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Theme name */
+                            name: string;
+                            /** @description Theme color palette */
+                            colors: string[];
+                            /** @description CSS theme variables (HSL values) */
+                            theme?: {
+                                [key: string]: string;
+                            };
+                            /** @description Color pairing recommendations */
+                            pairings?: {
+                                [key: string]: unknown;
+                            };
+                            /** @description Typography recommendations per background color */
+                            typography_recommendations?: {
+                                [key: string]: {
+                                    /** @description Headline color options */
+                                    headlines: {
+                                        /** @description Hex color code */
+                                        color: string;
+                                        /** @description Contrast ratio */
+                                        contrast: number;
+                                        /**
+                                         * @description WCAG compliance level
+                                         * @enum {string}
+                                         */
+                                        level: "AAA" | "AA" | "AA-large" | "fail";
+                                        /** @description Style hint */
+                                        style: string;
+                                        /** @description Additional guidance */
+                                        note?: string | null;
+                                    }[];
+                                    /** @description Subheadline color options */
+                                    subheadlines: {
+                                        /** @description Hex color code */
+                                        color: string;
+                                        /** @description Contrast ratio */
+                                        contrast: number;
+                                        /**
+                                         * @description WCAG compliance level
+                                         * @enum {string}
+                                         */
+                                        level: "AAA" | "AA" | "AA-large" | "fail";
+                                        /** @description Style hint */
+                                        style: string;
+                                        /** @description Additional guidance */
+                                        note?: string | null;
+                                    }[];
+                                    /** @description Body text color options */
+                                    body: {
+                                        /** @description Hex color code */
+                                        color: string;
+                                        /** @description Contrast ratio */
+                                        contrast: number;
+                                        /**
+                                         * @description WCAG compliance level
+                                         * @enum {string}
+                                         */
+                                        level: "AAA" | "AA" | "AA-large" | "fail";
+                                        /** @description Style hint */
+                                        style: string;
+                                        /** @description Additional guidance */
+                                        note?: string | null;
+                                    }[];
+                                    /** @description Accent color options */
+                                    accents: {
+                                        /** @description Hex color code */
+                                        color: string;
+                                        /** @description Contrast ratio */
+                                        contrast: number;
+                                        /**
+                                         * @description WCAG compliance level
+                                         * @enum {string}
+                                         */
+                                        level: "AAA" | "AA" | "AA-large" | "fail";
+                                        /** @description Style hint */
+                                        style: string;
+                                        /** @description Additional guidance */
+                                        note?: string | null;
+                                    }[];
+                                };
+                            } | null;
+                            /** @description Associated theme labels */
+                            theme_labels: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Label name */
+                                name: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description theme not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/uploads": {
         parameters: {
             query?: never;
@@ -2375,6 +3452,8 @@ export interface paths {
                             thumb_url?: string | null;
                             /** @description Medium size URL (images only) */
                             medium_url?: string | null;
+                            /** @description Favicon URL (32x32 ICO, logos only) */
+                            favicon_url?: string | null;
                             /**
                              * @description Media type
                              * @enum {string}
@@ -2442,6 +3521,8 @@ export interface paths {
                             thumb_url?: string | null;
                             /** @description Medium size URL (images only) */
                             medium_url?: string | null;
+                            /** @description Favicon URL (32x32 ICO, logos only) */
+                            favicon_url?: string | null;
                             /**
                              * @description Media type
                              * @enum {string}
@@ -2532,6 +3613,206 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/websites/{id}/files/write": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Website ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates or updates website files in bulk */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Website ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Array of files to create or update */
+                        files: {
+                            /** @description File path within the website */
+                            path: string;
+                            /** @description File content */
+                            content: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description files created in team account after switching */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Array of created/updated files */
+                            files: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Unique identifier */
+                                website_id: number;
+                                /** @description File path within the website */
+                                path: string;
+                                /** @description File content */
+                                content: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                updated_at: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot access other users website */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description invalid request - missing path or content */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/websites/{id}/files/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Website ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edits a website file by replacing string occurrences */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Website ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description File path within the website */
+                        path: string;
+                        /** @description String to find and replace */
+                        old_string: string;
+                        /** @description Replacement string */
+                        new_string: string;
+                        /**
+                         * @description Replace all occurrences (default: false)
+                         * @default false
+                         */
+                        replace_all?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description creates website_file from template_file when file not yet customized */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            file: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Unique identifier */
+                                website_id: number;
+                                /** @description File path within the website */
+                                path: string;
+                                /** @description File content */
+                                content: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                updated_at: string;
+                            };
+                            /** @description Number of replacements made */
+                            occurrences: number;
+                        };
+                    };
+                };
+                /** @description website not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description missing required params */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/website_urls": {
@@ -2935,7 +4216,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description website updated successfully */
+                /** @description website theme update injects CSS variables into index.css */
                 200: {
                     headers: {
                         [name: string]: unknown;

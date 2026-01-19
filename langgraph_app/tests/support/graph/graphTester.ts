@@ -1,14 +1,14 @@
 import { HumanMessage, BaseMessage } from "@langchain/core/messages";
-import { type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { type LangGraphRunnableConfig, Send, CompiledStateGraph } from "@langchain/langgraph";
 import { type CoreGraphState } from "@state";
 import { db, eq, and, projects as projectsTable, chats as chatsTable } from "@db";
 import { generateUUID, type ConsoleError } from "@types";
-import { isGraphInterrupt } from "@langchain/langgraph";
 import { runScenario } from "@services";
-import { interruptContext } from "app/core/node/middleware";
-import { CompiledStateGraph } from "@langchain/langgraph";
-import { graphParams } from "@core";
-import { vi } from "vitest";
+
+type NodeFunction<TState extends CoreGraphState> = (
+  state: TState,
+  config: LangGraphRunnableConfig
+) => Promise<Partial<TState> | Send[]>;
 export interface NodeTestResult<TState extends CoreGraphState> {
   state: TState;
   messages: BaseMessage[];
@@ -52,8 +52,9 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
   private graph: CompiledGraph | undefined;
   private websiteName?: string; // Store project name for deferred loading
   private scenario?: string;
-  private threadId?: string;
+  threadId?: string;
   private chatType?: string;
+  private nodeFunction?: NodeFunction<TGraphState>;
 
   constructor() {
     // Initialize with an in-memory checkpointer for tests
@@ -66,6 +67,7 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
 
     this.initialState = {
       jwt: "test-jwt",
+      threadId: this.threadId,
       accountId: 1,
       error: undefined,
       messages: [] as BaseMessage[],
@@ -191,13 +193,26 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
   }
 
   /**
-   * Execute the graph up to the target node and return the result
+   * Run a single node function in isolation without running the full graph.
+   * This is useful for unit testing individual nodes without the overhead
+   * of running preceding nodes.
+   *
+   * @example
+   * const result = await testGraph<DeployGraphState>()
+   *   .withState({ websiteId: 1, tasks: [] })
+   *   .runNode(analyticsNode)
+   *   .execute();
+   */
+  runNode(nodeFn: NodeFunction<TGraphState>): GraphTestBuilder<TGraphState> {
+    this.nodeFunction = nodeFn;
+    return this;
+  }
+
+  /**
+   * Execute the graph up to the target node and return the result.
+   * If runNode() was called, executes that single node function in isolation.
    */
   async execute(): Promise<NodeTestResult<TGraphState>> {
-    if (!this.graph) {
-      throw new Error("Graph is required. Use .withGraph() to set it.");
-    }
-
     // Load thread ID if website specified
     await this.loadThread();
 
@@ -219,6 +234,47 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
       messages: userMessage ? [...initialStateMessages, userMessage] : initialStateMessages,
     };
 
+    // If running a single node, execute it directly
+    if (this.nodeFunction) {
+      const initialState = { ...baseState, consoleErrors } as TGraphState;
+
+      try {
+        const result = await this.nodeFunction(
+          initialState,
+          this.config as LangGraphRunnableConfig
+        );
+
+        // Handle Send[] return type (routing nodes)
+        if (Array.isArray(result)) {
+          return {
+            state: initialState,
+            messages: initialState.messages || [],
+            error: undefined,
+          };
+        }
+
+        // Merge the partial result with the initial state
+        const finalState = { ...initialState, ...result } as TGraphState;
+
+        return {
+          state: finalState,
+          messages: finalState.messages || [],
+          error: undefined,
+        };
+      } catch (error) {
+        return {
+          state: initialState,
+          messages: initialState.messages || [],
+          error: error as Error,
+        };
+      }
+    }
+
+    // Otherwise, run the full graph
+    if (!this.graph) {
+      throw new Error("Graph is required. Use .withGraph() or .runNode() to set it.");
+    }
+
     const initialState: TGraphState = (
       this.graph.channels?.consoleErrors ? { ...baseState, consoleErrors } : baseState
     ) as TGraphState;
@@ -226,16 +282,18 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
     try {
       const testGraph = this.graph;
 
-      const result = this.targetNode
-        ? await interruptContext.run({ nodeName: this.targetNode }, async () => {
-            return await testGraph.invoke(initialState, this.config);
-          })
-        : await testGraph.invoke(initialState, this.config);
+      // Use LangGraph's built-in interrupt_after for proper checkpoint handling
+      const invokeConfig = this.targetNode
+        ? { ...this.config, interruptAfter: [this.targetNode] }
+        : this.config;
+
+      const result = await testGraph.invoke(initialState, invokeConfig);
 
       if (result && result.__interrupt__) {
-        // The state at the time of interrupt is the result minus the __interrupt__ key
-        const { __interrupt__, ...stateAtInterrupt } = result;
-        const state = __interrupt__[0].value.state;
+        // LangGraph's interrupt_after checkpoints AFTER the node completes
+        // so getState returns the properly reduced state
+        const checkpoint = await testGraph.getState(this.config);
+        const state = checkpoint.values as TGraphState;
         return {
           state,
           messages: state.messages || [],
@@ -249,26 +307,8 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
         error: result.error,
       };
     } catch (error) {
-      // Check if this is a GraphInterrupt - this is expected for test interrupts
-      if (isGraphInterrupt(error)) {
-        // Extract the interrupt value which should contain our state
-        const interruptValue = error.interrupts?.[0]?.value;
-        if (interruptValue && interruptValue.state) {
-          return {
-            state: interruptValue.state,
-            messages: interruptValue.state.messages || [],
-            error: undefined,
-          };
-        }
-        // Fallback: use the initial state with updates from the error
-        return {
-          state: { ...initialState, ...(interruptValue || {}) },
-          messages: initialState.messages || [],
-          error: undefined,
-        };
-      }
-
       // Regular error - return as error
+      // Note: interrupt_after doesn't throw, it returns __interrupt__ in result
       return {
         state: initialState,
         messages: initialState.messages || [],

@@ -48,9 +48,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
       response '201', 'website URL created successfully' do
         schema APISchemas::WebsiteUrl.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:website_url_params) do
           {
             website_url: {
@@ -72,9 +73,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
       response '201', 'website URL created in team account after switching' do
         schema APISchemas::WebsiteUrl.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:website_url_params) do
           {
             website_url: {
@@ -114,9 +116,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
       end
 
       response '422', 'duplicate domain and path' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:website_url_params) do
           {
             website_url: {
@@ -138,9 +141,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
       end
 
       response '422', 'domain does not belong to account' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:website_url_params) do
           {
             website_url: {
@@ -153,7 +157,8 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['errors']).to include('Domain must belong to the account')
+          # With acts_as_tenant, domains from other accounts don't exist in the current tenant scope
+          expect(data['errors']).to include('Domain must exist')
         end
       end
     end
@@ -179,9 +184,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
       response '200', 'returns website URLs for owned account' do
         schema APISchemas::WebsiteUrl.list_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -194,9 +200,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
       response '200', 'returns website URLs for team account after switching' do
         schema APISchemas::WebsiteUrl.list_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
         before do
           switch_account_to(user1_team_account)
@@ -211,9 +218,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
       response '200', 'filters website URLs by website_id' do
         schema APISchemas::WebsiteUrl.list_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:website_id) { website1_owned.id }
 
         run_test! do |response|
@@ -227,9 +235,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
       response '200', 'filters website URLs by domain_id' do
         schema APISchemas::WebsiteUrl.list_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:domain_id) { domain1_owned.id }
 
         run_test! do |response|
@@ -243,6 +252,206 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
       response '401', 'unauthorized - missing token' do
         let(:Authorization) { nil }
+
+        run_test! do |response|
+          expect(response.code).to eq("401")
+        end
+      end
+    end
+  end
+
+  path '/api/v1/website_urls/search' do
+    post 'Searches for website URL availability' do
+      tags 'WebsiteUrls'
+      consumes 'application/json'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+
+      parameter name: :search_params, in: :body, schema: APISchemas::WebsiteUrl.search_params_schema
+
+      let!(:url1_owned) { create(:website_url, path: '/existing-page', account: user1_owned_account, website: website1_owned, domain: domain1_owned) }
+      let!(:url2_other) { create(:website_url, path: '/other-page', account: user2_owned_account, website: website2_owned, domain: domain2_owned) }
+
+      before do
+        switch_account_to(user1_owned_account)
+      end
+
+      response '200', 'returns availability statuses' do
+        schema APISchemas::WebsiteUrl.search_response
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:search_params) do
+          {
+            domain_id: domain1_owned.id,
+            candidates: [
+              '/existing-page',
+              '/new-page',
+              '/another-new-page'
+            ]
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+
+          expect(data['domain_id']).to eq(domain1_owned.id)
+          expect(data['domain']).to eq(domain1_owned.domain)
+
+          results = data['results']
+
+          # Existing URL owned by current account
+          existing = results.find { |r| r['path'] == '/existing-page' }
+          expect(existing['status']).to eq('existing')
+          expect(existing['existing_id']).to eq(url1_owned.id)
+          expect(existing['existing_website_id']).to eq(website1_owned.id)
+
+          # Available URLs
+          new_page = results.find { |r| r['path'] == '/new-page' }
+          expect(new_page['status']).to eq('available')
+          expect(new_page['existing_id']).to be_nil
+          expect(new_page['existing_website_id']).to be_nil
+
+          another_new = results.find { |r| r['path'] == '/another-new-page' }
+          expect(another_new['status']).to eq('available')
+        end
+      end
+
+      response '200', 'normalizes path inputs' do
+        schema APISchemas::WebsiteUrl.search_response
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:search_params) do
+          {
+            domain_id: domain1_owned.id,
+            candidates: [
+              'existing-page',
+              '  /new-page/  ',
+              ''
+            ]
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          results = data['results']
+
+          # Should normalize to add leading slash
+          existing = results.find { |r| r['path'] == '/existing-page' }
+          expect(existing['status']).to eq('existing')
+
+          # Should strip whitespace and trailing slashes
+          new_page = results.find { |r| r['path'] == '/new-page' }
+          expect(new_page['status']).to eq('available')
+
+          # Empty string should normalize to root
+          root = results.find { |r| r['path'] == '/' }
+          expect(root['status']).to eq('available')
+        end
+      end
+
+      response '404', 'domain not found' do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:search_params) do
+          {
+            domain_id: 999999,
+            candidates: ['/test']
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to include('Domain not found')
+        end
+      end
+
+      response '404', 'domain belongs to another account' do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:search_params) do
+          {
+            domain_id: domain2_owned.id,
+            candidates: ['/test']
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to include('Domain not found')
+        end
+      end
+
+      response '422', 'missing domain_id parameter' do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:search_params) do
+          {
+            candidates: ['/test']
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to include('domain_id parameter is required')
+        end
+      end
+
+      response '422', 'missing candidates parameter' do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:search_params) do
+          {
+            domain_id: domain1_owned.id
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to include('candidates parameter is required and must be an array')
+        end
+      end
+
+      response '422', 'exceeds maximum candidates' do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:search_params) do
+          {
+            domain_id: domain1_owned.id,
+            candidates: (1..11).map { |i| "/page#{i}" }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to include('Maximum 10 candidates allowed')
+        end
+      end
+
+      response '401', 'unauthorized - missing token' do
+        let(:Authorization) { nil }
+        let(:search_params) do
+          {
+            domain_id: domain1_owned.id,
+            candidates: ['/test']
+          }
+        end
 
         run_test! do |response|
           expect(response.code).to eq("401")
@@ -272,9 +481,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
       response '200', 'website URL found in owned account' do
         schema APISchemas::WebsiteUrl.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { url1_owned.id }
 
         run_test! do |response|
@@ -285,9 +495,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
       end
 
       response '404', 'cannot access team account website URL from owned account' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { url1_team.id }
 
         run_test! do |response|
@@ -297,9 +508,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
       end
 
       response '404', 'cannot access other user website URL' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { url2_other.id }
 
         run_test! do |response|
@@ -310,9 +522,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
       response '200', 'website URL found in team account after switching' do
         schema APISchemas::WebsiteUrl.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { url1_team.id }
 
         before do
@@ -348,9 +561,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
       response '200', 'website URL updated successfully' do
         schema APISchemas::WebsiteUrl.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { url1_owned.id }
         let(:website_url_params) do
           {
@@ -370,9 +584,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
       end
 
       response '404', 'cannot update other user website URL' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { url2_other.id }
         let(:website_url_params) do
           {
@@ -391,9 +606,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
       end
 
       response '422', 'duplicate domain and path on update' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { url1_owned.id }
         let(:website_url_params) do
           {
@@ -417,9 +633,10 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
       response '200', 'website URL updated in team account after switching' do
         schema APISchemas::WebsiteUrl.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { url1_team.id }
         let(:website_url_params) do
           {

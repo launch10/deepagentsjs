@@ -2,23 +2,24 @@
 #
 # Table name: job_runs
 #
-#  id                     :bigint           not null, primary key
-#  completed_at           :datetime
-#  error_message          :text
-#  job_args               :jsonb
-#  job_class              :string           not null
-#  langgraph_callback_url :string
-#  result_data            :jsonb
-#  started_at             :datetime
-#  status                 :string           default("pending"), not null
-#  created_at             :datetime         not null
-#  updated_at             :datetime         not null
-#  account_id             :bigint
-#  langgraph_thread_id    :string
+#  id                  :bigint           not null, primary key
+#  completed_at        :datetime
+#  error_message       :text
+#  job_args            :jsonb
+#  job_class           :string           not null
+#  result_data         :jsonb
+#  started_at          :datetime
+#  status              :string           default("pending"), not null
+#  created_at          :datetime         not null
+#  updated_at          :datetime         not null
+#  account_id          :bigint
+#  deploy_id           :bigint
+#  langgraph_thread_id :string
 #
 # Indexes
 #
 #  index_job_runs_on_account_id            (account_id)
+#  index_job_runs_on_deploy_id             (deploy_id)
 #  index_job_runs_on_job_class             (job_class)
 #  index_job_runs_on_job_class_and_status  (job_class,status)
 #  index_job_runs_on_langgraph_thread_id   (langgraph_thread_id)
@@ -30,9 +31,10 @@
 #
 class JobRun < ApplicationRecord
   belongs_to :account
+  belongs_to :deploy, optional: true
 
   STATUSES = %w[pending running completed failed].freeze
-  ALLOWED_JOBS = %w[CampaignDeploy].freeze
+  ALLOWED_JOBS = %w[CampaignDeploy WebsiteDeploy GoogleOAuthConnect GoogleAdsInvite GoogleAdsPaymentCheck CampaignEnable].freeze
 
   validates :job_class, presence: true, inclusion: { in: ALLOWED_JOBS }
   validates :status, presence: true, inclusion: { in: STATUSES }
@@ -78,9 +80,16 @@ class JobRun < ApplicationRecord
 
   # Enqueues async webhook delivery - no bang since it doesn't raise
   def notify_langgraph(status:, result: nil, error: nil)
-    return unless langgraph_callback_url.present?
+    return unless langgraph_thread_id.present? && langgraph_callback_url.present?
 
     LanggraphCallbackWorker.perform_async(id, callback_payload(status, result, error))
+  end
+
+  def langgraph_callback_url
+    base_url = ENV["LANGGRAPH_API_URL"]
+    return nil if base_url.blank?
+
+    "#{base_url}/webhooks/job_run_callback"
   end
 
   def pending? = status == "pending"

@@ -20,6 +20,12 @@ module WebsiteDeployConcerns
         File.write(file_path, file.content)
       end
 
+      # Write environment variables for Vite build
+      write_env_file!
+
+      # Inject Google Ads gtag.js script if configured
+      inject_gtag_script!
+
       # Run pnpm install and build
       unless build_exists?
         Dir.chdir(temp_dir) do
@@ -39,6 +45,50 @@ module WebsiteDeployConcerns
     end
 
     private
+
+    def write_env_file!
+      env_vars = {
+        "VITE_SIGNUP_TOKEN" => website.project.signup_token,
+        "VITE_API_BASE_URL" => Rails.configuration.x.api_base_url,
+        "VITE_GOOGLE_ADS_SEND_TO" => google_send_to
+      }
+      File.write(File.join(temp_dir, ".env"), env_vars.compact.map { |k, v| "#{k}=#{v}" }.join("\n"))
+    end
+
+    def inject_gtag_script!
+      return unless google_send_to.present?
+
+      index_path = File.join(temp_dir, "index.html")
+      return unless File.exist?(index_path)
+
+      content = File.read(index_path)
+
+      gtag_script = <<~HTML
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=#{google_conversion_id}"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '#{google_conversion_id}');
+        </script>
+      HTML
+
+      content.sub!("</head>", "#{gtag_script}</head>")
+      File.write(index_path, content)
+    end
+
+    def google_conversion_id
+      ads_account&.google_conversion_id
+    end
+
+    def google_send_to
+      ads_account&.google_send_to
+    end
+
+    def ads_account
+      @ads_account ||= website.project.account.ads_accounts.find_by(platform: "google")
+    end
 
     def validate_website_has_files
       if website.files.empty?

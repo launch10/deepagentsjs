@@ -3,14 +3,14 @@ import { Hono } from "hono";
 import { createHmac } from "crypto";
 import { jobRunCallbackRoutes } from "../../../app/server/routes/webhooks/jobRunCallback";
 import { env } from "@core";
-import type { ChecklistTask } from "@types";
+import { Deploy } from "@types";
 
 // Mock the launchGraph
 const mockGetState = vi.fn();
 const mockUpdateState = vi.fn();
 
 vi.mock("@graphs", () => ({
-  launchGraph: {
+  deployGraph: {
     compile: vi.fn().mockReturnValue({
       getState: (...args: unknown[]) => mockGetState(...args),
       updateState: (...args: unknown[]) => mockUpdateState(...args),
@@ -39,10 +39,8 @@ describe("jobRunCallback webhook route (tasks pattern)", () => {
     return createHmac("sha256", env.JWT_SECRET).update(body).digest("hex");
   };
 
-  const existingTask: ChecklistTask = {
-    id: "uuid-123",
-    name: "CampaignDeploy",
-    jobId: 123,
+  const existingTask: Deploy.Task = {
+    ...Deploy.createTask("DeployingCampaign", 123),
     status: "pending",
   };
 
@@ -277,6 +275,206 @@ describe("jobRunCallback webhook route (tasks pattern)", () => {
       expect(res.status).toBe(500);
       const json = (await res.json()) as { error: string };
       expect(json.error).toBe("Failed to update state");
+    });
+
+    /**
+     * Google OAuth Connect Integration Tests
+     */
+    describe("GoogleOAuthConnect integration", () => {
+      const googleConnectTask: Deploy.Task = {
+        ...Deploy.createTask("ConnectingGoogle", 456),
+        status: "running",
+      };
+
+      it("updates ConnectingGoogle task with google_email result", async () => {
+        const payload = {
+          job_run_id: 456,
+          thread_id: "thread_google_oauth",
+          status: "completed" as const,
+          result: {
+            google_email: "user@gmail.com",
+          },
+        };
+
+        mockGetState.mockResolvedValue({
+          values: {
+            tasks: [googleConnectTask],
+          },
+        });
+        mockUpdateState.mockResolvedValue(undefined);
+
+        const body = JSON.stringify(payload);
+        const signature = createSignature(body);
+
+        const res = await app.request("/webhooks/job_run_callback", {
+          method: "POST",
+          body,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Signature": signature,
+          },
+        });
+
+        expect(res.status).toBe(200);
+
+        // Verify task updated with google_email result
+        expect(mockUpdateState).toHaveBeenCalledWith(
+          { configurable: { thread_id: "thread_google_oauth" } },
+          {
+            tasks: [
+              {
+                ...googleConnectTask,
+                status: "running",
+                result: { google_email: "user@gmail.com" },
+              },
+            ],
+          }
+        );
+      });
+
+      it("updates ConnectingGoogle task with error when OAuth cancelled", async () => {
+        const payload = {
+          job_run_id: 456,
+          thread_id: "thread_google_oauth",
+          status: "failed" as const,
+          error: "OAuth was cancelled by user",
+        };
+
+        mockGetState.mockResolvedValue({
+          values: {
+            tasks: [googleConnectTask],
+          },
+        });
+        mockUpdateState.mockResolvedValue(undefined);
+
+        const body = JSON.stringify(payload);
+        const signature = createSignature(body);
+
+        const res = await app.request("/webhooks/job_run_callback", {
+          method: "POST",
+          body,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Signature": signature,
+          },
+        });
+
+        expect(res.status).toBe(200);
+
+        // Verify task updated with error
+        expect(mockUpdateState).toHaveBeenCalledWith(
+          { configurable: { thread_id: "thread_google_oauth" } },
+          {
+            tasks: [
+              {
+                ...googleConnectTask,
+                status: "running",
+                error: "OAuth was cancelled by user",
+              },
+            ],
+          }
+        );
+      });
+    });
+
+    /**
+     * Google Ads Invite Integration Tests
+     */
+    describe("GoogleAdsInvite integration", () => {
+      const verifyGoogleTask: Deploy.Task = {
+        ...Deploy.createTask("VerifyingGoogle", 789),
+        status: "running",
+      };
+
+      it("updates VerifyingGoogle task with accepted status", async () => {
+        const payload = {
+          job_run_id: 789,
+          thread_id: "thread_google_invite",
+          status: "completed" as const,
+          result: {
+            status: "accepted",
+          },
+        };
+
+        mockGetState.mockResolvedValue({
+          values: {
+            tasks: [verifyGoogleTask],
+          },
+        });
+        mockUpdateState.mockResolvedValue(undefined);
+
+        const body = JSON.stringify(payload);
+        const signature = createSignature(body);
+
+        const res = await app.request("/webhooks/job_run_callback", {
+          method: "POST",
+          body,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Signature": signature,
+          },
+        });
+
+        expect(res.status).toBe(200);
+
+        // Verify task updated with accepted result
+        expect(mockUpdateState).toHaveBeenCalledWith(
+          { configurable: { thread_id: "thread_google_invite" } },
+          {
+            tasks: [
+              {
+                ...verifyGoogleTask,
+                status: "running",
+                result: { status: "accepted" },
+              },
+            ],
+          }
+        );
+      });
+
+      it("updates VerifyingGoogle task with error when invite declined", async () => {
+        const payload = {
+          job_run_id: 789,
+          thread_id: "thread_google_invite",
+          status: "failed" as const,
+          error: "Invitation was declined",
+        };
+
+        mockGetState.mockResolvedValue({
+          values: {
+            tasks: [verifyGoogleTask],
+          },
+        });
+        mockUpdateState.mockResolvedValue(undefined);
+
+        const body = JSON.stringify(payload);
+        const signature = createSignature(body);
+
+        const res = await app.request("/webhooks/job_run_callback", {
+          method: "POST",
+          body,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Signature": signature,
+          },
+        });
+
+        expect(res.status).toBe(200);
+
+        // Verify task updated with error
+        expect(mockUpdateState).toHaveBeenCalledWith(
+          { configurable: { thread_id: "thread_google_invite" } },
+          {
+            tasks: [
+              {
+                ...verifyGoogleTask,
+                status: "running",
+                error: "Invitation was declined",
+              },
+            ],
+          }
+        );
+      });
     });
   });
 });

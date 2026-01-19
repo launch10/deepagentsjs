@@ -3,6 +3,7 @@
 # Table name: websites
 #
 #  id          :bigint           not null, primary key
+#  deleted_at  :datetime
 #  name        :string
 #  created_at  :datetime         not null
 #  updated_at  :datetime         not null
@@ -16,6 +17,7 @@
 #
 #  index_websites_on_account_id   (account_id)
 #  index_websites_on_created_at   (created_at)
+#  index_websites_on_deleted_at   (deleted_at)
 #  index_websites_on_name         (name)
 #  index_websites_on_project_id   (project_id)
 #  index_websites_on_template_id  (template_id)
@@ -28,7 +30,10 @@ class Website < ApplicationRecord
   include Atlas::Website
   include WebsiteConcerns::ShasumHashable
   include WebsiteConcerns::FileManagement
+  include WebsiteConcerns::ThemeCssInjection
   historiographer_mode :snapshot_only
+  acts_as_paranoid
+  acts_as_tenant :account
 
   belongs_to :project
   has_one :brainstorm
@@ -44,13 +49,14 @@ class Website < ApplicationRecord
   has_many :website_urls, dependent: :destroy
   alias_method :urls, :website_urls
   has_many :deploys, class_name: "WebsiteDeploy", dependent: :destroy
-  has_one :content_strategy, class_name: "ContentStrategy"
-  alias_method :strategy, :content_strategy
 
   has_many :website_uploads
-  has_many :uploads, through: :website_uploads
+  has_many :uploads, -> { order(:id) }, through: :website_uploads
   has_many :campaigns
   alias_method :ad_campaigns, :campaigns
+  has_many :visits, class_name: "Ahoy::Visit"
+  has_many :website_leads, dependent: :destroy
+  has_many :leads, through: :website_leads
 
   accepts_nested_attributes_for :website_files, allow_destroy: true
 
@@ -151,6 +157,6 @@ class Website < ApplicationRecord
   end
 
   def set_default_theme
-    self.theme = Theme.first if theme.nil?
+    self.theme = Theme.order(id: :asc).first if theme.nil?
   end
 end

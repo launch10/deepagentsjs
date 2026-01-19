@@ -1,4 +1,4 @@
-class WebsiteCreated < BaseBuilder
+class WebsiteStep < BaseBuilder
   def base_snapshot
     "basic_account"
   end
@@ -26,10 +26,46 @@ class WebsiteCreated < BaseBuilder
         social_proof: "Used by 2,000+ distributed teams who've cut meeting coordination time by 80%. Companies like TechCorp save 15 hours per week on scheduling alone."
       )
       project = data[:project]
+    else
+      brainstorm = project.brainstorm
+    end
+
+    website = project.website
+
+    # Assign a theme to the website (uses first official theme from core_data seed)
+    theme = Theme.where(theme_type: "official").first
+    if theme
+      website.update!(theme_id: theme.id)
+      puts "Assigned theme: #{theme.name} (ID: #{theme.id})"
+    else
+      puts "WARNING: No official themes found - theme not assigned"
+    end
+
+    # Create uploads (logo + images) and associate with website
+    # Use actual CDN URLs that OpenAI can access (files already exist on dev-uploads.launch10.ai)
+    cdn_images = [
+      { file: "21b36cfc-f657-471f-8256-d36bea9689fc.png", is_logo: true },
+      { file: "024dfc6c-335d-4f11-883b-f8e241f91744.png", is_logo: false }
+    ]
+
+    cdn_images.each_with_index do |img, i|
+      upload = Upload.new(
+        account: account,
+        is_logo: img[:is_logo],
+        media_type: "image",
+        original_filename: img[:file]
+      )
+      # Set file column directly (bypasses CarrierWave upload processing)
+      upload[:file] = img[:file]
+      upload.save!(validate: false)
+      WebsiteUpload.create!(website: website, upload: upload)
+      puts "Created #{img[:is_logo] ? "logo" : "image"} upload #{i + 1}: #{upload.id} (#{img[:file]})"
     end
 
     project.current_workflow.update!(step: "website") # Ready to do website builder
 
     puts "Created website with brainstorm: #{brainstorm.id}"
+    puts "Website ID: #{website.id}, Theme ID: #{website.theme_id}"
+    puts "Total uploads for website: #{website.uploads.count}"
   end
 end

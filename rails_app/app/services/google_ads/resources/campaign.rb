@@ -77,7 +77,7 @@ module GoogleAds
             results << new(campaign).sync
           end
 
-          Sync::CollectionSyncResult.new(results: results)
+          ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
         end
 
         def sync_plan(ads_account)
@@ -98,7 +98,7 @@ module GoogleAds
             operations.concat(new(campaign).sync_plan.operations)
           end
 
-          Sync::Plan.new(operations)
+          ::GoogleAds::Sync::Plan.new(operations)
         end
       end
 
@@ -169,7 +169,7 @@ module GoogleAds
           operations << { action: :unchanged, record: record }
         end
 
-        Sync::Plan.new(operations)
+        GoogleAds::Sync::Plan.new(operations)
       end
 
       def delete

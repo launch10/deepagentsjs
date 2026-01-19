@@ -22,6 +22,8 @@
 class AdsAccount < ApplicationRecord
   include PlatformSettings
 
+  acts_as_tenant :account
+
   belongs_to :account
   has_many :invitations, class_name: "AdsAccountInvitation", dependent: :destroy
   has_many :campaigns
@@ -40,6 +42,19 @@ class AdsAccount < ApplicationRecord
   platform_setting :google, :time_zone, default: -> { account&.try(:time_zone).presence || "America/New_York" }, in: TIME_ZONES
   platform_setting :google, :status, default: "ENABLED"
   platform_setting :google, :auto_tagging_enabled, default: true
+  platform_setting :google, :conversion_action_resource_name
+  platform_setting :google, :conversion_id      # Full conversion ID with AW- prefix (e.g., "AW-123456789")
+  platform_setting :google, :conversion_label   # Conversion label from tag_snippets (e.g., "abc123XYZ")
+  platform_setting :google, :billing_status     # Billing setup status: pending, approved, cancelled
+
+  def google_send_to
+    return nil unless google_conversion_id.present? && google_conversion_label.present?
+    "#{google_conversion_id}/#{google_conversion_label}"
+  end
+
+  def google_billing_enabled?
+    google_billing_status == "approved"
+  end
 
   def google_sync
     google_syncer.sync

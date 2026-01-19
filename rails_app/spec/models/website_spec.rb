@@ -3,6 +3,7 @@
 # Table name: websites
 #
 #  id          :bigint           not null, primary key
+#  deleted_at  :datetime
 #  name        :string
 #  created_at  :datetime         not null
 #  updated_at  :datetime         not null
@@ -16,6 +17,7 @@
 #
 #  index_websites_on_account_id   (account_id)
 #  index_websites_on_created_at   (created_at)
+#  index_websites_on_deleted_at   (deleted_at)
 #  index_websites_on_name         (name)
 #  index_websites_on_project_id   (project_id)
 #  index_websites_on_template_id  (template_id)
@@ -24,7 +26,6 @@
 #
 
 require "rails_helper"
-require 'support/website_file_helpers'
 require 'sidekiq/testing'
 
 describe Website do
@@ -48,6 +49,19 @@ describe Website do
 
   it "is valid" do
     expect(website).to be_valid
+  end
+
+  describe "visits association" do
+    it "has many visits" do
+      visit = Ahoy::Visit.create!(
+        website_id: website.id,
+        visitor_token: "test-visitor",
+        visit_token: "test-visit",
+        started_at: Time.current
+      )
+
+      expect(website.visits).to include(visit)
+    end
   end
 
   it "snapshots website files" do

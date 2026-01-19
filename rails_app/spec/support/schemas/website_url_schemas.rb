@@ -65,5 +65,47 @@ module APISchemas
         required: ['website_url']
       }
     end
+
+    def self.search_params_schema
+      {
+        type: :object,
+        properties: {
+          domain_id: {
+            type: :integer,
+            description: 'Domain ID to search within'
+          },
+          candidates: {
+            type: :array,
+            items: {type: :string},
+            description: 'Array of paths to check availability (max 10)'
+          }
+        },
+        required: ['domain_id', 'candidates']
+      }
+    end
+
+    def self.search_response
+      {
+        type: :object,
+        properties: {
+          domain_id: APISchemas.id_field,
+          domain: {type: :string, description: 'Domain name'},
+          results: {
+            type: :array,
+            items: {
+              type: :object,
+              properties: {
+                path: {type: :string, description: 'URL path'},
+                status: {type: :string, enum: ['existing', 'unavailable', 'available'], description: 'Availability status'},
+                existing_id: {type: :integer, nullable: true, description: 'ID of existing website URL if owned by current account'},
+                existing_website_id: {type: :integer, nullable: true, description: 'Website ID of existing URL if owned by current account'}
+              },
+              required: ['path', 'status']
+            }
+          }
+        },
+        required: ['domain_id', 'domain', 'results']
+      }
+    end
   end
 end

@@ -1,5 +1,9 @@
-export { getLLM } from "./llm";
-export { LLMManager } from "./core";
+export * from "./llm";
+export { LLMManager } from "./service";
 export { LLMTestResponder } from "./test";
+export {
+  unavailableModelFallbackMiddleware,
+  isAvailabilityError,
+} from "./unavailableModelFallbackMiddleware";
 
-export type { LLMSkill, LLMSpeed, LLMCost } from "./types";
+export type { LLMSkill, LLMSpeed, LLMCost, LLMOptions, ModelConfigData } from "./types";

@@ -12,14 +12,19 @@ basic_account:
   description: "Creates a subscribed test user account"
 
 website_step:
-  class: WebsiteCreated
+  class: WebsiteStep
   base_snapshot: basic_account
-  description: "Creates a website with brainstorm data"
+  description: "Creates a website with brainstorm, theme, and uploads (logo + images)"
 
 website_step_finished:
   class: WebsiteStepFinished
   base_snapshot: website_step
   description: "Finishes website step and advances workflow to ad_campaign:content"
+
+website_with_import_errors:
+  class: WebsiteWithImportErrors
+  base_snapshot: website_step_finished
+  description: "Website with import errors for deploy validation testing"
 
 campaign_content_step:
   class: CampaignContentStep
@@ -55,3 +60,8 @@ campaign_complete:
   class: CampaignComplete
   base_snapshot: campaign_review_step
   description: "Creates a complete campaign with favicon, budget, geo targets, schedules, headlines, descriptions, callouts, snippets, ad groups, and keywords"
+
+deploy_step:
+  class: DeployStep
+  base_snapshot: campaign_review_step
+  description: "Ready for deploy with Google OAuth connected and pending deploy created"

@@ -31,9 +31,10 @@ RSpec.describe "Websites API", type: :request do
 
       response '200', 'website found' do
         schema APISchemas::Website.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
         before do
           website.update!(theme_id: theme.id)
@@ -55,9 +56,10 @@ RSpec.describe "Websites API", type: :request do
       end
 
       response '404', 'project not found' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:project_uuid) { 'non-existent-uuid' }
 
         run_test! do |response|
@@ -67,9 +69,10 @@ RSpec.describe "Websites API", type: :request do
       end
 
       response '404', 'website not found for project' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let!(:project_without_website) { create(:project, account: account) }
         let(:project_uuid) { project_without_website.uuid }
 
@@ -94,9 +97,10 @@ RSpec.describe "Websites API", type: :request do
 
       response '200', 'website updated successfully' do
         schema APISchemas::Website.response
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:website_params) do
           {
             website: {
@@ -108,6 +112,40 @@ RSpec.describe "Websites API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['theme_id']).to eq(theme.id)
+        end
+      end
+
+      response '200', 'website theme update injects CSS variables into index.css' do
+        schema APISchemas::Website.response
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let!(:template_with_css) { create(:template, :with_index_css) }
+        let!(:theme_with_colors) { create(:theme, colors: %w[264653 2A9D8F E9C46A F4A261 E76F51]) }
+        let(:website_params) do
+          {
+            website: {
+              theme_id: theme_with_colors.id
+            }
+          }
+        end
+
+        before do
+          website.update!(template: template_with_css)
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['theme_id']).to eq(theme_with_colors.id)
+
+          # Verify that the theme CSS was injected
+          website.reload
+          css_file = website.website_files.find_by(path: "src/index.css")
+          expect(css_file).to be_present
+          expect(css_file.content).to include("--primary:")
+          expect(css_file.content).to include("--background:")
+          expect(css_file.content).to include("@tailwind base;")
         end
       end
 
@@ -127,9 +165,10 @@ RSpec.describe "Websites API", type: :request do
       end
 
       response '404', 'project not found' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:project_uuid) { 'non-existent-uuid' }
         let(:website_params) do
           {
@@ -146,9 +185,10 @@ RSpec.describe "Websites API", type: :request do
       end
 
       response '404', 'website not found for project' do
-        let(:Authorization) { auth_headers_for(user)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let!(:project_without_website) { create(:project, account: account) }
         let(:project_uuid) { project_without_website.uuid }
         let(:website_params) do
@@ -192,9 +232,10 @@ RSpec.describe "Websites API", type: :request do
         parameter name: :website_params, in: :body, schema: APISchemas::Website.update_params_schema
 
         response '404', 'project not found for other account' do
-          let(:Authorization) { auth_headers_for(user)['Authorization'] }
-          let(:"X-Signature") { auth_headers_for(user)['X-Signature'] }
-          let(:"X-Timestamp") { auth_headers_for(user)['X-Timestamp'] }
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
           let(:project_uuid) { other_project.uuid }
           let(:website_params) do
             {

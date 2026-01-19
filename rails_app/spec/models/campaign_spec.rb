@@ -431,6 +431,51 @@ RSpec.describe Campaign, type: :model do
       end
     end
 
+    describe "deployable?" do
+      it "requires google_ads_account with conversion tracking configured" do
+        campaign, _, _ = finish_launch_stage(account)
+
+        # Campaign is done with launch stage but has no google ads account
+        expect(campaign).to be_done_launch_stage
+        expect(campaign).to_not be_deployable
+
+        # Create a google ads account without conversion tracking
+        ads_account = AdsAccount.create!(account: account, platform: "google")
+        ads_account.update!(google_customer_id: "1234567890")
+
+        # Still not deployable - missing conversion tracking
+        expect(campaign.reload).to_not be_deployable
+
+        # Add conversion_id but not label
+        ads_account.update!(google_conversion_id: "AW-123456789")
+        expect(campaign.reload).to_not be_deployable
+
+        # Add conversion_label - now deployable
+        ads_account.update!(google_conversion_label: "abc123XYZ")
+        # TODO: MUST UPDATE THIS!!
+        # TODO TODO TODO
+        # currently billing_enabled? is hardcoded => false
+        expect(campaign.reload).to_not be_deployable
+      end
+
+      it "is not deployable without completing launch stage" do
+        campaign, _, _ = finish_settings_stage(account)
+
+        # Create a fully configured google ads account
+        ads_account = AdsAccount.create!(account: account, platform: "google")
+        ads_account.update!(
+          google_customer_id: "1234567890",
+          google_conversion_id: "AW-123456789",
+          google_conversion_label: "abc123XYZ"
+        )
+
+        # Campaign still in settings stage, not deployable
+        expect(campaign.stage).to eq("launch")
+        expect(campaign).to_not be_done_launch_stage
+        expect(campaign.reload).to_not be_deployable
+      end
+    end
+
     describe "Content" do
       it "allows saving any partial headlines and descriptions" do
         campaign, _, _ = create_campaign(account)

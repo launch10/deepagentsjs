@@ -906,7 +906,7 @@ RSpec.describe GoogleAds::Resources::Account do
 
     describe '#google_syncer' do
       it 'returns resource instance' do
-        expect(ads_account.google_syncer).to be_a(described_class)
+        expect(ads_account.google_syncer.class.name).to eq(described_class.name)
       end
     end
   end

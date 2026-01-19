@@ -648,7 +648,7 @@ RSpec.describe GoogleAds::Resources::Keyword do
     end
 
     it 'includes Instrumentable' do
-      expect(described_class.ancestors).to include(GoogleAds::Resources::Instrumentable)
+      expect(described_class.ancestors.map(&:name)).to include('GoogleAds::Resources::Instrumentable')
     end
 
     it 'wraps fetch with instrumentation context' do

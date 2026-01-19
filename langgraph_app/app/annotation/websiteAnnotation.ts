@@ -1,72 +1,57 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
-import { type WebsiteGraphState } from "@state";
-import type {
-  CodeTaskType,
-  ProjectType,
-  FileMap,
-  WebsiteType,
-  TaskHistoryType,
-  ComponentContentPlanType,
-  ComponentOverviewType,
-  ConsoleError,
-  Expect,
-  Equal,
-} from "@types";
+import type { PrimaryKeyType } from "@types";
+import { Brainstorm, Website, Core, type ConsoleError } from "@types";
 
 export const WebsiteAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
 
-  task: Annotation<CodeTaskType | undefined>({
+  command: Annotation<Website.CommandName | undefined>({
     default: () => undefined,
     reducer: (current, next) => next,
   }),
 
-  contentPlan: Annotation<ComponentContentPlanType | undefined>({
+  brainstormId: Annotation<PrimaryKeyType | undefined>({
     default: () => undefined,
     reducer: (current, next) => next,
   }),
 
-  queue: Annotation<CodeTaskType[]>({
-    default: () => [],
-    reducer: (current, next) => next,
-  }),
-
-  completedTasks: Annotation<CodeTaskType[]>({
-    default: () => [],
-    reducer: (current, next) => next,
-  }),
-
-  taskHistory: Annotation<TaskHistoryType[]>({
-    default: () => [],
-    reducer: (current, next) => next,
-  }),
-
-  project: Annotation<ProjectType | undefined>({
-    default: () => undefined,
-    reducer: (current, next) => next,
-  }),
-
-  website: Annotation<WebsiteType | undefined>({
-    default: () => undefined,
-    reducer: (current, next) => next,
-  }),
-
-  componentOverviews: Annotation<ComponentOverviewType[]>({
-    default: () => [],
-    reducer: (current, next) => next,
-  }),
-
-  files: Annotation<FileMap>({
+  brainstorm: Annotation<Brainstorm.MemoriesType>({
     default: () => ({}),
     reducer: (current, next) => next,
   }),
 
-  consoleErrors: Annotation<ConsoleError[]>({
+  theme: Annotation<Website.ThemeType | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next,
+  }),
+
+  images: Annotation<Website.Image[]>({
     default: () => [],
     reducer: (current, next) => next,
   }),
+
+  consoleErrors: Annotation<Website.Errors.ConsoleError[]>({
+    default: () => [],
+    reducer: (current, next) => [...current, ...next],
+  }),
+
+  errorRetries: Annotation<number>({
+    default: () => 0,
+    reducer: (current, next) => next,
+  }),
+
+  status: Annotation<Core.Status>({
+    default: () => "pending",
+    reducer: (current, next) => next,
+  }),
+
+  // Files synced from database via syncFilesToState node after agent completes
+  // FileData format: { content: string[], created_at: string, modified_at: string }
+  files: Annotation<Website.FileMap>({
+    default: () => ({}),
+    reducer: (current, next) => ({ ...current, ...next }),
+  }),
 });
 
-// Just a convenience to ensure the annotation matches the state type
-type _Assertion = Expect<Equal<WebsiteGraphState, typeof WebsiteAnnotation.State>>;
+export type WebsiteGraphState = typeof WebsiteAnnotation.State;

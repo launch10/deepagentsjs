@@ -96,7 +96,7 @@ module GoogleAds
       def compare_fields(remote)
         local_json = to_google_json
 
-        FieldCompare.build do |c|
+        GoogleAds::FieldCompare.build do |c|
           self.class.field_mappings.each do |name, mapping|
             # Check if this field should be skipped
             if should_skip_comparison?(mapping[:skip_comparison])

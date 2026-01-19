@@ -1,0 +1,400 @@
+import type {
+  BackendProtocol,
+  EditResult,
+  FileData,
+  FileInfo,
+  FileUploadResponse,
+  FileDownloadResponse,
+  GrepMatch,
+  WriteResult,
+} from "deepagents";
+import { FilesystemBackend } from "deepagents";
+import { db, codeFiles, eq, and, sql, Types as DBTypes, type DB } from "@db";
+import * as fs from "fs/promises";
+import * as path from "path";
+import _ from "lodash";
+import micromatch from "micromatch";
+import { WebsiteFilesAPIService } from "@rails_api";
+import { RedisLock } from "@ext";
+import { appendFileSync, mkdirSync } from "fs";
+
+// Debug file logger for tracing read/write/edit operations
+const DEBUG_LOG_PATH = "/tmp/website_files_backend.log";
+
+function debugLog(websiteId: number | undefined, operation: string, details: Record<string, unknown>) {
+  try {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      timestamp,
+      websiteId,
+      operation,
+      ...details,
+    };
+    appendFileSync(DEBUG_LOG_PATH, JSON.stringify(logEntry) + "\n");
+  } catch (e) {
+    // Ignore logging errors
+  }
+}
+
+export interface CreateBackendParams {
+  website: DBTypes.WebsiteType;
+  jwt: string;
+}
+
+export class WebsiteFilesBackend implements BackendProtocol {
+  private fs: FilesystemBackend;
+  private website: DBTypes.WebsiteType;
+  private database: DB;
+  private rootDir: string;
+  private jwt: string;
+
+  constructor(config: CreateBackendParams) {
+    this.website = config.website;
+    this.rootDir = this.makeRootDir();
+    this.fs = new FilesystemBackend({
+      rootDir: this.rootDir,
+      virtualMode: true,
+    });
+    this.database = db;
+    this.jwt = config.jwt;
+  }
+
+  makeRootDir(): string {
+    const name = _.snakeCase(this.website.name ?? "");
+    return `agents/websites/${this.website.accountId}/${name}`;
+  }
+
+  static async create(params: CreateBackendParams): Promise<WebsiteFilesBackend> {
+    const backend = new WebsiteFilesBackend(params);
+    await backend.hydrate();
+    return backend;
+  }
+
+  getRootDir(): string {
+    return this.rootDir;
+  }
+
+  getWebsiteId(): number {
+    if (!this.website.id) {
+      throw new Error("Website ID is undefined");
+    }
+    return this.website.id;
+  }
+
+  async hydrate(): Promise<void> {
+    debugLog(this.website.id, "HYDRATE_START", { rootDir: this.rootDir });
+
+    const files = await this.database
+      .select({
+        path: codeFiles.path,
+        content: codeFiles.content,
+      })
+      .from(codeFiles)
+      .where(eq(codeFiles.websiteId, this.getWebsiteId()));
+
+    debugLog(this.website.id, "HYDRATE_FILES_LOADED", {
+      fileCount: files.length,
+      paths: files.map(f => f.path)
+    });
+
+    await this.cleanup();
+
+    for (const file of files) {
+      if (!file.path || !file.content) continue;
+
+      const filePath = path.join(this.rootDir, file.path);
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, file.content);
+    }
+
+    debugLog(this.website.id, "HYDRATE_COMPLETE", { fileCount: files.length });
+  }
+
+  async cleanup(): Promise<void> {
+    await fs.rm(this.rootDir, { recursive: true, force: true });
+  }
+
+  async lsInfo(path: string): Promise<FileInfo[]> {
+    console.log("lsInfo", path);
+    return this.fs.lsInfo(path);
+  }
+
+  async read(filePath: string, offset: number = 0, limit: number = 2000): Promise<string> {
+    console.log("read", filePath, offset, limit);
+
+    // Return raw content without line numbers to avoid confusing the agent
+    // The default fs.read() adds line numbers which can cause issues when
+    // agents try to match content for edits or writes
+    const fileData = await this.fs.readRaw(filePath);
+    const rawContent = Array.isArray(fileData.content)
+      ? fileData.content.join("\n")
+      : String(fileData.content);
+
+    // Apply offset and limit (in lines)
+    const lines = rawContent.split("\n");
+    const startIdx = offset;
+    const endIdx = Math.min(startIdx + limit, lines.length);
+
+    if (startIdx >= lines.length) {
+      return `Error: Line offset ${offset} exceeds file length (${lines.length} lines)`;
+    }
+
+    const content = lines.slice(startIdx, endIdx).join("\n");
+
+    debugLog(this.website.id, "READ", {
+      filePath,
+      offset,
+      limit,
+      contentLength: content.length,
+      contentHash: Buffer.from(content).toString("base64").slice(0, 20),
+      contentPreview: content.slice(0, 200).replace(/\n/g, "\\n"),
+    });
+    return content;
+  }
+
+  async readRaw(filePath: string): Promise<FileData> {
+    console.log("readRaw", filePath);
+    return this.fs.readRaw(filePath);
+  }
+
+  async globInfo(pattern: string, path: string = "/"): Promise<FileInfo[]> {
+    console.log("globInfo", pattern, path);
+    return this.fs.globInfo(pattern, path);
+  }
+
+  async grepRaw(
+    pattern: string,
+    pathPrefix: string = "/",
+    glob: string | null = null
+  ): Promise<GrepMatch[] | string> {
+    console.log("grepRaw", pattern, pathPrefix, glob);
+    try {
+      const regex = new RegExp(pattern);
+      const tsQuery = this.regexToTsQuery(pattern);
+
+      const results = await this.database
+        .select({
+          path: codeFiles.path,
+          content: codeFiles.content,
+          rank: sql<number>`ts_rank(content_tsv, to_tsquery('english', ${tsQuery}))`.as("rank"),
+        })
+        .from(codeFiles)
+        .where(
+          and(
+            eq(codeFiles.websiteId, this.getWebsiteId()),
+            sql`content_tsv @@ to_tsquery('english', ${tsQuery})`
+          )
+        )
+        .orderBy(sql`rank DESC`)
+        .limit(100);
+
+      const matches: GrepMatch[] = [];
+      for (const result of results) {
+        if (!result.content || !result.path) continue;
+
+        const pathWithSlash = result.path.startsWith("/") ? result.path : `/${result.path}`;
+
+        if (pathPrefix !== "/" && !pathWithSlash.startsWith(pathPrefix)) {
+          continue;
+        }
+
+        if (glob && !micromatch.isMatch(pathWithSlash, glob)) {
+          continue;
+        }
+
+        const lines = result.content.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (line && regex.test(line)) {
+            matches.push({
+              path: pathWithSlash,
+              line: i + 1,
+              text: line,
+            });
+          }
+        }
+      }
+
+      return matches;
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        return `Invalid regex pattern: ${pattern}`;
+      }
+      throw e;
+    }
+  }
+
+  private regexToTsQuery(pattern: string): string {
+    const cleaned = pattern
+      .replace(/[.*+?^${}()|[\]\\]/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0)
+      .join(" | ");
+    return cleaned || "a";
+  }
+
+  async write(filePath: string, content: string): Promise<WriteResult> {
+    console.log("write", filePath, content);
+    const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
+
+    debugLog(this.website.id, "WRITE_START", {
+      filePath,
+      contentLength: content.length,
+      contentHash: Buffer.from(content).toString("base64").slice(0, 20),
+      contentPreview: content.slice(0, 200).replace(/\n/g, "\\n"),
+    });
+
+    return RedisLock.withLock(lockKey, async () => {
+      debugLog(this.website.id, "WRITE_LOCK_ACQUIRED", { filePath });
+
+      // Try to write first (for new files)
+      let fsResult = await this.fs.write(filePath, content);
+
+      // If file already exists, replace its entire content via edit
+      if (fsResult.error?.includes("already exists")) {
+        debugLog(this.website.id, "WRITE_FILE_EXISTS_REPLACING", { filePath });
+
+        // Read current content to replace it entirely
+        try {
+          const fileData = await this.fs.readRaw(filePath);
+          // FileData.content is string[] (array of lines)
+          const currentContent = Array.isArray(fileData.content)
+            ? fileData.content.join("\n")
+            : String(fileData.content);
+
+          // Replace entire content
+          const editResult = await this.fs.edit(filePath, currentContent, content, false);
+          if (editResult.error) {
+            debugLog(this.website.id, "WRITE_REPLACE_FAILED", {
+              filePath,
+              error: editResult.error,
+            });
+            return { error: editResult.error };
+          }
+
+          fsResult = { path: filePath, filesUpdate: null };
+        } catch (e) {
+          const errorMsg = e instanceof Error ? e.message : String(e);
+          debugLog(this.website.id, "WRITE_REPLACE_ERROR", { filePath, error: errorMsg });
+          return { error: errorMsg };
+        }
+      }
+
+      debugLog(this.website.id, "WRITE_FS_COMPLETE", {
+        filePath,
+        error: fsResult.error ?? null,
+      });
+
+      if (fsResult.error) return fsResult;
+
+      const service = new WebsiteFilesAPIService({ jwt: this.jwt });
+      await service.write({
+        id: this.getWebsiteId(),
+        files: [{ path: filePath, content }],
+      });
+
+      debugLog(this.website.id, "WRITE_API_COMPLETE", { filePath });
+
+      return {
+        path: filePath,
+        filesUpdate: null,
+      };
+    });
+  }
+
+  async edit(
+    filePath: string,
+    oldString: string,
+    newString: string,
+    replaceAll: boolean = false
+  ): Promise<EditResult> {
+    console.log("edit", filePath, oldString, newString, replaceAll);
+
+    debugLog(this.website.id, "EDIT_START", {
+      filePath,
+      oldStringLength: oldString.length,
+      newStringLength: newString.length,
+      oldStringPreview: oldString.slice(0, 100).replace(/\n/g, "\\n"),
+      newStringPreview: newString.slice(0, 100).replace(/\n/g, "\\n"),
+      replaceAll,
+    });
+
+    const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
+    return RedisLock.withLock(lockKey, async () => {
+      debugLog(this.website.id, "EDIT_LOCK_ACQUIRED", { filePath });
+
+      const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
+      if (fsResult.error) {
+        // Enhanced error logging for debugging edit failures (using console.log for vitest stdout)
+        console.log(`\n${"=".repeat(80)}`);
+        console.log(`EDIT FAILED: ${filePath}`);
+        console.log(`Error: ${fsResult.error}`);
+        console.log(`${"=".repeat(80)}`);
+        console.log(`Old string being searched (${oldString.length} chars):`);
+        console.log(`---BEGIN OLD STRING---`);
+        console.log(oldString);
+        console.log(`---END OLD STRING---`);
+
+        // Try to read current file content to help debug
+        try {
+          const currentContent = await this.fs.read(filePath, 0, 5000);
+          console.log(`\nCurrent file content (first 5000 chars):`);
+          console.log(`---BEGIN FILE CONTENT---`);
+          console.log(currentContent);
+          console.log(`---END FILE CONTENT---`);
+
+          // Check if it's a whitespace/newline issue
+          const oldStringNormalized = oldString.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
+          const contentNormalized = currentContent.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
+          if (contentNormalized.includes(oldStringNormalized)) {
+            console.log(`\n⚠️  WHITESPACE MISMATCH DETECTED!`);
+            console.log(`The content exists but whitespace differs.`);
+          }
+        } catch (readError) {
+          console.log(`Could not read file for debugging: ${readError}`);
+        }
+        console.log(`${"=".repeat(80)}\n`);
+
+        debugLog(this.website.id, "EDIT_FS_FAILED", {
+          filePath,
+          error: fsResult.error,
+        });
+
+        return fsResult;
+      }
+
+      debugLog(this.website.id, "EDIT_FS_COMPLETE", {
+        filePath,
+        occurrences: fsResult.occurrences,
+      });
+
+      const service = new WebsiteFilesAPIService({ jwt: this.jwt });
+      await service.edit({
+        id: this.getWebsiteId(),
+        path: filePath,
+        oldString,
+        newString,
+        replaceAll,
+      });
+
+      debugLog(this.website.id, "EDIT_API_COMPLETE", { filePath });
+
+      return {
+        path: filePath,
+        occurrences: fsResult.occurrences,
+        filesUpdate: null,
+      };
+    });
+  }
+
+  async uploadFiles(files: Array<[string, Uint8Array]>): Promise<FileUploadResponse[]> {
+    // Not implemented - use write() instead for text files
+    throw new Error("uploadFiles not implemented - use write() for text files");
+  }
+
+  async downloadFiles(paths: string[]): Promise<FileDownloadResponse[]> {
+    // Not implemented - use read() instead
+    throw new Error("downloadFiles not implemented - use read() for text files");
+  }
+}

@@ -59,7 +59,7 @@ module GoogleAds
           snippet = ::AdStructuredSnippet.where(campaign_id: campaign.id).first
           results << new(snippet).sync if snippet
 
-          Sync::CollectionSyncResult.new(results: results)
+          ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
         end
 
         def sync_plan(campaign)
@@ -79,7 +79,7 @@ module GoogleAds
           snippet = ::AdStructuredSnippet.where(campaign_id: campaign.id).first
           operations.concat(new(snippet).sync_plan.operations) if snippet
 
-          Sync::Plan.new(operations)
+          ::GoogleAds::Sync::Plan.new(operations)
         end
       end
 
@@ -129,7 +129,7 @@ module GoogleAds
           }
         end
 
-        Sync::Plan.new(operations)
+        GoogleAds::Sync::Plan.new(operations)
       end
 
       def delete

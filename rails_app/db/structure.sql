@@ -1091,6 +1091,92 @@ ALTER SEQUENCE public.ads_id_seq OWNED BY public.ads.id;
 
 
 --
+-- Name: ahoy_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ahoy_events (
+    id bigint NOT NULL,
+    visit_id bigint,
+    name character varying,
+    properties jsonb,
+    "time" timestamp(6) without time zone
+);
+
+
+--
+-- Name: ahoy_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ahoy_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ahoy_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ahoy_events_id_seq OWNED BY public.ahoy_events.id;
+
+
+--
+-- Name: ahoy_visits; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ahoy_visits (
+    id bigint NOT NULL,
+    visit_token character varying,
+    visitor_token character varying,
+    website_id bigint,
+    gclid character varying,
+    ip character varying,
+    user_agent text,
+    referrer text,
+    referring_domain character varying,
+    landing_page text,
+    browser character varying,
+    os character varying,
+    device_type character varying,
+    country character varying,
+    region character varying,
+    city character varying,
+    latitude double precision,
+    longitude double precision,
+    utm_source character varying,
+    utm_medium character varying,
+    utm_term character varying,
+    utm_content character varying,
+    utm_campaign character varying,
+    app_version character varying,
+    os_version character varying,
+    platform character varying,
+    started_at timestamp(6) without time zone
+);
+
+
+--
+-- Name: ahoy_visits_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ahoy_visits_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ahoy_visits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ahoy_visits_id_seq OWNED BY public.ahoy_visits.id;
+
+
+--
 -- Name: announcements; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1498,7 +1584,6 @@ CREATE TABLE public.template_files (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     shasum character varying,
-    file_specification_id integer,
     content_tsv tsvector,
     embedding public.vector(1536)
 );
@@ -1512,7 +1597,6 @@ CREATE TABLE public.website_file_histories (
     id bigint NOT NULL,
     website_file_id integer NOT NULL,
     website_id integer NOT NULL,
-    file_specification_id integer,
     path character varying NOT NULL,
     content character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
@@ -1545,7 +1629,8 @@ CREATE TABLE public.website_histories (
     snapshot_id character varying,
     thread_id character varying,
     template_id integer,
-    theme_id integer
+    theme_id integer,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -1562,7 +1647,8 @@ CREATE TABLE public.websites (
     updated_at timestamp(6) without time zone NOT NULL,
     thread_id character varying,
     template_id bigint,
-    theme_id integer
+    theme_id integer,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -1578,7 +1664,6 @@ CREATE VIEW public.code_file_histories AS
             wfh.content,
             wfh.content_tsv,
             wfh.shasum,
-            wfh.file_specification_id,
             wfh.created_at,
             wfh.updated_at,
             'WebsiteFile'::text AS source_type,
@@ -1591,7 +1676,6 @@ CREATE VIEW public.code_file_histories AS
             tf.content,
             tf.content_tsv,
             tf.shasum,
-            tf.file_specification_id,
             tf.created_at,
             tf.updated_at,
             'TemplateFile'::text AS source_type,
@@ -1609,7 +1693,6 @@ CREATE VIEW public.code_file_histories AS
     content,
     content_tsv,
     shasum,
-    file_specification_id,
     source_type,
     source_id,
     created_at,
@@ -1625,7 +1708,6 @@ CREATE VIEW public.code_file_histories AS
 CREATE TABLE public.website_files (
     id bigint NOT NULL,
     website_id bigint NOT NULL,
-    file_specification_id bigint,
     path character varying NOT NULL,
     content character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
@@ -1648,7 +1730,6 @@ CREATE VIEW public.code_files AS
             wf.content_tsv,
             wf.embedding,
             wf.shasum,
-            wf.file_specification_id,
             wf.created_at,
             wf.updated_at,
             'WebsiteFile'::text AS source_type,
@@ -1661,7 +1742,6 @@ CREATE VIEW public.code_files AS
             tf.content_tsv,
             tf.embedding,
             tf.shasum,
-            tf.file_specification_id,
             tf.created_at,
             tf.updated_at,
             'TemplateFile'::text AS source_type,
@@ -1678,129 +1758,12 @@ CREATE VIEW public.code_files AS
     content_tsv,
     embedding,
     shasum,
-    file_specification_id,
     source_type,
     source_id,
     created_at,
     updated_at
    FROM merged_files
   ORDER BY website_id, path;
-
-
---
--- Name: component_content_plans; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.component_content_plans (
-    id bigint NOT NULL,
-    component_overview_id bigint NOT NULL,
-    component_type character varying,
-    data jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    component_id integer
-);
-
-
---
--- Name: component_content_plans_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.component_content_plans_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: component_content_plans_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.component_content_plans_id_seq OWNED BY public.component_content_plans.id;
-
-
---
--- Name: component_overviews; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.component_overviews (
-    id bigint NOT NULL,
-    website_id bigint NOT NULL,
-    page_id bigint,
-    component_type character varying,
-    name character varying,
-    path character varying,
-    component_id bigint,
-    file_specification_id bigint,
-    purpose character varying,
-    context character varying,
-    copy character varying,
-    background_color character varying,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    sort_order integer
-);
-
-
---
--- Name: component_overviews_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.component_overviews_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: component_overviews_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.component_overviews_id_seq OWNED BY public.component_overviews.id;
-
-
---
--- Name: components; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.components (
-    id bigint NOT NULL,
-    website_id bigint NOT NULL,
-    page_id bigint NOT NULL,
-    name character varying NOT NULL,
-    path character varying,
-    component_type character varying,
-    file_specification_id bigint NOT NULL,
-    theme_variant_id integer,
-    component_overview_id integer,
-    component_content_plan_id integer,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    website_file_id integer
-);
-
-
---
--- Name: components_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.components_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: components_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.components_id_seq OWNED BY public.components.id;
 
 
 --
@@ -1843,51 +1806,6 @@ ALTER SEQUENCE public.connected_accounts_id_seq OWNED BY public.connected_accoun
 
 
 --
--- Name: content_strategies; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.content_strategies (
-    id bigint NOT NULL,
-    tone character varying NOT NULL,
-    core_emotional_driver character varying,
-    attention_grabber character varying,
-    problem_statement character varying,
-    emotional_bridge character varying,
-    product_reveal character varying,
-    social_proof character varying,
-    urgency_hook character varying,
-    call_to_action character varying,
-    page_mood character varying,
-    visual_evocation character varying,
-    landing_page_copy text,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    website_id integer,
-    summary text,
-    audience character varying
-);
-
-
---
--- Name: content_strategies_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.content_strategies_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: content_strategies_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.content_strategies_id_seq OWNED BY public.content_strategies.id;
-
-
---
 -- Name: deploy_files; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1917,6 +1835,45 @@ CREATE SEQUENCE public.deploy_files_id_seq
 --
 
 ALTER SEQUENCE public.deploy_files_id_seq OWNED BY public.deploy_files.id;
+
+
+--
+-- Name: deploys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.deploys (
+    id bigint NOT NULL,
+    project_id bigint NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    current_step character varying,
+    is_live boolean DEFAULT false,
+    stacktrace text,
+    langgraph_thread_id character varying,
+    website_deploy_id bigint,
+    campaign_deploy_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    user_active_at timestamp(6) without time zone
+);
+
+
+--
+-- Name: deploys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.deploys_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: deploys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.deploys_id_seq OWNED BY public.deploys.id;
 
 
 --
@@ -2307,41 +2264,6 @@ ALTER SEQUENCE public.domains_id_seq OWNED BY public.domains.id;
 
 
 --
--- Name: file_specifications; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.file_specifications (
-    id bigint NOT NULL,
-    canonical_path character varying,
-    description character varying,
-    filetype character varying,
-    component_type character varying,
-    language character varying,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: file_specifications_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.file_specifications_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: file_specifications_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.file_specifications_id_seq OWNED BY public.file_specifications.id;
-
-
---
 -- Name: geo_target_constants; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2496,8 +2418,8 @@ CREATE TABLE public.job_runs (
     updated_at timestamp(6) without time zone NOT NULL,
     account_id bigint,
     langgraph_thread_id character varying,
-    langgraph_callback_url character varying,
-    result_data jsonb DEFAULT '{}'::jsonb
+    result_data jsonb DEFAULT '{}'::jsonb,
+    deploy_id bigint
 );
 
 
@@ -2518,6 +2440,109 @@ CREATE SEQUENCE public.job_runs_id_seq
 --
 
 ALTER SEQUENCE public.job_runs_id_seq OWNED BY public.job_runs.id;
+
+
+--
+-- Name: leads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.leads (
+    id bigint NOT NULL,
+    email character varying(255) NOT NULL,
+    name character varying(255),
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    account_id bigint NOT NULL
+);
+
+
+--
+-- Name: leads_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.leads_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: leads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.leads_id_seq OWNED BY public.leads.id;
+
+
+--
+-- Name: model_configs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.model_configs (
+    id bigint NOT NULL,
+    model_key character varying NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    max_usage_percent integer DEFAULT 100,
+    cost_in numeric(10,4),
+    cost_out numeric(10,4),
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    model_card character varying
+);
+
+
+--
+-- Name: model_configs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.model_configs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: model_configs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.model_configs_id_seq OWNED BY public.model_configs.id;
+
+
+--
+-- Name: model_preferences; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.model_preferences (
+    id bigint NOT NULL,
+    cost_tier character varying NOT NULL,
+    speed_tier character varying NOT NULL,
+    skill character varying NOT NULL,
+    model_keys character varying[] DEFAULT '{}'::character varying[] NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: model_preferences_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.model_preferences_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: model_preferences_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.model_preferences_id_seq OWNED BY public.model_preferences.id;
 
 
 --
@@ -2661,42 +2686,6 @@ CREATE SEQUENCE public.notifications_id_seq
 --
 
 ALTER SEQUENCE public.notifications_id_seq OWNED BY public.notifications.id;
-
-
---
--- Name: pages; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.pages (
-    id bigint NOT NULL,
-    name character varying,
-    page_type character varying NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    website_id bigint,
-    website_file_id bigint,
-    path character varying,
-    file_specification_id bigint
-);
-
-
---
--- Name: pages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.pages_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: pages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.pages_id_seq OWNED BY public.pages.id;
 
 
 --
@@ -3064,7 +3053,8 @@ CREATE TABLE public.projects (
     account_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    uuid uuid DEFAULT gen_random_uuid() NOT NULL
+    uuid uuid DEFAULT gen_random_uuid() NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -3182,7 +3172,6 @@ CREATE TABLE public.tasks (
     instructions character varying,
     status character varying,
     action character varying,
-    file_specification_id bigint,
     component_id bigint,
     component_type character varying,
     component_overview_id bigint,
@@ -3295,42 +3284,6 @@ ALTER SEQUENCE public.theme_labels_id_seq OWNED BY public.theme_labels.id;
 
 
 --
--- Name: theme_variants; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.theme_variants (
-    id bigint NOT NULL,
-    background_class character varying NOT NULL,
-    foreground_class character varying,
-    muted_class character varying,
-    primary_class character varying,
-    secondary_class character varying,
-    accent_class character varying,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: theme_variants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.theme_variants_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: theme_variants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.theme_variants_id_seq OWNED BY public.theme_variants.id;
-
-
---
 -- Name: themes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3342,7 +3295,9 @@ CREATE TABLE public.themes (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     theme_type character varying NOT NULL,
-    author_id bigint
+    author_id bigint,
+    pairings jsonb,
+    typography_recommendations jsonb
 );
 
 
@@ -3692,6 +3647,46 @@ CREATE SEQUENCE public.website_histories_id_seq
 --
 
 ALTER SEQUENCE public.website_histories_id_seq OWNED BY public.website_histories.id;
+
+
+--
+-- Name: website_leads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.website_leads (
+    id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    website_id bigint NOT NULL,
+    visit_id bigint,
+    visitor_token character varying,
+    gclid character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    utm_source character varying,
+    utm_medium character varying,
+    utm_campaign character varying,
+    utm_content character varying,
+    utm_term character varying
+);
+
+
+--
+-- Name: website_leads_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.website_leads_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: website_leads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.website_leads_id_seq OWNED BY public.website_leads.id;
 
 
 --
@@ -4198,6 +4193,20 @@ ALTER TABLE ONLY public.ads_accounts ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: ahoy_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ahoy_events ALTER COLUMN id SET DEFAULT nextval('public.ahoy_events_id_seq'::regclass);
+
+
+--
+-- Name: ahoy_visits id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ahoy_visits ALTER COLUMN id SET DEFAULT nextval('public.ahoy_visits_id_seq'::regclass);
+
+
+--
 -- Name: announcements id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4254,27 +4263,6 @@ ALTER TABLE ONLY public.cloudflare_firewalls ALTER COLUMN id SET DEFAULT nextval
 
 
 --
--- Name: component_content_plans id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.component_content_plans ALTER COLUMN id SET DEFAULT nextval('public.component_content_plans_id_seq'::regclass);
-
-
---
--- Name: component_overviews id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.component_overviews ALTER COLUMN id SET DEFAULT nextval('public.component_overviews_id_seq'::regclass);
-
-
---
--- Name: components id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.components ALTER COLUMN id SET DEFAULT nextval('public.components_id_seq'::regclass);
-
-
---
 -- Name: connected_accounts id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4282,17 +4270,17 @@ ALTER TABLE ONLY public.connected_accounts ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
--- Name: content_strategies id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.content_strategies ALTER COLUMN id SET DEFAULT nextval('public.content_strategies_id_seq'::regclass);
-
-
---
 -- Name: deploy_files id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.deploy_files ALTER COLUMN id SET DEFAULT nextval('public.deploy_files_id_seq'::regclass);
+
+
+--
+-- Name: deploys id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys ALTER COLUMN id SET DEFAULT nextval('public.deploys_id_seq'::regclass);
 
 
 --
@@ -4321,13 +4309,6 @@ ALTER TABLE ONLY public.domain_request_counts ALTER COLUMN id SET DEFAULT nextva
 --
 
 ALTER TABLE ONLY public.domains ALTER COLUMN id SET DEFAULT nextval('public.domains_id_seq'::regclass);
-
-
---
--- Name: file_specifications id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.file_specifications ALTER COLUMN id SET DEFAULT nextval('public.file_specifications_id_seq'::regclass);
 
 
 --
@@ -4366,6 +4347,27 @@ ALTER TABLE ONLY public.job_runs ALTER COLUMN id SET DEFAULT nextval('public.job
 
 
 --
+-- Name: leads id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads ALTER COLUMN id SET DEFAULT nextval('public.leads_id_seq'::regclass);
+
+
+--
+-- Name: model_configs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.model_configs ALTER COLUMN id SET DEFAULT nextval('public.model_configs_id_seq'::regclass);
+
+
+--
+-- Name: model_preferences id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.model_preferences ALTER COLUMN id SET DEFAULT nextval('public.model_preferences_id_seq'::regclass);
+
+
+--
 -- Name: noticed_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4391,13 +4393,6 @@ ALTER TABLE ONLY public.notification_tokens ALTER COLUMN id SET DEFAULT nextval(
 --
 
 ALTER TABLE ONLY public.notifications ALTER COLUMN id SET DEFAULT nextval('public.notifications_id_seq'::regclass);
-
-
---
--- Name: pages id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pages ALTER COLUMN id SET DEFAULT nextval('public.pages_id_seq'::regclass);
 
 
 --
@@ -4506,13 +4501,6 @@ ALTER TABLE ONLY public.theme_labels ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
--- Name: theme_variants id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.theme_variants ALTER COLUMN id SET DEFAULT nextval('public.theme_variants_id_seq'::regclass);
-
-
---
 -- Name: themes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4573,6 +4561,13 @@ ALTER TABLE ONLY public.website_files ALTER COLUMN id SET DEFAULT nextval('publi
 --
 
 ALTER TABLE ONLY public.website_histories ALTER COLUMN id SET DEFAULT nextval('public.website_histories_id_seq'::regclass);
+
+
+--
+-- Name: website_leads id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_leads ALTER COLUMN id SET DEFAULT nextval('public.website_leads_id_seq'::regclass);
 
 
 --
@@ -4909,6 +4904,22 @@ ALTER TABLE ONLY public.ads
 
 
 --
+-- Name: ahoy_events ahoy_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ahoy_events
+    ADD CONSTRAINT ahoy_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ahoy_visits ahoy_visits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ahoy_visits
+    ADD CONSTRAINT ahoy_visits_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: announcements announcements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5029,30 +5040,6 @@ ALTER TABLE ONLY public.cloudflare_firewalls
 
 
 --
--- Name: component_content_plans component_content_plans_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.component_content_plans
-    ADD CONSTRAINT component_content_plans_pkey PRIMARY KEY (id);
-
-
---
--- Name: component_overviews component_overviews_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.component_overviews
-    ADD CONSTRAINT component_overviews_pkey PRIMARY KEY (id);
-
-
---
--- Name: components components_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.components
-    ADD CONSTRAINT components_pkey PRIMARY KEY (id);
-
-
---
 -- Name: connected_accounts connected_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5061,19 +5048,19 @@ ALTER TABLE ONLY public.connected_accounts
 
 
 --
--- Name: content_strategies content_strategies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.content_strategies
-    ADD CONSTRAINT content_strategies_pkey PRIMARY KEY (id);
-
-
---
 -- Name: deploy_files deploy_files_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.deploy_files
     ADD CONSTRAINT deploy_files_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: deploys deploys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT deploys_pkey PRIMARY KEY (id);
 
 
 --
@@ -5245,14 +5232,6 @@ ALTER TABLE ONLY public.domains
 
 
 --
--- Name: file_specifications file_specifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.file_specifications
-    ADD CONSTRAINT file_specifications_pkey PRIMARY KEY (id);
-
-
---
 -- Name: geo_target_constants geo_target_constants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5293,6 +5272,30 @@ ALTER TABLE ONLY public.job_runs
 
 
 --
+-- Name: leads leads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: model_configs model_configs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.model_configs
+    ADD CONSTRAINT model_configs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: model_preferences model_preferences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.model_preferences
+    ADD CONSTRAINT model_preferences_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: noticed_events noticed_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5322,14 +5325,6 @@ ALTER TABLE ONLY public.notification_tokens
 
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
-
-
---
--- Name: pages pages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pages
-    ADD CONSTRAINT pages_pkey PRIMARY KEY (id);
 
 
 --
@@ -5485,14 +5480,6 @@ ALTER TABLE ONLY public.theme_labels
 
 
 --
--- Name: theme_variants theme_variants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.theme_variants
-    ADD CONSTRAINT theme_variants_pkey PRIMARY KEY (id);
-
-
---
 -- Name: themes themes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5602,6 +5589,14 @@ ALTER TABLE ONLY public.website_files
 
 ALTER TABLE ONLY public.website_histories
     ADD CONSTRAINT website_histories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: website_leads website_leads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.website_leads
+    ADD CONSTRAINT website_leads_pkey PRIMARY KEY (id);
 
 
 --
@@ -6413,6 +6408,13 @@ CREATE INDEX idx_icon_embeddings_text ON public.icon_embeddings USING ivfflat (e
 
 
 --
+-- Name: idx_model_preferences_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_model_preferences_unique ON public.model_preferences USING btree (cost_tier, speed_tier, skill);
+
+
+--
 -- Name: idx_on_project_id_workflow_type_status_a7aa4433b7; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7141,6 +7143,55 @@ CREATE INDEX index_ads_on_status ON public.ads USING btree (status);
 
 
 --
+-- Name: index_ahoy_events_on_name_and_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_events_on_name_and_time ON public.ahoy_events USING btree (name, "time");
+
+
+--
+-- Name: index_ahoy_events_on_properties; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_events_on_properties ON public.ahoy_events USING gin (properties jsonb_path_ops);
+
+
+--
+-- Name: index_ahoy_events_on_visit_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_events_on_visit_id ON public.ahoy_events USING btree (visit_id);
+
+
+--
+-- Name: index_ahoy_visits_on_gclid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_visits_on_gclid ON public.ahoy_visits USING btree (gclid);
+
+
+--
+-- Name: index_ahoy_visits_on_visit_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_ahoy_visits_on_visit_token ON public.ahoy_visits USING btree (visit_token);
+
+
+--
+-- Name: index_ahoy_visits_on_visitor_token_and_started_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_visits_on_visitor_token_and_started_at ON public.ahoy_visits USING btree (visitor_token, started_at);
+
+
+--
+-- Name: index_ahoy_visits_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_visits_on_website_id ON public.ahoy_visits USING btree (website_id);
+
+
+--
 -- Name: index_api_tokens_on_token; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7470,206 +7521,10 @@ CREATE INDEX index_cloudflare_firewalls_on_unblocked_at ON public.cloudflare_fir
 
 
 --
--- Name: index_component_content_plans_on_component_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_content_plans_on_component_id ON public.component_content_plans USING btree (component_id);
-
-
---
--- Name: index_component_content_plans_on_component_overview_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_content_plans_on_component_overview_id ON public.component_content_plans USING btree (component_overview_id);
-
-
---
--- Name: index_component_content_plans_on_component_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_content_plans_on_component_type ON public.component_content_plans USING btree (component_type);
-
-
---
--- Name: index_component_content_plans_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_content_plans_on_created_at ON public.component_content_plans USING btree (created_at);
-
-
---
--- Name: index_component_content_plans_on_data; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_content_plans_on_data ON public.component_content_plans USING gin (data);
-
-
---
--- Name: index_component_overviews_on_component_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_overviews_on_component_id ON public.component_overviews USING btree (component_id);
-
-
---
--- Name: index_component_overviews_on_component_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_overviews_on_component_type ON public.component_overviews USING btree (component_type);
-
-
---
--- Name: index_component_overviews_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_overviews_on_created_at ON public.component_overviews USING btree (created_at);
-
-
---
--- Name: index_component_overviews_on_file_specification_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_overviews_on_file_specification_id ON public.component_overviews USING btree (file_specification_id);
-
-
---
--- Name: index_component_overviews_on_name; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_overviews_on_name ON public.component_overviews USING btree (name);
-
-
---
--- Name: index_component_overviews_on_page_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_overviews_on_page_id ON public.component_overviews USING btree (page_id);
-
-
---
--- Name: index_component_overviews_on_path; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_overviews_on_path ON public.component_overviews USING btree (path);
-
-
---
--- Name: index_component_overviews_on_sort_order; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_overviews_on_sort_order ON public.component_overviews USING btree (sort_order);
-
-
---
--- Name: index_component_overviews_on_website_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_component_overviews_on_website_id ON public.component_overviews USING btree (website_id);
-
-
---
--- Name: index_components_on_component_content_plan_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_components_on_component_content_plan_id ON public.components USING btree (component_content_plan_id);
-
-
---
--- Name: index_components_on_component_overview_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_components_on_component_overview_id ON public.components USING btree (component_overview_id);
-
-
---
--- Name: index_components_on_component_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_components_on_component_type ON public.components USING btree (component_type);
-
-
---
--- Name: index_components_on_file_specification_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_components_on_file_specification_id ON public.components USING btree (file_specification_id);
-
-
---
--- Name: index_components_on_name; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_components_on_name ON public.components USING btree (name);
-
-
---
--- Name: index_components_on_page_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_components_on_page_id ON public.components USING btree (page_id);
-
-
---
--- Name: index_components_on_page_id_and_name; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_components_on_page_id_and_name ON public.components USING btree (page_id, name);
-
-
---
--- Name: index_components_on_theme_variant_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_components_on_theme_variant_id ON public.components USING btree (theme_variant_id);
-
-
---
--- Name: index_components_on_website_file_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_components_on_website_file_id ON public.components USING btree (website_file_id);
-
-
---
--- Name: index_components_on_website_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_components_on_website_id ON public.components USING btree (website_id);
-
-
---
--- Name: index_components_on_website_id_and_path; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_components_on_website_id_and_path ON public.components USING btree (website_id, path);
-
-
---
 -- Name: index_connected_accounts_on_owner_id_and_owner_type; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_connected_accounts_on_owner_id_and_owner_type ON public.connected_accounts USING btree (owner_id, owner_type);
-
-
---
--- Name: index_content_strategies_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_content_strategies_on_created_at ON public.content_strategies USING btree (created_at);
-
-
---
--- Name: index_content_strategies_on_updated_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_content_strategies_on_updated_at ON public.content_strategies USING btree (updated_at);
-
-
---
--- Name: index_content_strategies_on_website_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_content_strategies_on_website_id ON public.content_strategies USING btree (website_id);
 
 
 --
@@ -7691,6 +7546,62 @@ CREATE INDEX index_deploy_files_on_deploy_id ON public.deploy_files USING btree 
 --
 
 CREATE INDEX index_deploy_files_on_website_file_id ON public.deploy_files USING btree (website_file_id);
+
+
+--
+-- Name: index_deploys_on_campaign_deploy_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_campaign_deploy_id ON public.deploys USING btree (campaign_deploy_id);
+
+
+--
+-- Name: index_deploys_on_is_live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_is_live ON public.deploys USING btree (is_live);
+
+
+--
+-- Name: index_deploys_on_langgraph_thread_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_langgraph_thread_id ON public.deploys USING btree (langgraph_thread_id);
+
+
+--
+-- Name: index_deploys_on_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_project_id ON public.deploys USING btree (project_id);
+
+
+--
+-- Name: index_deploys_on_project_id_and_is_live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_project_id_and_is_live ON public.deploys USING btree (project_id, is_live);
+
+
+--
+-- Name: index_deploys_on_project_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_project_id_and_status ON public.deploys USING btree (project_id, status);
+
+
+--
+-- Name: index_deploys_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_status ON public.deploys USING btree (status);
+
+
+--
+-- Name: index_deploys_on_website_deploy_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_website_deploy_id ON public.deploys USING btree (website_deploy_id);
 
 
 --
@@ -7799,27 +7710,6 @@ CREATE INDEX index_domains_on_website_id ON public.domains USING btree (website_
 
 
 --
--- Name: index_file_specifications_on_canonical_path; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_file_specifications_on_canonical_path ON public.file_specifications USING btree (canonical_path);
-
-
---
--- Name: index_file_specifications_on_component_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_file_specifications_on_component_type ON public.file_specifications USING btree (component_type);
-
-
---
--- Name: index_file_specifications_on_filetype; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_file_specifications_on_filetype ON public.file_specifications USING btree (filetype);
-
-
---
 -- Name: index_geo_target_constants_on_canonical_name; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7918,6 +7808,13 @@ CREATE INDEX index_job_runs_on_account_id ON public.job_runs USING btree (accoun
 
 
 --
+-- Name: index_job_runs_on_deploy_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_deploy_id ON public.job_runs USING btree (deploy_id);
+
+
+--
 -- Name: index_job_runs_on_job_class; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7943,6 +7840,41 @@ CREATE INDEX index_job_runs_on_langgraph_thread_id ON public.job_runs USING btre
 --
 
 CREATE INDEX index_job_runs_on_status ON public.job_runs USING btree (status);
+
+
+--
+-- Name: index_leads_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_account_id ON public.leads USING btree (account_id);
+
+
+--
+-- Name: index_leads_on_account_id_and_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_leads_on_account_id_and_email ON public.leads USING btree (account_id, email);
+
+
+--
+-- Name: index_leads_on_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_email ON public.leads USING btree (email);
+
+
+--
+-- Name: index_model_configs_on_model_card; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_model_configs_on_model_card ON public.model_configs USING btree (model_card);
+
+
+--
+-- Name: index_model_configs_on_model_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_model_configs_on_model_key ON public.model_configs USING btree (model_key);
 
 
 --
@@ -7999,41 +7931,6 @@ CREATE INDEX index_notifications_on_account_id ON public.notifications USING btr
 --
 
 CREATE INDEX index_notifications_on_recipient_type_and_recipient_id ON public.notifications USING btree (recipient_type, recipient_id);
-
-
---
--- Name: index_pages_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_pages_on_created_at ON public.pages USING btree (created_at);
-
-
---
--- Name: index_pages_on_file_specification_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_pages_on_file_specification_id ON public.pages USING btree (file_specification_id);
-
-
---
--- Name: index_pages_on_path; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_pages_on_path ON public.pages USING btree (path);
-
-
---
--- Name: index_pages_on_website_file_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_pages_on_website_file_id ON public.pages USING btree (website_file_id);
-
-
---
--- Name: index_pages_on_website_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_pages_on_website_id ON public.pages USING btree (website_id);
 
 
 --
@@ -8219,6 +8116,13 @@ CREATE INDEX index_projects_on_created_at ON public.projects USING btree (create
 
 
 --
+-- Name: index_projects_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_projects_on_deleted_at ON public.projects USING btree (deleted_at);
+
+
+--
 -- Name: index_projects_on_name; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8289,13 +8193,6 @@ CREATE INDEX index_tasks_on_created_at ON public.tasks USING btree (created_at);
 
 
 --
--- Name: index_tasks_on_file_specification_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_tasks_on_file_specification_id ON public.tasks USING btree (file_specification_id);
-
-
---
 -- Name: index_tasks_on_path; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8352,13 +8249,6 @@ CREATE INDEX index_tasks_on_website_id ON public.tasks USING btree (website_id);
 
 
 --
--- Name: index_template_files_on_file_specification_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_template_files_on_file_specification_id ON public.template_files USING btree (file_specification_id);
-
-
---
 -- Name: index_template_files_on_path; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8398,20 +8288,6 @@ CREATE UNIQUE INDEX index_templates_on_name ON public.templates USING btree (nam
 --
 
 CREATE INDEX index_theme_labels_on_name ON public.theme_labels USING btree (name);
-
-
---
--- Name: index_theme_variants_on_background_class; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_theme_variants_on_background_class ON public.theme_variants USING btree (background_class);
-
-
---
--- Name: index_theme_variants_on_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_theme_variants_on_created_at ON public.theme_variants USING btree (created_at);
 
 
 --
@@ -8646,13 +8522,6 @@ CREATE INDEX index_website_file_histories_on_created_at ON public.website_file_h
 
 
 --
--- Name: index_website_file_histories_on_file_specification_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_website_file_histories_on_file_specification_id ON public.website_file_histories USING btree (file_specification_id);
-
-
---
 -- Name: index_website_file_histories_on_history_ended_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8713,13 +8582,6 @@ CREATE INDEX index_website_file_histories_on_website_id ON public.website_file_h
 --
 
 CREATE INDEX index_website_files_on_created_at ON public.website_files USING btree (created_at);
-
-
---
--- Name: index_website_files_on_file_specification_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_website_files_on_file_specification_id ON public.website_files USING btree (file_specification_id);
 
 
 --
@@ -8835,6 +8697,48 @@ CREATE INDEX index_website_histories_on_website_id ON public.website_histories U
 
 
 --
+-- Name: index_website_leads_on_gclid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_gclid ON public.website_leads USING btree (gclid);
+
+
+--
+-- Name: index_website_leads_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_lead_id ON public.website_leads USING btree (lead_id);
+
+
+--
+-- Name: index_website_leads_on_lead_id_and_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_website_leads_on_lead_id_and_website_id ON public.website_leads USING btree (lead_id, website_id);
+
+
+--
+-- Name: index_website_leads_on_visit_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_visit_id ON public.website_leads USING btree (visit_id);
+
+
+--
+-- Name: index_website_leads_on_visitor_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_visitor_token ON public.website_leads USING btree (visitor_token);
+
+
+--
+-- Name: index_website_leads_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_website_id ON public.website_leads USING btree (website_id);
+
+
+--
 -- Name: index_website_uploads_on_upload_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8888,6 +8792,13 @@ CREATE INDEX index_websites_on_account_id ON public.websites USING btree (accoun
 --
 
 CREATE INDEX index_websites_on_created_at ON public.websites USING btree (created_at);
+
+
+--
+-- Name: index_websites_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_websites_on_deleted_at ON public.websites USING btree (deleted_at);
 
 
 --
@@ -10054,6 +9965,14 @@ ALTER TABLE ONLY public.account_invitations
 
 
 --
+-- Name: deploys fk_rails_0773f47ab4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT fk_rails_0773f47ab4 FOREIGN KEY (campaign_deploy_id) REFERENCES public.campaign_deploys(id);
+
+
+--
 -- Name: ads_account_invitations fk_rails_1d7b1920c0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10142,6 +10061,14 @@ ALTER TABLE ONLY public.pay_subscriptions
 
 
 --
+-- Name: deploys fk_rails_c721010c48; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT fk_rails_c721010c48 FOREIGN KEY (website_deploy_id) REFERENCES public.website_deploys(id);
+
+
+--
 -- Name: pay_payment_methods fk_rails_c78c6cb84d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10155,6 +10082,14 @@ ALTER TABLE ONLY public.pay_payment_methods
 
 ALTER TABLE ONLY public.account_users
     ADD CONSTRAINT fk_rails_c96445f213 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: deploys fk_rails_eeb0884eb6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deploys
+    ADD CONSTRAINT fk_rails_eeb0884eb6 FOREIGN KEY (project_id) REFERENCES public.projects(id);
 
 
 --
@@ -10188,6 +10123,33 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260117001808'),
+('20260116143258'),
+('20260115181801'),
+('20260115181736'),
+('20260115181121'),
+('20260115170002'),
+('20260115170001'),
+('20260115170000'),
+('20260115160347'),
+('20260114203730'),
+('20260113213841'),
+('20260113211110'),
+('20260113201504'),
+('20260113201439'),
+('20260113201418'),
+('20260113001126'),
+('20260112235846'),
+('20260112152551'),
+('20260112140931'),
+('20260109153827'),
+('20260109153750'),
+('20260109151006'),
+('20260109144621'),
+('20260109140318'),
+('20260109132117'),
+('20260108110952'),
+('20260108105901'),
 ('20260107115249'),
 ('20260105183720'),
 ('20260105171150'),

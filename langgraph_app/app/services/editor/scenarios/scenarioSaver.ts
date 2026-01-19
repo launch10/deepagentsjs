@@ -1,8 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "fs";
 import { join, dirname, relative } from "path";
 import { db, websiteFiles, eq } from "@db";
-import type { WebsiteFileType } from "@types";
-
 export interface ScenarioConfig {
   websiteName: string;
   snapshotName: string;

@@ -26,7 +26,7 @@ class Chat < ApplicationRecord
   acts_as_tenant :account
 
   belongs_to :project
-  belongs_to :contextable, polymorphic: true
+  belongs_to :contextable, polymorphic: true, optional: true
 
   CHAT_TYPES = ProjectWorkflow.steps_for(:launch) # brainstorm, website, ad_campaign, etc
 

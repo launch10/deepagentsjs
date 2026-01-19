@@ -22,6 +22,13 @@ export const envSchema = z.object({
   LANGSMITH_PROJECT: z.string().min(1),
   LLM_PAID: z.enum(["free", "paid"]).default("paid"),
   LLM_SPEED: z.enum(["fast", "slow"]).default("slow"),
+  LLM_MAX_TIER: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : undefined))
+    .refine((val) => val === undefined || (val >= 1 && val <= 5), {
+      message: "LLM_MAX_TIER must be between 1 and 5",
+    }),
   JWT_SECRET: z.string().min(1),
   USE_CACHE: z
     .string()

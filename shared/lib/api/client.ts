@@ -16,6 +16,12 @@ async function loadBackendModules() {
 export interface RailsApiClientOptions {
   jwt?: string;
   baseUrl?: string;
+  /**
+   * When true, uses internal service-to-service auth (X-Signature + X-Timestamp)
+   * instead of user JWT authentication. Use for endpoints that have
+   * `skip_before_action :require_api_authentication` and use `verify_internal_api_request`.
+   */
+  internalServiceCall?: boolean;
 }
 
 function generateSignature(timestamp: number): string {
@@ -51,10 +57,13 @@ const sharedHeaders = (): Record<string, string> => {
   };
 }
 
-const addBackendHeaders = (headers: Record<string, string>, jwtToken: string) => {
+const addBackendHeaders = (headers: Record<string, string>, jwtToken?: string) => {
   if (!isFrontend()) {
     const timestamp = Math.floor(Date.now() / 1000);
-    headers["Authorization"] = `Bearer ${jwtToken}`;
+    // Only add Authorization header if we have a JWT (user-authenticated requests)
+    if (jwtToken) {
+      headers["Authorization"] = `Bearer ${jwtToken}`;
+    }
     headers["X-Signature"] = generateSignature(timestamp);
     headers["X-Timestamp"] = timestamp.toString();
 
@@ -66,11 +75,17 @@ const addBackendHeaders = (headers: Record<string, string>, jwtToken: string) =>
   return headers;
 }
 
-const headers = (jwtToken?: string) => {
+const headers = (jwtToken?: string, internalServiceCall?: boolean) => {
   let headers: Record<string, string> = sharedHeaders();
-  
-  if (jwtToken && isBackend()) {
-    headers = addBackendHeaders(headers, jwtToken);
+
+  if (isBackend()) {
+    if (internalServiceCall) {
+      // Internal service calls: signature only, no JWT
+      headers = addBackendHeaders(headers);
+    } else if (jwtToken) {
+      // User-authenticated calls: JWT + signature
+      headers = addBackendHeaders(headers, jwtToken);
+    }
   }
   return headers;
 }
@@ -80,8 +95,12 @@ const headers = (jwtToken?: string) => {
  * @param options - Configuration options for the client
  * @returns A typed openapi-fetch client
  */
-export async function createRailsApiClient(options: RailsApiClientOptions) {
-  const { jwt: jwtToken, baseUrl = env.RAILS_API_URL || env.VITE_RAILS_API_URL || "http://localhost:3000" } = options;
+export async function createRailsApiClient(options: RailsApiClientOptions = {}) {
+  const {
+    jwt: jwtToken,
+    baseUrl = env.RAILS_API_URL || env.VITE_RAILS_API_URL || "http://localhost:3000",
+    internalServiceCall = false,
+  } = options;
 
   if (isBackend()) {
     await loadBackendModules();
@@ -89,7 +108,7 @@ export async function createRailsApiClient(options: RailsApiClientOptions) {
 
   const client = createClient<paths>({
     baseUrl,
-    headers: headers(jwtToken),
+    headers: headers(jwtToken, internalServiceCall),
   });
 
   return client;

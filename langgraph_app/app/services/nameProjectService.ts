@@ -38,7 +38,7 @@ export class NameProjectService {
       throw new Error("User request is required");
     }
 
-    const llm = getLLM("writing", "blazing");
+    const llm = await getLLM({ skill: "writing", speed: "blazing" });
     const schemaPrompt = await structuredOutputPrompt({ schema: projectNameOutputSchema });
     const prompt = await basePrompt.format({ userRequest, schema: schemaPrompt });
 

@@ -4,9 +4,15 @@ import { ErrorExporter } from "@services";
 import { existsSync, readFileSync, writeFileSync, statSync, readdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { db, websiteFiles, websites, eq, sql } from "@db";
-import type { WebsiteFileType, ConsoleError } from "@types";
+import { Website, type ConsoleError, type CombinedErrors } from "@types";
 import { loadScenarioConfig, loadScenarioModifications } from "./scenarioSaver";
 import { withTimestamps } from "@db";
+
+type WebsiteFileType = {
+  path: string;
+  content: string;
+  websiteId: number;
+}
 
 // File modification schema for inline modifications
 export const fileModificationSchema = z.object({
@@ -33,7 +39,7 @@ export class ScenarioRunner {
   private scenario?: string;
   private modifications: FileModificationType[] = [];
   private force: boolean;
-  public _errors: ConsoleError[] = [];
+  public _errors: CombinedErrors | null = null;
   private errorsFile: string;
   private shouldLog: boolean;
   private websiteId?: number;
@@ -60,11 +66,13 @@ export class ScenarioRunner {
   }
 
   get errors(): ConsoleError[] {
-    return this._errors.filter((e) => e.type === "error");
+    if (!this._errors) return [];
+    return this._errors.browser.filter((e) => e.type === "error");
   }
 
   get warnings(): ConsoleError[] {
-    return this._errors.filter((e) => e.type === "warning");
+    if (!this._errors) return [];
+    return this._errors.browser.filter((e) => e.type === "warning");
   }
 
   private log(message: string): void {
@@ -217,10 +225,28 @@ export class ScenarioRunner {
     const cached = JSON.parse(readFileSync(this.errorsFile, "utf-8"));
 
     // Convert dates back from strings
-    this._errors = cached.errors.map((error: any) => ({
+    const browserErrors: ConsoleError[] = (cached.errors || []).map((error: ConsoleError) => ({
       ...error,
       timestamp: new Date(error.timestamp),
     }));
+
+    // Reconstruct CombinedErrors-like object
+    this._errors = {
+      browser: browserErrors,
+      server: cached.server || [],
+      viteOverlay: cached.viteOverlay || [],
+      hasErrors: (options?: { excludeWarnings?: boolean }) => {
+        const { excludeWarnings = false } = options || {};
+        if (excludeWarnings) {
+          return browserErrors.some((e) => e.type === "error");
+        }
+        return browserErrors.length > 0;
+      },
+      getFormattedReport: () => {
+        if (browserErrors.length === 0) return "No errors detected";
+        return browserErrors.map((e) => e.message).join("\n");
+      },
+    };
 
     this.log(`✅ Loaded ${this.errors.length} cached error(s)`);
     return this;
@@ -342,7 +368,7 @@ export class ScenarioRunner {
    * Save errors to cache
    */
   private saveErrorsToCache(): void {
-    if (!this.scenario || !this.errorsFile) {
+    if (!this.scenario || !this.errorsFile || !this._errors) {
       return; // Don't cache inline scenarios
     }
 
@@ -351,7 +377,9 @@ export class ScenarioRunner {
       website: this.website,
       snapshot: this.snapshot,
       scenario: this.scenario,
-      errors: this.errors,
+      errors: this._errors.browser,
+      server: this._errors.server,
+      viteOverlay: this._errors.viteOverlay,
       recordedAt: new Date().toISOString(),
     };
 

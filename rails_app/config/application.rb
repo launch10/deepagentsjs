@@ -72,5 +72,8 @@ module JumpstartApp
     # Use structure.sql for database structure
     # Required for PostgreSQL partitioning features
     config.active_record.schema_format = :sql
+
+    # API base URL for deployed websites (used by lead capture forms)
+    config.x.api_base_url = ENV.fetch("API_BASE_URL", "http://localhost:3000")
   end
 end

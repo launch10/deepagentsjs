@@ -45,9 +45,10 @@ RSpec.describe "Domains API", type: :request do
 
       response '201', 'domain created successfully' do
         schema APISchemas::Domain.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:domain_params) do
           {
             domain: {
@@ -69,9 +70,10 @@ RSpec.describe "Domains API", type: :request do
 
       response '201', 'domain created in team account after switching' do
         schema APISchemas::Domain.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:domain_params) do
           {
             domain: {
@@ -109,9 +111,10 @@ RSpec.describe "Domains API", type: :request do
       end
 
       response '422', 'subdomain limit exceeded' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:domain_params) do
           {
             domain: {
@@ -154,9 +157,10 @@ RSpec.describe "Domains API", type: :request do
 
       response '200', 'returns domains for owned account' do
         schema APISchemas::Domain.list_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -169,9 +173,10 @@ RSpec.describe "Domains API", type: :request do
 
       response '200', 'returns domains for team account after switching' do
         schema APISchemas::Domain.list_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
 
         before do
           switch_account_to(user1_team_account)
@@ -186,9 +191,10 @@ RSpec.describe "Domains API", type: :request do
 
       response '200', 'filters domains by website_id' do
         schema APISchemas::Domain.list_response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:website_id) { website1_owned.id }
 
         run_test! do |response|
@@ -202,6 +208,141 @@ RSpec.describe "Domains API", type: :request do
 
       response '401', 'unauthorized - missing token' do
         let(:Authorization) { nil }
+
+        run_test! do |response|
+          expect(response.code).to eq("401")
+        end
+      end
+    end
+  end
+
+  path '/api/v1/domains/search' do
+    post 'Searches for domain availability' do
+      tags 'Domains'
+      consumes 'application/json'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+
+      parameter name: :search_params, in: :body, schema: APISchemas::Domain.search_params_schema
+
+      let!(:domain1_owned) { create(:domain, :platform_subdomain, domain: 'my-existing.launch10.site', account: user1_owned_account, website: website1_owned) }
+      let!(:domain2_other) { create(:domain, :platform_subdomain, domain: 'taken-by-other.launch10.site', account: user2_owned_account, website: website2_owned) }
+
+      before do
+        switch_account_to(user1_owned_account)
+      end
+
+      response '200', 'returns availability statuses' do
+        schema APISchemas::Domain.search_response
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:search_params) do
+          {
+            candidates: [
+              'my-existing.launch10.site',
+              'taken-by-other.launch10.site',
+              'available-domain.launch10.site'
+            ]
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          results = data['results']
+
+          # Existing domain owned by current account
+          existing = results.find { |r| r['domain'] == 'my-existing.launch10.site' }
+          expect(existing['status']).to eq('existing')
+          expect(existing['existing_id']).to eq(domain1_owned.id)
+
+          # Domain owned by another account
+          unavailable = results.find { |r| r['domain'] == 'taken-by-other.launch10.site' }
+          expect(unavailable['status']).to eq('unavailable')
+          expect(unavailable['existing_id']).to be_nil
+
+          # Available domain
+          available = results.find { |r| r['domain'] == 'available-domain.launch10.site' }
+          expect(available['status']).to eq('available')
+          expect(available['existing_id']).to be_nil
+
+          # Check platform subdomain credits
+          credits = data['platform_subdomain_credits']
+          expect(credits['limit']).to eq(3)
+          expect(credits['used']).to eq(1)
+          expect(credits['remaining']).to eq(2)
+        end
+      end
+
+      response '200', 'normalizes domain inputs' do
+        schema APISchemas::Domain.search_response
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:search_params) do
+          {
+            candidates: [
+              'https://MY-EXISTING.launch10.site/some/path',
+              '  Available-Domain.launch10.site  '
+            ]
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          results = data['results']
+
+          # Should normalize to lowercase and strip protocol/path
+          existing = results.find { |r| r['domain'] == 'my-existing.launch10.site' }
+          expect(existing['status']).to eq('existing')
+
+          available = results.find { |r| r['domain'] == 'available-domain.launch10.site' }
+          expect(available['status']).to eq('available')
+        end
+      end
+
+      response '422', 'missing candidates parameter' do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:search_params) { {} }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to include('candidates parameter is required and must be an array')
+        end
+      end
+
+      response '422', 'exceeds maximum candidates' do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:search_params) do
+          {
+            candidates: (1..11).map { |i| "domain#{i}.launch10.site" }
+          }
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']).to include('Maximum 10 candidates allowed')
+        end
+      end
+
+      response '401', 'unauthorized - missing token' do
+        let(:Authorization) { nil }
+        let(:search_params) do
+          {
+            candidates: ['test.launch10.site']
+          }
+        end
 
         run_test! do |response|
           expect(response.code).to eq("401")
@@ -231,9 +372,10 @@ RSpec.describe "Domains API", type: :request do
 
       response '200', 'domain found in owned account' do
         schema APISchemas::Domain.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { domain1_owned.id }
 
         run_test! do |response|
@@ -244,9 +386,10 @@ RSpec.describe "Domains API", type: :request do
       end
 
       response '404', 'cannot access team account domain from owned account' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { domain1_team.id }
 
         run_test! do |response|
@@ -256,9 +399,10 @@ RSpec.describe "Domains API", type: :request do
       end
 
       response '404', 'cannot access other user domain' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { domain2_other.id }
 
         run_test! do |response|
@@ -269,9 +413,10 @@ RSpec.describe "Domains API", type: :request do
 
       response '200', 'domain found in team account after switching' do
         schema APISchemas::Domain.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
-        let(:"X-Signature") { auth_headers_for(user1)['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers_for(user1)['X-Timestamp'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
         let(:id) { domain1_team.id }
 
         before do

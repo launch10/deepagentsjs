@@ -15,5 +15,17 @@ module BrainstormConcerns
         updated_at: project.updated_at
       }
     end
+
+    # Full brainstorm content for context API
+    def to_json
+      {
+        id: id,
+        idea: idea,
+        audience: audience,
+        solution: solution,
+        social_proof: social_proof,
+        look_and_feel: look_and_feel
+      }
+    end
   end
 end

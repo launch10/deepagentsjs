@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
+import { validateThreadOrError } from "../middleware/threadValidation";
 import { adsGraph } from "@graphs";
 import { graphParams } from "@core";
 import { AdsBridge } from "@annotation";
@@ -33,6 +34,11 @@ adsRoutes.post("/stream", authMiddleware, async (c) => {
   if (!threadId) {
     return c.json({ error: "Missing required field: threadId" }, 400);
   }
+
+  // Validate thread ownership before processing
+  const validationError = await validateThreadOrError(c, threadId, auth);
+  if (validationError) return validationError;
+
   let stateObj = state || {};
 
   try {
@@ -58,6 +64,10 @@ adsRoutes.get("/stream", authMiddleware, async (c) => {
   if (!threadId) {
     return c.json({ error: "Missing threadId" }, 400);
   }
+
+  // Validate thread ownership before processing
+  const validationError = await validateThreadOrError(c, threadId, auth);
+  if (validationError) return validationError;
 
   return await AdsAPI.loadHistory(threadId);
 });

@@ -14,6 +14,8 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${testPort}
 
 export default defineConfig({
   testDir: "./e2e",
+  /* Build tracking-test website before tests */
+  globalSetup: "./e2e/global-setup.ts",
   /* Clean up uploads after tests */
   globalTeardown: "./e2e/global-teardown.ts",
   /* Single worker to prevent database race conditions */
@@ -70,7 +72,7 @@ export default defineConfig({
   webServer: process.env.CI
     ? undefined
     : {
-        command: "bin/dev-test",
+        command: "SIDEKIQ_INLINE=true bin/dev-test",
         url: baseURL,
         reuseExistingServer: true, // Reuse existing server if running
         timeout: 120 * 1000,

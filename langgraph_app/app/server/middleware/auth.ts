@@ -31,8 +31,8 @@ export const authMiddleware = async (c: Context, next: Next) => {
       jwt: token,
     } as AuthContext);
 
-    // TODO: Ensure user has access to threadId
-    // Remake auth context as yes/no authorized
+    // Thread validation is handled per-route using validateThreadOrError()
+    // since threadId must be extracted from the request body or query params
 
     await next();
   } catch (error) {

@@ -11,7 +11,7 @@ class API::V1::JobRunsController < API::BaseController
       job_class: params[:job_class],
       job_args: permitted_job_args,
       langgraph_thread_id: params[:thread_id],
-      langgraph_callback_url: langgraph_callback_url
+      deploy_id: find_deploy_id
     )
 
     # Dispatch job after record is committed to avoid processing non-existent job_runs
@@ -31,6 +31,9 @@ class API::V1::JobRunsController < API::BaseController
     when "CampaignDeploy"
       campaign_id = params[:arguments]&.dig(:campaign_id) || params[:arguments]&.dig("campaign_id")
       { campaign: current_account.campaigns.find(campaign_id) }
+    when "WebsiteDeploy"
+      website_id = params[:arguments]&.dig(:website_id) || params[:arguments]&.dig("website_id")
+      { website: current_account.websites.find(website_id) }
     else
       {}
     end
@@ -40,23 +43,39 @@ class API::V1::JobRunsController < API::BaseController
     case job_type
     when "CampaignDeploy"
       CampaignDeploy.deploy(resources[:campaign], job_run_id: job_run.id)
+    when "WebsiteDeploy"
+      resources[:website].deploy_async(job_run_id: job_run.id)
+    when "GoogleOAuthConnect"
+      # No worker dispatch - OAuth callback completes this job
+    when "GoogleAdsInvite"
+      GoogleAds::SendInviteWorker.perform_async(job_run.id)
     end
+  end
+
+  def find_deploy_id
+    return nil unless params[:deploy_id].present?
+
+    # Validate deploy belongs to current account
+    deploy = Deploy.joins(:project).find_by(
+      id: params[:deploy_id],
+      projects: { account_id: current_account.id }
+    )
+    deploy&.id
   end
 
   def permitted_job_args
     args = case params[:job_class]
     when "CampaignDeploy"
       params.require(:arguments).permit(:campaign_id)
+    when "WebsiteDeploy"
+      params.require(:arguments).permit(:website_id)
+    when "GoogleOAuthConnect", "GoogleAdsInvite"
+      # These jobs don't require arguments - account context comes from current_account
+      ActionController::Parameters.new({}).permit
     else
       ActionController::Parameters.new({}).permit
     end.to_h
 
     args.merge(account_id: current_account.id)
-  end
-
-  def langgraph_callback_url
-    # Auto-construct callback URL from server config to prevent SSRF
-    # Client-provided callback_url is intentionally ignored
-    "#{ENV.fetch("LANGGRAPH_API_URL")}/webhooks/job_run_callback"
   end
 end

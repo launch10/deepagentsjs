@@ -2,23 +2,24 @@
 #
 # Table name: job_runs
 #
-#  id                     :bigint           not null, primary key
-#  completed_at           :datetime
-#  error_message          :text
-#  job_args               :jsonb
-#  job_class              :string           not null
-#  langgraph_callback_url :string
-#  result_data            :jsonb
-#  started_at             :datetime
-#  status                 :string           default("pending"), not null
-#  created_at             :datetime         not null
-#  updated_at             :datetime         not null
-#  account_id             :bigint
-#  langgraph_thread_id    :string
+#  id                  :bigint           not null, primary key
+#  completed_at        :datetime
+#  error_message       :text
+#  job_args            :jsonb
+#  job_class           :string           not null
+#  result_data         :jsonb
+#  started_at          :datetime
+#  status              :string           default("pending"), not null
+#  created_at          :datetime         not null
+#  updated_at          :datetime         not null
+#  account_id          :bigint
+#  deploy_id           :bigint
+#  langgraph_thread_id :string
 #
 # Indexes
 #
 #  index_job_runs_on_account_id            (account_id)
+#  index_job_runs_on_deploy_id             (deploy_id)
 #  index_job_runs_on_job_class             (job_class)
 #  index_job_runs_on_job_class_and_status  (job_class,status)
 #  index_job_runs_on_langgraph_thread_id   (langgraph_thread_id)
@@ -42,6 +43,26 @@ RSpec.describe JobRun, type: :model do
     it { should validate_presence_of(:status) }
     it { should validate_inclusion_of(:status).in_array(JobRun::STATUSES) }
     it { should validate_presence_of(:account) }
+  end
+
+  describe "ALLOWED_JOBS" do
+    it "includes GoogleOAuthConnect for Google OAuth HITL flow" do
+      expect(JobRun::ALLOWED_JOBS).to include("GoogleOAuthConnect")
+    end
+
+    it "includes GoogleAdsInvite for Google Ads invite HITL flow" do
+      expect(JobRun::ALLOWED_JOBS).to include("GoogleAdsInvite")
+    end
+
+    it "allows creating job runs with GoogleOAuthConnect" do
+      job_run = build(:job_run, account: account, job_class: "GoogleOAuthConnect")
+      expect(job_run).to be_valid
+    end
+
+    it "allows creating job runs with GoogleAdsInvite" do
+      job_run = build(:job_run, account: account, job_class: "GoogleAdsInvite")
+      expect(job_run).to be_valid
+    end
   end
 
   describe "scopes" do
@@ -150,35 +171,36 @@ RSpec.describe JobRun, type: :model do
   end
 
   describe "#notify_langgraph" do
+    before do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")
+    end
+
     let(:job_run) do
       create(:job_run,
         account: account,
-        langgraph_callback_url: "http://localhost:4000/webhooks/job_run_callback",
         langgraph_thread_id: "thread_123")
     end
 
-    context "with a callback URL" do
-      it "enqueues a LanggraphCallbackWorker" do
-        expect(LanggraphCallbackWorker).to receive(:perform_async).with(
-          job_run.id,
-          hash_including(
-            job_run_id: job_run.id,
-            thread_id: "thread_123",
-            status: "completed"
-          )
+    it "enqueues a LanggraphCallbackWorker" do
+      expect(LanggraphCallbackWorker).to receive(:perform_async).with(
+        job_run.id,
+        hash_including(
+          job_run_id: job_run.id,
+          thread_id: "thread_123",
+          status: "completed"
         )
+      )
 
-        job_run.notify_langgraph(status: "completed", result: { success: true })
-      end
+      job_run.notify_langgraph(status: "completed", result: { success: true })
     end
+  end
 
-    context "without a callback URL" do
-      let(:job_run) { create(:job_run, account: account, langgraph_callback_url: nil) }
+  describe "#langgraph_callback_url" do
+    let(:job_run) { create(:job_run, account: account) }
 
-      it "does not enqueue a worker" do
-        expect(LanggraphCallbackWorker).not_to receive(:perform_async)
-        job_run.notify_langgraph(status: "completed")
-      end
+    it "returns the callback URL constructed from LANGGRAPH_API_URL" do
+      expect(job_run.langgraph_callback_url).to eq("#{ENV["LANGGRAPH_API_URL"]}/webhooks/job_run_callback")
     end
   end
 

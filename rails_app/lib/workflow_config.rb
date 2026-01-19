@@ -65,7 +65,9 @@ class WorkflowConfig
     end
 
     def next_step(workflow_type, current_step)
-      steps_for(workflow_type)[steps_for(workflow_type).index(current_step) + 1]
+      idx = steps_for(workflow_type).index(current_step)
+      return nil if idx.nil?
+      steps_for(workflow_type)[idx + 1]
     end
 
     def prev_step(workflow_type, current_step)

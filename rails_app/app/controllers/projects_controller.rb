@@ -22,8 +22,8 @@ class ProjectsController < SubscribedController
       redirect_to action: "website"
     when "ad_campaign"
       redirect_to action: "campaigns_#{@project.substep}"
-    when "launch"
-      redirect_to action: "launch_#{@project.substep}"
+    when "deploy"
+      redirect_to action: "deploy"
     end
   end
 
@@ -60,12 +60,13 @@ class ProjectsController < SubscribedController
     end
   end
 
-  WorkflowConfig.substeps_for("launch", "launch").each do |substep|
-    define_method("launch_#{substep}") do
-      render inertia: "Launch",
-        props: @project.to_launch_json,
-        layout: "layouts/webcontainer"
-    end
+  def deploy
+    # Create or find existing deploy for this project
+    @deploy = @project.deploys.in_progress.first || @project.deploys.create!(status: "pending")
+
+    render inertia: "Deploy",
+      props: @project.to_deploy_json(@deploy),
+      layout: "layouts/webcontainer"
   end
 
   private

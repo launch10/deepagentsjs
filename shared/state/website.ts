@@ -1,16 +1,15 @@
 import { type CoreGraphState } from "../types/graph";
-import { type CodeTaskType, type ComponentContentPlanType, type TaskHistoryType, type ComponentOverviewType, type ProjectType, type WebsiteType, type ConsoleError, type FileMap } from "../types";
+import { Brainstorm, Website, Core, type PrimaryKeyType } from "../types";
 import type { Simplify } from "type-fest";
 
 export type WebsiteGraphState = Simplify<CoreGraphState & {
-    task: CodeTaskType | undefined;
-    contentPlan: ComponentContentPlanType | undefined;
-    queue: CodeTaskType[];
-    completedTasks: CodeTaskType[];
-    taskHistory: TaskHistoryType[];
-    project: ProjectType | undefined;
-    website: WebsiteType | undefined;
-    componentOverviews: ComponentOverviewType[];
-    files: FileMap;
-    consoleErrors: ConsoleError[];
+    command: Website.CommandName | undefined;
+    brainstormId: PrimaryKeyType | undefined;
+    brainstorm: Brainstorm.MemoriesType | undefined;
+    theme: Website.ThemeType | undefined;
+    images: Website.Image[];
+    consoleErrors: Website.Errors.ConsoleError[];
+    errorRetries: number;
+    status: Core.Status;
+    files: Website.FileMap;
 }>;

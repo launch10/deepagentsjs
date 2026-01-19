@@ -55,7 +55,7 @@ export const createScorer = ({
     useCoT = false,
     ...runtimeParams
   }: ScorerParams): Promise<number> => {
-    const llm = getLLM("reasoning");
+    const llm = await getLLM({ skill: "reasoning" });
     const outputSchema = useCoT ? COT_RESPONSE_SCHEMA : PLAIN_RESPONSE_SCHEMA;
     const allParams = { ...additionalPromptParams, ...runtimeParams, options: choiceScores };
 

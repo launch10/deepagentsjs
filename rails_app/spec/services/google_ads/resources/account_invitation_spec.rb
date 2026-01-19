@@ -207,6 +207,20 @@ RSpec.describe GoogleAds::Resources::AccountInvitation do
         expect(result.action).to eq(:updated)
         expect(result.resource_type).to eq(:customer_user_access)
       end
+
+      it "updates the invitation record status to accepted" do
+        expect { syncer.refresh_status }.to change { invitation.reload.google_status }.to("accepted")
+      end
+
+      it "sets the accepted_at timestamp" do
+        syncer.refresh_status
+        expect(invitation.reload.google_accepted_at).to be_present
+      end
+
+      it "sets the user_access_id from the resource name" do
+        syncer.refresh_status
+        expect(invitation.reload.google_user_access_id).to be_present
+      end
     end
 
     context "when invitation is still pending" do

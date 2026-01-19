@@ -9,6 +9,49 @@ Polly.register(NodeHttpAdapter);
 Polly.register(FetchAdapter);
 Polly.register(FSPersister);
 
+/**
+ * Normalize absolute paths in request body for deterministic Polly matching.
+ * Replaces machine-specific paths like /Users/brett/... or /home/circleci/...
+ * with a canonical placeholder so recordings work across different environments.
+ */
+function normalizePathsInBody(body: unknown): string {
+  // Handle non-string bodies (objects, Buffers, undefined, etc.)
+  if (body === null || body === undefined) {
+    return "";
+  }
+
+  // Convert to string if needed
+  let bodyStr: string;
+  if (typeof body === "string") {
+    bodyStr = body;
+  } else if (Buffer.isBuffer(body)) {
+    bodyStr = body.toString("utf-8");
+  } else if (typeof body === "object") {
+    try {
+      bodyStr = JSON.stringify(body);
+    } catch {
+      return "";
+    }
+  } else {
+    return String(body);
+  }
+
+  if (!bodyStr) return bodyStr;
+
+  // Pattern matches common absolute path prefixes followed by langgraph_app
+  // Examples:
+  //   /Users/brettshollenberger/programming/business/launch10/langgraph_app/agents/...
+  //   /home/circleci/project/langgraph_app/agents/...
+  //   C:\Users\user\project\langgraph_app\agents\...
+  const absolutePathPattern = /(?:\/[^\/\s"'\\]+)+\/langgraph_app\//g;
+  const windowsPathPattern = /(?:[A-Za-z]:\\[^\\"\s]+\\)+langgraph_app\\/g;
+
+  let normalized = bodyStr.replace(absolutePathPattern, "/PROJECT_ROOT/langgraph_app/");
+  normalized = normalized.replace(windowsPathPattern, "/PROJECT_ROOT/langgraph_app/");
+
+  return normalized;
+}
+
 // Use global to ensure singleton across module boundaries
 // This is necessary because TypeScript path aliases can cause module duplication
 const globalAny = global as any;
@@ -192,6 +235,12 @@ class PollyManager {
           return !headersToIgnore.includes(name);
         });
       }
+
+      // Normalize absolute paths in request body for deterministic recordings
+      // This ensures recordings work across different machines/environments
+      if (recording.request?.postData?.text) {
+        recording.request.postData.text = normalizePathsInBody(recording.request.postData.text);
+      }
     });
   }
 
@@ -221,7 +270,8 @@ class PollyManager {
       matchRequestsBy: {
         method: true,
         headers: false,
-        body: true,
+        // Custom body matcher that normalizes absolute paths for deterministic matching
+        body: (body: string) => normalizePathsInBody(body),
         order: false,
         url: true,
       },

@@ -105,6 +105,10 @@ GEM
       rails (>= 6.0)
     addressable (2.8.7)
       public_suffix (>= 2.0.2, < 7.0)
+    ahoy_matey (5.4.1)
+      activesupport (>= 7.1)
+      device_detector (>= 1)
+      safely_block (>= 0.4)
     annotaterb (4.20.0)
       activerecord (>= 6.0.0)
       activesupport (>= 6.0.0)
@@ -167,6 +171,7 @@ GEM
       carrierwave (>= 2.0, < 4)
     childprocess (5.1.0)
       logger (~> 1.5)
+    chroma (0.2.0)
     chronic (0.10.2)
     chunky_png (1.4.0)
     coderay (1.1.3)
@@ -187,6 +192,7 @@ GEM
       irb (~> 1.10)
       reline (>= 0.3.8)
     declarative (0.0.20)
+    device_detector (1.1.3)
     devise-i18n (1.14.0)
       devise (>= 4.9.0)
       rails-i18n
@@ -358,7 +364,7 @@ GEM
     hashdiff (1.2.0)
     hashids (1.0.6)
     hashie (5.0.0)
-    historiographer (4.4.4)
+    historiographer (4.4.5)
       activerecord (>= 6)
       activerecord-import
       activesupport
@@ -587,6 +593,9 @@ GEM
     raabro (1.4.0)
     racc (1.8.1)
     rack (3.2.0)
+    rack-cors (3.0.0)
+      logger
+      rack (>= 3.0.14)
     rack-protection (4.1.1)
       base64 (>= 0.1.0)
       logger (>= 1.6.0)
@@ -747,6 +756,7 @@ GEM
       zeitwerk (~> 2)
     ruby_llm-schema (0.2.5)
     rubyzip (3.0.2)
+    safely_block (0.5.0)
     securerandom (0.4.1)
     selenium-webdriver (4.35.0)
       base64 (~> 0.2)
@@ -869,6 +879,7 @@ GEM
       dry-configurable (>= 0.13, < 2)
       jwt (~> 2.1)
       warden (~> 1.2)
+    wcag_color_contrast (0.1.0)
     web-console (4.2.1)
       actionview (>= 6.0.0)
       activemodel (>= 6.0.0)
@@ -908,6 +919,7 @@ PLATFORMS
 DEPENDENCIES
   activerecord-import
   acts_as_tenant (~> 1.0)
+  ahoy_matey (~> 5.4)
   annotaterb
   aws-sdk-s3 (~> 1.0)
   bootsnap (>= 1.4.2)
@@ -915,6 +927,7 @@ DEPENDENCIES
   capybara (>= 3.39)
   carrierwave
   carrierwave-aws
+  chroma
   csv
   database_cleaner-active_record
   debug
@@ -932,7 +945,7 @@ DEPENDENCIES
   guard
   guard-rails
   guard-rspec
-  historiographer (~> 4.4.4)
+  historiographer (~> 4.4.5)
   hotwire_combobox (~> 0.3)
   image_processing (~> 1.12)
   importmap-rails
@@ -967,6 +980,7 @@ DEPENDENCIES
   pry
   puma (~> 6.0)
   pundit (~> 2.1)
+  rack-cors
   rails (~> 8.0.0)
   receipts (~> 2.1)
   redis
@@ -999,6 +1013,7 @@ DEPENDENCIES
   tzinfo-data
   uuid7
   vite_rails (~> 3.0)
+  wcag_color_contrast
   web-console (>= 4.1.0)
   webmock
   whenever (~> 1.0)

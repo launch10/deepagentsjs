@@ -45,7 +45,8 @@ RSpec.describe "Project Workflows API", type: :request do
 
       response '200', 'workflow advanced in owned account' do
         schema APISchemas::ProjectWorkflow.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project1_owned.uuid }
@@ -64,7 +65,8 @@ RSpec.describe "Project Workflows API", type: :request do
 
       response '200', 'workflow advanced with substep' do
         schema APISchemas::ProjectWorkflow.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project1_owned.uuid }
@@ -84,7 +86,8 @@ RSpec.describe "Project Workflows API", type: :request do
 
       response '200', 'workflow advanced in team account after switching' do
         schema APISchemas::ProjectWorkflow.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project1_team.uuid }
@@ -105,7 +108,8 @@ RSpec.describe "Project Workflows API", type: :request do
       end
 
       response '404', 'workflow not found in owned account' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project2_owned.uuid }
@@ -119,7 +123,8 @@ RSpec.describe "Project Workflows API", type: :request do
       end
 
       response '404', 'project not found' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { "nonexistent-uuid" }
@@ -133,7 +138,8 @@ RSpec.describe "Project Workflows API", type: :request do
       end
 
       response '422', 'invalid step' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project1_owned.uuid }
@@ -150,7 +156,8 @@ RSpec.describe "Project Workflows API", type: :request do
       end
 
       response '422', 'missing step parameter' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project1_owned.uuid }
@@ -183,7 +190,8 @@ RSpec.describe "Project Workflows API", type: :request do
 
       response '200', 'workflow advanced to next step' do
         schema APISchemas::ProjectWorkflow.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project1_owned.uuid }
@@ -201,7 +209,8 @@ RSpec.describe "Project Workflows API", type: :request do
 
       response '200', 'workflow advanced to next step with substep' do
         schema APISchemas::ProjectWorkflow.response
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project1_owned.uuid }
@@ -223,14 +232,15 @@ RSpec.describe "Project Workflows API", type: :request do
       end
 
       response '422', 'already at final step' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project1_owned.uuid }
         let(:id) { workflow1_owned.id }
 
         before do
-          workflow1_owned.update(step: "launch", substep: "deployment")
+          workflow1_owned.update(step: "deploy", substep: nil)
         end
 
         run_test! do |response|
@@ -238,12 +248,13 @@ RSpec.describe "Project Workflows API", type: :request do
           expect(data["errors"]).to include("Already at final step")
 
           workflow1_owned.reload
-          expect(workflow1_owned.step).to eq("launch")
+          expect(workflow1_owned.step).to eq("deploy")
         end
       end
 
       response '404', 'workflow not found' do
-        let(:Authorization) { auth_headers_for(user1)['Authorization'] }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
         let('X-Signature') { auth_headers_for(user1)['X-Signature'] }
         let('X-Timestamp') { auth_headers_for(user1)['X-Timestamp'] }
         let(:project_uuid) { project2_owned.uuid }

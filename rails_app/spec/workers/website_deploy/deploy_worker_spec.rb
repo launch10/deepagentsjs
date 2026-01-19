@@ -1,6 +1,5 @@
 require 'rails_helper'
 require 'sidekiq/testing'
-require 'support/website_file_helpers'
 
 RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
   include WebsiteFileHelpers
