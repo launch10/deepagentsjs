@@ -126,7 +126,7 @@ describe("Node Core", () => {
       const node = NodeMiddleware.use(
         { notifications: { taskName: "Any Task Name I Want" } },
         async (state: any, config: LangGraphRunnableConfig) => {
-          const output = await (await getLLM()).invoke("Hello");
+          const output = await (await getLLM({})).invoke("Hello");
           return {};
         }
       );
@@ -319,7 +319,7 @@ describe("Node Core", () => {
         cleanupRecording(nodeName);
 
         const node = NodeMiddleware.use({}, async (state: any, config: LangGraphRunnableConfig) => {
-          const output = await (await getLLM()).invoke("Test prompt");
+          const output = await (await getLLM({})).invoke("Test prompt");
           return { result: output.content };
         });
 
@@ -357,7 +357,7 @@ describe("Node Core", () => {
         });
 
         const node = NodeMiddleware.use({}, async (state: any, config: LangGraphRunnableConfig) => {
-          const output = await (await getLLM()).invoke("Test prompt");
+          const output = await (await getLLM({})).invoke("Test prompt");
           return { result: output.content };
         });
 
