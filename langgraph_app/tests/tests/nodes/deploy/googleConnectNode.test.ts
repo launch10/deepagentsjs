@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { DeployGraphState } from "@annotation";
-import { Deploy, type Task, type ThreadIDType } from "@types";
+import { Deploy, type LangGraphRunnableConfig, type Task, type ThreadIDType } from "@types";
 
 // Mock modules BEFORE importing them
 vi.mock("@rails_api", async () => {
@@ -23,8 +23,8 @@ vi.mock("@services", async () => {
 import {
   googleConnectNode,
   isGoogleConnected,
-  shouldSkipGoogleConnect,
-} from "../../../../app/nodes/deploy/googleConnectNode";
+  googleConnectTaskRunner as taskRunner
+} from "@nodes";
 import { JobRunAPIService } from "@rails_api";
 import { GoogleAPIService } from "@services";
 
@@ -471,7 +471,7 @@ describe("shouldSkipGoogleConnect", () => {
       tasks: [],
     };
 
-    const result = await shouldSkipGoogleConnect(state as DeployGraphState);
+    const result = await taskRunner.shouldSkip(state as DeployGraphState);
     expect(result).toBe("skipGoogleConnect");
   });
 
@@ -490,7 +490,7 @@ describe("shouldSkipGoogleConnect", () => {
       deploy: { googleAds: true }, // Must deploy Google Ads to not skip
     };
 
-    const result = await shouldSkipGoogleConnect(state as DeployGraphState);
+    const result = await taskRunner.shouldSkip(state as DeployGraphState);
     expect(result).toBe("enqueueGoogleConnect");
   });
 });

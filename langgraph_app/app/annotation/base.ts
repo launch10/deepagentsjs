@@ -45,4 +45,9 @@ export const BaseAnnotation = Annotation.Root({
     default: () => undefined,
     reducer: (current, next) => next ?? current,
   }),
+
+  shouldInterrupt: Annotation<((state: any) => boolean) | undefined>({
+    default: () => () => false,
+    reducer: (current, next) => next,
+  }),
 });

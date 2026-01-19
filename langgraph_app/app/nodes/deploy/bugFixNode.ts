@@ -131,8 +131,8 @@ export const bugFixTaskRunner: TaskRunner = {
     return validateLinksDone && runtimeValidationDone && noValidationFailed;
   },
 
-  // Use middleware-wrapped version for Polly recording support in tests
-  run: bugFixNode,
+  // Use raw function - task runners are called by nodes already wrapped with middleware
+  run: runBugFix,
 };
 
 // Register this task runner

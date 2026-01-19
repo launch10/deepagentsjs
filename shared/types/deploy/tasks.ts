@@ -1,5 +1,6 @@
 import * as GenericTask from "../task";
 import type { Instructions, InstructionType } from "./types";
+import * as Core from "../core";
 
 /**
  * Deploy-specific Task Names and Descriptions
@@ -124,8 +125,8 @@ export function enqueueTask(tasks: Task[], name: TaskName): Task[] {
 /**
  * Task state specification - either a status string or full config
  */
-type TaskSpec = GenericTask.Status | {
-  status: GenericTask.Status;
+type TaskSpec = Core.Status | {
+  status: Core.Status;
   error?: string;
   result?: Record<string, unknown>;
 };
