@@ -18,13 +18,15 @@ function StatusMessage({ status }: StatusMessageProps) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4">
+    <div className="flex flex-col items-center justify-center gap-4" data-testid="preview-status">
       {status !== "error" && status !== "ready" && (
         <div className="w-16 h-16">
           <LogoSpinner />
         </div>
       )}
-      <p className="text-neutral-600 text-sm">{messages[status]}</p>
+      <p className="text-neutral-600 text-sm" data-testid={`preview-status-${status}`}>
+        {messages[status]}
+      </p>
     </div>
   );
 }
@@ -78,7 +80,7 @@ export function WebsitePreview() {
 
   // Show preview iframe
   return (
-    <div className="w-full h-full flex flex-col rounded-2xl border border-neutral-200 overflow-hidden">
+    <div className="w-full h-full flex flex-col rounded-2xl border border-neutral-200 overflow-hidden" data-testid="preview-container">
       {/* Preview header */}
       <div className="flex items-center gap-2 px-4 py-2 bg-neutral-100 border-b border-neutral-200">
         <div className="flex gap-1.5">
@@ -123,6 +125,7 @@ export function WebsitePreview() {
             src={previewUrl}
             className="w-full h-full border-none"
             title="Website Preview"
+            data-testid="preview-iframe"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
           />
         ) : (

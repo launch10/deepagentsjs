@@ -30,6 +30,8 @@ export class WebsitePage {
 
   // Preview area
   readonly previewContainer: Locator;
+  readonly previewIframe: Locator;
+  readonly previewStatus: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -59,7 +61,9 @@ export class WebsitePage {
     this.sidebar = page.locator('text="Landing Page Designer"');
 
     // Preview container
-    this.previewContainer = page.locator(".max-w-\\[948px\\]");
+    this.previewContainer = page.getByTestId("preview-container");
+    this.previewIframe = page.getByTestId("preview-iframe");
+    this.previewStatus = page.getByTestId("preview-status");
   }
 
   /**
@@ -174,5 +178,53 @@ export class WebsitePage {
   async expectQuickActionsVisible(): Promise<void> {
     await this.quickActionsPanel.waitFor({ state: "visible", timeout: 10000 });
     await this.changeColorsButton.waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  /**
+   * Wait for the preview to reach a specific status
+   */
+  async waitForPreviewStatus(
+    status: "idle" | "booting" | "mounting" | "installing" | "starting" | "ready" | "error",
+    timeout: number = 60000
+  ): Promise<void> {
+    const statusLocator = this.page.getByTestId(`preview-status-${status}`);
+    await statusLocator.waitFor({ state: "visible", timeout });
+  }
+
+  /**
+   * Wait for the preview iframe to be ready (status = ready + iframe visible)
+   */
+  async waitForPreviewReady(timeout: number = 120000): Promise<void> {
+    // Wait for the preview container with iframe to appear (not the loading state)
+    await this.previewContainer.waitFor({ state: "visible", timeout });
+    await this.previewIframe.waitFor({ state: "visible", timeout });
+  }
+
+  /**
+   * Check if the preview is showing a loading status
+   */
+  async isPreviewLoading(): Promise<boolean> {
+    return this.previewStatus.isVisible();
+  }
+
+  /**
+   * Get the preview iframe's src URL
+   */
+  async getPreviewUrl(): Promise<string | null> {
+    const iframe = await this.previewIframe;
+    if (await iframe.isVisible()) {
+      return iframe.getAttribute("src");
+    }
+    return null;
+  }
+
+  /**
+   * Get current preview status text
+   */
+  async getPreviewStatusText(): Promise<string | null> {
+    if (await this.previewStatus.isVisible()) {
+      return this.previewStatus.locator("p").textContent();
+    }
+    return null;
   }
 }

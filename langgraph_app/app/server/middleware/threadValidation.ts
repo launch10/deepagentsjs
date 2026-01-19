@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { env } from "@core";
+import { ChatsAPIService } from "@rails_api";
 import type { AuthContext } from "./auth";
 
 export interface ThreadValidationResult {
@@ -21,30 +22,31 @@ export async function validateThreadOwnership(
   threadId: string,
   auth: AuthContext
 ): Promise<ThreadValidationResult> {
-  const response = await fetch(`${env.RAILS_API_URL}/api/v1/chats/validate`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${auth.jwt}`,
-    },
-    body: JSON.stringify({ thread_id: threadId }),
+  const chatsService = new ChatsAPIService({
+    jwt: auth.jwt,
+    baseUrl: env.RAILS_API_URL,
   });
 
-  if (response.status === 403) {
-    // Thread exists but belongs to a different account
+  try {
+    const result = await chatsService.validate({ thread_id: threadId });
     return {
-      valid: false,
-      exists: true,
-      chat_type: null,
-      project_id: null,
+      valid: result.valid,
+      exists: result.exists,
+      chat_type: result.chat_type ?? null,
+      project_id: result.project_id ?? null,
     };
+  } catch (error) {
+    // Check if it's a 403 error (thread belongs to different account)
+    if (error instanceof Error && error.message.includes("403")) {
+      return {
+        valid: false,
+        exists: true,
+        chat_type: null,
+        project_id: null,
+      };
+    }
+    throw error;
   }
-
-  if (!response.ok) {
-    throw new Error(`Thread validation failed: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json() as Promise<ThreadValidationResult>;
 }
 
 /**
@@ -67,18 +69,12 @@ export async function validateThreadOrError(
     const result = await validateThreadOwnership(threadId, auth);
 
     if (!result.valid) {
-      return c.json(
-        { error: "Forbidden: Thread belongs to a different account" },
-        403
-      );
+      return c.json({ error: "Forbidden: Thread belongs to a different account" }, 403);
     }
 
     return null; // No error, validation passed
   } catch (error) {
     console.error("Thread validation error:", error);
-    return c.json(
-      { error: "Thread validation failed", details: String(error) },
-      500
-    );
+    return c.json({ error: "Thread validation failed", details: String(error) }, 500);
   }
 }

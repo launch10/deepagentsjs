@@ -74,8 +74,7 @@ class API::V1::DomainsController < API::BaseController
     return nil if domain_string.blank?
     domain_string = domain_string.to_s.downcase.strip
     domain_string = domain_string.sub(/^https?:\/\//, "")
-    domain_string = domain_string.split("/").first
-    domain_string
+    domain_string.split("/").first
   end
 
   def platform_subdomain_credits

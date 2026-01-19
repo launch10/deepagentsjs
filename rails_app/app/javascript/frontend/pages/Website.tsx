@@ -23,7 +23,8 @@ const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
  * Sends command: "create" to langgraph on first load.
  */
 function useWebsiteInit() {
-  const { website } = usePage<WebsitePageProps>().props;
+  const { website, project } = usePage<WebsitePageProps>().props;
+  const projectId = project?.id!;
   const { updateState } = useWebsiteChatActions();
   const status = useWebsiteChatState("status");
   const hasInitialized = useRef(false);
@@ -38,8 +39,9 @@ function useWebsiteInit() {
     updateState({
       command: "create",
       websiteId: website.id,
+      projectId,
     });
-  }, [status, website?.id, updateState]);
+  }, [status, website?.id, projectId, updateState]);
 }
 
 export default function Website() {
