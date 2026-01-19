@@ -5,7 +5,7 @@ import { createCodingAgent } from "@nodes";
 import { HumanMessage } from "@langchain/core/messages";
 import { Deploy, Task } from "@types";
 import { buildBugFixPrompt } from "@prompts";
-import { type TaskRunner, registerTask, isTaskFailed } from "./taskRunner";
+import { type TaskRunner, registerTask, isTaskFailed, isTaskDone } from "./taskRunner";
 
 const TASK_NAME: Deploy.TaskName = "FixingBugs";
 
@@ -100,7 +100,7 @@ async function runBugFix(
   }
 }
 
-// Legacy export with middleware
+// Middleware-wrapped version (enables Polly recording in tests)
 export const bugFixNode = NodeMiddleware.use({}, runBugFix);
 
 /**
@@ -117,10 +117,22 @@ export const bugFixTaskRunner: TaskRunner = {
   },
 
   shouldSkip: (state: DeployGraphState) => {
-    return !Deploy.shouldDeployWebsite(state)
+    // Skip if not deploying a website
+    if (!Deploy.shouldDeployWebsite(state)) {
+      return true;
+    }
+
+    // Skip if validation passed (no bugs to fix)
+    // Both validation tasks must be done (completed/skipped) AND neither failed
+    const validateLinksDone = isTaskDone(state, "ValidateLinks");
+    const runtimeValidationDone = isTaskDone(state, "RuntimeValidation");
+    const noValidationFailed = !isTaskFailed(state, "ValidateLinks") && !isTaskFailed(state, "RuntimeValidation");
+
+    return validateLinksDone && runtimeValidationDone && noValidationFailed;
   },
 
-  run: runBugFix,
+  // Use middleware-wrapped version for Polly recording support in tests
+  run: bugFixNode,
 };
 
 // Register this task runner

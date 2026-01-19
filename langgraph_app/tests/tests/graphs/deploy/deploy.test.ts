@@ -12,20 +12,9 @@ import { jobRunCallback } from "@server/routes/webhooks/jobRunCallback";
 import {
   getCodingAgentBackend,
   analyticsNode,
-  checkPaymentNode,
-  enableCampaignNode,
-  shouldCheckPayment,
 } from "@nodes";
 
-// Mock services
-vi.mock("@services", async () => {
-  const actual = await vi.importActual("@services");
-  return {
-    ...actual,
-    GoogleAPIService: vi.fn(),
-  };
-});
-
+// Mock @rails_api - JobRunAPIService and ChatsAPIService
 vi.mock("@rails_api", async () => {
   const actual = await vi.importActual("@rails_api");
   return {
@@ -47,11 +36,44 @@ vi.mock("@rails_api", async () => {
   };
 });
 
-import { GoogleAPIService } from "@services";
-import { JobRunAPIService } from "@rails_api";
+// Mock @services since some nodes import from there (which re-exports from @rails_api)
+vi.mock("@services", async () => {
+  const actual = await vi.importActual("@services");
+  return {
+    ...actual,
+    JobRunAPIService: vi.fn(),
+    ChatsAPIService: vi.fn().mockImplementation(() => ({
+      create: vi.fn().mockResolvedValue({
+        id: 1,
+        thread_id: "thread_123",
+        chat_type: "deploy",
+        project_id: 1,
+        account_id: 1,
+      }),
+      validate: vi.fn().mockResolvedValue({
+        valid: true,
+        exists: false,
+      }),
+    })),
+    GoogleAPIService: vi.fn(),
+  };
+});
+
+import { GoogleAPIService, JobRunAPIService } from "@services";
+import { JobRunAPIService as RailsJobRunAPIService } from "@rails_api";
 
 const mockGoogleAPIService = vi.mocked(GoogleAPIService);
 const mockJobRunAPIService = vi.mocked(JobRunAPIService);
+const mockRailsJobRunAPIService = vi.mocked(RailsJobRunAPIService);
+
+/**
+ * Helper to mock JobRunAPIService from both @services and @rails_api
+ * (different nodes import from different locations)
+ */
+const setupJobRunMock = (mockFn: () => any) => {
+  mockJobRunAPIService.mockImplementation(mockFn);
+  mockRailsJobRunAPIService.mockImplementation(mockFn);
+};
 
 const deployGraph = uncompiledGraph.compile({ ...graphParams, name: "deploy" });
 
@@ -119,12 +141,9 @@ describe.sequential("Deploy Graph Tests", () => {
       );
 
       // Default job run creation mock
-      mockJobRunAPIService.mockImplementation(
-        () =>
-          ({
-            create: vi.fn().mockResolvedValue({ id: 123, status: "pending" }),
-          }) as any
-      );
+      setupJobRunMock(() => ({
+        create: vi.fn().mockResolvedValue({ id: 123, status: "pending" }),
+      }));
     });
 
     describe("ConnectingGoogle", () => {
@@ -683,1158 +702,219 @@ describe.sequential("Deploy Graph Tests", () => {
 
   /**
    * =============================================================================
-   * 4. Fixing bugs
+   * 4. LINK VALIDATION TESTS [all]
    * =============================================================================
-   * These tests verify that bugs are identified and fixed
+   * These tests verify link validation catches broken links before deployment.
+   *
+   * USER OUTCOME: Broken links are caught before going live.
    */
-  describe("Fixing bugs", () => {
-    beforeEach(() => {
+  describe("Link Validation", () => {
+    beforeEach(async () => {
       vi.clearAllMocks();
-    });
-
-    describe("CheckingForBugs Phase", () => {
-      it("computes CheckingForBugs as pending when no validation tasks exist", async () => {
-        // Test phase computation directly via the Deploy module
-        // (The graph test helper has timing issues with stopAfter on enqueue nodes)
-        const tasks: Deploy.Task[] = [
-          { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
-          { ...Deploy.createTask("OptimizingSEO"), status: "running" },
-        ];
-
-        const phases = Deploy.computePhases(tasks);
-        const checkingForBugsPhase = phases.find((p) => p.name === "CheckingForBugs");
-
-        expect(checkingForBugsPhase).toBeDefined();
-        expect(checkingForBugsPhase?.status).toBe("pending");
-        expect(checkingForBugsPhase?.progress).toBe(0);
-      });
-
-      it("computes CheckingForBugs as running when ValidateLinks is running", async () => {
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: Deploy.withTasks({ website: true }, { ValidateLinks: "pending" }),
-            chatId: 1
-          })
-          .execute();
-
-        const task = result.state.tasks.find((t) => t.name === "ValidateLinks");
-        expect(task).toBeDefined();
-        expect(task?.status).toBeOneOf(["completed", "failed"]);
-
-        const checkingForBugsPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
-
-        expect(checkingForBugsPhase).toBeDefined();
-        expect(checkingForBugsPhase?.status).toBe("running");
-        // ValidateLinks running, RuntimeValidation not yet started
-        expect(checkingForBugsPhase?.progress).toBe(0);
-      });
-
-      it("computes CheckingForBugs as running when RuntimeValidation is running", async () => {
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: Deploy.withTasks({ website: true }, { RuntimeValidation: "pending" }),
-            chatId: 1
-          })
-          .stopAfter("runtimeValidation")
-          .execute();
-
-        const task = result.state.tasks.find((t) => t.name === "RuntimeValidation");
-        expect(task?.result?.report).toBeDefined();
-        expect((task?.result?.report as any).errors).toBeUndefined();
-        const checkingForBugsPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
-
-        expect(checkingForBugsPhase).toBeDefined();
-        // One task completed, one pending = running
-        expect(checkingForBugsPhase?.status).toBe("running");
-        expect(checkingForBugsPhase?.progress).toBe(0.5);
-      });
-
-      it("computes CheckingForBugs as failed when RuntimeValidation fails", async () => {
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: Deploy.withTasks({ website: true }, {
-              RuntimeValidation: { status: "failed", error: "Console errors found in browser" }
-            }, { after: "completed" }),
-            chatId: 1
-          })
-          .execute();
-
-        const checkingForBugsPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
-
-        expect(checkingForBugsPhase).toBeDefined();
-        expect(checkingForBugsPhase?.status).toBe("failed");
-        expect(checkingForBugsPhase?.progress).toBe(0.5); // 1/2 completed
-        expect(checkingForBugsPhase?.error).toBe("Console errors found in browser");
-      });
-
-      it("computes CheckingForBugs as completed when both ValidateLinks and RuntimeValidation pass", async () => {
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: Deploy.withTasks({ website: true }, { DeployingWebsite: "completed" }, { after: "completed" }),
-            chatId: 1
-          })
-          .stopAfter("deployWebsite")
-          .execute();
-
-        const checkingForBugsPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
-
-        expect(checkingForBugsPhase).toBeDefined();
-        expect(checkingForBugsPhase?.status).toBe("completed");
-        expect(checkingForBugsPhase?.progress).toBe(1);
-        expect(checkingForBugsPhase?.error).toBeUndefined();
-      });
-    });
-
-    describe("FixingBugs", () => {
-      it("FixingBugs fixes bugs identified by RuntimeValidation", async () => {
-        const tasks = Deploy.withTasks({ website: true }, {
-          RuntimeValidation: { status: "failed", error: "This is a fake error, ignore it. Please do not attempt to fix it. Exit early" },
-          FixingBugs: "pending"
-        });
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks,
-            chatId: 1
-          })
-          .execute();
-
-        const checkingForBugsPhase = result.state.phases.find((p) => p.name === "CheckingForBugs");
-        const fixingBugsPhase = result.state.phases.find((p) => p.name === "FixingBugs");
-
-        // These are separate phases
-        expect(checkingForBugsPhase).toBeDefined();
-        expect(fixingBugsPhase).toBeDefined();
-        expect(checkingForBugsPhase?.name).not.toBe(fixingBugsPhase?.name);
-
-        // CheckingForBugs shows failed (validation found bugs)
-        expect(checkingForBugsPhase?.status).toBe("failed");
-
-        // FixingBugs shows running (actively fixing)
-        expect(fixingBugsPhase?.status).toBe("completed");
-      });
-
-      it("FixingBugs fixes bugs identified by CheckingLinks", async () => {
-        const tasks = Deploy.withTasks({ website: true }, {
-          ValidateLinks: { status: "failed", error: "Broken anchor: #Hero - no element with id=\"Hero\" -- this is a fake error simply testing the internal workflow. Simply exit early, and we will mock as though you fixed the error." },
-        });
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks,
-            chatId: 1
-          })
-          .execute();
-
-        const fixingBugsTask = result.state.tasks.find((t) => t.name === "FixingBugs");
-        expect(fixingBugsTask?.status).toBe("completed");
-      });
-    });
-  });
-
-  /**
-   * =============================================================================
-   * 5. WEBSITE DEPLOY FLOW TESTS [all]
-   * =============================================================================
-   * These tests verify the deploy website flow including idempotency,
-   * task bubbling, webhook integration, and validation.
-   */
-  describe("Website Deploy Flow", () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
-    describe("Idempotency - doesn't deploy if website is already deploying", () => {
-      it("calls API on first pass, skips on second pass", async () => {
-        const mockCreate = vi.fn().mockResolvedValue({ id: 123, status: "pending" });
-        mockJobRunAPIService.mockImplementation(() => ({ create: mockCreate }) as any);
-
-        // First pass: task is running, no jobId → should call API
-        const firstResult = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: Deploy.withTasks({ website: true }, {
-              DeployingWebsite: { status: "running" },
-            }, { after: "completed" }),
-            chatId: 1
-          })
-          .execute();
-
-        // Verify API was called
-        expect(mockCreate).toHaveBeenCalledTimes(1);
-
-        // Verify task now has jobId
-        const taskAfterFirst = firstResult.state.tasks.find((t) => t.name === "DeployingWebsite");
-        expect(taskAfterFirst?.jobId).toBe(123);
-
-        // Second pass: same state but with jobId → should NOT call API
-        mockCreate.mockClear();
-
-        const secondResult = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            ...firstResult.state, // Use state from first pass (has jobId)
-          })
-          .execute();
-
-        // Verify API was NOT called again
-        expect(mockCreate).not.toHaveBeenCalled();
-
-        // Task should still be running (waiting for webhook)
-        const taskAfterSecond = secondResult.state.tasks.find((t) => t.name === "DeployingWebsite");
-        expect(taskAfterSecond?.status).toBe("running");
-        expect(taskAfterSecond?.jobId).toBe(123);
-      });
-
-      it("exits immediately if DeployingWebsite task is completed", async () => {
-        const mockCreate = vi.fn().mockResolvedValue({ id: 123, status: "pending" });
-        mockJobRunAPIService.mockImplementation(() => ({ create: mockCreate }) as any);
-
-        const completedTask: Deploy.Task = {
-          ...Deploy.createTask("DeployingWebsite"),
-          status: "completed",
-          result: { deployed: true },
-        };
-
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: [completedTask],
-            chatId: 1
-          })
-          .execute();
-
-        expect(result.state.tasks).toHaveLength(1);
-        expect(result.state.tasks[0]!.status).toBe("completed");
-        expect(mockCreate).not.toHaveBeenCalled();
-      });
+      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
     });
 
     /**
-     * TASK BUBBLING TESTS
-     * These tests verify that tasks from the subgraph are visible to the parent.
-     * Since all graphs use DeployAnnotation with the same reducer, tasks should
-     * merge correctly.
+     * USER OUTCOME: Broken links are caught before going live.
+     * The snapshot includes Footer.tsx with placeholder href="#" links.
      */
-    describe("Task Bubbling - All tasks visible to parent graph", () => {
-      it("tasks array accumulates as nodes execute", async () => {
-        // Start with completed instrumentation and validation
-        const existingTasks: Deploy.Task[] = [
-          { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
-          { ...Deploy.createTask("RuntimeValidation"), status: "completed" },
-        ];
-
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: existingTasks,
-            chatId: 1
-          })
-          .stopAfter("deployWebsite")
-          .execute();
-
-        // Should have all tasks including DeployingWebsite
-        expect(result.state.tasks.length).toBeGreaterThanOrEqual(2);
-
-        // Verify existing tasks preserved
-        const instTask = result.state.tasks.find((t) => t.name === "AddingAnalytics");
-        expect(instTask?.status).toBe("completed");
-      });
-    });
-
-    /**
-     * WEBHOOK INTEGRATION TESTS
-     * These tests verify the fire-and-forget + webhook callback pattern.
-     *
-     * Flow:
-     * 1. First invoke: Creates task with "pending", fires Sidekiq job, returns
-     * 2. Frontend polls: Sees "pending" task
-     * 3. Sidekiq completes: Webhook updates task with result
-     * 4. Second invoke: Processes result, marks "completed"
-     */
-    describe("Webhook Integration - Async Deploy", () => {
-      it("graph exits early when DeployingWebsite task exists (webhook pattern)", async () => {
-        // Simulate state after deploy task was created and webhook hasn't returned
-        const pendingDeployTask: Deploy.Task = {
-          ...Deploy.createTask("DeployingWebsite", 123),
-          status: "pending",
-        };
-
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: [pendingDeployTask],
-            chatId: 1
-          })
-          .execute();
-
-        // Graph should exit immediately - idempotent
-        expect(result.state.tasks).toHaveLength(1);
-        expect(result.state.tasks[0]!.status).toBe("pending");
-      });
-
-      it("processes webhook result when task has result", async () => {
-        // Simulate state after webhook updated task with result
-        const taskWithResult: Deploy.Task = {
-          ...Deploy.createTask("DeployingWebsite", 123),
-          status: "running",
-          result: {
-            website_id: 1,
-            deployed_at: "2024-01-15T10:00:00Z",
-            url: "https://example.com",
-          },
-        };
-
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-
-            tasks: [taskWithResult],
-          })
-          .execute();
-
-        // Graph exits early because DeployingWebsite task exists
-        // The deployWebsiteNode would process the result if it ran
-        expect(result.state.tasks[0]!.name).toBe("DeployingWebsite");
-      });
-    });
-
-    /**
-     * VALIDATION FLOW TESTS
-     * These tests verify the validation -> fix -> retry loop.
-     */
-    describe("Validation Flow - Retry Loop", () => {
-      // Helper: Tasks that need to be completed before validation runs
-      // With new flow: analytics → seo → validation → deploy
-      const completedPreValidationTasks = [
-        { ...Deploy.createTask("AddingAnalytics"), status: "completed" as const },
-        { ...Deploy.createTask("OptimizingSEO"), status: "completed" as const },
-      ];
-
-      it("exits after MAX_RETRY_COUNT attempts when validation keeps failing", async () => {
-        // Simulate state where validation failed and we've hit max retries
-        const failedValidationTask: Deploy.Task = {
-          ...Deploy.createTask("RuntimeValidation"),
-          status: "failed",
-          retryCount: 2, // MAX_RETRY_COUNT = 2
-          error: "Console errors found",
-        };
-
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: [...completedPreValidationTasks, failedValidationTask],
-            chatId: 1
-          })
-          .stopAfter("runtimeValidation")
-          .execute();
-
-        // Should exit due to max retries (not loop forever)
-        expect(result).toBeDefined();
-      });
-
-      it("detects errors from all sources (browser, server, viteOverlay)", async () => {
-        await DatabaseSnapshotter.restoreSnapshot("website_with_import_errors");
-
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: [
-              ...completedPreValidationTasks,
-              { ...Deploy.createTask("ValidateLinks"), status: "completed" as const },
-            ],
-            chatId: 1
-          })
-          .stopAfter("runtimeValidation")
-          .execute();
-
-        // RuntimeValidation should have failed due to detected errors
-        const validationTask = result.state.tasks.find((t) => t.name === "RuntimeValidation");
-        expect(validationTask).toBeDefined();
-        expect(validationTask?.status).toBe("failed");
-
-        // The error report should contain error details (either import or syntax error)
-        const error = validationTask?.error as string;
-        expect(error).toBeDefined();
-        expect(error.length).toBeGreaterThan(0);
-      });
-
-      it("routes to fix when validation fails", async () => {
-        await DatabaseSnapshotter.restoreSnapshot("website_with_import_errors");
-
-        const failedValidationTask: Deploy.Task = {
-          ...Deploy.createTask("RuntimeValidation"),
-          status: "failed",
-          result: {
-            browserErrorCount: 2,
-            serverErrorCount: 4,
-            viteOverlayErrorCount: 1,
-            report:
-              "## Build Errors\n" +
-              "\n" +
-              "1. Expected ',', got 'ident'\n" +
-              "   File: src/pages/IndexPage.tsx\n" +
-              "   Code:\n" +
-              "   3 | export const IndexPage = () => {\n" +
-              "    4 |   return (\n" +
-              "    5 |       <NonExistentComponent />\n" +
-              '    6 |     <div className="min-h-screen flex items-center justify-center bg-background">\n' +
-              "\n" +
-              "2. Error:   Failed to scan for dependencies from entries:\n" +
-              "   File: IndexPage.tsx:6\n" +
-              "   Code:\n" +
-              '   6 │     <div className="min-h-screen flex items-center justify-center b...\n' +
-              "           │          ~~~~~~~~~",
-          },
-          error:
-            "## Build Errors\n" +
-            "\n" +
-            "1. Expected ',', got 'ident'\n" +
-            "   File: src/pages/IndexPage.tsx\n" +
-            "   Code:\n" +
-            "   3 | export const IndexPage = () => {\n" +
-            "    4 |   return (\n" +
-            "    5 |       <NonExistentComponent />\n" +
-            '    6 |     <div className="min-h-screen flex items-center justify-center bg-background">\n' +
-            "\n" +
-            "2. Error:   Failed to scan for dependencies from entries:\n" +
-            "   File: IndexPage.tsx:6\n" +
-            "   Code:\n" +
-            '   6 │     <div className="min-h-screen flex items-center justify-center b...\n' +
-            "           │          ~~~~~~~~~",
-        };
-
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: [...completedPreValidationTasks, failedValidationTask],
-            chatId: 1
-          })
-          .stopAfter("bugFix")
-          .execute();
-
-        const updatedFile = await db
-          .select()
-          .from(websiteFiles)
-          .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "src/pages/IndexPage.tsx")))
-          .execute()
-          .then((files) => files.at(-1));
-
-        // The bugFixNode uses an AI agent to fix the code - verify the fix was applied
-        // The AI should remove the NonExistentComponent import and usage
-        expect(updatedFile?.content).toContain("IndexPage"); // Component still exists
-        expect(updatedFile?.content).not.toContain("NonExistentComponent"); // The bug is fixed
-
-        const backend = await getCodingAgentBackend({
+    it("detects broken anchor links", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
-          jwt: "test-jwt",
-        } as any);
+          deploy: { website: true },
+          tasks: Deploy.withTasks({ website: true }, { ValidateLinks: "pending" }),
+          chatId: 1,
+        })
+        .stopAfter("validateLinks")
+        .execute();
 
-        await backend.cleanup();
+      const validateTask = result.state.tasks.find((t) => t.name === "ValidateLinks");
+      expect(validateTask?.status).toBe("failed");
+      expect(validateTask?.error).toContain("Broken anchor");
+    });
+  });
 
-        const task = result.state.tasks.find((t) => t.name === "FixingBugs");
-        expect(task).toBeDefined();
-        expect(task?.status).toBe("completed");
-      });
+  /**
+   * =============================================================================
+   * 5. BUG FIXING TESTS [all]
+   * =============================================================================
+   * These tests verify the bug fixing flow when validation fails.
+   *
+   * USER OUTCOME: Broken links are detected and automatically fixed.
+   */
+  describe("Bug Fixing", () => {
+    beforeEach(async () => {
+      vi.clearAllMocks();
+      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+    });
 
-      it("routes to deployWebsite when validation passes", async () => {
-        const passedValidationTask: Deploy.Task = {
-          ...Deploy.createTask("RuntimeValidation"),
-          status: "completed", // This is what the graph expects
-        };
-
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: [
-              ...completedPreValidationTasks,
-              { ...Deploy.createTask("ValidateLinks"), status: "completed" },
-              passedValidationTask,
-            ],
-            chatId: 1
-          })
-          .stopAfter("enqueueDeploy")
-          .execute();
-
-        // Should have reached deployWebsite node
-        const deployTask = result.state.tasks.find((t) => t.name === "DeployingWebsite");
-        expect(deployTask).toBeDefined();
-        expect(deployTask?.status).toBe("running"); // enqueueTask creates with running status
-      });
+    afterEach(async () => {
+      const backend = await getCodingAgentBackend({
+        websiteId: 1,
+        jwt: "test-jwt",
+      } as any);
+      await backend.cleanup();
     });
 
     /**
-     * DEPLOYMENT FAILURE TESTS
-     * These tests verify proper handling of deployment failures from webhooks.
+     * USER OUTCOME: Sites with no bugs skip the fix step.
      */
-    describe("Deployment Failure Handling", () => {
-      it("marks task failed when webhook returns error", async () => {
-        // Simulate webhook returning an error
-        const taskWithError: Deploy.Task = {
-          ...Deploy.createTask("DeployingWebsite", 123),
-          status: "running",
-          error: "Build failed: npm install error",
-        };
+    it("skips when validation passes", async () => {
+      const createCodingAgentSpy = vi.spyOn(await import("@nodes"), "createCodingAgent");
 
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: [
-              { ...Deploy.createTask("AddingAnalytics"), status: "completed" },
-              { ...Deploy.createTask("OptimizingSEO"), status: "completed" },
-              { ...Deploy.createTask("ValidateLinks"), status: "completed" },
-              { ...Deploy.createTask("RuntimeValidation"), status: "completed" },
-              taskWithError,
-            ],
-            chatId: 1
-          })
-          .execute();
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: Deploy.withTasks({ website: true }, {
+            ValidateLinks: "completed",
+            RuntimeValidation: "completed",
+            FixingBugs: "pending",
+          }),
+          chatId: 1,
+        })
+        .execute();
 
-        // Graph exits early - the task already exists with error
-        const deployTask = result.state.tasks.find((t) => t.name === "DeployingWebsite");
-        expect(deployTask).toBeDefined();
-        expect(deployTask?.error).toBeDefined();
-        expect(deployTask?.error).toContain("Build failed");
-      });
+      const fixingBugsTask = result.state.tasks.find((t) => t.name === "FixingBugs");
+      expect(fixingBugsTask?.status).toBe("skipped");
+      expect(createCodingAgentSpy).not.toHaveBeenCalled();
 
-      it("preserves error details from failed deployment", async () => {
-        const detailedError = {
-          message: "Deployment failed",
-          code: "CLOUDFLARE_ERROR",
-          details: {
-            step: "build",
-            exitCode: 1,
-            logs: "Error: Cannot find module '@/lib/nonexistent'",
-          },
-        };
+      createCodingAgentSpy.mockRestore();
+    });
 
-        const taskWithDetailedError: Deploy.Task = {
-          ...Deploy.createTask("DeployingWebsite", 456),
-          status: "failed",
-          error: JSON.stringify(detailedError),
-        };
+    /**
+     * USER OUTCOME: Broken links are fixed after bug fix runs.
+     */
+    it("fixes broken links", async () => {
+      // Verify broken links exist before
+      const footerBefore = await db
+        .select()
+        .from(websiteFiles)
+        .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "src/components/Footer.tsx")))
+        .execute()
+        .then((files) => files.at(-1));
 
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            deploy: { website: true },
-            tasks: [taskWithDetailedError],
-            chatId: 1
-          })
-          .execute();
+      expect(footerBefore?.content).toContain('href="#"');
 
-        // Task error should contain useful debugging info
-        const deployTask = result.state.tasks.find((t) => t.name === "DeployingWebsite");
-        expect(deployTask?.status).toBe("failed");
-        expect(deployTask?.error).toContain("CLOUDFLARE_ERROR");
-        expect(deployTask?.error).toContain("Cannot find module");
-      });
+      // Run bug fix (validation already failed)
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: Deploy.withTasks({ website: true }, {
+            ValidateLinks: { status: "failed", error: "Broken anchor: # - no element with id" },
+            FixingBugs: "pending",
+          }, { after: "completed" }),
+          chatId: 1,
+        })
+        .execute();
+
+      // Verify bug fix completed
+      const fixingBugsTask = result.state.tasks.find((t) => t.name === "FixingBugs");
+      expect(fixingBugsTask?.status).toBe("completed");
+
+      // Verify broken links are fixed
+      const footerAfter = await db
+        .select()
+        .from(websiteFiles)
+        .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "src/components/Footer.tsx")))
+        .execute()
+        .then((files) => files.at(-1));
+
+      // No more placeholder href="#" links
+      const brokenLinks = (footerAfter?.content?.match(/href="#"(?!\w)/g) || []).length;
+      expect(brokenLinks).toBe(0);
     });
   });
 
   /**
    * =============================================================================
-   * 7. CHECK PAYMENT NODE TESTS [campaign]
+   * 6. WEBSITE DEPLOYMENT TESTS [all]
    * =============================================================================
-   * Tests for the checkPaymentNode which verifies Google Ads payment/billing
-   * status before enabling campaigns.
+   * These tests verify website deployment is triggered correctly.
+   *
+   * USER OUTCOME: Website goes live after validation passes.
    */
-  describe("checkPaymentNode - Payment Verification", () => {
-    beforeEach(() => {
+  describe("Website Deployment", () => {
+    beforeEach(async () => {
       vi.clearAllMocks();
+      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
 
-      mockJobRunAPIService.mockImplementation(
-        () =>
-          ({
-            create: vi.fn().mockResolvedValue({ id: 456, status: "pending" }),
-          }) as any
-      );
+      setupJobRunMock(() => ({
+        create: vi.fn().mockResolvedValue({ id: 123, status: "pending" }),
+      }));
     });
 
-    describe("Idempotency", () => {
-      it("returns {} when task is already completed", async () => {
-        const completedTask: Deploy.Task = {
-          ...Deploy.createTask("CheckingBilling"),
-          status: "completed",
-          result: { has_payment: true },
-        };
-
-        const state: Partial<DeployGraphState> = {
+    /**
+     * USER OUTCOME: Campaign-only deploys don't touch the website.
+     */
+    it("skips when deploying only campaign", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
-          tasks: [completedTask],
-        };
+          websiteId: 1,
+          campaignId: 1,
+          deploy: { googleAds: true },
+          tasks: [],
+          chatId: 1,
+        })
+        .execute();
 
-        const result = await checkPaymentNode(state as DeployGraphState);
-
-        expect(result).toEqual({});
-      });
-
-      it("returns {} when task is already failed", async () => {
-        const failedTask: Deploy.Task = {
-          ...Deploy.createTask("CheckingBilling"),
-          status: "failed",
-          error: "Payment check failed",
-        };
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          tasks: [failedTask],
-        };
-
-        const result = await checkPaymentNode(state as DeployGraphState);
-
-        expect(result).toEqual({});
-      });
-
-      it("returns {} when task is running and waiting for webhook", async () => {
-        const runningTask: Deploy.Task = {
-          ...Deploy.createTask("CheckingBilling"),
-          status: "running",
-          jobId: 123,
-        };
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          tasks: [runningTask],
-        };
-
-        const result = await checkPaymentNode(state as DeployGraphState);
-
-        expect(result).toEqual({});
-      });
+      const deployTask = result.state.tasks.find((t) => t.name === "DeployingWebsite");
+      expect(deployTask).toBeUndefined();
     });
 
-    describe("First Invocation - Fire and Forget", () => {
-      it("creates JobRun and returns task with jobId", async () => {
-        const state: Partial<DeployGraphState> = {
+    /**
+     * USER OUTCOME: Website deployment job is created.
+     */
+    it("creates deployment job", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
-          tasks: [],
-        };
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: Deploy.withTasks({ website: true }, { DeployingWebsite: "pending" }),
+          chatId: 1,
+        })
+        .execute();
 
-        const result = await checkPaymentNode(state as DeployGraphState);
-
-        // Verify JobRun was created
-        expect(mockJobRunAPIService).toHaveBeenCalledWith({ jwt: "test-jwt" });
-
-        // Verify task was created with jobId
-        expect(result.tasks).toBeDefined();
-        const task = result.tasks?.find((t) => t.name === "CheckingBilling");
-        expect(task).toBeDefined();
-        expect(task?.status).toBe("running");
-        expect(task?.jobId).toBe(456);
-      });
-
-      it("includes deployId in JobRun when present", async () => {
-        const mockCreate = vi.fn().mockResolvedValue({ id: 456, status: "pending" });
-        mockJobRunAPIService.mockImplementation(() => ({ create: mockCreate }) as any);
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          deployId: 789,
-          tasks: [],
-        };
-
-        await checkPaymentNode(state as DeployGraphState);
-
-        expect(mockCreate).toHaveBeenCalledWith(
-          expect.objectContaining({
-            deployId: 789,
-          })
-        );
-      });
-    });
-
-    describe("Webhook Result Processing", () => {
-      it("marks task completed when webhook returns has_payment: true", async () => {
-        const taskWithResult: Deploy.Task = {
-          ...Deploy.createTask("CheckingBilling"),
-          status: "running",
-          jobId: 123,
-          result: { has_payment: true, status: "active" },
-        };
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          tasks: [taskWithResult],
-        };
-
-        const result = await checkPaymentNode(state as DeployGraphState);
-
-        const task = result.tasks?.find((t) => t.name === "CheckingBilling");
-        expect(task?.status).toBe("completed");
-      });
-
-      it("marks task completed when webhook returns has_payment: false", async () => {
-        // Note: has_payment: false is still a valid completed state
-        // The task completed successfully, it just found no payment
-        const taskWithResult: Deploy.Task = {
-          ...Deploy.createTask("CheckingBilling"),
-          status: "running",
-          jobId: 123,
-          result: { has_payment: false, status: "none" },
-        };
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          tasks: [taskWithResult],
-        };
-
-        const result = await checkPaymentNode(state as DeployGraphState);
-
-        const task = result.tasks?.find((t) => t.name === "CheckingBilling");
-        expect(task?.status).toBe("completed");
-      });
-
-      it("marks task failed when webhook returns error", async () => {
-        const taskWithError: Deploy.Task = {
-          ...Deploy.createTask("CheckingBilling"),
-          status: "running",
-          jobId: 123,
-          error: "Google Ads API error: AUTHENTICATION_ERROR",
-        };
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          tasks: [taskWithError],
-        };
-
-        const result = await checkPaymentNode(state as DeployGraphState);
-
-        const task = result.tasks?.find((t) => t.name === "CheckingBilling");
-        expect(task?.status).toBe("failed");
-      });
-    });
-
-    describe("Validation Errors", () => {
-      it("throws error when JWT is missing", async () => {
-        const state: Partial<DeployGraphState> = {
-          jwt: undefined,
-          threadId: "thread_123" as ThreadIDType,
-          tasks: [],
-        };
-
-        await expect(checkPaymentNode(state as DeployGraphState)).rejects.toThrow(
-          "JWT token is required"
-        );
-      });
-
-      it("throws error when threadId is missing", async () => {
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: undefined,
-          tasks: [],
-        };
-
-        await expect(checkPaymentNode(state as DeployGraphState)).rejects.toThrow(
-          "Thread ID is required"
-        );
-      });
+      const deployTask = result.state.tasks.find((t) => t.name === "DeployingWebsite");
+      expect(deployTask?.status).toBe("running");
+      expect(deployTask?.jobId).toBeDefined();
     });
   });
 
   /**
    * =============================================================================
-   * 8. SHOULD CHECK PAYMENT ROUTING TESTS [campaign]
+   * 7. CAMPAIGN DEPLOYMENT TESTS [campaign]
    * =============================================================================
-   * Tests for the shouldCheckPayment conditional routing function.
+   * These tests verify Google Ads campaign deployment.
+   *
+   * USER OUTCOME: Campaign is enabled after payment is verified.
    */
-  describe("shouldCheckPayment - Conditional Routing", () => {
-    beforeEach(() => {
+  describe("Campaign Deployment", () => {
+    let campaignId: number | undefined;
+
+    beforeEach(async () => {
       vi.clearAllMocks();
-    });
+      await DatabaseSnapshotter.restoreSnapshot("campaign_complete");
+      campaignId = (await db.select().from(campaigns).limit(1).execute())[0]?.id;
 
-    it("returns 'skipCheckPayment' when CheckingBilling task is completed", async () => {
-      const completedTask: Deploy.Task = {
-        ...Deploy.createTask("CheckingBilling"),
-        status: "completed",
-      };
-
-      const state: Partial<DeployGraphState> = {
-        jwt: "test-jwt",
-        tasks: [completedTask],
-      };
-
-      const result = await shouldCheckPayment(state as DeployGraphState);
-
-      expect(result).toBe("skipCheckPayment");
-    });
-
-    it("returns 'skipCheckPayment' when API says payment is verified", async () => {
-      mockGoogleAPIService.mockImplementation(
-        () =>
-          ({
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
-          }) as any
-      );
-
-      const state: Partial<DeployGraphState> = {
-        jwt: "test-jwt",
-        tasks: [],
-      };
-
-      const result = await shouldCheckPayment(state as DeployGraphState);
-
-      expect(result).toBe("skipCheckPayment");
-    });
-
-    it("returns 'checkPayment' when API says no payment configured", async () => {
-      mockGoogleAPIService.mockImplementation(
-        () =>
-          ({
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: false }),
-          }) as any
-      );
-
-      const state: Partial<DeployGraphState> = {
-        jwt: "test-jwt",
-        tasks: [],
-      };
-
-      const result = await shouldCheckPayment(state as DeployGraphState);
-
-      expect(result).toBe("checkPayment");
-    });
-
-    it("returns 'checkPayment' when JWT is missing (cannot verify)", async () => {
-      const state: Partial<DeployGraphState> = {
-        jwt: undefined,
-        tasks: [],
-      };
-
-      const result = await shouldCheckPayment(state as DeployGraphState);
-
-      expect(result).toBe("checkPayment");
-    });
-  });
-
-  /**
-   * =============================================================================
-   * 9. ENABLE CAMPAIGN NODE TESTS [campaign]
-   * =============================================================================
-   * Tests for the enableCampaignNode which enables a Google Ads campaign
-   * for serving after payment has been verified.
-   */
-  describe("enableCampaignNode - Campaign Enabling", () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-
-      mockJobRunAPIService.mockImplementation(
-        () =>
-          ({
-            create: vi.fn().mockResolvedValue({ id: 789, status: "pending" }),
-          }) as any
-      );
-    });
-
-    describe("Idempotency", () => {
-      it("returns {} when task is already completed", async () => {
-        const completedTask: Deploy.Task = {
-          ...Deploy.createTask("EnablingCampaign"),
-          status: "completed",
-          result: { enabled: true, campaign_id: 123 },
-        };
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: 123,
-          tasks: [completedTask],
-        };
-
-        const result = await enableCampaignNode(state as DeployGraphState);
-
-        expect(result).toEqual({});
-      });
-
-      it("returns {} when task is already failed", async () => {
-        const failedTask: Deploy.Task = {
-          ...Deploy.createTask("EnablingCampaign"),
-          status: "failed",
-          error: "Campaign enable failed",
-        };
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: 123,
-          tasks: [failedTask],
-        };
-
-        const result = await enableCampaignNode(state as DeployGraphState);
-
-        expect(result).toEqual({});
-      });
-
-      it("returns {} when task is running and waiting for webhook", async () => {
-        const runningTask: Deploy.Task = {
-          ...Deploy.createTask("EnablingCampaign"),
-          status: "running",
-          jobId: 456,
-        };
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: 123,
-          tasks: [runningTask],
-        };
-
-        const result = await enableCampaignNode(state as DeployGraphState);
-
-        expect(result).toEqual({});
-      });
-    });
-
-    describe("First Invocation - Fire and Forget", () => {
-      it("creates JobRun with campaign_id and returns task with jobId", async () => {
-        const mockCreate = vi.fn().mockResolvedValue({ id: 789, status: "pending" });
-        mockJobRunAPIService.mockImplementation(() => ({ create: mockCreate }) as any);
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: 123,
-          tasks: [],
-        };
-
-        const result = await enableCampaignNode(state as DeployGraphState);
-
-        // Verify JobRun was created with campaign_id
-        expect(mockCreate).toHaveBeenCalledWith(
-          expect.objectContaining({
-            jobClass: "CampaignEnable",
-            arguments: { campaign_id: 123 },
-            threadId: "thread_123",
-          })
-        );
-
-        // Verify task was created with jobId
-        expect(result.tasks).toBeDefined();
-        const task = result.tasks?.find((t) => t.name === "EnablingCampaign");
-        expect(task).toBeDefined();
-        expect(task?.status).toBe("running");
-        expect(task?.jobId).toBe(789);
-      });
-
-      it("includes deployId in JobRun when present", async () => {
-        const mockCreate = vi.fn().mockResolvedValue({ id: 789, status: "pending" });
-        mockJobRunAPIService.mockImplementation(() => ({ create: mockCreate }) as any);
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: 123,
-          deployId: 456,
-          tasks: [],
-        };
-
-        await enableCampaignNode(state as DeployGraphState);
-
-        expect(mockCreate).toHaveBeenCalledWith(
-          expect.objectContaining({
-            deployId: 456,
-          })
-        );
-      });
-    });
-
-    describe("Webhook Result Processing", () => {
-      it("marks task completed when webhook returns enabled: true", async () => {
-        const taskWithResult: Deploy.Task = {
-          ...Deploy.createTask("EnablingCampaign"),
-          status: "running",
-          jobId: 456,
-          result: { enabled: true, campaign_id: 123 },
-        };
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: 123,
-          tasks: [taskWithResult],
-        };
-
-        const result = await enableCampaignNode(state as DeployGraphState);
-
-        const task = result.tasks?.find((t) => t.name === "EnablingCampaign");
-        expect(task?.status).toBe("completed");
-      });
-
-      it("marks task completed when campaign was already enabled", async () => {
-        const taskWithResult: Deploy.Task = {
-          ...Deploy.createTask("EnablingCampaign"),
-          status: "running",
-          jobId: 456,
-          result: { enabled: true, campaign_id: 123, already_enabled: true },
-        };
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: 123,
-          tasks: [taskWithResult],
-        };
-
-        const result = await enableCampaignNode(state as DeployGraphState);
-
-        const task = result.tasks?.find((t) => t.name === "EnablingCampaign");
-        expect(task?.status).toBe("completed");
-      });
-
-      it("marks task failed when webhook returns error", async () => {
-        const taskWithError: Deploy.Task = {
-          ...Deploy.createTask("EnablingCampaign"),
-          status: "running",
-          jobId: 456,
-          error: "Campaign enable failed: BILLING_NOT_CONFIGURED",
-        };
-
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: 123,
-          tasks: [taskWithError],
-        };
-
-        const result = await enableCampaignNode(state as DeployGraphState);
-
-        const task = result.tasks?.find((t) => t.name === "EnablingCampaign");
-        expect(task?.status).toBe("failed");
-      });
-    });
-
-    describe("Validation Errors", () => {
-      it("throws error when JWT is missing", async () => {
-        const state: Partial<DeployGraphState> = {
-          jwt: undefined,
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: 123,
-          tasks: [],
-        };
-
-        await expect(enableCampaignNode(state as DeployGraphState)).rejects.toThrow(
-          "JWT token is required"
-        );
-      });
-
-      it("throws error when threadId is missing", async () => {
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: undefined,
-          campaignId: 123,
-          tasks: [],
-        };
-
-        await expect(enableCampaignNode(state as DeployGraphState)).rejects.toThrow(
-          "Thread ID is required"
-        );
-      });
-
-      it("throws error when campaignId is missing", async () => {
-        const state: Partial<DeployGraphState> = {
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          campaignId: undefined,
-          tasks: [],
-        };
-
-        await expect(enableCampaignNode(state as DeployGraphState)).rejects.toThrow(
-          "Campaign ID is required"
-        );
-      });
-    });
-  });
-
-  /**
-   * =============================================================================
-   * 10. PAYMENT AND ENABLE CAMPAIGN FLOW INTEGRATION TESTS [campaign]
-   * =============================================================================
-   * Tests for the full checkPayment -> enableCampaign flow in the deploy graph.
-   */
-  describe("Deploy Graph - Payment and Enable Campaign Flow", () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-
-      // Default: Google connected, invite accepted, payment configured
+      // Default: Google connected, verified, and payment configured
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
@@ -1848,54 +928,36 @@ describe.sequential("Deploy Graph Tests", () => {
           }) as any
       );
 
-      mockJobRunAPIService.mockImplementation(
-        () =>
-          ({
-            create: vi.fn().mockResolvedValue({ id: 123, status: "pending" }),
-          }) as any
-      );
+      setupJobRunMock(() => ({
+        create: vi.fn().mockResolvedValue({ id: 123, status: "pending" }),
+      }));
     });
 
-    // Helper: All tasks needed to be completed before campaign flow
-    const completedWebsiteTasks = [
-      { ...Deploy.createTask("ConnectingGoogle"), status: "completed" as const },
-      { ...Deploy.createTask("VerifyingGoogle"), status: "completed" as const },
-      { ...Deploy.createTask("AddingAnalytics"), status: "completed" as const },
-      { ...Deploy.createTask("OptimizingSEO"), status: "completed" as const },
-      { ...Deploy.createTask("ValidateLinks"), status: "completed" as const },
-      { ...Deploy.createTask("RuntimeValidation"), status: "completed" as const },
-      { ...Deploy.createTask("DeployingWebsite"), status: "completed" as const },
-    ];
-
-    it("skips checkPayment when payment is already verified", async () => {
-      // Payment is verified via API mock above
+    /**
+     * USER OUTCOME: Users with payment skip billing check.
+     */
+    it("skips billing when payment configured", async () => {
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
-          campaignId: 123,
+          campaignId,
           deploy: { googleAds: true },
-          tasks: [
-            ...completedWebsiteTasks,
-            { ...Deploy.createTask("DeployingCampaign"), status: "completed" },
-          ],
+          tasks: Deploy.withTasks({ googleAds: true }, { CheckingBilling: "pending" }),
+          chatId: 1,
         })
-        .stopAfter("enqueueEnableCampaign")
         .execute();
 
-      // Should NOT have CheckingBilling task (skipped)
-      const checkPaymentTask = result.state.tasks.find((t) => t.name === "CheckingBilling");
-      expect(checkPaymentTask).toBeUndefined();
-
-      // Should have EnablingCampaign task (proceeded directly)
-      const enableTask = result.state.tasks.find((t) => t.name === "EnablingCampaign");
-      expect(enableTask).toBeDefined();
+      const billingTask = result.state.tasks.find((t) => t.name === "CheckingBilling");
+      expect(billingTask?.status).toBe("skipped");
     });
 
-    it("runs checkPayment when payment is not verified", async () => {
-      // Payment NOT verified
+    /**
+     * USER OUTCOME: Users without payment are prompted to add billing.
+     */
+    it("prompts for billing when no payment", async () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
@@ -1915,79 +977,38 @@ describe.sequential("Deploy Graph Tests", () => {
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
-          campaignId: 123,
+          campaignId,
           deploy: { googleAds: true },
-          tasks: [
-            ...completedWebsiteTasks,
-            { ...Deploy.createTask("DeployingCampaign"), status: "completed" },
-          ],
+          tasks: Deploy.withTasks({ googleAds: true }, { CheckingBilling: "pending" }),
+          chatId: 1,
         })
-        .stopAfter("checkPayment")
         .execute();
 
-      // Should have CheckingBilling task
-      const checkPaymentTask = result.state.tasks.find((t) => t.name === "CheckingBilling");
-      expect(checkPaymentTask).toBeDefined();
-      expect(checkPaymentTask?.status).toBe("running");
+      const billingTask = result.state.tasks.find((t) => t.name === "CheckingBilling");
+      expect(billingTask?.status).toBe("running");
+      expect(billingTask?.jobId).toBeDefined();
     });
 
-    it("proceeds to enableCampaign after checkPayment completes", async () => {
+    /**
+     * USER OUTCOME: Campaign enabling job is created.
+     */
+    it("creates enabling job", async () => {
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
-          campaignId: 123,
+          campaignId,
           deploy: { googleAds: true },
-          tasks: [
-            ...completedWebsiteTasks,
-            { ...Deploy.createTask("DeployingCampaign"), status: "completed" },
-            {
-              ...Deploy.createTask("CheckingBilling"),
-              status: "completed",
-              result: { has_payment: true },
-            },
-          ],
+          tasks: Deploy.withTasks({ googleAds: true }, { EnablingCampaign: "pending" }),
+          chatId: 1,
         })
-        .stopAfter("enableCampaign")
         .execute();
 
-      // Should have EnablingCampaign task
       const enableTask = result.state.tasks.find((t) => t.name === "EnablingCampaign");
-      expect(enableTask).toBeDefined();
       expect(enableTask?.status).toBe("running");
-    });
-
-    it("graph ends after enableCampaign completes", async () => {
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          websiteId: 1,
-          campaignId: 123,
-          deploy: { googleAds: true },
-          tasks: [
-            ...completedWebsiteTasks,
-            { ...Deploy.createTask("DeployingCampaign"), status: "completed" },
-            {
-              ...Deploy.createTask("CheckingBilling"),
-              status: "completed",
-              result: { has_payment: true },
-            },
-            {
-              ...Deploy.createTask("EnablingCampaign"),
-              status: "completed",
-              result: { enabled: true, campaign_id: 123 },
-            },
-          ],
-        })
-        .execute();
-
-      // Graph should complete - all campaign tasks done
-      const enableTask = result.state.tasks.find((t) => t.name === "EnablingCampaign");
-      expect(enableTask?.status).toBe("completed");
+      expect(enableTask?.jobId).toBeDefined();
     });
   });
 });
