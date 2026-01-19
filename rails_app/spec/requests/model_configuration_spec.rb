@@ -43,11 +43,13 @@ RSpec.describe "Model Configuration API", type: :request do
           expect(json["models"]["opus"]).to include(
             "enabled" => false,
             "maxUsagePercent" => 80,
-            "modelCard" => "claude-opus-4-5"
+            "modelCard" => "claude-opus-4-5",
+            "priceTier" => be_a(Integer)
           )
           expect(json["models"]["sonnet"]).to include(
             "enabled" => true,
-            "maxUsagePercent" => 90
+            "maxUsagePercent" => 90,
+            "priceTier" => be_a(Integer)
           )
 
           # Verify preferences section

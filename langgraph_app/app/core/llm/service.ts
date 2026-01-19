@@ -93,6 +93,7 @@ class LLMService {
           costOut: 75.0,
           modelCard: "claude-opus-4-5",
           provider: "anthropic",
+          priceTier: 1, // 15 + (75 * 4) = 315
         },
         sonnet: {
           enabled: true,
@@ -101,6 +102,7 @@ class LLMService {
           costOut: 15.0,
           modelCard: "claude-sonnet-4-5",
           provider: "anthropic",
+          priceTier: 2, // 3 + (15 * 4) = 63
         },
         haiku: {
           enabled: true,
@@ -109,6 +111,16 @@ class LLMService {
           costOut: 5.0,
           modelCard: "claude-haiku-4-5",
           provider: "anthropic",
+          priceTier: 3, // 1 + (5 * 4) = 21
+        },
+        haiku3: {
+          enabled: true,
+          maxUsagePercent: 100,
+          costIn: 0.25,
+          costOut: 1.25,
+          modelCard: "claude-3-5-haiku-latest",
+          provider: "anthropic",
+          priceTier: 4, // 0.25 + (1.25 * 4) = 5.25
         },
         groq: {
           enabled: true,
@@ -117,6 +129,7 @@ class LLMService {
           costOut: 10.0,
           modelCard: "openai/gpt-oss-120b",
           provider: "groq",
+          priceTier: 2, // 1.25 + (10 * 4) = 41.25
         },
         gpt5: {
           enabled: true,
@@ -125,6 +138,7 @@ class LLMService {
           costOut: 10.0,
           modelCard: "gpt-5",
           provider: "openai",
+          priceTier: 2, // 1.25 + (10 * 4) = 41.25
         },
         gpt5_mini: {
           enabled: true,
@@ -133,6 +147,7 @@ class LLMService {
           costOut: 2.0,
           modelCard: "gpt-5-mini",
           provider: "openai",
+          priceTier: 4, // 0.25 + (2 * 4) = 8.25
         },
         gpt_oss: {
           enabled: true,
@@ -141,6 +156,7 @@ class LLMService {
           costOut: 0,
           modelCard: "gpt-oss:20b",
           provider: "ollama",
+          priceTier: 5, // 0 + (0 * 4) = 0
         },
         gemini_flash: {
           enabled: true,
@@ -149,6 +165,7 @@ class LLMService {
           costOut: 2.5,
           modelCard: "gemini-1.5-flash-latest",
           provider: "openai",
+          priceTier: 4, // 0.3 + (2.5 * 4) = 10.3
         },
       },
       preferences: {
@@ -174,10 +191,10 @@ class LLMService {
         },
         paid: {
           blazing: {
-            planning: ["groq", "haiku"],
-            writing: ["groq", "haiku"],
-            coding: ["groq", "haiku"],
-            reasoning: ["groq", "haiku"],
+            planning: ["groq", "haiku", "haiku3"],
+            writing: ["groq", "haiku", "haiku3"],
+            coding: ["groq", "haiku", "haiku3"],
+            reasoning: ["groq", "haiku", "haiku3"],
           },
           fast: {
             planning: ["sonnet", "haiku", "gpt5"],
@@ -232,12 +249,19 @@ class LLMService {
   /**
    * Get a single model for the given skill/speed/cost combination.
    * Returns the first available model from the preference chain.
+   *
+   * @param skill - The skill needed (planning, writing, coding, reasoning)
+   * @param speed - Speed preference (blazing, fast, slow)
+   * @param cost - Cost tier (free or paid)
+   * @param usagePercent - Current user's usage percentage (0-100)
+   * @param maxTier - Maximum price tier allowed (1=premium only, 5=any tier). Models with higher tier numbers (cheaper) are allowed.
    */
   async get(
     skill: LLMSkill,
     speed: LLMSpeed,
     cost: LLMCost,
-    usagePercent: number = 0
+    usagePercent: number = 0,
+    maxTier?: number
   ): Promise<BaseChatModel> {
     if (this.useTest()) {
       return LLMTestResponder.get();
@@ -250,24 +274,35 @@ class LLMService {
       const modelConfig = config.models[key];
       if (!modelConfig?.enabled) continue;
       if (usagePercent > (modelConfig.maxUsagePercent ?? 100)) continue;
+      // Filter by maxTier: only allow models with tier >= maxTier (higher tier = cheaper)
+      if (maxTier !== undefined && modelConfig.priceTier < maxTier) continue;
 
+      console.log(`Using tier ${modelConfig.priceTier} model ${key}`);
       const model = this.createModel(key, modelConfig);
       if (model) return model;
     }
 
-    throw new Error(`No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage`);
+    const tierMsg = maxTier !== undefined ? ` with maxTier=${maxTier}` : "";
+    throw new Error(`No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`);
   }
 
   /**
    * Get the model key that would be selected for the given parameters.
    * Useful for testing to verify which model is selected without needing API keys.
    * When testConfig is set, skips API key validation.
+   *
+   * @param skill - The skill needed (planning, writing, coding, reasoning)
+   * @param speed - Speed preference (blazing, fast, slow)
+   * @param cost - Cost tier (free or paid)
+   * @param usagePercent - Current user's usage percentage (0-100)
+   * @param maxTier - Maximum price tier allowed (1=premium only, 5=any tier). Models with higher tier numbers (cheaper) are allowed.
    */
   async getModelKey(
     skill: LLMSkill,
     speed: LLMSpeed,
     cost: LLMCost,
-    usagePercent: number = 0
+    usagePercent: number = 0,
+    maxTier?: number
   ): Promise<string> {
     const config = await this.fetchConfig();
     const modelKeys = config.preferences[cost]?.[speed]?.[skill] ?? [];
@@ -277,6 +312,8 @@ class LLMService {
       const modelConfig = config.models[key];
       if (!modelConfig?.enabled) continue;
       if (usagePercent > (modelConfig.maxUsagePercent ?? 100)) continue;
+      // Filter by maxTier: only allow models with tier >= maxTier (higher tier = cheaper)
+      if (maxTier !== undefined && modelConfig.priceTier < maxTier) continue;
 
       // Check if this model could be created (has valid provider config)
       const provider = modelConfig.provider ?? MODEL_PROVIDERS[key];
@@ -291,19 +328,27 @@ class LLMService {
       return key;
     }
 
-    throw new Error(`No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage`);
+    const tierMsg = maxTier !== undefined ? ` with maxTier=${maxTier}` : "";
+    throw new Error(`No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`);
   }
 
   /**
    * Get all available model keys for the given parameters.
    * Useful for testing fallback chains.
    * When testConfig is set, skips API key validation.
+   *
+   * @param skill - The skill needed (planning, writing, coding, reasoning)
+   * @param speed - Speed preference (blazing, fast, slow)
+   * @param cost - Cost tier (free or paid)
+   * @param usagePercent - Current user's usage percentage (0-100)
+   * @param maxTier - Maximum price tier allowed (1=premium only, 5=any tier). Models with higher tier numbers (cheaper) are allowed.
    */
   async getModelKeys(
     skill: LLMSkill,
     speed: LLMSpeed,
     cost: LLMCost,
-    usagePercent: number = 0
+    usagePercent: number = 0,
+    maxTier?: number
   ): Promise<string[]> {
     const config = await this.fetchConfig();
     const modelKeys = config.preferences[cost]?.[speed]?.[skill] ?? [];
@@ -314,6 +359,8 @@ class LLMService {
       const modelConfig = config.models[key];
       if (!modelConfig?.enabled) continue;
       if (usagePercent > (modelConfig.maxUsagePercent ?? 100)) continue;
+      // Filter by maxTier: only allow models with tier >= maxTier (higher tier = cheaper)
+      if (maxTier !== undefined && modelConfig.priceTier < maxTier) continue;
 
       const provider = modelConfig.provider ?? MODEL_PROVIDERS[key];
       if (!provider) continue;
@@ -332,12 +379,19 @@ class LLMService {
   /**
    * Get all available models for fallback chains.
    * Returns models in priority order (first is primary).
+   *
+   * @param skill - The skill needed (planning, writing, coding, reasoning)
+   * @param speed - Speed preference (blazing, fast, slow)
+   * @param cost - Cost tier (free or paid)
+   * @param usagePercent - Current user's usage percentage (0-100)
+   * @param maxTier - Maximum price tier allowed (1=premium only, 5=any tier). Models with higher tier numbers (cheaper) are allowed.
    */
   async getFallbacks(
     skill: LLMSkill,
     speed: LLMSpeed,
     cost: LLMCost,
-    usagePercent: number = 0
+    usagePercent: number = 0,
+    maxTier?: number
   ): Promise<BaseChatModel[]> {
     if (this.useTest()) {
       return [LLMTestResponder.get()];
@@ -351,14 +405,17 @@ class LLMService {
       const modelConfig = config.models[key];
       if (!modelConfig?.enabled) continue;
       if (usagePercent > (modelConfig.maxUsagePercent ?? 100)) continue;
+      // Filter by maxTier: only allow models with tier >= maxTier (higher tier = cheaper)
+      if (maxTier !== undefined && modelConfig.priceTier < maxTier) continue;
 
       const model = this.createModel(key, modelConfig);
       if (model) models.push(model);
     }
 
     if (models.length === 0) {
+      const tierMsg = maxTier !== undefined ? ` with maxTier=${maxTier}` : "";
       throw new Error(
-        `No available models for ${skill}/${speed}/${cost} at ${usagePercent}% usage`
+        `No available models for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`
       );
     }
 
@@ -396,6 +453,8 @@ class LLMService {
   reset() {
     this.mode = "regular";
     this.testConfig = null;
+    // Clear cache synchronously via fire-and-forget to ensure fresh config on next fetch
+    cache.delete(CACHE_KEY).catch(() => {});
   }
 
   useTest() {

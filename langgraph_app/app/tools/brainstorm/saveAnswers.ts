@@ -117,7 +117,7 @@ export const summarizeMessages = async (
       })
     ),
   });
-  const structured = await (await getLLM()).withStructuredOutput(outputSchema).invoke(prompt);
+  const structured = await (await getLLM({})).withStructuredOutput(outputSchema).invoke(prompt);
 
   type Output = z.infer<typeof outputSchema>;
   const output: Output["output"] = structured.output;

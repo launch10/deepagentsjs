@@ -13,7 +13,8 @@ class API::V1::ModelConfigurationController < API::BaseController
         maxUsagePercent: c.max_usage_percent,
         costIn: c.cost_in&.to_f,
         costOut: c.cost_out&.to_f,
-        modelCard: c.model_card
+        modelCard: c.model_card,
+        priceTier: c.price_tier
       }
     end
 

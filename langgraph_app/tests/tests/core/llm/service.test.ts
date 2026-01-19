@@ -450,6 +450,146 @@ describe.sequential("LLMService Integration Tests", () => {
     });
   });
 
+  describe("Price Tier Filtering (maxTier)", () => {
+    /**
+     * Helper to set up models with different price tiers for maxTier tests
+     * Tier 1 = premium (opus), Tier 2 = high-end (sonnet), Tier 3 = mid (haiku)
+     */
+    async function setupTieredPriceModels() {
+      // Opus: tier 1 (premium) - cost_in: 15, cost_out: 75 -> effective: 315
+      await createModelConfig({
+        modelKey: "opus",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "15.0",
+        costOut: "75.0",
+        modelCard: "claude-opus-4-5",
+      });
+      // Sonnet: tier 2 (high-end) - cost_in: 3, cost_out: 15 -> effective: 63
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "3.0",
+        costOut: "15.0",
+        modelCard: "claude-sonnet-4-5",
+      });
+      // Haiku: tier 3 (mid-tier) - cost_in: 1, cost_out: 5 -> effective: 21
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "1.0",
+        costOut: "5.0",
+        modelCard: "claude-haiku-4-5",
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["opus", "sonnet", "haiku"], // Preference order
+      });
+      await LLMManager.clearCache();
+    }
+
+    it("returns all models when maxTier is not specified", async () => {
+      await setupTieredPriceModels();
+
+      const modelKeys = await LLMManager.getModelKeys("coding", "slow", "paid", 0);
+      expect(modelKeys).toEqual(["opus", "sonnet", "haiku"]);
+    });
+
+    it("filters out premium models when maxTier=2", async () => {
+      await setupTieredPriceModels();
+
+      // maxTier=2 means only tier 2+ (high-end and cheaper) are allowed
+      const modelKeys = await LLMManager.getModelKeys("coding", "slow", "paid", 0, 2);
+      expect(modelKeys).toEqual(["sonnet", "haiku"]); // opus (tier 1) filtered out
+    });
+
+    it("filters to only mid-tier and cheaper when maxTier=3", async () => {
+      await setupTieredPriceModels();
+
+      // maxTier=3 means only tier 3+ (mid-tier and cheaper) are allowed
+      const modelKeys = await LLMManager.getModelKeys("coding", "slow", "paid", 0, 3);
+      expect(modelKeys).toEqual(["haiku"]); // opus (tier 1) and sonnet (tier 2) filtered out
+    });
+
+    it("getModelKey returns first available model within tier constraint", async () => {
+      await setupTieredPriceModels();
+
+      // Without maxTier, returns opus (first in preference)
+      expect(await LLMManager.getModelKey("coding", "slow", "paid", 0)).toBe("opus");
+
+      // With maxTier=2, skips opus and returns sonnet
+      expect(await LLMManager.getModelKey("coding", "slow", "paid", 0, 2)).toBe("sonnet");
+
+      // With maxTier=3, skips opus and sonnet, returns haiku
+      expect(await LLMManager.getModelKey("coding", "slow", "paid", 0, 3)).toBe("haiku");
+    });
+
+    it("throws error when no models match the tier constraint", async () => {
+      await setupTieredPriceModels();
+
+      // maxTier=4 means only tier 4+ allowed, but our cheapest is tier 3
+      await expect(LLMManager.getModelKey("coding", "slow", "paid", 0, 4)).rejects.toThrow(
+        "No available model"
+      );
+    });
+
+    it("combines maxTier with usage-based filtering", async () => {
+      // Set up models with both tier and usage constraints
+      await createModelConfig({
+        modelKey: "opus",
+        enabled: true,
+        maxUsagePercent: 50, // Only available below 50%
+        costIn: "15.0",
+        costOut: "75.0", // tier 1
+        modelCard: "claude-opus-4-5",
+      });
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 80, // Only available below 80%
+        costIn: "3.0",
+        costOut: "15.0", // tier 2
+        modelCard: "claude-sonnet-4-5",
+      });
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100, // Always available
+        costIn: "1.0",
+        costOut: "5.0", // tier 3
+        modelCard: "claude-haiku-4-5",
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["opus", "sonnet", "haiku"],
+      });
+      await LLMManager.clearCache();
+
+      // At 0% usage with maxTier=2: opus excluded by tier, sonnet and haiku available
+      expect(await LLMManager.getModelKey("coding", "slow", "paid", 0, 2)).toBe("sonnet");
+
+      // At 60% usage with maxTier=2: opus excluded by tier AND usage, sonnet available
+      expect(await LLMManager.getModelKey("coding", "slow", "paid", 60, 2)).toBe("sonnet");
+
+      // At 85% usage with maxTier=2: opus excluded by tier, sonnet excluded by usage, haiku available
+      expect(await LLMManager.getModelKey("coding", "slow", "paid", 85, 2)).toBe("haiku");
+    });
+
+    it("includes error message with maxTier when no models available", async () => {
+      await setupTieredPriceModels();
+
+      await expect(LLMManager.getModelKey("coding", "slow", "paid", 0, 5)).rejects.toThrow(
+        "maxTier=5"
+      );
+    });
+  });
+
   describe("Edge Cases", () => {
     it("handles null maxUsagePercent as 100%", async () => {
       // Using haiku which has a known provider mapping
