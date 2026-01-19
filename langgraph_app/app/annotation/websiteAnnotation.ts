@@ -11,6 +11,11 @@ export const WebsiteAnnotation = Annotation.Root({
     reducer: (current, next) => next,
   }),
 
+  improveCopyStyle: Annotation<Website.ImproveCopyStyle | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next,
+  }),
+
   brainstormId: Annotation<PrimaryKeyType | undefined>({
     default: () => undefined,
     reducer: (current, next) => next,

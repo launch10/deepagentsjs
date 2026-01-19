@@ -29,15 +29,15 @@
 - [x] Playwright: can send message and see response ✓
 - [x] Playwright: error state when network fails ✓
 - [ ] Figma MCP: Website page layout matches design
-- [ ] Commit: "feat: wire Website page to Langgraph chat"
+- [x] Commit: "feat: wire Website page to Langgraph chat" ✓ (6a248916)
 
 ## TASK-3: Backend improve_copy
 
-- [ ] Update websiteAnnotation.ts: add improve_copy command + improveCopyStyle field
-- [ ] Update website.ts graph routing for improve_copy
-- [ ] Create nodes/website/improveCopy.ts
-- [ ] Update cacheMode.ts to handle improve_copy
-- [ ] Run backend tests: `cd langgraph_app && pnpm test`
+- [x] Update websiteAnnotation.ts: add improve_copy command + improveCopyStyle field ✓
+- [x] Update website.ts graph routing for improve_copy ✓
+- [x] Create nodes/website/improveCopy.ts ✓
+- [x] Update cacheMode.ts to handle improve_copy ✓
+- [x] Run backend tests: `cd langgraph_app && pnpm test` ✓ (TypeScript compiles, pre-existing test failures unrelated)
 - [ ] Commit: "feat: add improve_copy command to website graph"
 
 ## TASK-4: WebContainer Preview

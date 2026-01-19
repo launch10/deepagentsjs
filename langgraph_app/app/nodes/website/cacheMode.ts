@@ -1,36 +1,92 @@
 import { type WebsiteGraphState } from "@annotation";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { AIMessage } from "@langchain/core/messages";
-import { schedulingToolFiles, schedulingToolMinorEditFiles } from "@cache";
+import {
+  schedulingToolFiles,
+  schedulingToolMinorEditFiles,
+  schedulingToolProfessionalFiles,
+  schedulingToolFriendlyFiles,
+  schedulingToolShorterFiles,
+} from "@cache";
+import type { Website } from "@types";
 
 export const CACHE_MODE = process.env.CACHE_MODE === "true";
 
 /**
+ * Get files and message for improve_copy command based on style.
+ */
+function getImproveCopyResponse(style: Website.ImproveCopyStyle | undefined): {
+  files: Website.FileMap;
+  message: string;
+} {
+  switch (style) {
+    case "professional":
+      return {
+        files: schedulingToolProfessionalFiles,
+        message:
+          "I've updated the copy to be more professional with formal language and business-focused messaging.",
+      };
+    case "friendly":
+      return {
+        files: schedulingToolFriendlyFiles,
+        message:
+          "I've made the copy more friendly and approachable with casual language and personality.",
+      };
+    case "shorter":
+      return {
+        files: schedulingToolShorterFiles,
+        message: "I've made the copy shorter and more concise - straight to the point.",
+      };
+    default:
+      // Default to professional if no style specified
+      return {
+        files: schedulingToolProfessionalFiles,
+        message: "I've improved the copy to be more professional and polished.",
+      };
+  }
+}
+
+/**
  * Cache mode node for testing/development.
  * When CACHE_MODE=true:
- * - First message (create command): Returns scheduling-tool example files
- * - 2nd+ message: Returns minor edit version with different headline
+ * - create command: Returns scheduling-tool example files
+ * - improve_copy command: Returns style-specific version (professional/friendly/shorter)
+ * - Other messages: Returns minor edit version with different headline
  * - Always adds a deterministic AIMessage to the stack
  */
 export const cacheModeNode = async (
   state: WebsiteGraphState,
   config: LangGraphRunnableConfig
 ): Promise<Partial<WebsiteGraphState>> => {
-  const isFirstMessage = state.command === "create";
+  const isCreateCommand = state.command === "create";
+  const isImproveCopyCommand = state.command === "improve_copy";
 
-  // Pick which cached files to return
-  const files = isFirstMessage
-    ? schedulingToolFiles
-    : schedulingToolMinorEditFiles;
+  let files: Website.FileMap;
+  let aiMessageContent: string;
 
-  // Create a deterministic AI message
-  const aiMessageContent = isFirstMessage
-    ? "I've created a scheduling tool landing page for you with a hero section, features, and pricing."
-    : "I've updated the headline and subtitle on your landing page to be more compelling.";
+  if (isCreateCommand) {
+    files = schedulingToolFiles;
+    aiMessageContent =
+      "I've created a scheduling tool landing page for you with a hero section, features, and pricing.";
+  } else if (isImproveCopyCommand) {
+    const response = getImproveCopyResponse(state.improveCopyStyle);
+    files = response.files;
+    aiMessageContent = response.message;
+  } else {
+    files = schedulingToolMinorEditFiles;
+    aiMessageContent =
+      "I've updated the headline and subtitle on your landing page to be more compelling.";
+  }
+
+  const commandType = isCreateCommand
+    ? "create"
+    : isImproveCopyCommand
+      ? `improve-copy-${state.improveCopyStyle || "default"}`
+      : "edit";
 
   const aiMessage = new AIMessage({
     content: aiMessageContent,
-    id: `cache-mode-${isFirstMessage ? "create" : "edit"}-${Date.now()}`,
+    id: `cache-mode-${commandType}-${Date.now()}`,
   });
 
   return {
